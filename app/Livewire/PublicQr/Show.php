@@ -61,12 +61,13 @@ class Show extends Component
     public string $guestInviteMessage = '';
 
     /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
         'brand_name' => '',
         'brand_initial' => '',
+        'branch_id' => 0,
         'branch_name' => '',
         'branch_city' => '',
         'branch_country' => '',
@@ -142,6 +143,7 @@ class Show extends Component
             'organization_name' => $organization->name,
             'brand_name' => $brand->name,
             'brand_initial' => str($brand->name)->substr(0, 1)->upper()->toString(),
+            'branch_id' => $branch->id,
             'branch_name' => $branch->name,
             'branch_city' => $branch->city,
             'branch_country' => $branch->country,

@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 041 - Guest Menu Display
+
+- Added a mobile-first guest menu block to the active public QR table page.
+- Guests now see the current branch's first active menu, active categories, dishes, prices, local dish photos, and unavailable dish state.
+- Added `GetGuestMenuForBranchAction` with database cache-backed menu payloads.
+- Added menu, category, and item observers to forget the guest menu cache when menu data changes.
+- Kept this step display-only: no cart add action, shared order draft, waiter confirmation flow, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 040 - Menu CRUD
 
 - Added a branch admin menu page guarded by `manage_menu`.

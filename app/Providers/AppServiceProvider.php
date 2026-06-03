@@ -3,6 +3,12 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Models\Menu;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
+use App\Observers\MenuCategoryObserver;
+use App\Observers\MenuItemObserver;
+use App\Observers\MenuObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->registerModelObservers();
 
         Livewire::addPersistentMiddleware([
             EnsureUserIsSuperadmin::class,
@@ -52,6 +59,13 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    protected function registerModelObservers(): void
+    {
+        Menu::observe(MenuObserver::class);
+        MenuCategory::observe(MenuCategoryObserver::class);
+        MenuItem::observe(MenuItemObserver::class);
     }
 
     /**

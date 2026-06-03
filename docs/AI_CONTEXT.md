@@ -50,14 +50,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
+- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and cached guest menu display.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No guest menu display, menu translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -130,7 +130,9 @@ Menu:
 - Has many categories and items.
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, and delete menus.
-- No guest menu display exists yet.
+- Active guests see the current branch's first active menu on the public QR table page.
+- Guest menu payloads are cached with the database cache key `guest-menu:branch:{branch_id}`.
+- `GetGuestMenuForBranchAction` builds and caches the guest menu payload for five minutes.
 
 Menu category:
 
@@ -155,6 +157,7 @@ Menu item:
 - Dish photos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/menu-items/{item}/images`.
 - Creating or editing dish price requires `change_prices`; without it, price edits are preserved as the current value.
 - Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
+- Guest menu display shows item price, photo when present, and unavailable state.
 - No translations, modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
 
 Area node:
@@ -334,8 +337,8 @@ QR code:
 - The guest invite link opens the same `GET /q/{token}` route with an `invite` query token and still keeps internal IDs out of the URL.
 - When an invited person opens the link and enters a name, `App\Livewire\PublicQr\Show` creates a pending join request for the invited table session.
 - Active guests see the main guest table page shell instead of the entry form.
-- The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, empty menu area, empty shared order area, and current total `0,00 {currency}`.
-- The guest table shell does not create menu items, order draft rows, payments, kitchen tasks, or bar tasks.
+- The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, cached active branch menu, empty shared order area, and current total `0,00 {currency}`.
+- The guest table shell does not add menu items to a cart, create order draft rows, payments, kitchen tasks, or bar tasks.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
@@ -480,6 +483,7 @@ Local media storage:
 - `App\Livewire\PublicQr\Show`
 - `App\Livewire\PublicQr\JoinRequests`
 - `App\Livewire\PublicQr\TableGuests`
+- `App\Livewire\PublicQr\GuestMenu`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
@@ -504,13 +508,29 @@ Local media storage:
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
-- Active guests see a guest table page shell with the venue, current service point, guests, invite action, menu placeholder, shared order placeholder, and zero total.
+- Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu, shared order placeholder, and zero total.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
+- The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through database cache.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
 - Waiting guests stay on a clear waiting screen until polling sees approval, rejection, or expiration.
-- Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
+- Public QR route shows the active branch menu for active guests, but does not add menu items to a cart, create orders, create payment records, or send anything to kitchen/bar yet.
+
+## Current Guest Menu Display
+
+- `App\Livewire\PublicQr\GuestMenu` renders the guest menu block inside the active guest table shell.
+- `App\Actions\Menus\GetGuestMenuForBranchAction` loads the first active menu for the current branch, sorted by `sort_order`, `name`, and `id`.
+- Guest menu payloads are cached in the configured database cache for 300 seconds.
+- Cache key format is `guest-menu:branch:{branch_id}`.
+- `MenuObserver`, `MenuCategoryObserver`, and `MenuItemObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
+- Guest menu display shows only active categories.
+- Guest menu display shows both available and unavailable dishes.
+- Unavailable dishes are visually dimmed and marked `Недоступно`; there is no add-to-cart action yet.
+- Dish cards show local dish photos when `menu_items.image` is present, otherwise a small photo placeholder.
+- The guest menu block is mobile-first and uses stable image dimensions.
+- The guest menu block must not poll; menu freshness comes from cache invalidation on admin/backend changes.
+- This step does not create order draft rows, shared cart items, waiter confirmation actions, kitchen tasks, bar tasks, or payment records.
 
 ## Current Branch Menu UI
 
@@ -526,8 +546,9 @@ Local media storage:
 - Price fields are only shown and applied for users with `change_prices`.
 - Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
 - Deleting dishes, categories, or menus removes related local dish photos.
+- Menu/category/item model observers forget guest menu cache after menu changes.
 - The branch list shows a `Menu` action only to users with `manage_menu`.
-- This UI is admin-only. It does not make public QR pages display menu rows.
+- This UI now updates the data shown by the public QR guest menu through cache invalidation.
 
 ## Current Service Point UI
 
@@ -602,7 +623,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be guest menu display, QR PDF generation, staff invite acceptance flow, or order draft foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be order draft foundations, QR PDF generation, staff invite acceptance flow, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -613,8 +634,8 @@ The next expected product step may be guest menu display, QR PDF generation, sta
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
-- Do not make the guest table page read or display menu rows until a prompt explicitly asks for guest menu display.
-- Do not add menu translations, modifiers, order draft, kitchen/bar, or payment logic in menu admin steps.
+- Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
+- Do not add cart item creation, menu translations, modifiers, order draft, kitchen/bar, or payment logic in guest menu display steps.
 - Do not let users without `change_prices` change menu item prices.
 - Do not let users without `change_availability` change menu item availability.
 - Do not make QR generation create a second active QR automatically when one already exists.

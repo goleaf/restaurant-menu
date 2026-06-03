@@ -49,7 +49,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic and guest approval UI.
+- Table session join requests with backend create / approve / reject logic, guest approval UI, and guest invite share links.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -166,6 +166,8 @@ Table session:
 - Can be opened by a staff user through nullable `opened_by_user_id`.
 - Can be opened by a guest through nullable `opened_by_guest_id`.
 - `opened_by_guest_id` stores the first `table_session_guests.id` for a guest-created pending session.
+- Stores nullable `guest_invite_token` for the current guest invite link.
+- Stores nullable `guest_invite_created_at` and `guest_invite_created_by_guest_id` for invite creation audit.
 - Can be closed by a future staff user through nullable `closed_by_user_id`.
 - Status is cast to `TableSessionStatus`.
 - Status values are `pending`, `active`, `waiting_waiter_confirmation`, `payment_requested`, `paid`, `closed`, and `cancelled`.
@@ -184,6 +186,11 @@ Table session:
 - `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
 - If an active or pending session already exists and has active guests, guest QR entry creates a pending table session join request instead of a guest.
 - If an active or pending session already exists without active guests, guest QR entry returns the existing-session message without creating a join request.
+- `CreateGuestInviteLinkAction` creates or reuses one hidden invite token for the current table session.
+- Only an active guest in the same table session can create the guest invite link.
+- Guest invite links respect `branch_settings.allow_guest_invite_links`.
+- Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
+- Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
 - No order draft, order, kitchen/bar, or payment logic exists yet.
 
 Table session guest:
@@ -278,6 +285,10 @@ QR code:
 - The first guest is stored in `table_session_guests` as `active`, and the pending session stores that guest id in `opened_by_guest_id`.
 - The public QR entry flow stores the created guest token in `guest_entries.{public_token}` session data and queues a browser cookie named `guest_token_{hash}`.
 - If an active or pending session already has active guests, submitting the guest name creates a pending `table_session_join_requests` row and queues that request token in the same `guest_token_{hash}` cookie.
+- Active guests can create a guest invite link inside `App\Livewire\PublicQr\Show`.
+- Guest invite share UI uses the browser native share API when available and a copy-link fallback when native share is not available.
+- The guest invite link opens the same `GET /q/{token}` route with an `invite` query token and still keeps internal IDs out of the URL.
+- When an invited person opens the link and enters a name, `App\Livewire\PublicQr\Show` creates a pending join request for the invited table session.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
@@ -431,6 +442,7 @@ Local media storage:
 - Public QR route is `GET /q/{token}` and is named `public.qr.show`.
 - The route is not protected by auth because guests open it from printed QR codes.
 - The route parameter is only the QR `public_token`; URLs must not expose organization IDs, branch IDs, service point IDs, table IDs, table numbers, or area names.
+- Guest invite URLs may add an `invite` query parameter, but that value is a hidden 64-character table-session invite token, not an internal ID.
 - `App\Livewire\PublicQr\Show` owns the public QR landing state.
 - The component eager-loads QR, service point, current area, branch, brand, organization, and logo paths before rendering.
 - Blade displays prepared state only and must not query the database.
@@ -439,6 +451,8 @@ Local media storage:
 - Public QR route accepts a guest name and can create a pending guest-created table session plus the first active table session guest.
 - Public QR route queues a browser cookie with the guest token after creating that first guest.
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
+- Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
+- Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
@@ -518,7 +532,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be guest lists, QR PDF generation, staff invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -527,6 +541,7 @@ The next expected product step may be guest lists, QR PDF generation, invite acc
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
+- Do not expose table session IDs in guest invite links.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
 - Do not print service point number or area by default on QR stickers.

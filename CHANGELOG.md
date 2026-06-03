@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 037 - Guest Invite Share Link
+
+- Added a guest invite action inside the active public QR table session.
+- Active guests can create a hidden invite link for the current table session and share it through the browser native share API when available.
+- Added a copy-link fallback for browsers without native share support.
+- Opening the invite link keeps the public QR URL token-based and creates a pending join request after the new guest enters a name.
+- Kept the step limited to guest invitation and join approval flow: no menu, order, payment, kitchen/bar, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 036 - Guest Join Approval UI
 
 - Added a Livewire polling block where active table guests see pending join requests.

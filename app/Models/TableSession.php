@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
+#[Fillable(['branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'status', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
 class TableSession extends Model
 {
     /** @use HasFactory<TableSessionFactory> */
@@ -53,6 +53,7 @@ class TableSession extends Model
             'source' => TableSessionSource::class,
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
+            'guest_invite_created_at' => 'datetime',
             'metadata' => 'array',
         ];
     }
@@ -95,6 +96,14 @@ class TableSession extends Model
     public function openedByGuest(): BelongsTo
     {
         return $this->belongsTo(TableSessionGuest::class, 'opened_by_guest_id');
+    }
+
+    /**
+     * @return BelongsTo<TableSessionGuest, $this>
+     */
+    public function guestInviteCreatedByGuest(): BelongsTo
+    {
+        return $this->belongsTo(TableSessionGuest::class, 'guest_invite_created_by_guest_id');
     }
 
     /**

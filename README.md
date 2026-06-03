@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, guest join approval UI, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -209,6 +209,9 @@ The table stores:
 - `pending_service_point_id`
 - `opened_by_user_id`
 - `opened_by_guest_id`
+- `guest_invite_token`
+- `guest_invite_created_at`
+- `guest_invite_created_by_guest_id`
 - `status`
 - `source`
 - `started_at`
@@ -242,6 +245,14 @@ SQLite also enforces one pending table session per service point through interna
 `CreateGuestPendingTableSessionAction` creates a pending guest-created session only when the service point has no active or pending session and branch settings allow guest-created sessions. The first guest is stored as an active guest inside that pending session.
 
 When a table session already has active guests, a new QR guest creates a pending join request instead of becoming a table guest immediately.
+
+An active guest can create an invite link for the current table session from the public QR page. The invite URL keeps the QR route shape and adds only a hidden session invite token:
+
+```text
+/q/{public_token}?invite={guest_invite_token}
+```
+
+The link does not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or area names. When the invited person opens the link and enters a name, the system creates a pending join request for the current table session. Current active guests approve or reject it through the same Livewire polling approval UI.
 
 This stage does not create menus, orders, order drafts, kitchen/bar workflows, or payment flows. Guest-created sessions do not send anything to the kitchen or bar.
 
@@ -281,6 +292,8 @@ Supported join request statuses are:
 If a table session already has active guests, a new QR guest creates a pending join request and does not enter the table immediately. Any active guest from the same table session can approve or reject the request through backend actions. Approval creates a real `table_session_guests` record using the request guest name and token. Rejection does not create a guest.
 
 The public QR page now shows a waiting state for the new guest. Active guests see a small Livewire polling block with pending join requests and can accept or reject them without WebSockets. The waiting guest's status block also refreshes through Livewire polling and shows approved or rejected state clearly.
+
+Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
 
 ## Permanent QR Codes
 
@@ -355,7 +368,7 @@ Implemented:
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
-- Table session join request schema, backend create / approve / reject logic, and guest approval UI.
+- Table session join request schema, backend create / approve / reject logic, guest approval UI, and guest invite share links.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
@@ -379,7 +392,6 @@ Not implemented yet:
 
 - Restaurant menus.
 - QR PDF generation.
-- Guest table sessions.
 - Shared order drafts.
 - Kitchen/bar workflows.
 - Payments and analytics.

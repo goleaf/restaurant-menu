@@ -2,7 +2,9 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
+use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\TableSessionGuestStatus;
@@ -14,6 +16,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -47,6 +50,16 @@ class Show extends Component
 
     public bool $guestCanAddItems = false;
 
+    public ?string $currentInviteToken = null;
+
+    public string $guestInviteUrl = '';
+
+    public string $guestInviteTitle = '';
+
+    public string $guestInviteText = '';
+
+    public string $guestInviteMessage = '';
+
     /**
      * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
@@ -69,6 +82,7 @@ class Show extends Component
     public function mount(string $token): void
     {
         $this->token = $token;
+        $this->currentInviteToken = $this->inviteTokenFromRequest();
 
         $qrCode = $this->findQrCode($token);
 
@@ -120,7 +134,9 @@ class Show extends Component
 
         $this->state = 'ready';
         $this->title = $branch->name;
-        $this->message = __('Enter your name to continue.');
+        $this->message = $this->currentInviteToken === null
+            ? __('Enter your name to continue.')
+            : __('Введите имя, чтобы попроситься к этому столу.');
         $this->landing = [
             'organization_name' => $organization->name,
             'brand_name' => $brand->name,
@@ -140,8 +156,10 @@ class Show extends Component
         $this->restoreGuestFromCookie($qrCode);
     }
 
-    public function enterTable(CreateGuestPendingTableSessionAction $createGuestPendingTableSession): void
-    {
+    public function enterTable(
+        CreateGuestPendingTableSessionAction $createGuestPendingTableSession,
+        CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+    ): void {
         if ($this->state !== 'ready') {
             return;
         }
@@ -185,6 +203,16 @@ class Show extends Component
             return;
         }
 
+        if ($this->currentInviteToken !== null) {
+            $this->enterTableFromInvite(
+                servicePoint: $servicePoint,
+                qrCode: $qrCode,
+                createTableSessionJoinRequest: $createTableSessionJoinRequest,
+            );
+
+            return;
+        }
+
         $result = $createGuestPendingTableSession->handle($servicePoint, $this->preparedGuestName);
         $entryState = $result['state'];
         $tableSession = $result['table_session'];
@@ -219,6 +247,32 @@ class Show extends Component
                 'guest_token' => $joinRequest->guest_token,
             ]);
         }
+    }
+
+    public function createGuestInviteLink(CreateGuestInviteLinkAction $createGuestInviteLink): void
+    {
+        if ($this->state !== 'ready' || $this->currentTableSessionId === null || $this->currentGuestId === null) {
+            return;
+        }
+
+        $tableSession = $this->findCurrentTableSessionForInvite();
+        $guest = $this->findCurrentActiveGuestForInvite();
+
+        if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest) {
+            $this->guestInviteMessage = __('Только активный гость за этим столом может пригласить нового гостя.');
+
+            return;
+        }
+
+        try {
+            $tableSession = $createGuestInviteLink->handle($tableSession, $guest);
+        } catch (ValidationException $exception) {
+            $this->guestInviteMessage = $this->firstValidationMessage($exception);
+
+            return;
+        }
+
+        $this->fillGuestInviteShareState($tableSession);
     }
 
     public function refreshJoinRequestStatus(): void
@@ -404,6 +458,63 @@ class Show extends Component
         ]);
     }
 
+    private function enterTableFromInvite(
+        ServicePoint $servicePoint,
+        QrCode $qrCode,
+        CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+    ): void {
+        if ($this->currentInviteToken === null || $this->preparedGuestName === null) {
+            return;
+        }
+
+        $tableSession = $this->findTableSessionByInviteToken($servicePoint, $this->currentInviteToken);
+
+        if (! $tableSession instanceof TableSession) {
+            $this->entryState = 'guest_invite_invalid';
+            $this->entryMessage = __('Ссылка приглашения больше не активна. Пожалуйста, попросите гостей отправить новую ссылку или отсканируйте QR-код на месте.');
+            $this->currentTableSessionId = null;
+            $this->currentGuestId = null;
+            $this->currentJoinRequestId = null;
+            $this->guestCanAddItems = false;
+
+            return;
+        }
+
+        $this->currentTableSessionId = $tableSession->id;
+        $this->currentGuestId = null;
+        $this->guestCanAddItems = false;
+
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            $this->entryState = 'guest_invite_closed';
+            $this->entryMessage = __('Эта сессия стола уже закрыта. Пожалуйста, попросите гостей отправить новую ссылку.');
+            $this->currentJoinRequestId = null;
+
+            return;
+        }
+
+        $joinRequest = $createTableSessionJoinRequest->handle($tableSession, $this->preparedGuestName);
+
+        if (! $joinRequest instanceof TableSessionJoinRequest) {
+            $this->entryState = 'guest_invite_unavailable';
+            $this->entryMessage = __('Сейчас за столом нет активных гостей для подтверждения входа.');
+            $this->currentJoinRequestId = null;
+
+            return;
+        }
+
+        $this->entryState = GuestTableEntryState::JoinRequestCreated->value;
+        $this->entryMessage = $this->messageForEntryState(GuestTableEntryState::JoinRequestCreated);
+        $this->currentJoinRequestId = $joinRequest->id;
+
+        Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $joinRequest->guest_token, 60 * 24 * 30);
+
+        session()->put('guest_entries.'.$qrCode->public_token, [
+            'table_session_id' => $tableSession->id,
+            'join_request_id' => $joinRequest->id,
+            'guest_token' => $joinRequest->guest_token,
+        ]);
+    }
+
     private function findGuestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionGuest
     {
         return TableSessionGuest::query()
@@ -460,6 +571,81 @@ class Show extends Component
             ->whereHas('tableSession', fn ($query) => $query
                 ->where('branch_id', $servicePoint->branch_id)
                 ->where('service_point_id', $servicePoint->id))
+            ->first();
+    }
+
+    private function findTableSessionByInviteToken(ServicePoint $servicePoint, string $inviteToken): ?TableSession
+    {
+        return TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'opened_by_guest_id',
+                'status',
+                'source',
+                'started_at',
+                'ended_at',
+                'guest_invite_token',
+                'guest_invite_created_at',
+                'guest_invite_created_by_guest_id',
+            ])
+            ->where('branch_id', $servicePoint->branch_id)
+            ->where('service_point_id', $servicePoint->id)
+            ->where('guest_invite_token', $inviteToken)
+            ->first();
+    }
+
+    private function findCurrentTableSessionForInvite(): ?TableSession
+    {
+        if ($this->currentTableSessionId === null) {
+            return null;
+        }
+
+        return TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'opened_by_guest_id',
+                'status',
+                'source',
+                'started_at',
+                'ended_at',
+                'guest_invite_token',
+                'guest_invite_created_at',
+                'guest_invite_created_by_guest_id',
+            ])
+            ->whereKey($this->currentTableSessionId)
+            ->first();
+    }
+
+    private function findCurrentActiveGuestForInvite(): ?TableSessionGuest
+    {
+        if ($this->currentGuestId === null || $this->currentTableSessionId === null) {
+            return null;
+        }
+
+        $guestToken = $this->guestTokenFromCurrentCookie();
+
+        if ($guestToken === null) {
+            return null;
+        }
+
+        return TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->whereKey($this->currentGuestId)
+            ->where('table_session_id', $this->currentTableSessionId)
+            ->where('guest_token', $guestToken)
+            ->where('status', TableSessionGuestStatus::Active->value)
             ->first();
     }
 
@@ -559,6 +745,36 @@ class Show extends Component
         $this->message = $message;
     }
 
+    private function inviteTokenFromRequest(): ?string
+    {
+        $inviteToken = request()->query('invite');
+
+        if (! is_string($inviteToken) || strlen($inviteToken) !== 64 || ! ctype_alnum($inviteToken)) {
+            return null;
+        }
+
+        return $inviteToken;
+    }
+
+    private function fillGuestInviteShareState(TableSession $tableSession): void
+    {
+        if (! is_string($tableSession->guest_invite_token) || strlen($tableSession->guest_invite_token) !== 64) {
+            $this->guestInviteMessage = __('Не удалось создать ссылку приглашения.');
+
+            return;
+        }
+
+        $this->guestInviteUrl = route('public.qr.show', [
+            'token' => $this->token,
+            'invite' => $tableSession->guest_invite_token,
+        ]);
+        $this->guestInviteTitle = __('Приглашение за стол');
+        $this->guestInviteText = __('Присоединяйтесь к столу в :venue. Откройте ссылку и введите имя, чтобы текущие гости подтвердили вход.', [
+            'venue' => $this->landing['venue_name'] ?: config('app.name', 'Restaurant'),
+        ]);
+        $this->guestInviteMessage = __('Ссылка приглашения готова.');
+    }
+
     private function guestTokenFromCurrentCookie(): ?string
     {
         $guestToken = request()->cookie($this->guestTokenCookieName($this->token));
@@ -579,6 +795,13 @@ class Show extends Component
     private function guestTokenCookieName(string $publicToken): string
     {
         return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
+    }
+
+    private function firstValidationMessage(ValidationException $exception): string
+    {
+        $messages = collect($exception->errors())->flatten();
+
+        return (string) ($messages->first() ?? __('Не удалось создать ссылку приглашения.'));
     }
 
     private function canGuestAddItems(TableSessionGuest $guest, TableSession $tableSession): bool

@@ -45,6 +45,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
+- Basic menu schema with branch menus, nested menu categories, and menu items.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -56,7 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu CRUD UI, guest menu display, translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -78,6 +79,9 @@ No menu, QR PDF generation, order draft, kitchen, bar, payment, or analytics log
 - `organization_users`
 - `brands`
 - `branches`
+- `menus`
+- `menu_categories`
+- `menu_items`
 - `area_nodes`
 - `service_points`
 - `table_sessions`
@@ -110,10 +114,40 @@ Branch:
 - Belongs to a brand and an organization.
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
+- Has many menus.
 - Has many nested area nodes.
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
 - Stores optional `logo_path` for a locally stored logo.
+
+Menu:
+
+- Stored in `menus`.
+- Belongs to one branch through `branch_id`.
+- Status is cast to `MenuStatus`.
+- Current status values are `draft`, `active`, and `archived`.
+- Stores `name` and `sort_order`.
+- Has many categories and items.
+- This prompt added schema and models only; no menu CRUD UI or guest menu display exists yet.
+
+Menu category:
+
+- Stored in `menu_categories`.
+- Belongs to one menu through `menu_id`.
+- Can optionally belong to a parent category through `parent_id`.
+- Supports nested category structures through `parent` and `children` relationships.
+- Stores `name`, optional `description`, optional `image`, optional `icon`, `sort_order`, and `is_active`.
+- Image is a local-storage path placeholder for future uploads; no dish/category upload UI exists yet.
+
+Menu item:
+
+- Stored in `menu_items`.
+- Belongs to one menu through `menu_id`.
+- Belongs to one category through `category_id`.
+- Stores `name`, optional `description`, `price`, optional `image`, optional `weight`, optional `volume`, optional `calories`, `is_available`, and `sort_order`.
+- `price`, `weight`, and `volume` are decimal casts; `is_available` is a boolean cast.
+- Image is a local-storage path placeholder for future uploads; no dish upload UI exists yet.
+- No translations, modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
 
 Area node:
 
@@ -300,7 +334,7 @@ QR code:
 - The waiting guest status block in `App\Livewire\PublicQr\Show` polls only the join request status and turns approved requests into active guest state.
 - Restored active guests get `guestCanAddItems = true` for future order-position UI.
 - Restored guests from closed/cancelled sessions or with `rejected`, `removed`, `pending_approval`, or `left` status get `guestCanAddItems = false` and a public message.
-- Guest-created pending sessions do not create menus, orders, payment, kitchen tasks, or bar tasks.
+- Guest-created pending sessions do not display menus, create orders, create payment records, kitchen tasks, or bar tasks.
 - If an active session exists, the public QR page shows a future-join message and does not create a pending session.
 - If a pending session exists, the public QR page shows a pending-session message and does not create another first guest.
 - If `branch_settings.allow_guest_created_sessions` is false, the public QR page asks the guest to call staff and does not create a session or guest.
@@ -380,7 +414,7 @@ Local media storage:
 - `DeleteLocalMediaFileAction` removes old local files when a logo is removed.
 - `HasLocalLogo` exposes `logoUrl()` for local public logo URLs.
 - Current upload validation allows only images with `jpg`, `jpeg`, `png`, or `webp` extensions and a maximum size of 2 MB.
-- Future dish images should reuse the local public storage pattern; no menu or dish tables exist yet.
+- Future dish/category upload UI should reuse the local public storage pattern. Menu image path columns exist, but uploads for dishes/categories are not implemented yet.
 
 ## Branch Settings Defaults
 
@@ -540,7 +574,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be guest lists, QR PDF generation, staff invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be menu CRUD, guest menu display, QR PDF generation, staff invite acceptance flow, or order draft foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -551,6 +585,8 @@ The next expected product step may be guest lists, QR PDF generation, staff invi
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
+- Do not make the guest table page read or display menu rows until a prompt explicitly asks for guest menu display.
+- Do not add menu translations, modifiers, order draft, kitchen/bar, or payment logic in schema-only menu steps.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
 - Do not print service point number or area by default on QR stickers.

@@ -84,6 +84,16 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<Menu, $this>
+     */
+    public function menus(): HasMany
+    {
+        return $this->hasMany(Menu::class)
+            ->orderBy('sort_order')
+            ->orderBy('name');
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

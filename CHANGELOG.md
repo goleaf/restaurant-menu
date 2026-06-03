@@ -2,6 +2,12 @@
 
 ## 2026-06-03
 
+### Prompt 039 - Menu Schema
+
+- Added base menu tables: `menus`, `menu_categories`, and `menu_items`.
+- Added menu, category, and item models, factories, enum-backed menu status, branch relationship, and focused schema tests.
+- Kept this step schema-only: no menu CRUD UI, guest menu display, translations, modifiers, order draft, kitchen/bar flow, payment logic, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 038 - Guest Table Page Shell
 
 - Added the main guest table page shell for active table guests.

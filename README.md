@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, basic menu schema, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -141,7 +141,23 @@ Current logo upload rules:
 - allowed extensions: `jpg`, `jpeg`, `png`, `webp`;
 - maximum size: 2 MB.
 
-Future dish images should reuse the same local public storage approach. Menu and dish entities are not implemented yet.
+Future dish images should reuse the same local public storage approach. Menu item image paths are now available in the menu schema, but dish upload UI is not implemented yet.
+
+## Menu Schema
+
+The base menu tables are ready for future menu management:
+
+- `menus`
+- `menu_categories`
+- `menu_items`
+
+Each menu belongs to a branch through `branch_id`, stores a name, a fixed status, and a sort order. Current menu statuses are `draft`, `active`, and `archived`.
+
+Menu categories belong to one menu and can be nested with `parent_id`. They store name, optional description, optional image path, optional icon, sort order, and `is_active`.
+
+Menu items belong to one menu and one category. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
+
+This step is schema-only. There is no menu CRUD UI, guest menu display, translations, modifiers, order draft, kitchen/bar flow, or payment logic yet.
 
 ## Area Nodes
 
@@ -254,7 +270,7 @@ An active guest can create an invite link for the current table session from the
 
 The link does not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or area names. When the invited person opens the link and enters a name, the system creates a pending join request for the current table session. Current active guests approve or reject it through the same Livewire polling approval UI.
 
-This stage does not create menus, orders, order drafts, kitchen/bar workflows, or payment flows. Guest-created sessions do not send anything to the kitchen or bar.
+This stage does not display menus, create orders, create order drafts, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
 
 ## Table Session Guests
 
@@ -369,6 +385,7 @@ Implemented:
 - Local logo uploads for organizations, brands, and branches.
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
+- Basic menu schema stored in `menus`, `menu_categories`, and `menu_items`.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
@@ -394,7 +411,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Restaurant menus.
+- Menu CRUD/admin UI, guest menu display, translations, and modifiers.
 - QR PDF generation.
 - Shared order drafts.
 - Kitchen/bar workflows.

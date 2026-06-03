@@ -32,7 +32,8 @@ test('table session guests table stores guest identity inside a table session', 
     expect(Schema::hasTable('table_session_guests'))->toBeTrue();
     expect(Schema::hasColumns('table_session_guests', [
         'table_session_id',
-        'name',
+        'guest_name',
+        'guest_token',
         'status',
         'joined_at',
         'left_at',
@@ -42,8 +43,9 @@ test('table session guests table stores guest identity inside a table session', 
 
 test('table session guest statuses include current and future join states', function () {
     expect(TableSessionGuestStatus::values())->toBe([
-        'active',
         'pending_approval',
+        'active',
+        'rejected',
         'left',
         'removed',
     ]);
@@ -130,18 +132,22 @@ test('table session belongs to guests and exposes active guests alphabetically',
     $tableSession = TableSession::factory()->create();
     $zara = TableSessionGuest::factory()
         ->for($tableSession)
-        ->create(['name' => 'Zara']);
+        ->create(['guest_name' => 'Zara']);
     $ana = TableSessionGuest::factory()
         ->for($tableSession)
-        ->create(['name' => 'Ana']);
+        ->create(['guest_name' => 'Ana']);
     TableSessionGuest::factory()
         ->for($tableSession)
         ->create([
-            'name' => 'Mira',
+            'guest_name' => 'Mira',
             'status' => TableSessionGuestStatus::Left,
         ]);
 
-    expect($tableSession->guests()->count())->toBe(3);
+    expect($tableSession->guests()->pluck('guest_name')->all())->toBe([
+        'Ana',
+        'Mira',
+        'Zara',
+    ]);
     expect($tableSession->activeGuests()->pluck('id')->all())->toBe([
         $ana->id,
         $zara->id,
@@ -158,7 +164,7 @@ test('guest created table session can store opening session guest id', function 
         ]);
     $guest = TableSessionGuest::factory()
         ->for($tableSession)
-        ->create(['name' => 'Opening guest']);
+        ->create(['guest_name' => 'Opening guest']);
 
     $tableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
 

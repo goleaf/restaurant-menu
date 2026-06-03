@@ -15,6 +15,7 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use Illuminate\Support\Facades\Cookie;
 use Livewire\Livewire;
 
 test('first guest creates pending table session and active session guest from qr landing', function () {
@@ -43,10 +44,18 @@ test('first guest creates pending table session and active session guest from qr
     expect($tableSession->active_service_point_id)->toBeNull();
     expect($tableSession->pending_service_point_id)->toBe($servicePoint->id);
     expect($guest->table_session_id)->toBe($tableSession->id);
-    expect($guest->name)->toBe('Ana Maria');
+    expect($guest->guest_name)->toBe('Ana Maria');
+    expect($guest->guest_token)->not->toBeNull();
+    expect(strlen($guest->guest_token))->toBe(64);
     expect($guest->status)->toBe(TableSessionGuestStatus::Active);
     expect($guest->joined_at)->not->toBeNull();
     expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
+
+    $queuedGuestCookie = collect(Cookie::getQueuedCookies())
+        ->first(fn (Symfony\Component\HttpFoundation\Cookie $cookie): bool => str_starts_with($cookie->getName(), 'guest_token_'));
+
+    expect($queuedGuestCookie)->not->toBeNull();
+    expect($queuedGuestCookie->getValue())->toBe($guest->guest_token);
 });
 
 test('guest-created sessions setting can block first guest session creation', function () {

@@ -12,6 +12,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreateGuestPendingTableSessionAction
 {
@@ -52,7 +53,8 @@ class CreateGuestPendingTableSessionAction
             ]);
 
             $guest = $tableSession->guests()->create([
-                'name' => $normalizedGuestName,
+                'guest_name' => $normalizedGuestName,
+                'guest_token' => Str::random(64),
                 'status' => TableSessionGuestStatus::Active,
                 'joined_at' => now(),
                 'metadata' => [],

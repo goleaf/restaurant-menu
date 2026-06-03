@@ -6,6 +6,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<TableSessionGuest>
@@ -21,7 +22,8 @@ class TableSessionGuestFactory extends Factory
     {
         return [
             'table_session_id' => TableSession::factory(),
-            'name' => fake()->firstName(),
+            'guest_name' => fake()->firstName(),
+            'guest_token' => Str::random(64),
             'status' => TableSessionGuestStatus::Active,
             'joined_at' => now(),
             'left_at' => null,

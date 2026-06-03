@@ -4,16 +4,18 @@ namespace App\Enums;
 
 enum TableSessionGuestStatus: string
 {
-    case Active = 'active';
     case PendingApproval = 'pending_approval';
+    case Active = 'active';
+    case Rejected = 'rejected';
     case Left = 'left';
     case Removed = 'removed';
 
     public function label(): string
     {
         return match ($this) {
-            self::Active => 'Active',
             self::PendingApproval => 'Pending approval',
+            self::Active => 'Active',
+            self::Rejected => 'Rejected',
             self::Left => 'Left',
             self::Removed => 'Removed',
         };

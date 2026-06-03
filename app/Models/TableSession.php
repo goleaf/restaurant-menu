@@ -102,7 +102,9 @@ class TableSession extends Model
      */
     public function guests(): HasMany
     {
-        return $this->hasMany(TableSessionGuest::class);
+        return $this->hasMany(TableSessionGuest::class)
+            ->orderBy('guest_name')
+            ->orderBy('id');
     }
 
     /**
@@ -112,7 +114,7 @@ class TableSession extends Model
     {
         return $this->hasMany(TableSessionGuest::class)
             ->where('status', TableSessionGuestStatus::Active->value)
-            ->orderBy('name')
+            ->orderBy('guest_name')
             ->orderBy('id');
     }
 }

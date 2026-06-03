@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 033 - Table Session Guests
+
+- Updated table session guests to store `guest_name` and a random `guest_token`.
+- Added the `rejected` guest status for the future join approval flow.
+- The public QR entry flow now queues the guest token in a browser cookie and keeps the guest out of normal user accounts.
+- Guest relationships now return guests alphabetically by name.
+- Kept the step limited to guest identity inside a table session: no join approval UI, menus, orders, kitchen/bar, or payment logic.
+
 ### Prompt 032 - Guest-Created Pending Session
 
 - Added `table_session_guests` for storing guests inside a table session.

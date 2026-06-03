@@ -247,16 +247,19 @@ This stage does not create menus, orders, order drafts, kitchen/bar workflows, o
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
 
-The table stores guest `name`, `status`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
+The table stores `guest_name`, a random `guest_token`, `status`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
+
+Guests are not user accounts and do not need registration. The public QR entry flow queues the `guest_token` in a browser cookie so the guest can be recognized later without exposing internal IDs.
 
 Supported guest statuses are:
 
-- `active`
 - `pending_approval`
+- `active`
+- `rejected`
 - `left`
 - `removed`
 
-The first guest created from the public QR landing is saved as `active`. Future prompts will add approval for additional guests.
+The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`. Future prompts will add approval for additional guests.
 
 ## Permanent QR Codes
 

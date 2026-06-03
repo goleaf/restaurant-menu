@@ -48,7 +48,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
-- Table session guests for storing guests inside a table session.
+- Table session guests with guest names, random browser guest tokens, statuses, and alphabetical ordering.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -188,12 +188,14 @@ Table session guest:
 
 - Stored in `table_session_guests`.
 - Belongs to one table session through `table_session_id`.
-- Stores `name`, `status`, `joined_at`, optional `left_at`, optional JSON `metadata`, and timestamps.
+- Stores `guest_name`, `guest_token`, `status`, `joined_at`, optional `left_at`, optional JSON `metadata`, and timestamps.
+- `guest_token` is a random 64-character token and is unique.
+- Guests are not `users` records and do not require registration.
 - Status is cast to `TableSessionGuestStatus`.
-- Status values are `active`, `pending_approval`, `left`, and `removed`.
+- Status values are `pending_approval`, `active`, `rejected`, `left`, and `removed`.
 - The first guest from a guest-created pending session is stored as `active`.
-- `TableSession::guests()` returns all session guests.
-- `TableSession::activeGuests()` returns active guests ordered by name and id.
+- `TableSession::guests()` returns all session guests ordered by `guest_name` and id.
+- `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - Additional guest approval is not implemented yet.
 
 QR code:
@@ -246,6 +248,7 @@ QR code:
 - The public guest landing page shows venue name, local logo when available, current area, current service point, short code, guest name field, and `Войти за стол`.
 - Submitting the guest name validates and creates a pending guest-created table session only when no active or pending session exists and branch settings allow guest-created sessions.
 - The first guest is stored in `table_session_guests` as `active`, and the pending session stores that guest id in `opened_by_guest_id`.
+- The public QR entry flow stores the created guest token in `guest_entries.{public_token}` session data and queues a browser cookie named `guest_token_{hash}`.
 - Guest-created pending sessions do not create menus, orders, payment, kitchen tasks, or bar tasks.
 - If an active session exists, the public QR page shows a future-join message and does not create a pending session.
 - If a pending session exists, the public QR page shows a pending-session message and does not create another first guest.
@@ -398,6 +401,7 @@ Local media storage:
 - Active QR plus active service point shows a mobile-first guest landing page with venue, logo, current area, current service point, guest name field, and `Войти за стол`.
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
 - Public QR route accepts a guest name and can create a pending guest-created table session plus the first active table session guest.
+- Public QR route queues a browser cookie with the guest token after creating that first guest.
 - Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI

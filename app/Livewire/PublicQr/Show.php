@@ -9,6 +9,7 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -185,9 +186,12 @@ class Show extends Component
         $this->currentGuestId = $guest instanceof TableSessionGuest ? $guest->id : null;
 
         if ($guest instanceof TableSessionGuest && $tableSession instanceof TableSession) {
+            Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $guest->guest_token, 60 * 24 * 30);
+
             session()->put('guest_entries.'.$qrCode->public_token, [
                 'table_session_id' => $tableSession->id,
                 'guest_id' => $guest->id,
+                'guest_token' => $guest->guest_token,
             ]);
         }
     }
@@ -260,6 +264,11 @@ class Show extends Component
         $this->state = $state;
         $this->title = $title;
         $this->message = $message;
+    }
+
+    private function guestTokenCookieName(string $publicToken): string
+    {
+        return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
     }
 
     private function messageForEntryState(GuestTableEntryState $state): string

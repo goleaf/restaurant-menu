@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['table_session_id', 'name', 'status', 'joined_at', 'left_at', 'metadata'])]
+#[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'joined_at', 'left_at', 'metadata'])]
 class TableSessionGuest extends Model
 {
     /** @use HasFactory<TableSessionGuestFactory> */

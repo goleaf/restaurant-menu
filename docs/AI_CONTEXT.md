@@ -41,6 +41,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Local media storage for organization, brand, and branch logos.
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
@@ -88,11 +89,13 @@ Organization:
 - Has many brands.
 - Has many branches.
 - Has many users through `organization_users`.
+- Stores optional `logo_path` for a locally stored logo.
 
 Brand:
 
 - Belongs to an organization.
 - Has many branches.
+- Stores optional `logo_path` for a locally stored logo.
 
 Branch:
 
@@ -102,6 +105,7 @@ Branch:
 - Has many nested area nodes.
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
+- Stores optional `logo_path` for a locally stored logo.
 
 Area node:
 
@@ -169,7 +173,7 @@ QR code:
 - The QR admin page can open the guest URL, download the QR SVG image, disable an active QR, and manually reissue a QR after a danger warning.
 - The QR print template page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print` and is guarded by `generate_qr` in the current organization context.
 - The QR print template is browser print-friendly and intended for one sticker at a time.
-- The QR print template shows a restaurant logo only when an existing local `logo_path` or local `logo_url` column is present on branch, brand, or organization; no logo schema exists yet.
+- The QR print template shows a restaurant logo when a local `logo_path` exists on branch, brand, or organization.
 - Without a logo field, the QR print template uses the brand name as a simple text mark.
 - The QR print template prints `Сканируйте, чтобы открыть меню`, the local SVG QR image, and `short_code`.
 - The QR print template does not print service point number or area by default.
@@ -248,6 +252,24 @@ Staff permission overrides:
 - Critical permissions include `manage_staff`, `manage_subscription`, `manage_settings`, and `export_data`.
 - Critical permission changes show a warning.
 - Users cannot edit their own permission overrides from the staff permission page.
+
+Local media storage:
+
+- Uses Laravel's `public` disk only.
+- Public disk root is `storage/app/public`.
+- Public browser path is `public/storage`.
+- Shared hosting must keep `storage/app/public`, `storage/framework`, and `storage/logs` writable by PHP.
+- `public/storage` should point to `storage/app/public`; use `php artisan storage:link` when symbolic links are available.
+- No S3, paid storage, or external media services are used.
+- Organization logos are stored under `media/organizations/{organization}/logos`.
+- Brand logos are stored under `media/organizations/{organization}/brands/{brand}/logos`.
+- Branch logos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/logos`.
+- Current logo paths are stored in `organizations.logo_path`, `brands.logo_path`, and `branches.logo_path`.
+- `StoreLocalImageAction` stores images on the public disk and deletes the previous file when replacing a logo.
+- `DeleteLocalMediaFileAction` removes old local files when a logo is removed.
+- `HasLocalLogo` exposes `logoUrl()` for local public logo URLs.
+- Current upload validation allows only images with `jpg`, `jpeg`, `png`, or `webp` extensions and a maximum size of 2 MB.
+- Future dish images should reuse the local public storage pattern; no menu or dish tables exist yet.
 
 ## Branch Settings Defaults
 

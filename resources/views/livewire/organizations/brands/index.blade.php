@@ -44,10 +44,47 @@
                         </form>
                     @else
                         <div class="min-w-0">
-                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $brand->name }}</h2>
-                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('Created') }} {{ $brand->created_at->format('d.m.Y') }}
-                            </p>
+                            @php($brandLogoUrl = $brand->logoUrl())
+
+                            <div class="flex gap-3">
+                                <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                                    @if ($brandLogoUrl)
+                                        <img src="{{ $brandLogoUrl }}" alt="{{ $brand->name }}" class="size-full object-contain">
+                                    @else
+                                        <span class="text-xs font-medium text-zinc-400">{{ __('Logo') }}</span>
+                                    @endif
+                                </div>
+
+                                <div class="min-w-0">
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $brand->name }}</h2>
+                                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Created') }} {{ $brand->created_at->format('d.m.Y') }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if ($canManageBrands)
+                                <form wire:submit="saveLogo({{ $brand->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                    <label for="brand-logo-{{ $brand->id }}" class="sr-only">{{ __('Brand logo') }}</label>
+                                    <input id="brand-logo-{{ $brand->id }}" wire:model="brandLogos.{{ $brand->id }}" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
+
+                                    <div class="flex flex-wrap gap-2">
+                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="brandLogos.{{ $brand->id }}, saveLogo({{ $brand->id }})">
+                                            {{ __('Upload logo') }}
+                                        </flux:button>
+
+                                        @if ($brandLogoUrl)
+                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $brand->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $brand->id }})">
+                                                {{ __('Remove logo') }}
+                                            </flux:button>
+                                        @endif
+                                    </div>
+
+                                    @error('brandLogos.'.$brand->id)
+                                        <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
+                                </form>
+                            @endif
                         </div>
 
                         @if ($canManageBrands)

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrganizationUserStatus;
+use App\Models\Concerns\HasLocalLogo;
 use Database\Factories\OrganizationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,11 +12,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['owner_user_id', 'name'])]
+#[Fillable(['owner_user_id', 'name', 'logo_path'])]
 class Organization extends Model
 {
     /** @use HasFactory<OrganizationFactory> */
-    use HasFactory;
+    use HasFactory, HasLocalLogo;
 
     /**
      * @return BelongsTo<User, $this>

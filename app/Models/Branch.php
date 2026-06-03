@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalLogo;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,11 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['organization_id', 'brand_id', 'name', 'address', 'city', 'country', 'timezone', 'currency', 'is_active'])]
+#[Fillable(['organization_id', 'brand_id', 'name', 'logo_path', 'address', 'city', 'country', 'timezone', 'currency', 'is_active'])]
 class Branch extends Model
 {
     /** @use HasFactory<BranchFactory> */
-    use HasFactory;
+    use HasFactory, HasLocalLogo;
 
     /**
      * @return array<string, string>

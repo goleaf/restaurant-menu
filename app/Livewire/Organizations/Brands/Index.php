@@ -5,24 +5,35 @@ namespace App\Livewire\Organizations\Brands;
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
 use App\Actions\Brands\UpdateBrandAction;
+use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Brands')]
 class Index extends Component
 {
+    use WithFileUploads;
+
     public Organization $organization;
 
     public string $name = '';
+
+    /**
+     * @var array<int, mixed>
+     */
+    public array $brandLogos = [];
 
     public ?int $editingBrandId = null;
 
@@ -132,6 +143,49 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Brand deleted.'));
     }
 
+    public function saveLogo(int $brandId, StoreLocalImageAction $storeLocalImage): void
+    {
+        $this->authorizeBrandManagement();
+
+        $brand = $this->findOrganizationBrand($brandId);
+
+        $this->validate([
+            'brandLogos.'.$brand->id => StoreLocalImageAction::validationRules(),
+        ]);
+
+        $file = $this->brandLogos[$brand->id] ?? null;
+
+        if (! $file instanceof UploadedFile) {
+            return;
+        }
+
+        $brand->update([
+            'logo_path' => $storeLocalImage->handle(
+                file: $file,
+                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$brand->id.'/logos',
+                oldPath: $brand->logo_path,
+            ),
+        ]);
+
+        unset($this->brandLogos[$brand->id], $this->brands);
+
+        Flux::toast(variant: 'success', text: __('Logo uploaded.'));
+    }
+
+    public function removeLogo(int $brandId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    {
+        $this->authorizeBrandManagement();
+
+        $brand = $this->findOrganizationBrand($brandId);
+
+        $deleteLocalMediaFile->handle($brand->logo_path);
+        $brand->update(['logo_path' => null]);
+
+        unset($this->brandLogos[$brand->id], $this->brands);
+
+        Flux::toast(variant: 'success', text: __('Logo removed.'));
+    }
+
     /**
      * @return EloquentCollection<int, Brand>
      */
@@ -144,6 +198,7 @@ class Index extends Component
                 'id',
                 'organization_id',
                 'name',
+                'logo_path',
                 'created_at',
                 'updated_at',
             ])
@@ -200,6 +255,7 @@ class Index extends Component
                 'id',
                 'organization_id',
                 'name',
+                'logo_path',
                 'created_at',
                 'updated_at',
             ])

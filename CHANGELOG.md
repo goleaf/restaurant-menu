@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 028 - Local Media Storage
+
+- Added local public-storage logo uploads for organizations, brands, and branches.
+- Added `logo_path` fields for organization, brand, and branch records.
+- Added reusable local image storage actions with image type checks and a 2 MB size limit.
+- Added simple upload/remove controls to the existing organization, brand, and branch screens.
+- Kept storage local to `storage/app/public` without S3, paid services, or external media providers.
+- Added tests for logo upload, replacement, removal, URL generation, and file validation.
+
 ### Prompt 027 - Bulk QR Print
 
 - Added a branch-level bulk QR print page guarded by the `generate_qr` permission.

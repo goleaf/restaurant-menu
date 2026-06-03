@@ -5,6 +5,8 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
+use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
@@ -13,19 +15,28 @@ use App\Models\Organization;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Branches')]
 class Index extends Component
 {
+    use WithFileUploads;
+
     public Organization $organization;
 
     public Brand $brand;
+
+    /**
+     * @var array<int, mixed>
+     */
+    public array $branchLogos = [];
 
     public string $name = '';
 
@@ -191,6 +202,49 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Branch deleted.'));
     }
 
+    public function saveLogo(int $branchId, StoreLocalImageAction $storeLocalImage): void
+    {
+        $this->authorizeBranchManagement();
+
+        $branch = $this->findBrandBranch($branchId);
+
+        $this->validate([
+            'branchLogos.'.$branch->id => StoreLocalImageAction::validationRules(),
+        ]);
+
+        $file = $this->branchLogos[$branch->id] ?? null;
+
+        if (! $file instanceof UploadedFile) {
+            return;
+        }
+
+        $branch->update([
+            'logo_path' => $storeLocalImage->handle(
+                file: $file,
+                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$branch->id.'/logos',
+                oldPath: $branch->logo_path,
+            ),
+        ]);
+
+        unset($this->branchLogos[$branch->id], $this->branches);
+
+        Flux::toast(variant: 'success', text: __('Logo uploaded.'));
+    }
+
+    public function removeLogo(int $branchId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    {
+        $this->authorizeBranchManagement();
+
+        $branch = $this->findBrandBranch($branchId);
+
+        $deleteLocalMediaFile->handle($branch->logo_path);
+        $branch->update(['logo_path' => null]);
+
+        unset($this->branchLogos[$branch->id], $this->branches);
+
+        Flux::toast(variant: 'success', text: __('Logo removed.'));
+    }
+
     /**
      * @return EloquentCollection<int, Branch>
      */
@@ -204,6 +258,7 @@ class Index extends Component
                 'organization_id',
                 'brand_id',
                 'name',
+                'logo_path',
                 'address',
                 'city',
                 'country',
@@ -301,6 +356,7 @@ class Index extends Component
                 'organization_id',
                 'brand_id',
                 'name',
+                'logo_path',
                 'address',
                 'city',
                 'country',

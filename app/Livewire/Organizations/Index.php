@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Organizations;
 
+use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
@@ -12,17 +14,26 @@ use App\Models\Organization;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Organizations')]
 class Index extends Component
 {
+    use WithFileUploads;
+
     public string $name = '';
+
+    /**
+     * @var array<int, mixed>
+     */
+    public array $organizationLogos = [];
 
     public ?int $editingOrganizationId = null;
 
@@ -116,6 +127,45 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Organization deleted.'));
     }
 
+    public function saveLogo(int $organizationId, StoreLocalImageAction $storeLocalImage): void
+    {
+        $organization = $this->findOwnedOrganization($organizationId);
+
+        $this->validate([
+            'organizationLogos.'.$organization->id => StoreLocalImageAction::validationRules(),
+        ]);
+
+        $file = $this->organizationLogos[$organization->id] ?? null;
+
+        if (! $file instanceof UploadedFile) {
+            return;
+        }
+
+        $organization->update([
+            'logo_path' => $storeLocalImage->handle(
+                file: $file,
+                directory: 'media/organizations/'.$organization->id.'/logos',
+                oldPath: $organization->logo_path,
+            ),
+        ]);
+
+        unset($this->organizationLogos[$organization->id], $this->organizations);
+
+        Flux::toast(variant: 'success', text: __('Logo uploaded.'));
+    }
+
+    public function removeLogo(int $organizationId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    {
+        $organization = $this->findOwnedOrganization($organizationId);
+
+        $deleteLocalMediaFile->handle($organization->logo_path);
+        $organization->update(['logo_path' => null]);
+
+        unset($this->organizationLogos[$organization->id], $this->organizations);
+
+        Flux::toast(variant: 'success', text: __('Logo removed.'));
+    }
+
     /**
      * @return EloquentCollection<int, Organization>
      */
@@ -129,6 +179,7 @@ class Index extends Component
                 'organizations.id',
                 'organizations.owner_user_id',
                 'organizations.name',
+                'organizations.logo_path',
                 'organizations.created_at',
                 'organizations.updated_at',
             ])
@@ -189,6 +240,7 @@ class Index extends Component
                 'id',
                 'owner_user_id',
                 'name',
+                'logo_path',
                 'created_at',
                 'updated_at',
             ])

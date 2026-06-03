@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -104,6 +104,44 @@ database/database.sqlite
 This file is inside the project and outside `public/`, which keeps it suitable for shared hosting when the web root points to `public/`.
 
 `.env.example` leaves `DB_DATABASE` empty so Laravel uses the safe default from `config/database.php`.
+
+## Local Media Storage
+
+Media files are stored locally on Laravel's `public` disk. The disk root is:
+
+```text
+storage/app/public
+```
+
+The public web path is served through:
+
+```text
+public/storage
+```
+
+On shared hosting, make sure these paths are writable by PHP:
+
+- `storage/app/public`
+- `storage/framework`
+- `storage/logs`
+
+The public storage link should point from `public/storage` to `storage/app/public`. When shell access is available, run:
+
+```bash
+php artisan storage:link
+```
+
+If symbolic links are not available on a shared host, configure the host so `public/storage` exposes the same files from `storage/app/public`.
+
+Organization, brand, and branch logos are stored in local folders under `storage/app/public/media`. Current logo paths are saved in `logo_path` columns on `organizations`, `brands`, and `branches`.
+
+Current logo upload rules:
+
+- images only;
+- allowed extensions: `jpg`, `jpeg`, `png`, `webp`;
+- maximum size: 2 MB.
+
+Future dish images should reuse the same local public storage approach. Menu and dish entities are not implemented yet.
 
 ## Area Nodes
 
@@ -222,6 +260,7 @@ Implemented:
 - Brands inside organizations.
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
+- Local logo uploads for organizations, brands, and branches.
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.

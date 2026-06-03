@@ -64,23 +64,60 @@
                         </form>
                     @else
                         <div class="min-w-0">
-                            <div class="flex flex-wrap items-center gap-2">
-                                <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $branch->name }}</h2>
+                            @php($branchLogoUrl = $branch->logoUrl())
 
-                                @if ($branch->is_active)
-                                    <flux:badge color="green">{{ __('Active') }}</flux:badge>
-                                @else
-                                    <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
-                                @endif
+                            <div class="flex gap-3">
+                                <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                                    @if ($branchLogoUrl)
+                                        <img src="{{ $branchLogoUrl }}" alt="{{ $branch->name }}" class="size-full object-contain">
+                                    @else
+                                        <span class="text-xs font-medium text-zinc-400">{{ __('Logo') }}</span>
+                                    @endif
+                                </div>
+
+                                <div class="min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $branch->name }}</h2>
+
+                                        @if ($branch->is_active)
+                                            <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                        @else
+                                            <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                        @endif
+                                    </div>
+
+                                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                        {{ $branch->address }}, {{ $branch->city }}, {{ $branch->country }}
+                                    </p>
+
+                                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                        {{ $branch->timezone }} / {{ $branch->currency }}
+                                    </p>
+                                </div>
                             </div>
 
-                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $branch->address }}, {{ $branch->city }}, {{ $branch->country }}
-                            </p>
+                            @if ($canManageBranches)
+                                <form wire:submit="saveLogo({{ $branch->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                    <label for="branch-logo-{{ $branch->id }}" class="sr-only">{{ __('Branch logo') }}</label>
+                                    <input id="branch-logo-{{ $branch->id }}" wire:model="branchLogos.{{ $branch->id }}" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
 
-                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ $branch->timezone }} / {{ $branch->currency }}
-                            </p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="branchLogos.{{ $branch->id }}, saveLogo({{ $branch->id }})">
+                                            {{ __('Upload logo') }}
+                                        </flux:button>
+
+                                        @if ($branchLogoUrl)
+                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $branch->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $branch->id }})">
+                                                {{ __('Remove logo') }}
+                                            </flux:button>
+                                        @endif
+                                    </div>
+
+                                    @error('branchLogos.'.$branch->id)
+                                        <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                                    @enderror
+                                </form>
+                            @endif
                         </div>
 
                         @if ($canManageBranches || $canManageZones || $canChangeServicePointStatus || $canGenerateQr || $canManageStaff)

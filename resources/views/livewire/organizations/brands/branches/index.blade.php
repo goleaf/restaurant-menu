@@ -97,6 +97,12 @@
                                     </flux:button>
                                 @endif
 
+                                @if ($canGenerateQr)
+                                    <flux:button icon="printer" type="button" :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])" wire:navigate>
+                                        {{ __('Bulk QR print') }}
+                                    </flux:button>
+                                @endif
+
                                 @if ($canManageStaff)
                                     <flux:button icon="users" type="button" :href="route('organizations.brands.branches.staff.index', [$organization, $brand, $branch])" wire:navigate>
                                         {{ __('Staff') }}

@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 027 - Bulk QR Print
+
+- Added a branch-level bulk QR print page guarded by the `generate_qr` permission.
+- Added area filtering, service point selection, and a browser print-friendly multi-sticker preview.
+- Added actions to select all visible service points with active QR codes and create missing QR codes for shown service points.
+- Kept QR identity permanent: existing active QR codes are reused and service point rename or area moves do not affect printed URLs.
+- Added tests for access control, area filtering, multi-QR selection, missing QR creation, and branch-list navigation.
+
 ### Prompt 026 - QR Print Template
 
 - Added a browser print-friendly sticker template for one service point QR.

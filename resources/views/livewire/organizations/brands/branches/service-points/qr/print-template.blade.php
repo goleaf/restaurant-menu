@@ -1,4 +1,4 @@
-<main data-page="qr-print-template" class="qr-print-page">
+<main data-page="qr-print-template" class="qr-print-page qr-print-page-single">
     <div class="qr-print-toolbar">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>

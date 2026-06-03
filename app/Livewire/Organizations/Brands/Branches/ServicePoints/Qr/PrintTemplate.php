@@ -10,11 +10,8 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
-use Illuminate\Database\Eloquent\Model;
+use App\Services\QrPrintBrandingResolver;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -74,15 +71,11 @@ class PrintTemplate extends Component
     #[Computed]
     public function restaurantLogoUrl(): ?string
     {
-        foreach ([$this->branch, $this->brand, $this->organization] as $model) {
-            $logoUrl = $this->localLogoUrlFrom($model);
-
-            if ($logoUrl !== null) {
-                return $logoUrl;
-            }
-        }
-
-        return null;
+        return app(QrPrintBrandingResolver::class)->localLogoUrlFor([
+            $this->branch,
+            $this->brand,
+            $this->organization,
+        ]);
     }
 
     #[Computed]
@@ -123,19 +116,21 @@ class PrintTemplate extends Component
 
     private function reloadPrintContext(): void
     {
+        $branding = app(QrPrintBrandingResolver::class);
+
         $this->organization = Organization::query()
-            ->select($this->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
+            ->select($branding->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
             ->whereKey($this->organization->id)
             ->firstOrFail();
 
         $this->brand = Brand::query()
-            ->select($this->columnsWithOptionalLogo(new Brand, ['id', 'organization_id', 'name']))
+            ->select($branding->columnsWithOptionalLogo(new Brand, ['id', 'organization_id', 'name']))
             ->whereKey($this->brand->id)
             ->where('organization_id', $this->organization->id)
             ->firstOrFail();
 
         $this->branch = Branch::query()
-            ->select($this->columnsWithOptionalLogo(new Branch, [
+            ->select($branding->columnsWithOptionalLogo(new Branch, [
                 'id',
                 'organization_id',
                 'brand_id',
@@ -185,38 +180,6 @@ class PrintTemplate extends Component
             ->whereKey($this->qrCode->id)
             ->where('service_point_id', $this->servicePoint->id)
             ->firstOrFail();
-    }
-
-    /**
-     * @param  list<string>  $columns
-     * @return list<string>
-     */
-    private function columnsWithOptionalLogo(Model $model, array $columns): array
-    {
-        foreach (['logo_path', 'logo_url'] as $column) {
-            if (Schema::hasColumn($model->getTable(), $column)) {
-                $columns[] = $column;
-            }
-        }
-
-        return $columns;
-    }
-
-    private function localLogoUrlFrom(Model $model): ?string
-    {
-        $logoPath = $model->getAttribute('logo_path');
-
-        if (is_string($logoPath) && filled($logoPath)) {
-            return Storage::disk('public')->url($logoPath);
-        }
-
-        $logoUrl = $model->getAttribute('logo_url');
-
-        if (is_string($logoUrl) && filled($logoUrl) && Str::startsWith($logoUrl, '/')) {
-            return $logoUrl;
-        }
-
-        return null;
     }
 
     private function currentUser(): User

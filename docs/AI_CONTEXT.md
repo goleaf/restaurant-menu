@@ -44,13 +44,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, admin display page, simple print template, and public QR landing route.
+- Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR landing route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF/bulk printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -116,7 +116,7 @@ Area node:
 - Managed from the branch area page guarded by `manage_zones`.
 - Area CRUD can create common presets, choose icons, rename, move inside another area, disable/enable, and soft delete.
 - Soft deleting an area moves its direct children to the deleted area's parent before hiding the deleted area.
-- No QR logic exists yet.
+- QR codes are not attached to area nodes; areas are only used to organize and filter service points.
 
 Service point:
 
@@ -176,6 +176,12 @@ QR code:
 - The `print_table_number` URL setting can include the service point display number or name in the sticker.
 - When `print_table_number` is enabled, the UI shows the warning: `Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.`
 - Toggling `print_table_number` must not change QR identity.
+- The branch bulk QR print page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print` and is guarded by `generate_qr` in the current organization context.
+- The bulk print page can show all areas, one area node, or service points without an area.
+- The bulk print page lets users select service points with active QR codes and prints multiple stickers in the browser print view.
+- The bulk print page offers single and visible-batch creation for service points that do not have an active QR yet.
+- Bulk QR creation reuses `GenerateQrCodeForServicePointAction`, so it does not create a second active QR for a service point that already has one.
+- Bulk printing uses the same local SVG QR renderer and the same optional local logo resolver as the one-sticker print template.
 - Manual reissue is the only current UI path that intentionally changes the QR identity.
 - Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
 - Public QR route accepts active, disabled, revoked, and unknown token states.
@@ -183,7 +189,7 @@ QR code:
 - Disabled and revoked QR codes show public error messages instead of opening the guest landing state.
 - Active QR codes attached to inactive service points show a public unavailable message.
 - Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
-- No QR PDF/bulk printing output exists yet.
+- No QR PDF generation exists yet.
 
 Branch settings:
 
@@ -269,6 +275,7 @@ Staff permission overrides:
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print` -> `organizations.brands.branches.qr.print`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points` -> `organizations.brands.branches.service-points.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` -> `organizations.brands.branches.service-points.qr.show`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print` -> `organizations.brands.branches.service-points.qr.print`
@@ -286,6 +293,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Areas`
+- `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show`
@@ -353,6 +361,23 @@ Staff permission overrides:
 - Print CSS lives in `resources/css/app.css`; the admin toolbar and warning are hidden in `@media print`.
 - No paid PDF service, external QR service, S3, WebSockets, Redis, or Docker is used.
 
+## Current Bulk QR Print Page
+
+- Bulk QR print route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print`.
+- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Route model nesting is checked: brand must belong to organization, and branch must belong to brand and organization.
+- The page uses `resources/views/layouts/print.blade.php` and remains browser print-friendly first.
+- The page lets users filter by all areas, one area node, or service points without an area.
+- The page lists service points with prepared `areaNode` and `activeQrCode` relationships; Blade must not query the database.
+- Users can select service points that already have an active QR.
+- If a shown service point has no active QR, the page offers to create one.
+- `createMissingQrForVisible` creates active QR codes for the currently shown missing service points and selects them for print.
+- Existing active QR records are reused through `GenerateQrCodeForServicePointAction`; bulk print must not create duplicate active QR codes.
+- The printable grid uses local SVG QR images and the same optional local logo behavior as the single sticker template.
+- Service point display number is not printed by default.
+- `print_table_number` is available on the bulk page too and shows the same stale-label warning when enabled.
+- PDF export is still not implemented.
+
 ## Current Branch Area UI
 
 - Branch area route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas`.
@@ -365,7 +390,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be QR PDF/bulk printing output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be QR PDF generation, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

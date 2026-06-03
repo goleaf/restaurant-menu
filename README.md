@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple print template, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -199,7 +199,15 @@ Users with `generate_qr` can also open a browser print-friendly sticker template
 
 The print template does not print service point number or area by default. It has a `print_table_number` setting for including the service point display number. When that setting is enabled, the UI warns that future rename or area moves can make printed sticker text stale.
 
-PDF generation and bulk printable QR output are not implemented yet.
+Users with `generate_qr` can also open a branch-level bulk QR print page:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/qr/print
+```
+
+The bulk print page lets the user filter by area or show all areas, select service points, see which service points already have active QR codes, create missing QR codes, and open a browser print-friendly multi-sticker page. Existing active QR codes are reused, so one service point still has one active permanent QR.
+
+PDF generation is not implemented yet.
 
 ## Current Scope
 
@@ -217,7 +225,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, admin display page, simple print template, and public `/q/{public_token}` route.
+- Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -239,7 +247,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- QR PDF/bulk printing output.
+- QR PDF generation.
 - Guest table sessions.
 - Shared order drafts.
 - Kitchen/bar workflows.

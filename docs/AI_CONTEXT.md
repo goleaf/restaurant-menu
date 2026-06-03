@@ -49,13 +49,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
+- Table session join requests with backend create / approve / reject logic.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, guest join approval, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, guest join approval UI, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -81,6 +82,7 @@ No menu, QR PDF generation, guest join approval, order draft, kitchen, bar, paym
 - `service_points`
 - `table_sessions`
 - `table_session_guests`
+- `table_session_join_requests`
 - `qr_codes`
 - `branch_users`
 - `branch_settings`
@@ -180,9 +182,9 @@ Table session:
 - If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
 - Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
 - `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
-- If an active session already exists, guest QR entry does not create a new pending session or guest yet; it returns a future-join message.
-- If a pending session already exists, guest QR entry does not create another first guest yet; it returns a pending-session message.
-- No order draft, order, kitchen/bar, payment, or additional guest approval logic exists yet.
+- If an active or pending session already exists and has active guests, guest QR entry creates a pending table session join request instead of a guest.
+- If an active or pending session already exists without active guests, guest QR entry returns the existing-session message without creating a join request.
+- No order draft, order, kitchen/bar, payment, or guest approval UI exists yet.
 
 Table session guest:
 
@@ -200,7 +202,26 @@ Table session guest:
 - Closed or cancelled table sessions are restored for messaging but cannot use the future item-adding path.
 - `TableSession::guests()` returns all session guests ordered by `guest_name` and id.
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
-- Additional guest approval is not implemented yet.
+- `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
+- Additional guest approval UI is not implemented yet.
+
+Table session join request:
+
+- Stored in `table_session_join_requests`.
+- Belongs to one table session through `table_session_id`.
+- Stores `guest_name`, `guest_token`, `status`, `approved_by_guest_id`, `rejected_by_guest_id`, `approved_by_user_id`, `rejected_by_user_id`, `expires_at`, and timestamps.
+- `guest_token` is a random 64-character token and is unique inside join requests.
+- Status is cast to `TableSessionJoinRequestStatus`.
+- Status values are `pending`, `approved`, `rejected`, and `expired`.
+- `TableSession::joinRequests()` returns join requests ordered by creation time and id.
+- `CreateTableSessionJoinRequestAction` creates a pending request only when the table session is pending or active and already has at least one active guest.
+- Join requests default to a 30-minute expiration in backend creation logic.
+- `ApproveTableSessionJoinRequestAction` allows an active guest from the same table session to approve a pending request.
+- Approval creates a real `table_session_guests` row using the request guest name and token, then marks the request `approved`.
+- `RejectTableSessionJoinRequestAction` allows an active guest from the same table session to reject a pending request without creating a guest.
+- Expired pending requests are marked `expired` when moderation is attempted.
+- `approved_by_user_id` and `rejected_by_user_id` are present for future staff moderation, but current backend actions use guest moderation only.
+- No approval UI exists yet.
 
 QR code:
 
@@ -253,7 +274,9 @@ QR code:
 - Submitting the guest name validates and creates a pending guest-created table session only when no active or pending session exists and branch settings allow guest-created sessions.
 - The first guest is stored in `table_session_guests` as `active`, and the pending session stores that guest id in `opened_by_guest_id`.
 - The public QR entry flow stores the created guest token in `guest_entries.{public_token}` session data and queues a browser cookie named `guest_token_{hash}`.
+- If an active or pending session already has active guests, submitting the guest name creates a pending `table_session_join_requests` row and queues that request token in the same `guest_token_{hash}` cookie.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
+- If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
 - Restored active guests get `guestCanAddItems = true` for future order-position UI.
 - Restored guests from closed/cancelled sessions or with `rejected`, `removed`, `pending_approval`, or `left` status get `guestCanAddItems = false` and a public message.
 - Guest-created pending sessions do not create menus, orders, payment, kitchen tasks, or bar tasks.
@@ -409,7 +432,9 @@ Local media storage:
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
 - Public QR route accepts a guest name and can create a pending guest-created table session plus the first active table session guest.
 - Public QR route queues a browser cookie with the guest token after creating that first guest.
+- Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
+- Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
@@ -485,7 +510,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be additional guest join approval, guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be guest join approval UI, guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

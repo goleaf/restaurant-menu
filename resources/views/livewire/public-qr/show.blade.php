@@ -99,10 +99,10 @@
 
                     <button
                         type="submit"
-                        @if ($currentGuestId) disabled @endif
+                        @if ($currentGuestId || $currentJoinRequestId) disabled @endif
                         class="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:focus:ring-offset-zinc-900"
                     >
-                        {{ $currentGuestId ? __('Вход сохранён') : __('Войти за стол') }}
+                        {{ $currentJoinRequestId ? __('Запрос отправлен') : ($currentGuestId ? __('Вход сохранён') : __('Войти за стол')) }}
                     </button>
                 </form>
             </section>

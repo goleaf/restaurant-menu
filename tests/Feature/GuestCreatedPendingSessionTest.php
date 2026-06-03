@@ -4,6 +4,7 @@ use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\Show as PublicQrShow;
@@ -15,6 +16,7 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\TableSessionJoinRequest;
 use Illuminate\Support\Facades\Cookie;
 use Livewire\Livewire;
 
@@ -175,6 +177,46 @@ test('guest entering table does not create pending session when active session a
 
     expect(TableSession::query()->count())->toBe(1);
     expect(TableSessionGuest::query()->exists())->toBeFalse();
+    expect(TableSessionJoinRequest::query()->exists())->toBeFalse();
+});
+
+test('guest entering active session with active guests creates pending join request', function () {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    TableSessionGuest::factory()
+        ->for($activeTableSession)
+        ->create(['guest_name' => 'Ana']);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', 'Jonas')
+        ->call('enterTable')
+        ->assertHasNoErrors()
+        ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
+        ->assertSet('currentTableSessionId', $activeTableSession->id)
+        ->assertSet('currentGuestId', null)
+        ->assertSeeText('Запрос на присоединение отправлен.')
+        ->assertSeeText('Запрос отправлен');
+
+    $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
+
+    expect(TableSession::query()->count())->toBe(1);
+    expect(TableSessionGuest::query()->count())->toBe(1);
+    expect($joinRequest->table_session_id)->toBe($activeTableSession->id);
+    expect($joinRequest->guest_name)->toBe('Jonas');
+    expect($joinRequest->guest_token)->not->toBeNull();
+    expect(strlen($joinRequest->guest_token))->toBe(64);
+    expect($joinRequest->status)->toBe(TableSessionJoinRequestStatus::Pending);
+    expect($joinRequest->expires_at)->not->toBeNull();
+
+    $queuedGuestCookie = collect(Cookie::getQueuedCookies())
+        ->first(fn (Symfony\Component\HttpFoundation\Cookie $cookie): bool => str_starts_with($cookie->getName(), 'guest_token_')
+            && $cookie->getValue() === $joinRequest->guest_token);
+
+    expect($queuedGuestCookie)->not->toBeNull();
 });
 
 test('guest entering again does not create duplicate pending session or guest', function () {
@@ -202,12 +244,13 @@ test('fresh guest landing sees existing pending session without creating another
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Second')
         ->call('enterTable')
-        ->assertSet('entryState', GuestTableEntryState::PendingSessionExists->value)
+        ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
         ->assertSet('currentGuestId', null)
-        ->assertSeeText('Стол уже ожидает подтверждения официанта.');
+        ->assertSeeText('Запрос на присоединение отправлен.');
 
     expect(TableSession::query()->count())->toBe(1);
     expect(TableSessionGuest::query()->count())->toBe(1);
+    expect(TableSessionJoinRequest::query()->count())->toBe(1);
 });
 
 function createGuestPendingQrContext(bool $allowGuestCreatedSessions = true): array

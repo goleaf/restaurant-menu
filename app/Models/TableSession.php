@@ -117,4 +117,14 @@ class TableSession extends Model
             ->orderBy('guest_name')
             ->orderBy('id');
     }
+
+    /**
+     * @return HasMany<TableSessionJoinRequest, $this>
+     */
+    public function joinRequests(): HasMany
+    {
+        return $this->hasMany(TableSessionJoinRequest::class)
+            ->orderBy('created_at')
+            ->orderBy('id');
+    }
 }

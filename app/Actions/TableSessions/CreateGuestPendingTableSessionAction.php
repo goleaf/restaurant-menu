@@ -11,13 +11,18 @@ use App\Models\BranchSetting;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\TableSessionJoinRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CreateGuestPendingTableSessionAction
 {
+    public function __construct(
+        public CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+    ) {}
+
     /**
-     * @return array{state: GuestTableEntryState, table_session: TableSession|null, guest: TableSessionGuest|null}
+     * @return array{state: GuestTableEntryState, table_session: TableSession|null, guest: TableSessionGuest|null, join_request: TableSessionJoinRequest|null}
      */
     public function handle(ServicePoint $servicePoint, string $guestName): array
     {
@@ -29,13 +34,29 @@ class CreateGuestPendingTableSessionAction
             $activeTableSession = $this->findTableSession($servicePoint, TableSessionStatus::Active);
 
             if ($activeTableSession instanceof TableSession) {
-                return $this->result(GuestTableEntryState::ActiveSessionExists, $activeTableSession);
+                $joinRequest = $this->createTableSessionJoinRequest->handle($activeTableSession, $normalizedGuestName);
+
+                return $this->result(
+                    $joinRequest instanceof TableSessionJoinRequest
+                        ? GuestTableEntryState::JoinRequestCreated
+                        : GuestTableEntryState::ActiveSessionExists,
+                    $activeTableSession,
+                    joinRequest: $joinRequest,
+                );
             }
 
             $pendingTableSession = $this->findTableSession($servicePoint, TableSessionStatus::Pending);
 
             if ($pendingTableSession instanceof TableSession) {
-                return $this->result(GuestTableEntryState::PendingSessionExists, $pendingTableSession);
+                $joinRequest = $this->createTableSessionJoinRequest->handle($pendingTableSession, $normalizedGuestName);
+
+                return $this->result(
+                    $joinRequest instanceof TableSessionJoinRequest
+                        ? GuestTableEntryState::JoinRequestCreated
+                        : GuestTableEntryState::PendingSessionExists,
+                    $pendingTableSession,
+                    joinRequest: $joinRequest,
+                );
             }
 
             $settings = $this->settingsFor($servicePoint->branch);
@@ -145,17 +166,19 @@ class CreateGuestPendingTableSessionAction
     }
 
     /**
-     * @return array{state: GuestTableEntryState, table_session: TableSession|null, guest: TableSessionGuest|null}
+     * @return array{state: GuestTableEntryState, table_session: TableSession|null, guest: TableSessionGuest|null, join_request: TableSessionJoinRequest|null}
      */
     private function result(
         GuestTableEntryState $state,
         ?TableSession $tableSession = null,
         ?TableSessionGuest $guest = null,
+        ?TableSessionJoinRequest $joinRequest = null,
     ): array {
         return [
             'state' => $state,
             'table_session' => $tableSession,
             'guest' => $guest,
+            'join_request' => $joinRequest,
         ];
     }
 }

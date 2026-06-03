@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 035 - Table Session Join Requests
+
+- Added `table_session_join_requests` for guests who want to join an existing table session.
+- Added fixed join request statuses: `pending`, `approved`, `rejected`, and `expired`.
+- Added backend logic to create a join request when a table session already has active guests.
+- Added backend actions so any active guest in the same table session can approve or reject a pending request.
+- Kept the step limited to database and backend logic: no approval UI, menu, order, payment, kitchen/bar, Redis, WebSocket, S3, or Docker.
+
 ### Prompt 034 - Persist Guest Token
 
 - Restored public QR guests from the saved browser guest token after page refresh.

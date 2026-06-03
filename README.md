@@ -241,6 +241,8 @@ SQLite also enforces one pending table session per service point through interna
 
 `CreateGuestPendingTableSessionAction` creates a pending guest-created session only when the service point has no active or pending session and branch settings allow guest-created sessions. The first guest is stored as an active guest inside that pending session.
 
+When a table session already has active guests, a new QR guest creates a pending join request instead of becoming a table guest immediately.
+
 This stage does not create menus, orders, order drafts, kitchen/bar workflows, or payment flows. Guest-created sessions do not send anything to the kitchen or bar.
 
 ## Table Session Guests
@@ -261,7 +263,24 @@ Supported guest statuses are:
 - `left`
 - `removed`
 
-The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`. Future prompts will add approval UI for additional guests.
+The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`.
+
+## Table Session Join Requests
+
+Join requests are stored in the `table_session_join_requests` table and belong to one table session.
+
+The table stores `guest_name`, a random `guest_token`, `status`, optional approval/rejection audit fields for guests and users, and `expires_at`.
+
+Supported join request statuses are:
+
+- `pending`
+- `approved`
+- `rejected`
+- `expired`
+
+If a table session already has active guests, a new QR guest creates a pending join request and does not enter the table immediately. Any active guest from the same table session can approve or reject the request through backend actions. Approval creates a real `table_session_guests` record using the request guest name and token. Rejection does not create a guest.
+
+This step only adds the database and backend logic. The guest approval UI is not implemented yet.
 
 ## Permanent QR Codes
 
@@ -295,7 +314,7 @@ Generated QR URLs use:
 
 The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, current area, branch, brand, organization, and local logo, and opens a mobile-first guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
 
-The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it, then stores the guest token in a browser cookie. Refreshing the page restores that guest from the cookie. If an active session already exists, the page shows a message for the future join flow instead of creating a new pending session.
+The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it, then stores the guest token in a browser cookie. Refreshing the page restores that guest from the cookie. If an active or pending session already has active guests, submitting the name creates a pending join request instead of adding the guest immediately.
 
 Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
 
@@ -336,6 +355,7 @@ Implemented:
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
+- Table session join request schema and backend create / approve / reject logic.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

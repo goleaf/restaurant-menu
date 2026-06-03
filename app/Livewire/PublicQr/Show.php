@@ -6,11 +6,13 @@ use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\TableSessionJoinRequest;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -40,6 +42,8 @@ class Show extends Component
     public ?int $currentTableSessionId = null;
 
     public ?int $currentGuestId = null;
+
+    public ?int $currentJoinRequestId = null;
 
     public bool $guestCanAddItems = false;
 
@@ -142,7 +146,7 @@ class Show extends Component
             return;
         }
 
-        if ($this->currentGuestId !== null) {
+        if ($this->currentGuestId !== null || $this->currentJoinRequestId !== null) {
             return;
         }
 
@@ -185,11 +189,13 @@ class Show extends Component
         $entryState = $result['state'];
         $tableSession = $result['table_session'];
         $guest = $result['guest'];
+        $joinRequest = $result['join_request'];
 
         $this->entryState = $entryState->value;
         $this->entryMessage = $this->messageForEntryState($entryState);
         $this->currentTableSessionId = $tableSession instanceof TableSession ? $tableSession->id : null;
         $this->currentGuestId = $guest instanceof TableSessionGuest ? $guest->id : null;
+        $this->currentJoinRequestId = $joinRequest instanceof TableSessionJoinRequest ? $joinRequest->id : null;
         $this->guestCanAddItems = $guest instanceof TableSessionGuest
             && $tableSession instanceof TableSession
             && $this->canGuestAddItems($guest, $tableSession);
@@ -201,6 +207,16 @@ class Show extends Component
                 'table_session_id' => $tableSession->id,
                 'guest_id' => $guest->id,
                 'guest_token' => $guest->guest_token,
+            ]);
+        }
+
+        if ($joinRequest instanceof TableSessionJoinRequest && $tableSession instanceof TableSession) {
+            Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $joinRequest->guest_token, 60 * 24 * 30);
+
+            session()->put('guest_entries.'.$qrCode->public_token, [
+                'table_session_id' => $tableSession->id,
+                'join_request_id' => $joinRequest->id,
+                'guest_token' => $joinRequest->guest_token,
             ]);
         }
     }
@@ -285,6 +301,8 @@ class Show extends Component
         $guest = $this->findGuestByToken($servicePoint, $guestToken);
 
         if (! $guest instanceof TableSessionGuest || ! $guest->tableSession instanceof TableSession) {
+            $this->restoreJoinRequestFromToken($servicePoint, $guestToken);
+
             return;
         }
 
@@ -299,6 +317,27 @@ class Show extends Component
         $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
     }
 
+    private function restoreJoinRequestFromToken(ServicePoint $servicePoint, string $guestToken): void
+    {
+        $joinRequest = $this->findJoinRequestByToken($servicePoint, $guestToken);
+
+        if (! $joinRequest instanceof TableSessionJoinRequest || ! $joinRequest->tableSession instanceof TableSession) {
+            return;
+        }
+
+        $tableSession = $joinRequest->tableSession;
+
+        $this->guestName = $joinRequest->guest_name;
+        $this->preparedGuestName = $joinRequest->guest_name;
+        $this->currentTableSessionId = $tableSession->id;
+        $this->currentJoinRequestId = $joinRequest->id;
+        $this->guestCanAddItems = false;
+        $this->entryState = $joinRequest->status === TableSessionJoinRequestStatus::Pending
+            ? 'join_request_restored'
+            : 'join_request_blocked';
+        $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
+    }
+
     private function findGuestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionGuest
     {
         return TableSessionGuest::query()
@@ -310,6 +349,37 @@ class Show extends Component
                 'status',
                 'joined_at',
                 'left_at',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'status',
+                    'ended_at',
+                ]),
+            ])
+            ->where('guest_token', $guestToken)
+            ->whereHas('tableSession', fn ($query) => $query
+                ->where('branch_id', $servicePoint->branch_id)
+                ->where('service_point_id', $servicePoint->id))
+            ->first();
+    }
+
+    private function findJoinRequestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionJoinRequest
+    {
+        return TableSessionJoinRequest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'approved_by_guest_id',
+                'rejected_by_guest_id',
+                'approved_by_user_id',
+                'rejected_by_user_id',
+                'expires_at',
             ])
             ->with([
                 'tableSession' => fn ($query) => $query->select([
@@ -363,12 +433,29 @@ class Show extends Component
         };
     }
 
+    private function messageForJoinRequestAccess(TableSessionJoinRequest $joinRequest): string
+    {
+        if ($joinRequest->status === TableSessionJoinRequestStatus::Pending
+            && $joinRequest->expires_at !== null
+            && $joinRequest->expires_at->isPast()) {
+            return __('Ваш запрос на присоединение истёк. Пожалуйста, отправьте новый запрос.');
+        }
+
+        return match ($joinRequest->status) {
+            TableSessionJoinRequestStatus::Pending => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
+            TableSessionJoinRequestStatus::Approved => __('Ваш запрос на присоединение подтверждён.'),
+            TableSessionJoinRequestStatus::Rejected => __('Ваш запрос на присоединение отклонён.'),
+            TableSessionJoinRequestStatus::Expired => __('Ваш запрос на присоединение истёк. Пожалуйста, отправьте новый запрос.'),
+        };
+    }
+
     private function messageForEntryState(GuestTableEntryState $state): string
     {
         return match ($state) {
             GuestTableEntryState::PendingSessionCreated => __('Стол ожидает подтверждения официанта. Заказы пока не отправляются на кухню или бар.'),
             GuestTableEntryState::ActiveSessionExists => __('Стол уже открыт. На следующем этапе здесь появится запрос на присоединение.'),
             GuestTableEntryState::PendingSessionExists => __('Стол уже ожидает подтверждения официанта. На следующем этапе здесь появится присоединение к текущей сессии.'),
+            GuestTableEntryState::JoinRequestCreated => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
             GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
         };
     }

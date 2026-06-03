@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'joined_at', 'left_at', 'metadata'])]
 class TableSessionGuest extends Model
@@ -41,5 +42,21 @@ class TableSessionGuest extends Model
     public function tableSession(): BelongsTo
     {
         return $this->belongsTo(TableSession::class);
+    }
+
+    /**
+     * @return HasMany<TableSessionJoinRequest, $this>
+     */
+    public function approvedJoinRequests(): HasMany
+    {
+        return $this->hasMany(TableSessionJoinRequest::class, 'approved_by_guest_id');
+    }
+
+    /**
+     * @return HasMany<TableSessionJoinRequest, $this>
+     */
+    public function rejectedJoinRequests(): HasMany
+    {
+        return $this->hasMany(TableSessionJoinRequest::class, 'rejected_by_guest_id');
     }
 }

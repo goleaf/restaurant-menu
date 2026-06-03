@@ -157,6 +157,13 @@ Menu categories belong to one menu and can be nested with `parent_id`. They stor
 
 Menu items belong to one menu and one category. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
 
+Category and dish translations are stored separately in:
+
+- `menu_category_translations`
+- `menu_item_translations`
+
+Each translation belongs to its base category or dish, stores `language_code`, translated `name`, and optional translated `description`. Current supported guest menu languages are `ru`, `en`, and `lt`. If a selected language has no translation for a category or dish, the guest menu falls back to the base category or dish text.
+
 Branch menu management is available at:
 
 ```text
@@ -167,17 +174,17 @@ Access requires `manage_menu` in the current organization context. Users can cre
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, and unavailable dish state.
 
-The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with the key:
+The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with language-specific keys:
 
 ```text
-guest-menu:branch:{branch_id}
+guest-menu:branch:{branch_id}:language:{language_code}
 ```
 
 Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
 
-Menu cache is forgotten automatically when menus, categories, or dishes are created, updated, or deleted. Price changes also clear the branch menu cache, so the next guest read rebuilds the payload and shows the current price.
+Menu cache is forgotten automatically when menus, categories, dishes, or their translations are created, updated, or deleted. Price changes and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-This step does not add cart item creation, shared order draft rows, translations, modifiers, kitchen/bar flow, or payment logic.
+This step does not add cart item creation, shared order draft rows, AI translation, modifiers, kitchen/bar flow, or payment logic.
 
 ## Area Nodes
 

@@ -69,4 +69,12 @@ class MenuCategory extends Model
             ->orderBy('sort_order')
             ->orderBy('name');
     }
+
+    /**
+     * @return HasMany<MenuCategoryTranslation, $this>
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(MenuCategoryTranslation::class);
+    }
 }

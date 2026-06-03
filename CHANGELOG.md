@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 043 - Menu Translations
+
+- Added `menu_category_translations` and `menu_item_translations` for translated category and dish names/descriptions.
+- Added menu translation models, factories, relationships, and observers.
+- Added guest menu language selection for `ru`, `en`, and `lt`.
+- Made guest menu cache language-specific through Laravel's `database` cache store.
+- Translation changes now clear the branch guest menu cache, and missing translations fall back to base menu text.
+- Kept this step translation-only: no AI translation, cart, shared order draft, orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 042 - Database Cache for Menu
 
 - Made guest menu caching explicitly use Laravel's `database` cache store instead of relying on the default store.

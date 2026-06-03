@@ -12,7 +12,9 @@ use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
@@ -92,7 +94,86 @@ test('guest menu component uses cached active menu payload', function () {
     expect($qrCode->public_token)->not->toBeEmpty();
 });
 
-function createGuestMenuDisplayContext(): array
+test('guest menu uses selected language translations with default fallback', function () {
+    [$qrCode, $branch] = createGuestMenuDisplayContext('en');
+    [$menu, $category, $availableItem, $unavailableItem] = createGuestMenuRows($branch);
+    $action = app(GetGuestMenuForBranchAction::class);
+    $ltCacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'lt');
+    $ruCacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'ru');
+
+    $categoryTranslation = MenuCategoryTranslation::factory()
+        ->for($category, 'category')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Picos LT',
+            'description' => 'Karsti klasikiniai patiekalai',
+        ]);
+    $itemTranslation = MenuItemTranslation::factory()
+        ->for($availableItem, 'item')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Margarita LT',
+            'description' => 'Pomidorai, mozzarella, bazilikas',
+        ]);
+
+    Cache::store(GetGuestMenuForBranchAction::cacheStore())->forget($ltCacheKey);
+    Cache::store(GetGuestMenuForBranchAction::cacheStore())->forget($ruCacheKey);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSet('language', 'en')
+        ->set('language', 'lt')
+        ->assertSeeText($menu->name)
+        ->assertSeeText('Picos LT')
+        ->assertSeeText('Margarita LT')
+        ->assertSeeText('Truffle pizza')
+        ->assertDontSeeText('Margherita');
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ltCacheKey))->toBeTrue()
+        ->and($action->handle($branch->id, 'ru')['categories'][0]['name'])->toBe('Pizza')
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ruCacheKey))->toBeTrue();
+
+    $itemTranslation->update(['name' => 'Atnaujinta Margarita']);
+    $categoryTranslation->update(['description' => 'Atnaujintas aprasymas']);
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ltCacheKey))->toBeFalse()
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ruCacheKey))->toBeFalse()
+        ->and($action->handle($branch->id, 'lt')['categories'][0]['items'][0]['name'])->toBe('Atnaujinta Margarita');
+
+    expect($qrCode->public_token)->not->toBeEmpty()
+        ->and($unavailableItem->name)->toBe('Truffle pizza');
+});
+
+test('guest menu starts with branch default language', function () {
+    [, $branch] = createGuestMenuDisplayContext('lt');
+    [, $category, $availableItem] = createGuestMenuRows($branch);
+
+    MenuCategoryTranslation::factory()
+        ->for($category, 'category')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Picos LT',
+        ]);
+    MenuItemTranslation::factory()
+        ->for($availableItem, 'item')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Margarita LT',
+        ]);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSet('language', 'lt')
+        ->assertSeeText('Picos LT')
+        ->assertSeeText('Margarita LT')
+        ->assertDontSeeText('Margherita');
+});
+
+function createGuestMenuDisplayContext(string $defaultLanguage = 'en'): array
 {
     $organization = Organization::factory()->create(['name' => 'Guest Menu Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Guest Menu Brand']);
@@ -105,7 +186,7 @@ function createGuestMenuDisplayContext(): array
             'country' => 'Lithuania',
             'currency' => 'EUR',
         ]);
-    BranchSetting::factory()->for($branch)->create();
+    BranchSetting::factory()->for($branch)->create(['default_language' => $defaultLanguage]);
     $servicePoint = ServicePoint::factory()
         ->for($branch)
         ->create([

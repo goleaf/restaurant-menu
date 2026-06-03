@@ -5,9 +5,13 @@ namespace App\Providers;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Observers\MenuCategoryObserver;
+use App\Observers\MenuCategoryTranslationObserver;
 use App\Observers\MenuItemObserver;
+use App\Observers\MenuItemTranslationObserver;
 use App\Observers\MenuObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -65,7 +69,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Menu::observe(MenuObserver::class);
         MenuCategory::observe(MenuCategoryObserver::class);
+        MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);
         MenuItem::observe(MenuItemObserver::class);
+        MenuItemTranslation::observe(MenuItemTranslationObserver::class);
     }
 
     /**

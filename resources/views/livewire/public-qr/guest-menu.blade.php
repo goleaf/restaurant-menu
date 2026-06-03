@@ -6,6 +6,21 @@
                 {{ $guestMenu['menu']['name'] ?? __('Выбор блюд') }}
             </h2>
         </div>
+
+        <div class="shrink-0">
+            <label for="guest-menu-language-{{ $branchId }}" class="sr-only">{{ __('Язык меню') }}</label>
+            <select
+                id="guest-menu-language-{{ $branchId }}"
+                wire:model.live="language"
+                class="h-9 rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-800 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+            >
+                @foreach ($languageOptions as $languageCode => $languageLabel)
+                    <option wire:key="guest-menu-language-option-{{ $languageCode }}" value="{{ $languageCode }}">
+                        {{ $languageLabel }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
     </div>
 
     @if ($guestMenu['menu'] === null)

@@ -45,7 +45,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, and permission-gated price/availability changes.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, and permission-gated price/availability changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -57,7 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translation admin editor, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -81,7 +81,9 @@ No menu translations, modifiers, QR PDF generation, order draft, kitchen, bar, p
 - `branches`
 - `menus`
 - `menu_categories`
+- `menu_category_translations`
 - `menu_items`
+- `menu_item_translations`
 - `area_nodes`
 - `service_points`
 - `table_sessions`
@@ -131,10 +133,13 @@ Menu:
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, and delete menus.
 - Active guests see the current branch's first active menu on the public QR table page.
-- Guest menu payloads are cached through the explicit `database` cache store with the key `guest-menu:branch:{branch_id}`.
+- Guest menu payloads are cached through the explicit `database` cache store with the key `guest-menu:branch:{branch_id}:language:{language_code}`.
 - `GetGuestMenuForBranchAction` builds and caches the guest menu payload for five minutes.
-- Guest menu cache rebuilds use the database-backed lock key `guest-menu:branch:{branch_id}:lock`.
+- Guest menu cache rebuilds use the database-backed lock key `guest-menu:branch:{branch_id}:language:{language_code}:lock`.
 - Guest menu cache invalidation must use the database cache store and must not use Redis or cache tags.
+- Supported guest menu languages are `ru`, `en`, and `lt`.
+- If no guest language is selected, `branch_settings.default_language` is used.
+- If a selected category or item translation is missing, the guest menu falls back to the base category/item `name` and `description`.
 
 Menu category:
 
@@ -143,6 +148,7 @@ Menu category:
 - Can optionally belong to a parent category through `parent_id`.
 - Supports nested category structures through `parent` and `children` relationships.
 - Stores `name`, optional `description`, optional `image`, optional `icon`, `sort_order`, and `is_active`.
+- Has many translations through `menu_category_translations`.
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, activate/deactivate, and delete categories.
 - Category image paths still exist in the schema, but category upload UI is not implemented yet.
@@ -160,7 +166,25 @@ Menu item:
 - Creating or editing dish price requires `change_prices`; without it, price edits are preserved as the current value.
 - Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
 - Guest menu display shows item price, photo when present, and unavailable state.
-- No translations, modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
+- Has many translations through `menu_item_translations`.
+- Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
+- No modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
+
+Menu category translation:
+
+- Stored in `menu_category_translations`.
+- Belongs to one menu category through `menu_category_id`.
+- Stores `language_code`, translated `name`, and optional translated `description`.
+- Unique per `menu_category_id` and `language_code`.
+- Observer clears all supported language cache variants for the branch guest menu.
+
+Menu item translation:
+
+- Stored in `menu_item_translations`.
+- Belongs to one menu item through `menu_item_id`.
+- Stores `language_code`, translated `name`, and optional translated `description`.
+- Unique per `menu_item_id` and `language_code`.
+- Observer clears all supported language cache variants for the branch guest menu.
 
 Area node:
 
@@ -523,11 +547,12 @@ Local media storage:
 
 - `App\Livewire\PublicQr\GuestMenu` renders the guest menu block inside the active guest table shell.
 - `App\Actions\Menus\GetGuestMenuForBranchAction` loads the first active menu for the current branch, sorted by `sort_order`, `name`, and `id`.
+- The component exposes a compact `RU` / `EN` / `LT` selector and stores the selected guest language in the `lang` query parameter.
 - Guest menu payloads are cached in Laravel's explicit `database` cache store for 300 seconds, even if the default cache store is changed in a test or environment.
-- Cache key format is `guest-menu:branch:{branch_id}`.
-- Rebuild lock key format is `guest-menu:branch:{branch_id}:lock` and uses the SQLite-backed `cache_locks` table.
-- `MenuObserver`, `MenuCategoryObserver`, and `MenuItemObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
-- Updating a dish price clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current price.
+- Cache key format is `guest-menu:branch:{branch_id}:language:{language_code}`.
+- Rebuild lock key format is `guest-menu:branch:{branch_id}:language:{language_code}:lock` and uses the SQLite-backed `cache_locks` table.
+- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, and `MenuItemTranslationObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
+- Updating a dish price or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable dishes are visually dimmed and marked `Недоступно`; there is no add-to-cart action yet.
@@ -627,7 +652,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be order draft foundations, QR PDF generation, staff invite acceptance flow, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be order draft foundations, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -639,7 +664,9 @@ The next expected product step may be order draft foundations, QR PDF generation
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add cart item creation, menu translations, modifiers, order draft, kitchen/bar, or payment logic in guest menu display steps.
+- Do not add cart item creation, AI translations, a complex translation editor, modifiers, order draft, kitchen/bar, or payment logic in guest menu display steps.
+- Do not break guest menu language fallback: missing translations must show base category/item text.
+- Do not switch guest menu cache away from explicit database cache or remove language from guest menu cache keys.
 - Do not let users without `change_prices` change menu item prices.
 - Do not let users without `change_availability` change menu item availability.
 - Do not make QR generation create a second active QR automatically when one already exists.

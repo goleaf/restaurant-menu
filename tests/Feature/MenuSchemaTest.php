@@ -4,7 +4,9 @@ use App\Enums\MenuStatus;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use Illuminate\Support\Facades\Schema;
 
 test('menu tables expose the required columns', function () {
@@ -46,6 +48,26 @@ test('menu tables expose the required columns', function () {
             'calories',
             'is_available',
             'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_category_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_category_translations', [
+            'id',
+            'menu_category_id',
+            'language_code',
+            'name',
+            'description',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_item_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_item_translations', [
+            'id',
+            'menu_item_id',
+            'language_code',
+            'name',
+            'description',
             'created_at',
             'updated_at',
         ]))->toBeTrue();
@@ -93,9 +115,45 @@ test('menu models keep branch category and item relationships', function () {
         ->and($item->is_available)->toBeTrue();
 });
 
+test('menu category and item translations belong to their base records', function () {
+    $category = MenuCategory::factory()->create();
+    $item = MenuItem::factory()
+        ->for($category->menu)
+        ->for($category, 'category')
+        ->create();
+
+    $categoryTranslation = MenuCategoryTranslation::factory()
+        ->for($category, 'category')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Picos',
+            'description' => 'Karsti patiekalai',
+        ]);
+    $itemTranslation = MenuItemTranslation::factory()
+        ->for($item, 'item')
+        ->create([
+            'language_code' => 'lt',
+            'name' => 'Margarita LT',
+            'description' => 'Pomidorai ir mozzarella',
+        ]);
+
+    expect($category->translations()->pluck('menu_category_translations.id')->all())->toBe([$categoryTranslation->id])
+        ->and($categoryTranslation->category->id)->toBe($category->id)
+        ->and($item->translations()->pluck('menu_item_translations.id')->all())->toBe([$itemTranslation->id])
+        ->and($itemTranslation->item->id)->toBe($item->id);
+});
+
 test('deleting a menu removes its categories and items', function () {
     $menu = Menu::factory()->create();
     $category = MenuCategory::factory()->for($menu)->create();
+    MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->has(MenuItemTranslation::factory()->state(['language_code' => 'lt']), 'translations')
+        ->create();
+    MenuCategoryTranslation::factory()
+        ->for($category, 'category')
+        ->create(['language_code' => 'lt']);
     MenuItem::factory()
         ->for($menu)
         ->for($category, 'category')
@@ -105,5 +163,7 @@ test('deleting a menu removes its categories and items', function () {
 
     expect(Menu::query()->exists())->toBeFalse()
         ->and(MenuCategory::query()->exists())->toBeFalse()
-        ->and(MenuItem::query()->exists())->toBeFalse();
+        ->and(MenuItem::query()->exists())->toBeFalse()
+        ->and(MenuCategoryTranslation::query()->exists())->toBeFalse()
+        ->and(MenuItemTranslation::query()->exists())->toBeFalse();
 });

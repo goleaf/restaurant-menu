@@ -99,6 +99,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function orderStatusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class, 'actor_user_id')
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany

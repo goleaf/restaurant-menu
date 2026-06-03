@@ -2,7 +2,9 @@
 
 namespace App\Actions\DraftOrders;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
@@ -12,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class DeleteGuestDraftOrderItemAction
 {
+    public function __construct(
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+    ) {}
+
     public function handle(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
     {
         DB::transaction(function () use ($draftOrderItem, $guest): void {
@@ -21,6 +27,19 @@ class DeleteGuestDraftOrderItemAction
             $this->ensureGuestCanDeleteItem($draftOrderItem, $guest);
 
             $draftOrderItem->delete();
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrderItem->draftOrder,
+                actorGuest: $guest,
+                previousStatus: DraftOrderStatus::Draft,
+                newStatus: DraftOrderStatus::Draft,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'guest_item_deleted',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                ],
+            );
         });
     }
 

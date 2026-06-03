@@ -53,6 +53,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum.
+- Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -99,6 +100,7 @@ No menu translation admin editor, QR PDF generation, kitchen, bar, payment, anal
 - `draft_order_items`
 - `orders`
 - `order_items`
+- `order_status_logs`
 - `qr_codes`
 - `branch_users`
 - `branch_settings`
@@ -359,7 +361,8 @@ Draft order:
 - `ReturnRejectedDraftOrderToDraftAction` requires `confirm_orders` and returns a rejected draft to `draft` so guests can edit and send the same shared draft again.
 - `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, and `DeleteDraftOrderItemByWaiterAction` allow staff with `confirm_orders` or `edit_pending_orders` to edit a `sent_to_waiter` or `waiter_review` draft before confirmation.
 - Waiter draft edits move `sent_to_waiter` drafts to `waiter_review`, recalculate draft item snapshot totals, and keep the same shared draft visible to guests through polling.
-- `EnsureWaiterCanEditDraftOrderAction` is the shared backend guard for waiter draft edits and is the future hook point for audit/order-log capture.
+- `EnsureWaiterCanEditDraftOrderAction` is the shared backend guard for waiter draft edits.
+- Guest and waiter draft actions write `order_status_logs` rows for draft creation, edits, send-to-waiter, confirm, reject, and return-to-draft events.
 - `BuildDraftOrderItemModifierSnapshots` is shared by add and update actions for modifier selection validation and JSON snapshots.
 - This draft flow still does not send anything to kitchen, bar, payment, or analytics. A confirmed order must be dispatched by a later explicit kitchen/bar step.
 
@@ -398,6 +401,8 @@ Order:
 - Metadata currently marks that kitchen/bar dispatch is prepared but not sent.
 - Has many `order_items`.
 - Branch, service point, table session, and draft order models expose order relationships.
+- `Order::statusLogs()` exposes persistent status history ordered by `occurred_at` and id.
+- `ChangeOrderStatusAction` changes confirmed `orders.status` with permission checks and writes an `order_status_logs` row. It currently requires `send_to_kitchen` for `sent_to_kitchen_bar`, `cancel_orders` for `cancelled`, and `confirm_orders` for other manual status changes.
 - `orders` are not shown to kitchen/bar yet.
 
 Order item:
@@ -409,6 +414,19 @@ Order item:
 - Snapshot fields must remain unchanged if the source menu item name, menu item price, or modifier options change later.
 - Table session guests and menu items expose `orderItems()` relationships for confirmed order history.
 - These rows prepare later kitchen/bar dispatch without exposing unconfirmed drafts to kitchen/bar.
+
+Order status log:
+
+- Stored in `order_status_logs`.
+- Belongs optionally to branch, service point, table session, draft order, confirmed order, actor user, and actor guest.
+- Foreign keys use nullable `nullOnDelete` links so log rows survive if related records are later removed.
+- Stores actor snapshots in `actor_type` and `actor_name`.
+- Event is cast to `OrderStatusLogEvent`.
+- Current event values are `draft_created`, `draft_edited`, `draft_sent_to_waiter`, `draft_confirmed`, `draft_rejected`, `draft_returned_to_draft`, `order_status_changed`, `order_sent_to_kitchen_bar`, and `order_cancelled`.
+- Stores `status_type`, `previous_status`, `new_status`, optional `reason`, optional JSON `metadata`, and `occurred_at`.
+- `CreateOrderStatusLogAction` is the shared append-only writer used by guest draft actions, waiter review actions, and confirmed order status changes.
+- Branch, service point, table session, draft order, order, table session guest, and user models expose order status log relationships.
+- There is no audit UI yet.
 
 Table session join request:
 
@@ -760,6 +778,7 @@ Local media storage:
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
+- The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, and return-to-draft.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
 - The table detail page can return a rejected draft to `draft` for guest edits.
 - Waiter detail edit/review actions do not send anything to kitchen/bar and do not create payments.
@@ -884,6 +903,7 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders,
 - Do not create real orders from the guest UI; waiter confirmation must come first.
 - Do not send confirmed orders to kitchen/bar from the waiter table detail page until a prompt explicitly asks for kitchen/bar dispatch.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
+- Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
 - Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.

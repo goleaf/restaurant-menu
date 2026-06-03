@@ -3,7 +3,9 @@
 namespace App\Actions\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
@@ -15,6 +17,7 @@ class UpdateDraftOrderItemByWaiterAction
     public function __construct(
         private readonly BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     /**
@@ -52,6 +55,7 @@ class UpdateDraftOrderItemByWaiterAction
             $unitPriceCents = self::decimalToCents($draftOrderItem->unit_price);
             $lineUnitTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
 
+            $previousStatus = $draftOrder->status;
             $this->markAsWaiterReview($draftOrder);
 
             $draftOrderItem->update([
@@ -61,6 +65,20 @@ class UpdateDraftOrderItemByWaiterAction
                 'selected_modifiers' => $selectedModifiers,
                 'comment' => $this->normalizeComment($comment),
             ]);
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrder,
+                actorUser: $editedBy,
+                previousStatus: $previousStatus,
+                newStatus: $draftOrder->status,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'waiter_item_updated',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                    'quantity' => $quantity,
+                ],
+            );
 
             return $draftOrderItem->refresh();
         });

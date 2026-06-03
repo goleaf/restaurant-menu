@@ -92,6 +92,16 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function orderStatusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class)
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Menu, $this>
      */
     public function menus(): HasMany

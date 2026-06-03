@@ -2,8 +2,10 @@
 
 namespace App\Actions\DraftOrders;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
@@ -16,6 +18,7 @@ class SendDraftOrderToWaiterAction
 {
     public function __construct(
         private UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
@@ -25,6 +28,7 @@ class SendDraftOrderToWaiterAction
             $sentByGuest = $this->reloadGuest($sentByGuest);
 
             $this->ensureDraftCanBeSent($draftOrder, $sentByGuest);
+            $previousStatus = $draftOrder->status;
 
             $draftOrder
                 ->forceFill([
@@ -43,6 +47,16 @@ class SendDraftOrderToWaiterAction
             if ($servicePoint !== null) {
                 $this->updateServicePointStatus->handle($servicePoint, ServicePointStatus::HasNewOrder);
             }
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftSentToWaiter,
+                draftOrder: $draftOrder,
+                actorGuest: $sentByGuest,
+                previousStatus: $previousStatus,
+                newStatus: DraftOrderStatus::SentToWaiter,
+                statusType: 'draft_order',
+                metadata: ['items_count' => (int) $draftOrder->items_count],
+            );
 
             return $draftOrder->refresh();
         });

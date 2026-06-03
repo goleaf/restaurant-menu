@@ -88,6 +88,16 @@ class ServicePoint extends Model
     }
 
     /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function orderStatusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class)
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasOne<TableSession, $this>
      */
     public function activeTableSession(): HasOne

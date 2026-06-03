@@ -153,4 +153,14 @@ class TableSession extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function orderStatusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class)
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
 }

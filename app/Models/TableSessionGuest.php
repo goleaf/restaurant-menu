@@ -76,4 +76,14 @@ class TableSessionGuest extends Model
     {
         return $this->hasMany(OrderItem::class, 'table_session_guest_id');
     }
+
+    /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function orderStatusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class, 'actor_guest_id')
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
 }

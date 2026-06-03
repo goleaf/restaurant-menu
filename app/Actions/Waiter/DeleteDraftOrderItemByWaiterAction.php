@@ -2,7 +2,9 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
@@ -13,6 +15,7 @@ class DeleteDraftOrderItemByWaiterAction
 {
     public function __construct(
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     public function handle(DraftOrderItem $draftOrderItem, User $editedBy): void
@@ -28,9 +31,23 @@ class DeleteDraftOrderItemByWaiterAction
             }
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
+            $previousStatus = $draftOrder->status;
             $this->markAsWaiterReview($draftOrder);
 
             $draftOrderItem->delete();
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrder,
+                actorUser: $editedBy,
+                previousStatus: $previousStatus,
+                newStatus: $draftOrder->status,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'waiter_item_deleted',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                ],
+            );
         });
     }
 

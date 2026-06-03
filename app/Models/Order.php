@@ -87,4 +87,14 @@ class Order extends Model
             ->orderBy('created_at')
             ->orderBy('id');
     }
+
+    /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class)
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
 }

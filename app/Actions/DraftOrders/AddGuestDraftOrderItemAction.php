@@ -3,8 +3,10 @@
 namespace App\Actions\DraftOrders;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
@@ -19,6 +21,7 @@ class AddGuestDraftOrderItemAction
 {
     public function __construct(
         private BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     /**
@@ -46,8 +49,9 @@ class AddGuestDraftOrderItemAction
             $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
             $lineTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
             $draftOrder = $this->draftOrderFor($tableSession);
+            $draftWasCreated = $draftOrder->wasRecentlyCreated;
 
-            return $draftOrder->items()->create([
+            $draftOrderItem = $draftOrder->items()->create([
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
                 'item_name' => $this->snapshotName($itemName, $menuItem),
@@ -58,6 +62,35 @@ class AddGuestDraftOrderItemAction
                 'selected_modifiers' => $selectedModifiers,
                 'comment' => $this->normalizeComment($comment),
             ])->refresh();
+
+            if ($draftWasCreated) {
+                $this->createOrderStatusLog->handle(
+                    event: OrderStatusLogEvent::DraftCreated,
+                    draftOrder: $draftOrder,
+                    actorGuest: $guest,
+                    previousStatus: null,
+                    newStatus: DraftOrderStatus::Draft,
+                    statusType: 'draft_order',
+                    metadata: ['source' => 'guest_menu'],
+                );
+            }
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrder,
+                actorGuest: $guest,
+                previousStatus: DraftOrderStatus::Draft,
+                newStatus: DraftOrderStatus::Draft,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'guest_item_added',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                    'menu_item_id' => $menuItem->id,
+                    'quantity' => $draftOrderItem->quantity,
+                ],
+            );
+
+            return $draftOrderItem;
         });
     }
 

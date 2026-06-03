@@ -3,7 +3,9 @@
 namespace App\Actions\DraftOrders;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
@@ -15,6 +17,7 @@ class UpdateGuestDraftOrderItemAction
 {
     public function __construct(
         private BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     /**
@@ -52,6 +55,20 @@ class UpdateGuestDraftOrderItemAction
                 'selected_modifiers' => $selectedModifiers,
                 'comment' => $this->normalizeComment($comment),
             ]);
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrderItem->draftOrder,
+                actorGuest: $guest,
+                previousStatus: DraftOrderStatus::Draft,
+                newStatus: DraftOrderStatus::Draft,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'guest_item_updated',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                    'quantity' => $quantity,
+                ],
+            );
 
             return $draftOrderItem->refresh();
         });

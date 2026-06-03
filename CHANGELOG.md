@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 057 - Order Status Logs
+
+- Added `order_status_logs` as an append-only audit history table for draft and confirmed order status events.
+- Added `OrderStatusLogEvent`, `OrderStatusLog`, factory, relationships, and shared `CreateOrderStatusLogAction`.
+- Added logging for guest draft creation/editing, guest send-to-waiter, waiter draft editing, waiter confirm/reject/return-to-draft, and manual confirmed-order status changes.
+- Added `ChangeOrderStatusAction` for backend order status changes with `confirm_orders`, `send_to_kitchen`, and `cancel_orders` checks.
+- Preserved history with nullable `nullOnDelete` links plus actor/status snapshots, so logs do not disappear if related users, guests, drafts, or orders are later removed.
+- Kept this step backend-only: no kitchen/bar screen, payment flow, WebSocket, Redis, S3, Docker, or paid service was added.
+
 ### Prompt 056 - Orders Schema
 
 - Completed the real order lifecycle enum with `confirmed_by_waiter`, `sent_to_kitchen_bar`, `in_progress`, `ready`, `served`, `payment_requested`, `paid`, `closed`, and `cancelled`.

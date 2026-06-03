@@ -2,9 +2,11 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
@@ -20,6 +22,7 @@ class ConfirmDraftOrderByWaiterAction
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $confirmedBy): Order
@@ -33,6 +36,7 @@ class ConfirmDraftOrderByWaiterAction
                 return $draftOrder->order;
             }
 
+            $previousStatus = $draftOrder->status;
             $currency = $draftOrder->tableSession?->branch?->currency ?? 'EUR';
             $totalCents = $draftOrder->items->sum(
                 fn (DraftOrderItem $item): int => $this->decimalToCents($item->total_price),
@@ -85,6 +89,20 @@ class ConfirmDraftOrderByWaiterAction
             if ($draftOrder->tableSession?->servicePoint !== null) {
                 $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
             }
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftConfirmed,
+                order: $order,
+                draftOrder: $draftOrder,
+                actorUser: $confirmedBy,
+                previousStatus: $previousStatus,
+                newStatus: DraftOrderStatus::ConvertedToOrder,
+                statusType: 'draft_order',
+                metadata: [
+                    'order_status' => OrderStatus::ConfirmedByWaiter->value,
+                    'items_count' => $draftOrder->items->count(),
+                ],
+            );
 
             return $order->refresh();
         });

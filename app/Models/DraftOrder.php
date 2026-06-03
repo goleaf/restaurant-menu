@@ -88,6 +88,16 @@ class DraftOrder extends Model
             ->orderBy('id');
     }
 
+    /**
+     * @return HasMany<OrderStatusLog, $this>
+     */
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(OrderStatusLog::class)
+            ->orderBy('occurred_at')
+            ->orderBy('id');
+    }
+
     public function totalAmount(): string
     {
         $items = $this->loadedItems();

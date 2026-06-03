@@ -3,8 +3,10 @@
 namespace App\Actions\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -19,6 +21,7 @@ class AddDraftOrderItemByWaiterAction
     public function __construct(
         private readonly BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     /**
@@ -50,9 +53,10 @@ class AddDraftOrderItemByWaiterAction
             $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
             $lineUnitTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
 
+            $previousStatus = $draftOrder->status;
             $this->markAsWaiterReview($draftOrder);
 
-            return $draftOrder->items()->create([
+            $draftOrderItem = $draftOrder->items()->create([
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
                 'item_name' => $this->snapshotName($itemName, $menuItem),
@@ -63,6 +67,24 @@ class AddDraftOrderItemByWaiterAction
                 'selected_modifiers' => $selectedModifiers,
                 'comment' => $this->normalizeComment($comment),
             ])->refresh();
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftEdited,
+                draftOrder: $draftOrder,
+                actorUser: $editedBy,
+                previousStatus: $previousStatus,
+                newStatus: $draftOrder->status,
+                statusType: 'draft_order',
+                metadata: [
+                    'operation' => 'waiter_item_added',
+                    'draft_order_item_id' => $draftOrderItem->id,
+                    'guest_id' => $guest->id,
+                    'menu_item_id' => $menuItem->id,
+                    'quantity' => $draftOrderItem->quantity,
+                ],
+            );
+
+            return $draftOrderItem;
         });
     }
 

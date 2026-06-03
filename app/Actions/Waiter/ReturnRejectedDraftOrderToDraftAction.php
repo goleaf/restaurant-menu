@@ -2,8 +2,10 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
@@ -17,6 +19,7 @@ class ReturnRejectedDraftOrderToDraftAction
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $returnedBy): DraftOrder
@@ -25,6 +28,7 @@ class ReturnRejectedDraftOrderToDraftAction
             $draftOrder = $this->reloadDraftOrder($draftOrder);
 
             $this->ensureCanReturn($draftOrder, $returnedBy);
+            $previousStatus = $draftOrder->status;
 
             $draftOrder
                 ->forceFill([
@@ -42,6 +46,15 @@ class ReturnRejectedDraftOrderToDraftAction
             if ($draftOrder->tableSession?->servicePoint !== null) {
                 $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
             }
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::DraftReturnedToDraft,
+                draftOrder: $draftOrder,
+                actorUser: $returnedBy,
+                previousStatus: $previousStatus,
+                newStatus: DraftOrderStatus::Draft,
+                statusType: 'draft_order',
+            );
 
             return $draftOrder->refresh();
         });

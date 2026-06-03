@@ -390,6 +390,7 @@ Real orders are stored in:
 
 - `orders`
 - `order_items`
+- `order_status_logs`
 
 Each order belongs to a branch, service point, table session, and the source draft order. The source `draft_order_id` is unique, so the same draft cannot create two confirmed orders.
 
@@ -407,9 +408,25 @@ Current order lifecycle statuses are:
 
 Order items can keep optional links to the original guest and menu item, but they also store immutable snapshots of guest name, dish name, unit price, modifier total, line total, selected modifiers, and comment. If the menu item name, price, or modifier options change later, old confirmed orders keep the original order snapshot.
 
+Order status logs are the persistent history for draft and confirmed order events. They record branch, service point, table session, draft order, optional confirmed order, actor user or guest, actor type/name snapshot, event, previous status, new status, optional reason, metadata, and `occurred_at`.
+
+Current log events are:
+
+- `draft_created`
+- `draft_edited`
+- `draft_sent_to_waiter`
+- `draft_confirmed`
+- `draft_rejected`
+- `draft_returned_to_draft`
+- `order_status_changed`
+- `order_sent_to_kitchen_bar`
+- `order_cancelled`
+
+Logs are written by backend actions for guest draft creation/editing, guest send-to-waiter, waiter draft edits, waiter confirmation/rejection/return-to-draft, and manual confirmed-order status changes. Links to users, guests, drafts, and orders use nullable `nullOnDelete` references, while actor/status snapshots stay in the log row so restaurant control history remains readable.
+
 The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. New draft versioning is not implemented yet.
 
-Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, and guests see the updated shared cart through Livewire polling. Future audit/order-log work should hook into the waiter edit action classes.
+Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, writes an `order_status_logs` row, and guests see the updated shared cart through Livewire polling.
 
 This stage does not add kitchen/bar workflows, order dispatch, payments, or analytics.
 

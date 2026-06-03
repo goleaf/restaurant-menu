@@ -166,7 +166,11 @@
 
                             @if ($canGenerateQr)
                                 @if ($servicePoint->activeQrCode)
-                                    <flux:button icon="qr-code" type="button" wire:click="showQr({{ $servicePoint->id }})">
+                                    <flux:button
+                                        icon="qr-code"
+                                        :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
+                                        wire:navigate
+                                    >
                                         {{ __('Show QR') }}
                                     </flux:button>
                                 @else

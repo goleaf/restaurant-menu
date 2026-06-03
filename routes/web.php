@@ -3,6 +3,7 @@
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as OrganizationBrandBranchServicePointsIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as OrganizationBrandBranchServicePointQrShow;
 use App\Livewire\Organizations\Brands\Branches\Settings as OrganizationBrandBranchSettings;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as OrganizationBrandBranchStaffIndex;
 use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
@@ -64,6 +65,7 @@ Route::middleware(['auth'])
                             ->name('service-points.')
                             ->group(function () {
                                 Route::livewire('/', OrganizationBrandBranchServicePointsIndex::class)->name('index');
+                                Route::livewire('{servicePoint}/qr/{qrCode}', OrganizationBrandBranchServicePointQrShow::class)->name('qr.show');
                             });
 
                         Route::prefix('{branch}/staff')

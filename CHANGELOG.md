@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 025 - QR Admin Display Page
+
+- Added an authenticated QR admin page for a specific service point QR record.
+- The page shows branch, current area, current service point, public guest URL, SVG QR image, short code, status, and creation date.
+- Added local SVG QR rendering and SVG download without external services or storage uploads.
+- Added actions to open the guest URL, disable an active QR, and manually reissue a QR after a danger warning.
+- Verified that normal service point rename or area move does not change or reissue the QR.
+
 ### Prompt 024 - Public QR Route
 
 - Added the public `/q/{token}` route for permanent QR links without exposing organization, branch, service point, or table IDs.

@@ -44,13 +44,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, and public QR landing route.
+- Permanent QR schema, generation action, admin display page, and public QR landing route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF/printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF/bulk printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -157,17 +157,24 @@ QR code:
 - QR identity remains stable when the service point is renamed or moved to another area.
 - `GenerateQrCodeForServicePointAction` creates a new active QR only when the service point has no active QR.
 - If an active QR already exists, `GenerateQrCodeForServicePointAction` returns the existing active QR and does not create a second active QR automatically.
+- `DisableQrCodeAction` changes an active QR to `disabled` and clears its active-service-point uniqueness guard through the model save hook.
+- `ReissueQrCodeForServicePointAction` revokes current active QR records for the service point and then creates one new active QR through the normal generation action.
+- `QrCodeSvgRenderer` renders a local SVG QR image for the public URL without external services or storage uploads.
 - Generated `public_token` values are 64-character random strings.
 - Generated `short_code` values use the `QR-XXXXXXXX` format with a readable uppercase alphabet.
 - `QrCode::publicPath()` returns `/q/{public_token}` and matches the public QR route.
 - The branch service point page can show QR status, `short_code`, and `/q/{public_token}` for users with `generate_qr`.
+- The QR admin page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` and is guarded by `generate_qr` in the current organization context.
+- The QR admin page shows branch, current area, current service point, public URL, SVG QR image, short code, status, and creation date.
+- The QR admin page can open the guest URL, download the QR SVG image, disable an active QR, and manually reissue a QR after a danger warning.
+- Manual reissue is the only current UI path that intentionally changes the QR identity.
 - Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
 - Public QR route accepts active, disabled, revoked, and unknown token states.
 - Active QR codes load the current service point, current area, branch, brand, and organization for the guest landing page.
 - Disabled and revoked QR codes show public error messages instead of opening the guest landing state.
 - Active QR codes attached to inactive service points show a public unavailable message.
 - Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
-- No QR PDF/printing output exists yet.
+- No QR PDF/bulk printing output exists yet.
 
 Branch settings:
 
@@ -254,6 +261,7 @@ Staff permission overrides:
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points` -> `organizations.brands.branches.service-points.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` -> `organizations.brands.branches.service-points.qr.show`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
@@ -269,6 +277,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Areas`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\PublicQr\Show`
@@ -302,6 +311,20 @@ Staff permission overrides:
 - QR generation and QR detail display require `generate_qr`.
 - The UI eager-loads `areaNode` and `activeQrCode`; Blade must not query the database.
 - The QR panel displays `short_code`, status, and `/q/{public_token}` only. It must not expose service point IDs, branch IDs, area names, or table numbers in the QR URL.
+- The `Show QR` action opens the QR admin page for the active QR record.
+
+## Current QR Admin Page
+
+- QR admin route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}`.
+- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Route model nesting is checked: brand must belong to organization, branch must belong to brand and organization, service point must belong to branch, and QR must belong to service point.
+- The page eager-loads current service point and current area before rendering.
+- Blade displays prepared state only and must not query the database.
+- The page shows branch, current area, current service point, public URL, SVG QR image, short code, status, and creation date.
+- `downloadQrImage` streams a local SVG file generated from the public URL.
+- `disableQr` changes active QR status to `disabled`.
+- `reissueQr` is intentionally dangerous, requires a warning confirmation, revokes the current active QR, and creates one new active QR.
+- Normal service point edit actions must not call reissue or create a new QR.
 
 ## Current Branch Area UI
 
@@ -315,7 +338,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be QR management details, QR printing/PDF output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be QR printing/PDF output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -325,6 +348,7 @@ The next expected product step may be QR management details, QR printing/PDF out
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not make QR generation create a second active QR automatically when one already exists.
+- Do not reissue QR from ordinary service point edits.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.
 - Do not commit `.env`, SQLite database files, `vendor`, `node_modules`, or storage uploads.

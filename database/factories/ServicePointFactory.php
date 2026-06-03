@@ -29,7 +29,7 @@ class ServicePointFactory extends Factory
             'internal_code' => fake()->unique()->bothify('SP-####'),
             'capacity' => fake()->numberBetween(1, 12),
             'icon' => null,
-            'status' => ServicePointStatus::Available,
+            'status' => ServicePointStatus::Free,
             'position_x' => fake()->randomFloat(2, 0, 1000),
             'position_y' => fake()->randomFloat(2, 0, 1000),
             'is_active' => true,

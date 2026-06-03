@@ -44,11 +44,17 @@ test('service point types include the fixed physical point taxonomy', function (
 
 test('service point statuses include safe operational states', function () {
     expect(ServicePointStatus::values())->toBe([
-        'available',
+        'free',
         'occupied',
         'reserved',
-        'unavailable',
-        'maintenance',
+        'waiting_waiter',
+        'has_new_order',
+        'cooking',
+        'ready_to_serve',
+        'payment_requested',
+        'paid',
+        'closed',
+        'blocked',
     ]);
 });
 
@@ -68,7 +74,7 @@ test('service points belong to branch and can belong to area node', function () 
             'internal_code' => 'MAIN-VIP-001',
             'capacity' => 6,
             'icon' => 'sparkles',
-            'status' => ServicePointStatus::Available,
+            'status' => ServicePointStatus::Cooking,
             'position_x' => 12.50,
             'position_y' => 24.75,
             'metadata' => ['note' => 'Window side'],
@@ -79,7 +85,7 @@ test('service points belong to branch and can belong to area node', function () 
     expect($servicePoint->branch->is($branch))->toBeTrue();
     expect($servicePoint->areaNode->is($areaNode))->toBeTrue();
     expect($servicePoint->fresh()->type)->toBe(ServicePointType::VipTable);
-    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Available);
+    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Cooking);
     expect($servicePoint->fresh()->capacity)->toBe(6);
     expect($servicePoint->fresh()->position_x)->toBe(12.5);
     expect($servicePoint->fresh()->position_y)->toBe(24.75);

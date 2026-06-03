@@ -3,8 +3,10 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AreaNodeType;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
 use App\Models\AreaNode;
@@ -13,6 +15,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -44,7 +47,7 @@ test('service point page requires manage service points permission', function ()
         ->assertSee('Service points');
 });
 
-test('branch list shows service point link only to users with permission', function () {
+test('branch list shows service point link to users with permission or waiter role', function () {
     [$organization, $brand, , $manager] = createServicePointCrudBranch();
 
     Livewire::actingAs($manager)
@@ -54,6 +57,13 @@ test('branch list shows service point link only to users with permission', funct
     grantServicePointCrudPermission($manager, $organization);
 
     Livewire::actingAs($manager)
+        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
+        ->assertSee('Service points');
+
+    $waiter = User::factory()->create();
+    attachServicePointCrudWaiter($waiter, $organization);
+
+    Livewire::actingAs($waiter)
         ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
         ->assertSee('Service points');
 });
@@ -95,6 +105,7 @@ test('manager can create service points inside a branch area', function () {
     expect($servicePoint->capacity)->toBe(4);
     expect($servicePoint->internal_code)->not->toBeNull();
     expect(str_starts_with((string) $servicePoint->internal_code, 'SP-'))->toBeTrue();
+    expect($servicePoint->status)->toBe(ServicePointStatus::Free);
 });
 
 test('manager can rename move and disable service points without changing identity', function () {
@@ -141,6 +152,51 @@ test('manager can rename move and disable service points without changing identi
     expect($servicePoint->capacity)->toBe(5);
     expect($servicePoint->icon)->toBe('sparkles');
     expect($servicePoint->is_active)->toBeFalse();
+});
+
+test('manager can change service point status manually', function () {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Status table',
+            'status' => ServicePointStatus::Free,
+        ]);
+
+    Livewire::actingAs($manager)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSee('Free')
+        ->set('statusSelections.'.$servicePoint->id, ServicePointStatus::WaitingWaiter->value)
+        ->call('changeStatus', $servicePoint->id)
+        ->assertHasNoErrors()
+        ->assertSee('Waiting waiter');
+
+    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::WaitingWaiter);
+});
+
+test('waiter can change service point status without service point management permission', function () {
+    [$organization, $brand, $branch] = createServicePointCrudBranch();
+    $waiter = User::factory()->create();
+    attachServicePointCrudWaiter($waiter, $organization);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Waiter table',
+            'status' => ServicePointStatus::Free,
+        ]);
+
+    Livewire::actingAs($waiter)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSet('canManageServicePoints', false)
+        ->assertSet('canChangeServicePointStatus', true)
+        ->assertDontSee('Add table')
+        ->set('statusSelections.'.$servicePoint->id, ServicePointStatus::HasNewOrder->value)
+        ->call('changeStatus', $servicePoint->id)
+        ->assertHasNoErrors()
+        ->assertSee('Has new order');
+
+    expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder);
 });
 
 test('service point cannot be assigned to area from another branch', function () {
@@ -194,4 +250,20 @@ function grantServicePointCrudPermission(User $user, Organization $organization)
         ->firstOrFail();
 
     $membership->role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);
+}
+
+function attachServicePointCrudWaiter(User $user, Organization $organization): void
+{
+    $waiterRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+
+    $organization->users()->syncWithoutDetachingOrFail([
+        $user->id => [
+            'role_id' => $waiterRole->id,
+            'status' => OrganizationUserStatus::Active->value,
+            'joined_at' => now(),
+            'invited_by_user_id' => null,
+        ],
+    ]);
 }

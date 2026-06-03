@@ -27,7 +27,7 @@ class CreateServicePointAction
             'internal_code' => 'SP-'.Str::upper((string) Str::ulid()),
             'capacity' => $data['capacity'],
             'icon' => $data['icon'],
-            'status' => ServicePointStatus::Available,
+            'status' => ServicePointStatus::Free,
             'is_active' => $data['is_active'],
             'metadata' => [],
         ]);

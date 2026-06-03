@@ -4,8 +4,11 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
+use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -63,6 +66,13 @@ class Index extends Component
 
     public bool $canManageServicePoints = false;
 
+    public bool $canChangeServicePointStatus = false;
+
+    /**
+     * @var array<int, string>
+     */
+    public array $statusSelections = [];
+
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
         $this->organization = $organization;
@@ -84,8 +94,10 @@ class Index extends Component
         }
 
         $this->canManageServicePoints = $user->hasPermission(SystemPermission::ManageServicePoints, $organization);
+        $this->canChangeServicePointStatus = $this->canManageServicePoints
+            || $user->hasOrganizationRole($organization, SystemRole::Waiter);
 
-        if (! $this->canManageServicePoints) {
+        if (! $this->canChangeServicePointStatus) {
             abort(403);
         }
     }
@@ -200,13 +212,34 @@ class Index extends Component
         $this->setActive($servicePointId, true);
     }
 
+    public function changeStatus(int $servicePointId, UpdateServicePointStatusAction $updateServicePointStatus): void
+    {
+        $this->authorizeServicePointStatusChange();
+
+        $servicePoint = $this->findBranchServicePoint($servicePointId);
+        $status = ServicePointStatus::tryFrom($this->statusSelections[$servicePoint->id] ?? '');
+
+        if (! $status instanceof ServicePointStatus) {
+            $this->addError('statusSelections.'.$servicePoint->id, __('The selected status is not available.'));
+
+            return;
+        }
+
+        $updateServicePointStatus->handle($servicePoint, $status);
+
+        $this->statusSelections[$servicePoint->id] = $status->value;
+        unset($this->servicePoints);
+
+        Flux::toast(variant: 'success', text: __('Service point status updated.'));
+    }
+
     /**
      * @return EloquentCollection<int, ServicePoint>
      */
     #[Computed]
     public function servicePoints(): EloquentCollection
     {
-        return $this->branch
+        $servicePoints = $this->branch
             ->servicePoints()
             ->select([
                 'id',
@@ -238,6 +271,12 @@ class Index extends Component
             ->orderBy('name')
             ->orderBy('id')
             ->get();
+
+        $servicePoints->each(function (ServicePoint $servicePoint): void {
+            $this->statusSelections[$servicePoint->id] ??= $servicePoint->status->value;
+        });
+
+        return $servicePoints;
     }
 
     /**
@@ -283,6 +322,15 @@ class Index extends Component
     public function servicePointTypeOptions(): array
     {
         return ServicePointType::options();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function servicePointStatusOptions(): array
+    {
+        return ServicePointStatus::options();
     }
 
     /**
@@ -512,6 +560,18 @@ class Index extends Component
     private function authorizeServicePointManagement(): void
     {
         if (! $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $this->organization)) {
+            abort(403);
+        }
+    }
+
+    private function authorizeServicePointStatusChange(): void
+    {
+        $user = $this->currentUser();
+
+        if (
+            ! $user->hasPermission(SystemPermission::ManageServicePoints, $this->organization)
+            && ! $user->hasOrganizationRole($this->organization, SystemRole::Waiter)
+        ) {
             abort(403);
         }
     }

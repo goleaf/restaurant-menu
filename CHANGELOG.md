@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 021 - Service Point Statuses
+
+- Replaced the old service point statuses with table-flow statuses from `free` through `closed` and `blocked`.
+- Updated `service_points.status` to default to `free` on SQLite and migrated old status values safely.
+- Added manual service point status changes from the service point page.
+- Allowed users with `manage_service_points` and users with the fixed `waiter` role to change service point status.
+- Added a backend status update action that future table sessions and orders can reuse.
+- Added tests for status taxonomy, default status, manager status changes, and waiter-only status changes.
+
 ### Prompt 020 - Service Points CRUD
 
 - Added a branch service point management page guarded by the `manage_service_points` permission.

@@ -10,55 +10,57 @@
         </div>
     </header>
 
-    <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="flex flex-wrap gap-2">
-            @foreach ($this->quickCreateOptions as $option)
-                <flux:button
-                    wire:key="service-point-preset-{{ $option['type'] }}"
-                    :icon="$option['icon']"
-                    type="button"
-                    wire:click="prepareCreate('{{ $option['type'] }}')"
-                >
-                    {{ $option['label'] }}
-                </flux:button>
-            @endforeach
-        </div>
-
-        <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
-            <flux:input wire:model="name" :label="__('Name')" type="text" required maxlength="160" />
-            <flux:input wire:model="displayNumber" :label="__('Number')" type="text" maxlength="80" />
-
-            <flux:select wire:model="type" :label="__('Type')">
-                @foreach ($this->servicePointTypeOptions as $value => $label)
-                    <flux:select.option wire:key="service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
-                @endforeach
-            </flux:select>
-
-            <flux:select wire:model="areaNodeId" :label="__('Zone')">
-                @foreach ($this->areaOptions as $option)
-                    <flux:select.option wire:key="service-point-area-create-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
+    @if ($canManageServicePoints)
+        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex flex-wrap gap-2">
+                @foreach ($this->quickCreateOptions as $option)
+                    <flux:button
+                        wire:key="service-point-preset-{{ $option['type'] }}"
+                        :icon="$option['icon']"
+                        type="button"
+                        wire:click="prepareCreate('{{ $option['type'] }}')"
+                    >
                         {{ $option['label'] }}
-                    </flux:select.option>
+                    </flux:button>
                 @endforeach
-            </flux:select>
-
-            <flux:select wire:model="icon" :label="__('Icon')">
-                @foreach ($this->iconOptions as $value => $label)
-                    <flux:select.option wire:key="service-point-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
-                @endforeach
-            </flux:select>
-
-            <flux:input wire:model="capacity" :label="__('Capacity')" type="number" required min="1" max="999" />
-
-            <div class="flex items-end justify-between gap-4 md:col-span-2">
-                <flux:switch wire:model="isActive" :label="__('Active')" />
-
-                <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
-                    {{ __('Create') }}
-                </flux:button>
             </div>
-        </form>
-    </div>
+
+            <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
+                <flux:input wire:model="name" :label="__('Name')" type="text" required maxlength="160" />
+                <flux:input wire:model="displayNumber" :label="__('Number')" type="text" maxlength="80" />
+
+                <flux:select wire:model="type" :label="__('Type')">
+                    @foreach ($this->servicePointTypeOptions as $value => $label)
+                        <flux:select.option wire:key="service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model="areaNodeId" :label="__('Zone')">
+                    @foreach ($this->areaOptions as $option)
+                        <flux:select.option wire:key="service-point-area-create-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
+                            {{ $option['label'] }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model="icon" :label="__('Icon')">
+                    @foreach ($this->iconOptions as $value => $label)
+                        <flux:select.option wire:key="service-point-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:input wire:model="capacity" :label="__('Capacity')" type="number" required min="1" max="999" />
+
+                <div class="flex items-end justify-between gap-4 md:col-span-2">
+                    <flux:switch wire:model="isActive" :label="__('Active')" />
+
+                    <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
+                        {{ __('Create') }}
+                    </flux:button>
+                </div>
+            </form>
+        </div>
+    @endif
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
@@ -115,6 +117,7 @@
                                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint->name }}</h2>
 
                                 <flux:badge :icon="$servicePoint->icon ?? 'bookmark'">{{ __($servicePoint->type->label()) }}</flux:badge>
+                                <flux:badge :color="$servicePoint->status->badgeColor()">{{ __($servicePoint->status->label()) }}</flux:badge>
 
                                 @if ($servicePoint->is_active)
                                     <flux:badge color="green">{{ __('Active') }}</flux:badge>
@@ -133,19 +136,35 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
-                            @if ($servicePoint->is_active)
-                                <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint->id }})">
-                                    {{ __('Disable') }}
-                                </flux:button>
-                            @else
-                                <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint->id }})">
-                                    {{ __('Enable') }}
-                                </flux:button>
+                            @if ($canChangeServicePointStatus)
+                                <form wire:submit="changeStatus({{ $servicePoint->id }})" class="flex flex-wrap items-end gap-2">
+                                    <flux:select wire:model="statusSelections.{{ $servicePoint->id }}" :label="__('Status')">
+                                        @foreach ($this->servicePointStatusOptions as $value => $label)
+                                            <flux:select.option wire:key="service-point-status-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+
+                                    <flux:button icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint->id }})">
+                                        {{ __('Update status') }}
+                                    </flux:button>
+                                </form>
                             @endif
 
-                            <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint->id }})">
-                                {{ __('Edit') }}
-                            </flux:button>
+                            @if ($canManageServicePoints)
+                                @if ($servicePoint->is_active)
+                                    <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint->id }})">
+                                        {{ __('Disable') }}
+                                    </flux:button>
+                                @else
+                                    <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint->id }})">
+                                        {{ __('Enable') }}
+                                    </flux:button>
+                                @endif
+
+                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint->id }})">
+                                    {{ __('Edit') }}
+                                </flux:button>
+                            @endif
                         </div>
                     @endif
                 </div>

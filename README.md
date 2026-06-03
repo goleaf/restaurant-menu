@@ -129,13 +129,29 @@ Supported service point types are table, bar seat, VIP table, room, booth, sunbe
 
 Service points store `type`, `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, `status`, optional map coordinates, `is_active`, optional `metadata`, and support soft delete through `deleted_at`.
 
+Service point statuses are:
+
+- `free`
+- `occupied`
+- `reserved`
+- `waiting_waiter`
+- `has_new_order`
+- `cooking`
+- `ready_to_serve`
+- `payment_requested`
+- `paid`
+- `closed`
+- `blocked`
+
 Service points are managed at:
 
 ```text
 /organizations/{organization}/brands/{brand}/branches/{branch}/service-points
 ```
 
-The service point UI is guarded by the `manage_service_points` permission in the current organization context. It can add common service point presets, choose a zone, choose a type and icon, set a name, number, and capacity, rename, move between zones, and disable/enable service points.
+The service point UI is guarded by the `manage_service_points` permission in the current organization context for CRUD actions. It can add common service point presets, choose a zone, choose a type and icon, set a name, number, and capacity, rename, move between zones, and disable/enable service points.
+
+Service point status can be changed manually by a user with `manage_service_points` or by a user with the fixed `waiter` role in the organization. The status update is handled through a backend action so later table sessions and orders can reuse the same status-change path.
 
 Future permanent QR codes should be attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the future QR identity. QR codes are not implemented yet.
 
@@ -154,6 +170,7 @@ Implemented:
 - Branch settings stored in `branch_settings`.
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
+- Service point operational statuses and manual status changes.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.

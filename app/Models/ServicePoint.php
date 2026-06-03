@@ -23,7 +23,7 @@ class ServicePoint extends Model
     protected $attributes = [
         'type' => 'table',
         'capacity' => 1,
-        'status' => 'available',
+        'status' => 'free',
         'is_active' => true,
     ];
 

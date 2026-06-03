@@ -43,6 +43,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branch settings.
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
+- Service point operational statuses and manual status changes.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
@@ -125,11 +126,14 @@ Service point:
 - Type is cast to `ServicePointType`.
 - Fixed types are `table`, `bar_seat`, `vip_table`, `room`, `booth`, `sunbed`, `hotel_room`, `pickup_window`, `delivery_point`, and `other`.
 - Status is cast to `ServicePointStatus`.
-- Status values are `available`, `occupied`, `reserved`, `unavailable`, and `maintenance`.
+- Status values are `free`, `occupied`, `reserved`, `waiting_waiter`, `has_new_order`, `cooking`, `ready_to_serve`, `payment_requested`, `paid`, `closed`, and `blocked`.
+- Default status is `free`.
 - Stores `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, optional coordinates `position_x` and `position_y`, `is_active`, and optional JSON `metadata`.
 - Supports soft delete through `deleted_at`.
 - Managed from the branch service point page guarded by `manage_service_points`.
 - Service point CRUD can add common presets, choose a zone, choose type/icon, set name, number, and capacity, rename, move to another zone, disable, and enable.
+- Manual status changes are allowed for users with `manage_service_points` and users with the fixed `waiter` role in the organization.
+- `UpdateServicePointStatusAction` updates only `service_points.status` and is the future reuse point for table sessions and orders.
 - `CreateServicePointAction` creates a stable `internal_code` once.
 - `UpdateServicePointAction` intentionally does not update `internal_code`.
 - Future QR codes should attach to the stable service point record, not to the name, display number, branch path, or area path.

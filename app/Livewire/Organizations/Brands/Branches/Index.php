@@ -6,6 +6,7 @@ use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -64,6 +65,8 @@ class Index extends Component
 
     public bool $canManageServicePoints = false;
 
+    public bool $canChangeServicePointStatus = false;
+
     public bool $canManageStaff = false;
 
     public function mount(Organization $organization, Brand $brand): void
@@ -82,6 +85,8 @@ class Index extends Component
         $this->canManageBranches = $this->currentUser()->canManageOrganizationBranches($organization);
         $this->canManageZones = $this->currentUser()->hasPermission(SystemPermission::ManageZones, $organization);
         $this->canManageServicePoints = $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $organization);
+        $this->canChangeServicePointStatus = $this->canManageServicePoints
+            || $this->currentUser()->hasOrganizationRole($organization, SystemRole::Waiter);
         $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
     }
 

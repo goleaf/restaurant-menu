@@ -42,13 +42,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branches.
 - Branch settings.
 - Area nodes nested branch schema and CRUD UI.
-- Service points schema.
+- Service points schema and CRUD UI.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR, service point UI, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -128,9 +128,13 @@ Service point:
 - Status values are `available`, `occupied`, `reserved`, `unavailable`, and `maintenance`.
 - Stores `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, optional coordinates `position_x` and `position_y`, `is_active`, and optional JSON `metadata`.
 - Supports soft delete through `deleted_at`.
+- Managed from the branch service point page guarded by `manage_service_points`.
+- Service point CRUD can add common presets, choose a zone, choose type/icon, set name, number, and capacity, rename, move to another zone, disable, and enable.
+- `CreateServicePointAction` creates a stable `internal_code` once.
+- `UpdateServicePointAction` intentionally does not update `internal_code`.
 - Future QR codes should attach to the stable service point record, not to the name, display number, branch path, or area path.
 - Renaming or moving a service point must not change future QR identity.
-- No service point CRUD UI or QR logic exists yet.
+- No QR logic exists yet.
 
 Branch settings:
 
@@ -215,6 +219,7 @@ Staff permission overrides:
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points` -> `organizations.brands.branches.service-points.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
@@ -229,6 +234,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Areas`
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\Superadmin\Dashboard`
@@ -251,7 +257,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be service point CRUD UI, invite acceptance flow, or permanent QR token schema, but only implement it when a prompt explicitly requests it.
+The next expected product step may be invite acceptance flow, permanent QR token schema, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

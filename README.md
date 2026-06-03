@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -129,7 +129,15 @@ Supported service point types are table, bar seat, VIP table, room, booth, sunbe
 
 Service points store `type`, `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, `status`, optional map coordinates, `is_active`, optional `metadata`, and support soft delete through `deleted_at`.
 
-Future permanent QR codes should be attached to the stable service point record. Renaming a service point or moving it to another area must not change the future QR identity. QR codes are not implemented yet.
+Service points are managed at:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/service-points
+```
+
+The service point UI is guarded by the `manage_service_points` permission in the current organization context. It can add common service point presets, choose a zone, choose a type and icon, set a name, number, and capacity, rename, move between zones, and disable/enable service points.
+
+Future permanent QR codes should be attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the future QR identity. QR codes are not implemented yet.
 
 ## Current Scope
 
@@ -145,7 +153,7 @@ Implemented:
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
 - Nested branch areas stored in `area_nodes`.
-- Service point schema stored in `service_points`.
+- Service point schema and CRUD UI stored in `service_points`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.

@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 020 - Service Points CRUD
+
+- Added a branch service point management page guarded by the `manage_service_points` permission.
+- Added create, rename, zone move, icon selection, capacity editing, disable, and enable actions for service points.
+- Added stable one-time `internal_code` creation so future QR identity is not tied to the service point name, number, or area.
+- Added the service point management route and branch-list link.
+- Added tests for access control, create, move between zones, rename, disable, invalid area assignment, and stable identity during edits.
+
 ### Prompt 019 - Service Points Schema
 
 - Added the `service_points` table for physical branch service locations.

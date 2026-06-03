@@ -2,6 +2,7 @@
 
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
+use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as OrganizationBrandBranchServicePointsIndex;
 use App\Livewire\Organizations\Brands\Branches\Settings as OrganizationBrandBranchSettings;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as OrganizationBrandBranchStaffIndex;
 use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
@@ -47,6 +48,12 @@ Route::middleware(['auth'])
                             ->name('areas.')
                             ->group(function () {
                                 Route::livewire('/', OrganizationBrandBranchAreas::class)->name('index');
+                            });
+
+                        Route::prefix('{branch}/service-points')
+                            ->name('service-points.')
+                            ->group(function () {
+                                Route::livewire('/', OrganizationBrandBranchServicePointsIndex::class)->name('index');
                             });
 
                         Route::prefix('{branch}/staff')

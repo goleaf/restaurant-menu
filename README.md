@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch area schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -105,6 +105,14 @@ This file is inside the project and outside `public/`, which keeps it suitable f
 
 `.env.example` leaves `DB_DATABASE` empty so Laravel uses the safe default from `config/database.php`.
 
+## Area Nodes
+
+Area nodes are the nested zone structure inside a branch. They are stored in the `area_nodes` table and belong to one branch.
+
+Each area node can have a `parent_id`, so branches can model structures such as floors, halls, terraces, VIP rooms, hotel areas, pickup areas, delivery areas, and custom groups. Area nodes store `type`, `name`, optional `icon`, `sort_order`, `is_active`, optional `metadata`, and support soft delete through `deleted_at`.
+
+This stage adds the schema and model foundation only. Service points, physical tables, QR codes, and area management UI are not implemented yet.
+
 ## Current Scope
 
 Implemented:
@@ -118,6 +126,7 @@ Implemented:
 - Brands inside organizations.
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
+- Nested branch area schema stored in `area_nodes`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -139,7 +148,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- Nested zones.
+- Area management UI.
 - Service points / physical tables.
 - Permanent QR public tokens.
 - Guest table sessions.

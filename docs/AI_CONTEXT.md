@@ -41,6 +41,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Area nodes nested branch schema.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
@@ -68,6 +69,7 @@ No menu, QR, service point, guest session, order draft, kitchen, bar, payment, o
 - `organization_users`
 - `brands`
 - `branches`
+- `area_nodes`
 - `branch_users`
 - `branch_settings`
 - `invitations`
@@ -92,7 +94,20 @@ Branch:
 - Belongs to a brand and an organization.
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
+- Has many nested area nodes.
 - Has many branch staff assignments through `branch_users`.
+
+Area node:
+
+- Stored in `area_nodes`.
+- Belongs to one branch.
+- Can optionally belong to a parent area node through `parent_id`.
+- Supports nested structures through `parent` and `children` relationships.
+- Type is cast to `AreaNodeType`.
+- Fixed types are `group`, `floor`, `hall`, `terrace`, `vip_room`, `bar_area`, `banquet_hall`, `room`, `hotel_area`, `pickup_area`, `delivery_area`, and `custom`.
+- Stores `name`, optional `icon`, `sort_order`, `is_active`, and optional JSON `metadata`.
+- Supports soft delete through `deleted_at`.
+- No area management UI, service points, physical tables, or QR logic exists yet.
 
 Branch settings:
 
@@ -201,7 +216,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be invite acceptance flow, zones, or service points, but only implement it when a prompt explicitly requests it.
+The next expected product step may be area node CRUD UI, invite acceptance flow, or service points, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

@@ -59,6 +59,14 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<AreaNode, $this>
+     */
+    public function areaNodes(): HasMany
+    {
+        return $this->hasMany(AreaNode::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

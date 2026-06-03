@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 017 - Area Nodes Schema
+
+- Added the `area_nodes` table for nested branch area structure.
+- Added fixed area node types for groups, floors, halls, terraces, VIP rooms, bar areas, banquet halls, rooms, hotel areas, pickup areas, delivery areas, and custom areas.
+- Added the AreaNode model, factory, branch relationship, parent/children relationships, metadata casting, and soft delete support.
+- Added tests for schema fields, fixed area types, nesting, metadata casting, and soft delete behavior.
+
 ### Prompt 016 - Permission Override UI
 
 - Added a staff permission override page guarded by `manage_staff`.

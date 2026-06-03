@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -153,7 +153,31 @@ The service point UI is guarded by the `manage_service_points` permission in the
 
 Service point status can be changed manually by a user with `manage_service_points` or by a user with the fixed `waiter` role in the organization. The status update is handled through a backend action so later table sessions and orders can reuse the same status-change path.
 
-Future permanent QR codes should be attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the future QR identity. QR codes are not implemented yet.
+Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
+
+## Permanent QR Codes
+
+Permanent QR records are stored in the `qr_codes` table.
+
+Each QR record belongs to one service point and stores:
+
+- `public_token`
+- `short_code`
+- `status`
+- creation audit user
+- optional revocation date and revocation audit user
+
+QR statuses are:
+
+- `active`
+- `disabled`
+- `revoked`
+
+The QR record does not store table numbers, service point names, area names, or branch IDs. The future public QR URL must use `public_token`, not internal IDs or visible table labels.
+
+SQLite enforces one active QR per service point through an internal nullable `active_service_point_id` uniqueness guard. This allows disabled and revoked QR history while preventing a second active QR for the same physical service point.
+
+PDF generation and the public QR route are not implemented yet.
 
 ## Current Scope
 
@@ -171,6 +195,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
+- Permanent QR schema stored in `qr_codes`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -192,7 +217,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- Permanent QR public tokens.
+- Public QR route and PDF/printing output.
 - Guest table sessions.
 - Shared order drafts.
 - Kitchen/bar workflows.

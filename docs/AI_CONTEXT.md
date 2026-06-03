@@ -44,12 +44,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
+- Permanent QR schema.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, public QR route, QR PDF/printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -73,6 +74,7 @@ No menu, QR, guest session, order draft, kitchen, bar, payment, or analytics log
 - `branches`
 - `area_nodes`
 - `service_points`
+- `qr_codes`
 - `branch_users`
 - `branch_settings`
 - `invitations`
@@ -136,9 +138,23 @@ Service point:
 - `UpdateServicePointStatusAction` updates only `service_points.status` and is the future reuse point for table sessions and orders.
 - `CreateServicePointAction` creates a stable `internal_code` once.
 - `UpdateServicePointAction` intentionally does not update `internal_code`.
-- Future QR codes should attach to the stable service point record, not to the name, display number, branch path, or area path.
-- Renaming or moving a service point must not change future QR identity.
-- No QR logic exists yet.
+- Permanent QR records attach to the stable service point record, not to the name, display number, branch path, or area path.
+- Renaming or moving a service point must not change QR identity.
+
+QR code:
+
+- Stored in `qr_codes`.
+- Belongs to one service point through `service_point_id`.
+- A service point has many QR records and one active QR record.
+- Stores `public_token`, `short_code`, `status`, `created_by_user_id`, `revoked_at`, and `revoked_by_user_id`.
+- Status is cast to `QrCodeStatus`.
+- Status values are `active`, `disabled`, and `revoked`.
+- `public_token` and `short_code` are unique.
+- The QR table does not store table numbers, service point names, area names, or branch IDs.
+- SQLite enforces one active QR per service point with internal nullable `active_service_point_id`.
+- Disabled and revoked QR history can exist for the same service point.
+- QR identity remains stable when the service point is renamed or moved to another area.
+- No public QR route or PDF/printing output exists yet.
 
 Branch settings:
 
@@ -261,7 +277,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be invite acceptance flow, permanent QR token schema, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be invite acceptance flow, public QR route, QR management UI, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

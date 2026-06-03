@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 022 - Permanent QR Schema
+
+- Added the `qr_codes` table for permanent QR records attached to service points.
+- Added QR statuses for active, disabled, and revoked records.
+- Added public token and short code fields without storing table numbers, service point names, area names, or branch IDs.
+- Added SQLite-safe uniqueness enforcement so one service point can have only one active QR while keeping disabled and revoked history.
+- Added QR model, factory, service point relationships, audit user relationships, and tests for stability across service point rename/move.
+
 ### Prompt 021 - Service Point Statuses
 
 - Replaced the old service point statuses with table-flow statuses from `free` through `closed` and `blocked`.

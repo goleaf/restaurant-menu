@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use Database\Factories\ServicePointFactory;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['branch_id', 'area_node_id', 'type', 'name', 'display_number', 'internal_code', 'capacity', 'icon', 'status', 'position_x', 'position_y', 'is_active', 'metadata'])]
@@ -57,5 +60,22 @@ class ServicePoint extends Model
     public function areaNode(): BelongsTo
     {
         return $this->belongsTo(AreaNode::class);
+    }
+
+    /**
+     * @return HasMany<QrCode, $this>
+     */
+    public function qrCodes(): HasMany
+    {
+        return $this->hasMany(QrCode::class);
+    }
+
+    /**
+     * @return HasOne<QrCode, $this>
+     */
+    public function activeQrCode(): HasOne
+    {
+        return $this->hasOne(QrCode::class)
+            ->where('status', QrCodeStatus::Active->value);
     }
 }

@@ -6,18 +6,6 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-    Features::passkeys([
-        'confirmPassword' => true,
-    ]);
-});
-
 test('security settings page can be rendered', function () {
     $user = User::factory()->create();
 
@@ -27,10 +15,10 @@ test('security settings page can be rendered', function () {
 
     $response->assertOk();
 
-    $response->assertSee('Passkeys');
-    $response->assertSee('No passkeys yet');
-    $response->assertSee('Two-factor authentication');
-    $response->assertSee('Enable 2FA');
+    $response->assertSee('Update password');
+    $response->assertDontSee('Manage your passkeys for passwordless sign-in');
+    $response->assertDontSee('Add a passkey to sign in without a password');
+    $response->assertDontSee('Two-factor authentication');
 });
 
 test('security settings page requires password confirmation when enabled', function () {
@@ -43,8 +31,6 @@ test('security settings page requires password confirmation when enabled', funct
 });
 
 test('security settings page renders without two factor when feature is disabled', function () {
-    config(['fortify.features' => []]);
-
     $user = User::factory()->create();
 
     $this->actingAs($user)
@@ -58,6 +44,13 @@ test('security settings page renders without two factor when feature is disabled
 });
 
 test('two factor authentication disabled when confirmation abandoned between requests', function () {
+    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+
+    Features::twoFactorAuthentication([
+        'confirm' => true,
+        'confirmPassword' => true,
+    ]);
+
     $user = User::factory()->create();
 
     $user->forceFill([

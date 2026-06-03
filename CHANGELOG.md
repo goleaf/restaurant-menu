@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 029 - Guest QR Landing Page
+
+- Replaced the public QR placeholder with a mobile-first guest landing page.
+- Shows the venue name, local logo when available, current area, current service point, short code, guest name field, and `Войти за стол` button.
+- Added Livewire name entry validation without guest registration, table sessions, menus, or orders.
+- Kept QR identity stable: moving or renaming a service point still keeps the same `/q/{public_token}` URL while showing current data.
+- Added tests for logo display, current area/service point display, name entry, validation, and QR stability.
+
 ### Prompt 028 - Local Media Storage
 
 - Added local public-storage logo uploads for organizations, brands, and branches.

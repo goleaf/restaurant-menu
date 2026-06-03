@@ -45,13 +45,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR landing route.
+- Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, table session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -189,10 +189,12 @@ QR code:
 - Manual reissue is the only current UI path that intentionally changes the QR identity.
 - Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
 - Public QR route accepts active, disabled, revoked, and unknown token states.
-- Active QR codes load the current service point, current area, branch, brand, and organization for the guest landing page.
+- Active QR codes load the current service point, current area, branch, brand, organization, and local logo path for the guest landing page.
 - Disabled and revoked QR codes show public error messages instead of opening the guest landing state.
 - Active QR codes attached to inactive service points show a public unavailable message.
 - Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
+- The public guest landing page shows venue name, local logo when available, current area, current service point, short code, guest name field, and `Войти за стол`.
+- Submitting the guest name validates and stores only current Livewire screen state in `preparedGuestName`; it does not create a table session, account, menu, order, payment, kitchen task, or bar task.
 - No QR PDF generation exists yet.
 
 Branch settings:
@@ -336,11 +338,11 @@ Local media storage:
 - The route is not protected by auth because guests open it from printed QR codes.
 - The route parameter is only the QR `public_token`; URLs must not expose organization IDs, branch IDs, service point IDs, table IDs, table numbers, or area names.
 - `App\Livewire\PublicQr\Show` owns the public QR landing state.
-- The component eager-loads QR, service point, current area, branch, brand, and organization before rendering.
+- The component eager-loads QR, service point, current area, branch, brand, organization, and logo paths before rendering.
 - Blade displays prepared state only and must not query the database.
-- Active QR plus active service point shows a simple guest landing placeholder.
+- Active QR plus active service point shows a mobile-first guest landing page with venue, logo, current area, current service point, guest name field, and `Войти за стол`.
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
-- Public QR route does not create guest sessions, ask guest names, show menus, create orders, or send anything to kitchen/bar yet.
+- Public QR route accepts a guest name into Livewire state only. It does not create table sessions, show menus, create orders, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
 
@@ -412,7 +414,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be QR PDF generation, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be QR PDF generation, invite acceptance flow, menu foundations, or table session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

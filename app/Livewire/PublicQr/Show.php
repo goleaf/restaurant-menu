@@ -20,16 +20,24 @@ class Show extends Component
 
     public string $message = '';
 
+    public string $guestName = '';
+
+    public ?string $preparedGuestName = null;
+
     /**
-     * @var array{organization_name: string, brand_name: string, branch_name: string, branch_city: string, branch_country: string, service_point_name: string, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
         'brand_name' => '',
+        'brand_initial' => '',
         'branch_name' => '',
         'branch_city' => '',
         'branch_country' => '',
+        'venue_name' => '',
+        'logo_url' => null,
         'service_point_name' => '',
+        'service_point_display_number' => null,
         'service_point_type' => '',
         'area_name' => null,
         'short_code' => '',
@@ -86,19 +94,41 @@ class Show extends Component
         $organization = $branch->organization;
 
         $this->state = 'ready';
-        $this->title = __('Welcome');
-        $this->message = __('You are opening the guest page for this place.');
+        $this->title = $branch->name;
+        $this->message = __('Enter your name to continue.');
         $this->landing = [
             'organization_name' => $organization->name,
             'brand_name' => $brand->name,
+            'brand_initial' => str($brand->name)->substr(0, 1)->upper()->toString(),
             'branch_name' => $branch->name,
             'branch_city' => $branch->city,
             'branch_country' => $branch->country,
+            'venue_name' => $branch->name,
+            'logo_url' => $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl(),
             'service_point_name' => $servicePoint->name,
+            'service_point_display_number' => $servicePoint->display_number,
             'service_point_type' => $servicePoint->type->label(),
             'area_name' => $servicePoint->areaNode?->name,
             'short_code' => $qrCode->short_code,
         ];
+    }
+
+    public function enterTable(): void
+    {
+        if ($this->state !== 'ready') {
+            return;
+        }
+
+        $validated = $this->validate([
+            'guestName' => ['required', 'string', 'min:2', 'max:80'],
+        ], [
+            'guestName.required' => __('Введите имя, чтобы войти за стол.'),
+            'guestName.min' => __('Имя должно содержать минимум 2 символа.'),
+            'guestName.max' => __('Имя должно быть не длиннее 80 символов.'),
+        ]);
+
+        $this->preparedGuestName = str($validated['guestName'])->squish()->toString();
+        $this->guestName = $this->preparedGuestName;
     }
 
     public function render(): View
@@ -126,6 +156,7 @@ class Show extends Component
                         'area_node_id',
                         'type',
                         'name',
+                        'display_number',
                         'is_active',
                     ])
                     ->with([
@@ -140,6 +171,7 @@ class Show extends Component
                                 'organization_id',
                                 'brand_id',
                                 'name',
+                                'logo_path',
                                 'city',
                                 'country',
                             ])
@@ -148,10 +180,12 @@ class Show extends Component
                                     'id',
                                     'organization_id',
                                     'name',
+                                    'logo_path',
                                 ]),
                                 'organization' => fn ($query) => $query->select([
                                     'id',
                                     'name',
+                                    'logo_path',
                                 ]),
                             ]),
                     ]),

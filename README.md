@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with name entry, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -225,7 +225,9 @@ Generated QR URLs use:
 /q/{public_token}
 ```
 
-The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, branch, brand, and organization, and opens a simple guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
+The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, current area, branch, brand, organization, and local logo, and opens a mobile-first guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
+
+The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. Submitting the name only prepares the current guest screen; it does not create a table session, menu, order, kitchen task, payment, or account.
 
 Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
 

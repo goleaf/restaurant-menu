@@ -2,15 +2,26 @@
 
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
+use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
+
+beforeEach(function () {
+    Storage::fake('public');
+});
 
 test('public qr route opens guest landing for active qr code', function () {
     [$organization, $brand, $branch] = createPublicQrBranch();
+    $branchLogoPath = 'media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/logos/logo.png';
+    Storage::disk('public')->put($branchLogoPath, 'logo');
+    $branch->update(['logo_path' => $branchLogoPath]);
+
     $area = AreaNode::factory()->for($branch)->create(['name' => 'Main Hall']);
     $servicePoint = ServicePoint::factory()
         ->for($branch)
@@ -38,13 +49,17 @@ test('public qr route opens guest landing for active qr code', function () {
 
     $this->get($url)
         ->assertOk()
-        ->assertSeeText('Welcome')
+        ->assertSee('data-page="guest-qr-landing"', false)
+        ->assertSee('/storage/'.$branchLogoPath, false)
         ->assertSeeText($brand->name)
         ->assertSeeText($branch->name)
         ->assertSeeText('Window Table')
+        ->assertSeeText('42')
         ->assertSeeText('Main Hall')
         ->assertSeeText('QR-ACTIVE')
-        ->assertSeeText('Guest session and menu will appear here in the next steps.');
+        ->assertSeeText('Ваше имя')
+        ->assertSeeText('Войти за стол')
+        ->assertDontSeeText('Guest session and menu will appear here in the next steps.');
 });
 
 test('public qr route uses current service point data after move and rename', function () {
@@ -77,6 +92,55 @@ test('public qr route uses current service point data after move and rename', fu
         ->assertSeeText('Terrace')
         ->assertDontSeeText('Old Table Name')
         ->assertDontSeeText('Old Hall');
+
+    expect($qrCode->fresh()->public_token)->toBe('publictokenmoved');
+});
+
+test('guest can enter name on qr landing without registration', function () {
+    [, , $branch] = createPublicQrBranch();
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Guest Table',
+            'is_active' => true,
+        ]);
+    $qrCode = QrCode::factory()
+        ->for($servicePoint)
+        ->create([
+            'public_token' => 'publictokenguestname',
+            'short_code' => 'QR-GUEST',
+            'status' => QrCodeStatus::Active,
+        ]);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->assertSet('state', 'ready')
+        ->set('guestName', '  Ana   Maria  ')
+        ->call('enterTable')
+        ->assertHasNoErrors()
+        ->assertSet('preparedGuestName', 'Ana Maria')
+        ->assertSeeText('Добро пожаловать, Ana Maria.');
+
+    expect(QrCode::query()->count())->toBe(1);
+    expect(ServicePoint::query()->count())->toBe(1);
+});
+
+test('guest name is required before entering table', function () {
+    [, , $branch] = createPublicQrBranch();
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create(['is_active' => true]);
+    $qrCode = QrCode::factory()
+        ->for($servicePoint)
+        ->create([
+            'public_token' => 'publictokenguestvalidation',
+            'short_code' => 'QR-GVALD',
+            'status' => QrCodeStatus::Active,
+        ]);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', '')
+        ->call('enterTable')
+        ->assertHasErrors(['guestName' => 'required']);
 });
 
 test('public qr route shows disabled qr error', function () {

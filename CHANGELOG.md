@@ -2,6 +2,16 @@
 
 ## 2026-06-03
 
+### Prompt 046 - Draft Order Schema
+
+- Added `draft_orders` with one shared draft per `table_session`.
+- Added `draft_order_items` so each draft item belongs to a concrete table session guest and can keep a menu item reference.
+- Added `DraftOrderStatus` for `draft`, `sent_to_waiter`, `waiter_review`, `rejected`, and `converted_to_order`.
+- Added model relationships from table sessions, guests, and menu items to draft orders/items.
+- Added snapshot fields for item name, quantity, unit price, modifier total, line total, selected modifiers, and guest comments.
+- Added backend helpers and tests for total amount and alphabetically sorted per-guest totals.
+- Kept this step schema/backend-only: no guest add-to-draft UI, waiter review screen, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 045 - Guest Modifier Selection
 
 - Added modifier groups and available modifier options to the cached guest menu payload.

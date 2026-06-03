@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -191,7 +191,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-This step does not add cart item creation, shared order draft rows, AI translation, order submission to a waiter, kitchen/bar flow, or payment logic.
+The current guest menu UI does not yet write configured items to `draft_order_items`, submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
 
 ## Area Nodes
 
@@ -304,7 +304,7 @@ An active guest can create an invite link for the current table session from the
 
 The link does not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or area names. When the invited person opens the link and enters a name, the system creates a pending join request for the current table session. Current active guests approve or reject it through the same Livewire polling approval UI.
 
-This stage does not display menus, create orders, create order drafts, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
+Guest-created sessions can display the cached branch menu for active guests, but they do not yet write guest selections to `draft_order_items`, create final orders, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
 
 ## Table Session Guests
 
@@ -348,6 +348,29 @@ Active guests also see a simple `Пригласить гостя` action. It cre
 After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, an empty shared order area, and the current total as `0,00 {currency}`.
 
 The guest list is rendered by a separate isolated Livewire component and refreshes with polling. This keeps the guest list current without refreshing the whole guest page.
+
+## Draft Orders
+
+Draft orders are the shared table draft before waiter confirmation. They are stored in:
+
+- `draft_orders`
+- `draft_order_items`
+
+Each `table_session` can have one common `draft_order`, enforced by a unique `table_session_id`.
+
+Draft order statuses are:
+
+- `draft`
+- `sent_to_waiter`
+- `waiter_review`
+- `rejected`
+- `converted_to_order`
+
+Each draft item belongs to one concrete `table_session_guest` and may reference a `menu_item`. The item stores a snapshot of `item_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers as JSON, and an optional guest comment. This keeps the table draft stable if menu names or prices change later.
+
+The backend model can calculate the total amount for the whole draft and per-guest totals. Guest totals are sorted alphabetically by `guest_name`.
+
+This stage is schema and backend relationship foundation only. It does not add the guest action for adding menu items into the draft, the waiter review screen, final orders, kitchen/bar workflows, or payments.
 
 ## Permanent QR Codes
 
@@ -424,6 +447,7 @@ Implemented:
 - Cached guest menu display with modifier selection on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
+- Shared draft order schema stored in `draft_orders` and `draft_order_items`.
 - First guest pending session creation from the public QR landing.
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
@@ -447,10 +471,11 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Adding menu items to a shared order draft.
-- Menu translation admin editor and persistent cart/order draft submission.
+- Adding menu items to the shared draft from the guest UI.
+- Sending a shared draft to waiter review.
+- Menu translation admin editor.
 - QR PDF generation.
-- Shared order drafts.
+- Final order conversion.
 - Kitchen/bar workflows.
 - Payments and analytics.
 - Staff invitation acceptance flow and email/SMS delivery.

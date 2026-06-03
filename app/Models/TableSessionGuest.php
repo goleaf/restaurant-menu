@@ -59,4 +59,12 @@ class TableSessionGuest extends Model
     {
         return $this->hasMany(TableSessionJoinRequest::class, 'rejected_by_guest_id');
     }
+
+    /**
+     * @return HasMany<DraftOrderItem, $this>
+     */
+    public function draftOrderItems(): HasMany
+    {
+        return $this->hasMany(DraftOrderItem::class, 'table_session_guest_id');
+    }
 }

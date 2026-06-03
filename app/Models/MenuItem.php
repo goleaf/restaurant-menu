@@ -66,6 +66,14 @@ class MenuItem extends Model
     }
 
     /**
+     * @return HasMany<DraftOrderItem, $this>
+     */
+    public function draftOrderItems(): HasMany
+    {
+        return $this->hasMany(DraftOrderItem::class);
+    }
+
+    /**
      * @return BelongsToMany<ModifierGroup, $this>
      */
     public function modifierGroups(): BelongsToMany

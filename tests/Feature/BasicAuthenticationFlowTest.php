@@ -33,7 +33,7 @@ test('dashboard zones require authentication', function (string $routeName) {
     'superadmin' => 'superadmin.dashboard',
 ]);
 
-test('registered users can access protected dashboard zones', function () {
+test('registered users can access restaurant zones but not platform zones', function () {
     $this->post(route('register.store'), [
         'name' => 'Basic User',
         'email' => 'basic@example.com',
@@ -45,7 +45,7 @@ test('registered users can access protected dashboard zones', function () {
 
     $this->get(route('dashboard'))->assertOk();
     $this->get(route('restaurant.dashboard'))->assertOk();
-    $this->get(route('superadmin.dashboard'))->assertOk();
+    $this->get(route('superadmin.dashboard'))->assertForbidden();
 });
 
 test('password reset uses local mail configuration and can be requested', function () {

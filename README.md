@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, and branch settings.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, and basic superadmin access.
 
 ## Stack
 
@@ -16,6 +16,32 @@ This project is not only a QR menu. The current codebase is a clean shared-hosti
 - Local public storage in `storage/app/public`
 
 The project intentionally does not use Redis, WebSockets, Docker as a requirement, S3, paid external services, React, Vue, or a separate SPA frontend.
+
+## Superadmin Access
+
+`superadmin` is a platform-level role for SaaS administration. Superadmins can access the platform dashboard at:
+
+```text
+/superadmin/dashboard
+```
+
+The platform dashboard shows organizations, brands, branches, and users across the whole SaaS platform. Regular users do not see the platform dashboard link and receive `403 Forbidden` if they open the superadmin URL directly.
+
+The first superadmin can be created by setting these values in `.env` before running the database seeder:
+
+```text
+SUPERADMIN_NAME="Platform Superadmin"
+SUPERADMIN_EMAIL=admin@example.com
+SUPERADMIN_PASSWORD=change-this-password
+```
+
+Then run:
+
+```bash
+php artisan db:seed
+```
+
+Do not commit real superadmin credentials. The seeder stores only the user and assigns the fixed `superadmin` role.
 
 ## SQLite
 
@@ -44,6 +70,7 @@ Implemented:
 - Brands inside organizations.
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
+- Basic superadmin access for the platform dashboard.
 
 Branch settings currently include safe defaults:
 

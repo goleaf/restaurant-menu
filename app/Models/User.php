@@ -88,6 +88,10 @@ class User extends Authenticatable implements PasskeyUser
 
     public function hasPermission(SystemPermission|string $permission, Organization|int|null $organization = null): bool
     {
+        if ($this->isSuperadmin()) {
+            return true;
+        }
+
         $permissionCode = SystemPermission::resolveCode($permission);
 
         if ($organization !== null) {
@@ -113,8 +117,32 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canAccessOrganization(Organization|int $organization): bool
     {
+        if ($this->isSuperadmin()) {
+            return true;
+        }
+
         return $this->activeOrganizationMembershipQuery($organization)
             ->exists();
+    }
+
+    public function hasSystemRole(SystemRole|string $role): bool
+    {
+        $systemRole = $role instanceof SystemRole ? $role : SystemRole::from($role);
+
+        if ($this->relationLoaded('roles')) {
+            return $this->roles->contains(
+                fn (Role $currentRole): bool => $currentRole->code === $systemRole,
+            );
+        }
+
+        return $this->roles()
+            ->where('roles.code', $systemRole->value)
+            ->exists();
+    }
+
+    public function isSuperadmin(): bool
+    {
+        return $this->hasSystemRole(SystemRole::Superadmin);
     }
 
     public function hasOrganizationRole(Organization|int $organization, SystemRole|string $role): bool
@@ -130,7 +158,8 @@ class User extends Authenticatable implements PasskeyUser
 
     public function canManageOrganizationBrands(Organization|int $organization): bool
     {
-        return $this->hasOrganizationRole($organization, SystemRole::Owner)
+        return $this->isSuperadmin()
+            || $this->hasOrganizationRole($organization, SystemRole::Owner)
             || $this->hasOrganizationRole($organization, SystemRole::Director);
     }
 

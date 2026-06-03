@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\SystemRole;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\SystemRolesSeeder;
 
 test('guest interface placeholder is public and mobile first', function () {
     $this->get(route('guest.home'))
@@ -37,12 +40,27 @@ test('superadmin dashboard requires authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-test('superadmin dashboard placeholder is available to authenticated users', function () {
+test('superadmin dashboard is blocked for regular authenticated users', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
         ->get(route('superadmin.dashboard'))
+        ->assertForbidden();
+});
+
+test('superadmin dashboard is available to superadmin users', function () {
+    $this->seed(SystemRolesSeeder::class);
+
+    $user = User::factory()->create();
+    $role = Role::query()
+        ->where('code', SystemRole::Superadmin->value)
+        ->firstOrFail();
+
+    $user->roles()->syncWithoutDetachingOrFail([$role->id]);
+
+    $this->actingAs($user)
+        ->get(route('superadmin.dashboard'))
         ->assertOk()
-        ->assertSee('data-layout="superadmin-dashboard"', false)
-        ->assertSee('Superadmin dashboard');
+        ->assertSee('data-layout="platform-dashboard"', false)
+        ->assertSee('Platform dashboard');
 });

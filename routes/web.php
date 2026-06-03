@@ -4,6 +4,7 @@ use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranche
 use App\Livewire\Organizations\Brands\Branches\Settings as OrganizationBrandBranchSettings;
 use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
+use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -55,7 +56,10 @@ Route::middleware(['auth'])
     ->prefix('superadmin')
     ->name('superadmin.')
     ->group(function () {
-        Route::livewire('dashboard', 'pages::superadmin.dashboard')->name('dashboard');
+        Route::middleware(['superadmin'])
+            ->group(function () {
+                Route::livewire('dashboard', SuperadminDashboard::class)->name('dashboard');
+            });
     });
 
 require __DIR__.'/settings.php';

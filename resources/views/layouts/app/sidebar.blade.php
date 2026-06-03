@@ -24,9 +24,11 @@
                         {{ __('Restaurant') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="layout-grid" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
-                        {{ __('Superadmin') }}
-                    </flux:sidebar.item>
+                    @if ($canAccessPlatformDashboard ?? false)
+                        <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
+                            {{ __('Platform') }}
+                        </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

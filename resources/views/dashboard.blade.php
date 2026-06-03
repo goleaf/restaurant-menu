@@ -15,11 +15,13 @@
                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Simple placeholder for restaurant operations.</p>
             </a>
 
-            <a href="{{ route('superadmin.dashboard') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Platform staff</p>
-                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Superadmin dashboard</h2>
-                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Simple placeholder for platform administration.</p>
-            </a>
+            @if ($canAccessPlatformDashboard ?? false)
+                <a href="{{ route('superadmin.dashboard') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Platform staff</p>
+                    <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Platform dashboard</h2>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Simple dashboard for SaaS platform administration.</p>
+                </a>
+            @endif
         </div>
 
         <div class="rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">

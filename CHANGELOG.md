@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 013 - Superadmin Access
+
+- Added first-superadmin seeding through safe `.env` configuration.
+- Added protected platform dashboard access for users with the fixed `superadmin` role.
+- Hid platform dashboard navigation from regular users and blocked direct access with `403 Forbidden`.
+- Added a simple platform dashboard that lists all organizations, brands, branches, and users.
+- Updated user access checks so superadmins bypass organization and branch-level restrictions.
+
 ### Prompt 012 - Branch Settings
 
 - Added branch settings defaults for order confirmation, guest approvals, guest-created sessions, waiter-opened sessions, invite links, polling interval, language, currency, service charge, tips, and order flow mode.

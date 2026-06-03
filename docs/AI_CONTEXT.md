@@ -41,6 +41,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Basic superadmin access for the platform dashboard.
 
 No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
@@ -93,6 +94,16 @@ Branch settings:
 - Created with each new branch.
 - Safely created on the settings page for existing branches that do not have settings yet.
 
+Superadmin access:
+
+- Uses the fixed `superadmin` role from the `roles` table.
+- First superadmin can be seeded from `SUPERADMIN_NAME`, `SUPERADMIN_EMAIL`, and `SUPERADMIN_PASSWORD`.
+- The superadmin route is protected by `superadmin` middleware.
+- The platform dashboard is visible only to superadmins.
+- Superadmins can see all organizations, brands, branches, and users.
+- Superadmins bypass organization and branch-level access checks.
+- Regular users keep organization-scoped access only.
+
 ## Branch Settings Defaults
 
 - `require_waiter_confirmation_for_orders`: true
@@ -117,7 +128,7 @@ Branch settings:
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
-- `GET /superadmin/dashboard` -> `superadmin.dashboard`
+- `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
 - Auth and profile routes are provided by Fortify and `routes/settings.php`.
 
 ## Livewire Components
@@ -126,6 +137,7 @@ Branch settings:
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
+- `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
 - `App\Livewire\Settings\Appearance`

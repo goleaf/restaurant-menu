@@ -64,4 +64,12 @@ class AreaNode extends Model
             ->orderBy('sort_order')
             ->orderBy('name');
     }
+
+    /**
+     * @return HasMany<ServicePoint, $this>
+     */
+    public function servicePoints(): HasMany
+    {
+        return $this->hasMany(ServicePoint::class);
+    }
 }

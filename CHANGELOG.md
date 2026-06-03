@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 019 - Service Points Schema
+
+- Added the `service_points` table for physical branch service locations.
+- Added fixed service point types for tables, bar seats, VIP tables, rooms, booths, sunbeds, hotel rooms, pickup windows, delivery points, and other points.
+- Added service point status values, model, factory, branch relationship, area node relationship, metadata casting, coordinate casting, and soft delete support.
+- Added tests for schema fields, fixed taxonomies, branch and area relationships, moving between areas without changing identity fields, optional area assignment, and soft delete behavior.
+
 ### Prompt 018 - Area Nodes CRUD
 
 - Added a branch area management page guarded by the `manage_zones` permission.

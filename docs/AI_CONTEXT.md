@@ -42,12 +42,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branches.
 - Branch settings.
 - Area nodes nested branch schema and CRUD UI.
+- Service points schema.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR, service point UI, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -70,6 +71,7 @@ No menu, QR, service point, guest session, order draft, kitchen, bar, payment, o
 - `brands`
 - `branches`
 - `area_nodes`
+- `service_points`
 - `branch_users`
 - `branch_settings`
 - `invitations`
@@ -95,6 +97,7 @@ Branch:
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
 - Has many nested area nodes.
+- Has many service points.
 - Has many branch staff assignments through `branch_users`.
 
 Area node:
@@ -110,7 +113,24 @@ Area node:
 - Managed from the branch area page guarded by `manage_zones`.
 - Area CRUD can create common presets, choose icons, rename, move inside another area, disable/enable, and soft delete.
 - Soft deleting an area moves its direct children to the deleted area's parent before hiding the deleted area.
-- No service points, physical tables, or QR logic exists yet.
+- No QR logic exists yet.
+
+Service point:
+
+- Stored in `service_points`.
+- Represents a physical service location inside one branch.
+- Belongs to one branch.
+- Can optionally belong to one area node through `area_node_id`.
+- Can be moved between area nodes by updating `area_node_id`.
+- Type is cast to `ServicePointType`.
+- Fixed types are `table`, `bar_seat`, `vip_table`, `room`, `booth`, `sunbed`, `hotel_room`, `pickup_window`, `delivery_point`, and `other`.
+- Status is cast to `ServicePointStatus`.
+- Status values are `available`, `occupied`, `reserved`, `unavailable`, and `maintenance`.
+- Stores `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, optional coordinates `position_x` and `position_y`, `is_active`, and optional JSON `metadata`.
+- Supports soft delete through `deleted_at`.
+- Future QR codes should attach to the stable service point record, not to the name, display number, branch path, or area path.
+- Renaming or moving a service point must not change future QR identity.
+- No service point CRUD UI or QR logic exists yet.
 
 Branch settings:
 
@@ -227,11 +247,11 @@ Staff permission overrides:
 - The UI uses Blade + Livewire + Flux components.
 - The tree is built in the Livewire component from one eager collection; Blade does not query the database.
 - The UI does not show technical IDs to users.
-- Service points and QR are intentionally not part of this step.
+- QR is intentionally not part of this step.
 
 ## Next Step
 
-The next expected product step may be invite acceptance flow or service points, but only implement it when a prompt explicitly requests it.
+The next expected product step may be service point CRUD UI, invite acceptance flow, or permanent QR token schema, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

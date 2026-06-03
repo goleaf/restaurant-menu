@@ -67,6 +67,14 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<ServicePoint, $this>
+     */
+    public function servicePoints(): HasMany
+    {
+        return $this->hasMany(ServicePoint::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

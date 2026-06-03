@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -119,7 +119,17 @@ Branch areas are managed at:
 
 The area UI is guarded by the `manage_zones` permission in the current organization context. It can add common zone presets, choose an icon, rename, move a zone inside another zone, disable/enable zones, and soft delete zones while keeping child zones visible.
 
-Service points, physical tables, and QR codes are not implemented yet.
+Area management does not create QR codes.
+
+## Service Points
+
+Service points are physical service locations inside a branch. They are stored in the `service_points` table and belong to one branch. A service point can optionally belong to an area node, so it can be moved between halls, floors, terraces, rooms, pickup areas, or other zones by changing `area_node_id`.
+
+Supported service point types are table, bar seat, VIP table, room, booth, sunbed, hotel room, pickup window, delivery point, and other.
+
+Service points store `type`, `name`, optional `display_number`, optional `internal_code`, `capacity`, optional `icon`, `status`, optional map coordinates, `is_active`, optional `metadata`, and support soft delete through `deleted_at`.
+
+Future permanent QR codes should be attached to the stable service point record. Renaming a service point or moving it to another area must not change the future QR identity. QR codes are not implemented yet.
 
 ## Current Scope
 
@@ -135,6 +145,7 @@ Implemented:
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
 - Nested branch areas stored in `area_nodes`.
+- Service point schema stored in `service_points`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -156,7 +167,6 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- Service points / physical tables.
 - Permanent QR public tokens.
 - Guest table sessions.
 - Shared order drafts.

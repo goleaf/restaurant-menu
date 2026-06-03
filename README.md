@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, basic menu schema, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -141,11 +141,11 @@ Current logo upload rules:
 - allowed extensions: `jpg`, `jpeg`, `png`, `webp`;
 - maximum size: 2 MB.
 
-Future dish images should reuse the same local public storage approach. Menu item image paths are now available in the menu schema, but dish upload UI is not implemented yet.
+Dish images use the same local public storage approach and are stored under branch-scoped menu item folders in `storage/app/public/media`.
 
-## Menu Schema
+## Branch Menu Management
 
-The base menu tables are ready for future menu management:
+The base menu tables are:
 
 - `menus`
 - `menu_categories`
@@ -157,7 +157,15 @@ Menu categories belong to one menu and can be nested with `parent_id`. They stor
 
 Menu items belong to one menu and one category. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
 
-This step is schema-only. There is no menu CRUD UI, guest menu display, translations, modifiers, order draft, kitchen/bar flow, or payment logic yet.
+Branch menu management is available at:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/menu
+```
+
+Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, and dishes. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices requires `change_prices`; changing dish availability requires `change_availability`.
+
+This admin UI does not show menus to guests yet and does not add translations, modifiers, order draft, kitchen/bar flow, or payment logic.
 
 ## Area Nodes
 
@@ -385,7 +393,7 @@ Implemented:
 - Local logo uploads for organizations, brands, and branches.
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
-- Basic menu schema stored in `menus`, `menu_categories`, and `menu_items`.
+- Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
@@ -411,7 +419,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Menu CRUD/admin UI, guest menu display, translations, and modifiers.
+- Guest menu display, menu translations, and menu modifiers.
 - QR PDF generation.
 - Shared order drafts.
 - Kitchen/bar workflows.

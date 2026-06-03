@@ -17,6 +17,15 @@ enum MenuStatus: string
         };
     }
 
+    public function badgeColor(): string
+    {
+        return match ($this) {
+            self::Draft => 'zinc',
+            self::Active => 'green',
+            self::Archived => 'amber',
+        };
+    }
+
     /**
      * @return list<string>
      */

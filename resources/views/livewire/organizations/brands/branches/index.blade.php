@@ -120,11 +120,17 @@
                             @endif
                         </div>
 
-                        @if ($canManageBranches || $canManageZones || $canChangeServicePointStatus || $canOpenTable || $canGenerateQr || $canManageStaff)
+                        @if ($canManageBranches || $canManageZones || $canManageMenu || $canChangeServicePointStatus || $canOpenTable || $canGenerateQr || $canManageStaff)
                             <div class="flex flex-wrap gap-2 md:justify-end">
                                 @if ($canManageZones)
                                     <flux:button icon="rectangle-group" type="button" :href="route('organizations.brands.branches.areas.index', [$organization, $brand, $branch])" wire:navigate>
                                         {{ __('Areas') }}
+                                    </flux:button>
+                                @endif
+
+                                @if ($canManageMenu)
+                                    <flux:button icon="book-open" type="button" :href="route('organizations.brands.branches.menu.index', [$organization, $brand, $branch])" wire:navigate>
+                                        {{ __('Menu') }}
                                     </flux:button>
                                 @endif
 

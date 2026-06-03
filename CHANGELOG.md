@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 040 - Menu CRUD
+
+- Added a branch admin menu page guarded by `manage_menu`.
+- Added CRUD for menus, categories, and dishes with simple manual sort ordering and a branch dish list.
+- Added local dish photo upload/removal on the public disk without S3 or external media services.
+- Kept price edits behind `change_prices` and availability edits behind `change_availability`.
+- Kept this step admin-only: no guest menu display, translations, modifiers, order draft, kitchen/bar flow, payment logic, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 039 - Menu Schema
 
 - Added base menu tables: `menus`, `menu_categories`, and `menu_items`.

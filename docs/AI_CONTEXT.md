@@ -45,7 +45,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Basic menu schema with branch menus, nested menu categories, and menu items.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, and permission-gated price/availability changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -57,7 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu CRUD UI, guest menu display, translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No guest menu display, menu translations, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -128,7 +128,9 @@ Menu:
 - Current status values are `draft`, `active`, and `archived`.
 - Stores `name` and `sort_order`.
 - Has many categories and items.
-- This prompt added schema and models only; no menu CRUD UI or guest menu display exists yet.
+- Managed from the branch menu page guarded by `manage_menu`.
+- The menu admin UI can create, edit, sort, and delete menus.
+- No guest menu display exists yet.
 
 Menu category:
 
@@ -137,7 +139,9 @@ Menu category:
 - Can optionally belong to a parent category through `parent_id`.
 - Supports nested category structures through `parent` and `children` relationships.
 - Stores `name`, optional `description`, optional `image`, optional `icon`, `sort_order`, and `is_active`.
-- Image is a local-storage path placeholder for future uploads; no dish/category upload UI exists yet.
+- Managed from the branch menu page guarded by `manage_menu`.
+- The menu admin UI can create, edit, sort, activate/deactivate, and delete categories.
+- Category image paths still exist in the schema, but category upload UI is not implemented yet.
 
 Menu item:
 
@@ -146,7 +150,11 @@ Menu item:
 - Belongs to one category through `category_id`.
 - Stores `name`, optional `description`, `price`, optional `image`, optional `weight`, optional `volume`, optional `calories`, `is_available`, and `sort_order`.
 - `price`, `weight`, and `volume` are decimal casts; `is_available` is a boolean cast.
-- Image is a local-storage path placeholder for future uploads; no dish upload UI exists yet.
+- Managed from the branch menu page guarded by `manage_menu`.
+- Dish photo upload/removal is implemented with local public storage only.
+- Dish photos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/menu-items/{item}/images`.
+- Creating or editing dish price requires `change_prices`; without it, price edits are preserved as the current value.
+- Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
 - No translations, modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
 
 Area node:
@@ -409,12 +417,13 @@ Local media storage:
 - Organization logos are stored under `media/organizations/{organization}/logos`.
 - Brand logos are stored under `media/organizations/{organization}/brands/{brand}/logos`.
 - Branch logos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/logos`.
+- Dish photos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/menu-items/{item}/images`.
 - Current logo paths are stored in `organizations.logo_path`, `brands.logo_path`, and `branches.logo_path`.
 - `StoreLocalImageAction` stores images on the public disk and deletes the previous file when replacing a logo.
 - `DeleteLocalMediaFileAction` removes old local files when a logo is removed.
 - `HasLocalLogo` exposes `logoUrl()` for local public logo URLs.
 - Current upload validation allows only images with `jpg`, `jpeg`, `png`, or `webp` extensions and a maximum size of 2 MB.
-- Future dish/category upload UI should reuse the local public storage pattern. Menu image path columns exist, but uploads for dishes/categories are not implemented yet.
+- Category image path columns exist, but category upload UI is not implemented yet.
 
 ## Branch Settings Defaults
 
@@ -442,6 +451,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/menu` -> `organizations.brands.branches.menu.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print` -> `organizations.brands.branches.qr.print`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points` -> `organizations.brands.branches.service-points.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` -> `organizations.brands.branches.service-points.qr.show`
@@ -460,6 +470,7 @@ Local media storage:
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Areas`
+- `App\Livewire\Organizations\Brands\Branches\Menu\Index`
 - `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate`
@@ -500,6 +511,23 @@ Local media storage:
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
 - Waiting guests stay on a clear waiting screen until polling sees approval, rejection, or expiration.
 - Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
+
+## Current Branch Menu UI
+
+- Branch menu route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/menu`.
+- Route model nesting is checked in the Livewire component: brand must belong to organization, and branch must belong to the route brand and organization.
+- Access requires `manage_menu` in the current organization context; superadmin bypass still works through computed permissions.
+- The UI uses Blade + Livewire + Flux components and does not use React, Vue, WebSockets, Redis, S3, Docker, or external media services.
+- The page can create, edit, manually sort, and delete menus.
+- The page can create, edit, manually sort, activate/deactivate, and delete categories.
+- The page can create, edit, manually sort, and delete dishes.
+- Dish photo upload/removal uses `StoreLocalImageAction` and `DeleteLocalMediaFileAction` on Laravel's local `public` disk.
+- The page eager-loads categories, items, item category labels, and menu counts; Blade must not query the database.
+- Price fields are only shown and applied for users with `change_prices`.
+- Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
+- Deleting dishes, categories, or menus removes related local dish photos.
+- The branch list shows a `Menu` action only to users with `manage_menu`.
+- This UI is admin-only. It does not make public QR pages display menu rows.
 
 ## Current Service Point UI
 
@@ -574,7 +602,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be menu CRUD, guest menu display, QR PDF generation, staff invite acceptance flow, or order draft foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be guest menu display, QR PDF generation, staff invite acceptance flow, or order draft foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -586,7 +614,9 @@ The next expected product step may be menu CRUD, guest menu display, QR PDF gene
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest table page read or display menu rows until a prompt explicitly asks for guest menu display.
-- Do not add menu translations, modifiers, order draft, kitchen/bar, or payment logic in schema-only menu steps.
+- Do not add menu translations, modifiers, order draft, kitchen/bar, or payment logic in menu admin steps.
+- Do not let users without `change_prices` change menu item prices.
+- Do not let users without `change_availability` change menu item availability.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
 - Do not print service point number or area by default on QR stickers.

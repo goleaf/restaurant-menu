@@ -29,19 +29,14 @@ class DraftOrder extends Component
     public string $currency = 'EUR';
 
     /**
-     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
+     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
      */
     public array $items = [];
 
     /**
-     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
+     * @var list<array{guest_id: int, guest_name: string, total: string, is_current_guest: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
      */
-    public array $myItems = [];
-
-    /**
-     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
-     */
-    public array $otherItems = [];
+    public array $guestSections = [];
 
     /**
      * @var list<array{guest_id: int, guest_name: string, total: string, is_current_guest: bool}>
@@ -95,74 +90,83 @@ class DraftOrder extends Component
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder();
         $draftItems = $draftOrder?->items ?? collect();
-        $guestTotals = [];
+        $guestSections = [];
         $totalCents = 0;
 
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
 
-        $guests->each(function (TableSessionGuest $guest) use (&$guestTotals): void {
-            $guestTotals[$guest->id] = [
+        $guests->each(function (TableSessionGuest $guest) use (&$guestSections): void {
+            $guestSections[$guest->id] = [
                 'guest_id' => $guest->id,
                 'guest_name' => $guest->guest_name,
                 'total_cents' => 0,
                 'is_current_guest' => $guest->id === $this->currentGuestId,
+                'items' => [],
             ];
         });
 
         $items = $draftItems
-            ->map(function (DraftOrderItem $item) use (&$guestTotals, &$totalCents): array {
+            ->map(function (DraftOrderItem $item) use (&$guestSections, &$totalCents): array {
                 $itemTotalCents = self::decimalToCents($item->total_price);
+                $unitTotalCents = max(0, self::decimalToCents($item->unit_price) + self::decimalToCents($item->modifier_total));
                 $totalCents += $itemTotalCents;
+                $guestId = (int) $item->table_session_guest_id;
+                $guestName = $item->guest?->guest_name ?? __('Гость');
 
-                if ($item->guest instanceof TableSessionGuest && ! isset($guestTotals[$item->guest->id])) {
-                    $guestTotals[$item->guest->id] = [
-                        'guest_id' => $item->guest->id,
-                        'guest_name' => $item->guest->guest_name,
+                if (! isset($guestSections[$guestId])) {
+                    $guestSections[$guestId] = [
+                        'guest_id' => $guestId,
+                        'guest_name' => $guestName,
                         'total_cents' => 0,
-                        'is_current_guest' => $item->guest->id === $this->currentGuestId,
+                        'is_current_guest' => $guestId === $this->currentGuestId,
+                        'items' => [],
                     ];
                 }
 
-                if ($item->guest instanceof TableSessionGuest) {
-                    $guestTotals[$item->guest->id]['total_cents'] += $itemTotalCents;
-                }
+                $guestSections[$guestId]['total_cents'] += $itemTotalCents;
 
                 $isCurrentGuest = $item->table_session_guest_id === $this->currentGuestId;
 
-                return [
+                $itemPayload = [
                     'id' => $item->id,
-                    'guest_id' => (int) $item->table_session_guest_id,
-                    'guest_name' => $item->guest?->guest_name ?? __('Гость'),
+                    'guest_id' => $guestId,
+                    'guest_name' => $guestName,
                     'item_name' => $item->item_name,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                     'modifier_total' => $item->modifier_total,
+                    'unit_total_price' => self::centsToDecimal($unitTotalCents),
                     'total_price' => $item->total_price,
                     'modifiers' => $this->modifierSummary($item->selected_modifiers),
                     'comment' => $item->comment,
                     'is_current_guest' => $isCurrentGuest,
                     'can_edit' => $isCurrentGuest && $this->canEditDraft && $this->publicToken !== '',
                 ];
+
+                $guestSections[$guestId]['items'][] = $itemPayload;
+
+                return $itemPayload;
             });
 
         $this->items = $items->values()->all();
-        $this->myItems = $items
-            ->filter(fn (array $item): bool => $item['is_current_guest'])
-            ->values()
-            ->all();
-        $this->otherItems = $items
-            ->reject(fn (array $item): bool => $item['is_current_guest'])
-            ->values()
-            ->all();
-        $this->guestTotals = collect($guestTotals)
-            ->sortBy(fn (array $guestTotal): string => mb_strtolower($guestTotal['guest_name']))
-            ->map(fn (array $guestTotal): array => [
-                'guest_id' => $guestTotal['guest_id'],
-                'guest_name' => $guestTotal['guest_name'],
-                'total' => self::centsToDecimal($guestTotal['total_cents']),
-                'is_current_guest' => $guestTotal['is_current_guest'],
+        $this->guestSections = collect($guestSections)
+            ->sortBy(fn (array $guestSection): string => mb_strtolower($guestSection['guest_name']))
+            ->map(fn (array $guestSection): array => [
+                'guest_id' => $guestSection['guest_id'],
+                'guest_name' => $guestSection['guest_name'],
+                'total' => self::centsToDecimal($guestSection['total_cents']),
+                'is_current_guest' => $guestSection['is_current_guest'],
+                'items' => $guestSection['items'],
             ])
             ->values()
+            ->all();
+        $this->guestTotals = collect($this->guestSections)
+            ->map(fn (array $guestSection): array => [
+                'guest_id' => $guestSection['guest_id'],
+                'guest_name' => $guestSection['guest_name'],
+                'total' => $guestSection['total'],
+                'is_current_guest' => $guestSection['is_current_guest'],
+            ])
             ->all();
 
         $this->totalAmount = self::centsToDecimal($totalCents);

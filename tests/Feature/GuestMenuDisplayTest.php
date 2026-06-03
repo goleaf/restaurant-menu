@@ -335,13 +335,35 @@ test('draft order component shows shared items and guest totals through polling 
             'currency' => 'EUR',
         ])
         ->assertSee('data-component="guest-draft-order"', false)
-        ->assertSeeText('Мои позиции')
-        ->assertSeeText('Позиции других гостей')
+        ->assertSeeText('Гости')
+        ->assertSeeText('По алфавиту')
         ->assertSeeText('Margherita')
         ->assertSeeText('Water')
         ->assertSeeText('Large')
         ->assertSeeText('Изменить')
-        ->assertSeeTextInOrder(['Ana', '10.00 EUR', 'Zara', '12.50 EUR'])
+        ->assertSet('guestSections.0.guest_name', 'Ana')
+        ->assertSet('guestSections.0.items.0.item_name', 'Water')
+        ->assertSet('guestSections.0.items.0.can_edit', true)
+        ->assertSet('guestSections.1.guest_name', 'Zara')
+        ->assertSet('guestSections.1.items.0.item_name', 'Margherita')
+        ->assertSet('guestSections.1.items.0.can_edit', false)
+        ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
+        ->assertSeeText('22.50 EUR');
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $zara->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $zara->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSet('guestSections.0.guest_name', 'Ana')
+        ->assertSet('guestSections.0.items.0.item_name', 'Water')
+        ->assertSet('guestSections.0.items.0.can_edit', false)
+        ->assertSet('guestSections.1.guest_name', 'Zara')
+        ->assertSet('guestSections.1.items.0.item_name', 'Margherita')
+        ->assertSet('guestSections.1.items.0.can_edit', true)
+        ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
         ->assertSeeText('22.50 EUR');
 });
 

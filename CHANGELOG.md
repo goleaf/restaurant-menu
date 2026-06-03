@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-04
+
+### Prompt 049 - Shared Table Cart UI
+
+- Reworked the isolated public QR basket into a shared table cart grouped by active guests alphabetically.
+- Each guest section now shows that guest's draft positions, line prices, modifiers, comments, item counts, and guest total.
+- The cart keeps the table total visible and continues to refresh only the basket block through Livewire polling.
+- All active guests see the same grouped cart information; edit and delete controls appear only on the current guest's own draft positions.
+- Draft cart reads current `draft_orders` and `draft_order_items` from SQLite on refresh and does not cache draft state.
+- Kept this step UI-only for the shared cart: no waiter review screen, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ## 2026-06-03
 
 ### Prompt 048 - Guest Draft Item Editing

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema and guest item editing, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest item editing, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -191,7 +191,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. It does not yet submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
+The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. It does not yet submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
 
 ## Area Nodes
 
@@ -370,9 +370,11 @@ Each draft item belongs to one concrete `table_session_guest` and may reference 
 
 Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
 
-The shared basket is a separate Livewire polling block. It separates `Мои позиции` from `Позиции других гостей`, shows per-guest totals sorted alphabetically by `guest_name`, and shows the total amount for the table.
+The shared basket is a separate Livewire polling block. It groups active guests alphabetically by `guest_name`, shows each guest's positions, line prices, selected modifiers, comments, item count, guest total, and the total amount for the table.
 
 An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, and draft status. Guests cannot edit or delete another guest's position.
+
+All active guests see the same grouped table cart information. Only the current guest gets edit and delete controls for their own positions.
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
@@ -450,7 +452,7 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display with modifier selection and guest draft item creation/editing on the active public QR table page.
+- Cached guest menu display with modifier selection, shared table cart UI, and guest draft item creation/editing on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - Shared draft order schema and guest-owned draft item creation/editing stored in `draft_orders` and `draft_order_items`.

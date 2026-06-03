@@ -179,7 +179,7 @@ Access requires `manage_menu` in the current organization context. Users can cre
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
 
-When a guest taps an available dish, a mobile-first bottom sheet lets them choose modifier options, satisfy required modifier groups, see the final item price with `price_delta`, and add a dish comment. This selection is local UI state only at this stage.
+When an active guest taps an available dish, a mobile-first bottom sheet lets them choose modifier options, satisfy required modifier groups, see the final item price with `price_delta`, and add a dish comment. Saving the sheet adds the position to the shared draft order for the table.
 
 The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with language-specific keys:
 
@@ -191,7 +191,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-The current guest menu UI does not yet write configured items to `draft_order_items`, submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
+The current guest menu UI writes configured items to `draft_order_items`, but it does not yet submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
 
 ## Area Nodes
 
@@ -304,7 +304,7 @@ An active guest can create an invite link for the current table session from the
 
 The link does not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or area names. When the invited person opens the link and enters a name, the system creates a pending join request for the current table session. Current active guests approve or reject it through the same Livewire polling approval UI.
 
-Guest-created sessions can display the cached branch menu for active guests, but they do not yet write guest selections to `draft_order_items`, create final orders, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
+Guest-created sessions can display the cached branch menu for active guests and write active guest selections to `draft_order_items`, but they do not create final orders, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
 
 ## Table Session Guests
 
@@ -345,9 +345,9 @@ The public QR page now shows a waiting state for the new guest. Active guests se
 
 Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
 
-After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, an empty shared order area, and the current total as `0,00 {currency}`.
+After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, and the shared draft basket.
 
-The guest list is rendered by a separate isolated Livewire component and refreshes with polling. This keeps the guest list current without refreshing the whole guest page.
+The guest list and shared draft basket are rendered by separate isolated Livewire components and refresh with polling. This keeps those blocks current without refreshing the whole guest page.
 
 ## Draft Orders
 
@@ -368,9 +368,11 @@ Draft order statuses are:
 
 Each draft item belongs to one concrete `table_session_guest` and may reference a `menu_item`. The item stores a snapshot of `item_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers as JSON, and an optional guest comment. This keeps the table draft stable if menu names or prices change later.
 
-The backend model can calculate the total amount for the whole draft and per-guest totals. Guest totals are sorted alphabetically by `guest_name`.
+Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
 
-This stage is schema and backend relationship foundation only. It does not add the guest action for adding menu items into the draft, the waiter review screen, final orders, kitchen/bar workflows, or payments.
+The shared basket is a separate Livewire polling block. It shows all draft positions, per-guest totals sorted alphabetically by `guest_name`, and the total amount for the table.
+
+This stage does not add the waiter review screen, final orders, kitchen/bar workflows, or payments.
 
 ## Permanent QR Codes
 
@@ -444,10 +446,10 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display with modifier selection on the active public QR table page.
+- Cached guest menu display with modifier selection and guest draft item creation on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
-- Shared draft order schema stored in `draft_orders` and `draft_order_items`.
+- Shared draft order schema and guest draft item creation stored in `draft_orders` and `draft_order_items`.
 - First guest pending session creation from the public QR landing.
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
@@ -471,7 +473,6 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Adding menu items to the shared draft from the guest UI.
 - Sending a shared draft to waiter review.
 - Menu translation admin editor.
 - QR PDF generation.

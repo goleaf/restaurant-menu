@@ -2,7 +2,12 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Models\MenuItem;
+use App\Models\TableSession;
+use App\Models\TableSessionGuest;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -11,6 +16,14 @@ use Livewire\Component;
 class GuestMenu extends Component
 {
     public int $branchId;
+
+    public int $tableSessionId = 0;
+
+    public int $currentGuestId = 0;
+
+    public string $publicToken = '';
+
+    public bool $guestCanAddItems = false;
 
     public string $currency = 'EUR';
 
@@ -31,15 +44,27 @@ class GuestMenu extends Component
 
     public string $itemComment = '';
 
+    public string $feedbackMessage = '';
+
     /**
      * @var array<int, array{name: string, total_price: string, modifier_summary: list<string>, comment: string|null}>
      */
     public array $configuredItems = [];
 
-    public function mount(int $branchId, string $currency = 'EUR'): void
-    {
+    public function mount(
+        int $branchId,
+        string $currency = 'EUR',
+        int $tableSessionId = 0,
+        int $currentGuestId = 0,
+        string $publicToken = '',
+        bool $guestCanAddItems = false,
+    ): void {
         $this->branchId = $branchId;
         $this->currency = $currency;
+        $this->tableSessionId = $tableSessionId;
+        $this->currentGuestId = $currentGuestId;
+        $this->publicToken = $publicToken;
+        $this->guestCanAddItems = $guestCanAddItems;
         $this->languageOptions = GetGuestMenuForBranchAction::supportedLanguageLabels();
         $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $this->language);
     }
@@ -54,6 +79,10 @@ class GuestMenu extends Component
 
     public function openItem(int $itemId): void
     {
+        if (! $this->guestCanAddItems) {
+            return;
+        }
+
         $item = $this->findItemInGuestMenu($itemId);
 
         if ($item === null || ! (bool) $item['is_available']) {
@@ -119,9 +148,10 @@ class GuestMenu extends Component
         $this->selectedModifierOptions[(string) $modifierGroupId] = array_values($selected);
     }
 
-    public function saveConfiguredItem(): void
+    public function saveConfiguredItem(AddGuestDraftOrderItemAction $addGuestDraftOrderItem): void
     {
         $this->resetValidation();
+        $this->feedbackMessage = '';
 
         $item = $this->selectedItem();
 
@@ -136,12 +166,39 @@ class GuestMenu extends Component
         }
 
         $this->itemComment = trim($this->itemComment);
+
+        $tableSession = $this->currentTableSession();
+        $guest = $this->currentActiveGuest();
+        $menuItem = $this->menuItemFor($item);
+
+        if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest || ! $menuItem instanceof MenuItem) {
+            $this->addError('guest', __('Только активный гость за этим столом может добавлять позиции.'));
+
+            return;
+        }
+
+        try {
+            $draftOrderItem = $addGuestDraftOrderItem->handle(
+                tableSession: $tableSession,
+                guest: $guest,
+                menuItem: $menuItem,
+                selectedModifierOptions: $this->selectedModifierOptions,
+                comment: $this->itemComment,
+                itemName: $item['name'],
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
         $this->configuredItems[$item['id']] = [
-            'name' => $item['name'],
-            'total_price' => $this->selectedItemTotal($item),
+            'name' => $draftOrderItem->item_name,
+            'total_price' => $draftOrderItem->total_price,
             'modifier_summary' => $this->selectedModifierSummary($item),
-            'comment' => $this->itemComment === '' ? null : $this->itemComment,
+            'comment' => $draftOrderItem->comment,
         ];
+        $this->feedbackMessage = __('Позиция добавлена в общий заказ.');
 
         $this->closeItemSheet();
     }
@@ -337,5 +394,95 @@ class GuestMenu extends Component
     private function centsToDecimal(int $amount): string
     {
         return number_format($amount / 100, 2, '.', '');
+    }
+
+    private function currentTableSession(): ?TableSession
+    {
+        if ($this->tableSessionId < 1) {
+            return null;
+        }
+
+        return TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'status',
+                'ended_at',
+            ])
+            ->whereKey($this->tableSessionId)
+            ->first();
+    }
+
+    private function currentActiveGuest(): ?TableSessionGuest
+    {
+        if ($this->currentGuestId < 1 || $this->tableSessionId < 1) {
+            return null;
+        }
+
+        $guestToken = $this->guestTokenFromCurrentState();
+
+        if ($guestToken === null) {
+            return null;
+        }
+
+        return TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->whereKey($this->currentGuestId)
+            ->where('table_session_id', $this->tableSessionId)
+            ->where('guest_token', $guestToken)
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function menuItemFor(array $item): ?MenuItem
+    {
+        return MenuItem::query()
+            ->select(['id'])
+            ->whereKey((int) $item['id'])
+            ->first();
+    }
+
+    private function guestTokenFromCurrentState(): ?string
+    {
+        if ($this->publicToken === '') {
+            return null;
+        }
+
+        $guestToken = request()->cookie($this->guestTokenCookieName($this->publicToken));
+
+        if (is_string($guestToken) && strlen($guestToken) === 64) {
+            return $guestToken;
+        }
+
+        $guestToken = session('guest_entries.'.$this->publicToken.'.guest_token');
+
+        if (! is_string($guestToken) || strlen($guestToken) !== 64) {
+            return null;
+        }
+
+        return $guestToken;
+    }
+
+    private function guestTokenCookieName(string $publicToken): string
+    {
+        return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
+    }
+
+    private function showValidationException(ValidationException $exception): void
+    {
+        foreach ($exception->errors() as $field => $messages) {
+            $this->addError($field, (string) collect($messages)->first());
+        }
     }
 }

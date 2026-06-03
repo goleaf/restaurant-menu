@@ -28,6 +28,16 @@
             <p class="text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('Меню пока недоступно') }}</p>
         </div>
     @else
+        @if ($feedbackMessage)
+            <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                {{ $feedbackMessage }}
+            </p>
+        @endif
+
+        @error('guest')
+            <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        @enderror
+
         <div class="mt-4 space-y-5">
             @forelse ($guestMenu['categories'] as $category)
                 <section wire:key="guest-menu-category-{{ $category['id'] }}" class="space-y-3">
@@ -86,7 +96,7 @@
                                         </div>
 
                                         <div class="mt-3">
-                                            @if ($item['is_available'])
+                                            @if ($item['is_available'] && $guestCanAddItems)
                                                 <div class="flex flex-wrap items-center gap-2">
                                                     <span class="inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
                                                         {{ __('Доступно') }}
@@ -97,9 +107,13 @@
                                                         wire:click="openItem({{ $item['id'] }})"
                                                         class="inline-flex min-h-9 items-center justify-center rounded-lg bg-zinc-900 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900"
                                                     >
-                                                        {{ __('Настроить') }}
+                                                        {{ __('Добавить') }}
                                                     </button>
                                                 </div>
+                                            @elseif ($item['is_available'])
+                                                <span class="inline-flex rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                    {{ __('Недоступно') }}
+                                                </span>
                                             @else
                                                 <span class="inline-flex rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                                     {{ __('Недоступно') }}
@@ -110,7 +124,7 @@
                                         @if (isset($configuredItems[$item['id']]))
                                             <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
                                                 <div class="flex flex-wrap items-center justify-between gap-2">
-                                                    <span class="font-semibold">{{ __('Выбрано') }}</span>
+                                                    <span class="font-semibold">{{ __('Добавлено') }}</span>
                                                     <span class="font-semibold">{{ $configuredItems[$item['id']]['total_price'] }} {{ $currency }}</span>
                                                 </div>
 
@@ -233,9 +247,12 @@
                     <button
                         type="button"
                         wire:click="saveConfiguredItem"
+                        wire:loading.attr="disabled"
+                        wire:target="saveConfiguredItem"
                         class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                     >
-                        {{ __('Готово') }} · {{ $selectedItemTotal }} {{ $currency }}
+                        <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('Добавить') }} · {{ $selectedItemTotal }} {{ $currency }}</span>
+                        <span wire:loading wire:target="saveConfiguredItem">{{ __('Добавляем') }}</span>
                     </button>
                 </div>
             </div>

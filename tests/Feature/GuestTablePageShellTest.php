@@ -31,10 +31,11 @@ test('active guest sees the guest table page shell', function () {
         ->assertSeeText('Пригласить гостя')
         ->assertSeeText('Меню')
         ->assertSeeText('Выбор блюд')
+        ->assertSee('data-component="guest-draft-order"', false)
         ->assertSeeText('Общий заказ')
         ->assertSeeText('Корзина')
         ->assertSeeText('Общая сумма')
-        ->assertSeeText('0,00 EUR')
+        ->assertSeeText('0.00 EUR')
         ->assertDontSee('id="guest-name"', false);
 });
 

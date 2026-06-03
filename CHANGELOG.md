@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 047 - Guest Draft Items
+
+- Added `AddGuestDraftOrderItemAction` so active guests can add configured menu items into the shared table draft.
+- Guest menu additions now persist to `draft_order_items` with item name, price, selected modifier, and comment snapshots.
+- Added an isolated `App\Livewire\PublicQr\DraftOrder` polling component for the shared basket block.
+- The shared basket now shows all draft positions, per-guest totals sorted by guest name, and the total table amount.
+- Rejected or removed guests cannot add draft items, and item creation rechecks the guest token, table session, menu item, and modifier availability.
+- Kept this step draft-only: no waiter review screen, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 046 - Draft Order Schema
 
 - Added `draft_orders` with one shared draft per `table_session`.

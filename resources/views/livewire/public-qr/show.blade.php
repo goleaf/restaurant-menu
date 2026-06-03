@@ -54,10 +54,8 @@
                             </div>
 
                             <div class="rounded-lg bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Общая сумма') }}</p>
-                                <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">
-                                    {{ __('0,00 :currency', ['currency' => $landing['branch_currency']]) }}
-                                </p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Заказ') }}</p>
+                                <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">{{ __('Черновик') }}</p>
                             </div>
                         </div>
 
@@ -181,34 +179,19 @@
                     <livewire:public-qr.guest-menu
                         :branch-id="$landing['branch_id']"
                         :currency="$landing['branch_currency']"
-                        wire:key="guest-menu-{{ $landing['branch_id'] }}"
+                        :table-session-id="$currentTableSessionId"
+                        :current-guest-id="$currentGuestId"
+                        :public-token="$token"
+                        :guest-can-add-items="$guestCanAddItems"
+                        wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
-                    <section class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Общий заказ') }}</p>
-                                <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Корзина') }}</h2>
-                            </div>
-
-                            <span class="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                {{ __('0 позиций') }}
-                            </span>
-                        </div>
-
-                        <div class="mt-4 space-y-3">
-                            <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                                {{ __('Пока пусто') }}
-                            </p>
-
-                            <div class="flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
-                                <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ __('Общая сумма') }}</span>
-                                <span class="text-xl font-semibold text-zinc-950 dark:text-white">
-                                    {{ __('0,00 :currency', ['currency' => $landing['branch_currency']]) }}
-                                </span>
-                            </div>
-                        </div>
-                    </section>
+                    <livewire:public-qr.draft-order
+                        :table-session-id="$currentTableSessionId"
+                        :current-guest-id="$currentGuestId"
+                        :currency="$landing['branch_currency']"
+                        wire:key="guest-draft-order-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
+                    />
                 </section>
             @else
                 <section data-page="guest-qr-landing" class="flex flex-col gap-5">

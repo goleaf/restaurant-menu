@@ -124,6 +124,14 @@
                                 @else
                                     <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
                                 @endif
+
+                                @if ($canGenerateQr)
+                                    @if ($servicePoint->activeQrCode)
+                                        <flux:badge color="green">{{ __('QR active') }}</flux:badge>
+                                    @else
+                                        <flux:badge color="zinc">{{ __('No QR') }}</flux:badge>
+                                    @endif
+                                @endif
                             </div>
 
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -133,6 +141,12 @@
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                 {{ __('Zone') }}: {{ $servicePoint->areaNode?->name ?? __('No zone') }} / {{ __('Capacity') }}: {{ $servicePoint->capacity }}
                             </p>
+
+                            @if ($canGenerateQr && $servicePoint->activeQrCode)
+                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('QR') }}: {{ $servicePoint->activeQrCode->short_code }} / {{ __($servicePoint->activeQrCode->status->label()) }}
+                                </p>
+                            @endif
                         </div>
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
@@ -148,6 +162,18 @@
                                         {{ __('Update status') }}
                                     </flux:button>
                                 </form>
+                            @endif
+
+                            @if ($canGenerateQr)
+                                @if ($servicePoint->activeQrCode)
+                                    <flux:button icon="qr-code" type="button" wire:click="showQr({{ $servicePoint->id }})">
+                                        {{ __('Show QR') }}
+                                    </flux:button>
+                                @else
+                                    <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
+                                        {{ __('Create QR') }}
+                                    </flux:button>
+                                @endif
                             @endif
 
                             @if ($canManageServicePoints)
@@ -166,6 +192,26 @@
                                 </flux:button>
                             @endif
                         </div>
+
+                        @if ($canGenerateQr && $shownQrServicePointId === $servicePoint->id)
+                            <div class="border-t border-zinc-200 pt-4 md:col-span-2 dark:border-zinc-800">
+                                @if ($servicePoint->activeQrCode)
+                                    <div class="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
+                                        <div class="min-w-0 space-y-1">
+                                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('QR') }} {{ $servicePoint->activeQrCode->short_code }}</p>
+                                            <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint->activeQrCode->publicPath() }}</p>
+                                            <p class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}: {{ __($servicePoint->activeQrCode->status->label()) }}</p>
+                                        </div>
+
+                                        <flux:button icon="x-mark" type="button" wire:click="hideQr">
+                                            {{ __('Hide') }}
+                                        </flux:button>
+                                    </div>
+                                @else
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No active QR yet.') }}</p>
+                                @endif
+                            </div>
+                        @endif
                     @endif
                 </div>
             @empty

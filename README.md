@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema and generation, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -155,6 +155,8 @@ Service point status can be changed manually by a user with `manage_service_poin
 
 Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
 
+Users with `generate_qr` can open the service point page, create a missing active QR, and show the existing QR details. Users without `generate_qr` cannot generate or show QR details from this UI.
+
 ## Permanent QR Codes
 
 Permanent QR records are stored in the `qr_codes` table.
@@ -177,6 +179,16 @@ The QR record does not store table numbers, service point names, area names, or 
 
 SQLite enforces one active QR per service point through an internal nullable `active_service_point_id` uniqueness guard. This allows disabled and revoked QR history while preventing a second active QR for the same physical service point.
 
+`GenerateQrCodeForServicePointAction` creates a QR only when the service point does not already have an active QR. If an active QR already exists, the action returns the existing record instead of creating a second active QR automatically.
+
+Generated QR URLs are displayed as:
+
+```text
+/q/{public_token}
+```
+
+The URL is shown for copying/printing preparation only. The public `/q/{public_token}` route is not implemented yet.
+
 PDF generation and the public QR route are not implemented yet.
 
 ## Current Scope
@@ -195,7 +207,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema stored in `qr_codes`.
+- Permanent QR schema and generation action stored in `qr_codes`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.

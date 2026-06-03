@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 023 - QR Generation Action
+
+- Added a backend action that creates an active permanent QR for a service point only when one does not already exist.
+- Added random 64-character public tokens and short human-readable QR codes for printing preparation.
+- Added QR controls to the service point page for users with the `generate_qr` permission.
+- Added QR status, short code, and `/q/{public_token}` display without adding the public QR route or PDF output.
+- Added tests proving repeated generation does not create a second active QR and QR identity stays stable after service point rename or move.
+
 ### Prompt 022 - Permanent QR Schema
 
 - Added the `qr_codes` table for permanent QR records attached to service points.

@@ -67,6 +67,8 @@ class Index extends Component
 
     public bool $canChangeServicePointStatus = false;
 
+    public bool $canGenerateQr = false;
+
     public bool $canManageStaff = false;
 
     public function mount(Organization $organization, Brand $brand): void
@@ -87,6 +89,7 @@ class Index extends Component
         $this->canManageServicePoints = $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $organization);
         $this->canChangeServicePointStatus = $this->canManageServicePoints
             || $this->currentUser()->hasOrganizationRole($organization, SystemRole::Waiter);
+        $this->canGenerateQr = $this->currentUser()->hasPermission(SystemPermission::GenerateQr, $organization);
         $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
     }
 

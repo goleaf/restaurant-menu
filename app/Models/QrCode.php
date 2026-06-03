@@ -46,6 +46,11 @@ class QrCode extends Model
         ];
     }
 
+    public function publicPath(): string
+    {
+        return '/q/'.$this->public_token;
+    }
+
     /**
      * @return BelongsTo<ServicePoint, $this>
      */

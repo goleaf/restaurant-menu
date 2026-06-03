@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
+use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
@@ -68,6 +70,10 @@ class Index extends Component
 
     public bool $canChangeServicePointStatus = false;
 
+    public bool $canGenerateQr = false;
+
+    public ?int $shownQrServicePointId = null;
+
     /**
      * @var array<int, string>
      */
@@ -96,8 +102,9 @@ class Index extends Component
         $this->canManageServicePoints = $user->hasPermission(SystemPermission::ManageServicePoints, $organization);
         $this->canChangeServicePointStatus = $this->canManageServicePoints
             || $user->hasOrganizationRole($organization, SystemRole::Waiter);
+        $this->canGenerateQr = $user->hasPermission(SystemPermission::GenerateQr, $organization);
 
-        if (! $this->canChangeServicePointStatus) {
+        if (! $this->canChangeServicePointStatus && ! $this->canGenerateQr) {
             abort(403);
         }
     }
@@ -233,6 +240,36 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Service point status updated.'));
     }
 
+    public function generateQr(int $servicePointId, GenerateQrCodeForServicePointAction $generateQrCode): void
+    {
+        $this->authorizeQrGeneration();
+
+        $servicePoint = $this->findBranchServicePoint($servicePointId);
+        $qrCode = $generateQrCode->handle($servicePoint, $this->currentUser());
+
+        $this->shownQrServicePointId = $servicePoint->id;
+        unset($this->servicePoints);
+
+        Flux::toast(
+            variant: 'success',
+            text: $qrCode->wasRecentlyCreated
+                ? __('QR created.')
+                : __('Active QR already exists.'),
+        );
+    }
+
+    public function showQr(int $servicePointId): void
+    {
+        $this->authorizeQrGeneration();
+
+        $this->shownQrServicePointId = $this->findBranchServicePoint($servicePointId)->id;
+    }
+
+    public function hideQr(): void
+    {
+        $this->shownQrServicePointId = null;
+    }
+
     /**
      * @return EloquentCollection<int, ServicePoint>
      */
@@ -256,16 +293,26 @@ class Index extends Component
                 'created_at',
                 'updated_at',
             ])
-            ->with(['areaNode' => fn ($query) => $query->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-            ])])
+            ->with([
+                'areaNode' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'parent_id',
+                    'type',
+                    'name',
+                    'icon',
+                    'sort_order',
+                    'is_active',
+                ]),
+                'activeQrCode' => fn ($query) => $query->select([
+                    'id',
+                    'service_point_id',
+                    'public_token',
+                    'short_code',
+                    'status',
+                    'created_at',
+                ])->where('status', QrCodeStatus::Active->value),
+            ])
             ->orderBy('area_node_id')
             ->orderBy('display_number')
             ->orderBy('name')
@@ -572,6 +619,13 @@ class Index extends Component
             ! $user->hasPermission(SystemPermission::ManageServicePoints, $this->organization)
             && ! $user->hasOrganizationRole($this->organization, SystemRole::Waiter)
         ) {
+            abort(403);
+        }
+    }
+
+    private function authorizeQrGeneration(): void
+    {
+        if (! $this->currentUser()->hasPermission(SystemPermission::GenerateQr, $this->organization)) {
             abort(403);
         }
     }

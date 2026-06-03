@@ -21,7 +21,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 
 - The product is a SaaS platform for restaurants, cafes, bars, hotels, food courts, and similar venues.
 - It must grow beyond a simple QR menu, but each prompt must stay small.
-- One physical table / place / service point will eventually have one permanent QR code.
+- One physical table / place / service point should have one active permanent QR code.
 - QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
 - Orders must require waiter confirmation by default.
 - New guests must require approval by default.
@@ -44,7 +44,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema.
+- Permanent QR schema and generation action.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
@@ -135,6 +135,7 @@ Service point:
 - Managed from the branch service point page guarded by `manage_service_points`.
 - Service point CRUD can add common presets, choose a zone, choose type/icon, set name, number, and capacity, rename, move to another zone, disable, and enable.
 - Manual status changes are allowed for users with `manage_service_points` and users with the fixed `waiter` role in the organization.
+- Users with `generate_qr` can access the service point page to create or show permanent QR details.
 - `UpdateServicePointStatusAction` updates only `service_points.status` and is the future reuse point for table sessions and orders.
 - `CreateServicePointAction` creates a stable `internal_code` once.
 - `UpdateServicePointAction` intentionally does not update `internal_code`.
@@ -154,6 +155,12 @@ QR code:
 - SQLite enforces one active QR per service point with internal nullable `active_service_point_id`.
 - Disabled and revoked QR history can exist for the same service point.
 - QR identity remains stable when the service point is renamed or moved to another area.
+- `GenerateQrCodeForServicePointAction` creates a new active QR only when the service point has no active QR.
+- If an active QR already exists, `GenerateQrCodeForServicePointAction` returns the existing active QR and does not create a second active QR automatically.
+- Generated `public_token` values are 64-character random strings.
+- Generated `short_code` values use the `QR-XXXXXXXX` format with a readable uppercase alphabet.
+- `QrCode::publicPath()` returns `/q/{public_token}` for UI display, but the public route is not registered yet.
+- The branch service point page can show QR status, `short_code`, and `/q/{public_token}` for users with `generate_qr`.
 - No public QR route or PDF/printing output exists yet.
 
 Branch settings:
@@ -265,6 +272,17 @@ Staff permission overrides:
 - `App\Livewire\Settings\TwoFactor\RecoveryCodes`
 - `App\Livewire\Actions\Logout`
 
+## Current Service Point UI
+
+- Branch service point route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
+- Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
+- Users can access the page when they can change service point statuses or when they have `generate_qr` in the current organization context.
+- CRUD actions still require `manage_service_points`.
+- Manual status changes require `manage_service_points` or the fixed `waiter` organization role.
+- QR generation and QR detail display require `generate_qr`.
+- The UI eager-loads `areaNode` and `activeQrCode`; Blade must not query the database.
+- The QR panel displays `short_code`, status, and `/q/{public_token}` only. It must not expose service point IDs, branch IDs, area names, or table numbers in the QR URL.
+
 ## Current Branch Area UI
 
 - Branch area route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas`.
@@ -277,7 +295,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be invite acceptance flow, public QR route, QR management UI, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be public QR route, QR management details, QR printing/PDF output, invite acceptance flow, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -285,6 +303,7 @@ The next expected product step may be invite acceptance flow, public QR route, Q
 - Do not add unrelated future features.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not expose internal IDs in future QR/public guest URLs.
+- Do not make QR generation create a second active QR automatically when one already exists.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.
 - Do not commit `.env`, SQLite database files, `vendor`, `node_modules`, or storage uploads.

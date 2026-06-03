@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 032 - Guest-Created Pending Session
+
+- Added `table_session_guests` for storing guests inside a table session.
+- Added a guest-created pending session action for the public QR landing.
+- The first guest now creates a pending table session and becomes the first active guest when branch settings allow guest-created sessions.
+- Added a SQLite-safe pending-session guard so repeat submits do not create duplicate pending sessions for the same service point.
+- Kept the step limited to guest entry and pending sessions: no menu, orders, kitchen/bar, payment, or join approval flow.
+
 ### Prompt 031 - Waiter Open Table Action
 
 - Added a waiter open-table backend action that creates an active table session for a service point.

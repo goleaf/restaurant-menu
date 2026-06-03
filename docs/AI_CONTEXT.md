@@ -47,13 +47,15 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Service point operational statuses and manual status changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
+- Guest-created pending table sessions from the public QR landing.
+- Table session guests for storing guests inside a table session.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, guest records, guest-created table sessions, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, guest join approval, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -78,6 +80,7 @@ No menu, QR PDF generation, guest records, guest-created table sessions, order d
 - `area_nodes`
 - `service_points`
 - `table_sessions`
+- `table_session_guests`
 - `qr_codes`
 - `branch_users`
 - `branch_settings`
@@ -157,9 +160,10 @@ Table session:
 - Belongs to one branch through `branch_id`.
 - Belongs to one service point through `service_point_id`.
 - Uses internal nullable `active_service_point_id` to enforce one active table session per service point on SQLite.
-- Can be opened by a future staff user through nullable `opened_by_user_id`.
-- Can be opened by a future guest through nullable `opened_by_guest_id`.
-- `opened_by_guest_id` is intentionally a nullable indexed integer placeholder right now because guest records are not implemented yet.
+- Uses internal nullable `pending_service_point_id` to enforce one pending table session per service point on SQLite.
+- Can be opened by a staff user through nullable `opened_by_user_id`.
+- Can be opened by a guest through nullable `opened_by_guest_id`.
+- `opened_by_guest_id` stores the first `table_session_guests.id` for a guest-created pending session.
 - Can be closed by a future staff user through nullable `closed_by_user_id`.
 - Status is cast to `TableSessionStatus`.
 - Status values are `pending`, `active`, `waiting_waiter_confirmation`, `payment_requested`, `paid`, `closed`, and `cancelled`.
@@ -170,11 +174,27 @@ Table session:
 - Stores `started_at`, `ended_at`, and optional JSON `metadata`.
 - Has indexes for branch/status, service point/status, branch/service point/status, source/status, `opened_by_guest_id`, and `started_at`.
 - `TableSession` sets `active_service_point_id` automatically while saving active sessions and clears it for non-active statuses.
+- `TableSession` sets `pending_service_point_id` automatically while saving pending sessions and clears it for non-pending statuses.
 - `ServicePoint::activeTableSession()` returns the current active table session for UI display.
 - `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active session exists.
 - If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
 - Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
-- No guest creation, order draft, order, kitchen/bar, or payment logic exists yet.
+- `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
+- If an active session already exists, guest QR entry does not create a new pending session or guest yet; it returns a future-join message.
+- If a pending session already exists, guest QR entry does not create another first guest yet; it returns a pending-session message.
+- No order draft, order, kitchen/bar, payment, or additional guest approval logic exists yet.
+
+Table session guest:
+
+- Stored in `table_session_guests`.
+- Belongs to one table session through `table_session_id`.
+- Stores `name`, `status`, `joined_at`, optional `left_at`, optional JSON `metadata`, and timestamps.
+- Status is cast to `TableSessionGuestStatus`.
+- Status values are `active`, `pending_approval`, `left`, and `removed`.
+- The first guest from a guest-created pending session is stored as `active`.
+- `TableSession::guests()` returns all session guests.
+- `TableSession::activeGuests()` returns active guests ordered by name and id.
+- Additional guest approval is not implemented yet.
 
 QR code:
 
@@ -224,7 +244,12 @@ QR code:
 - Active QR codes attached to inactive service points show a public unavailable message.
 - Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
 - The public guest landing page shows venue name, local logo when available, current area, current service point, short code, guest name field, and `Войти за стол`.
-- Submitting the guest name validates and stores only current Livewire screen state in `preparedGuestName`; it does not create a table session, account, menu, order, payment, kitchen task, or bar task.
+- Submitting the guest name validates and creates a pending guest-created table session only when no active or pending session exists and branch settings allow guest-created sessions.
+- The first guest is stored in `table_session_guests` as `active`, and the pending session stores that guest id in `opened_by_guest_id`.
+- Guest-created pending sessions do not create menus, orders, payment, kitchen tasks, or bar tasks.
+- If an active session exists, the public QR page shows a future-join message and does not create a pending session.
+- If a pending session exists, the public QR page shows a pending-session message and does not create another first guest.
+- If `branch_settings.allow_guest_created_sessions` is false, the public QR page asks the guest to call staff and does not create a session or guest.
 - No QR PDF generation exists yet.
 
 Branch settings:
@@ -372,7 +397,8 @@ Local media storage:
 - Blade displays prepared state only and must not query the database.
 - Active QR plus active service point shows a mobile-first guest landing page with venue, logo, current area, current service point, guest name field, and `Войти за стол`.
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
-- Public QR route accepts a guest name into Livewire state only. It does not create table sessions, guest records, show menus, create orders, or send anything to kitchen/bar yet.
+- Public QR route accepts a guest name and can create a pending guest-created table session plus the first active table session guest.
+- Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
 
@@ -447,7 +473,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be guest records, opening table sessions from the QR landing, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be additional guest join approval, guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

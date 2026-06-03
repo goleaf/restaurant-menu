@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with name entry, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -206,6 +206,7 @@ The table stores:
 - `branch_id`
 - `service_point_id`
 - `active_service_point_id`
+- `pending_service_point_id`
 - `opened_by_user_id`
 - `opened_by_guest_id`
 - `status`
@@ -230,13 +231,32 @@ Supported sources are:
 - `waiter_opened`
 - `guest_created`
 
-`opened_by_user_id` is for future waiter-created sessions. `opened_by_guest_id` is a nullable placeholder for future guest records and is not connected to a guest table yet.
+`opened_by_user_id` is for waiter-created sessions. `opened_by_guest_id` stores the first session guest id when the first guest creates a pending session.
 
 SQLite enforces one active table session per service point through internal nullable `active_service_point_id`. Closed, cancelled, or other non-active session history can remain for the same service point.
 
+SQLite also enforces one pending table session per service point through internal nullable `pending_service_point_id`. This protects the public QR flow from creating duplicate pending sessions on repeat submit.
+
 `OpenTableSessionForServicePointAction` creates an active waiter-opened session only when the service point does not already have one. If an active session already exists, the action returns it and does not create a second active session automatically.
 
-This stage does not create guests, orders, order drafts, kitchen/bar workflows, or payment flows. The public QR guest landing still only accepts a name into Livewire screen state and does not open a table session yet.
+`CreateGuestPendingTableSessionAction` creates a pending guest-created session only when the service point has no active or pending session and branch settings allow guest-created sessions. The first guest is stored as an active guest inside that pending session.
+
+This stage does not create menus, orders, order drafts, kitchen/bar workflows, or payment flows. Guest-created sessions do not send anything to the kitchen or bar.
+
+## Table Session Guests
+
+Table session guests are stored in the `table_session_guests` table and belong to one table session.
+
+The table stores guest `name`, `status`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
+
+Supported guest statuses are:
+
+- `active`
+- `pending_approval`
+- `left`
+- `removed`
+
+The first guest created from the public QR landing is saved as `active`. Future prompts will add approval for additional guests.
 
 ## Permanent QR Codes
 
@@ -270,7 +290,7 @@ Generated QR URLs use:
 
 The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, current area, branch, brand, organization, and local logo, and opens a mobile-first guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
 
-The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. Submitting the name only prepares the current guest screen; it does not create a table session, menu, order, kitchen task, payment, or account.
+The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it. If an active session already exists, the page shows a message for the future join flow instead of creating a new pending session.
 
 Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
 
@@ -310,6 +330,7 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
+- First guest pending session creation from the public QR landing.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

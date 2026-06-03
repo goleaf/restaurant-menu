@@ -91,8 +91,15 @@
                         </p>
                     @endif
 
+                    @if ($entryMessage)
+                        <p class="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                            {{ $entryMessage }}
+                        </p>
+                    @endif
+
                     <button
                         type="submit"
+                        @if ($currentGuestId) disabled @endif
                         class="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-900"
                     >
                         {{ __('Войти за стол') }}

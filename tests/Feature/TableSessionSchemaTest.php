@@ -1,10 +1,12 @@
 <?php
 
+use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
+use App\Models\TableSessionGuest;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 
@@ -14,6 +16,7 @@ test('table sessions table stores branch service point opening and lifecycle fie
         'branch_id',
         'service_point_id',
         'active_service_point_id',
+        'pending_service_point_id',
         'opened_by_user_id',
         'opened_by_guest_id',
         'status',
@@ -23,6 +26,27 @@ test('table sessions table stores branch service point opening and lifecycle fie
         'closed_by_user_id',
         'metadata',
     ]))->toBeTrue();
+});
+
+test('table session guests table stores guest identity inside a table session', function () {
+    expect(Schema::hasTable('table_session_guests'))->toBeTrue();
+    expect(Schema::hasColumns('table_session_guests', [
+        'table_session_id',
+        'name',
+        'status',
+        'joined_at',
+        'left_at',
+        'metadata',
+    ]))->toBeTrue();
+});
+
+test('table session guest statuses include current and future join states', function () {
+    expect(TableSessionGuestStatus::values())->toBe([
+        'active',
+        'pending_approval',
+        'left',
+        'removed',
+    ]);
 });
 
 test('table session statuses include the fixed lifecycle taxonomy', function () {
@@ -57,6 +81,7 @@ test('table session defaults are safe before orders and guests exist', function 
     expect($tableSession->fresh()->ended_at)->toBeNull();
     expect($tableSession->fresh()->opened_by_user_id)->toBeNull();
     expect($tableSession->fresh()->opened_by_guest_id)->toBeNull();
+    expect($tableSession->fresh()->pending_service_point_id)->toBe($servicePoint->id);
     expect($tableSession->fresh()->metadata)->toBe([]);
 });
 
@@ -101,18 +126,44 @@ test('table session belongs to branch service point and audit users', function (
     expect($tableSession->fresh()->metadata)->toBe(['note' => 'Manual close']);
 });
 
-test('guest created table session can store future guest id placeholder', function () {
-    $servicePoint = ServicePoint::factory()->create();
+test('table session belongs to guests and exposes active guests alphabetically', function () {
+    $tableSession = TableSession::factory()->create();
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create(['name' => 'Zara']);
+    $ana = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create(['name' => 'Ana']);
+    TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'name' => 'Mira',
+            'status' => TableSessionGuestStatus::Left,
+        ]);
 
+    expect($tableSession->guests()->count())->toBe(3);
+    expect($tableSession->activeGuests()->pluck('id')->all())->toBe([
+        $ana->id,
+        $zara->id,
+    ]);
+});
+
+test('guest created table session can store opening session guest id', function () {
+    $servicePoint = ServicePoint::factory()->create();
     $tableSession = TableSession::factory()
         ->forServicePoint($servicePoint)
         ->create([
-            'opened_by_guest_id' => 12345,
             'source' => TableSessionSource::GuestCreated,
-            'status' => TableSessionStatus::WaitingWaiterConfirmation,
+            'status' => TableSessionStatus::Pending,
         ]);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create(['name' => 'Opening guest']);
 
-    expect($tableSession->fresh()->opened_by_guest_id)->toBe(12345);
+    $tableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
+
+    expect($tableSession->fresh()->opened_by_guest_id)->toBe($guest->id);
+    expect($tableSession->fresh()->openedByGuest->is($guest))->toBeTrue();
     expect($tableSession->fresh()->source)->toBe(TableSessionSource::GuestCreated);
-    expect($tableSession->fresh()->status)->toBe(TableSessionStatus::WaitingWaiterConfirmation);
+    expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Pending);
 });

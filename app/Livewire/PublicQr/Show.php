@@ -2,9 +2,13 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
+use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\TableSession;
+use App\Models\TableSessionGuest;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -14,6 +18,8 @@ use Livewire\Component;
 #[Title('Guest QR')]
 class Show extends Component
 {
+    public string $token = '';
+
     public string $state = 'not_found';
 
     public string $title = '';
@@ -23,6 +29,14 @@ class Show extends Component
     public string $guestName = '';
 
     public ?string $preparedGuestName = null;
+
+    public string $entryState = '';
+
+    public string $entryMessage = '';
+
+    public ?int $currentTableSessionId = null;
+
+    public ?int $currentGuestId = null;
 
     /**
      * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
@@ -45,6 +59,8 @@ class Show extends Component
 
     public function mount(string $token): void
     {
+        $this->token = $token;
+
         $qrCode = $this->findQrCode($token);
 
         if (! $qrCode instanceof QrCode) {
@@ -113,9 +129,13 @@ class Show extends Component
         ];
     }
 
-    public function enterTable(): void
+    public function enterTable(CreateGuestPendingTableSessionAction $createGuestPendingTableSession): void
     {
         if ($this->state !== 'ready') {
+            return;
+        }
+
+        if ($this->currentGuestId !== null) {
             return;
         }
 
@@ -129,6 +149,47 @@ class Show extends Component
 
         $this->preparedGuestName = str($validated['guestName'])->squish()->toString();
         $this->guestName = $this->preparedGuestName;
+
+        $qrCode = $this->findQrCode($this->token);
+
+        if (! $qrCode instanceof QrCode || $qrCode->status !== QrCodeStatus::Active) {
+            $this->showError(
+                state: 'not_found',
+                title: __('QR code not found'),
+                message: __('Please ask the staff for a fresh QR code.'),
+            );
+
+            return;
+        }
+
+        $servicePoint = $qrCode->servicePoint;
+
+        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
+            $this->showError(
+                state: 'inactive_service_point',
+                title: __('This place is temporarily unavailable'),
+                message: __('Please ask the staff before ordering from this place.'),
+            );
+
+            return;
+        }
+
+        $result = $createGuestPendingTableSession->handle($servicePoint, $this->preparedGuestName);
+        $entryState = $result['state'];
+        $tableSession = $result['table_session'];
+        $guest = $result['guest'];
+
+        $this->entryState = $entryState->value;
+        $this->entryMessage = $this->messageForEntryState($entryState);
+        $this->currentTableSessionId = $tableSession instanceof TableSession ? $tableSession->id : null;
+        $this->currentGuestId = $guest instanceof TableSessionGuest ? $guest->id : null;
+
+        if ($guest instanceof TableSessionGuest && $tableSession instanceof TableSession) {
+            session()->put('guest_entries.'.$qrCode->public_token, [
+                'table_session_id' => $tableSession->id,
+                'guest_id' => $guest->id,
+            ]);
+        }
     }
 
     public function render(): View
@@ -199,5 +260,15 @@ class Show extends Component
         $this->state = $state;
         $this->title = $title;
         $this->message = $message;
+    }
+
+    private function messageForEntryState(GuestTableEntryState $state): string
+    {
+        return match ($state) {
+            GuestTableEntryState::PendingSessionCreated => __('Стол ожидает подтверждения официанта. Заказы пока не отправляются на кухню или бар.'),
+            GuestTableEntryState::ActiveSessionExists => __('Стол уже открыт. На следующем этапе здесь появится запрос на присоединение.'),
+            GuestTableEntryState::PendingSessionExists => __('Стол уже ожидает подтверждения официанта. На следующем этапе здесь появится присоединение к текущей сессии.'),
+            GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
+        };
     }
 }

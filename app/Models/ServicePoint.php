@@ -71,6 +71,14 @@ class ServicePoint extends Model
     }
 
     /**
+     * @return HasMany<TableSession, $this>
+     */
+    public function tableSessions(): HasMany
+    {
+        return $this->hasMany(TableSession::class);
+    }
+
+    /**
      * @return HasOne<QrCode, $this>
      */
     public function activeQrCode(): HasOne

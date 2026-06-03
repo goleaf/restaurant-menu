@@ -83,6 +83,22 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * @return HasMany<TableSession, $this>
+     */
+    public function openedTableSessions(): HasMany
+    {
+        return $this->hasMany(TableSession::class, 'opened_by_user_id');
+    }
+
+    /**
+     * @return HasMany<TableSession, $this>
+     */
+    public function closedTableSessions(): HasMany
+    {
+        return $this->hasMany(TableSession::class, 'closed_by_user_id');
+    }
+
+    /**
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany

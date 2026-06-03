@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with name entry, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with name entry, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -195,6 +195,42 @@ Permanent QR codes are attached to the stable service point record. The CRUD act
 
 Users with `generate_qr` can open the service point page, create a missing active QR, and show the existing QR details. Users without `generate_qr` cannot generate or show QR details from this UI.
 
+## Table Sessions
+
+Table sessions are stored in the `table_sessions` table. A table session belongs to one branch and one service point.
+
+The table stores:
+
+- `branch_id`
+- `service_point_id`
+- `opened_by_user_id`
+- `opened_by_guest_id`
+- `status`
+- `source`
+- `started_at`
+- `ended_at`
+- `closed_by_user_id`
+- `metadata`
+
+Supported statuses are:
+
+- `pending`
+- `active`
+- `waiting_waiter_confirmation`
+- `payment_requested`
+- `paid`
+- `closed`
+- `cancelled`
+
+Supported sources are:
+
+- `waiter_opened`
+- `guest_created`
+
+`opened_by_user_id` is for future waiter-created sessions. `opened_by_guest_id` is a nullable placeholder for future guest records and is not connected to a guest table yet.
+
+This stage does not create guests, orders, order drafts, kitchen/bar workflows, or payment flows. The public QR guest landing still only accepts a name into Livewire screen state and does not open a table session yet.
+
 ## Permanent QR Codes
 
 Permanent QR records are stored in the `qr_codes` table.
@@ -266,6 +302,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
+- Table session schema stored in `table_sessions`.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

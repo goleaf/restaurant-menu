@@ -45,13 +45,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
+- Table sessions schema for branch/service point lifecycle tracking.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, table session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, guest records, table session opening UI/action, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -75,6 +76,7 @@ No menu, QR PDF generation, table session, order draft, kitchen, bar, payment, o
 - `branches`
 - `area_nodes`
 - `service_points`
+- `table_sessions`
 - `qr_codes`
 - `branch_users`
 - `branch_settings`
@@ -145,6 +147,25 @@ Service point:
 - `UpdateServicePointAction` intentionally does not update `internal_code`.
 - Permanent QR records attach to the stable service point record, not to the name, display number, branch path, or area path.
 - Renaming or moving a service point must not change QR identity.
+
+Table session:
+
+- Stored in `table_sessions`.
+- Belongs to one branch through `branch_id`.
+- Belongs to one service point through `service_point_id`.
+- Can be opened by a future staff user through nullable `opened_by_user_id`.
+- Can be opened by a future guest through nullable `opened_by_guest_id`.
+- `opened_by_guest_id` is intentionally a nullable indexed integer placeholder right now because guest records are not implemented yet.
+- Can be closed by a future staff user through nullable `closed_by_user_id`.
+- Status is cast to `TableSessionStatus`.
+- Status values are `pending`, `active`, `waiting_waiter_confirmation`, `payment_requested`, `paid`, `closed`, and `cancelled`.
+- Source is cast to `TableSessionSource`.
+- Source values are `waiter_opened` and `guest_created`.
+- Default status is `pending`.
+- Default source is `guest_created`.
+- Stores `started_at`, `ended_at`, and optional JSON `metadata`.
+- Has indexes for branch/status, service point/status, branch/service point/status, source/status, `opened_by_guest_id`, and `started_at`.
+- No table session UI, guest creation, order draft, order, kitchen/bar, or payment logic exists yet.
 
 QR code:
 
@@ -342,7 +363,7 @@ Local media storage:
 - Blade displays prepared state only and must not query the database.
 - Active QR plus active service point shows a mobile-first guest landing page with venue, logo, current area, current service point, guest name field, and `Войти за стол`.
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
-- Public QR route accepts a guest name into Livewire state only. It does not create table sessions, show menus, create orders, or send anything to kitchen/bar yet.
+- Public QR route accepts a guest name into Livewire state only. It does not create table sessions, guest records, show menus, create orders, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
 
@@ -414,7 +435,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be QR PDF generation, invite acceptance flow, menu foundations, or table session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be guest records, opening table sessions from the QR landing, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

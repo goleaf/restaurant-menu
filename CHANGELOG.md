@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 030 - Table Sessions Schema
+
+- Added the `table_sessions` table for branch and service point session lifecycle tracking.
+- Added fixed table session statuses from `pending` through `closed` and `cancelled`.
+- Added fixed session sources for waiter-opened and guest-created flows.
+- Added the TableSession model, factory, enum casts, branch/service point/user relationships, and focused schema tests.
+- Kept the step schema-only: no guests, menus, orders, kitchen/bar flow, payment flow, or guest landing session creation yet.
+
 ### Prompt 029 - Guest QR Landing Page
 
 - Replaced the public QR placeholder with a mobile-first guest landing page.

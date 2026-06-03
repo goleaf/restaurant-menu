@@ -76,6 +76,14 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<TableSession, $this>
+     */
+    public function tableSessions(): HasMany
+    {
+        return $this->hasMany(TableSession::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

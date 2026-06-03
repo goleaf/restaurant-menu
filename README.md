@@ -386,6 +386,27 @@ When a draft is no longer in `draft` status, for example after it is sent to wai
 
 The waiter can confirm a sent draft from the waiter table detail page. Confirmation changes the draft to `converted_to_order`, creates one real `orders` row with status `confirmed_by_waiter`, and copies draft positions into `order_items` as snapshots. The new order is prepared for a later kitchen/bar dispatch step, but this step does not send anything to kitchen or bar.
 
+Real orders are stored in:
+
+- `orders`
+- `order_items`
+
+Each order belongs to a branch, service point, table session, and the source draft order. The source `draft_order_id` is unique, so the same draft cannot create two confirmed orders.
+
+Current order lifecycle statuses are:
+
+- `confirmed_by_waiter`
+- `sent_to_kitchen_bar`
+- `in_progress`
+- `ready`
+- `served`
+- `payment_requested`
+- `paid`
+- `closed`
+- `cancelled`
+
+Order items can keep optional links to the original guest and menu item, but they also store immutable snapshots of guest name, dish name, unit price, modifier total, line total, selected modifiers, and comment. If the menu item name, price, or modifier options change later, old confirmed orders keep the original order snapshot.
+
 The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. New draft versioning is not implemented yet.
 
 Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, and guests see the updated shared cart through Livewire polling. Future audit/order-log work should hook into the waiter edit action classes.

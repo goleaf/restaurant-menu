@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 056 - Orders Schema
+
+- Completed the real order lifecycle enum with `confirmed_by_waiter`, `sent_to_kitchen_bar`, `in_progress`, `ready`, `served`, `payment_requested`, `paid`, `closed`, and `cancelled`.
+- Kept waiter confirmation as the only path that converts a shared draft into an `orders` row and `order_items` snapshots.
+- Added inverse Eloquent relationships from service points and menu items to confirmed order records.
+- Added feature coverage proving confirmed order items keep dish names, prices, modifiers, comments, guest names, and totals unchanged after the source menu item or modifier option changes.
+- Kept this step schema/backend-only: no kitchen/bar dispatch, payments, Redis, WebSocket, S3, Docker, or paid integrations were added.
+
 ### Prompt 055 - Waiter Draft Editing
 
 - Added the fixed `edit_pending_orders` permission while keeping `confirm_orders` able to edit pending sent drafts.

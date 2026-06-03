@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 048 - Guest Draft Item Editing
+
+- Added guest-owned draft item editing in the isolated public QR basket component.
+- Active guests can change quantity, comment, and available modifier selections for their own draft positions.
+- Active guests can delete only their own draft positions.
+- The shared basket now separates `Мои позиции` from `Позиции других гостей` while keeping per-guest and table totals updated through Livewire polling.
+- Editing and deleting recheck the browser guest token, active guest status, draft ownership, table session, and draft status.
+- Draft item editing is blocked after the shared draft is sent to waiter review; this step does not add waiter screens, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 047 - Guest Draft Items
 
 - Added `AddGuestDraftOrderItemAction` so active guests can add configured menu items into the shared table draft.

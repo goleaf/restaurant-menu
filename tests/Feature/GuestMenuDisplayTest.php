@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
@@ -291,7 +292,7 @@ test('guest menu blocks rejected guest from adding draft items', function () {
 });
 
 test('draft order component shows shared items and guest totals through polling block', function () {
-    [, , , $tableSession, $ana] = createGuestMenuDisplayContext();
+    [$qrCode, , , $tableSession, $ana] = createGuestMenuDisplayContext();
     $zara = TableSessionGuest::factory()
         ->for($tableSession)
         ->create([
@@ -326,17 +327,179 @@ test('draft order component shows shared items and guest totals through polling 
             'total_price' => '10.00',
         ]);
 
-    Livewire::test(DraftOrderComponent::class, [
-        'tableSessionId' => $tableSession->id,
-        'currentGuestId' => $ana->id,
-        'currency' => 'EUR',
-    ])
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
         ->assertSee('data-component="guest-draft-order"', false)
+        ->assertSeeText('Мои позиции')
+        ->assertSeeText('Позиции других гостей')
         ->assertSeeText('Margherita')
         ->assertSeeText('Water')
         ->assertSeeText('Large')
+        ->assertSeeText('Изменить')
         ->assertSeeTextInOrder(['Ana', '10.00 EUR', 'Zara', '12.50 EUR'])
         ->assertSeeText('22.50 EUR');
+});
+
+test('draft order component lets active guest edit own draft item modifiers quantity and comment', function () {
+    [$qrCode, $branch, , $tableSession, $ana] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    [$requiredGroup, $largeOption, , $optionalGroup, $cheeseOption] = createGuestMenuModifierRows($branch, $availableItem);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create();
+    $draftOrderItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->for($availableItem, 'menuItem')
+        ->create([
+            'item_name' => 'Margherita',
+            'quantity' => 1,
+            'unit_price' => '14.50',
+            'modifier_total' => '3.50',
+            'total_price' => '18.00',
+            'selected_modifiers' => [
+                [
+                    'group_id' => $requiredGroup->id,
+                    'group_name' => 'Pizza size',
+                    'option_id' => $largeOption->id,
+                    'option_name' => 'Large',
+                    'price_delta' => '3.50',
+                ],
+            ],
+        ]);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->call('editItem', $draftOrderItem->id)
+        ->assertSet('editingItemId', $draftOrderItem->id)
+        ->assertSet('editingQuantity', 1)
+        ->assertSeeText('Pizza size')
+        ->assertSeeText('Extra cheese')
+        ->set('editingQuantity', 2)
+        ->set('editingComment', 'Cut in half')
+        ->call('toggleEditingModifierOption', $optionalGroup->id, $cheeseOption->id)
+        ->assertSet('editingItemTotal', '38.50')
+        ->call('updateItem')
+        ->assertHasNoErrors()
+        ->assertSet('editingItemId', null)
+        ->assertSeeText('Позиция обновлена.')
+        ->assertSeeText('38.50 EUR');
+
+    $draftOrderItem = $draftOrderItem->fresh();
+
+    expect($draftOrderItem->quantity)->toBe(2)
+        ->and($draftOrderItem->modifier_total)->toBe('4.75')
+        ->and($draftOrderItem->total_price)->toBe('38.50')
+        ->and($draftOrderItem->comment)->toBe('Cut in half')
+        ->and(collect($draftOrderItem->selected_modifiers)->pluck('option_name')->all())->toBe([
+            'Large',
+            'Extra cheese',
+        ]);
+});
+
+test('draft order component lets active guest delete own draft item', function () {
+    [$qrCode, $branch, , $tableSession, $ana] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create();
+    $draftOrderItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->for($availableItem, 'menuItem')
+        ->create(['item_name' => 'Water']);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSeeText('Water')
+        ->call('deleteItem', $draftOrderItem->id)
+        ->assertHasNoErrors()
+        ->assertSeeText('Позиция удалена.')
+        ->assertDontSeeText('Water');
+
+    expect(DraftOrderItem::query()->whereKey($draftOrderItem->id)->exists())->toBeFalse();
+});
+
+test('draft order component blocks current guest from editing another guest draft item', function () {
+    [$qrCode, $branch, , $tableSession, $ana] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create();
+    $zaraItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($zara, 'guest')
+        ->for($availableItem, 'menuItem')
+        ->create(['item_name' => 'Margherita']);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->call('editItem', $zaraItem->id)
+        ->assertHasErrors(['draft_item'])
+        ->call('deleteItem', $zaraItem->id)
+        ->assertHasErrors(['draft_item']);
+
+    expect(DraftOrderItem::query()->whereKey($zaraItem->id)->exists())->toBeTrue();
+});
+
+test('draft order component blocks edits after draft is sent to waiter', function () {
+    [$qrCode, $branch, , $tableSession, $ana] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create(['status' => DraftOrderStatus::SentToWaiter]);
+    $draftOrderItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->for($availableItem, 'menuItem')
+        ->create([
+            'item_name' => 'Margherita',
+            'quantity' => 1,
+            'total_price' => '14.50',
+        ]);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSet('canEditDraft', false)
+        ->assertSeeText('Черновик отправлен официанту. Изменения сейчас недоступны.')
+        ->call('editItem', $draftOrderItem->id)
+        ->assertHasErrors(['draft_order'])
+        ->call('deleteItem', $draftOrderItem->id)
+        ->assertHasErrors(['draft_order']);
+
+    expect($draftOrderItem->fresh()->quantity)->toBe(1)
+        ->and(DraftOrderItem::query()->whereKey($draftOrderItem->id)->exists())->toBeTrue();
 });
 
 function createGuestMenuDisplayContext(string $defaultLanguage = 'en'): array

@@ -189,6 +189,7 @@
                     <livewire:public-qr.draft-order
                         :table-session-id="$currentTableSessionId"
                         :current-guest-id="$currentGuestId"
+                        :public-token="$token"
                         :currency="$landing['branch_currency']"
                         wire:key="guest-draft-order-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />

@@ -52,7 +52,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, and an isolated shared table cart polling block grouped by guest.
-- Waiter dashboard shell with branch/service-point/session status and sent draft visibility through Livewire polling.
+- Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent draft visibility, guest positions, modifiers, comments, and totals through Livewire polling.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -573,6 +573,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
+- `GET /restaurant/waiter/tables/{tableSession}` -> `restaurant.waiter.tables.show`
 - `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
 - Auth and profile routes are provided by Fortify and `routes/settings.php`.
 
@@ -598,6 +599,7 @@ Local media storage:
 - `App\Livewire\PublicQr\DraftOrder`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Waiter\Dashboard`
+- `App\Livewire\Waiter\TableDetail`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
 - `App\Livewire\Settings\Appearance`
@@ -692,19 +694,26 @@ Local media storage:
 ## Current Waiter Dashboard
 
 - Waiter dashboard route is `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route is `GET /restaurant/waiter/tables/{tableSession}`.
 - Livewire component is `App\Livewire\Waiter\Dashboard`.
+- Waiter table detail Livewire component is `App\Livewire\Waiter\TableDetail`.
 - Data is prepared by `App\Actions\Waiter\BuildWaiterDashboardAction`; Blade receives arrays and must not query the database.
+- Table detail data is prepared by `App\Actions\Waiter\BuildWaiterTableDetailAction`; Blade receives arrays and must not query the database.
+- Waiter branch access is shared through `App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction`.
 - Access requires auth and `view_orders` in the organization context.
 - Superadmin access still works through the existing computed permission bypass.
 - If the user has active `branch_users` assignments inside organizations where they can view orders, the dashboard shows only those assigned branches.
 - If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
 - The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status = sent_to_waiter`.
+- Open sessions and sent drafts link to the waiter table detail page.
 - Open sessions currently include `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
 - Service points with sent drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
 - The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
+- The table detail page uses `wire:poll.1s="refreshTable"` and does not use WebSockets.
 - A browser-local audio notice can play when polling sees the number of sent drafts increase; no external service is used.
-- The dashboard is display-only in Prompt 052.
-- It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
+- The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's draft positions, selected modifiers, guest comments, per-guest totals, and the table total.
+- The dashboard and table detail are display-only in Prompt 053.
+- They do not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
 
 ## Current Branch Menu UI
 
@@ -823,6 +832,7 @@ The next expected product step may be waiter confirmation/rejection actions for 
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Do not send guest drafts to kitchen/bar from the guest UI; waiter confirmation must come first.
+- Do not send guest drafts to kitchen/bar from the waiter table detail page; waiter confirmation/rejection must be implemented only when explicitly prompted.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
 - Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.

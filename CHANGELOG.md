@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 053 - Waiter Table Detail
+
+- Added a waiter table detail route at `/restaurant/waiter/tables/{table_session}` guarded by auth and `view_orders`.
+- Added `BuildWaiterTableDetailAction` and `App\Livewire\Waiter\TableDetail` to prepare branch, zone, service point, session, draft, guests, positions, comments, modifiers, and totals before Blade rendering.
+- Extracted `ResolveWaiterAccessibleBranchIdsAction` so the waiter dashboard and table detail share the same superadmin, organization permission, and active branch assignment rules.
+- Added dashboard links from open sessions and sent drafts to the detail page.
+- The detail page polls every 1 second with Livewire and stays display-only: no waiter confirmation, final order conversion, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+- Added feature tests for auth, `view_orders`, branch assignment restrictions, rendered table details, guest ordering, totals, modifiers, comments, and Livewire refresh behavior.
+
 ### Prompt 052 - Waiter Dashboard Shell
 
 - Added an authenticated waiter dashboard at `/restaurant/waiter/dashboard` guarded by `view_orders`.

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell and table detail, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -405,7 +405,15 @@ The dashboard uses Livewire polling every 1 second and does not use WebSockets. 
 - shared drafts with `sent_to_waiter` status;
 - a small browser audio notice when a new sent draft appears during polling.
 
-This screen is display-only for now. It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
+Each open session links to a waiter table detail page:
+
+```text
+/restaurant/waiter/tables/{table_session}
+```
+
+The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, draft status, guests sorted alphabetically, each guest's positions, comments, selected modifiers, per-guest totals, and the total amount for the table.
+
+The detail page refreshes through Livewire polling every 1 second. It is display-only for now. It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
 
 ## Permanent QR Codes
 
@@ -490,7 +498,7 @@ Implemented:
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
 - Staff permission override UI with default / allow / deny states.
-- Waiter dashboard shell for branches, service points, open sessions, and drafts sent to waiter review.
+- Waiter dashboard shell and table detail for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
 
 Branch settings currently include safe defaults:
 

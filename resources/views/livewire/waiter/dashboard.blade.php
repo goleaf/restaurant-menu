@@ -127,11 +127,17 @@
                                                         · {{ __('Guests') }}: {{ $session['active_guest_count'] }}
                                                     </span>
 
-                                                    @if ($session['draft'])
-                                                        <span class="font-medium text-rose-700 dark:text-rose-300">
-                                                            {{ __('Waiting review') }} · {{ $session['draft']['items_count'] }} · {{ $session['draft']['total'] }}
-                                                        </span>
-                                                    @endif
+                                                    <span class="flex flex-wrap items-center gap-2">
+                                                        @if ($session['draft'])
+                                                            <span class="font-medium text-rose-700 dark:text-rose-300">
+                                                                {{ __('Waiting review') }} · {{ $session['draft']['items_count'] }} · {{ $session['draft']['total'] }}
+                                                            </span>
+                                                        @endif
+
+                                                        <flux:button size="sm" icon="eye" :href="$session['detail_url']" wire:navigate>
+                                                            {{ __('Details') }}
+                                                        </flux:button>
+                                                    </span>
                                                 </div>
                                             </div>
                                         @endforeach
@@ -162,6 +168,11 @@
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                         {{ __('Sent at') }}: {{ $draft['sent_at'] ?? __('time not set') }}
                                     </p>
+                                    <div class="mt-3">
+                                        <flux:button size="sm" icon="eye" :href="route('restaurant.waiter.tables.show', $draft['table_session_id'])" wire:navigate>
+                                            {{ __('Details') }}
+                                        </flux:button>
+                                    </div>
                                 </div>
                             @empty
                                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

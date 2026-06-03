@@ -9,6 +9,8 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
@@ -33,7 +35,7 @@ class GetGuestMenuForBranchAction
     ];
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}>}
+     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     public function handle(int $branchId, ?string $languageCode = null): array
     {
@@ -130,7 +132,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}>}
+     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     private function rememberFreshPayload(CacheRepository $cache, int $branchId, string $languageCode, string $defaultLanguage): array
     {
@@ -149,7 +151,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}>}
+     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage): array
     {
@@ -204,6 +206,28 @@ class GetGuestMenuForBranchAction
                                     'name',
                                     'description',
                                 ])->where('language_code', $languageCode),
+                                'modifierGroups' => fn ($modifierGroupQuery) => $modifierGroupQuery->select([
+                                    'modifier_groups.id',
+                                    'modifier_groups.branch_id',
+                                    'modifier_groups.name',
+                                    'modifier_groups.is_required',
+                                    'modifier_groups.min_select',
+                                    'modifier_groups.max_select',
+                                    'modifier_groups.sort_order',
+                                ])->with([
+                                    'options' => fn ($optionQuery) => $optionQuery->select([
+                                        'id',
+                                        'modifier_group_id',
+                                        'name',
+                                        'price_delta',
+                                        'is_available',
+                                        'sort_order',
+                                    ])
+                                        ->where('is_available', true)
+                                        ->orderBy('sort_order')
+                                        ->orderBy('name')
+                                        ->orderBy('id'),
+                                ]),
                             ])
                             ->orderBy('sort_order')
                             ->orderBy('name')
@@ -254,7 +278,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}
+     * @return array{id: int, name: string, description: string|null, icon: string|null, items: list<array<string, mixed>>}
      */
     private function categoryPayload(MenuCategory $category): array
     {
@@ -274,7 +298,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}
+     * @return array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool, modifier_groups: list<array<string, mixed>>}
      */
     private function itemPayload(MenuItem $item): array
     {
@@ -291,6 +315,32 @@ class GetGuestMenuForBranchAction
             'volume' => $item->volume,
             'calories' => $item->calories,
             'is_available' => $item->is_available,
+            'modifier_groups' => $item->modifierGroups
+                ->map(fn (ModifierGroup $modifierGroup): array => $this->modifierGroupPayload($modifierGroup))
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}
+     */
+    private function modifierGroupPayload(ModifierGroup $modifierGroup): array
+    {
+        return [
+            'id' => $modifierGroup->id,
+            'name' => $modifierGroup->name,
+            'is_required' => $modifierGroup->is_required,
+            'min_select' => $modifierGroup->min_select,
+            'max_select' => $modifierGroup->max_select,
+            'options' => $modifierGroup->options
+                ->map(fn (ModifierOption $modifierOption): array => [
+                    'id' => $modifierOption->id,
+                    'name' => $modifierOption->name,
+                    'price_delta' => $modifierOption->price_delta,
+                ])
+                ->values()
+                ->all(),
         ];
     }
 

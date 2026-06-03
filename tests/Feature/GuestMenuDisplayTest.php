@@ -15,6 +15,8 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
@@ -173,6 +175,65 @@ test('guest menu starts with branch default language', function () {
         ->assertDontSeeText('Margherita');
 });
 
+test('guest menu exposes available modifiers in cached payload', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    [$requiredGroup, $largeOption, $soldOutOption] = createGuestMenuModifierRows($branch, $availableItem);
+    $action = app(GetGuestMenuForBranchAction::class);
+    $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
+
+    Cache::store(GetGuestMenuForBranchAction::cacheStore())->forget($cacheKey);
+
+    $payload = $action->handle($branch->id, 'en');
+    $itemPayload = $payload['categories'][0]['items'][0];
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeTrue()
+        ->and($itemPayload['modifier_groups'][0]['id'])->toBe($requiredGroup->id)
+        ->and($itemPayload['modifier_groups'][0]['is_required'])->toBeTrue()
+        ->and($itemPayload['modifier_groups'][0]['options'])->toHaveCount(1)
+        ->and($itemPayload['modifier_groups'][0]['options'][0]['id'])->toBe($largeOption->id)
+        ->and(collect($itemPayload['modifier_groups'][0]['options'])->pluck('id')->contains($soldOutOption->id))->toBeFalse();
+
+    $largeOption->update(['price_delta' => '4.25']);
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
+        ->and($action->handle($branch->id, 'en')['categories'][0]['items'][0]['modifier_groups'][0]['options'][0]['price_delta'])->toBe('4.25');
+});
+
+test('guest menu lets guest configure modifiers before order submission', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    [$requiredGroup, $largeOption, $soldOutOption, $optionalGroup, $cheeseOption] = createGuestMenuModifierRows($branch, $availableItem);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSeeText('Настроить')
+        ->call('openItem', $availableItem->id)
+        ->assertSet('selectedItemId', $availableItem->id)
+        ->assertSeeText('Pizza size')
+        ->assertSeeText('Large')
+        ->assertSeeText('Extra cheese')
+        ->assertDontSeeText('Sold out')
+        ->assertSeeText('14.50 EUR')
+        ->set('selectedModifierOptions.'.(string) $requiredGroup->id, [$soldOutOption->id])
+        ->call('saveConfiguredItem')
+        ->assertHasErrors(['selectedModifierOptions.'.(string) $requiredGroup->id])
+        ->call('toggleModifierOption', $requiredGroup->id, $largeOption->id)
+        ->call('toggleModifierOption', $optionalGroup->id, $cheeseOption->id)
+        ->assertSeeText('19.25 EUR')
+        ->set('itemComment', 'No garlic please')
+        ->call('saveConfiguredItem')
+        ->assertHasNoErrors()
+        ->assertSet('selectedItemId', null)
+        ->assertSeeText('Выбрано')
+        ->assertSeeText('Large')
+        ->assertSeeText('Extra cheese')
+        ->assertSeeText('No garlic please')
+        ->assertSeeText('19.25 EUR');
+});
+
 function createGuestMenuDisplayContext(string $defaultLanguage = 'en'): array
 {
     $organization = Organization::factory()->create(['name' => 'Guest Menu Group']);
@@ -285,6 +346,56 @@ function createGuestMenuRows(Branch $branch): array
         ->create(['name' => 'Other branch dish']);
 
     return [$menu, $category, $availableItem, $unavailableItem];
+}
+
+function createGuestMenuModifierRows(Branch $branch, MenuItem $item): array
+{
+    $requiredGroup = ModifierGroup::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Pizza size',
+            'is_required' => true,
+            'min_select' => 1,
+            'max_select' => 1,
+            'sort_order' => 10,
+        ]);
+    $largeOption = ModifierOption::factory()
+        ->for($requiredGroup)
+        ->create([
+            'name' => 'Large',
+            'price_delta' => '3.50',
+            'is_available' => true,
+            'sort_order' => 10,
+        ]);
+    $soldOutOption = ModifierOption::factory()
+        ->for($requiredGroup)
+        ->create([
+            'name' => 'Sold out',
+            'price_delta' => '9.00',
+            'is_available' => false,
+            'sort_order' => 20,
+        ]);
+    $optionalGroup = ModifierGroup::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Extras',
+            'is_required' => false,
+            'min_select' => 0,
+            'max_select' => 2,
+            'sort_order' => 20,
+        ]);
+    $cheeseOption = ModifierOption::factory()
+        ->for($optionalGroup)
+        ->create([
+            'name' => 'Extra cheese',
+            'price_delta' => '1.25',
+            'is_available' => true,
+            'sort_order' => 10,
+        ]);
+
+    $item->modifierGroups()->attach([$requiredGroup->id, $optionalGroup->id]);
+
+    return [$requiredGroup, $largeOption, $soldOutOption, $optionalGroup, $cheeseOption];
 }
 
 function guestMenuDisplayCookieName(QrCode $qrCode): string

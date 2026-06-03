@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 045 - Guest Modifier Selection
+
+- Added modifier groups and available modifier options to the cached guest menu payload.
+- Added a mobile-first guest bottom sheet for configuring available dishes before order submission.
+- Required modifier groups now block completion until the guest selects enough available options.
+- Modifier `price_delta` values now affect the displayed item total in the guest UI.
+- Guests can add a local dish comment while configuring an item.
+- Kept this step UI-only: no persistent cart rows, shared order draft, waiter submission, orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 044 - Menu Modifiers
 
 - Added `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups` for reusable branch-level dish modifiers.

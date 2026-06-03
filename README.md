@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -177,7 +177,9 @@ Branch menu management is available at:
 
 Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`.
 
-Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, and unavailable dish state.
+Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
+
+When a guest taps an available dish, a mobile-first bottom sheet lets them choose modifier options, satisfy required modifier groups, see the final item price with `price_delta`, and add a dish comment. This selection is local UI state only at this stage.
 
 The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with language-specific keys:
 
@@ -189,7 +191,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-This step does not add cart item creation, shared order draft rows, AI translation, guest modifier selection, kitchen/bar flow, or payment logic.
+This step does not add cart item creation, shared order draft rows, AI translation, order submission to a waiter, kitchen/bar flow, or payment logic.
 
 ## Area Nodes
 
@@ -419,7 +421,7 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display on the active public QR table page.
+- Cached guest menu display with modifier selection on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
@@ -446,7 +448,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Adding menu items to a shared order draft.
-- Menu translation admin editor and guest modifier selection.
+- Menu translation admin editor and persistent cart/order draft submission.
 - QR PDF generation.
 - Shared order drafts.
 - Kitchen/bar workflows.

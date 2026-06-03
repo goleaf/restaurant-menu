@@ -50,14 +50,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display.
+- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, guest modifier selection, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translation admin editor, persistent cart/order draft, QR PDF generation, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -173,7 +173,7 @@ Menu item:
 - Has many translations through `menu_item_translations`.
 - Has many reusable modifier groups through `menu_item_modifier_groups`.
 - Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
-- Modifier assignment exists in admin CRUD, but guest modifier selection, order draft integration, kitchen/bar flow, and payment logic do not exist yet.
+- Modifier assignment exists in admin CRUD and the guest UI can configure available modifiers locally, but persistent order draft integration, kitchen/bar flow, and payment logic do not exist yet.
 
 Menu category translation:
 
@@ -220,7 +220,9 @@ Menu item modifier assignment:
 - The same modifier group can be reused by multiple menu items in the same branch.
 - The pivot is unique by `menu_item_id` and `modifier_group_id`.
 - Assigning or removing a group from a dish clears all supported language cache variants for the branch guest menu.
-- Guest menu payloads do not expose modifier selection yet, and no order/cart pricing is implemented for modifiers yet.
+- Guest menu payloads expose available modifier groups/options for local guest configuration.
+- Modifier `price_delta` affects the local displayed item total in the guest UI.
+- No persistent order/cart pricing is implemented for modifiers yet.
 
 Area node:
 
@@ -570,14 +572,14 @@ Local media storage:
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
-- Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu, shared order placeholder, and zero total.
+- Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with local modifier selection, shared order placeholder, and zero total.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
 - The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
 - Waiting guests stay on a clear waiting screen until polling sees approval, rejection, or expiration.
-- Public QR route shows the active branch menu for active guests, but does not add menu items to a cart, create orders, create payment records, or send anything to kitchen/bar yet.
+- Public QR route shows the active branch menu for active guests and allows local item modifier/comment configuration, but does not add menu items to a cart, create orders, create payment records, or send anything to kitchen/bar yet.
 
 ## Current Guest Menu Display
 
@@ -593,6 +595,14 @@ Local media storage:
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable dishes are visually dimmed and marked `Недоступно`; there is no add-to-cart action yet.
 - Dish cards show local dish photos when `menu_items.image` is present, otherwise a small photo placeholder.
+- Available dishes show a `Настроить` action.
+- Tapping `Настроить` opens a mobile-first bottom sheet inside `App\Livewire\PublicQr\GuestMenu`.
+- The bottom sheet shows assigned modifier groups and only available modifier options.
+- Required modifier groups validate `min_select` before the guest can complete the local configuration.
+- `price_delta` values from selected options affect the displayed local item total.
+- Guests can add a local dish comment up to 500 characters.
+- Completing the sheet stores a non-persistent item summary in Livewire state and shows it on the dish card.
+- Changing guest menu language clears non-persistent configured item summaries to avoid mixed translated labels.
 - The guest menu block is mobile-first and uses stable image dimensions.
 - The guest menu block must not poll; menu freshness comes from cache invalidation on admin/backend changes.
 - This step does not create order draft rows, shared cart items, waiter confirmation actions, kitchen tasks, bar tasks, or payment records.
@@ -620,7 +630,7 @@ Local media storage:
 - Modifier group CRUD and dish assignment require `manage_menu`.
 - Modifier option price deltas require `change_prices`.
 - Modifier option availability changes require `change_availability`.
-- The branch menu UI does not implement guest modifier selection, cart rows, or order pricing yet.
+- The branch menu UI manages modifier setup only; persistent guest cart rows and order pricing are not implemented yet.
 
 ## Current Service Point UI
 
@@ -695,7 +705,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be order draft foundations, guest modifier selection, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be order draft foundations, persistent guest cart rows, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -707,7 +717,8 @@ The next expected product step may be order draft foundations, guest modifier se
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add cart item creation, AI translations, a complex translation editor, guest modifier selection, order draft, kitchen/bar, or payment logic in guest menu display steps.
+- Do not add persistent cart item creation, AI translations, a complex translation editor, order draft, kitchen/bar, or payment logic in guest menu display steps.
+- Do not persist guest modifier selections as orders or shared cart rows until a prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.
 - Do not switch guest menu cache away from explicit database cache or remove language from guest menu cache keys.
 - Do not let users without `change_prices` change menu item prices.

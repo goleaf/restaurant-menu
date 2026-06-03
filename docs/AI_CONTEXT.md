@@ -42,6 +42,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branches.
 - Branch settings.
 - Basic superadmin access for the platform dashboard.
+- Staff invitation backend foundation.
 
 No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
@@ -66,6 +67,7 @@ No menu, QR, service point, guest session, order draft, kitchen, bar, payment, o
 - `brands`
 - `branches`
 - `branch_settings`
+- `invitations`
 - `migrations`
 
 ## Current Domain Model
@@ -103,6 +105,21 @@ Superadmin access:
 - Superadmins can see all organizations, brands, branches, and users.
 - Superadmins bypass organization and branch-level access checks.
 - Regular users keep organization-scoped access only.
+
+Invitation:
+
+- Stored in `invitations`.
+- Belongs to an organization.
+- Can optionally belong to a brand.
+- Can optionally belong to a branch.
+- Belongs to a fixed system role through `role_id`.
+- Stores optional `email` and `phone`.
+- Stores `invite_token` and `invite_code` for future link/code flows.
+- Stores `expires_at`, `status`, and `invited_by_user_id`.
+- Status enum values are `pending`, `accepted`, `expired`, `cancelled`, and `rejected`.
+- `CreateInvitationAction` creates pending invitations with generated token/code defaults.
+- Invitation scopes must stay inside the selected organization; branch scope must match selected brand when a brand is provided.
+- No email/SMS delivery and no staff invitation UI exists yet.
 
 ## Branch Settings Defaults
 
@@ -147,7 +164,7 @@ Superadmin access:
 
 ## Next Step
 
-The next expected product step is likely zones or service points, but only implement it when a prompt explicitly requests it.
+The next expected product step may be staff invitation UI, zones, or service points, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

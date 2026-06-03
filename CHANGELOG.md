@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 014 - Staff Invitations
+
+- Added staff invitation statuses for pending, accepted, expired, cancelled, and rejected invitations.
+- Added the `invitations` table for organization, brand, and branch-scoped staff invitations.
+- Added the Invitation model, factory, relationships, and backend creation action.
+- Added backend safeguards so brand and branch invitation scopes must belong to the selected organization.
+- Added tests for invitation schema, generated token/code defaults, fixed role assignment, and invalid scope rejection.
+
 ### Prompt 013 - Superadmin Access
 
 - Added first-superadmin seeding through safe `.env` configuration.

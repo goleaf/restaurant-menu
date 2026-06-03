@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, and basic superadmin access.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, and staff invitation backend foundations.
 
 ## Stack
 
@@ -43,6 +43,20 @@ php artisan db:seed
 
 Do not commit real superadmin credentials. The seeder stores only the user and assigns the fixed `superadmin` role.
 
+## Staff Invitations
+
+Staff invitations are stored in the `invitations` table. An invitation can be scoped to an organization, optionally to a brand, and optionally to a branch. It stores the fixed role to assign later, email, phone, invite token, invite code, expiration date, status, and the user who created the invitation.
+
+Supported statuses are:
+
+- `pending`
+- `accepted`
+- `expired`
+- `cancelled`
+- `rejected`
+
+This stage does not send email or SMS and does not include staff management UI. The backend model and creation action are prepared for future email invitations, phone invitations, invite links, manual creation, and invite codes.
+
 ## SQLite
 
 SQLite is the only configured database connection.
@@ -71,6 +85,7 @@ Implemented:
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
 - Basic superadmin access for the platform dashboard.
+- Staff invitation model and backend creation action.
 
 Branch settings currently include safe defaults:
 
@@ -95,6 +110,7 @@ Not implemented yet:
 - Shared order drafts.
 - Kitchen/bar workflows.
 - Payments and analytics.
+- Staff invitation UI and email/SMS delivery.
 
 ## Local Verification
 

@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 024 - Public QR Route
+
+- Added the public `/q/{token}` route for permanent QR links without exposing organization, branch, service point, or table IDs.
+- Added a simple mobile-first guest QR landing page that resolves active QR codes to the current service point, branch, brand, and organization.
+- Added clear public messages for disabled QR codes, revoked QR codes, inactive service points, and unknown tokens.
+- Verified that moving or renaming a service point keeps the QR URL stable while the public page shows the current place data.
+- Added tests for active, moved, disabled, revoked, inactive, and unknown QR token cases.
+
 ### Prompt 023 - QR Generation Action
 
 - Added a backend action that creates an active permanent QR for a service point only when one does not already exist.

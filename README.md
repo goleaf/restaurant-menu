@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema and generation, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -181,15 +181,17 @@ SQLite enforces one active QR per service point through an internal nullable `ac
 
 `GenerateQrCodeForServicePointAction` creates a QR only when the service point does not already have an active QR. If an active QR already exists, the action returns the existing record instead of creating a second active QR automatically.
 
-Generated QR URLs are displayed as:
+Generated QR URLs use:
 
 ```text
 /q/{public_token}
 ```
 
-The URL is shown for copying/printing preparation only. The public `/q/{public_token}` route is not implemented yet.
+The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, branch, brand, and organization, and opens a simple guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
 
-PDF generation and the public QR route are not implemented yet.
+Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
+
+PDF generation and printable QR output are not implemented yet.
 
 ## Current Scope
 
@@ -207,7 +209,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema and generation action stored in `qr_codes`.
+- Permanent QR schema, generation action, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -229,7 +231,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- Public QR route and PDF/printing output.
+- QR PDF/printing output.
 - Guest table sessions.
 - Shared order drafts.
 - Kitchen/bar workflows.

@@ -9,6 +9,7 @@ use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
 use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
+use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use Illuminate\Support\Facades\Route;
 
@@ -19,6 +20,15 @@ Route::middleware(['web'])
     ->name('guest.')
     ->group(function () {
         Route::livewire('/', 'pages::guest.home')->name('home');
+    });
+
+Route::middleware(['web'])
+    ->prefix('q')
+    ->name('public.qr.')
+    ->group(function () {
+        Route::livewire('{token}', PublicQrShow::class)
+            ->where('token', '[A-Za-z0-9]+')
+            ->name('show');
     });
 
 Route::middleware(['auth'])->group(function () {

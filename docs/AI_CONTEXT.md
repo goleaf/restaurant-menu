@@ -44,13 +44,13 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema and generation action.
+- Permanent QR schema, generation action, and public QR landing route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, public QR route, QR PDF/printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF/printing output, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -159,9 +159,15 @@ QR code:
 - If an active QR already exists, `GenerateQrCodeForServicePointAction` returns the existing active QR and does not create a second active QR automatically.
 - Generated `public_token` values are 64-character random strings.
 - Generated `short_code` values use the `QR-XXXXXXXX` format with a readable uppercase alphabet.
-- `QrCode::publicPath()` returns `/q/{public_token}` for UI display, but the public route is not registered yet.
+- `QrCode::publicPath()` returns `/q/{public_token}` and matches the public QR route.
 - The branch service point page can show QR status, `short_code`, and `/q/{public_token}` for users with `generate_qr`.
-- No public QR route or PDF/printing output exists yet.
+- Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
+- Public QR route accepts active, disabled, revoked, and unknown token states.
+- Active QR codes load the current service point, current area, branch, brand, and organization for the guest landing page.
+- Disabled and revoked QR codes show public error messages instead of opening the guest landing state.
+- Active QR codes attached to inactive service points show a public unavailable message.
+- Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
+- No QR PDF/printing output exists yet.
 
 Branch settings:
 
@@ -238,6 +244,7 @@ Staff permission overrides:
 ## Routes
 
 - `GET /` -> `home`
+- `GET /q/{token}` -> `public.qr.show`
 - `GET /guest` -> `guest.home`
 - `GET /dashboard` -> `dashboard`
 - `GET /organizations` -> `organizations.index`
@@ -264,6 +271,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
+- `App\Livewire\PublicQr\Show`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
@@ -271,6 +279,18 @@ Staff permission overrides:
 - `App\Livewire\Settings\DeleteUserForm`
 - `App\Livewire\Settings\TwoFactor\RecoveryCodes`
 - `App\Livewire\Actions\Logout`
+
+## Current Public QR Route
+
+- Public QR route is `GET /q/{token}` and is named `public.qr.show`.
+- The route is not protected by auth because guests open it from printed QR codes.
+- The route parameter is only the QR `public_token`; URLs must not expose organization IDs, branch IDs, service point IDs, table IDs, table numbers, or area names.
+- `App\Livewire\PublicQr\Show` owns the public QR landing state.
+- The component eager-loads QR, service point, current area, branch, brand, and organization before rendering.
+- Blade displays prepared state only and must not query the database.
+- Active QR plus active service point shows a simple guest landing placeholder.
+- Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
+- Public QR route does not create guest sessions, ask guest names, show menus, create orders, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
 
@@ -295,7 +315,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be public QR route, QR management details, QR printing/PDF output, invite acceptance flow, menu foundations, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be QR management details, QR printing/PDF output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -303,6 +323,7 @@ The next expected product step may be public QR route, QR management details, QR
 - Do not add unrelated future features.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not expose internal IDs in future QR/public guest URLs.
+- Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.

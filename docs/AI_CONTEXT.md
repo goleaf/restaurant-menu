@@ -41,7 +41,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
-- Area nodes nested branch schema.
+- Area nodes nested branch schema and CRUD UI.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
@@ -107,7 +107,10 @@ Area node:
 - Fixed types are `group`, `floor`, `hall`, `terrace`, `vip_room`, `bar_area`, `banquet_hall`, `room`, `hotel_area`, `pickup_area`, `delivery_area`, and `custom`.
 - Stores `name`, optional `icon`, `sort_order`, `is_active`, and optional JSON `metadata`.
 - Supports soft delete through `deleted_at`.
-- No area management UI, service points, physical tables, or QR logic exists yet.
+- Managed from the branch area page guarded by `manage_zones`.
+- Area CRUD can create common presets, choose icons, rename, move inside another area, disable/enable, and soft delete.
+- Soft deleting an area moves its direct children to the deleted area's parent before hiding the deleted area.
+- No service points, physical tables, or QR logic exists yet.
 
 Branch settings:
 
@@ -191,6 +194,7 @@ Staff permission overrides:
 - `GET /organizations/{organization}/staff/{staffMember}/permissions` -> `organizations.staff.permissions`
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
@@ -204,6 +208,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Staff\Permissions`
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
+- `App\Livewire\Organizations\Brands\Branches\Areas`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\Superadmin\Dashboard`
@@ -214,9 +219,19 @@ Staff permission overrides:
 - `App\Livewire\Settings\TwoFactor\RecoveryCodes`
 - `App\Livewire\Actions\Logout`
 
+## Current Branch Area UI
+
+- Branch area route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas`.
+- Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
+- Access requires `manage_zones` in the current organization context; superadmin bypass still works through computed permissions.
+- The UI uses Blade + Livewire + Flux components.
+- The tree is built in the Livewire component from one eager collection; Blade does not query the database.
+- The UI does not show technical IDs to users.
+- Service points and QR are intentionally not part of this step.
+
 ## Next Step
 
-The next expected product step may be area node CRUD UI, invite acceptance flow, or service points, but only implement it when a prompt explicitly requests it.
+The next expected product step may be invite acceptance flow or service points, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

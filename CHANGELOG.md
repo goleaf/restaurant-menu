@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 018 - Area Nodes CRUD
+
+- Added a branch area management page guarded by the `manage_zones` permission.
+- Added simple nested area tree UI for floors, groups, halls, terraces, VIP rooms, and custom areas.
+- Added create, rename, move, icon selection, enable/disable, and soft delete actions for area nodes.
+- Added tests for access control, nested creation, moving, disabling, soft delete behavior, and cycle prevention.
+
 ### Prompt 017 - Area Nodes Schema
 
 - Added the `area_nodes` table for nested branch area structure.

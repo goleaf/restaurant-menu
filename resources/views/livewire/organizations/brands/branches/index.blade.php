@@ -83,8 +83,14 @@
                             </p>
                         </div>
 
-                        @if ($canManageBranches || $canManageStaff)
+                        @if ($canManageBranches || $canManageZones || $canManageStaff)
                             <div class="flex flex-wrap gap-2 md:justify-end">
+                                @if ($canManageZones)
+                                    <flux:button icon="rectangle-group" type="button" :href="route('organizations.brands.branches.areas.index', [$organization, $brand, $branch])" wire:navigate>
+                                        {{ __('Areas') }}
+                                    </flux:button>
+                                @endif
+
                                 @if ($canManageStaff)
                                     <flux:button icon="users" type="button" :href="route('organizations.brands.branches.staff.index', [$organization, $brand, $branch])" wire:navigate>
                                         {{ __('Staff') }}

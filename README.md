@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch area schema, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -111,7 +111,15 @@ Area nodes are the nested zone structure inside a branch. They are stored in the
 
 Each area node can have a `parent_id`, so branches can model structures such as floors, halls, terraces, VIP rooms, hotel areas, pickup areas, delivery areas, and custom groups. Area nodes store `type`, `name`, optional `icon`, `sort_order`, `is_active`, optional `metadata`, and support soft delete through `deleted_at`.
 
-This stage adds the schema and model foundation only. Service points, physical tables, QR codes, and area management UI are not implemented yet.
+Branch areas are managed at:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/areas
+```
+
+The area UI is guarded by the `manage_zones` permission in the current organization context. It can add common zone presets, choose an icon, rename, move a zone inside another zone, disable/enable zones, and soft delete zones while keeping child zones visible.
+
+Service points, physical tables, and QR codes are not implemented yet.
 
 ## Current Scope
 
@@ -126,7 +134,7 @@ Implemented:
 - Brands inside organizations.
 - Branches inside brands and organizations.
 - Branch settings stored in `branch_settings`.
-- Nested branch area schema stored in `area_nodes`.
+- Nested branch areas stored in `area_nodes`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
@@ -148,7 +156,6 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Restaurant menus.
-- Area management UI.
 - Service points / physical tables.
 - Permanent QR public tokens.
 - Guest table sessions.

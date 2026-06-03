@@ -60,6 +60,8 @@ class Index extends Component
 
     public bool $canManageBranches = false;
 
+    public bool $canManageZones = false;
+
     public bool $canManageStaff = false;
 
     public function mount(Organization $organization, Brand $brand): void
@@ -76,6 +78,7 @@ class Index extends Component
         }
 
         $this->canManageBranches = $this->currentUser()->canManageOrganizationBranches($organization);
+        $this->canManageZones = $this->currentUser()->hasPermission(SystemPermission::ManageZones, $organization);
         $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
     }
 

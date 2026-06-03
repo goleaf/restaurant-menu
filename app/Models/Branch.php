@@ -94,6 +94,17 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<ModifierGroup, $this>
+     */
+    public function modifierGroups(): HasMany
+    {
+        return $this->hasMany(ModifierGroup::class)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

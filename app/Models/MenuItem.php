@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -62,6 +63,18 @@ class MenuItem extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(MenuItemTranslation::class);
+    }
+
+    /**
+     * @return BelongsToMany<ModifierGroup, $this>
+     */
+    public function modifierGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(ModifierGroup::class, 'menu_item_modifier_groups')
+            ->withTimestamps()
+            ->orderBy('modifier_groups.sort_order')
+            ->orderBy('modifier_groups.name')
+            ->orderBy('modifier_groups.id');
     }
 
     public function imageUrl(): ?string

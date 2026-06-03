@@ -7,6 +7,8 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use Illuminate\Support\Facades\Schema;
 
 test('menu tables expose the required columns', function () {
@@ -68,6 +70,37 @@ test('menu tables expose the required columns', function () {
             'language_code',
             'name',
             'description',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('modifier_groups'))->toBeTrue()
+        ->and(Schema::hasColumns('modifier_groups', [
+            'id',
+            'branch_id',
+            'name',
+            'is_required',
+            'min_select',
+            'max_select',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('modifier_options'))->toBeTrue()
+        ->and(Schema::hasColumns('modifier_options', [
+            'id',
+            'modifier_group_id',
+            'name',
+            'price_delta',
+            'is_available',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_item_modifier_groups'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_item_modifier_groups', [
+            'id',
+            'menu_item_id',
+            'modifier_group_id',
             'created_at',
             'updated_at',
         ]))->toBeTrue();
@@ -141,6 +174,42 @@ test('menu category and item translations belong to their base records', functio
         ->and($categoryTranslation->category->id)->toBe($category->id)
         ->and($item->translations()->pluck('menu_item_translations.id')->all())->toBe([$itemTranslation->id])
         ->and($itemTranslation->item->id)->toBe($item->id);
+});
+
+test('menu items can be assigned reusable branch modifier groups with options', function () {
+    $branch = Branch::factory()->create();
+    $menu = Menu::factory()->for($branch)->create(['status' => MenuStatus::Active]);
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create(['name' => 'Pizza']);
+
+    $group = ModifierGroup::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Pizza size',
+            'is_required' => true,
+            'min_select' => 1,
+            'max_select' => 1,
+            'sort_order' => 10,
+        ]);
+    $option = ModifierOption::factory()
+        ->for($group)
+        ->create([
+            'name' => 'Large',
+            'price_delta' => '3.50',
+            'is_available' => true,
+            'sort_order' => 20,
+        ]);
+
+    $item->modifierGroups()->attach($group);
+
+    expect($branch->modifierGroups()->pluck('modifier_groups.id')->all())->toBe([$group->id])
+        ->and($group->options()->pluck('modifier_options.id')->all())->toBe([$option->id])
+        ->and($item->modifierGroups()->pluck('modifier_groups.id')->all())->toBe([$group->id])
+        ->and($option->price_delta)->toBe('3.50')
+        ->and($option->is_available)->toBeTrue();
 });
 
 test('deleting a menu removes its categories and items', function () {

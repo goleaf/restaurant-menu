@@ -4,6 +4,7 @@ namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
+use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
@@ -11,6 +12,8 @@ use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\User;
 use Flux\Flux;
@@ -117,6 +120,54 @@ class Index extends Component
 
     public bool $editingItemIsAvailable = true;
 
+    public string $modifierGroupName = '';
+
+    public bool $modifierGroupIsRequired = false;
+
+    public int $modifierGroupMinSelect = 0;
+
+    public int $modifierGroupMaxSelect = 1;
+
+    public int $modifierGroupSortOrder = 0;
+
+    public ?int $editingModifierGroupId = null;
+
+    public string $editingModifierGroupName = '';
+
+    public bool $editingModifierGroupIsRequired = false;
+
+    public int $editingModifierGroupMinSelect = 0;
+
+    public int $editingModifierGroupMaxSelect = 1;
+
+    public int $editingModifierGroupSortOrder = 0;
+
+    public string $modifierOptionGroupId = '';
+
+    public string $modifierOptionName = '';
+
+    public string $modifierOptionPriceDelta = '0.00';
+
+    public bool $modifierOptionIsAvailable = true;
+
+    public int $modifierOptionSortOrder = 0;
+
+    public ?int $editingModifierOptionId = null;
+
+    public string $editingModifierOptionName = '';
+
+    public string $editingModifierOptionPriceDelta = '0.00';
+
+    public bool $editingModifierOptionIsAvailable = true;
+
+    public int $editingModifierOptionSortOrder = 0;
+
+    public string $modifierItemMenuId = '';
+
+    public string $modifierItemId = '';
+
+    public string $modifierItemGroupId = '';
+
     /**
      * @var array<int, mixed>
      */
@@ -168,6 +219,15 @@ class Index extends Component
             $this->categoryMenuId = (string) $firstMenuId;
             $this->itemMenuId = (string) $firstMenuId;
             $this->itemCategoryId = $this->firstCategoryIdForMenu($this->itemMenuId);
+            $this->modifierItemMenuId = (string) $firstMenuId;
+            $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
+        }
+
+        $firstModifierGroupId = $this->firstModifierGroupId();
+
+        if ($firstModifierGroupId !== '') {
+            $this->modifierOptionGroupId = $firstModifierGroupId;
+            $this->modifierItemGroupId = $firstModifierGroupId;
         }
     }
 
@@ -184,6 +244,11 @@ class Index extends Component
     public function updatedEditingItemMenuId(): void
     {
         $this->editingItemCategoryId = $this->firstCategoryIdForMenu($this->editingItemMenuId);
+    }
+
+    public function updatedModifierItemMenuId(): void
+    {
+        $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
     }
 
     public function createMenu(): void
@@ -386,8 +451,10 @@ class Index extends Component
         $menu = $this->findBranchMenu((int) $validated['itemMenuId']);
         $this->findMenuCategory((int) $validated['itemCategoryId'], $menu);
 
-        $menu->items()->create($this->itemPayload($validated));
+        $item = $menu->items()->create($this->itemPayload($validated));
 
+        $this->modifierItemMenuId = (string) $menu->id;
+        $this->modifierItemId = (string) $item->id;
         $this->resetItemForm(keepMenuId: (string) $menu->id);
         $this->forgetMenuComputed();
 
@@ -468,6 +535,7 @@ class Index extends Component
 
         unset($this->itemImages[$item->id]);
         $this->cancelItemEditing();
+        $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
         $this->forgetMenuComputed();
 
         Flux::toast(variant: 'success', text: __('Dish removed.'));
@@ -529,6 +597,210 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Dish photo removed.'));
     }
 
+    public function createModifierGroup(): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->modifierGroupName = trim($this->modifierGroupName);
+
+        $validated = $this->validate($this->modifierGroupRules());
+
+        $group = $this->branch->modifierGroups()->create([
+            'name' => $validated['modifierGroupName'],
+            'is_required' => (bool) $validated['modifierGroupIsRequired'],
+            'min_select' => (int) $validated['modifierGroupMinSelect'],
+            'max_select' => (int) $validated['modifierGroupMaxSelect'],
+            'sort_order' => (int) $validated['modifierGroupSortOrder'],
+        ]);
+
+        $this->modifierOptionGroupId = (string) $group->id;
+        $this->modifierItemGroupId = (string) $group->id;
+        $this->resetModifierGroupForm();
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier group created.'));
+    }
+
+    public function startEditingModifierGroup(int $modifierGroupId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $group = $this->findBranchModifierGroup($modifierGroupId);
+
+        $this->editingModifierGroupId = $group->id;
+        $this->editingModifierGroupName = $group->name;
+        $this->editingModifierGroupIsRequired = $group->is_required;
+        $this->editingModifierGroupMinSelect = $group->min_select;
+        $this->editingModifierGroupMaxSelect = $group->max_select;
+        $this->editingModifierGroupSortOrder = $group->sort_order;
+        $this->cancelModifierOptionEditing();
+    }
+
+    public function cancelModifierGroupEditing(): void
+    {
+        $this->reset('editingModifierGroupId', 'editingModifierGroupName');
+        $this->editingModifierGroupIsRequired = false;
+        $this->editingModifierGroupMinSelect = 0;
+        $this->editingModifierGroupMaxSelect = 1;
+        $this->editingModifierGroupSortOrder = 0;
+    }
+
+    public function updateModifierGroup(): void
+    {
+        $this->authorizeMenuManagement();
+
+        if ($this->editingModifierGroupId === null) {
+            return;
+        }
+
+        $this->editingModifierGroupName = trim($this->editingModifierGroupName);
+
+        $validated = $this->validate($this->modifierGroupRules('editing'));
+
+        $this->findBranchModifierGroup($this->editingModifierGroupId)->update([
+            'name' => $validated['editingModifierGroupName'],
+            'is_required' => (bool) $validated['editingModifierGroupIsRequired'],
+            'min_select' => (int) $validated['editingModifierGroupMinSelect'],
+            'max_select' => (int) $validated['editingModifierGroupMaxSelect'],
+            'sort_order' => (int) $validated['editingModifierGroupSortOrder'],
+        ]);
+
+        $this->cancelModifierGroupEditing();
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier group updated.'));
+    }
+
+    public function deleteModifierGroup(int $modifierGroupId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->findBranchModifierGroup($modifierGroupId)->delete();
+
+        if ($this->modifierOptionGroupId === (string) $modifierGroupId) {
+            $this->modifierOptionGroupId = $this->firstModifierGroupId();
+        }
+
+        if ($this->modifierItemGroupId === (string) $modifierGroupId) {
+            $this->modifierItemGroupId = $this->firstModifierGroupId();
+        }
+
+        $this->cancelModifierGroupEditing();
+        $this->cancelModifierOptionEditing();
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier group removed.'));
+    }
+
+    public function createModifierOption(): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->modifierOptionName = trim($this->modifierOptionName);
+
+        $validated = $this->validate($this->modifierOptionRules());
+        $group = $this->findBranchModifierGroup((int) $validated['modifierOptionGroupId']);
+
+        $group->options()->create($this->modifierOptionPayload($validated));
+
+        $this->resetModifierOptionForm(keepGroupId: (string) $group->id);
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier option created.'));
+    }
+
+    public function startEditingModifierOption(int $modifierOptionId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $option = $this->findBranchModifierOption($modifierOptionId);
+
+        $this->editingModifierOptionId = $option->id;
+        $this->editingModifierOptionName = $option->name;
+        $this->editingModifierOptionPriceDelta = $option->price_delta;
+        $this->editingModifierOptionIsAvailable = $option->is_available;
+        $this->editingModifierOptionSortOrder = $option->sort_order;
+        $this->cancelModifierGroupEditing();
+    }
+
+    public function cancelModifierOptionEditing(): void
+    {
+        $this->reset('editingModifierOptionId', 'editingModifierOptionName');
+        $this->editingModifierOptionPriceDelta = '0.00';
+        $this->editingModifierOptionIsAvailable = true;
+        $this->editingModifierOptionSortOrder = 0;
+    }
+
+    public function updateModifierOption(): void
+    {
+        $this->authorizeMenuManagement();
+
+        if ($this->editingModifierOptionId === null) {
+            return;
+        }
+
+        $this->editingModifierOptionName = trim($this->editingModifierOptionName);
+
+        $validated = $this->validate($this->modifierOptionRules('editing'));
+        $option = $this->findBranchModifierOption($this->editingModifierOptionId);
+
+        $option->update($this->modifierOptionPayload($validated, 'editing', $option));
+
+        $this->cancelModifierOptionEditing();
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier option updated.'));
+    }
+
+    public function deleteModifierOption(int $modifierOptionId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->findBranchModifierOption($modifierOptionId)->delete();
+
+        $this->cancelModifierOptionEditing();
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier option removed.'));
+    }
+
+    public function attachModifierGroupToItem(): void
+    {
+        $this->authorizeMenuManagement();
+
+        $validated = $this->validate($this->modifierAssignmentRules());
+        $item = $this->findBranchItem((int) $validated['modifierItemId']);
+        $group = $this->findBranchModifierGroup((int) $validated['modifierItemGroupId']);
+
+        $item->modifierGroups()->syncWithoutDetaching([$group->id]);
+
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier group assigned.'));
+    }
+
+    public function detachModifierGroupFromItem(int $itemId, int $modifierGroupId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $item = $this->findBranchItem($itemId);
+        $group = $this->findBranchModifierGroup($modifierGroupId);
+
+        $item->modifierGroups()->detach($group->id);
+
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Modifier group unassigned.'));
+    }
+
     /**
      * @return EloquentCollection<int, Menu>
      */
@@ -582,12 +854,56 @@ class Index extends Component
                         'name',
                         'is_active',
                     ]),
+                    'modifierGroups' => fn ($groupQuery) => $groupQuery->select([
+                        'modifier_groups.id',
+                        'modifier_groups.branch_id',
+                        'modifier_groups.name',
+                        'modifier_groups.is_required',
+                        'modifier_groups.min_select',
+                        'modifier_groups.max_select',
+                        'modifier_groups.sort_order',
+                    ]),
                 ])->orderBy('sort_order')->orderBy('name')->orderBy('id'),
             ])
             ->withCount(['categories', 'items'])
             ->orderBy('sort_order')
             ->orderBy('name')
             ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return EloquentCollection<int, ModifierGroup>
+     */
+    #[Computed]
+    public function modifierGroups(): EloquentCollection
+    {
+        return $this->branch
+            ->modifierGroups()
+            ->select([
+                'id',
+                'branch_id',
+                'name',
+                'is_required',
+                'min_select',
+                'max_select',
+                'sort_order',
+                'created_at',
+                'updated_at',
+            ])
+            ->with([
+                'options' => fn ($query) => $query->select([
+                    'id',
+                    'modifier_group_id',
+                    'name',
+                    'price_delta',
+                    'is_available',
+                    'sort_order',
+                    'created_at',
+                    'updated_at',
+                ])->orderBy('sort_order')->orderBy('name')->orderBy('id'),
+            ])
+            ->withCount('items')
             ->get();
     }
 
@@ -647,6 +963,40 @@ class Index extends Component
             ->map(fn (MenuCategory $category): array => [
                 'value' => (string) $category->id,
                 'label' => $category->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function itemOptionsForMenu(string $menuId): array
+    {
+        $menu = $this->menuFromLoadedCollection($menuId);
+
+        if (! $menu instanceof Menu) {
+            return [];
+        }
+
+        return $menu->items
+            ->map(fn (MenuItem $item): array => [
+                'value' => (string) $item->id,
+                'label' => $item->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function modifierGroupOptions(): array
+    {
+        return $this->modifierGroups
+            ->map(fn (ModifierGroup $group): array => [
+                'value' => (string) $group->id,
+                'label' => $group->name,
             ])
             ->values()
             ->all();
@@ -735,6 +1085,68 @@ class Index extends Component
         return $rules;
     }
 
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function modifierGroupRules(string $prefix = ''): array
+    {
+        if ($prefix === 'editing') {
+            return [
+                'editingModifierGroupName' => ['required', 'string', 'max:160'],
+                'editingModifierGroupIsRequired' => ['boolean'],
+                'editingModifierGroupMinSelect' => ['required', 'integer', 'min:0', 'max:50'],
+                'editingModifierGroupMaxSelect' => ['required', 'integer', 'min:0', 'max:50', 'gte:editingModifierGroupMinSelect'],
+                'editingModifierGroupSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
+            ];
+        }
+
+        return [
+            'modifierGroupName' => ['required', 'string', 'max:160'],
+            'modifierGroupIsRequired' => ['boolean'],
+            'modifierGroupMinSelect' => ['required', 'integer', 'min:0', 'max:50'],
+            'modifierGroupMaxSelect' => ['required', 'integer', 'min:0', 'max:50', 'gte:modifierGroupMinSelect'],
+            'modifierGroupSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function modifierOptionRules(string $prefix = ''): array
+    {
+        $fieldPrefix = $prefix === '' ? '' : $prefix;
+        $rules = [
+            $fieldPrefix === '' ? 'modifierOptionName' : $fieldPrefix.'ModifierOptionName' => ['required', 'string', 'max:160'],
+            $fieldPrefix === '' ? 'modifierOptionSortOrder' : $fieldPrefix.'ModifierOptionSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
+        ];
+
+        if ($fieldPrefix === '') {
+            $rules['modifierOptionGroupId'] = ['required', 'integer', $this->modifierGroupRule()];
+        }
+
+        if ($this->canChangePrices) {
+            $rules[$fieldPrefix === '' ? 'modifierOptionPriceDelta' : $fieldPrefix.'ModifierOptionPriceDelta'] = ['required', 'numeric', 'min:-999999.99', 'max:999999.99'];
+        }
+
+        if ($this->canChangeAvailability) {
+            $rules[$fieldPrefix === '' ? 'modifierOptionIsAvailable' : $fieldPrefix.'ModifierOptionIsAvailable'] = ['boolean'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function modifierAssignmentRules(): array
+    {
+        return [
+            'modifierItemMenuId' => ['required', 'integer', $this->menuRule()],
+            'modifierItemId' => ['required', 'integer', $this->itemRule($this->modifierItemMenuId)],
+            'modifierItemGroupId' => ['required', 'integer', $this->modifierGroupRule()],
+        ];
+    }
+
     private function menuRule(): mixed
     {
         return Rule::exists((new Menu)->getTable(), 'id')
@@ -745,6 +1157,18 @@ class Index extends Component
     {
         return Rule::exists((new MenuCategory)->getTable(), 'id')
             ->where(fn ($query) => $query->where('menu_id', (int) $menuId));
+    }
+
+    private function itemRule(string $menuId): mixed
+    {
+        return Rule::exists((new MenuItem)->getTable(), 'id')
+            ->where(fn ($query) => $query->where('menu_id', (int) $menuId));
+    }
+
+    private function modifierGroupRule(): mixed
+    {
+        return Rule::exists((new ModifierGroup)->getTable(), 'id')
+            ->where(fn ($query) => $query->where('branch_id', $this->branch->id));
     }
 
     /**
@@ -778,6 +1202,31 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{name: string, price_delta: string, is_available: bool, sort_order: int}
+     */
+    private function modifierOptionPayload(array $validated, string $prefix = '', ?ModifierOption $existingOption = null): array
+    {
+        $priceDelta = $existingOption?->price_delta ?? '0.00';
+        $isAvailable = $existingOption?->is_available ?? true;
+
+        if ($this->canChangePrices) {
+            $priceDelta = number_format((float) $validated[$prefix === '' ? 'modifierOptionPriceDelta' : $prefix.'ModifierOptionPriceDelta'], 2, '.', '');
+        }
+
+        if ($this->canChangeAvailability) {
+            $isAvailable = (bool) $validated[$prefix === '' ? 'modifierOptionIsAvailable' : $prefix.'ModifierOptionIsAvailable'];
+        }
+
+        return [
+            'name' => $validated[$prefix === '' ? 'modifierOptionName' : $prefix.'ModifierOptionName'],
+            'price_delta' => $priceDelta,
+            'is_available' => $isAvailable,
+            'sort_order' => (int) $validated[$prefix === '' ? 'modifierOptionSortOrder' : $prefix.'ModifierOptionSortOrder'],
+        ];
+    }
+
     private function resetMenuForm(): void
     {
         $this->reset('menuName');
@@ -808,6 +1257,26 @@ class Index extends Component
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
     }
 
+    private function resetModifierGroupForm(): void
+    {
+        $this->reset('modifierGroupName');
+        $this->modifierGroupIsRequired = false;
+        $this->modifierGroupMinSelect = 0;
+        $this->modifierGroupMaxSelect = 1;
+        $this->modifierGroupSortOrder = 0;
+    }
+
+    private function resetModifierOptionForm(?string $keepGroupId = null): void
+    {
+        $groupId = $keepGroupId ?? $this->modifierOptionGroupId;
+
+        $this->reset('modifierOptionName');
+        $this->modifierOptionGroupId = $groupId;
+        $this->modifierOptionPriceDelta = '0.00';
+        $this->modifierOptionIsAvailable = true;
+        $this->modifierOptionSortOrder = 0;
+    }
+
     private function resetMenuSelections(): void
     {
         $firstMenuId = $this->branch
@@ -824,6 +1293,8 @@ class Index extends Component
         $this->categoryParentId = '';
         $this->itemMenuId = $menuId;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
+        $this->modifierItemMenuId = $menuId;
+        $this->modifierItemId = $this->firstItemIdForMenu($menuId);
     }
 
     private function findBranchMenu(int $menuId): Menu
@@ -909,6 +1380,43 @@ class Index extends Component
             ->firstOrFail();
     }
 
+    private function findBranchModifierGroup(int $modifierGroupId): ModifierGroup
+    {
+        return $this->branch
+            ->modifierGroups()
+            ->select([
+                'id',
+                'branch_id',
+                'name',
+                'is_required',
+                'min_select',
+                'max_select',
+                'sort_order',
+                'created_at',
+                'updated_at',
+            ])
+            ->whereKey($modifierGroupId)
+            ->firstOrFail();
+    }
+
+    private function findBranchModifierOption(int $modifierOptionId): ModifierOption
+    {
+        return ModifierOption::query()
+            ->select([
+                'id',
+                'modifier_group_id',
+                'name',
+                'price_delta',
+                'is_available',
+                'sort_order',
+                'created_at',
+                'updated_at',
+            ])
+            ->whereHas('group', fn ($query) => $query->where('branch_id', $this->branch->id))
+            ->whereKey($modifierOptionId)
+            ->firstOrFail();
+    }
+
     private function firstCategoryIdForMenu(string $menuId): string
     {
         if ($menuId === '') {
@@ -924,6 +1432,36 @@ class Index extends Component
             ->value('menu_categories.id');
 
         return is_int($categoryId) ? (string) $categoryId : '';
+    }
+
+    private function firstItemIdForMenu(string $menuId): string
+    {
+        if ($menuId === '') {
+            return '';
+        }
+
+        $itemId = MenuItem::query()
+            ->select('menu_items.id')
+            ->where('menu_id', (int) $menuId)
+            ->oldest('sort_order')
+            ->oldest('name')
+            ->oldest('id')
+            ->value('menu_items.id');
+
+        return is_int($itemId) ? (string) $itemId : '';
+    }
+
+    private function firstModifierGroupId(): string
+    {
+        $modifierGroupId = $this->branch
+            ->modifierGroups()
+            ->select('modifier_groups.id')
+            ->oldest('sort_order')
+            ->oldest('name')
+            ->oldest('id')
+            ->value('modifier_groups.id');
+
+        return is_int($modifierGroupId) ? (string) $modifierGroupId : '';
     }
 
     private function menuFromLoadedCollection(string $menuId): ?Menu
@@ -965,6 +1503,12 @@ class Index extends Component
     private function forgetMenuComputed(): void
     {
         unset($this->menus);
+        unset($this->modifierGroups);
+    }
+
+    private function forgetBranchMenuCache(): void
+    {
+        GetGuestMenuForBranchAction::forgetForBranch($this->branch->id);
     }
 
     private function emptyStringToNull(mixed $value): ?string

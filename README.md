@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, guest menu display, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -150,12 +150,17 @@ The base menu tables are:
 - `menus`
 - `menu_categories`
 - `menu_items`
+- `modifier_groups`
+- `modifier_options`
+- `menu_item_modifier_groups`
 
 Each menu belongs to a branch through `branch_id`, stores a name, a fixed status, and a sort order. Current menu statuses are `draft`, `active`, and `archived`.
 
 Menu categories belong to one menu and can be nested with `parent_id`. They store name, optional description, optional image path, optional icon, sort order, and `is_active`.
 
 Menu items belong to one menu and one category. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
+
+Menu modifiers are managed in the same branch menu admin page. A modifier group belongs to a branch and stores `name`, `is_required`, `min_select`, `max_select`, and `sort_order`. Modifier options belong to a modifier group and store `name`, `price_delta`, `is_available`, and `sort_order`. The `menu_item_modifier_groups` pivot assigns reusable branch modifier groups to dishes, so examples like pizza size, doneness, extra cheese, milk type, or syrup can be attached without duplicating group definitions.
 
 Category and dish translations are stored separately in:
 
@@ -170,7 +175,7 @@ Branch menu management is available at:
 /organizations/{organization}/brands/{brand}/branches/{branch}/menu
 ```
 
-Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, and dishes. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices requires `change_prices`; changing dish availability requires `change_availability`.
+Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`.
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, and unavailable dish state.
 
@@ -182,9 +187,9 @@ guest-menu:branch:{branch_id}:language:{language_code}
 
 Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
 
-Menu cache is forgotten automatically when menus, categories, dishes, or their translations are created, updated, or deleted. Price changes and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
+Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-This step does not add cart item creation, shared order draft rows, AI translation, modifiers, kitchen/bar flow, or payment logic.
+This step does not add cart item creation, shared order draft rows, AI translation, guest modifier selection, kitchen/bar flow, or payment logic.
 
 ## Area Nodes
 
@@ -413,6 +418,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
+- Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
 - Cached guest menu display on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
@@ -440,7 +446,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 Not implemented yet:
 
 - Adding menu items to a shared order draft.
-- Menu translations and menu modifiers.
+- Menu translation admin editor and guest modifier selection.
 - QR PDF generation.
 - Shared order drafts.
 - Kitchen/bar workflows.

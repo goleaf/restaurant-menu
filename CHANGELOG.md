@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 044 - Menu Modifiers
+
+- Added `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups` for reusable branch-level dish modifiers.
+- Added modifier group and option models, factories, relationships, schema coverage, and cache-clearing observers.
+- Added branch menu admin CRUD for modifier groups, modifier options, and assigning modifier groups to dishes.
+- Kept modifier price deltas behind `change_prices` and modifier option availability behind `change_availability`.
+- Modifier changes now clear the branch guest menu cache through Laravel's `database` cache store.
+- Kept this step admin-only: no guest modifier selection, cart, shared order draft, orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 043 - Menu Translations
 
 - Added `menu_category_translations` and `menu_item_translations` for translated category and dish names/descriptions.

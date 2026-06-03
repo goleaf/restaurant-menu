@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
@@ -11,12 +12,15 @@ use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -142,6 +146,106 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->and($item->image)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/menu-items/'.$item->id.'/images/');
 
     Storage::disk('public')->assertExists($item->image);
+});
+
+test('manager can manage modifier groups options and item assignments', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [
+        SystemPermission::ManageMenu,
+        SystemPermission::ChangePrices,
+        SystemPermission::ChangeAvailability,
+    ]);
+    $menu = Menu::factory()->for($branch)->create([
+        'name' => 'Modifier Menu',
+        'status' => MenuStatus::Active,
+    ]);
+    $category = MenuCategory::factory()->for($menu)->create(['name' => 'Pizza']);
+    $item = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create(['name' => 'Pepperoni']);
+    $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeTrue();
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('modifierGroupName', 'Pizza size')
+        ->set('modifierGroupIsRequired', true)
+        ->set('modifierGroupMinSelect', 1)
+        ->set('modifierGroupMaxSelect', 1)
+        ->set('modifierGroupSortOrder', 10)
+        ->call('createModifierGroup')
+        ->assertHasNoErrors()
+        ->assertSee('Pizza size');
+
+    $group = ModifierGroup::query()
+        ->where('branch_id', $branch->id)
+        ->where('name', 'Pizza size')
+        ->firstOrFail();
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('modifierOptionGroupId', (string) $group->id)
+        ->set('modifierOptionName', 'Large')
+        ->set('modifierOptionPriceDelta', '3.50')
+        ->set('modifierOptionIsAvailable', true)
+        ->set('modifierOptionSortOrder', 20)
+        ->call('createModifierOption')
+        ->assertHasNoErrors()
+        ->assertSee('Large');
+
+    $option = ModifierOption::query()
+        ->where('modifier_group_id', $group->id)
+        ->where('name', 'Large')
+        ->firstOrFail();
+
+    expect($option->price_delta)->toBe('3.50')
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('modifierItemMenuId', (string) $menu->id)
+        ->set('modifierItemId', (string) $item->id)
+        ->set('modifierItemGroupId', (string) $group->id)
+        ->call('attachModifierGroupToItem')
+        ->assertHasNoErrors()
+        ->assertSee('Pizza size');
+
+    expect($item->modifierGroups()->pluck('modifier_groups.id')->all())->toBe([$group->id])
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('startEditingModifierGroup', $group->id)
+        ->set('editingModifierGroupName', 'Choose size')
+        ->set('editingModifierGroupMinSelect', 1)
+        ->set('editingModifierGroupMaxSelect', 2)
+        ->call('updateModifierGroup')
+        ->assertHasNoErrors()
+        ->call('startEditingModifierOption', $option->id)
+        ->set('editingModifierOptionName', 'Extra large')
+        ->set('editingModifierOptionPriceDelta', '5.00')
+        ->set('editingModifierOptionIsAvailable', false)
+        ->call('updateModifierOption')
+        ->assertHasNoErrors()
+        ->call('detachModifierGroupFromItem', $item->id, $group->id)
+        ->assertHasNoErrors()
+        ->call('deleteModifierOption', $option->id)
+        ->assertHasNoErrors()
+        ->call('deleteModifierGroup', $group->id)
+        ->assertHasNoErrors();
+
+    expect($group->fresh())->toBeNull()
+        ->and($option->fresh())->toBeNull()
+        ->and($item->modifierGroups()->exists())->toBeFalse();
 });
 
 test('price and availability changes require dedicated permissions', function () {

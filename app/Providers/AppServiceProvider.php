@@ -8,11 +8,15 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Observers\MenuCategoryObserver;
 use App\Observers\MenuCategoryTranslationObserver;
 use App\Observers\MenuItemObserver;
 use App\Observers\MenuItemTranslationObserver;
 use App\Observers\MenuObserver;
+use App\Observers\ModifierGroupObserver;
+use App\Observers\ModifierOptionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -72,6 +76,8 @@ class AppServiceProvider extends ServiceProvider
         MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);
         MenuItem::observe(MenuItemObserver::class);
         MenuItemTranslation::observe(MenuItemTranslationObserver::class);
+        ModifierGroup::observe(ModifierGroupObserver::class);
+        ModifierOption::observe(ModifierOptionObserver::class);
     }
 
     /**

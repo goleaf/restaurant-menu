@@ -45,7 +45,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, and permission-gated price/availability changes.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level menu modifiers, and permission-gated price/availability changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -57,7 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, modifiers, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translation admin editor, guest modifier selection, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -84,6 +84,9 @@ No menu translation admin editor, modifiers, QR PDF generation, order draft, kit
 - `menu_category_translations`
 - `menu_items`
 - `menu_item_translations`
+- `modifier_groups`
+- `modifier_options`
+- `menu_item_modifier_groups`
 - `area_nodes`
 - `service_points`
 - `table_sessions`
@@ -117,6 +120,7 @@ Branch:
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
 - Has many menus.
+- Has many modifier groups.
 - Has many nested area nodes.
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
@@ -167,8 +171,9 @@ Menu item:
 - Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
 - Guest menu display shows item price, photo when present, and unavailable state.
 - Has many translations through `menu_item_translations`.
+- Has many reusable modifier groups through `menu_item_modifier_groups`.
 - Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
-- No modifiers, order draft integration, kitchen/bar flow, or payment logic exists yet.
+- Modifier assignment exists in admin CRUD, but guest modifier selection, order draft integration, kitchen/bar flow, and payment logic do not exist yet.
 
 Menu category translation:
 
@@ -185,6 +190,37 @@ Menu item translation:
 - Stores `language_code`, translated `name`, and optional translated `description`.
 - Unique per `menu_item_id` and `language_code`.
 - Observer clears all supported language cache variants for the branch guest menu.
+
+Modifier group:
+
+- Stored in `modifier_groups`.
+- Belongs to one branch through `branch_id`.
+- Stores `name`, `is_required`, `min_select`, `max_select`, and `sort_order`.
+- Has many options through `modifier_options`.
+- Can be assigned to many dishes through `menu_item_modifier_groups`.
+- Managed from the branch menu page guarded by `manage_menu`.
+- Changing a modifier group clears all supported language cache variants for the branch guest menu.
+
+Modifier option:
+
+- Stored in `modifier_options`.
+- Belongs to one modifier group through `modifier_group_id`.
+- Stores `name`, `price_delta`, `is_available`, and `sort_order`.
+- `price_delta` is a decimal cast and can be positive or negative.
+- Creating or editing price deltas requires `change_prices`; without it, price delta edits are preserved as the current value.
+- Creating or editing availability requires `change_availability`; without it, availability edits are preserved as the current value.
+- Managed from the branch menu page guarded by `manage_menu`.
+- Changing a modifier option clears all supported language cache variants for the branch guest menu.
+
+Menu item modifier assignment:
+
+- Stored in `menu_item_modifier_groups`.
+- Assigns reusable branch modifier groups to individual menu items.
+- A menu item can have multiple modifier groups.
+- The same modifier group can be reused by multiple menu items in the same branch.
+- The pivot is unique by `menu_item_id` and `modifier_group_id`.
+- Assigning or removing a group from a dish clears all supported language cache variants for the branch guest menu.
+- Guest menu payloads do not expose modifier selection yet, and no order/cart pricing is implemented for modifiers yet.
 
 Area node:
 
@@ -551,8 +587,8 @@ Local media storage:
 - Guest menu payloads are cached in Laravel's explicit `database` cache store for 300 seconds, even if the default cache store is changed in a test or environment.
 - Cache key format is `guest-menu:branch:{branch_id}:language:{language_code}`.
 - Rebuild lock key format is `guest-menu:branch:{branch_id}:language:{language_code}:lock` and uses the SQLite-backed `cache_locks` table.
-- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, and `MenuItemTranslationObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
-- Updating a dish price or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
+- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, `MenuItemTranslationObserver`, `ModifierGroupObserver`, and `ModifierOptionObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
+- Updating a dish price, modifier, or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable dishes are visually dimmed and marked `Недоступно`; there is no add-to-cart action yet.
@@ -571,13 +607,20 @@ Local media storage:
 - The page can create, edit, manually sort, activate/deactivate, and delete categories.
 - The page can create, edit, manually sort, and delete dishes.
 - Dish photo upload/removal uses `StoreLocalImageAction` and `DeleteLocalMediaFileAction` on Laravel's local `public` disk.
-- The page eager-loads categories, items, item category labels, and menu counts; Blade must not query the database.
+- The page eager-loads categories, items, item category labels, item modifier groups, modifier options, modifier item counts, and menu counts; Blade must not query the database.
 - Price fields are only shown and applied for users with `change_prices`.
 - Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
 - Deleting dishes, categories, or menus removes related local dish photos.
-- Menu/category/item model observers forget guest menu cache after menu changes.
+- Menu/category/item/translation/modifier model observers forget guest menu cache after menu changes.
 - The branch list shows a `Menu` action only to users with `manage_menu`.
 - This UI now updates the data shown by the public QR guest menu through cache invalidation.
+- The page can create, edit, manually sort, and delete modifier groups.
+- The page can create, edit, manually sort, and delete modifier options.
+- The page can assign and remove modifier groups from dishes.
+- Modifier group CRUD and dish assignment require `manage_menu`.
+- Modifier option price deltas require `change_prices`.
+- Modifier option availability changes require `change_availability`.
+- The branch menu UI does not implement guest modifier selection, cart rows, or order pricing yet.
 
 ## Current Service Point UI
 
@@ -652,7 +695,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be order draft foundations, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be order draft foundations, guest modifier selection, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -664,11 +707,13 @@ The next expected product step may be order draft foundations, QR PDF generation
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add cart item creation, AI translations, a complex translation editor, modifiers, order draft, kitchen/bar, or payment logic in guest menu display steps.
+- Do not add cart item creation, AI translations, a complex translation editor, guest modifier selection, order draft, kitchen/bar, or payment logic in guest menu display steps.
 - Do not break guest menu language fallback: missing translations must show base category/item text.
 - Do not switch guest menu cache away from explicit database cache or remove language from guest menu cache keys.
 - Do not let users without `change_prices` change menu item prices.
 - Do not let users without `change_availability` change menu item availability.
+- Do not let users without `change_prices` change modifier option price deltas.
+- Do not let users without `change_availability` change modifier option availability.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
 - Do not print service point number or area by default on QR stickers.

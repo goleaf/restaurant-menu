@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -150,6 +150,7 @@ The base menu tables are:
 - `menus`
 - `menu_categories`
 - `menu_items`
+- `kitchen_departments`
 - `modifier_groups`
 - `modifier_options`
 - `menu_item_modifier_groups`
@@ -158,7 +159,9 @@ Each menu belongs to a branch through `branch_id`, stores a name, a fixed status
 
 Menu categories belong to one menu and can be nested with `parent_id`. They store name, optional description, optional image path, optional icon, sort order, and `is_active`.
 
-Menu items belong to one menu and one category. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
+Menu items belong to one menu and one category. They can optionally be assigned to one branch kitchen department through `kitchen_department_id`. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
+
+Kitchen departments are stored per branch in `kitchen_departments`. Supported department types are `kitchen`, `bar`, `dessert`, `hookah`, and `custom`. New branches created through the backend action receive standard departments for kitchen, bar, dessert, and hookah; custom departments are created manually. Departments can be enabled or disabled, sorted, renamed, and assigned to dishes from the branch menu admin page.
 
 Menu modifiers are managed in the same branch menu admin page. A modifier group belongs to a branch and stores `name`, `is_required`, `min_select`, `max_select`, and `sort_order`. Modifier options belong to a modifier group and store `name`, `price_delta`, `is_available`, and `sort_order`. The `menu_item_modifier_groups` pivot assigns reusable branch modifier groups to dishes, so examples like pizza size, doneness, extra cheese, milk type, or syrup can be attached without duplicating group definitions.
 
@@ -175,7 +178,7 @@ Branch menu management is available at:
 /organizations/{organization}/brands/{brand}/branches/{branch}/menu
 ```
 
-Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`.
+Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, kitchen departments, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`.
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
 
@@ -384,7 +387,7 @@ This guest action is only a waiter-review handoff. The draft does not become a r
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
-The waiter can confirm a sent draft from the waiter table detail page. Confirmation changes the draft to `converted_to_order`, creates one real `orders` row with status `confirmed_by_waiter`, and copies draft positions into `order_items` as snapshots. The new order is prepared for a later kitchen/bar dispatch step, but this step does not send anything to kitchen or bar.
+The waiter can confirm a sent draft from the waiter table detail page. Confirmation changes the draft to `converted_to_order`, creates one real `orders` row with status `confirmed_by_waiter`, and copies draft positions into `order_items` as snapshots. If a source menu item has a kitchen department, the order item also stores `kitchen_department_id`, `kitchen_department_type`, and `kitchen_department_name`. The new order is prepared for a later kitchen/bar dispatch step, but this step does not send anything to kitchen or bar.
 
 Real orders are stored in:
 
@@ -406,7 +409,7 @@ Current order lifecycle statuses are:
 - `closed`
 - `cancelled`
 
-Order items can keep optional links to the original guest and menu item, but they also store immutable snapshots of guest name, dish name, unit price, modifier total, line total, selected modifiers, and comment. If the menu item name, price, or modifier options change later, old confirmed orders keep the original order snapshot.
+Order items can keep optional links to the original guest, menu item, and kitchen department, but they also store immutable snapshots of guest name, dish name, kitchen department type/name, unit price, modifier total, line total, selected modifiers, and comment. If the menu item name, price, modifier options, or kitchen department name/type change later, old confirmed orders keep the original order snapshot.
 
 Order status logs are the persistent history for draft and confirmed order events. They record branch, service point, table session, draft order, optional confirmed order, actor user or guest, actor type/name snapshot, event, previous status, new status, optional reason, metadata, and `occurred_at`.
 
@@ -530,6 +533,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
+- Branch kitchen departments stored in `kitchen_departments`, assignable to menu items and snapshotted into confirmed order items.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
 - Cached guest menu display with modifier selection, shared table cart UI, guest ready status, send-to-waiter draft handoff, and guest draft item creation/editing on the active public QR table page.
 - Service point operational statuses and manual status changes.

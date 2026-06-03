@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['menu_id', 'category_id', 'name', 'description', 'price', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
+#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
 class MenuItem extends Model
 {
     /** @use HasFactory<MenuItemFactory> */
@@ -55,6 +55,14 @@ class MenuItem extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(MenuCategory::class, 'category_id');
+    }
+
+    /**
+     * @return BelongsTo<KitchenDepartment, $this>
+     */
+    public function kitchenDepartment(): BelongsTo
+    {
+        return $this->belongsTo(KitchenDepartment::class);
     }
 
     /**

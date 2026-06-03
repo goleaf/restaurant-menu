@@ -45,14 +45,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level menu modifiers, and permission-gated price/availability changes.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level kitchen departments, branch-level menu modifiers, and permission-gated price/availability changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
-- Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum.
+- Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
@@ -61,7 +61,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, kitchen, bar, payment, analytics, or confirmed-order dispatch logic has been implemented yet.
+No menu translation admin editor, QR PDF generation, kitchen/bar screen, payment, analytics, or confirmed-order dispatch logic has been implemented yet.
 
 ## Tables
 
@@ -88,6 +88,7 @@ No menu translation admin editor, QR PDF generation, kitchen, bar, payment, anal
 - `menu_category_translations`
 - `menu_items`
 - `menu_item_translations`
+- `kitchen_departments`
 - `modifier_groups`
 - `modifier_options`
 - `menu_item_modifier_groups`
@@ -129,11 +130,13 @@ Branch:
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
 - Has many menus.
+- Has many kitchen departments.
 - Has many modifier groups.
 - Has many nested area nodes.
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
 - Stores optional `logo_path` for a locally stored logo.
+- New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
 
 Menu:
 
@@ -171,6 +174,7 @@ Menu item:
 - Stored in `menu_items`.
 - Belongs to one menu through `menu_id`.
 - Belongs to one category through `category_id`.
+- Can optionally belong to one branch kitchen department through `kitchen_department_id`.
 - Stores `name`, optional `description`, `price`, optional `image`, optional `weight`, optional `volume`, optional `calories`, `is_available`, and `sort_order`.
 - `price`, `weight`, and `volume` are decimal casts; `is_available` is a boolean cast.
 - Managed from the branch menu page guarded by `manage_menu`.
@@ -182,8 +186,24 @@ Menu item:
 - Has many translations through `menu_item_translations`.
 - Has many reusable modifier groups through `menu_item_modifier_groups`.
 - Has many draft order items through `draft_order_items`.
+- Has many confirmed order item records through `order_items`.
 - Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
 - Modifier assignment exists in admin CRUD and the guest UI can configure available modifiers and persist configured selections into `draft_order_items`.
+
+Kitchen department:
+
+- Stored in `kitchen_departments`.
+- Belongs to one branch through `branch_id`.
+- Fixed department types are `kitchen`, `bar`, `dessert`, `hookah`, and `custom`.
+- Type is cast to `KitchenDepartmentType`.
+- Stores `name`, `sort_order`, `is_active`, and timestamps.
+- Branch and department name are unique together.
+- New branch creation seeds standard active departments for kitchen, bar, dessert, and hookah.
+- `KitchenDepartmentsSeeder` can backfill standard departments for existing branches without creating duplicates for an already present standard type.
+- Custom departments are created manually from branch menu admin.
+- Managed from the branch menu page guarded by `manage_menu`.
+- Menu items can be assigned to a department; inactive departments remain visible for existing assignments but are not selected by default for new dishes.
+- Deleting a department sets nullable menu item and order item department links to null, while confirmed order item type/name snapshots remain.
 
 Menu category translation:
 
@@ -356,7 +376,7 @@ Draft order:
 - `DeleteGuestDraftOrderItemAction` lets an active guest delete only their own draft item while the draft is still `draft`.
 - `SendDraftOrderToWaiterAction` lets any active guest in the same open table session send the shared draft to waiter review.
 - Sending sets the draft status to `sent_to_waiter`, stores `sent_to_waiter_at` and `sent_by_guest_id`, clears active guest `ready_at`, and moves the related service point to `has_new_order`.
-- `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items` snapshots.
+- `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items` snapshots, including kitchen department id/type/name when the source menu item has a department.
 - `RejectDraftOrderByWaiterAction` requires `confirm_orders`, sets a sent draft to `rejected`, and stores a required rejection reason for guests to see.
 - `ReturnRejectedDraftOrderToDraftAction` requires `confirm_orders` and returns a rejected draft to `draft` so guests can edit and send the same shared draft again.
 - `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, and `DeleteDraftOrderItemByWaiterAction` allow staff with `confirm_orders` or `edit_pending_orders` to edit a `sent_to_waiter` or `waiter_review` draft before confirmation.
@@ -409,10 +429,10 @@ Order item:
 
 - Stored in `order_items`.
 - Belongs to one real order through `order_id`.
-- Optionally references the original table session guest and menu item.
-- Stores guest/item/price snapshots copied from `draft_order_items`: `guest_name`, `item_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers, and optional comment.
-- Snapshot fields must remain unchanged if the source menu item name, menu item price, or modifier options change later.
-- Table session guests and menu items expose `orderItems()` relationships for confirmed order history.
+- Optionally references the original table session guest, menu item, and kitchen department.
+- Stores guest/item/department/price snapshots copied from `draft_order_items` and the source menu item: `guest_name`, `item_name`, `kitchen_department_type`, `kitchen_department_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers, and optional comment.
+- Snapshot fields must remain unchanged if the source menu item name, menu item price, modifier options, or kitchen department name/type change later.
+- Table session guests, menu items, and kitchen departments expose `orderItems()` relationships for confirmed order history.
 - These rows prepare later kitchen/bar dispatch without exposing unconfirmed drafts to kitchen/bar.
 
 Order status log:
@@ -793,7 +813,7 @@ Local media storage:
 - The page can create, edit, manually sort, activate/deactivate, and delete categories.
 - The page can create, edit, manually sort, and delete dishes.
 - Dish photo upload/removal uses `StoreLocalImageAction` and `DeleteLocalMediaFileAction` on Laravel's local `public` disk.
-- The page eager-loads categories, items, item category labels, item modifier groups, modifier options, modifier item counts, and menu counts; Blade must not query the database.
+- The page eager-loads categories, items, item category labels, item kitchen department labels, item modifier groups, modifier options, modifier item counts, kitchen department item counts, and menu counts; Blade must not query the database.
 - Price fields are only shown and applied for users with `change_prices`.
 - Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
 - Deleting dishes, categories, or menus removes related local dish photos.
@@ -803,10 +823,12 @@ Local media storage:
 - The page can create, edit, manually sort, and delete modifier groups.
 - The page can create, edit, manually sort, and delete modifier options.
 - The page can assign and remove modifier groups from dishes.
+- The page can create, edit, manually sort, enable/disable, and delete kitchen departments.
+- The page can assign a kitchen department to each dish.
 - Modifier group CRUD and dish assignment require `manage_menu`.
 - Modifier option price deltas require `change_prices`.
 - Modifier option availability changes require `change_availability`.
-- The branch menu UI manages modifier setup only; waiter confirmation and final order conversion happen from the waiter table detail page, not from menu admin.
+- The branch menu UI manages department and modifier setup only; waiter confirmation and final order conversion happen from the waiter table detail page, not from menu admin.
 
 ## Current Service Point UI
 
@@ -881,7 +903,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be kitchen/bar dispatch for confirmed orders, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be kitchen/bar dispatch for confirmed orders using `kitchen_departments`, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -903,6 +925,7 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders,
 - Do not create real orders from the guest UI; waiter confirmation must come first.
 - Do not send confirmed orders to kitchen/bar from the waiter table detail page until a prompt explicitly asks for kitchen/bar dispatch.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
+- Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
 - Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.

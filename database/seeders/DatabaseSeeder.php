@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(SystemPermissionsSeeder::class);
         $this->call(FirstSuperadminSeeder::class);
+        $this->call(KitchenDepartmentsSeeder::class);
 
         // User::factory(10)->create();
 

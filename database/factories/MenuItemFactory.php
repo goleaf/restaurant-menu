@@ -24,6 +24,7 @@ class MenuItemFactory extends Factory
             'category_id' => fn (array $attributes): int => MenuCategory::factory()
                 ->create(['menu_id' => $attributes['menu_id']])
                 ->id,
+            'kitchen_department_id' => null,
             'name' => fake()->unique()->words(3, true),
             'description' => fake()->optional()->sentence(),
             'price' => fake()->randomFloat(2, 1, 80),

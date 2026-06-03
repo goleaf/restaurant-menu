@@ -33,6 +33,9 @@ class OrderItemFactory extends Factory
                     ->id;
             },
             'menu_item_id' => null,
+            'kitchen_department_id' => null,
+            'kitchen_department_type' => null,
+            'kitchen_department_name' => null,
             'guest_name' => fake()->firstName(),
             'item_name' => fake()->words(3, true),
             'quantity' => 1,

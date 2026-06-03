@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'unit_price', 'modifier_total', 'total_price', 'selected_modifiers', 'comment'])]
+#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'item_name', 'quantity', 'unit_price', 'modifier_total', 'total_price', 'selected_modifiers', 'comment'])]
 class OrderItem extends Model
 {
     /** @use HasFactory<OrderItemFactory> */
@@ -61,5 +61,13 @@ class OrderItem extends Model
     public function menuItem(): BelongsTo
     {
         return $this->belongsTo(MenuItem::class);
+    }
+
+    /**
+     * @return BelongsTo<KitchenDepartment, $this>
+     */
+    public function kitchenDepartment(): BelongsTo
+    {
+        return $this->belongsTo(KitchenDepartment::class);
     }
 }

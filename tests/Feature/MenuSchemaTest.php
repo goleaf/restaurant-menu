@@ -2,6 +2,7 @@
 
 use App\Enums\MenuStatus;
 use App\Models\Branch;
+use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
@@ -41,6 +42,7 @@ test('menu tables expose the required columns', function () {
             'id',
             'menu_id',
             'category_id',
+            'kitchen_department_id',
             'name',
             'description',
             'price',
@@ -50,6 +52,17 @@ test('menu tables expose the required columns', function () {
             'calories',
             'is_available',
             'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('kitchen_departments'))->toBeTrue()
+        ->and(Schema::hasColumns('kitchen_departments', [
+            'id',
+            'branch_id',
+            'type',
+            'name',
+            'sort_order',
+            'is_active',
             'created_at',
             'updated_at',
         ]))->toBeTrue()
@@ -124,6 +137,7 @@ test('menu models keep branch category and item relationships', function () {
     $item = MenuItem::factory()
         ->for($menu)
         ->for($childCategory, 'category')
+        ->for(KitchenDepartment::factory()->for($branch), 'kitchenDepartment')
         ->create([
             'name' => 'Margherita',
             'price' => '12.50',
@@ -141,6 +155,7 @@ test('menu models keep branch category and item relationships', function () {
         ->and($childCategory->items()->pluck('menu_items.id')->all())->toBe([$item->id])
         ->and($item->menu->id)->toBe($menu->id)
         ->and($item->category->id)->toBe($childCategory->id)
+        ->and($item->kitchenDepartment?->branch_id)->toBe($branch->id)
         ->and($item->price)->toBe('12.50')
         ->and($item->weight)->toBe('450.00')
         ->and($item->volume)->toBeNull()

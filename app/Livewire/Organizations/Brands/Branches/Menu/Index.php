@@ -5,10 +5,12 @@ namespace App\Livewire\Organizations\Brands\Branches\Menu;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -82,6 +84,8 @@ class Index extends Component
 
     public string $itemCategoryId = '';
 
+    public string $itemKitchenDepartmentId = '';
+
     public string $itemName = '';
 
     public string $itemDescription = '';
@@ -104,6 +108,8 @@ class Index extends Component
 
     public string $editingItemCategoryId = '';
 
+    public string $editingItemKitchenDepartmentId = '';
+
     public string $editingItemName = '';
 
     public string $editingItemDescription = '';
@@ -119,6 +125,24 @@ class Index extends Component
     public int $editingItemSortOrder = 0;
 
     public bool $editingItemIsAvailable = true;
+
+    public string $departmentName = '';
+
+    public string $departmentType = 'kitchen';
+
+    public int $departmentSortOrder = 0;
+
+    public bool $departmentIsActive = true;
+
+    public ?int $editingDepartmentId = null;
+
+    public string $editingDepartmentName = '';
+
+    public string $editingDepartmentType = 'kitchen';
+
+    public int $editingDepartmentSortOrder = 0;
+
+    public bool $editingDepartmentIsActive = true;
 
     public string $modifierGroupName = '';
 
@@ -219,6 +243,7 @@ class Index extends Component
             $this->categoryMenuId = (string) $firstMenuId;
             $this->itemMenuId = (string) $firstMenuId;
             $this->itemCategoryId = $this->firstCategoryIdForMenu($this->itemMenuId);
+            $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
             $this->modifierItemMenuId = (string) $firstMenuId;
             $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
         }
@@ -286,6 +311,7 @@ class Index extends Component
         $this->editingMenuSortOrder = $menu->sort_order;
         $this->cancelCategoryEditing();
         $this->cancelItemEditing();
+        $this->cancelKitchenDepartmentEditing();
     }
 
     public function cancelMenuEditing(): void
@@ -382,6 +408,7 @@ class Index extends Component
         $this->editingCategoryIsActive = $category->is_active;
         $this->cancelMenuEditing();
         $this->cancelItemEditing();
+        $this->cancelKitchenDepartmentEditing();
     }
 
     public function cancelCategoryEditing(): void
@@ -470,6 +497,7 @@ class Index extends Component
         $this->editingItemId = $item->id;
         $this->editingItemMenuId = (string) $item->menu_id;
         $this->editingItemCategoryId = (string) $item->category_id;
+        $this->editingItemKitchenDepartmentId = $item->kitchen_department_id === null ? '' : (string) $item->kitchen_department_id;
         $this->editingItemName = $item->name;
         $this->editingItemDescription = $item->description ?? '';
         $this->editingItemPrice = $item->price;
@@ -480,6 +508,7 @@ class Index extends Component
         $this->editingItemIsAvailable = $item->is_available;
         $this->cancelMenuEditing();
         $this->cancelCategoryEditing();
+        $this->cancelKitchenDepartmentEditing();
     }
 
     public function cancelItemEditing(): void
@@ -488,6 +517,7 @@ class Index extends Component
             'editingItemId',
             'editingItemMenuId',
             'editingItemCategoryId',
+            'editingItemKitchenDepartmentId',
             'editingItemName',
             'editingItemDescription',
             'editingItemWeight',
@@ -595,6 +625,108 @@ class Index extends Component
         $this->forgetMenuComputed();
 
         Flux::toast(variant: 'success', text: __('Dish photo removed.'));
+    }
+
+    public function createKitchenDepartment(): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->departmentName = trim($this->departmentName);
+
+        $validated = $this->validate($this->kitchenDepartmentRules());
+
+        $department = $this->branch->kitchenDepartments()->create([
+            'type' => $validated['departmentType'],
+            'name' => $validated['departmentName'],
+            'sort_order' => (int) $validated['departmentSortOrder'],
+            'is_active' => (bool) $validated['departmentIsActive'],
+        ]);
+
+        $this->itemKitchenDepartmentId = (string) $department->id;
+        $this->resetKitchenDepartmentForm();
+        $this->forgetMenuComputed();
+
+        Flux::toast(variant: 'success', text: __('Kitchen department created.'));
+    }
+
+    public function startEditingKitchenDepartment(int $departmentId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $department = $this->findBranchKitchenDepartment($departmentId);
+
+        $this->editingDepartmentId = $department->id;
+        $this->editingDepartmentName = $department->name;
+        $this->editingDepartmentType = $department->type->value;
+        $this->editingDepartmentSortOrder = $department->sort_order;
+        $this->editingDepartmentIsActive = $department->is_active;
+        $this->cancelMenuEditing();
+        $this->cancelCategoryEditing();
+        $this->cancelItemEditing();
+    }
+
+    public function cancelKitchenDepartmentEditing(): void
+    {
+        $this->reset('editingDepartmentId', 'editingDepartmentName');
+        $this->editingDepartmentType = KitchenDepartmentType::Kitchen->value;
+        $this->editingDepartmentSortOrder = 0;
+        $this->editingDepartmentIsActive = true;
+    }
+
+    public function updateKitchenDepartment(): void
+    {
+        $this->authorizeMenuManagement();
+
+        if ($this->editingDepartmentId === null) {
+            return;
+        }
+
+        $this->editingDepartmentName = trim($this->editingDepartmentName);
+
+        $validated = $this->validate($this->kitchenDepartmentRules('editing'));
+
+        $this->findBranchKitchenDepartment($this->editingDepartmentId)->update([
+            'type' => $validated['editingDepartmentType'],
+            'name' => $validated['editingDepartmentName'],
+            'sort_order' => (int) $validated['editingDepartmentSortOrder'],
+            'is_active' => (bool) $validated['editingDepartmentIsActive'],
+        ]);
+
+        $this->cancelKitchenDepartmentEditing();
+        $this->forgetMenuComputed();
+
+        Flux::toast(variant: 'success', text: __('Kitchen department updated.'));
+    }
+
+    public function setKitchenDepartmentActive(int $departmentId, bool $isActive): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->findBranchKitchenDepartment($departmentId)->update(['is_active' => $isActive]);
+
+        $this->forgetMenuComputed();
+
+        Flux::toast(variant: 'success', text: __('Kitchen department updated.'));
+    }
+
+    public function deleteKitchenDepartment(int $departmentId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $this->findBranchKitchenDepartment($departmentId)->delete();
+
+        if ($this->itemKitchenDepartmentId === (string) $departmentId) {
+            $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+        }
+
+        if ($this->editingItemKitchenDepartmentId === (string) $departmentId) {
+            $this->editingItemKitchenDepartmentId = '';
+        }
+
+        $this->cancelKitchenDepartmentEditing();
+        $this->forgetMenuComputed();
+
+        Flux::toast(variant: 'success', text: __('Kitchen department removed.'));
     }
 
     public function createModifierGroup(): void
@@ -836,6 +968,7 @@ class Index extends Component
                     'id',
                     'menu_id',
                     'category_id',
+                    'kitchen_department_id',
                     'name',
                     'description',
                     'price',
@@ -854,6 +987,13 @@ class Index extends Component
                         'name',
                         'is_active',
                     ]),
+                    'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select([
+                        'id',
+                        'branch_id',
+                        'type',
+                        'name',
+                        'is_active',
+                    ]),
                     'modifierGroups' => fn ($groupQuery) => $groupQuery->select([
                         'modifier_groups.id',
                         'modifier_groups.branch_id',
@@ -869,6 +1009,28 @@ class Index extends Component
             ->orderBy('sort_order')
             ->orderBy('name')
             ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @return EloquentCollection<int, KitchenDepartment>
+     */
+    #[Computed]
+    public function kitchenDepartments(): EloquentCollection
+    {
+        return $this->branch
+            ->kitchenDepartments()
+            ->select([
+                'id',
+                'branch_id',
+                'type',
+                'name',
+                'sort_order',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ])
+            ->withCount('menuItems')
             ->get();
     }
 
@@ -914,6 +1076,15 @@ class Index extends Component
     public function menuStatusOptions(): array
     {
         return MenuStatus::options();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function kitchenDepartmentTypeOptions(): array
+    {
+        return KitchenDepartmentType::options();
     }
 
     /**
@@ -1002,6 +1173,22 @@ class Index extends Component
             ->all();
     }
 
+    /**
+     * @return list<array{value: string, label: string, is_active: bool}>
+     */
+    public function kitchenDepartmentOptions(bool $activeOnly = true): array
+    {
+        return $this->kitchenDepartments
+            ->when($activeOnly, fn ($departments) => $departments->where('is_active', true))
+            ->map(fn (KitchenDepartment $department): array => [
+                'value' => (string) $department->id,
+                'label' => $department->name,
+                'is_active' => $department->is_active,
+            ])
+            ->values()
+            ->all();
+    }
+
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.menu.index');
@@ -1062,10 +1249,13 @@ class Index extends Component
         $fieldPrefix = $prefix === '' ? '' : $prefix;
         $menuField = $fieldPrefix === '' ? 'itemMenuId' : $fieldPrefix.'ItemMenuId';
         $categoryField = $fieldPrefix === '' ? 'itemCategoryId' : $fieldPrefix.'ItemCategoryId';
+        $departmentField = $fieldPrefix === '' ? 'itemKitchenDepartmentId' : $fieldPrefix.'ItemKitchenDepartmentId';
         $menuId = (string) ($fieldPrefix === '' ? $this->itemMenuId : $this->editingItemMenuId);
+        $departmentId = (string) ($fieldPrefix === '' ? $this->itemKitchenDepartmentId : $this->editingItemKitchenDepartmentId);
         $rules = [
             $menuField => ['required', 'integer', $this->menuRule()],
             $categoryField => ['required', 'integer', $this->categoryRule($menuId)],
+            $departmentField => ['nullable'],
             $fieldPrefix === '' ? 'itemName' : $fieldPrefix.'ItemName' => ['required', 'string', 'max:180'],
             $fieldPrefix === '' ? 'itemDescription' : $fieldPrefix.'ItemDescription' => ['nullable', 'string', 'max:1200'],
             $fieldPrefix === '' ? 'itemWeight' : $fieldPrefix.'ItemWeight' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
@@ -1073,6 +1263,11 @@ class Index extends Component
             $fieldPrefix === '' ? 'itemCalories' : $fieldPrefix.'ItemCalories' => ['nullable', 'integer', 'min:0', 'max:999999'],
             $fieldPrefix === '' ? 'itemSortOrder' : $fieldPrefix.'ItemSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
         ];
+
+        if ($departmentId !== '') {
+            $rules[$departmentField][] = 'integer';
+            $rules[$departmentField][] = $this->kitchenDepartmentRule();
+        }
 
         if ($this->canChangePrices) {
             $rules[$fieldPrefix === '' ? 'itemPrice' : $fieldPrefix.'ItemPrice'] = ['required', 'numeric', 'min:0', 'max:999999.99'];
@@ -1083,6 +1278,32 @@ class Index extends Component
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function kitchenDepartmentRules(string $prefix = ''): array
+    {
+        $nameField = $prefix === '' ? 'departmentName' : $prefix.'DepartmentName';
+        $nameRules = [
+            'required',
+            'string',
+            'max:120',
+            Rule::unique((new KitchenDepartment)->getTable(), 'name')
+                ->where(fn ($query) => $query->where('branch_id', $this->branch->id)),
+        ];
+
+        if ($prefix === 'editing' && $this->editingDepartmentId !== null) {
+            $nameRules[3] = $nameRules[3]->ignore($this->editingDepartmentId);
+        }
+
+        return [
+            $nameField => $nameRules,
+            $prefix === '' ? 'departmentType' : $prefix.'DepartmentType' => ['required', 'string', Rule::in(KitchenDepartmentType::values())],
+            $prefix === '' ? 'departmentSortOrder' : $prefix.'DepartmentSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
+            $prefix === '' ? 'departmentIsActive' : $prefix.'DepartmentIsActive' => ['boolean'],
+        ];
     }
 
     /**
@@ -1171,9 +1392,15 @@ class Index extends Component
             ->where(fn ($query) => $query->where('branch_id', $this->branch->id));
     }
 
+    private function kitchenDepartmentRule(): mixed
+    {
+        return Rule::exists((new KitchenDepartment)->getTable(), 'id')
+            ->where(fn ($query) => $query->where('branch_id', $this->branch->id));
+    }
+
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{menu_id: int, category_id: int, name: string, description: string|null, price: string, weight: string|null, volume: string|null, calories: int|null, is_available: bool, sort_order: int}
+     * @return array{menu_id: int, category_id: int, kitchen_department_id: int|null, name: string, description: string|null, price: string, weight: string|null, volume: string|null, calories: int|null, is_available: bool, sort_order: int}
      */
     private function itemPayload(array $validated, string $prefix = '', ?MenuItem $existingItem = null): array
     {
@@ -1191,6 +1418,7 @@ class Index extends Component
         return [
             'menu_id' => (int) $validated[$prefix === '' ? 'itemMenuId' : $prefix.'ItemMenuId'],
             'category_id' => (int) $validated[$prefix === '' ? 'itemCategoryId' : $prefix.'ItemCategoryId'],
+            'kitchen_department_id' => $this->emptyStringToInt($validated[$prefix === '' ? 'itemKitchenDepartmentId' : $prefix.'ItemKitchenDepartmentId'] ?? null),
             'name' => $validated[$prefix === '' ? 'itemName' : $prefix.'ItemName'],
             'description' => $this->emptyStringToNull($validated[$prefix === '' ? 'itemDescription' : $prefix.'ItemDescription'] ?? null),
             'price' => $price,
@@ -1255,6 +1483,15 @@ class Index extends Component
         $this->itemSortOrder = 0;
         $this->itemIsAvailable = true;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
+        $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+    }
+
+    private function resetKitchenDepartmentForm(): void
+    {
+        $this->reset('departmentName');
+        $this->departmentType = KitchenDepartmentType::Kitchen->value;
+        $this->departmentSortOrder = 0;
+        $this->departmentIsActive = true;
     }
 
     private function resetModifierGroupForm(): void
@@ -1293,6 +1530,7 @@ class Index extends Component
         $this->categoryParentId = '';
         $this->itemMenuId = $menuId;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
+        $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
         $this->modifierItemMenuId = $menuId;
         $this->modifierItemId = $this->firstItemIdForMenu($menuId);
     }
@@ -1363,6 +1601,7 @@ class Index extends Component
                 'id',
                 'menu_id',
                 'category_id',
+                'kitchen_department_id',
                 'name',
                 'description',
                 'price',
@@ -1377,6 +1616,24 @@ class Index extends Component
             ])
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branch->id))
             ->whereKey($itemId)
+            ->firstOrFail();
+    }
+
+    private function findBranchKitchenDepartment(int $departmentId): KitchenDepartment
+    {
+        return $this->branch
+            ->kitchenDepartments()
+            ->select([
+                'id',
+                'branch_id',
+                'type',
+                'name',
+                'sort_order',
+                'is_active',
+                'created_at',
+                'updated_at',
+            ])
+            ->whereKey($departmentId)
             ->firstOrFail();
     }
 
@@ -1464,6 +1721,20 @@ class Index extends Component
         return is_int($modifierGroupId) ? (string) $modifierGroupId : '';
     }
 
+    private function firstKitchenDepartmentId(): string
+    {
+        $departmentId = $this->branch
+            ->kitchenDepartments()
+            ->select('kitchen_departments.id')
+            ->where('is_active', true)
+            ->oldest('sort_order')
+            ->oldest('name')
+            ->oldest('id')
+            ->value('kitchen_departments.id');
+
+        return is_int($departmentId) ? (string) $departmentId : '';
+    }
+
     private function menuFromLoadedCollection(string $menuId): ?Menu
     {
         if ($menuId === '') {
@@ -1503,6 +1774,7 @@ class Index extends Component
     private function forgetMenuComputed(): void
     {
         unset($this->menus);
+        unset($this->kitchenDepartments);
         unset($this->modifierGroups);
     }
 

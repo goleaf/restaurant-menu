@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 058 - Kitchen Departments
+
+- Added branch-level `kitchen_departments` with fixed department types: `kitchen`, `bar`, `dessert`, `hookah`, and `custom`.
+- Added default department seeding for existing branches and automatic standard department creation for new branches.
+- Added optional `menu_items.kitchen_department_id` so dishes can be routed to a branch department.
+- Added kitchen department snapshots on `order_items` during waiter confirmation: department id, type, and name are copied from the source menu item.
+- Extended branch menu admin with simple kitchen department CRUD and dish department assignment, guarded by `manage_menu`.
+- Kept this step backend/admin-only: no kitchen/bar screen, dispatch workflow, payments, Redis, WebSocket, S3, Docker, or paid service was added.
+
 ### Prompt 057 - Order Status Logs
 
 - Added `order_status_logs` as an append-only audit history table for draft and confirmed order status events.

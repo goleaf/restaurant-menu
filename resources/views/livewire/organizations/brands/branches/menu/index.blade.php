@@ -10,7 +10,7 @@
         </div>
     </header>
 
-    <div class="grid gap-4 xl:grid-cols-4">
+    <div class="grid gap-4 xl:grid-cols-5">
         <form wire:submit="createMenu" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex items-center justify-between gap-3">
                 <flux:heading size="lg">{{ __('New menu') }}</flux:heading>
@@ -105,6 +105,13 @@
 
                 <flux:input wire:model="itemName" :label="__('Name')" type="text" required maxlength="180" />
 
+                <flux:select wire:model="itemKitchenDepartmentId" :label="__('Kitchen department')">
+                    <flux:select.option value="">{{ __('Not assigned') }}</flux:select.option>
+                    @foreach ($this->kitchenDepartmentOptions() as $option)
+                        <flux:select.option wire:key="item-department-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
                 <label class="grid gap-1 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Description') }}</span>
                     <textarea wire:model="itemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
@@ -127,6 +134,32 @@
                 @if ($canChangeAvailability)
                     <flux:switch wire:model="itemIsAvailable" :label="__('Available')" />
                 @endif
+            </div>
+        </form>
+
+        <form wire:submit="createKitchenDepartment" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="flex items-center justify-between gap-3">
+                <flux:heading size="lg">{{ __('Kitchen department') }}</flux:heading>
+                <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createKitchenDepartment">
+                    {{ __('Create') }}
+                </flux:button>
+            </div>
+
+            <div class="mt-4 grid gap-3">
+                <flux:input wire:model="departmentName" :label="__('Name')" type="text" required maxlength="120" />
+
+                <flux:select wire:model="departmentType" :label="__('Type')">
+                    @foreach ($this->kitchenDepartmentTypeOptions as $value => $label)
+                        <flux:select.option wire:key="department-type-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <flux:input wire:model="departmentSortOrder" :label="__('Sort')" type="number" required min="0" max="9999" />
+                    <div class="flex items-end">
+                        <flux:switch wire:model="departmentIsActive" :label="__('Active')" />
+                    </div>
+                </div>
             </div>
         </form>
 
@@ -316,6 +349,15 @@
 
                                                 <flux:input wire:model="editingItemName" :label="__('Name')" type="text" required maxlength="180" />
 
+                                                <flux:select wire:model="editingItemKitchenDepartmentId" :label="__('Kitchen department')">
+                                                    <flux:select.option value="">{{ __('Not assigned') }}</flux:select.option>
+                                                    @foreach ($this->kitchenDepartmentOptions(false) as $option)
+                                                        <flux:select.option wire:key="item-department-edit-{{ $item->id }}-{{ $option['value'] }}" value="{{ $option['value'] }}">
+                                                            {{ $option['label'] }}{{ $option['is_active'] ? '' : ' - '.__('Inactive') }}
+                                                        </flux:select.option>
+                                                    @endforeach
+                                                </flux:select>
+
                                                 <label class="grid gap-1 text-sm">
                                                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Description') }}</span>
                                                     <textarea wire:model="editingItemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
@@ -362,6 +404,11 @@
                                                     <div class="flex flex-wrap items-center gap-2">
                                                         <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $item->name }}</h3>
                                                         <flux:badge>{{ $item->category?->name ?? __('No category') }}</flux:badge>
+                                                        @if ($item->kitchenDepartment)
+                                                            <flux:badge :color="$item->kitchenDepartment->type->badgeColor()">{{ $item->kitchenDepartment->name }}</flux:badge>
+                                                        @else
+                                                            <flux:badge color="zinc">{{ __('No department') }}</flux:badge>
+                                                        @endif
 
                                                         @if ($item->is_available)
                                                             <flux:badge color="green">{{ __('Available') }}</flux:badge>
@@ -455,6 +502,82 @@
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
                     {{ __('No menus yet.') }}
+                </div>
+            @endforelse
+        </div>
+    </div>
+
+    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <flux:heading size="lg">{{ __('Kitchen departments') }}</flux:heading>
+        </div>
+
+        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            @forelse ($this->kitchenDepartments as $department)
+                <div wire:key="kitchen-department-{{ $department->id }}" class="px-4 py-4">
+                    @if ($editingDepartmentId === $department->id)
+                        <form wire:submit="updateKitchenDepartment" class="grid gap-3 md:grid-cols-[1fr_160px_120px_auto] md:items-end">
+                            <flux:input wire:model="editingDepartmentName" :label="__('Name')" type="text" required maxlength="120" />
+
+                            <flux:select wire:model="editingDepartmentType" :label="__('Type')">
+                                @foreach ($this->kitchenDepartmentTypeOptions as $value => $label)
+                                    <flux:select.option wire:key="department-type-edit-{{ $department->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <flux:input wire:model="editingDepartmentSortOrder" :label="__('Sort')" type="number" required min="0" max="9999" />
+
+                            <div class="flex flex-wrap items-center gap-2">
+                                <flux:switch wire:model="editingDepartmentIsActive" :label="__('Active')" />
+                                <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateKitchenDepartment">
+                                    {{ __('Save') }}
+                                </flux:button>
+                                <flux:button icon="x-mark" type="button" wire:click="cancelKitchenDepartmentEditing">
+                                    {{ __('Cancel') }}
+                                </flux:button>
+                            </div>
+                        </form>
+                    @else
+                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $department->name }}</h2>
+                                    <flux:badge :color="$department->type->badgeColor()">{{ __($department->type->label()) }}</flux:badge>
+                                    @if ($department->is_active)
+                                        <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                    @else
+                                        <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                    @endif
+                                    <flux:badge>{{ trans_choice(':count dish|:count dishes', $department->menu_items_count, ['count' => $department->menu_items_count]) }}</flux:badge>
+                                </div>
+                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Sort') }} {{ $department->sort_order }}</p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 md:justify-end">
+                                @if ($department->is_active)
+                                    <flux:button icon="eye-slash" type="button" wire:click="setKitchenDepartmentActive({{ $department->id }}, false)">
+                                        {{ __('Disable') }}
+                                    </flux:button>
+                                @else
+                                    <flux:button icon="eye" type="button" wire:click="setKitchenDepartmentActive({{ $department->id }}, true)">
+                                        {{ __('Enable') }}
+                                    </flux:button>
+                                @endif
+
+                                <flux:button icon="pencil" type="button" wire:click="startEditingKitchenDepartment({{ $department->id }})">
+                                    {{ __('Edit') }}
+                                </flux:button>
+
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteKitchenDepartment({{ $department->id }})">
+                                    {{ __('Delete') }}
+                                </flux:button>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+                    {{ __('No kitchen departments yet.') }}
                 </div>
             @endforelse
         </div>

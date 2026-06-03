@@ -123,6 +123,17 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<KitchenDepartment, $this>
+     */
+    public function kitchenDepartments(): HasMany
+    {
+        return $this->hasMany(KitchenDepartment::class)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

@@ -61,9 +61,14 @@ class ConfirmDraftOrderByWaiterAction
             ]);
 
             $draftOrder->items->each(function (DraftOrderItem $item) use ($order): void {
+                $kitchenDepartment = $item->menuItem?->kitchenDepartment;
+
                 $order->items()->create([
                     'table_session_guest_id' => $item->table_session_guest_id,
                     'menu_item_id' => $item->menu_item_id,
+                    'kitchen_department_id' => $kitchenDepartment?->id,
+                    'kitchen_department_type' => $kitchenDepartment?->type?->value,
+                    'kitchen_department_name' => $kitchenDepartment?->name,
                     'guest_name' => $item->guest?->guest_name,
                     'item_name' => $item->item_name,
                     'quantity' => $item->quantity,
@@ -145,7 +150,14 @@ class ConfirmDraftOrderByWaiterAction
                         'comment',
                         'created_at',
                     ])
-                    ->with(['guest:id,guest_name']),
+                    ->with([
+                        'guest:id,guest_name',
+                        'menuItem' => fn ($query) => $query
+                            ->select(['id', 'kitchen_department_id'])
+                            ->with([
+                                'kitchenDepartment:id,branch_id,type,name',
+                            ]),
+                    ]),
                 'order:id,draft_order_id,status',
             ])
             ->whereKey($draftOrder->id)

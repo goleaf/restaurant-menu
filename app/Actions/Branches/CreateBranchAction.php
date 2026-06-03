@@ -2,6 +2,7 @@
 
 namespace App\Actions\Branches;
 
+use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -27,6 +28,7 @@ class CreateBranchAction
             ]);
 
             $branch->settings()->create(BranchSetting::defaults($branch));
+            app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
 
             return $branch;
         });

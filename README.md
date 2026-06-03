@@ -159,9 +159,9 @@ Each menu belongs to a branch through `branch_id`, stores a name, a fixed status
 
 Menu categories belong to one menu and can be nested with `parent_id`. They store name, optional description, optional image path, optional icon, sort order, and `is_active`.
 
-Menu items belong to one menu and one category. They can optionally be assigned to one branch kitchen department through `kitchen_department_id`. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
+Menu items belong to one menu and one category. They can be assigned to one branch kitchen department through `kitchen_department_id`; when the admin leaves the selector on `Default kitchen`, the system stores the branch's default `kitchen` department. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
 
-Kitchen departments are stored per branch in `kitchen_departments`. Supported department types are `kitchen`, `bar`, `dessert`, `hookah`, and `custom`. New branches created through the backend action receive standard departments for kitchen, bar, dessert, and hookah; custom departments are created manually. Departments can be enabled or disabled, sorted, renamed, and assigned to dishes from the branch menu admin page.
+Kitchen departments are stored per branch in `kitchen_departments`. Supported department types are `kitchen`, `bar`, `dessert`, `hookah`, and `custom`. New branches created through the backend action receive standard departments for kitchen, bar, dessert, and hookah; custom departments are created manually. Departments can be enabled or disabled, sorted, renamed, and assigned to dishes from the branch menu admin page. Typical routing is pizza to kitchen, coffee to bar, desserts to dessert, and hookah items to hookah.
 
 Menu modifiers are managed in the same branch menu admin page. A modifier group belongs to a branch and stores `name`, `is_required`, `min_select`, `max_select`, and `sort_order`. Modifier options belong to a modifier group and store `name`, `price_delta`, `is_available`, and `sort_order`. The `menu_item_modifier_groups` pivot assigns reusable branch modifier groups to dishes, so examples like pizza size, doneness, extra cheese, milk type, or syrup can be attached without duplicating group definitions.
 
@@ -178,7 +178,7 @@ Branch menu management is available at:
 /organizations/{organization}/brands/{brand}/branches/{branch}/menu
 ```
 
-Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, kitchen departments, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`.
+Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, kitchen departments, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`. Changing a dish department assignment clears the guest menu database cache.
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
 
@@ -192,7 +192,7 @@ guest-menu:branch:{branch_id}:language:{language_code}
 
 Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
 
-Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
+Menu cache is forgotten automatically when menus, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, department assignment changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
 The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Active guests can send the shared draft to the waiter for review. This does not start kitchen/bar flow or create payment logic.
 

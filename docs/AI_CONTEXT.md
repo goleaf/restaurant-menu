@@ -45,7 +45,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level kitchen departments, branch-level menu modifiers, and permission-gated price/availability changes.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level kitchen departments, menu-item department assignment with default kitchen fallback, branch-level menu modifiers, and permission-gated price/availability changes.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -174,7 +174,7 @@ Menu item:
 - Stored in `menu_items`.
 - Belongs to one menu through `menu_id`.
 - Belongs to one category through `category_id`.
-- Can optionally belong to one branch kitchen department through `kitchen_department_id`.
+- Can belong to one branch kitchen department through `kitchen_department_id`; the admin form's empty `Default kitchen` choice resolves to the branch's default `kitchen` department before saving.
 - Stores `name`, optional `description`, `price`, optional `image`, optional `weight`, optional `volume`, optional `calories`, `is_available`, and `sort_order`.
 - `price`, `weight`, and `volume` are decimal casts; `is_available` is a boolean cast.
 - Managed from the branch menu page guarded by `manage_menu`.
@@ -189,6 +189,7 @@ Menu item:
 - Has many confirmed order item records through `order_items`.
 - Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
 - Modifier assignment exists in admin CRUD and the guest UI can configure available modifiers and persist configured selections into `draft_order_items`.
+- Changing the dish department assignment clears the branch guest-menu database cache through `MenuItemObserver`.
 
 Kitchen department:
 
@@ -202,7 +203,10 @@ Kitchen department:
 - `KitchenDepartmentsSeeder` can backfill standard departments for existing branches without creating duplicates for an already present standard type.
 - Custom departments are created manually from branch menu admin.
 - Managed from the branch menu page guarded by `manage_menu`.
-- Menu items can be assigned to a department; inactive departments remain visible for existing assignments but are not selected by default for new dishes.
+- Menu items can be assigned to a department; inactive departments remain visible for existing assignments.
+- If a dish department is not explicitly selected in the admin form, the branch's default `kitchen` department is saved. If standard departments are missing, `SeedKitchenDepartmentsForBranchAction` restores them before the item payload is saved.
+- Pizza can be routed to kitchen, coffee to bar, dessert to dessert, and hookah items to hookah by selecting the matching branch department.
+- `KitchenDepartmentObserver` clears all supported language cache variants for the branch guest menu when departments are created, updated, deleted, restored, or force deleted.
 - Deleting a department sets nullable menu item and order item department links to null, while confirmed order item type/name snapshots remain.
 
 Menu category translation:
@@ -725,8 +729,8 @@ Local media storage:
 - Guest menu payloads are cached in Laravel's explicit `database` cache store for 300 seconds, even if the default cache store is changed in a test or environment.
 - Cache key format is `guest-menu:branch:{branch_id}:language:{language_code}`.
 - Rebuild lock key format is `guest-menu:branch:{branch_id}:language:{language_code}:lock` and uses the SQLite-backed `cache_locks` table.
-- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, `MenuItemTranslationObserver`, `ModifierGroupObserver`, and `ModifierOptionObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
-- Updating a dish price, modifier, or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
+- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, `MenuItemTranslationObserver`, `KitchenDepartmentObserver`, `ModifierGroupObserver`, and `ModifierOptionObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
+- Updating a dish price, department assignment, kitchen department, modifier, or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable dishes are visually dimmed and marked `Недоступно`; they cannot be added to the draft.
@@ -825,6 +829,8 @@ Local media storage:
 - The page can assign and remove modifier groups from dishes.
 - The page can create, edit, manually sort, enable/disable, and delete kitchen departments.
 - The page can assign a kitchen department to each dish.
+- Leaving a dish department on `Default kitchen` saves the branch's default `kitchen` department, not `null`.
+- Changing a dish's department assignment clears the guest menu database cache.
 - Modifier group CRUD and dish assignment require `manage_menu`.
 - Modifier option price deltas require `change_prices`.
 - Modifier option availability changes require `change_availability`.
@@ -927,6 +933,7 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders 
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.
+- Do not let the branch menu admin save a blank dish department as `null`; blank means the default `kitchen` department.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
 - Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.

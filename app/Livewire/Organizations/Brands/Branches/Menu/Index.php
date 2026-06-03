@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
@@ -243,7 +244,7 @@ class Index extends Component
             $this->categoryMenuId = (string) $firstMenuId;
             $this->itemMenuId = (string) $firstMenuId;
             $this->itemCategoryId = $this->firstCategoryIdForMenu($this->itemMenuId);
-            $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+            $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
             $this->modifierItemMenuId = (string) $firstMenuId;
             $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
         }
@@ -716,7 +717,7 @@ class Index extends Component
         $this->findBranchKitchenDepartment($departmentId)->delete();
 
         if ($this->itemKitchenDepartmentId === (string) $departmentId) {
-            $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+            $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
         }
 
         if ($this->editingItemKitchenDepartmentId === (string) $departmentId) {
@@ -1418,7 +1419,7 @@ class Index extends Component
         return [
             'menu_id' => (int) $validated[$prefix === '' ? 'itemMenuId' : $prefix.'ItemMenuId'],
             'category_id' => (int) $validated[$prefix === '' ? 'itemCategoryId' : $prefix.'ItemCategoryId'],
-            'kitchen_department_id' => $this->emptyStringToInt($validated[$prefix === '' ? 'itemKitchenDepartmentId' : $prefix.'ItemKitchenDepartmentId'] ?? null),
+            'kitchen_department_id' => $this->resolveItemKitchenDepartmentId($validated[$prefix === '' ? 'itemKitchenDepartmentId' : $prefix.'ItemKitchenDepartmentId'] ?? null),
             'name' => $validated[$prefix === '' ? 'itemName' : $prefix.'ItemName'],
             'description' => $this->emptyStringToNull($validated[$prefix === '' ? 'itemDescription' : $prefix.'ItemDescription'] ?? null),
             'price' => $price,
@@ -1483,7 +1484,7 @@ class Index extends Component
         $this->itemSortOrder = 0;
         $this->itemIsAvailable = true;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
-        $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+        $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
     }
 
     private function resetKitchenDepartmentForm(): void
@@ -1530,7 +1531,7 @@ class Index extends Component
         $this->categoryParentId = '';
         $this->itemMenuId = $menuId;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
-        $this->itemKitchenDepartmentId = $this->firstKitchenDepartmentId();
+        $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
         $this->modifierItemMenuId = $menuId;
         $this->modifierItemId = $this->firstItemIdForMenu($menuId);
     }
@@ -1721,7 +1722,48 @@ class Index extends Component
         return is_int($modifierGroupId) ? (string) $modifierGroupId : '';
     }
 
-    private function firstKitchenDepartmentId(): string
+    private function defaultKitchenDepartmentIdString(): string
+    {
+        $departmentId = $this->defaultKitchenDepartmentId();
+
+        return $departmentId === null ? '' : (string) $departmentId;
+    }
+
+    private function defaultKitchenDepartmentId(): ?int
+    {
+        $departmentId = $this->queryDefaultKitchenDepartmentId(activeOnly: true)
+            ?? $this->queryDefaultKitchenDepartmentId(activeOnly: false);
+
+        if ($departmentId !== null) {
+            return $departmentId;
+        }
+
+        app(SeedKitchenDepartmentsForBranchAction::class)->handle($this->branch);
+
+        unset($this->kitchenDepartments);
+
+        return $this->queryDefaultKitchenDepartmentId(activeOnly: true)
+            ?? $this->queryDefaultKitchenDepartmentId(activeOnly: false)
+            ?? $this->firstActiveKitchenDepartmentId();
+    }
+
+    private function queryDefaultKitchenDepartmentId(bool $activeOnly): ?int
+    {
+        $query = $this->branch
+            ->kitchenDepartments()
+            ->select('kitchen_departments.id')
+            ->where('type', KitchenDepartmentType::Kitchen->value)
+            ->when($activeOnly, fn ($departmentQuery) => $departmentQuery->where('is_active', true))
+            ->oldest('sort_order')
+            ->oldest('name')
+            ->oldest('id');
+
+        $departmentId = $query->value('kitchen_departments.id');
+
+        return is_numeric($departmentId) ? (int) $departmentId : null;
+    }
+
+    private function firstActiveKitchenDepartmentId(): ?int
     {
         $departmentId = $this->branch
             ->kitchenDepartments()
@@ -1732,7 +1774,14 @@ class Index extends Component
             ->oldest('id')
             ->value('kitchen_departments.id');
 
-        return is_int($departmentId) ? (string) $departmentId : '';
+        return is_numeric($departmentId) ? (int) $departmentId : null;
+    }
+
+    private function resolveItemKitchenDepartmentId(mixed $value): ?int
+    {
+        $departmentId = $this->emptyStringToInt($value);
+
+        return $departmentId ?? $this->defaultKitchenDepartmentId();
     }
 
     private function menuFromLoadedCollection(string $menuId): ?Menu

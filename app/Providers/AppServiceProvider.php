@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
@@ -10,6 +11,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Observers\KitchenDepartmentObserver;
 use App\Observers\MenuCategoryObserver;
 use App\Observers\MenuCategoryTranslationObserver;
 use App\Observers\MenuItemObserver;
@@ -76,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
         MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);
         MenuItem::observe(MenuItemObserver::class);
         MenuItemTranslation::observe(MenuItemTranslationObserver::class);
+        KitchenDepartment::observe(KitchenDepartmentObserver::class);
         ModifierGroup::observe(ModifierGroupObserver::class);
         ModifierOption::observe(ModifierOptionObserver::class);
     }

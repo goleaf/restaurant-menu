@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
+use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Enums\DraftOrderStatus;
@@ -31,6 +32,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
@@ -151,6 +153,74 @@ test('manager can manage kitchen departments and assign a dish department', func
 
     expect($department->fresh())->toBeNull()
         ->and($item->fresh()->kitchen_department_id)->toBeNull();
+});
+
+test('blank dish department uses default kitchen and department changes clear menu cache', function () {
+    [$organization, $brand, $branch, $manager] = createPrompt58MenuBranch();
+    grantPrompt58MenuPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
+
+    $kitchen = KitchenDepartment::query()
+        ->select(['id', 'branch_id', 'type', 'name'])
+        ->where('branch_id', $branch->id)
+        ->where('type', KitchenDepartmentType::Kitchen->value)
+        ->firstOrFail();
+    $bar = KitchenDepartment::query()
+        ->select(['id', 'branch_id', 'type', 'name'])
+        ->where('branch_id', $branch->id)
+        ->where('type', KitchenDepartmentType::Bar->value)
+        ->firstOrFail();
+    $menu = Menu::factory()->for($branch)->create([
+        'name' => 'Prompt 59 Menu',
+        'status' => MenuStatus::Active,
+    ]);
+    $category = MenuCategory::factory()->for($menu)->create(['name' => 'Pizza']);
+    $cache = Cache::store(GetGuestMenuForBranchAction::cacheStore());
+    $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    expect($cache->has($cacheKey))->toBeTrue();
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('itemMenuId', (string) $menu->id)
+        ->set('itemCategoryId', (string) $category->id)
+        ->set('itemKitchenDepartmentId', '')
+        ->set('itemName', 'Prompt 59 Pizza')
+        ->call('createItem')
+        ->assertHasNoErrors();
+
+    $item = MenuItem::query()
+        ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name'])
+        ->where('menu_id', $menu->id)
+        ->where('name', 'Prompt 59 Pizza')
+        ->firstOrFail();
+
+    expect($item->kitchen_department_id)->toBe($kitchen->id)
+        ->and($cache->has($cacheKey))->toBeFalse();
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    expect($cache->has($cacheKey))->toBeTrue();
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('startEditingItem', $item->id)
+        ->set('editingItemKitchenDepartmentId', (string) $bar->id)
+        ->call('updateItem')
+        ->assertHasNoErrors();
+
+    expect($item->fresh()->kitchen_department_id)->toBe($bar->id)
+        ->and($cache->has($cacheKey))->toBeFalse();
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    expect($cache->has($cacheKey))->toBeTrue();
+
+    $bar->update(['name' => 'Prompt 59 Coffee bar']);
+
+    expect($cache->has($cacheKey))->toBeFalse();
 });
 
 test('waiter confirmation stores kitchen department snapshots on order items', function () {

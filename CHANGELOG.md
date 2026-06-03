@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 059 - Assign Menu Items To Departments
+
+- Made the dish department selector save the branch's default `kitchen` department when no explicit department is selected.
+- Kept department assignment in the existing branch menu admin form, so pizza, coffee, dessert, and hookah items can be routed to kitchen, bar, dessert, or hookah departments.
+- Added guest menu cache invalidation for kitchen department create/update/delete events and verified item department assignment changes clear the database cache.
+- Preserved the shared-hosting stack: SQLite, database cache, Blade + Livewire, and no kitchen screen, Redis, WebSocket, S3, Docker, or paid service was added.
+
 ### Prompt 058 - Kitchen Departments
 
 - Added branch-level `kitchen_departments` with fixed department types: `kitchen`, `bar`, `dessert`, `hookah`, and `custom`.

@@ -106,7 +106,7 @@
                 <flux:input wire:model="itemName" :label="__('Name')" type="text" required maxlength="180" />
 
                 <flux:select wire:model="itemKitchenDepartmentId" :label="__('Kitchen department')">
-                    <flux:select.option value="">{{ __('Not assigned') }}</flux:select.option>
+                    <flux:select.option value="">{{ __('Default kitchen') }}</flux:select.option>
                     @foreach ($this->kitchenDepartmentOptions() as $option)
                         <flux:select.option wire:key="item-department-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @endforeach
@@ -350,7 +350,7 @@
                                                 <flux:input wire:model="editingItemName" :label="__('Name')" type="text" required maxlength="180" />
 
                                                 <flux:select wire:model="editingItemKitchenDepartmentId" :label="__('Kitchen department')">
-                                                    <flux:select.option value="">{{ __('Not assigned') }}</flux:select.option>
+                                                    <flux:select.option value="">{{ __('Default kitchen') }}</flux:select.option>
                                                     @foreach ($this->kitchenDepartmentOptions(false) as $option)
                                                         <flux:select.option wire:key="item-department-edit-{{ $item->id }}-{{ $option['value'] }}" value="{{ $option['value'] }}">
                                                             {{ $option['label'] }}{{ $option['is_active'] ? '' : ' - '.__('Inactive') }}
@@ -407,7 +407,7 @@
                                                         @if ($item->kitchenDepartment)
                                                             <flux:badge :color="$item->kitchenDepartment->type->badgeColor()">{{ $item->kitchenDepartment->name }}</flux:badge>
                                                         @else
-                                                            <flux:badge color="zinc">{{ __('No department') }}</flux:badge>
+                                                            <flux:badge color="zinc">{{ __('Default kitchen') }}</flux:badge>
                                                         @endif
 
                                                         @if ($item->is_available)

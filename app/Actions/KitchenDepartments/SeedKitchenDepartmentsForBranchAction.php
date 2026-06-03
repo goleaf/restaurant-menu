@@ -24,10 +24,27 @@ class SeedKitchenDepartmentsForBranchAction
 
             $branch->kitchenDepartments()->create([
                 'type' => $department['type'],
-                'name' => $department['name'],
+                'name' => $this->uniqueNameForBranch($branch, $department['name']),
                 'sort_order' => $department['sort_order'],
                 'is_active' => true,
             ]);
         }
+    }
+
+    private function uniqueNameForBranch(Branch $branch, string $baseName): string
+    {
+        if (! $branch->kitchenDepartments()->where('name', $baseName)->exists()) {
+            return $baseName;
+        }
+
+        $suffix = 2;
+        $name = $baseName.' '.$suffix;
+
+        while ($branch->kitchenDepartments()->where('name', $name)->exists()) {
+            $suffix++;
+            $name = $baseName.' '.$suffix;
+        }
+
+        return $name;
     }
 }

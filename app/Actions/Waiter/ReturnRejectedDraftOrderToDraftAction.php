@@ -1,0 +1,107 @@
+<?php
+
+namespace App\Actions\Waiter;
+
+use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\DraftOrderStatus;
+use App\Enums\ServicePointStatus;
+use App\Enums\SystemPermission;
+use App\Enums\TableSessionStatus;
+use App\Models\DraftOrder;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class ReturnRejectedDraftOrderToDraftAction
+{
+    public function __construct(
+        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        private readonly UpdateServicePointStatusAction $updateServicePointStatus,
+    ) {}
+
+    public function handle(DraftOrder $draftOrder, User $returnedBy): DraftOrder
+    {
+        return DB::transaction(function () use ($draftOrder, $returnedBy): DraftOrder {
+            $draftOrder = $this->reloadDraftOrder($draftOrder);
+
+            $this->ensureCanReturn($draftOrder, $returnedBy);
+
+            $draftOrder
+                ->forceFill([
+                    'status' => DraftOrderStatus::Draft,
+                    'sent_to_waiter_at' => null,
+                    'sent_by_guest_id' => null,
+                    'rejected_at' => null,
+                    'rejected_by_user_id' => null,
+                    'rejection_reason' => null,
+                    'converted_to_order_at' => null,
+                    'converted_by_user_id' => null,
+                ])
+                ->save();
+
+            if ($draftOrder->tableSession?->servicePoint !== null) {
+                $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
+            }
+
+            return $draftOrder->refresh();
+        });
+    }
+
+    private function reloadDraftOrder(DraftOrder $draftOrder): DraftOrder
+    {
+        return DraftOrder::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'status',
+                'sent_to_waiter_at',
+                'sent_by_guest_id',
+                'rejected_at',
+                'rejected_by_user_id',
+                'rejection_reason',
+                'converted_to_order_at',
+                'converted_by_user_id',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'service_point_id', 'status'])
+                    ->with([
+                        'branch:id,organization_id',
+                        'servicePoint:id,status',
+                    ]),
+            ])
+            ->whereKey($draftOrder->id)
+            ->firstOrFail();
+    }
+
+    private function ensureCanReturn(DraftOrder $draftOrder, User $user): void
+    {
+        $tableSession = $draftOrder->tableSession;
+
+        if ($tableSession === null || $tableSession->branch === null) {
+            throw ValidationException::withMessages([
+                'draft_review' => __('Черновик больше не связан с открытым столом.'),
+            ]);
+        }
+
+        $confirmableBranchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders);
+
+        if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {
+            throw ValidationException::withMessages([
+                'draft_review' => __('У вас нет права возвращать заказы гостям в этом филиале.'),
+            ]);
+        }
+
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            throw ValidationException::withMessages([
+                'draft_review' => __('Нельзя вернуть заказ гостям для закрытого стола.'),
+            ]);
+        }
+
+        if ($draftOrder->status !== DraftOrderStatus::Rejected) {
+            throw ValidationException::withMessages([
+                'draft_review' => __('Вернуть в черновик можно только отклонённый заказ.'),
+            ]);
+        }
+    }
+}

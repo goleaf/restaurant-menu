@@ -48,7 +48,18 @@
         </span>
     </div>
 
-    @if (! $canEditDraft)
+    @if ($draftStatusValue === 'rejected')
+        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
+            {{ __('Официант отклонил черновик.') }}
+            @if ($rejectionReason)
+                <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $rejectionReason }}</span>
+            @endif
+        </p>
+    @elseif ($draftStatusValue === 'converted_to_order')
+        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ __('Официант подтвердил заказ. Изменения сейчас недоступны.') }}
+        </p>
+    @elseif (! $canEditDraft)
         <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
             {{ __('Черновик отправлен официанту. Изменения сейчас недоступны.') }}
         </p>

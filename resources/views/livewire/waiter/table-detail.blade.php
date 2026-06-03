@@ -179,6 +179,116 @@
                     </div>
                 @endif
             </dl>
+
+            <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Waiter review') }}</h3>
+
+                @if ($reviewFeedbackMessage)
+                    <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                        {{ $reviewFeedbackMessage }}
+                    </p>
+                @endif
+
+                @error('draft_review')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
+                @error('rejectionReason')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
+                @if (data_get($table, 'draft.can_confirm'))
+                    <div class="mt-3 space-y-3">
+                        <flux:button
+                            icon="check"
+                            variant="primary"
+                            type="button"
+                            class="w-full"
+                            wire:click="confirmDraft"
+                            wire:loading.attr="disabled"
+                            wire:target="confirmDraft"
+                        >
+                            <span wire:loading.remove wire:target="confirmDraft">{{ __('Confirm order') }}</span>
+                            <span wire:loading wire:target="confirmDraft">{{ __('Confirming') }}</span>
+                        </flux:button>
+
+                        <p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                            {{ __('Confirmation creates a real order, but does not send it to kitchen or bar yet.') }}
+                        </p>
+                    </div>
+                @endif
+
+                @if (data_get($table, 'draft.can_reject'))
+                    <div class="mt-4 space-y-3">
+                        <label class="grid gap-1 text-sm">
+                            <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Rejection reason') }}</span>
+                            <textarea
+                                wire:model="rejectionReason"
+                                rows="4"
+                                maxlength="500"
+                                class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                                placeholder="{{ __('Tell guests what needs to change.') }}"
+                            ></textarea>
+                        </label>
+
+                        <flux:button
+                            icon="x-mark"
+                            variant="danger"
+                            type="button"
+                            class="w-full"
+                            wire:click="rejectDraft"
+                            wire:loading.attr="disabled"
+                            wire:target="rejectDraft"
+                        >
+                            <span wire:loading.remove wire:target="rejectDraft">{{ __('Reject draft') }}</span>
+                            <span wire:loading wire:target="rejectDraft">{{ __('Rejecting') }}</span>
+                        </flux:button>
+                    </div>
+                @endif
+
+                @if (data_get($table, 'draft.rejection_reason'))
+                    <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                        <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('Rejected reason') }}</p>
+                        <p class="mt-1 text-sm leading-5 text-zinc-700 dark:text-zinc-200">{{ data_get($table, 'draft.rejection_reason') }}</p>
+
+                        @if (data_get($table, 'draft.rejected_by_user_name'))
+                            <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                {{ __('Rejected by') }}: {{ data_get($table, 'draft.rejected_by_user_name') }}
+                            </p>
+                        @endif
+                    </div>
+                @endif
+
+                @if (data_get($table, 'draft.can_return_to_draft'))
+                    <div class="mt-4">
+                        <flux:button
+                            icon="arrow-uturn-left"
+                            type="button"
+                            class="w-full"
+                            wire:click="returnRejectedDraftToDraft"
+                            wire:loading.attr="disabled"
+                            wire:target="returnRejectedDraftToDraft"
+                        >
+                            <span wire:loading.remove wire:target="returnRejectedDraftToDraft">{{ __('Return to draft') }}</span>
+                            <span wire:loading wire:target="returnRejectedDraftToDraft">{{ __('Returning') }}</span>
+                        </flux:button>
+                    </div>
+                @endif
+
+                @if (data_get($table, 'draft.order_id'))
+                    <div class="mt-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
+                        <p class="font-medium text-zinc-950 dark:text-white">
+                            {{ __('Order') }} #{{ data_get($table, 'draft.order_id') }}
+                        </p>
+                        <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                            {{ __('Status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
+                        </p>
+                        <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                            {{ __('Prepared for kitchen/bar dispatch, but not sent yet.') }}
+                        </p>
+                    </div>
+                @endif
+            </div>
         </aside>
     </section>
 </section>

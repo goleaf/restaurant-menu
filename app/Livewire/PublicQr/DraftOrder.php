@@ -57,6 +57,12 @@ class DraftOrder extends Component
 
     public bool $sendNeedsReadyConfirmation = false;
 
+    public ?string $draftStatusValue = null;
+
+    public string $draftStatusLabel = '';
+
+    public ?string $rejectionReason = null;
+
     public bool $currentGuestReady = false;
 
     public bool $allGuestsReady = false;
@@ -109,6 +115,9 @@ class DraftOrder extends Component
         $guestSections = [];
         $totalCents = 0;
 
+        $this->draftStatusValue = $draftOrder?->status?->value;
+        $this->draftStatusLabel = $draftOrder?->status?->label() ?? '';
+        $this->rejectionReason = $draftOrder?->rejection_reason;
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
         $this->activeGuestCount = $guests->count();
         $this->readyGuestCount = $guests->filter(fn (TableSessionGuest $guest): bool => $guest->ready_at !== null)->count();
@@ -486,6 +495,7 @@ class DraftOrder extends Component
                 'id',
                 'table_session_id',
                 'status',
+                'rejection_reason',
             ])
             ->with([
                 'items' => fn ($query) => $query

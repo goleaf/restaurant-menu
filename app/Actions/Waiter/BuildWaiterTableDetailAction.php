@@ -4,6 +4,7 @@ namespace App\Actions\Waiter;
 
 use App\Enums\DraftOrderStatus;
 use App\Enums\ServicePointStatus;
+use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
@@ -68,9 +69,32 @@ class BuildWaiterTableDetailAction
                     'left_at',
                 ]),
                 'draftOrder' => fn ($query) => $query
-                    ->select(['id', 'table_session_id', 'status', 'sent_to_waiter_at', 'sent_by_guest_id', 'created_at', 'updated_at'])
+                    ->select([
+                        'id',
+                        'table_session_id',
+                        'status',
+                        'sent_to_waiter_at',
+                        'sent_by_guest_id',
+                        'rejected_at',
+                        'rejected_by_user_id',
+                        'rejection_reason',
+                        'converted_to_order_at',
+                        'converted_by_user_id',
+                        'created_at',
+                        'updated_at',
+                    ])
                     ->with([
                         'sentByGuest' => fn ($guestQuery) => $guestQuery->select(['id', 'guest_name']),
+                        'rejectedByUser' => fn ($userQuery) => $userQuery->select(['id', 'name']),
+                        'convertedByUser' => fn ($userQuery) => $userQuery->select(['id', 'name']),
+                        'order' => fn ($orderQuery) => $orderQuery->select([
+                            'id',
+                            'draft_order_id',
+                            'status',
+                            'confirmed_at',
+                            'confirmed_by_user_id',
+                            'total_price',
+                        ]),
                         'items' => fn ($itemsQuery) => $itemsQuery
                             ->select([
                                 'id',
@@ -94,14 +118,14 @@ class BuildWaiterTableDetailAction
 
         return [
             'has_access' => true,
-            'table' => $this->tablePayload($tableSession),
+            'table' => $this->tablePayload($tableSession, $user),
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function tablePayload(TableSession $tableSession): array
+    private function tablePayload(TableSession $tableSession, User $user): array
     {
         $branch = $tableSession->branch;
         $servicePoint = $tableSession->servicePoint;
@@ -116,6 +140,10 @@ class BuildWaiterTableDetailAction
         $servicePointStatus = $servicePoint?->status instanceof ServicePointStatus
             ? $servicePoint->status
             : ServicePointStatus::from((string) ($servicePoint?->status ?? ServicePointStatus::Free->value));
+
+        $canReviewDraft = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ConfirmOrders)
+            ->contains((int) $tableSession->branch_id);
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -154,7 +182,7 @@ class BuildWaiterTableDetailAction
                 'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
                 'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
             ],
-            'draft' => $this->draftPayload($draftOrder, $currency, $totalCents),
+            'draft' => $this->draftPayload($draftOrder, $currency, $totalCents, $canReviewDraft),
             'guest_sections' => $guestSections,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'guest_count' => count($guestSections),
@@ -259,15 +287,26 @@ class BuildWaiterTableDetailAction
     /**
      * @return array<string, mixed>
      */
-    private function draftPayload(?DraftOrder $draftOrder, string $currency, int $totalCents): array
+    private function draftPayload(?DraftOrder $draftOrder, string $currency, int $totalCents, bool $canReviewDraft): array
     {
         if (! $draftOrder instanceof DraftOrder) {
             return [
                 'id' => null,
+                'status_value' => null,
                 'status_label' => __('No draft'),
                 'sent_at' => null,
                 'sent_by_guest_name' => null,
+                'rejected_at' => null,
+                'rejected_by_user_name' => null,
+                'rejection_reason' => null,
+                'converted_to_order_at' => null,
+                'converted_by_user_name' => null,
+                'order_id' => null,
+                'order_status_label' => null,
                 'total' => '0.00 '.$currency,
+                'can_confirm' => false,
+                'can_reject' => false,
+                'can_return_to_draft' => false,
             ];
         }
 
@@ -277,10 +316,21 @@ class BuildWaiterTableDetailAction
 
         return [
             'id' => $draftOrder->id,
+            'status_value' => $status->value,
             'status_label' => $status->label(),
             'sent_at' => $draftOrder->sent_to_waiter_at?->format('Y-m-d H:i'),
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
+            'rejected_at' => $draftOrder->rejected_at?->format('Y-m-d H:i'),
+            'rejected_by_user_name' => $draftOrder->rejectedByUser?->name,
+            'rejection_reason' => $draftOrder->rejection_reason,
+            'converted_to_order_at' => $draftOrder->converted_to_order_at?->format('Y-m-d H:i'),
+            'converted_by_user_name' => $draftOrder->convertedByUser?->name,
+            'order_id' => $draftOrder->order?->id,
+            'order_status_label' => $draftOrder->order?->status?->label(),
             'total' => $this->formatCents($totalCents).' '.$currency,
+            'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
+            'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
+            'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
         ];
     }
 

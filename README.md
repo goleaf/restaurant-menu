@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell and table detail, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft confirmation/rejection, real order snapshots, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -380,11 +380,15 @@ Each active guest can press `Я готов` in the shared cart to set `table_ses
 
 Any active guest can press `Отправить официанту` for the shared draft, even if some positions belong to other guests. If not all active guests are ready, the UI first shows an inline confirmation. After confirmation, the draft status becomes `sent_to_waiter`, `sent_to_waiter_at` and `sent_by_guest_id` are saved, guest readiness is cleared, and the service point status becomes `has_new_order`.
 
-This is only a waiter-review handoff. The order does not go to the kitchen or bar until a future waiter confirmation step is implemented.
+This guest action is only a waiter-review handoff. The draft does not become a real order until the waiter confirms it, and it still does not go to kitchen or bar until a later dispatch step is implemented.
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
-This stage does not add waiter confirmation actions, final orders, kitchen/bar workflows, or payments.
+The waiter can confirm a sent draft from the waiter table detail page. Confirmation changes the draft to `converted_to_order`, creates one real `orders` row with status `confirmed_by_waiter`, and copies draft positions into `order_items` as snapshots. The new order is prepared for a later kitchen/bar dispatch step, but this step does not send anything to kitchen or bar.
+
+The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. New draft versioning is not implemented yet.
+
+This stage does not add kitchen/bar workflows, order dispatch, payments, or analytics.
 
 ## Waiter Dashboard
 
@@ -413,7 +417,7 @@ Each open session links to a waiter table detail page:
 
 The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, draft status, guests sorted alphabetically, each guest's positions, comments, selected modifiers, per-guest totals, and the total amount for the table.
 
-The detail page refreshes through Livewire polling every 1 second. It is display-only for now. It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
+The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Confirmation does not send anything to kitchen/bar; a later step must dispatch confirmed orders.
 
 ## Permanent QR Codes
 
@@ -498,7 +502,8 @@ Implemented:
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
 - Staff permission override UI with default / allow / deny states.
-- Waiter dashboard shell and table detail for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
+- Waiter dashboard shell, table detail, and draft confirm/reject actions for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
+- Real order snapshot tables stored in `orders` and `order_items` after waiter confirmation.
 
 Branch settings currently include safe defaults:
 
@@ -515,11 +520,10 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Waiter confirmation/review actions for sent drafts.
 - Menu translation admin editor.
 - QR PDF generation.
-- Final order conversion.
 - Kitchen/bar workflows.
+- Kitchen/bar dispatch for confirmed orders.
 - Payments and analytics.
 - Staff invitation acceptance flow and email/SMS delivery.
 

@@ -24,6 +24,11 @@ class DraftOrderFactory extends Factory
             'status' => DraftOrderStatus::Draft,
             'sent_to_waiter_at' => null,
             'sent_by_guest_id' => null,
+            'rejected_at' => null,
+            'rejected_by_user_id' => null,
+            'rejection_reason' => null,
+            'converted_to_order_at' => null,
+            'converted_by_user_id' => null,
         ];
     }
 }

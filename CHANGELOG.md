@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 054 - Waiter Draft Confirm Reject
+
+- Added `orders` and `order_items` for real order snapshots created after waiter confirmation.
+- Added waiter review fields to `draft_orders`: rejection reason/audit fields and converted-to-order audit fields.
+- Added `OrderStatus::ConfirmedByWaiter`, order models, factories, and relationships from branches, table sessions, draft orders, guests, and order items.
+- Added waiter actions to confirm a sent draft, reject a sent draft with a reason, and return a rejected draft back to `draft`.
+- Extended the waiter table detail page with `confirm_orders`-guarded confirm/reject controls and order status display.
+- Extended the guest shared cart polling block so rejected drafts show the waiter rejection reason and confirmed drafts show that editing is closed.
+- Kept kitchen/bar protected: confirmation creates a real order with `confirmed_by_waiter` status but does not send anything to kitchen or bar, and no Redis, WebSocket, S3, Docker, or paid services were added.
+
 ### Prompt 053 - Waiter Table Detail
 
 - Added a waiter table detail route at `/restaurant/waiter/tables/{table_session}` guarded by auth and `view_orders`.

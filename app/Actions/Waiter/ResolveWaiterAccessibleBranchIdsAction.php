@@ -16,7 +16,7 @@ class ResolveWaiterAccessibleBranchIdsAction
     /**
      * @return Collection<int, int>
      */
-    public function handle(User $user): Collection
+    public function handle(User $user, SystemPermission $permissionCode = SystemPermission::ViewOrders): Collection
     {
         if ($user->isSuperadmin()) {
             return Branch::query()
@@ -27,7 +27,7 @@ class ResolveWaiterAccessibleBranchIdsAction
 
         $permission = Permission::query()
             ->select(['id', 'code'])
-            ->where('code', SystemPermission::ViewOrders->value)
+            ->where('code', $permissionCode->value)
             ->first();
 
         if (! $permission instanceof Permission) {

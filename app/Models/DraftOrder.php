@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
-#[Fillable(['table_session_id', 'status', 'sent_to_waiter_at', 'sent_by_guest_id'])]
+#[Fillable(['table_session_id', 'status', 'sent_to_waiter_at', 'sent_by_guest_id', 'rejected_at', 'rejected_by_user_id', 'rejection_reason', 'converted_to_order_at', 'converted_by_user_id'])]
 class DraftOrder extends Model
 {
     /** @use HasFactory<DraftOrderFactory> */
@@ -32,6 +33,8 @@ class DraftOrder extends Model
         return [
             'status' => DraftOrderStatus::class,
             'sent_to_waiter_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'converted_to_order_at' => 'datetime',
         ];
     }
 
@@ -49,6 +52,30 @@ class DraftOrder extends Model
     public function sentByGuest(): BelongsTo
     {
         return $this->belongsTo(TableSessionGuest::class, 'sent_by_guest_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function rejectedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function convertedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'converted_by_user_id');
+    }
+
+    /**
+     * @return HasOne<Order, $this>
+     */
+    public function order(): HasOne
+    {
+        return $this->hasOne(Order::class);
     }
 
     /**

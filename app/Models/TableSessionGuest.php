@@ -68,4 +68,12 @@ class TableSessionGuest extends Model
     {
         return $this->hasMany(DraftOrderItem::class, 'table_session_guest_id');
     }
+
+    /**
+     * @return HasMany<OrderItem, $this>
+     */
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class, 'table_session_guest_id');
+    }
 }

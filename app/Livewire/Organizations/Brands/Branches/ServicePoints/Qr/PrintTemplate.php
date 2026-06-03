@@ -1,0 +1,232 @@
+<?php
+
+namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
+
+use App\Enums\SystemPermission;
+use App\Models\Branch;
+use App\Models\Brand;
+use App\Models\Organization;
+use App\Models\QrCode;
+use App\Models\ServicePoint;
+use App\Models\User;
+use App\Services\QrCodeSvgRenderer;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
+use Livewire\Component;
+
+#[Layout('layouts.print')]
+#[Title('Print QR sticker')]
+class PrintTemplate extends Component
+{
+    public Organization $organization;
+
+    public Brand $brand;
+
+    public Branch $branch;
+
+    public ServicePoint $servicePoint;
+
+    public QrCode $qrCode;
+
+    #[Url(as: 'print_table_number', except: false)]
+    public bool $printTableNumber = false;
+
+    public function mount(
+        Organization $organization,
+        Brand $brand,
+        Branch $branch,
+        ServicePoint $servicePoint,
+        QrCode $qrCode,
+    ): void {
+        $this->organization = $organization;
+        $this->brand = $brand;
+        $this->branch = $branch;
+        $this->servicePoint = $servicePoint;
+        $this->qrCode = $qrCode;
+
+        $this->authorizeRouteContext();
+        $this->authorizeQrManagement();
+        $this->reloadPrintContext();
+    }
+
+    #[Computed]
+    public function publicUrl(): string
+    {
+        return route('public.qr.show', ['token' => $this->qrCode->public_token]);
+    }
+
+    #[Computed]
+    public function qrImageDataUri(): string
+    {
+        $svg = app(QrCodeSvgRenderer::class)->render($this->publicUrl, 420);
+
+        return 'data:image/svg+xml;base64,'.base64_encode($svg);
+    }
+
+    #[Computed]
+    public function restaurantLogoUrl(): ?string
+    {
+        foreach ([$this->branch, $this->brand, $this->organization] as $model) {
+            $logoUrl = $this->localLogoUrlFrom($model);
+
+            if ($logoUrl !== null) {
+                return $logoUrl;
+            }
+        }
+
+        return null;
+    }
+
+    #[Computed]
+    public function tableLabel(): string
+    {
+        return $this->servicePoint->display_number ?: $this->servicePoint->name;
+    }
+
+    public function render(): View
+    {
+        return view('livewire.organizations.brands.branches.service-points.qr.print-template');
+    }
+
+    private function authorizeRouteContext(): void
+    {
+        if (
+            $this->brand->organization_id !== $this->organization->id
+            || $this->branch->organization_id !== $this->organization->id
+            || $this->branch->brand_id !== $this->brand->id
+            || $this->servicePoint->branch_id !== $this->branch->id
+            || $this->qrCode->service_point_id !== $this->servicePoint->id
+        ) {
+            abort(403);
+        }
+    }
+
+    private function authorizeQrManagement(): void
+    {
+        $user = $this->currentUser();
+
+        if (
+            ! $user->canAccessOrganization($this->organization)
+            || ! $user->hasPermission(SystemPermission::GenerateQr, $this->organization)
+        ) {
+            abort(403);
+        }
+    }
+
+    private function reloadPrintContext(): void
+    {
+        $this->organization = Organization::query()
+            ->select($this->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
+            ->whereKey($this->organization->id)
+            ->firstOrFail();
+
+        $this->brand = Brand::query()
+            ->select($this->columnsWithOptionalLogo(new Brand, ['id', 'organization_id', 'name']))
+            ->whereKey($this->brand->id)
+            ->where('organization_id', $this->organization->id)
+            ->firstOrFail();
+
+        $this->branch = Branch::query()
+            ->select($this->columnsWithOptionalLogo(new Branch, [
+                'id',
+                'organization_id',
+                'brand_id',
+                'name',
+                'address',
+                'city',
+                'country',
+                'timezone',
+                'currency',
+                'is_active',
+            ]))
+            ->whereKey($this->branch->id)
+            ->where('organization_id', $this->organization->id)
+            ->where('brand_id', $this->brand->id)
+            ->firstOrFail();
+
+        $this->servicePoint = ServicePoint::query()
+            ->select([
+                'id',
+                'branch_id',
+                'area_node_id',
+                'type',
+                'name',
+                'display_number',
+                'capacity',
+                'icon',
+                'status',
+                'is_active',
+            ])
+            ->whereKey($this->servicePoint->id)
+            ->where('branch_id', $this->branch->id)
+            ->firstOrFail();
+
+        $this->qrCode = QrCode::query()
+            ->select([
+                'id',
+                'service_point_id',
+                'public_token',
+                'short_code',
+                'status',
+                'created_by_user_id',
+                'revoked_at',
+                'revoked_by_user_id',
+                'created_at',
+                'updated_at',
+            ])
+            ->whereKey($this->qrCode->id)
+            ->where('service_point_id', $this->servicePoint->id)
+            ->firstOrFail();
+    }
+
+    /**
+     * @param  list<string>  $columns
+     * @return list<string>
+     */
+    private function columnsWithOptionalLogo(Model $model, array $columns): array
+    {
+        foreach (['logo_path', 'logo_url'] as $column) {
+            if (Schema::hasColumn($model->getTable(), $column)) {
+                $columns[] = $column;
+            }
+        }
+
+        return $columns;
+    }
+
+    private function localLogoUrlFrom(Model $model): ?string
+    {
+        $logoPath = $model->getAttribute('logo_path');
+
+        if (is_string($logoPath) && filled($logoPath)) {
+            return Storage::disk('public')->url($logoPath);
+        }
+
+        $logoUrl = $model->getAttribute('logo_url');
+
+        if (is_string($logoUrl) && filled($logoUrl) && Str::startsWith($logoUrl, '/')) {
+            return $logoUrl;
+        }
+
+        return null;
+    }
+
+    private function currentUser(): User
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
+            abort(401);
+        }
+
+        return $user;
+    }
+}

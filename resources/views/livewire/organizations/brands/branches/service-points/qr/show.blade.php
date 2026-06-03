@@ -57,6 +57,10 @@
                     {{ __('Download QR image') }}
                 </flux:button>
 
+                <flux:button icon="printer" :href="route('organizations.brands.branches.service-points.qr.print', [$organization, $brand, $branch, $servicePoint, $qrCode])" wire:navigate>
+                    {{ __('Print sticker') }}
+                </flux:button>
+
                 @if ($qrCode->status === \App\Enums\QrCodeStatus::Active)
                     <flux:button icon="no-symbol" type="button" wire:click="disableQr" wire:loading.attr="disabled" wire:target="disableQr">
                         {{ __('Disable QR') }}

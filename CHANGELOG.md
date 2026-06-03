@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 026 - QR Print Template
+
+- Added a browser print-friendly sticker template for one service point QR.
+- The sticker shows a restaurant logo when a local logo field exists, otherwise it uses the brand name as a text mark.
+- The sticker prints the menu scan text, QR image, and short code without printing service point number or area by default.
+- Added a `print_table_number` setting to include the service point display number and show a stale-label warning.
+- Verified the print media view in the browser without using PDF services.
+
 ### Prompt 025 - QR Admin Display Page
 
 - Added an authenticated QR admin page for a specific service point QR record.

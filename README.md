@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, nested branch areas, service point schema and CRUD, permanent QR schema, generation, admin display page, simple print template, and public landing route, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -195,6 +195,10 @@ Users with `generate_qr` can open the QR admin page from a service point. The pa
 
 Manual reissue revokes the current active QR and creates a new active QR for the same service point. Normal service point editing, including rename and area move, does not reissue or change the QR.
 
+Users with `generate_qr` can also open a browser print-friendly sticker template for one service point QR. The sticker shows a restaurant logo only if a local logo field already exists, otherwise it uses the brand name as a simple text mark. It prints the text `Сканируйте, чтобы открыть меню`, the QR image, and the `short_code`.
+
+The print template does not print service point number or area by default. It has a `print_table_number` setting for including the service point display number. When that setting is enabled, the UI warns that future rename or area moves can make printed sticker text stale.
+
 PDF generation and bulk printable QR output are not implemented yet.
 
 ## Current Scope
@@ -213,7 +217,7 @@ Implemented:
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, admin display page, and public `/q/{public_token}` route.
+- Permanent QR schema, generation action, admin display page, simple print template, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.

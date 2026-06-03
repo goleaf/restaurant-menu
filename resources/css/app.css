@@ -61,6 +61,82 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+.qr-print-page {
+    @apply flex min-h-svh flex-col items-center gap-4 px-4 py-6;
+}
+
+.qr-print-toolbar {
+    @apply flex w-full max-w-4xl flex-col justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:flex-row md:items-center;
+}
+
+.qr-print-warning {
+    @apply w-full max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900;
+}
+
+.qr-sticker {
+    @apply flex w-full max-w-80 flex-col items-center justify-between gap-4 rounded-lg border border-zinc-950 bg-white p-5 text-center text-zinc-950 shadow-sm;
+    aspect-ratio: 3 / 4;
+}
+
+.qr-sticker-brand {
+    @apply flex min-h-12 w-full items-center justify-center;
+}
+
+.qr-sticker-logo {
+    @apply max-h-12 max-w-52 object-contain;
+}
+
+.qr-sticker-logotype {
+    @apply text-lg font-semibold;
+}
+
+.qr-sticker-title {
+    @apply text-xl font-semibold leading-tight;
+}
+
+.qr-sticker-image {
+    @apply aspect-square w-full max-w-60 bg-white;
+}
+
+.qr-sticker-code {
+    @apply rounded-md border border-zinc-950 px-3 py-1 text-base font-semibold;
+}
+
+.qr-sticker-table-number {
+    @apply text-sm font-medium;
+}
+
+@media print {
+    @page {
+        size: 80mm 110mm;
+        margin: 0;
+    }
+
+    body[data-layout='print'] {
+        background: white !important;
+    }
+
+    .qr-print-page {
+        min-height: auto !important;
+        padding: 0 !important;
+    }
+
+    .qr-print-toolbar,
+    .qr-print-warning {
+        display: none !important;
+    }
+
+    .qr-sticker {
+        width: 76mm !important;
+        max-width: none !important;
+        min-height: 104mm !important;
+        margin: 2mm auto !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+}
+
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */

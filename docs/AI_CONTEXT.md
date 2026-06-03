@@ -44,7 +44,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Permanent QR schema, generation action, admin display page, and public QR landing route.
+- Permanent QR schema, generation action, admin display page, simple print template, and public QR landing route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
@@ -167,6 +167,15 @@ QR code:
 - The QR admin page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` and is guarded by `generate_qr` in the current organization context.
 - The QR admin page shows branch, current area, current service point, public URL, SVG QR image, short code, status, and creation date.
 - The QR admin page can open the guest URL, download the QR SVG image, disable an active QR, and manually reissue a QR after a danger warning.
+- The QR print template page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print` and is guarded by `generate_qr` in the current organization context.
+- The QR print template is browser print-friendly and intended for one sticker at a time.
+- The QR print template shows a restaurant logo only when an existing local `logo_path` or local `logo_url` column is present on branch, brand, or organization; no logo schema exists yet.
+- Without a logo field, the QR print template uses the brand name as a simple text mark.
+- The QR print template prints `Сканируйте, чтобы открыть меню`, the local SVG QR image, and `short_code`.
+- The QR print template does not print service point number or area by default.
+- The `print_table_number` URL setting can include the service point display number or name in the sticker.
+- When `print_table_number` is enabled, the UI shows the warning: `Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.`
+- Toggling `print_table_number` must not change QR identity.
 - Manual reissue is the only current UI path that intentionally changes the QR identity.
 - Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
 - Public QR route accepts active, disabled, revoked, and unknown token states.
@@ -262,6 +271,7 @@ Staff permission overrides:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas` -> `organizations.brands.branches.areas.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points` -> `organizations.brands.branches.service-points.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}` -> `organizations.brands.branches.service-points.qr.show`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print` -> `organizations.brands.branches.service-points.qr.print`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
@@ -277,6 +287,7 @@ Staff permission overrides:
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Areas`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate`
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
@@ -324,7 +335,23 @@ Staff permission overrides:
 - `downloadQrImage` streams a local SVG file generated from the public URL.
 - `disableQr` changes active QR status to `disabled`.
 - `reissueQr` is intentionally dangerous, requires a warning confirmation, revokes the current active QR, and creates one new active QR.
+- The page links to the print template for the same QR record.
 - Normal service point edit actions must not call reissue or create a new QR.
+
+## Current QR Print Template
+
+- QR print route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print`.
+- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Route model nesting is checked: brand must belong to organization, branch must belong to brand and organization, service point must belong to branch, and QR must belong to service point.
+- The page uses `resources/views/layouts/print.blade.php` instead of the normal admin sidebar layout.
+- The sticker is built for browser print first, not PDF generation.
+- The printed sticker shows brand/logo, `Сканируйте, чтобы открыть меню`, the QR image, and `short_code`.
+- Area name is not printed.
+- Service point display number is not printed by default.
+- `print_table_number` is a URL-backed Livewire setting for including the display number or service point name.
+- When `print_table_number` is enabled, the warning about stale sticker text is visible on screen and hidden in print media.
+- Print CSS lives in `resources/css/app.css`; the admin toolbar and warning are hidden in `@media print`.
+- No paid PDF service, external QR service, S3, WebSockets, Redis, or Docker is used.
 
 ## Current Branch Area UI
 
@@ -338,7 +365,7 @@ Staff permission overrides:
 
 ## Next Step
 
-The next expected product step may be QR printing/PDF output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be QR PDF/bulk printing output, invite acceptance flow, menu foundations, guest name entry, or guest session foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -349,6 +376,7 @@ The next expected product step may be QR printing/PDF output, invite acceptance 
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
+- Do not print service point number or area by default on QR stickers.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.
 - Do not commit `.env`, SQLite database files, `vendor`, `node_modules`, or storage uploads.

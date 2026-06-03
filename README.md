@@ -251,6 +251,8 @@ The table stores `guest_name`, a random `guest_token`, `status`, `joined_at`, op
 
 Guests are not user accounts and do not need registration. The public QR entry flow queues the `guest_token` in a browser cookie so the guest can be recognized later without exposing internal IDs.
 
+When the guest refreshes the QR page, the cookie restores the same table session and guest record. If that table session has been closed, the guest sees a closed-session message. Guests with `rejected` or `removed` status are restored for display but are not allowed to add future order positions.
+
 Supported guest statuses are:
 
 - `pending_approval`
@@ -259,7 +261,7 @@ Supported guest statuses are:
 - `left`
 - `removed`
 
-The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`. Future prompts will add approval for additional guests.
+The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`. Future prompts will add approval UI for additional guests.
 
 ## Permanent QR Codes
 
@@ -293,7 +295,7 @@ Generated QR URLs use:
 
 The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, current area, branch, brand, organization, and local logo, and opens a mobile-first guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
 
-The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it. If an active session already exists, the page shows a message for the future join flow instead of creating a new pending session.
+The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it, then stores the guest token in a browser cookie. Refreshing the page restores that guest from the cookie. If an active session already exists, the page shows a message for the future join flow instead of creating a new pending session.
 
 Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
 

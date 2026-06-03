@@ -5,6 +5,8 @@ namespace App\Livewire\PublicQr;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
+use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -38,6 +40,8 @@ class Show extends Component
     public ?int $currentTableSessionId = null;
 
     public ?int $currentGuestId = null;
+
+    public bool $guestCanAddItems = false;
 
     /**
      * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
@@ -128,6 +132,8 @@ class Show extends Component
             'area_name' => $servicePoint->areaNode?->name,
             'short_code' => $qrCode->short_code,
         ];
+
+        $this->restoreGuestFromCookie($qrCode);
     }
 
     public function enterTable(CreateGuestPendingTableSessionAction $createGuestPendingTableSession): void
@@ -184,6 +190,9 @@ class Show extends Component
         $this->entryMessage = $this->messageForEntryState($entryState);
         $this->currentTableSessionId = $tableSession instanceof TableSession ? $tableSession->id : null;
         $this->currentGuestId = $guest instanceof TableSessionGuest ? $guest->id : null;
+        $this->guestCanAddItems = $guest instanceof TableSessionGuest
+            && $tableSession instanceof TableSession
+            && $this->canGuestAddItems($guest, $tableSession);
 
         if ($guest instanceof TableSessionGuest && $tableSession instanceof TableSession) {
             Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $guest->guest_token, 60 * 24 * 30);
@@ -259,6 +268,65 @@ class Show extends Component
             ->first();
     }
 
+    private function restoreGuestFromCookie(QrCode $qrCode): void
+    {
+        $guestToken = request()->cookie($this->guestTokenCookieName($qrCode->public_token));
+
+        if (! is_string($guestToken) || strlen($guestToken) !== 64) {
+            return;
+        }
+
+        $servicePoint = $qrCode->servicePoint;
+
+        if (! $servicePoint instanceof ServicePoint) {
+            return;
+        }
+
+        $guest = $this->findGuestByToken($servicePoint, $guestToken);
+
+        if (! $guest instanceof TableSessionGuest || ! $guest->tableSession instanceof TableSession) {
+            return;
+        }
+
+        $tableSession = $guest->tableSession;
+
+        $this->guestName = $guest->guest_name;
+        $this->preparedGuestName = $guest->guest_name;
+        $this->currentGuestId = $guest->id;
+        $this->currentTableSessionId = $tableSession->id;
+        $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
+        $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
+        $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
+    }
+
+    private function findGuestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionGuest
+    {
+        return TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'status',
+                    'ended_at',
+                ]),
+            ])
+            ->where('guest_token', $guestToken)
+            ->whereHas('tableSession', fn ($query) => $query
+                ->where('branch_id', $servicePoint->branch_id)
+                ->where('service_point_id', $servicePoint->id))
+            ->first();
+    }
+
     private function showError(string $state, string $title, string $message): void
     {
         $this->state = $state;
@@ -269,6 +337,30 @@ class Show extends Component
     private function guestTokenCookieName(string $publicToken): string
     {
         return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
+    }
+
+    private function canGuestAddItems(TableSessionGuest $guest, TableSession $tableSession): bool
+    {
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            return false;
+        }
+
+        return $guest->status === TableSessionGuestStatus::Active;
+    }
+
+    private function messageForGuestAccess(TableSessionGuest $guest, TableSession $tableSession): string
+    {
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            return __('Эта сессия стола уже закрыта. Пожалуйста, обратитесь к официанту.');
+        }
+
+        return match ($guest->status) {
+            TableSessionGuestStatus::Active => __('Вы уже за этим столом. Ваш вход сохранён.'),
+            TableSessionGuestStatus::PendingApproval => __('Ваше присоединение ожидает подтверждения текущими гостями.'),
+            TableSessionGuestStatus::Rejected => __('Ваше присоединение к этому столу не подтверждено.'),
+            TableSessionGuestStatus::Removed => __('Вы были удалены из этой сессии стола.'),
+            TableSessionGuestStatus::Left => __('Вы уже покинули эту сессию стола.'),
+        };
     }
 
     private function messageForEntryState(GuestTableEntryState $state): string

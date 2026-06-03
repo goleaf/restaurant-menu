@@ -58,6 +58,88 @@ test('first guest creates pending table session and active session guest from qr
     expect($queuedGuestCookie->getValue())->toBe($guest->guest_token);
 });
 
+test('guest token cookie restores table session after page refresh', function () {
+    [$qrCode] = createGuestPendingQrContext();
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', 'Lina')
+        ->call('enterTable')
+        ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value);
+
+    $tableSession = TableSession::query()->firstOrFail();
+    $guest = TableSessionGuest::query()->firstOrFail();
+
+    Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
+        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->assertSet('state', 'ready')
+        ->assertSet('preparedGuestName', 'Lina')
+        ->assertSet('currentTableSessionId', $tableSession->id)
+        ->assertSet('currentGuestId', $guest->id)
+        ->assertSet('guestCanAddItems', true)
+        ->assertSet('entryState', 'guest_restored')
+        ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
+        ->assertSeeText('Вход сохранён');
+
+    $this
+        ->withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
+        ->get(route('public.qr.show', ['token' => $qrCode->public_token], false))
+        ->assertOk()
+        ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
+        ->assertSeeText('Вход сохранён');
+});
+
+test('guest token restore shows message when table session is closed', function () {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->create([
+            'status' => TableSessionStatus::Closed,
+            'started_at' => now()->subHour(),
+            'ended_at' => now(),
+        ]);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Nina',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+
+    $tableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
+
+    Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
+        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->assertSet('currentTableSessionId', $tableSession->id)
+        ->assertSet('currentGuestId', $guest->id)
+        ->assertSet('guestCanAddItems', false)
+        ->assertSet('entryState', 'guest_blocked')
+        ->assertSeeText('Эта сессия стола уже закрыта. Пожалуйста, обратитесь к официанту.');
+});
+
+test('blocked guest statuses cannot add items after token restore', function (TableSessionGuestStatus $status, string $message) {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create();
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Mila',
+            'status' => $status,
+        ]);
+
+    Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
+        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->assertSet('currentTableSessionId', $tableSession->id)
+        ->assertSet('currentGuestId', $guest->id)
+        ->assertSet('guestCanAddItems', false)
+        ->assertSet('entryState', 'guest_blocked')
+        ->assertSeeText($message);
+})->with([
+    'rejected' => [TableSessionGuestStatus::Rejected, 'Ваше присоединение к этому столу не подтверждено.'],
+    'removed' => [TableSessionGuestStatus::Removed, 'Вы были удалены из этой сессии стола.'],
+]);
+
 test('guest-created sessions setting can block first guest session creation', function () {
     [$qrCode] = createGuestPendingQrContext(allowGuestCreatedSessions: false);
 
@@ -159,4 +241,9 @@ function createGuestPendingQrContext(bool $allowGuestCreatedSessions = true): ar
         ]);
 
     return [$qrCode, $servicePoint, $branch];
+}
+
+function guestTokenCookieName(QrCode $qrCode): string
+{
+    return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
 }

@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 034 - Persist Guest Token
+
+- Restored public QR guests from the saved browser guest token after page refresh.
+- Added guest access state for active, closed, rejected, removed, pending approval, and left guest/session cases.
+- Blocked rejected and removed guests from future item-adding capability while keeping them out of normal user accounts.
+- Kept the step limited to guest token persistence: no menu, order, payment, kitchen/bar, or join approval UI.
+
 ### Prompt 033 - Table Session Guests
 
 - Updated table session guests to store `guest_name` and a random `guest_token`.

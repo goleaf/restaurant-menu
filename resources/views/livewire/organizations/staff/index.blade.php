@@ -104,6 +104,10 @@
                     </div>
 
                     <div class="flex flex-wrap gap-2 md:justify-end">
+                        <flux:button icon="shield-check" type="button" :href="route('organizations.staff.permissions', [$organization, $member->user])" wire:navigate>
+                            {{ __('Permissions') }}
+                        </flux:button>
+
                         @if ($member->status->value === 'active')
                             <flux:button icon="pause" type="button" wire:click="deactivateMember({{ $member->id }})">
                                 {{ __('Deactivate') }}

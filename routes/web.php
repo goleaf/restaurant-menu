@@ -6,6 +6,7 @@ use App\Livewire\Organizations\Brands\Branches\Staff\Index as OrganizationBrandB
 use App\Livewire\Organizations\Brands\Index as OrganizationBrandsIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
+use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use Illuminate\Support\Facades\Route;
 
@@ -29,6 +30,7 @@ Route::middleware(['auth'])
         Route::livewire('/', OrganizationsIndex::class)->name('index');
 
         Route::livewire('{organization}/staff', OrganizationStaffIndex::class)->name('staff.index');
+        Route::livewire('{organization}/staff/{staffMember}/permissions', OrganizationStaffPermissions::class)->name('staff.permissions');
 
         Route::prefix('{organization}/brands')
             ->name('brands.')

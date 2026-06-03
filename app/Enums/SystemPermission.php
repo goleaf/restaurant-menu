@@ -56,6 +56,16 @@ enum SystemPermission: string
         return $permission instanceof self ? $permission->value : $permission;
     }
 
+    public function isCritical(): bool
+    {
+        return in_array($this, [
+            self::ManageStaff,
+            self::ManageSubscription,
+            self::ManageSettings,
+            self::ExportData,
+        ], true);
+    }
+
     /**
      * @return list<string>
      */

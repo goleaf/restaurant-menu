@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, staff invitation foundations, and simple staff management UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -69,6 +69,16 @@ The UI can:
 - create an invite code;
 - activate or deactivate staff members.
 
+Staff permission overrides are managed at:
+
+```text
+/organizations/{organization}/staff/{staffMember}/permissions
+```
+
+The employee permission page keeps the fixed staff role unchanged and lets a manager set each permission to `default`, `allow`, or `deny`. `default` removes the user override and falls back to role permissions. `allow` and `deny` save a user override in `permission_user_overrides`. Superadmins always keep full computed access.
+
+Changing critical permissions shows a warning, and users cannot edit their own permission overrides from this page.
+
 Staff invitations are stored in the `invitations` table. An invitation can be scoped to an organization, optionally to a brand, and optionally to a branch. It stores the fixed role to assign later, email, phone, invite token, invite code, expiration date, status, and the user who created the invitation.
 
 Supported statuses are:
@@ -111,6 +121,7 @@ Implemented:
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
+- Staff permission override UI with default / allow / deny states.
 
 Branch settings currently include safe defaults:
 

@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 016 - Permission Override UI
+
+- Added a staff permission override page guarded by `manage_staff`.
+- Added default / allow / deny permission states for individual staff users.
+- Added critical permission warnings and self-edit protection.
+- Added computed effective permission display that respects superadmin access, user overrides, and role defaults.
+- Added staff list links and tests for access control, override persistence, and superadmin behavior.
+
 ### Prompt 015 - Staff Management UI
 
 - Added the `branch_users` table for branch-level staff assignments.

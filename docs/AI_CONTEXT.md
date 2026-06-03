@@ -44,6 +44,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
+- Staff permission override UI.
 
 No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
@@ -128,14 +129,28 @@ Staff management:
 
 - Organization staff page is `App\Livewire\Organizations\Staff\Index`.
 - Branch staff page is `App\Livewire\Organizations\Brands\Branches\Staff\Index`.
+- Staff permission override page is `App\Livewire\Organizations\Staff\Permissions`.
 - Organization staff route is `GET /organizations/{organization}/staff`.
 - Branch staff route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff`.
+- Staff permission route is `GET /organizations/{organization}/staff/{staffMember}/permissions`.
 - Access requires `manage_staff` in the current organization context.
 - Manual staff creation creates or reuses a user, assigns the fixed role, and creates an active `organization_users` membership.
 - Branch manual staff creation also creates an active `branch_users` assignment.
 - Staff deactivate sets status to `suspended`; activate sets status to `active`.
 - Invite link/code creation stores an `invitations` record only; no email/SMS is sent.
 - Invite links are displayed for manual copy, but public invite acceptance is not implemented yet.
+
+Staff permission overrides:
+
+- Roles remain fixed; the permission page does not edit a staff member's role.
+- Each permission can be `default`, `allow`, or `deny`.
+- `default` removes the `permission_user_overrides` row and falls back to `permission_role`.
+- `allow` and `deny` save `permission_user_overrides.enabled` as true or false.
+- Effective permission display is computed from superadmin access, then user override, then role default.
+- Superadmins always have full effective access.
+- Critical permissions include `manage_staff`, `manage_subscription`, `manage_settings`, and `export_data`.
+- Critical permission changes show a warning.
+- Users cannot edit their own permission overrides from the staff permission page.
 
 ## Branch Settings Defaults
 
@@ -158,6 +173,7 @@ Staff management:
 - `GET /dashboard` -> `dashboard`
 - `GET /organizations` -> `organizations.index`
 - `GET /organizations/{organization}/staff` -> `organizations.staff.index`
+- `GET /organizations/{organization}/staff/{staffMember}/permissions` -> `organizations.staff.permissions`
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
@@ -170,6 +186,7 @@ Staff management:
 
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
+- `App\Livewire\Organizations\Staff\Permissions`
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`

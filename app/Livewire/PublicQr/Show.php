@@ -221,6 +221,60 @@ class Show extends Component
         }
     }
 
+    public function refreshJoinRequestStatus(): void
+    {
+        if ($this->state !== 'ready' || $this->currentJoinRequestId === null) {
+            return;
+        }
+
+        $guestToken = $this->guestTokenFromCurrentCookie();
+        $joinRequest = $guestToken === null
+            ? null
+            : $this->findJoinRequestByIdAndToken($this->currentJoinRequestId, $guestToken);
+
+        $joinRequest ??= $this->findJoinRequestByCurrentState($this->currentJoinRequestId);
+
+        if (! $joinRequest instanceof TableSessionJoinRequest || ! $joinRequest->tableSession instanceof TableSession) {
+            return;
+        }
+
+        $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
+
+        if ($joinRequest->status === TableSessionJoinRequestStatus::Approved) {
+            $guest = $this->findGuestForJoinRequest($joinRequest);
+
+            if (! $guest instanceof TableSessionGuest || ! $guest->tableSession instanceof TableSession) {
+                $this->entryState = 'join_request_blocked';
+                $this->guestCanAddItems = false;
+
+                return;
+            }
+
+            $tableSession = $guest->tableSession;
+
+            $this->guestName = $guest->guest_name;
+            $this->preparedGuestName = $guest->guest_name;
+            $this->currentTableSessionId = $tableSession->id;
+            $this->currentGuestId = $guest->id;
+            $this->currentJoinRequestId = null;
+            $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
+            $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
+            $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
+
+            return;
+        }
+
+        if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending || $this->joinRequestIsExpired($joinRequest)) {
+            $this->entryState = 'join_request_blocked';
+            $this->guestCanAddItems = false;
+
+            return;
+        }
+
+        $this->entryState = 'join_request_restored';
+        $this->guestCanAddItems = false;
+    }
+
     public function render(): View
     {
         return view('livewire.public-qr.show');
@@ -315,6 +369,12 @@ class Show extends Component
         $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
         $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
         $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
+
+        session()->put('guest_entries.'.$qrCode->public_token, [
+            'table_session_id' => $tableSession->id,
+            'guest_id' => $guest->id,
+            'guest_token' => $guest->guest_token,
+        ]);
     }
 
     private function restoreJoinRequestFromToken(ServicePoint $servicePoint, string $guestToken): void
@@ -336,6 +396,12 @@ class Show extends Component
             ? 'join_request_restored'
             : 'join_request_blocked';
         $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
+
+        session()->put('guest_entries.'.$this->token, [
+            'table_session_id' => $tableSession->id,
+            'join_request_id' => $joinRequest->id,
+            'guest_token' => $joinRequest->guest_token,
+        ]);
     }
 
     private function findGuestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionGuest
@@ -397,11 +463,117 @@ class Show extends Component
             ->first();
     }
 
+    private function findJoinRequestByIdAndToken(int $joinRequestId, string $guestToken): ?TableSessionJoinRequest
+    {
+        return TableSessionJoinRequest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'approved_by_guest_id',
+                'rejected_by_guest_id',
+                'approved_by_user_id',
+                'rejected_by_user_id',
+                'expires_at',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'status',
+                    'ended_at',
+                ]),
+            ])
+            ->whereKey($joinRequestId)
+            ->where('guest_token', $guestToken)
+            ->first();
+    }
+
+    private function findJoinRequestByCurrentState(int $joinRequestId): ?TableSessionJoinRequest
+    {
+        if ($this->currentTableSessionId === null || $this->preparedGuestName === null) {
+            return null;
+        }
+
+        return TableSessionJoinRequest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'approved_by_guest_id',
+                'rejected_by_guest_id',
+                'approved_by_user_id',
+                'rejected_by_user_id',
+                'expires_at',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'status',
+                    'ended_at',
+                ]),
+            ])
+            ->whereKey($joinRequestId)
+            ->where('table_session_id', $this->currentTableSessionId)
+            ->where('guest_name', $this->preparedGuestName)
+            ->first();
+    }
+
+    private function findGuestForJoinRequest(TableSessionJoinRequest $joinRequest): ?TableSessionGuest
+    {
+        return TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'status',
+                    'ended_at',
+                ]),
+            ])
+            ->where('table_session_id', $joinRequest->table_session_id)
+            ->where('guest_token', $joinRequest->guest_token)
+            ->first();
+    }
+
     private function showError(string $state, string $title, string $message): void
     {
         $this->state = $state;
         $this->title = $title;
         $this->message = $message;
+    }
+
+    private function guestTokenFromCurrentCookie(): ?string
+    {
+        $guestToken = request()->cookie($this->guestTokenCookieName($this->token));
+
+        if (is_string($guestToken) && strlen($guestToken) === 64) {
+            return $guestToken;
+        }
+
+        $guestToken = session('guest_entries.'.$this->token.'.guest_token');
+
+        if (! is_string($guestToken) || strlen($guestToken) !== 64) {
+            return null;
+        }
+
+        return $guestToken;
     }
 
     private function guestTokenCookieName(string $publicToken): string
@@ -416,6 +588,13 @@ class Show extends Component
         }
 
         return $guest->status === TableSessionGuestStatus::Active;
+    }
+
+    private function joinRequestIsExpired(TableSessionJoinRequest $joinRequest): bool
+    {
+        return $joinRequest->status === TableSessionJoinRequestStatus::Pending
+            && $joinRequest->expires_at !== null
+            && $joinRequest->expires_at->isPast();
     }
 
     private function messageForGuestAccess(TableSessionGuest $guest, TableSession $tableSession): string

@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 036 - Guest Join Approval UI
+
+- Added a Livewire polling block where active table guests see pending join requests.
+- Allowed any active guest at the same table session to approve or reject a pending guest from the public QR UI.
+- Added a waiting-state refresh for the new guest so approval restores them as an active guest and rejection shows a clear message.
+- Kept the step limited to guest join approval: no menu, order draft, kitchen/bar, payment, Redis, WebSocket, S3, or Docker.
+
 ### Prompt 035 - Table Session Join Requests
 
 - Added `table_session_join_requests` for guests who want to join an existing table session.

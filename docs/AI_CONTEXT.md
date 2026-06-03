@@ -49,14 +49,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic.
+- Table session join requests with backend create / approve / reject logic and guest approval UI.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, guest join approval UI, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -184,7 +184,7 @@ Table session:
 - `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
 - If an active or pending session already exists and has active guests, guest QR entry creates a pending table session join request instead of a guest.
 - If an active or pending session already exists without active guests, guest QR entry returns the existing-session message without creating a join request.
-- No order draft, order, kitchen/bar, payment, or guest approval UI exists yet.
+- No order draft, order, kitchen/bar, or payment logic exists yet.
 
 Table session guest:
 
@@ -203,7 +203,7 @@ Table session guest:
 - `TableSession::guests()` returns all session guests ordered by `guest_name` and id.
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
-- Additional guest approval UI is not implemented yet.
+- Active guests can approve or reject new guest join requests from the public QR UI.
 
 Table session join request:
 
@@ -221,7 +221,10 @@ Table session join request:
 - `RejectTableSessionJoinRequestAction` allows an active guest from the same table session to reject a pending request without creating a guest.
 - Expired pending requests are marked `expired` when moderation is attempted.
 - `approved_by_user_id` and `rejected_by_user_id` are present for future staff moderation, but current backend actions use guest moderation only.
-- No approval UI exists yet.
+- `App\Livewire\PublicQr\JoinRequests` shows active guests a polled block of pending join requests for the same table session.
+- The join request UI requires the active guest's saved browser token before allowing approval or rejection.
+- Waiting guests poll only their join request status block and see approved, rejected, or expired messaging.
+- Approved waiting guests are restored as active table guests through their saved guest token.
 
 QR code:
 
@@ -277,6 +280,8 @@ QR code:
 - If an active or pending session already has active guests, submitting the guest name creates a pending `table_session_join_requests` row and queues that request token in the same `guest_token_{hash}` cookie.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
+- Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
+- The waiting guest status block in `App\Livewire\PublicQr\Show` polls only the join request status and turns approved requests into active guest state.
 - Restored active guests get `guestCanAddItems = true` for future order-position UI.
 - Restored guests from closed/cancelled sessions or with `rejected`, `removed`, `pending_approval`, or `left` status get `guestCanAddItems = false` and a public message.
 - Guest-created pending sessions do not create menus, orders, payment, kitchen tasks, or bar tasks.
@@ -412,6 +417,7 @@ Local media storage:
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\PublicQr\Show`
+- `App\Livewire\PublicQr\JoinRequests`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
@@ -435,6 +441,8 @@ Local media storage:
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
+- Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
+- Waiting guests stay on a clear waiting screen until polling sees approval, rejection, or expiration.
 - Public QR route does not show menus, create orders, create payment records, or send anything to kitchen/bar yet.
 
 ## Current Service Point UI
@@ -510,7 +518,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be guest join approval UI, guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
+The next expected product step may be guest lists, QR PDF generation, invite acceptance flow, or menu foundations, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

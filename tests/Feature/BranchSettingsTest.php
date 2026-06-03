@@ -52,9 +52,9 @@ test('creating branch creates settings with safe defaults', function () {
     $settings = $branch->settings()->firstOrFail();
 
     expect($settings->require_waiter_confirmation_for_orders)->toBeTrue();
-    expect($settings->allow_guest_created_sessions)->toBeFalse();
+    expect($settings->allow_guest_created_sessions)->toBeTrue();
     expect($settings->allow_waiter_opened_sessions)->toBeTrue();
-    expect($settings->allow_guest_invite_links)->toBeFalse();
+    expect($settings->allow_guest_invite_links)->toBeTrue();
     expect($settings->guest_join_requires_approval)->toBeTrue();
     expect($settings->polling_interval_seconds)->toBe(1);
     expect($settings->default_language)->toBe('en');
@@ -77,6 +77,9 @@ test('owner can update branch settings', function () {
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
         ->assertSet('requireWaiterConfirmationForOrders', true)
+        ->assertSet('allowGuestCreatedSessions', true)
+        ->assertSet('allowWaiterOpenedSessions', true)
+        ->assertSet('allowGuestInviteLinks', true)
         ->assertSet('guestJoinRequiresApproval', true)
         ->assertSet('pollingIntervalSeconds', 1)
         ->set('allowGuestCreatedSessions', true)

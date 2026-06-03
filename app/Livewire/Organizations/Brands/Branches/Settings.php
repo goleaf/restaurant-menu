@@ -31,11 +31,11 @@ class Settings extends Component
 
     public bool $requireWaiterConfirmationForOrders = true;
 
-    public bool $allowGuestCreatedSessions = false;
+    public bool $allowGuestCreatedSessions = true;
 
     public bool $allowWaiterOpenedSessions = true;
 
-    public bool $allowGuestInviteLinks = false;
+    public bool $allowGuestInviteLinks = true;
 
     public bool $guestJoinRequiresApproval = true;
 

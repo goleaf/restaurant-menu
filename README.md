@@ -49,7 +49,14 @@ Branch settings currently include safe defaults:
 
 - Orders require waiter confirmation by default.
 - New guests require approval by default.
+- Guest-created sessions are allowed by default.
+- Waiter-opened sessions are allowed by default.
+- Guest invite links are allowed by default.
 - Polling interval defaults to 1 second.
+- Default language is `en`.
+- Default currency is `EUR`.
+
+Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page.
 
 Not implemented yet:
 

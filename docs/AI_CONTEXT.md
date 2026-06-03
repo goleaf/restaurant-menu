@@ -1,31 +1,38 @@
 # AI Context
 
-## Product Direction
+This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
-This is a SaaS platform for restaurants, cafes, bars, hotels, food courts, and similar venues.
+## Current Stack
 
-It must grow beyond a simple QR menu, but each implementation step should stay small and stable. Do not implement future stages before they are explicitly requested.
+- Laravel 13.13
+- PHP 8.5
+- Livewire 4.3
+- Flux UI Free 2.14
+- Blade server-rendered UI
+- SQLite only
+- Database cache
+- Database sessions
+- Database queue
+- Local public storage in `storage/app/public`
+- Pest 4
+- Vite / Tailwind CSS 4
 
-## Hard Technical Constraints
+## Main Business Rules
 
-- Use Laravel, Blade, and Livewire.
-- Use SQLite only.
-- Keep the project suitable for shared hosting.
-- Do not use Redis.
-- Do not use WebSockets.
-- Do not use S3.
-- Do not use paid external services.
-- Do not require Docker.
-- Do not build a separate React/Vue/Inertia SPA.
-- Store cache, sessions, and queue jobs in the database.
-- Store files locally in `storage/app/public`.
-- Use Livewire polling for realtime behavior when realtime is added.
+- The product is a SaaS platform for restaurants, cafes, bars, hotels, food courts, and similar venues.
+- It must grow beyond a simple QR menu, but each prompt must stay small.
+- One physical table / place / service point will eventually have one permanent QR code.
+- QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
+- Orders must require waiter confirmation by default.
+- New guests must require approval by default.
+- Branch realtime behavior must use Livewire polling, not WebSockets.
 
-## Current Implemented Scope
+## What Is Already Done
 
-The project currently has:
-
-- Basic layout zones for guest, auth, restaurant dashboard, and superadmin dashboard.
+- Laravel + Livewire project foundation.
+- SQLite-only database configuration.
+- Database-backed cache, sessions, and queues.
+- Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
 - Fortify-backed authentication.
 - Fixed system roles.
 - Flexible permissions with role permissions and user overrides.
@@ -35,7 +42,30 @@ The project currently has:
 - Branches.
 - Branch settings.
 
-No restaurant menu, QR, guest session, table, order, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+
+## Tables
+
+- `users`
+- `password_reset_tokens`
+- `sessions`
+- `cache`
+- `cache_locks`
+- `jobs`
+- `job_batches`
+- `failed_jobs`
+- `passkeys`
+- `roles`
+- `permissions`
+- `permission_role`
+- `role_user`
+- `permission_user_overrides`
+- `organizations`
+- `organization_users`
+- `brands`
+- `branches`
+- `branch_settings`
+- `migrations`
 
 ## Current Domain Model
 
@@ -43,7 +73,7 @@ Organization:
 
 - Represents the company or owner of a restaurant business.
 - Has many brands.
-- Has many branches through direct branch ownership.
+- Has many branches.
 - Has many users through `organization_users`.
 
 Brand:
@@ -65,12 +95,10 @@ Branch settings:
 
 ## Branch Settings Defaults
 
-Safe defaults:
-
 - `require_waiter_confirmation_for_orders`: true
-- `allow_guest_created_sessions`: false
+- `allow_guest_created_sessions`: true
 - `allow_waiter_opened_sessions`: true
-- `allow_guest_invite_links`: false
+- `allow_guest_invite_links`: true
 - `guest_join_requires_approval`: true
 - `polling_interval_seconds`: 1
 - `default_language`: `en`
@@ -79,19 +107,54 @@ Safe defaults:
 - `tips_enabled`: false
 - `order_flow_mode`: `waiter_confirmation`
 
-## Access Rules Already Used
+## Routes
 
-- Organization access is checked in organization context.
-- Branch management uses organization-scoped branch permissions and manager roles.
-- Branch settings require branch management access.
-- Nested route models are manually checked to ensure brand and branch belong to the route organization.
+- `GET /` -> `home`
+- `GET /guest` -> `guest.home`
+- `GET /dashboard` -> `dashboard`
+- `GET /organizations` -> `organizations.index`
+- `GET /organizations/{organization}/brands` -> `organizations.brands.index`
+- `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
+- `GET /restaurant/dashboard` -> `restaurant.dashboard`
+- `GET /superadmin/dashboard` -> `superadmin.dashboard`
+- Auth and profile routes are provided by Fortify and `routes/settings.php`.
+
+## Livewire Components
+
+- `App\Livewire\Organizations\Index`
+- `App\Livewire\Organizations\Brands\Index`
+- `App\Livewire\Organizations\Brands\Branches\Index`
+- `App\Livewire\Organizations\Brands\Branches\Settings`
+- `App\Livewire\Settings\Profile`
+- `App\Livewire\Settings\Security`
+- `App\Livewire\Settings\Appearance`
+- `App\Livewire\Settings\DeleteUserForm`
+- `App\Livewire\Settings\TwoFactor\RecoveryCodes`
+- `App\Livewire\Actions\Logout`
+
+## Next Step
+
+The next expected product step is likely zones or service points, but only implement it when a prompt explicitly requests it.
+
+## Do Not Break
+
+- Do not rewrite architecture.
+- Do not add unrelated future features.
+- Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
+- Do not expose internal IDs in future QR/public guest URLs.
+- Do not remove SQLite support.
+- Do not switch cache, sessions, or queues away from database drivers.
+- Do not commit `.env`, SQLite database files, `vendor`, `node_modules`, or storage uploads.
+- Do not add business logic to Blade templates.
+- Do not add raw SQL strings.
 
 ## Verification Commands
 
 Use these checks after small changes:
 
 ```bash
-php artisan migrate
+php artisan migrate --no-interaction
 vendor/bin/pint --dirty --format agent
 php artisan test --compact
 npm run build

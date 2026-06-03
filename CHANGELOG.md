@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 012 - Branch Settings
+
+- Added branch settings defaults for order confirmation, guest approvals, guest-created sessions, waiter-opened sessions, invite links, polling interval, language, currency, service charge, tips, and order flow mode.
+- Updated branch settings so guest-created sessions and guest invite links are enabled by default.
+- Verified the `branch_settings` SQLite defaults through migration and schema inspection.
+
+### Foundation
+
 - Prepared a Laravel + Livewire + SQLite foundation for a shared-hosting restaurant SaaS platform.
 - Configured SQLite as the only database connection, with the database file stored at `database/database.sqlite`.
 - Configured cache, sessions, and queues to use database-backed storage.

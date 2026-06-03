@@ -33,9 +33,9 @@ class BranchSetting extends Model
      */
     protected $attributes = [
         'require_waiter_confirmation_for_orders' => true,
-        'allow_guest_created_sessions' => false,
+        'allow_guest_created_sessions' => true,
         'allow_waiter_opened_sessions' => true,
-        'allow_guest_invite_links' => false,
+        'allow_guest_invite_links' => true,
         'guest_join_requires_approval' => true,
         'polling_interval_seconds' => 1,
         'default_language' => 'en',
@@ -90,9 +90,9 @@ class BranchSetting extends Model
     {
         return [
             'require_waiter_confirmation_for_orders' => true,
-            'allow_guest_created_sessions' => false,
+            'allow_guest_created_sessions' => true,
             'allow_waiter_opened_sessions' => true,
-            'allow_guest_invite_links' => false,
+            'allow_guest_invite_links' => true,
             'guest_join_requires_approval' => true,
             'polling_interval_seconds' => 1,
             'default_language' => 'en',

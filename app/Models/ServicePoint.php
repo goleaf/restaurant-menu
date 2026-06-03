@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
+use App\Enums\TableSessionStatus;
 use Database\Factories\ServicePointFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -76,6 +77,17 @@ class ServicePoint extends Model
     public function tableSessions(): HasMany
     {
         return $this->hasMany(TableSession::class);
+    }
+
+    /**
+     * @return HasOne<TableSession, $this>
+     */
+    public function activeTableSession(): HasOne
+    {
+        return $this->hasOne(TableSession::class)
+            ->where('status', TableSessionStatus::Active->value)
+            ->oldest('started_at')
+            ->oldest('id');
     }
 
     /**

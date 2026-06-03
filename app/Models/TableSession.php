@@ -24,6 +24,19 @@ class TableSession extends Model
         'source' => 'guest_created',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (TableSession $tableSession): void {
+            $status = $tableSession->status instanceof TableSessionStatus
+                ? $tableSession->status
+                : TableSessionStatus::from($tableSession->status ?? TableSessionStatus::Pending->value);
+
+            $tableSession->active_service_point_id = $status === TableSessionStatus::Active
+                ? $tableSession->service_point_id
+                : null;
+        });
+    }
+
     /**
      * @return array<string, string>
      */

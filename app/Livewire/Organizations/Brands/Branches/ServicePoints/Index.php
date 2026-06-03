@@ -6,11 +6,13 @@ use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionStatus;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -70,6 +72,8 @@ class Index extends Component
 
     public bool $canChangeServicePointStatus = false;
 
+    public bool $canOpenTable = false;
+
     public bool $canGenerateQr = false;
 
     public ?int $shownQrServicePointId = null;
@@ -102,9 +106,11 @@ class Index extends Component
         $this->canManageServicePoints = $user->hasPermission(SystemPermission::ManageServicePoints, $organization);
         $this->canChangeServicePointStatus = $this->canManageServicePoints
             || $user->hasOrganizationRole($organization, SystemRole::Waiter);
+        $this->canOpenTable = $user->hasPermission(SystemPermission::ViewOrders, $organization)
+            || $user->hasPermission(SystemPermission::ConfirmOrders, $organization);
         $this->canGenerateQr = $user->hasPermission(SystemPermission::GenerateQr, $organization);
 
-        if (! $this->canChangeServicePointStatus && ! $this->canGenerateQr) {
+        if (! $this->canChangeServicePointStatus && ! $this->canOpenTable && ! $this->canGenerateQr) {
             abort(403);
         }
     }
@@ -240,6 +246,20 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('Service point status updated.'));
     }
 
+    public function openTable(int $servicePointId, OpenTableSessionForServicePointAction $openTableSession): void
+    {
+        $this->authorizeTableOpening();
+
+        $servicePoint = $this->findBranchServicePoint($servicePointId);
+
+        $openTableSession->handle($servicePoint, $this->currentUser());
+
+        $this->statusSelections[$servicePoint->id] = ServicePointStatus::Occupied->value;
+        unset($this->servicePoints);
+
+        Flux::toast(variant: 'success', text: __('Table opened.'));
+    }
+
     public function generateQr(int $servicePointId, GenerateQrCodeForServicePointAction $generateQrCode): void
     {
         $this->authorizeQrGeneration();
@@ -312,6 +332,16 @@ class Index extends Component
                     'status',
                     'created_at',
                 ])->where('status', QrCodeStatus::Active->value),
+                'activeTableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'opened_by_user_id',
+                    'status',
+                    'source',
+                    'started_at',
+                    'created_at',
+                ])->where('status', TableSessionStatus::Active->value),
             ])
             ->orderBy('area_node_id')
             ->orderBy('display_number')
@@ -626,6 +656,18 @@ class Index extends Component
     private function authorizeQrGeneration(): void
     {
         if (! $this->currentUser()->hasPermission(SystemPermission::GenerateQr, $this->organization)) {
+            abort(403);
+        }
+    }
+
+    private function authorizeTableOpening(): void
+    {
+        $user = $this->currentUser();
+
+        if (
+            ! $user->hasPermission(SystemPermission::ViewOrders, $this->organization)
+            && ! $user->hasPermission(SystemPermission::ConfirmOrders, $this->organization)
+        ) {
             abort(403);
         }
     }

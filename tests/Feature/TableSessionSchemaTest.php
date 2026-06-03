@@ -13,6 +13,7 @@ test('table sessions table stores branch service point opening and lifecycle fie
     expect(Schema::hasColumns('table_sessions', [
         'branch_id',
         'service_point_id',
+        'active_service_point_id',
         'opened_by_user_id',
         'opened_by_guest_id',
         'status',

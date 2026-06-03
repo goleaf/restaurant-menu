@@ -191,6 +191,8 @@ The service point UI is guarded by the `manage_service_points` permission in the
 
 Service point status can be changed manually by a user with `manage_service_points` or by a user with the fixed `waiter` role in the organization. The status update is handled through a backend action so later table sessions and orders can reuse the same status-change path.
 
+Users with `view_orders` or `confirm_orders` can open a table from the service point page. Opening a table creates or returns the current active table session for that service point and moves the service point status to `occupied`.
+
 Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
 
 Users with `generate_qr` can open the service point page, create a missing active QR, and show the existing QR details. Users without `generate_qr` cannot generate or show QR details from this UI.
@@ -203,6 +205,7 @@ The table stores:
 
 - `branch_id`
 - `service_point_id`
+- `active_service_point_id`
 - `opened_by_user_id`
 - `opened_by_guest_id`
 - `status`
@@ -228,6 +231,10 @@ Supported sources are:
 - `guest_created`
 
 `opened_by_user_id` is for future waiter-created sessions. `opened_by_guest_id` is a nullable placeholder for future guest records and is not connected to a guest table yet.
+
+SQLite enforces one active table session per service point through internal nullable `active_service_point_id`. Closed, cancelled, or other non-active session history can remain for the same service point.
+
+`OpenTableSessionForServicePointAction` creates an active waiter-opened session only when the service point does not already have one. If an active session already exists, the action returns it and does not create a second active session automatically.
 
 This stage does not create guests, orders, order drafts, kitchen/bar workflows, or payment flows. The public QR guest landing still only accepts a name into Livewire screen state and does not open a table session yet.
 

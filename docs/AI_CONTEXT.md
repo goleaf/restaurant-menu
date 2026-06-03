@@ -46,13 +46,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
 - Table sessions schema for branch/service point lifecycle tracking.
+- Waiter/admin open-table action and service point UI for creating active table sessions.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu, QR PDF generation, guest records, table session opening UI/action, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu, QR PDF generation, guest records, guest-created table sessions, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -141,6 +142,8 @@ Service point:
 - Managed from the branch service point page guarded by `manage_service_points`.
 - Service point CRUD can add common presets, choose a zone, choose type/icon, set name, number, and capacity, rename, move to another zone, disable, and enable.
 - Manual status changes are allowed for users with `manage_service_points` and users with the fixed `waiter` role in the organization.
+- Users with `view_orders` or `confirm_orders` can open a table from the service point page.
+- Opening a table creates or returns the service point's current active table session and sets service point status to `occupied`.
 - Users with `generate_qr` can access the service point page to create or show permanent QR details.
 - `UpdateServicePointStatusAction` updates only `service_points.status` and is the future reuse point for table sessions and orders.
 - `CreateServicePointAction` creates a stable `internal_code` once.
@@ -153,6 +156,7 @@ Table session:
 - Stored in `table_sessions`.
 - Belongs to one branch through `branch_id`.
 - Belongs to one service point through `service_point_id`.
+- Uses internal nullable `active_service_point_id` to enforce one active table session per service point on SQLite.
 - Can be opened by a future staff user through nullable `opened_by_user_id`.
 - Can be opened by a future guest through nullable `opened_by_guest_id`.
 - `opened_by_guest_id` is intentionally a nullable indexed integer placeholder right now because guest records are not implemented yet.
@@ -165,7 +169,12 @@ Table session:
 - Default source is `guest_created`.
 - Stores `started_at`, `ended_at`, and optional JSON `metadata`.
 - Has indexes for branch/status, service point/status, branch/service point/status, source/status, `opened_by_guest_id`, and `started_at`.
-- No table session UI, guest creation, order draft, order, kitchen/bar, or payment logic exists yet.
+- `TableSession` sets `active_service_point_id` automatically while saving active sessions and clears it for non-active statuses.
+- `ServicePoint::activeTableSession()` returns the current active table session for UI display.
+- `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active session exists.
+- If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
+- Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
+- No guest creation, order draft, order, kitchen/bar, or payment logic exists yet.
 
 QR code:
 
@@ -369,11 +378,14 @@ Local media storage:
 
 - Branch service point route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
 - Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
-- Users can access the page when they can change service point statuses or when they have `generate_qr` in the current organization context.
+- Users can access the page when they can change service point statuses, open tables, or when they have `generate_qr` in the current organization context.
 - CRUD actions still require `manage_service_points`.
 - Manual status changes require `manage_service_points` or the fixed `waiter` organization role.
+- Opening a table requires `view_orders` or `confirm_orders` in the current organization context.
+- The `Open table` button creates or returns the active table session and marks the service point `occupied`.
+- Service points with an active table session show an `Active session` badge and a disabled `Table opened` button.
 - QR generation and QR detail display require `generate_qr`.
-- The UI eager-loads `areaNode` and `activeQrCode`; Blade must not query the database.
+- The UI eager-loads `areaNode`, `activeQrCode`, and `activeTableSession`; Blade must not query the database.
 - The QR panel displays `short_code`, status, and `/q/{public_token}` only. It must not expose service point IDs, branch IDs, area names, or table numbers in the QR URL.
 - The `Show QR` action opens the QR admin page for the active QR record.
 

@@ -125,6 +125,10 @@
                                     <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
                                 @endif
 
+                                @if ($servicePoint->activeTableSession)
+                                    <flux:badge color="blue">{{ __('Active session') }}</flux:badge>
+                                @endif
+
                                 @if ($canGenerateQr)
                                     @if ($servicePoint->activeQrCode)
                                         <flux:badge color="green">{{ __('QR active') }}</flux:badge>
@@ -142,6 +146,13 @@
                                 {{ __('Zone') }}: {{ $servicePoint->areaNode?->name ?? __('No zone') }} / {{ __('Capacity') }}: {{ $servicePoint->capacity }}
                             </p>
 
+                            @if ($servicePoint->activeTableSession)
+                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('Active session') }}:
+                                    {{ $servicePoint->activeTableSession->started_at?->format('Y-m-d H:i') ?? __('Started') }}
+                                </p>
+                            @endif
+
                             @if ($canGenerateQr && $servicePoint->activeQrCode)
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                     {{ __('QR') }}: {{ $servicePoint->activeQrCode->short_code }} / {{ __($servicePoint->activeQrCode->status->label()) }}
@@ -150,6 +161,22 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
+                            @if ($canOpenTable)
+                                @if ($servicePoint->activeTableSession)
+                                    <flux:button icon="check" type="button" disabled>
+                                        {{ __('Table opened') }}
+                                    </flux:button>
+                                @elseif ($servicePoint->is_active)
+                                    <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint->id }})">
+                                        {{ __('Open table') }}
+                                    </flux:button>
+                                @else
+                                    <flux:button icon="lock-closed" type="button" disabled>
+                                        {{ __('Place inactive') }}
+                                    </flux:button>
+                                @endif
+                            @endif
+
                             @if ($canChangeServicePointStatus)
                                 <form wire:submit="changeStatus({{ $servicePoint->id }})" class="flex flex-wrap items-end gap-2">
                                     <flux:select wire:model="statusSelections.{{ $servicePoint->id }}" :label="__('Status')">

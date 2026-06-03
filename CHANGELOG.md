@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 031 - Waiter Open Table Action
+
+- Added a waiter open-table backend action that creates an active table session for a service point.
+- Added a SQLite-safe active-session guard so one service point cannot have two active table sessions.
+- Updated the service point page with an `Open table` action for users with `view_orders` or `confirm_orders`.
+- Opening a table moves the service point status to `occupied` and shows the active session in the admin UI.
+- Kept the step limited to table opening: no guests, orders, order drafts, kitchen/bar, or payment logic.
+
 ### Prompt 030 - Table Sessions Schema
 
 - Added the `table_sessions` table for branch and service point session lifecycle tracking.

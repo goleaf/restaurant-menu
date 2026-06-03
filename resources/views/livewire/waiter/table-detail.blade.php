@@ -111,6 +111,31 @@
                                             {{ __('Comment') }}: {{ $item['comment'] }}
                                         </p>
                                     @endif
+
+                                    @if (data_get($table, 'draft.can_edit'))
+                                        <div class="mt-3 flex flex-wrap gap-2">
+                                            <flux:button
+                                                size="sm"
+                                                icon="pencil"
+                                                type="button"
+                                                wire:click="editDraftItem({{ $item['id'] }})"
+                                            >
+                                                {{ __('Edit') }}
+                                            </flux:button>
+
+                                            <flux:button
+                                                size="sm"
+                                                icon="trash"
+                                                variant="danger"
+                                                type="button"
+                                                wire:click="deleteDraftItem({{ $item['id'] }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="deleteDraftItem({{ $item['id'] }})"
+                                            >
+                                                {{ __('Delete') }}
+                                            </flux:button>
+                                        </div>
+                                    @endif
                                 </article>
                             @empty
                                 <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
@@ -193,9 +218,135 @@
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
+                @error('draft_edit')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
                 @error('rejectionReason')
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
+
+                @if (data_get($table, 'draft.can_edit'))
+                    <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                        <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Edit draft') }}</h3>
+
+                        <div class="mt-3 space-y-3">
+                            <flux:select wire:model="addingGuestId" :label="__('Guest')">
+                                <flux:select.option value="">{{ __('Choose guest') }}</flux:select.option>
+                                @foreach (data_get($table, 'guest_sections', []) as $guestSection)
+                                    <flux:select.option wire:key="waiter-add-guest-{{ $guestSection['guest_id'] }}" value="{{ $guestSection['guest_id'] }}">
+                                        {{ $guestSection['guest_name'] }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            @error('addingGuestId')
+                                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            <flux:select wire:model.live="addingMenuItemId" :label="__('Dish')">
+                                <flux:select.option value="">{{ __('Choose dish') }}</flux:select.option>
+                                @foreach ($addableMenuItems as $menuItemOption)
+                                    <flux:select.option wire:key="waiter-add-menu-item-{{ $menuItemOption['value'] }}" value="{{ $menuItemOption['value'] }}">
+                                        {{ $menuItemOption['label'] }} · {{ $menuItemOption['price'] }} {{ data_get($table, 'branch.currency', 'EUR') }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            @error('addingMenuItemId')
+                                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            @if ($addableMenuItems === [])
+                                <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                    {{ __('No available dishes in the active menu.') }}
+                                </p>
+                            @endif
+
+                            <flux:input
+                                wire:model.live="addingQuantity"
+                                :label="__('Quantity')"
+                                type="number"
+                                min="1"
+                                max="99"
+                            />
+
+                            @error('addingQuantity')
+                                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            @if ($addingModifierGroups !== [])
+                                <div class="space-y-3">
+                                    @foreach ($addingModifierGroups as $modifierGroup)
+                                        <fieldset wire:key="waiter-add-modifier-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup['name'] }}</legend>
+
+                                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                                <span>{{ $modifierGroup['is_required'] ? __('Required') : __('Optional') }}</span>
+                                                <span>{{ __('Choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
+                                            </div>
+
+                                            <div class="mt-3 grid gap-2">
+                                                @foreach ($modifierGroup['options'] as $modifierOption)
+                                                    @php($isSelected = in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true))
+                                                    <button
+                                                        type="button"
+                                                        wire:key="waiter-add-modifier-option-{{ $modifierOption['id'] }}"
+                                                        wire:click="toggleAddingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                                        @class([
+                                                            'flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
+                                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $isSelected,
+                                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! $isSelected,
+                                                        ])
+                                                    >
+                                                        <span class="font-medium">{{ $modifierOption['name'] }}</span>
+                                                        <span class="shrink-0 font-semibold">{{ ((float) $modifierOption['price_delta']) >= 0 ? '+' : '' }}{{ $modifierOption['price_delta'] }} {{ data_get($table, 'branch.currency', 'EUR') }}</span>
+                                                    </button>
+                                                @endforeach
+                                            </div>
+
+                                            @error('selectedModifierOptions.'.$modifierGroup['id'])
+                                                <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                            @enderror
+                                        </fieldset>
+                                    @endforeach
+                                </div>
+                            @endif
+
+                            <label class="grid gap-1 text-sm">
+                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Comment') }}</span>
+                                <textarea
+                                    wire:model="addingComment"
+                                    rows="3"
+                                    maxlength="500"
+                                    class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                                ></textarea>
+                            </label>
+
+                            @error('addingComment')
+                                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            <flux:button
+                                icon="plus"
+                                variant="primary"
+                                type="button"
+                                class="w-full"
+                                wire:click="addDraftItem"
+                                wire:loading.attr="disabled"
+                                wire:target="addDraftItem"
+                            >
+                                <span wire:loading.remove wire:target="addDraftItem">
+                                    {{ __('Add position') }}
+                                    @if ($addingItemTotal !== '0.00')
+                                        · {{ $addingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}
+                                    @endif
+                                </span>
+                                <span wire:loading wire:target="addDraftItem">{{ __('Adding') }}</span>
+                            </flux:button>
+                        </div>
+                    </div>
+                @endif
 
                 @if (data_get($table, 'draft.can_confirm'))
                     <div class="mt-3 space-y-3">
@@ -291,4 +442,122 @@
             </div>
         </aside>
     </section>
+
+    @if ($editingItemId !== null)
+        <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
+            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Waiter edit') }}</p>
+                        <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
+                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}</p>
+                    </div>
+
+                    <button
+                        type="button"
+                        wire:click="closeEditDraftItem"
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        aria-label="{{ __('Close') }}"
+                    >
+                        x
+                    </button>
+                </div>
+
+                <div class="mt-4 space-y-4">
+                    <flux:input
+                        wire:model.live="editingQuantity"
+                        :label="__('Quantity')"
+                        type="number"
+                        min="1"
+                        max="99"
+                    />
+
+                    @error('editingQuantity')
+                        <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+
+                    @forelse ($editingModifierGroups as $modifierGroup)
+                        <fieldset wire:key="waiter-edit-modifier-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup['name'] }}</legend>
+
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                <span>{{ $modifierGroup['is_required'] ? __('Required') : __('Optional') }}</span>
+                                <span>{{ __('Choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
+                            </div>
+
+                            <div class="mt-3 grid gap-2">
+                                @foreach ($modifierGroup['options'] as $modifierOption)
+                                    @php($isSelected = in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true))
+                                    <button
+                                        type="button"
+                                        wire:key="waiter-edit-modifier-option-{{ $modifierOption['id'] }}"
+                                        wire:click="toggleEditingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                        @class([
+                                            'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
+                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $isSelected,
+                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! $isSelected,
+                                        ])
+                                    >
+                                        <span class="font-medium">{{ $modifierOption['name'] }}</span>
+                                        <span class="shrink-0 font-semibold">
+                                            {{ ((float) $modifierOption['price_delta']) >= 0 ? '+' : '' }}{{ $modifierOption['price_delta'] }} {{ data_get($table, 'branch.currency', 'EUR') }}
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+
+                            @error('selectedModifierOptions.'.$modifierGroup['id'])
+                                <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+                        </fieldset>
+                    @empty
+                        <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                            {{ __('No modifiers are available for this position.') }}
+                        </p>
+                    @endforelse
+
+                    <label class="grid gap-1 text-sm">
+                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Comment') }}</span>
+                        <textarea
+                            wire:model="editingComment"
+                            rows="3"
+                            maxlength="500"
+                            class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                        ></textarea>
+                    </label>
+
+                    @error('editingComment')
+                        <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-zinc-200 bg-white px-4 pt-3 dark:border-zinc-800 dark:bg-zinc-950">
+                    <flux:button
+                        icon="check"
+                        variant="primary"
+                        type="button"
+                        class="w-full"
+                        wire:click="updateDraftItem"
+                        wire:loading.attr="disabled"
+                        wire:target="updateDraftItem"
+                    >
+                        <span wire:loading.remove wire:target="updateDraftItem">{{ __('Save') }} · {{ $editingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}</span>
+                        <span wire:loading wire:target="updateDraftItem">{{ __('Saving') }}</span>
+                    </flux:button>
+
+                    <flux:button
+                        icon="trash"
+                        variant="danger"
+                        type="button"
+                        class="w-full"
+                        wire:click="deleteDraftItem({{ $editingItemId }})"
+                        wire:loading.attr="disabled"
+                        wire:target="deleteDraftItem({{ $editingItemId }})"
+                    >
+                        {{ __('Delete position') }}
+                    </flux:button>
+                </div>
+            </div>
+        </div>
+    @endif
 </section>

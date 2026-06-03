@@ -135,7 +135,7 @@ class BuildWaiterDashboardAction
                 'sentByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
                 'items' => fn ($query) => $query->select(['id', 'draft_order_id', 'total_price']),
             ])
-            ->where('status', DraftOrderStatus::SentToWaiter->value)
+            ->whereIn('status', [DraftOrderStatus::SentToWaiter->value, DraftOrderStatus::WaiterReview->value])
             ->whereIn('table_session_id', $tableSessionIds)
             ->orderByDesc('sent_to_waiter_at')
             ->orderByDesc('id')
@@ -264,6 +264,7 @@ class BuildWaiterDashboardAction
         return [
             'id' => $draftOrder->id,
             'table_session_id' => $draftOrder->table_session_id,
+            'status_label' => $draftOrder->status?->label(),
             'sent_at' => $draftOrder->sent_to_waiter_at?->format('Y-m-d H:i'),
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
             'items_count' => (int) ($draftOrder->items_count ?? 0),

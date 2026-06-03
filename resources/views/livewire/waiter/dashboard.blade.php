@@ -163,6 +163,9 @@
                                         {{ $draft['items_count'] }} {{ __('items') }} · {{ $draft['total'] }}
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Status') }}: {{ __($draft['status_label']) }}
+                                    </p>
+                                    <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                         {{ __('Sent by') }}: {{ $draft['sent_by_guest_name'] ?? __('Guest') }}
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">

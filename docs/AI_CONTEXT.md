@@ -51,9 +51,9 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
-- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
+- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation.
-- Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent draft visibility, guest positions, modifiers, comments, totals, and confirm/reject controls through Livewire polling.
+- Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -309,7 +309,7 @@ Table session:
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
-- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, and waiter confirm/reject actions exist. Confirmed orders are stored in `orders` and `order_items`, but no kitchen/bar dispatch or payment logic exists yet.
+- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, and waiter confirm/reject actions exist. Confirmed orders are stored in `orders` and `order_items`, but no kitchen/bar dispatch or payment logic exists yet.
 
 Table session guest:
 
@@ -357,6 +357,9 @@ Draft order:
 - `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items`.
 - `RejectDraftOrderByWaiterAction` requires `confirm_orders`, sets a sent draft to `rejected`, and stores a required rejection reason for guests to see.
 - `ReturnRejectedDraftOrderToDraftAction` requires `confirm_orders` and returns a rejected draft to `draft` so guests can edit and send the same shared draft again.
+- `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, and `DeleteDraftOrderItemByWaiterAction` allow staff with `confirm_orders` or `edit_pending_orders` to edit a `sent_to_waiter` or `waiter_review` draft before confirmation.
+- Waiter draft edits move `sent_to_waiter` drafts to `waiter_review`, recalculate draft item snapshot totals, and keep the same shared draft visible to guests through polling.
+- `EnsureWaiterCanEditDraftOrderAction` is the shared backend guard for waiter draft edits and is the future hook point for audit/order-log capture.
 - `BuildDraftOrderItemModifierSnapshots` is shared by add and update actions for modifier selection validation and JSON snapshots.
 - This draft flow still does not send anything to kitchen, bar, payment, or analytics. A confirmed order must be dispatched by a later explicit kitchen/bar step.
 
@@ -372,10 +375,12 @@ Draft order item:
 - Snapshot fields protect the shared draft from later menu name, price, or modifier changes.
 - Active guests can create these rows from `App\Livewire\PublicQr\GuestMenu`.
 - Active guests can edit or delete their own rows from `App\Livewire\PublicQr\DraftOrder`.
+- Waiters with `confirm_orders` or `edit_pending_orders` can add rows, update quantity/comment/modifiers, or delete rows before confirmation from `App\Livewire\Waiter\TableDetail`.
 - Guests cannot edit or delete another guest's draft item.
 - Editing can change quantity, comment, and currently available modifier selections.
 - Updating quantity recalculates `total_price` from the item snapshot `unit_price`, per-unit `modifier_total`, and quantity.
-- Editing and deletion are blocked once the shared draft status is no longer `draft`, including `sent_to_waiter`.
+- Guest editing and deletion are blocked once the shared draft status is no longer `draft`, including `sent_to_waiter`.
+- Waiter editing is allowed only for `sent_to_waiter` and `waiter_review` drafts before confirmation.
 - Rejected drafts show the waiter rejection reason in the guest shared cart polling block.
 - Confirmed drafts show guests that the order was confirmed and editing is closed.
 - Rejected, removed, pending approval, left, or token-mismatched guests cannot create, edit, or delete draft item rows.
@@ -735,22 +740,24 @@ Local media storage:
 - Table detail data is prepared by `App\Actions\Waiter\BuildWaiterTableDetailAction`; Blade receives arrays and must not query the database.
 - Waiter branch access is shared through `App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction`.
 - Access requires auth and `view_orders` in the organization context.
+- Edit actions require `confirm_orders` or `edit_pending_orders` in the organization context and respect active `branch_users` assignments.
 - Confirm/reject/return-to-draft actions require `confirm_orders` in the organization context and respect active `branch_users` assignments.
 - Superadmin access still works through the existing computed permission bypass.
 - If the user has active `branch_users` assignments inside organizations where they can view orders, the dashboard shows only those assigned branches.
 - If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
-- The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status = sent_to_waiter`.
+- The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status` of `sent_to_waiter` or `waiter_review`.
 - Open sessions and sent drafts link to the waiter table detail page.
 - Open sessions currently include `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
-- Service points with sent drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
+- Service points with sent or waiter-review drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
 - The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
 - The table detail page uses `wire:poll.1s="refreshTable"` and does not use WebSockets.
 - A browser-local audio notice can play when polling sees the number of sent drafts increase; no external service is used.
 - The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's draft positions, selected modifiers, guest comments, per-guest totals, and the table total.
+- The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
 - The table detail page can return a rejected draft to `draft` for guest edits.
-- Waiter detail actions do not send anything to kitchen/bar and do not create payments.
+- Waiter detail edit/review actions do not send anything to kitchen/bar and do not create payments.
 
 ## Current Branch Menu UI
 
@@ -866,6 +873,7 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders,
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
 - Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.
+- Do not bypass `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, or `DeleteDraftOrderItemByWaiterAction` when staff edit a sent draft before confirmation.
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Do not create real orders from the guest UI; waiter confirmation must come first.

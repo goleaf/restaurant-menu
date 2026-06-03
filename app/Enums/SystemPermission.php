@@ -15,6 +15,7 @@ enum SystemPermission: string
     case ChangeAvailability = 'change_availability';
     case ViewOrders = 'view_orders';
     case ConfirmOrders = 'confirm_orders';
+    case EditPendingOrders = 'edit_pending_orders';
     case CancelOrders = 'cancel_orders';
     case SendToKitchen = 'send_to_kitchen';
     case ViewReports = 'view_reports';
@@ -39,6 +40,7 @@ enum SystemPermission: string
             self::ChangeAvailability => 'Change availability',
             self::ViewOrders => 'View orders',
             self::ConfirmOrders => 'Confirm orders',
+            self::EditPendingOrders => 'Edit pending orders',
             self::CancelOrders => 'Cancel orders',
             self::SendToKitchen => 'Send to kitchen',
             self::ViewReports => 'View reports',
@@ -60,6 +62,7 @@ enum SystemPermission: string
     {
         return in_array($this, [
             self::ManageStaff,
+            self::EditPendingOrders,
             self::ManageSubscription,
             self::ManageSettings,
             self::ExportData,

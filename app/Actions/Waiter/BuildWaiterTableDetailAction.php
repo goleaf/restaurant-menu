@@ -141,8 +141,14 @@ class BuildWaiterTableDetailAction
             ? $servicePoint->status
             : ServicePointStatus::from((string) ($servicePoint?->status ?? ServicePointStatus::Free->value));
 
-        $canReviewDraft = $this->resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ConfirmOrders)
+        $confirmOrderBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ConfirmOrders);
+        $editPendingOrderBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::EditPendingOrders);
+        $canReviewDraft = $confirmOrderBranchIds->contains((int) $tableSession->branch_id);
+        $canEditPendingDraft = $confirmOrderBranchIds
+            ->merge($editPendingOrderBranchIds)
+            ->unique()
             ->contains((int) $tableSession->branch_id);
 
         $guestSections = $this->guestSections(
@@ -182,7 +188,7 @@ class BuildWaiterTableDetailAction
                 'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
                 'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
             ],
-            'draft' => $this->draftPayload($draftOrder, $currency, $totalCents, $canReviewDraft),
+            'draft' => $this->draftPayload($draftOrder, $currency, $totalCents, $canReviewDraft, $canEditPendingDraft),
             'guest_sections' => $guestSections,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'guest_count' => count($guestSections),
@@ -234,6 +240,7 @@ class BuildWaiterTableDetailAction
             $guestSections[$guestId]['total_cents'] += $itemTotalCents;
             $guestSections[$guestId]['items'][] = [
                 'id' => $item->id,
+                'menu_item_id' => $item->menu_item_id,
                 'item_name' => $item->item_name,
                 'quantity' => $item->quantity,
                 'unit_price' => $this->formatCents($this->decimalToCents($item->unit_price)).' '.$currency,
@@ -287,7 +294,7 @@ class BuildWaiterTableDetailAction
     /**
      * @return array<string, mixed>
      */
-    private function draftPayload(?DraftOrder $draftOrder, string $currency, int $totalCents, bool $canReviewDraft): array
+    private function draftPayload(?DraftOrder $draftOrder, string $currency, int $totalCents, bool $canReviewDraft, bool $canEditPendingDraft): array
     {
         if (! $draftOrder instanceof DraftOrder) {
             return [
@@ -307,6 +314,7 @@ class BuildWaiterTableDetailAction
                 'can_confirm' => false,
                 'can_reject' => false,
                 'can_return_to_draft' => false,
+                'can_edit' => false,
             ];
         }
 
@@ -331,6 +339,7 @@ class BuildWaiterTableDetailAction
             'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
+            'can_edit' => $canEditPendingDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
         ];
     }
 

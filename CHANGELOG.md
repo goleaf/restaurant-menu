@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 055 - Waiter Draft Editing
+
+- Added the fixed `edit_pending_orders` permission while keeping `confirm_orders` able to edit pending sent drafts.
+- Added waiter draft edit actions for adding active-menu positions, updating quantity/comments/modifiers, and deleting draft items before confirmation.
+- Extended waiter table detail with edit/delete controls, an add-position form, and a mobile-friendly edit sheet for pending sent drafts.
+- Waiter edits move a sent draft to `waiter_review`, recalculate `draft_order_items` snapshot totals, and remain visible to guests through the existing shared cart polling block.
+- Extended the waiter dashboard to keep both `sent_to_waiter` and `waiter_review` drafts visible.
+- Kept kitchen/bar protected: editing a draft still does not create a real order or send anything to kitchen/bar, and no Redis, WebSocket, S3, Docker, or paid services were added.
+
 ### Prompt 054 - Waiter Draft Confirm Reject
 
 - Added `orders` and `order_items` for real order snapshots created after waiter confirmation.

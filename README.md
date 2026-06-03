@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft confirmation/rejection, real order snapshots, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -388,6 +388,8 @@ The waiter can confirm a sent draft from the waiter table detail page. Confirmat
 
 The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. New draft versioning is not implemented yet.
 
+Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, and guests see the updated shared cart through Livewire polling. Future audit/order-log work should hook into the waiter edit action classes.
+
 This stage does not add kitchen/bar workflows, order dispatch, payments, or analytics.
 
 ## Waiter Dashboard
@@ -406,7 +408,7 @@ The dashboard uses Livewire polling every 1 second and does not use WebSockets. 
 - service points in those branches;
 - service point statuses;
 - open table sessions;
-- shared drafts with `sent_to_waiter` status;
+- shared drafts with `sent_to_waiter` or `waiter_review` status;
 - a small browser audio notice when a new sent draft appears during polling.
 
 Each open session links to a waiter table detail page:
@@ -417,7 +419,7 @@ Each open session links to a waiter table detail page:
 
 The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, draft status, guests sorted alphabetically, each guest's positions, comments, selected modifiers, per-guest totals, and the total amount for the table.
 
-The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Confirmation does not send anything to kitchen/bar; a later step must dispatch confirmed orders.
+The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Confirmation does not send anything to kitchen/bar; a later step must dispatch confirmed orders.
 
 ## Permanent QR Codes
 
@@ -502,7 +504,7 @@ Implemented:
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
 - Staff permission override UI with default / allow / deny states.
-- Waiter dashboard shell, table detail, and draft confirm/reject actions for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
+- Waiter dashboard shell, table detail, draft edit actions, and draft confirm/reject actions for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
 - Real order snapshot tables stored in `orders` and `order_items` after waiter confirmation.
 
 Branch settings currently include safe defaults:

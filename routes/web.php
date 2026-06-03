@@ -15,6 +15,7 @@ use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
 use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
+use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -104,6 +105,7 @@ Route::middleware(['auth'])
     ->name('restaurant.')
     ->group(function () {
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
+        Route::livewire('waiter/dashboard', WaiterDashboard::class)->name('waiter.dashboard');
     });
 
 Route::middleware(['auth'])

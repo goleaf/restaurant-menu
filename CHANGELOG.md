@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 052 - Waiter Dashboard Shell
+
+- Added an authenticated waiter dashboard at `/restaurant/waiter/dashboard` guarded by `view_orders`.
+- Added `BuildWaiterDashboardAction` to prepare branches, service points, open sessions, and `sent_to_waiter` drafts before Blade rendering.
+- The dashboard polls every 1 second with Livewire and can play a small browser audio notice when a new sent draft appears.
+- Waiter branch visibility respects active `branch_users` assignments when they exist, otherwise it uses organization-level `view_orders` access.
+- Added waiter dashboard navigation from the restaurant workspace for users with available order-view branches.
+- Kept this step display-only: no waiter confirmation, final order conversion, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 051 - Send Draft To Waiter
 
 - Added `SendDraftOrderToWaiterAction` so any active guest can send the shared table draft to waiter review.

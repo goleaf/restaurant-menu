@@ -20,9 +20,15 @@
                         {{ __('Organizations') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="request()->routeIs('restaurant.*')" wire:navigate>
+                    <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="request()->routeIs('restaurant.dashboard')" wire:navigate>
                         {{ __('Restaurant') }}
                     </flux:sidebar.item>
+
+                    @if ($canAccessWaiterDashboard ?? false)
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="request()->routeIs('restaurant.waiter.*')" wire:navigate>
+                            {{ __('Waiter') }}
+                        </flux:sidebar.item>
+                    @endif
 
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>

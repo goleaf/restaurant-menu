@@ -52,13 +52,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, and an isolated shared table cart polling block grouped by guest.
+- Waiter dashboard shell with branch/service-point/session status and sent draft visibility through Livewire polling.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, waiter draft review screen/dashboard, final order conversion, QR PDF generation, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translation admin editor, waiter confirmation/review actions, final order conversion, QR PDF generation, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -305,7 +306,7 @@ Table session:
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
-- Draft order schema and guest add-to-draft UI exist, but no waiter review screen, final order, kitchen/bar, or payment logic exists yet.
+- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, and waiter dashboard visibility exist, but no waiter confirmation action, final order, kitchen/bar, or payment logic exists yet.
 
 Table session guest:
 
@@ -447,7 +448,7 @@ QR code:
 - When an invited person opens the link and enters a name, `App\Livewire\PublicQr\Show` creates a pending join request for the invited table session.
 - Active guests see the main guest table page shell instead of the entry form.
 - The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, cached active branch menu, and the shared draft basket.
-- The guest table shell can add menu items to `draft_order_items`, shows a shared cart grouped by guests alphabetically, and lets active guests edit/delete only their own draft positions, but it does not submit drafts to waiter review, create final orders, payments, kitchen tasks, or bar tasks.
+- The guest table shell can add menu items to `draft_order_items`, shows a shared cart grouped by guests alphabetically, lets active guests edit/delete only their own draft positions, and lets any active guest send the shared draft to waiter review, but it does not create final orders, payments, kitchen tasks, or bar tasks.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
@@ -571,6 +572,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
+- `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
 - `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
 - Auth and profile routes are provided by Fortify and `routes/settings.php`.
 
@@ -595,6 +597,7 @@ Local media storage:
 - `App\Livewire\PublicQr\GuestMenu`
 - `App\Livewire\PublicQr\DraftOrder`
 - `App\Livewire\Superadmin\Dashboard`
+- `App\Livewire\Waiter\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
 - `App\Livewire\Settings\Appearance`
@@ -684,7 +687,24 @@ Local media storage:
 - If the draft status is no longer `draft`, the basket shows a blocked-editing message and does not expose edit/delete actions.
 - `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
 - Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
-- The basket does not submit the draft to waiter review and does not create final orders.
+- The basket can submit the draft only to waiter review and does not create final orders.
+
+## Current Waiter Dashboard
+
+- Waiter dashboard route is `GET /restaurant/waiter/dashboard`.
+- Livewire component is `App\Livewire\Waiter\Dashboard`.
+- Data is prepared by `App\Actions\Waiter\BuildWaiterDashboardAction`; Blade receives arrays and must not query the database.
+- Access requires auth and `view_orders` in the organization context.
+- Superadmin access still works through the existing computed permission bypass.
+- If the user has active `branch_users` assignments inside organizations where they can view orders, the dashboard shows only those assigned branches.
+- If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
+- The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status = sent_to_waiter`.
+- Open sessions currently include `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
+- Service points with sent drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
+- The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
+- A browser-local audio notice can play when polling sees the number of sent drafts increase; no external service is used.
+- The dashboard is display-only in Prompt 052.
+- It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
 
 ## Current Branch Menu UI
 
@@ -709,7 +729,7 @@ Local media storage:
 - Modifier group CRUD and dish assignment require `manage_menu`.
 - Modifier option price deltas require `change_prices`.
 - Modifier option availability changes require `change_availability`.
-- The branch menu UI manages modifier setup only; waiter review and final order conversion are not implemented yet.
+- The branch menu UI manages modifier setup only; waiter confirmation actions and final order conversion are not implemented yet.
 
 ## Current Service Point UI
 
@@ -784,7 +804,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be a waiter draft review dashboard, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be waiter confirmation/rejection actions for sent drafts, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -796,7 +816,7 @@ The next expected product step may be a waiter draft review dashboard, QR PDF ge
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add waiter review, AI translations, a complex translation editor, final orders, kitchen/bar, or payment logic unless a prompt explicitly asks for that exact step.
+- Do not add waiter confirmation/rejection actions, AI translations, a complex translation editor, final orders, kitchen/bar, or payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
 - Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.

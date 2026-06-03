@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -384,7 +384,28 @@ This is only a waiter-review handoff. The order does not go to the kitchen or ba
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
-This stage does not add the waiter review screen/dashboard, final orders, kitchen/bar workflows, or payments.
+This stage does not add waiter confirmation actions, final orders, kitchen/bar workflows, or payments.
+
+## Waiter Dashboard
+
+The waiter dashboard shell is available at:
+
+```text
+/restaurant/waiter/dashboard
+```
+
+Access requires authentication and the `view_orders` permission in the organization context. Superadmins keep the normal platform-level permission bypass. If a user has active `branch_users` assignments, the dashboard shows only those assigned branches; otherwise it shows the branches from organizations where the user can view orders.
+
+The dashboard uses Livewire polling every 1 second and does not use WebSockets. It shows:
+
+- branches available to the waiter;
+- service points in those branches;
+- service point statuses;
+- open table sessions;
+- shared drafts with `sent_to_waiter` status;
+- a small browser audio notice when a new sent draft appears during polling.
+
+This screen is display-only for now. It does not confirm drafts, convert drafts into final orders, send anything to kitchen/bar, or create payments.
 
 ## Permanent QR Codes
 
@@ -469,6 +490,7 @@ Implemented:
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.
 - Staff permission override UI with default / allow / deny states.
+- Waiter dashboard shell for branches, service points, open sessions, and drafts sent to waiter review.
 
 Branch settings currently include safe defaults:
 
@@ -485,7 +507,7 @@ Branch settings store order flow, guest session behavior, invite-link behavior, 
 
 Not implemented yet:
 
-- Sending a shared draft to waiter review.
+- Waiter confirmation/review actions for sent drafts.
 - Menu translation admin editor.
 - QR PDF generation.
 - Final order conversion.

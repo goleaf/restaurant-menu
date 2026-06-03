@@ -3,6 +3,7 @@
 namespace App\Actions\Waiter;
 
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
@@ -87,14 +88,21 @@ class BuildWaiterTableDetailAction
                         'sentByGuest' => fn ($guestQuery) => $guestQuery->select(['id', 'guest_name']),
                         'rejectedByUser' => fn ($userQuery) => $userQuery->select(['id', 'name']),
                         'convertedByUser' => fn ($userQuery) => $userQuery->select(['id', 'name']),
-                        'order' => fn ($orderQuery) => $orderQuery->select([
-                            'id',
-                            'draft_order_id',
-                            'status',
-                            'confirmed_at',
-                            'confirmed_by_user_id',
-                            'total_price',
-                        ]),
+                        'order' => fn ($orderQuery) => $orderQuery
+                            ->select([
+                                'id',
+                                'draft_order_id',
+                                'status',
+                                'confirmed_at',
+                                'confirmed_by_user_id',
+                                'total_price',
+                            ])
+                            ->withCount('kitchenTickets')
+                            ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery->select([
+                                'id',
+                                'order_id',
+                                'department_name',
+                            ])]),
                         'items' => fn ($itemsQuery) => $itemsQuery
                             ->select([
                                 'id',
@@ -150,6 +158,9 @@ class BuildWaiterTableDetailAction
             ->merge($editPendingOrderBranchIds)
             ->unique()
             ->contains((int) $tableSession->branch_id);
+        $sendToKitchenBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::SendToKitchen);
+        $canSendToKitchen = $sendToKitchenBranchIds->contains((int) $tableSession->branch_id);
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -188,7 +199,14 @@ class BuildWaiterTableDetailAction
                 'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
                 'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
             ],
-            'draft' => $this->draftPayload($draftOrder, $currency, $totalCents, $canReviewDraft, $canEditPendingDraft),
+            'draft' => $this->draftPayload(
+                draftOrder: $draftOrder,
+                currency: $currency,
+                totalCents: $totalCents,
+                canReviewDraft: $canReviewDraft,
+                canEditPendingDraft: $canEditPendingDraft,
+                canSendToKitchen: $canSendToKitchen,
+            ),
             'guest_sections' => $guestSections,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'guest_count' => count($guestSections),
@@ -294,8 +312,14 @@ class BuildWaiterTableDetailAction
     /**
      * @return array<string, mixed>
      */
-    private function draftPayload(?DraftOrder $draftOrder, string $currency, int $totalCents, bool $canReviewDraft, bool $canEditPendingDraft): array
-    {
+    private function draftPayload(
+        ?DraftOrder $draftOrder,
+        string $currency,
+        int $totalCents,
+        bool $canReviewDraft,
+        bool $canEditPendingDraft,
+        bool $canSendToKitchen,
+    ): array {
         if (! $draftOrder instanceof DraftOrder) {
             return [
                 'id' => null,
@@ -309,18 +333,36 @@ class BuildWaiterTableDetailAction
                 'converted_to_order_at' => null,
                 'converted_by_user_name' => null,
                 'order_id' => null,
+                'order_status_value' => null,
                 'order_status_label' => null,
+                'order_ticket_count' => 0,
+                'order_ticket_departments' => [],
                 'total' => '0.00 '.$currency,
                 'can_confirm' => false,
                 'can_reject' => false,
                 'can_return_to_draft' => false,
                 'can_edit' => false,
+                'can_send_to_kitchen' => false,
             ];
         }
 
         $status = $draftOrder->status instanceof DraftOrderStatus
             ? $draftOrder->status
             : DraftOrderStatus::from((string) $draftOrder->status);
+        $orderStatus = $draftOrder->order?->status instanceof OrderStatus
+            ? $draftOrder->order->status
+            : null;
+        $orderTicketCount = $draftOrder->order === null
+            ? 0
+            : (int) ($draftOrder->order->getAttribute('kitchen_tickets_count') ?? $draftOrder->order->kitchenTickets->count());
+        $orderTicketDepartments = $draftOrder->order === null
+            ? []
+            : $draftOrder->order->kitchenTickets
+                ->pluck('department_name')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
 
         return [
             'id' => $draftOrder->id,
@@ -334,12 +376,16 @@ class BuildWaiterTableDetailAction
             'converted_to_order_at' => $draftOrder->converted_to_order_at?->format('Y-m-d H:i'),
             'converted_by_user_name' => $draftOrder->convertedByUser?->name,
             'order_id' => $draftOrder->order?->id,
-            'order_status_label' => $draftOrder->order?->status?->label(),
+            'order_status_value' => $orderStatus?->value,
+            'order_status_label' => $orderStatus?->label(),
+            'order_ticket_count' => $orderTicketCount,
+            'order_ticket_departments' => $orderTicketDepartments,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
             'can_edit' => $canEditPendingDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
+            'can_send_to_kitchen' => $canSendToKitchen && $orderStatus === OrderStatus::ConfirmedByWaiter,
         ];
     }
 

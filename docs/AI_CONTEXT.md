@@ -55,13 +55,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
+- Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, kitchen/bar screen, payment, analytics, or confirmed-order dispatch logic has been implemented yet.
+No menu translation admin editor, QR PDF generation, kitchen/bar work screen, payment, or analytics has been implemented yet.
 
 ## Tables
 
@@ -101,6 +102,8 @@ No menu translation admin editor, QR PDF generation, kitchen/bar screen, payment
 - `draft_order_items`
 - `orders`
 - `order_items`
+- `kitchen_tickets`
+- `kitchen_ticket_items`
 - `order_status_logs`
 - `qr_codes`
 - `branch_users`
@@ -335,7 +338,7 @@ Table session:
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
-- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, and waiter confirm/reject actions exist. Confirmed orders are stored in `orders` and `order_items`, but no kitchen/bar dispatch or payment logic exists yet.
+- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Payment logic does not exist yet.
 
 Table session guest:
 
@@ -388,7 +391,7 @@ Draft order:
 - `EnsureWaiterCanEditDraftOrderAction` is the shared backend guard for waiter draft edits.
 - Guest and waiter draft actions write `order_status_logs` rows for draft creation, edits, send-to-waiter, confirm, reject, and return-to-draft events.
 - `BuildDraftOrderItemModifierSnapshots` is shared by add and update actions for modifier selection validation and JSON snapshots.
-- This draft flow still does not send anything to kitchen, bar, payment, or analytics. A confirmed order must be dispatched by a later explicit kitchen/bar step.
+- This draft flow still does not send anything to kitchen, bar, payment, or analytics directly. A confirmed order must be dispatched later by `SendOrderToKitchenBarAction`.
 
 Draft order item:
 
@@ -409,7 +412,7 @@ Draft order item:
 - Guest editing and deletion are blocked once the shared draft status is no longer `draft`, including `sent_to_waiter`.
 - Waiter editing is allowed only for `sent_to_waiter` and `waiter_review` drafts before confirmation.
 - Rejected drafts show the waiter rejection reason in the guest shared cart polling block.
-- Confirmed drafts show guests that the order was confirmed and editing is closed.
+- Confirmed drafts show guests that the order was confirmed and editing is closed; after kitchen/bar dispatch, the same polling block shows that kitchen/bar received the positions.
 - Rejected, removed, pending approval, left, or token-mismatched guests cannot create, edit, or delete draft item rows.
 
 Order:
@@ -422,12 +425,14 @@ Order:
 - Status values are `confirmed_by_waiter`, `sent_to_kitchen_bar`, `in_progress`, `ready`, `served`, `payment_requested`, `paid`, `closed`, and `cancelled`.
 - New confirmed orders start as `confirmed_by_waiter`.
 - Stores `confirmed_by_user_id`, `confirmed_at`, `total_price`, `currency`, and optional JSON `metadata`.
-- Metadata currently marks that kitchen/bar dispatch is prepared but not sent.
+- Metadata initially marks that kitchen/bar dispatch is prepared but not sent.
+- `SendOrderToKitchenBarAction` requires `send_to_kitchen`, creates department-split kitchen tickets, changes the status to `sent_to_kitchen_bar`, stores dispatch metadata, updates the service point status to `cooking`, and writes an `order_status_logs` row.
 - Has many `order_items`.
+- Has many `kitchen_tickets`.
 - Branch, service point, table session, and draft order models expose order relationships.
 - `Order::statusLogs()` exposes persistent status history ordered by `occurred_at` and id.
 - `ChangeOrderStatusAction` changes confirmed `orders.status` with permission checks and writes an `order_status_logs` row. It currently requires `send_to_kitchen` for `sent_to_kitchen_bar`, `cancel_orders` for `cancelled`, and `confirm_orders` for other manual status changes.
-- `orders` are not shown to kitchen/bar yet.
+- `orders` are not shown to kitchen/bar until explicit waiter dispatch creates tickets.
 
 Order item:
 
@@ -437,7 +442,27 @@ Order item:
 - Stores guest/item/department/price snapshots copied from `draft_order_items` and the source menu item: `guest_name`, `item_name`, `kitchen_department_type`, `kitchen_department_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers, and optional comment.
 - Snapshot fields must remain unchanged if the source menu item name, menu item price, modifier options, or kitchen department name/type change later.
 - Table session guests, menu items, and kitchen departments expose `orderItems()` relationships for confirmed order history.
-- These rows prepare later kitchen/bar dispatch without exposing unconfirmed drafts to kitchen/bar.
+- These rows prepare kitchen/bar dispatch without exposing unconfirmed drafts to kitchen/bar.
+
+Kitchen ticket:
+
+- Stored in `kitchen_tickets`.
+- Created only by `SendOrderToKitchenBarAction` after a real order already has `orders.status = confirmed_by_waiter`.
+- Belongs to one order, branch, service point, table session, and optional kitchen department.
+- Stores department snapshot fields `department_type` and `department_name`.
+- Status is cast to `KitchenTicketStatus`; current value is `sent`.
+- Stores `sent_by_user_id`, `sent_at`, and optional JSON `metadata`.
+- One dispatch groups order items by department snapshot, so kitchen, bar, dessert, hookah, or custom departments receive only their own positions.
+- Repeating dispatch for the same order does not create duplicate tickets.
+- Branch, service point, table session, order, and kitchen department models expose `kitchenTickets()` relationships.
+
+Kitchen ticket item:
+
+- Stored in `kitchen_ticket_items`.
+- Belongs to one kitchen ticket through `kitchen_ticket_id`.
+- References one confirmed order item through unique `order_item_id`.
+- Optionally references the original table session guest and menu item.
+- Stores guest name, item name, quantity, selected modifiers, and optional comment snapshots for the department ticket.
 
 Order status log:
 
@@ -448,7 +473,7 @@ Order status log:
 - Event is cast to `OrderStatusLogEvent`.
 - Current event values are `draft_created`, `draft_edited`, `draft_sent_to_waiter`, `draft_confirmed`, `draft_rejected`, `draft_returned_to_draft`, `order_status_changed`, `order_sent_to_kitchen_bar`, and `order_cancelled`.
 - Stores `status_type`, `previous_status`, `new_status`, optional `reason`, optional JSON `metadata`, and `occurred_at`.
-- `CreateOrderStatusLogAction` is the shared append-only writer used by guest draft actions, waiter review actions, and confirmed order status changes.
+- `CreateOrderStatusLogAction` is the shared append-only writer used by guest draft actions, waiter review actions, explicit kitchen/bar dispatch, and confirmed order status changes.
 - Branch, service point, table session, draft order, order, table session guest, and user models expose order status log relationships.
 - There is no audit UI yet.
 
@@ -801,11 +826,12 @@ Local media storage:
 - The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's draft positions, selected modifiers, guest comments, per-guest totals, and the table total.
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
+- The table detail page can send a confirmed order to kitchen/bar for users with `send_to_kitchen`. This creates `kitchen_tickets` grouped by department, changes the order to `sent_to_kitchen_bar`, and moves the service point status to `cooking`.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
-- The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, and return-to-draft.
+- The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
 - The table detail page can return a rejected draft to `draft` for guest edits.
-- Waiter detail edit/review actions do not send anything to kitchen/bar and do not create payments.
+- Waiter detail edit/review actions do not send anything to kitchen/bar until the explicit `Send to kitchen/bar` action is clicked, and they do not create payments.
 
 ## Current Branch Menu UI
 
@@ -909,7 +935,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be kitchen/bar dispatch for confirmed orders using `kitchen_departments`, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be a kitchen/bar work screen for `kitchen_tickets`, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -921,7 +947,7 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders 
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add AI translations, a complex translation editor, kitchen/bar dispatch, or payment logic unless a prompt explicitly asks for that exact step.
+- Do not add AI translations, a complex translation editor, kitchen/bar work screens, or payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
 - Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.
@@ -929,7 +955,8 @@ The next expected product step may be kitchen/bar dispatch for confirmed orders 
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Do not create real orders from the guest UI; waiter confirmation must come first.
-- Do not send confirmed orders to kitchen/bar from the waiter table detail page until a prompt explicitly asks for kitchen/bar dispatch.
+- Do not auto-dispatch confirmed orders during waiter confirmation; kitchen/bar tickets must be created only by explicit `SendOrderToKitchenBarAction`.
+- Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; kitchen/bar should read only dispatched tickets when those screens are added later.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.

@@ -89,6 +89,16 @@ class Order extends Model
     }
 
     /**
+     * @return HasMany<KitchenTicket, $this>
+     */
+    public function kitchenTickets(): HasMany
+    {
+        return $this->hasMany(KitchenTicket::class)
+            ->orderBy('department_name')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<OrderStatusLog, $this>
      */
     public function statusLogs(): HasMany

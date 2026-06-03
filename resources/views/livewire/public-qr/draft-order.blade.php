@@ -55,6 +55,10 @@
                 <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $rejectionReason }}</span>
             @endif
         </p>
+    @elseif ($draftStatusValue === 'converted_to_order' && $orderStatusValue === 'sent_to_kitchen_bar')
+        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ __('Заказ принят. Кухня и бар получили позиции.') }}
+        </p>
     @elseif ($draftStatusValue === 'converted_to_order')
         <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
             {{ __('Официант подтвердил заказ. Изменения сейчас недоступны.') }}

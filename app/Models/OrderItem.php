@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'item_name', 'quantity', 'unit_price', 'modifier_total', 'total_price', 'selected_modifiers', 'comment'])]
 class OrderItem extends Model
@@ -69,5 +70,13 @@ class OrderItem extends Model
     public function kitchenDepartment(): BelongsTo
     {
         return $this->belongsTo(KitchenDepartment::class);
+    }
+
+    /**
+     * @return HasOne<KitchenTicketItem, $this>
+     */
+    public function kitchenTicketItem(): HasOne
+    {
+        return $this->hasOne(KitchenTicketItem::class);
     }
 }

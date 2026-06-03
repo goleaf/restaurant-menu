@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 060 - Send Orders To Kitchen Bar
+
+- Added `kitchen_tickets` and `kitchen_ticket_items` for department-split dispatch of confirmed waiter orders.
+- Added `SendOrderToKitchenBarAction`, guarded by `send_to_kitchen`, to move orders from `confirmed_by_waiter` to `sent_to_kitchen_bar`, create department tickets, update service point status to `cooking`, and write an `order_status_logs` row.
+- Extended the waiter table detail page with a `Send to kitchen/bar` action and dispatch status display.
+- Extended the guest shared cart polling block so guests see that kitchen/bar accepted the order after dispatch.
+- Verified department splitting, idempotent dispatch, permission checks, and SQLite migrations without Redis, WebSockets, S3, Docker, or paid services.
+
 ### Prompt 059 - Assign Menu Items To Departments
 
 - Made the dish department selector save the branch's default `kitchen` department when no explicit department is selected.

@@ -63,4 +63,14 @@ class KitchenDepartment extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /**
+     * @return HasMany<KitchenTicket, $this>
+     */
+    public function kitchenTickets(): HasMany
+    {
+        return $this->hasMany(KitchenTicket::class)
+            ->orderBy('sent_at')
+            ->orderBy('id');
+    }
 }

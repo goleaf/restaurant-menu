@@ -8,6 +8,7 @@ use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
@@ -60,6 +61,10 @@ class DraftOrder extends Component
     public ?string $draftStatusValue = null;
 
     public string $draftStatusLabel = '';
+
+    public ?string $orderStatusValue = null;
+
+    public string $orderStatusLabel = '';
 
     public ?string $rejectionReason = null;
 
@@ -117,6 +122,11 @@ class DraftOrder extends Component
 
         $this->draftStatusValue = $draftOrder?->status?->value;
         $this->draftStatusLabel = $draftOrder?->status?->label() ?? '';
+        $orderStatus = $draftOrder?->order?->status instanceof OrderStatus
+            ? $draftOrder->order->status
+            : null;
+        $this->orderStatusValue = $orderStatus?->value;
+        $this->orderStatusLabel = $orderStatus?->label() ?? '';
         $this->rejectionReason = $draftOrder?->rejection_reason;
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
         $this->activeGuestCount = $guests->count();
@@ -498,6 +508,11 @@ class DraftOrder extends Component
                 'rejection_reason',
             ])
             ->with([
+                'order' => fn ($query) => $query->select([
+                    'id',
+                    'draft_order_id',
+                    'status',
+                ]),
                 'items' => fn ($query) => $query
                     ->select([
                         'id',

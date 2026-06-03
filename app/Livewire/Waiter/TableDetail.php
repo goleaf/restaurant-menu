@@ -3,6 +3,7 @@
 namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -14,6 +15,7 @@ use App\Enums\MenuStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -337,6 +339,31 @@ class TableDetail extends Component
         $this->table['draft']['order_id'] = $order->id;
     }
 
+    public function sendOrderToKitchenBar(SendOrderToKitchenBarAction $sendOrderToKitchenBar): void
+    {
+        $this->resetValidation();
+        $this->reviewFeedbackMessage = '';
+
+        $order = $this->currentOrder();
+
+        if (! $order instanceof Order) {
+            $this->addError('order_dispatch', __('Сначала подтвердите заказ официантом.'));
+
+            return;
+        }
+
+        try {
+            $sendOrderToKitchenBar->handle($order, $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->reviewFeedbackMessage = __('Заказ отправлен на кухню/бар. Гости увидят, что заказ принят.');
+        $this->refreshTable();
+    }
+
     public function rejectDraft(RejectDraftOrderByWaiterAction $rejectDraftOrder): void
     {
         $this->resetValidation();
@@ -413,6 +440,21 @@ class TableDetail extends Component
             ->firstOrFail();
 
         return $tableSession->draftOrder;
+    }
+
+    private function currentOrder(): ?Order
+    {
+        $tableSession = TableSession::query()
+            ->select(['id'])
+            ->with([
+                'draftOrder' => fn ($query) => $query
+                    ->select(['id', 'table_session_id'])
+                    ->with(['order' => fn ($orderQuery) => $orderQuery->select(['id', 'draft_order_id', 'status'])]),
+            ])
+            ->whereKey($this->tableSessionId)
+            ->firstOrFail();
+
+        return $tableSession->draftOrder?->order;
     }
 
     private function selectedAddingGuest(): ?TableSessionGuest

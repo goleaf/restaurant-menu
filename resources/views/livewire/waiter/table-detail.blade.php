@@ -222,6 +222,10 @@
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
+                @error('order_dispatch')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
                 @error('rejectionReason')
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
@@ -434,9 +438,38 @@
                         <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                             {{ __('Status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
                         </p>
-                        <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                            {{ __('Prepared for kitchen/bar dispatch, but not sent yet.') }}
-                        </p>
+
+                        @if (data_get($table, 'draft.order_status_value') === 'sent_to_kitchen_bar')
+                            <p class="mt-1 text-emerald-700 dark:text-emerald-300">
+                                {{ __('Kitchen/bar received this order.') }}
+                            </p>
+
+                            <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                {{ __('Tickets') }}: {{ data_get($table, 'draft.order_ticket_count', 0) }}
+                                @if (data_get($table, 'draft.order_ticket_departments'))
+                                    · {{ implode(', ', data_get($table, 'draft.order_ticket_departments', [])) }}
+                                @endif
+                            </p>
+                        @else
+                            <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                {{ __('Prepared for kitchen/bar dispatch, but not sent yet.') }}
+                            </p>
+                        @endif
+
+                        @if (data_get($table, 'draft.can_send_to_kitchen'))
+                            <flux:button
+                                icon="arrow-right"
+                                variant="primary"
+                                type="button"
+                                class="mt-3 w-full"
+                                wire:click="sendOrderToKitchenBar"
+                                wire:loading.attr="disabled"
+                                wire:target="sendOrderToKitchenBar"
+                            >
+                                <span wire:loading.remove wire:target="sendOrderToKitchenBar">{{ __('Send to kitchen/bar') }}</span>
+                                <span wire:loading wire:target="sendOrderToKitchenBar">{{ __('Sending') }}</span>
+                            </flux:button>
+                        @endif
                     </div>
                 @endif
             </div>

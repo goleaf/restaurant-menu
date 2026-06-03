@@ -88,6 +88,16 @@ class ServicePoint extends Model
     }
 
     /**
+     * @return HasMany<KitchenTicket, $this>
+     */
+    public function kitchenTickets(): HasMany
+    {
+        return $this->hasMany(KitchenTicket::class)
+            ->orderBy('sent_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<OrderStatusLog, $this>
      */
     public function orderStatusLogs(): HasMany

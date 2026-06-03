@@ -51,6 +51,14 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<BranchUser, $this>
+     */
+    public function staffAssignments(): HasMany
+    {
+        return $this->hasMany(BranchUser::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function invitations(): HasMany

@@ -83,19 +83,27 @@
                             </p>
                         </div>
 
-                        @if ($canManageBranches)
+                        @if ($canManageBranches || $canManageStaff)
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="cog-6-tooth" type="button" :href="route('organizations.brands.branches.settings.index', [$organization, $brand, $branch])" wire:navigate>
-                                    {{ __('Settings') }}
-                                </flux:button>
+                                @if ($canManageStaff)
+                                    <flux:button icon="users" type="button" :href="route('organizations.brands.branches.staff.index', [$organization, $brand, $branch])" wire:navigate>
+                                        {{ __('Staff') }}
+                                    </flux:button>
+                                @endif
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $branch->id }})">
-                                    {{ __('Edit') }}
-                                </flux:button>
+                                @if ($canManageBranches)
+                                    <flux:button icon="cog-6-tooth" type="button" :href="route('organizations.brands.branches.settings.index', [$organization, $brand, $branch])" wire:navigate>
+                                        {{ __('Settings') }}
+                                    </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $branch->id }})">
-                                    {{ __('Delete') }}
-                                </flux:button>
+                                    <flux:button icon="pencil" type="button" wire:click="startEditing({{ $branch->id }})">
+                                        {{ __('Edit') }}
+                                    </flux:button>
+
+                                    <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $branch->id }})">
+                                        {{ __('Delete') }}
+                                    </flux:button>
+                                @endif
                             </div>
                         @endif
 

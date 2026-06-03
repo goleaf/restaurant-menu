@@ -72,4 +72,9 @@ class Invitation extends Model
     {
         return $this->belongsTo(User::class, 'invited_by_user_id');
     }
+
+    public function inviteLink(): string
+    {
+        return url('/invite/'.$this->invite_token);
+    }
 }

@@ -57,6 +57,12 @@
                                     {{ __('Brands') }}
                                 </flux:button>
 
+                                @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
+                                    <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
+                                        {{ __('Staff') }}
+                                    </flux:button>
+                                @endif
+
                                 <flux:button icon="pencil" type="button" wire:click="startEditing({{ $organization->id }})">
                                     {{ __('Edit') }}
                                 </flux:button>
@@ -70,6 +76,12 @@
                                 <flux:button icon="building-storefront" type="button" :href="route('organizations.brands.index', $organization)" wire:navigate>
                                     {{ __('Brands') }}
                                 </flux:button>
+
+                                @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
+                                    <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
+                                        {{ __('Staff') }}
+                                    </flux:button>
+                                @endif
                             </div>
                         @endif
 

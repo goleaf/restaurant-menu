@@ -5,6 +5,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
+use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -59,6 +60,8 @@ class Index extends Component
 
     public bool $canManageBranches = false;
 
+    public bool $canManageStaff = false;
+
     public function mount(Organization $organization, Brand $brand): void
     {
         $this->organization = $organization;
@@ -73,6 +76,7 @@ class Index extends Component
         }
 
         $this->canManageBranches = $this->currentUser()->canManageOrganizationBranches($organization);
+        $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
     }
 
     public function create(CreateBranchAction $createBranch): void

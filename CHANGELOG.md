@@ -2,6 +2,15 @@
 
 ## 2026-06-03
 
+### Prompt 015 - Staff Management UI
+
+- Added the `branch_users` table for branch-level staff assignments.
+- Added organization and branch staff management Livewire pages.
+- Added manual staff creation with fixed role assignment.
+- Added invite link and invite code creation from the staff UI without sending email or SMS.
+- Added staff activate/deactivate actions guarded by `manage_staff`.
+- Added tests proving regular users without `manage_staff` cannot access staff pages.
+
 ### Prompt 014 - Staff Invitations
 
 - Added staff invitation statuses for pending, accepted, expired, cancelled, and rejected invitations.

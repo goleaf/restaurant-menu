@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, and staff invitation backend foundations.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, basic superadmin access, staff invitation foundations, and simple staff management UI.
 
 ## Stack
 
@@ -43,7 +43,31 @@ php artisan db:seed
 
 Do not commit real superadmin credentials. The seeder stores only the user and assigns the fixed `superadmin` role.
 
-## Staff Invitations
+## Staff Management
+
+Staff management is available only to users who have the `manage_staff` permission in the current organization context.
+
+Organization staff is managed at:
+
+```text
+/organizations/{organization}/staff
+```
+
+Branch staff is managed at:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/staff
+```
+
+The UI can:
+
+- list organization staff;
+- list branch staff;
+- add a staff member manually;
+- assign a fixed system role;
+- create an invite link;
+- create an invite code;
+- activate or deactivate staff members.
 
 Staff invitations are stored in the `invitations` table. An invitation can be scoped to an organization, optionally to a brand, and optionally to a branch. It stores the fixed role to assign later, email, phone, invite token, invite code, expiration date, status, and the user who created the invitation.
 
@@ -55,7 +79,7 @@ Supported statuses are:
 - `cancelled`
 - `rejected`
 
-This stage does not send email or SMS and does not include staff management UI. The backend model and creation action are prepared for future email invitations, phone invitations, invite links, manual creation, and invite codes.
+This stage does not send email or SMS. The user copies invite links or invite codes manually and sends them outside the system.
 
 ## SQLite
 
@@ -86,6 +110,7 @@ Implemented:
 - Branch settings stored in `branch_settings`.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
+- Simple staff management UI for organization and branch staff.
 
 Branch settings currently include safe defaults:
 
@@ -110,7 +135,7 @@ Not implemented yet:
 - Shared order drafts.
 - Kitchen/bar workflows.
 - Payments and analytics.
-- Staff invitation UI and email/SMS delivery.
+- Staff invitation acceptance flow and email/SMS delivery.
 
 ## Local Verification
 

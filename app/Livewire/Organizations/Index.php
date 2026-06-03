@@ -6,6 +6,7 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Organization;
 use App\Models\User;
@@ -134,6 +135,18 @@ class Index extends Component
             ->orderBy('organizations.name')
             ->orderBy('organizations.id')
             ->get();
+    }
+
+    /**
+     * @return list<int>
+     */
+    #[Computed]
+    public function staffManageableOrganizationIds(): array
+    {
+        return $this->organizations
+            ->filter(fn (Organization $organization): bool => $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization))
+            ->pluck('id')
+            ->all();
     }
 
     public function render(): View

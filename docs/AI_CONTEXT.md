@@ -43,6 +43,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branch settings.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
+- Simple organization and branch staff management UI.
 
 No menu, QR, service point, guest session, order draft, kitchen, bar, payment, or analytics logic has been implemented yet.
 
@@ -66,6 +67,7 @@ No menu, QR, service point, guest session, order draft, kitchen, bar, payment, o
 - `organization_users`
 - `brands`
 - `branches`
+- `branch_users`
 - `branch_settings`
 - `invitations`
 - `migrations`
@@ -89,6 +91,7 @@ Branch:
 - Belongs to a brand and an organization.
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
+- Has many branch staff assignments through `branch_users`.
 
 Branch settings:
 
@@ -119,7 +122,20 @@ Invitation:
 - Status enum values are `pending`, `accepted`, `expired`, `cancelled`, and `rejected`.
 - `CreateInvitationAction` creates pending invitations with generated token/code defaults.
 - Invitation scopes must stay inside the selected organization; branch scope must match selected brand when a brand is provided.
-- No email/SMS delivery and no staff invitation UI exists yet.
+- Staff UI can create invite links/codes, but no email/SMS delivery or public acceptance flow exists yet.
+
+Staff management:
+
+- Organization staff page is `App\Livewire\Organizations\Staff\Index`.
+- Branch staff page is `App\Livewire\Organizations\Brands\Branches\Staff\Index`.
+- Organization staff route is `GET /organizations/{organization}/staff`.
+- Branch staff route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff`.
+- Access requires `manage_staff` in the current organization context.
+- Manual staff creation creates or reuses a user, assigns the fixed role, and creates an active `organization_users` membership.
+- Branch manual staff creation also creates an active `branch_users` assignment.
+- Staff deactivate sets status to `suspended`; activate sets status to `active`.
+- Invite link/code creation stores an `invitations` record only; no email/SMS is sent.
+- Invite links are displayed for manual copy, but public invite acceptance is not implemented yet.
 
 ## Branch Settings Defaults
 
@@ -141,8 +157,10 @@ Invitation:
 - `GET /guest` -> `guest.home`
 - `GET /dashboard` -> `dashboard`
 - `GET /organizations` -> `organizations.index`
+- `GET /organizations/{organization}/staff` -> `organizations.staff.index`
 - `GET /organizations/{organization}/brands` -> `organizations.brands.index`
 - `GET /organizations/{organization}/brands/{brand}/branches` -> `organizations.brands.branches.index`
+- `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
 - `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
@@ -151,8 +169,10 @@ Invitation:
 ## Livewire Components
 
 - `App\Livewire\Organizations\Index`
+- `App\Livewire\Organizations\Staff\Index`
 - `App\Livewire\Organizations\Brands\Index`
 - `App\Livewire\Organizations\Brands\Branches\Index`
+- `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
@@ -164,7 +184,7 @@ Invitation:
 
 ## Next Step
 
-The next expected product step may be staff invitation UI, zones, or service points, but only implement it when a prompt explicitly requests it.
+The next expected product step may be invite acceptance flow, zones, or service points, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 

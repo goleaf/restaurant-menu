@@ -45,6 +45,14 @@ class Organization extends Model
     }
 
     /**
+     * @return HasMany<BranchUser, $this>
+     */
+    public function branchUsers(): HasMany
+    {
+        return $this->hasMany(BranchUser::class);
+    }
+
+    /**
      * @return HasMany<Brand, $this>
      */
     public function brands(): HasMany

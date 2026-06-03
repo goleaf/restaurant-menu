@@ -67,6 +67,14 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * @return HasMany<BranchUser, $this>
+     */
+    public function branchAssignments(): HasMany
+    {
+        return $this->hasMany(BranchUser::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function sentInvitations(): HasMany

@@ -66,6 +66,14 @@ class Role extends Model
         return $this->hasMany(Invitation::class);
     }
 
+    /**
+     * @return HasMany<BranchUser, $this>
+     */
+    public function branchUsers(): HasMany
+    {
+        return $this->hasMany(BranchUser::class);
+    }
+
     public function hasPermission(SystemPermission|string $permission): bool
     {
         return $this->permissions()

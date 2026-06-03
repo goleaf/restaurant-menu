@@ -165,9 +165,17 @@ Branch menu management is available at:
 
 Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, and dishes. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices requires `change_prices`; changing dish availability requires `change_availability`.
 
-Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, and unavailable dish state. The guest menu payload is cached through Laravel's database cache.
+Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, and unavailable dish state.
 
-Menu cache is forgotten automatically when menus, categories, or dishes are created, updated, or deleted.
+The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with the key:
+
+```text
+guest-menu:branch:{branch_id}
+```
+
+Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
+
+Menu cache is forgotten automatically when menus, categories, or dishes are created, updated, or deleted. Price changes also clear the branch menu cache, so the next guest read rebuilds the payload and shows the current price.
 
 This step does not add cart item creation, shared order draft rows, translations, modifiers, kitchen/bar flow, or payment logic.
 

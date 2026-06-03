@@ -2,6 +2,14 @@
 
 ## 2026-06-03
 
+### Prompt 042 - Database Cache for Menu
+
+- Made guest menu caching explicitly use Laravel's `database` cache store instead of relying on the default store.
+- Added a short database-backed lock around guest menu payload rebuilds so repeated guest reads stay shared-hosting friendly.
+- Strengthened cache invalidation coverage for menu, category, and item updates, including price changes.
+- Verified the guest menu does not keep stale prices after a dish price update.
+- Kept this step cache-only: no cart, shared order draft, orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 041 - Guest Menu Display
 
 - Added a mobile-first guest menu block to the active public QR table page.

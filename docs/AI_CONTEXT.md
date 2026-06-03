@@ -50,7 +50,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and cached guest menu display.
+- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -131,8 +131,10 @@ Menu:
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, and delete menus.
 - Active guests see the current branch's first active menu on the public QR table page.
-- Guest menu payloads are cached with the database cache key `guest-menu:branch:{branch_id}`.
+- Guest menu payloads are cached through the explicit `database` cache store with the key `guest-menu:branch:{branch_id}`.
 - `GetGuestMenuForBranchAction` builds and caches the guest menu payload for five minutes.
+- Guest menu cache rebuilds use the database-backed lock key `guest-menu:branch:{branch_id}:lock`.
+- Guest menu cache invalidation must use the database cache store and must not use Redis or cache tags.
 
 Menu category:
 
@@ -510,7 +512,7 @@ Local media storage:
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
 - Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu, shared order placeholder, and zero total.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
-- The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through database cache.
+- The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
@@ -521,9 +523,11 @@ Local media storage:
 
 - `App\Livewire\PublicQr\GuestMenu` renders the guest menu block inside the active guest table shell.
 - `App\Actions\Menus\GetGuestMenuForBranchAction` loads the first active menu for the current branch, sorted by `sort_order`, `name`, and `id`.
-- Guest menu payloads are cached in the configured database cache for 300 seconds.
+- Guest menu payloads are cached in Laravel's explicit `database` cache store for 300 seconds, even if the default cache store is changed in a test or environment.
 - Cache key format is `guest-menu:branch:{branch_id}`.
+- Rebuild lock key format is `guest-menu:branch:{branch_id}:lock` and uses the SQLite-backed `cache_locks` table.
 - `MenuObserver`, `MenuCategoryObserver`, and `MenuItemObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
+- Updating a dish price clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current price.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable dishes are visually dimmed and marked `Недоступно`; there is no add-to-cart action yet.

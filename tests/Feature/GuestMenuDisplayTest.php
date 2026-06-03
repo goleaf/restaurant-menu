@@ -47,11 +47,14 @@ test('active guest sees active branch menu on guest table page', function () {
 
 test('guest menu component uses cached active menu payload', function () {
     [$qrCode, $branch] = createGuestMenuDisplayContext();
-    [, , $availableItem] = createGuestMenuRows($branch);
+    [$menu, $category, $availableItem] = createGuestMenuRows($branch);
     $action = app(GetGuestMenuForBranchAction::class);
     $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id);
 
-    Cache::forget($cacheKey);
+    config()->set('cache.default', 'array');
+
+    Cache::store('array')->forget($cacheKey);
+    Cache::store(GetGuestMenuForBranchAction::cacheStore())->forget($cacheKey);
 
     Livewire::test(GuestMenu::class, [
         'branchId' => $branch->id,
@@ -60,13 +63,31 @@ test('guest menu component uses cached active menu payload', function () {
         ->assertSee('data-component="guest-menu"', false)
         ->assertSeeText($availableItem->name);
 
-    expect(Cache::has($cacheKey))->toBeTrue()
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeTrue()
+        ->and(Cache::store('array')->has($cacheKey))->toBeFalse()
         ->and($action->handle($branch->id)['categories'][0]['items'][0]['name'])->toBe($availableItem->name);
 
-    $availableItem->update(['name' => 'Updated cached pizza']);
+    $category->update(['name' => 'Updated cached category']);
 
-    expect(Cache::has($cacheKey))->toBeFalse()
-        ->and($action->handle($branch->id)['categories'][0]['items'][0]['name'])->toBe('Updated cached pizza');
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+
+    $action->handle($branch->id);
+    $menu->update(['name' => 'Updated cached menu']);
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
+
+    $action->handle($branch->id);
+    $availableItem->update(['price' => '18.75']);
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
+        ->and($action->handle($branch->id)['categories'][0]['items'][0]['price'])->toBe('18.75');
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSeeText('18.75 EUR')
+        ->assertDontSeeText('14.50 EUR');
 
     expect($qrCode->public_token)->not->toBeEmpty();
 });

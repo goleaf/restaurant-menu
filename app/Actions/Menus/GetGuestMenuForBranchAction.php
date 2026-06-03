@@ -6,20 +6,43 @@ use App\Enums\MenuStatus;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 
 class GetGuestMenuForBranchAction
 {
+    private const CACHE_SECONDS = 300;
+
+    private const CACHE_STORE = 'database';
+
+    private const LOCK_SECONDS = 10;
+
+    private const LOCK_WAIT_SECONDS = 3;
+
     /**
      * @return array{menu: array{id: int, name: string}|null, categories: list<array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}>}
      */
     public function handle(int $branchId): array
     {
-        return Cache::remember(
-            self::cacheKey($branchId),
-            300,
-            fn (): array => $this->buildMenuPayload($branchId),
-        );
+        $cache = self::cache();
+        $cacheKey = self::cacheKey($branchId);
+        $cachedPayload = $cache->get($cacheKey);
+
+        if (is_array($cachedPayload)) {
+            return $cachedPayload;
+        }
+
+        try {
+            return $cache->withoutOverlapping(
+                self::lockKey($branchId),
+                fn (): array => $this->rememberFreshPayload($cache, $branchId),
+                self::LOCK_SECONDS,
+                self::LOCK_WAIT_SECONDS,
+            );
+        } catch (LockTimeoutException) {
+            return $this->buildMenuPayload($branchId);
+        }
     }
 
     public static function cacheKey(int $branchId): string
@@ -27,9 +50,43 @@ class GetGuestMenuForBranchAction
         return 'guest-menu:branch:'.$branchId;
     }
 
+    public static function lockKey(int $branchId): string
+    {
+        return 'guest-menu:branch:'.$branchId.':lock';
+    }
+
     public static function forgetForBranch(int $branchId): void
     {
-        Cache::forget(self::cacheKey($branchId));
+        self::cache()->forget(self::cacheKey($branchId));
+    }
+
+    public static function cacheStore(): string
+    {
+        return self::CACHE_STORE;
+    }
+
+    private static function cache(): CacheRepository
+    {
+        return Cache::store(self::CACHE_STORE);
+    }
+
+    /**
+     * @return array{menu: array{id: int, name: string}|null, categories: list<array{id: int, name: string, description: string|null, icon: string|null, items: list<array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool}>}>}
+     */
+    private function rememberFreshPayload(CacheRepository $cache, int $branchId): array
+    {
+        $cacheKey = self::cacheKey($branchId);
+        $cachedPayload = $cache->get($cacheKey);
+
+        if (is_array($cachedPayload)) {
+            return $cachedPayload;
+        }
+
+        $payload = $this->buildMenuPayload($branchId);
+
+        $cache->put($cacheKey, $payload, self::CACHE_SECONDS);
+
+        return $payload;
     }
 
     /**

@@ -49,7 +49,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
-- Table session join requests with backend create / approve / reject logic, guest approval UI, and guest invite share links.
+- Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -211,6 +211,8 @@ Table session guest:
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
 - Active guests can approve or reject new guest join requests from the public QR UI.
+- `App\Livewire\PublicQr\TableGuests` renders the guest list for active guests and polls only that block.
+- The guest list shows guest names alphabetically and human-readable guest statuses.
 
 Table session join request:
 
@@ -289,6 +291,9 @@ QR code:
 - Guest invite share UI uses the browser native share API when available and a copy-link fallback when native share is not available.
 - The guest invite link opens the same `GET /q/{token}` route with an `invite` query token and still keeps internal IDs out of the URL.
 - When an invited person opens the link and enters a name, `App\Livewire\PublicQr\Show` creates a pending join request for the invited table session.
+- Active guests see the main guest table page shell instead of the entry form.
+- The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, empty menu area, empty shared order area, and current total `0,00 {currency}`.
+- The guest table shell does not create menu items, order draft rows, payments, kitchen tasks, or bar tasks.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
@@ -429,6 +434,7 @@ Local media storage:
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\PublicQr\Show`
 - `App\Livewire\PublicQr\JoinRequests`
+- `App\Livewire\PublicQr\TableGuests`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
@@ -453,6 +459,8 @@ Local media storage:
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
+- Active guests see a guest table page shell with the venue, current service point, guests, invite action, menu placeholder, shared order placeholder, and zero total.
+- The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
@@ -542,6 +550,7 @@ The next expected product step may be guest lists, QR PDF generation, staff invi
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.
+- Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make QR generation create a second active QR automatically when one already exists.
 - Do not reissue QR from ordinary service point edits.
 - Do not print service point number or area by default on QR stickers.

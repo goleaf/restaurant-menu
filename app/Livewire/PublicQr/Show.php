@@ -61,7 +61,7 @@ class Show extends Component
     public string $guestInviteMessage = '';
 
     /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
@@ -70,6 +70,7 @@ class Show extends Component
         'branch_name' => '',
         'branch_city' => '',
         'branch_country' => '',
+        'branch_currency' => 'EUR',
         'venue_name' => '',
         'logo_url' => null,
         'service_point_name' => '',
@@ -144,6 +145,7 @@ class Show extends Component
             'branch_name' => $branch->name,
             'branch_city' => $branch->city,
             'branch_country' => $branch->country,
+            'branch_currency' => $branch->currency,
             'venue_name' => $branch->name,
             'logo_url' => $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl(),
             'service_point_name' => $servicePoint->name,
@@ -372,6 +374,7 @@ class Show extends Component
                                 'logo_path',
                                 'city',
                                 'country',
+                                'currency',
                             ])
                             ->with([
                                 'brand' => fn ($query) => $query->select([

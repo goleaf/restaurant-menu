@@ -2,6 +2,13 @@
 
 ## 2026-06-03
 
+### Prompt 038 - Guest Table Page Shell
+
+- Added the main guest table page shell for active table guests.
+- The shell shows venue, current place, saved entry state, guest invite action, guest list, menu placeholder, shared order placeholder, and a `0,00` total.
+- Added an isolated Livewire polling component for the guest list so only the guest block refreshes.
+- Kept the step limited to the table page shell: no menu items, order draft, kitchen/bar, payment, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 037 - Guest Invite Share Link
 
 - Added a guest invite action inside the active public QR table session.

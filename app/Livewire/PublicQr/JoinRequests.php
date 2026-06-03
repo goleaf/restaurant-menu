@@ -188,6 +188,12 @@ class JoinRequests extends Component
 
         $guestToken = request()->cookie($this->guestTokenCookieName($this->publicToken));
 
+        if (is_string($guestToken) && strlen($guestToken) === 64) {
+            return $guestToken;
+        }
+
+        $guestToken = session('guest_entries.'.$this->publicToken.'.guest_token');
+
         if (! is_string($guestToken) || strlen($guestToken) !== 64) {
             return null;
         }

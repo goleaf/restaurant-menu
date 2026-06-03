@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -295,6 +295,10 @@ The public QR page now shows a waiting state for the new guest. Active guests se
 
 Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
 
+After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, an empty menu area, an empty shared order area, and the current total as `0,00 {currency}`.
+
+The guest list is rendered by a separate isolated Livewire component and refreshes with polling. This keeps the guest list current without refreshing the whole guest page.
+
 ## Permanent QR Codes
 
 Permanent QR records are stored in the `qr_codes` table.
@@ -368,7 +372,7 @@ Implemented:
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - First guest pending session creation from the public QR landing.
-- Table session join request schema, backend create / approve / reject logic, guest approval UI, and guest invite share links.
+- Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

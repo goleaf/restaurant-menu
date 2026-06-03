@@ -3,6 +3,7 @@
 namespace App\Livewire\PublicQr;
 
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
+use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
@@ -51,6 +52,10 @@ class DraftOrder extends Component
     public bool $canEditDraft = true;
 
     public bool $canToggleReadyStatus = false;
+
+    public bool $canSendDraftToWaiter = false;
+
+    public bool $sendNeedsReadyConfirmation = false;
 
     public bool $currentGuestReady = false;
 
@@ -110,6 +115,7 @@ class DraftOrder extends Component
         $this->allGuestsReady = $this->activeGuestCount > 0 && $this->readyGuestCount === $this->activeGuestCount;
         $this->currentGuestReady = false;
         $this->canToggleReadyStatus = false;
+        $this->canSendDraftToWaiter = false;
 
         $guests->each(function (TableSessionGuest $guest) use (&$guestSections): void {
             $isCurrentGuest = $guest->id === $this->currentGuestId;
@@ -118,6 +124,7 @@ class DraftOrder extends Component
             if ($isCurrentGuest) {
                 $this->currentGuestReady = $isReady;
                 $this->canToggleReadyStatus = $this->publicToken !== '' && $this->canEditDraft;
+                $this->canSendDraftToWaiter = $this->publicToken !== '' && $this->canEditDraft;
             }
 
             $guestSections[$guest->id] = [
@@ -198,6 +205,11 @@ class DraftOrder extends Component
 
         $this->totalAmount = self::centsToDecimal($totalCents);
         $this->itemCount = count($this->items);
+        $this->canSendDraftToWaiter = $this->canSendDraftToWaiter && $this->itemCount > 0;
+
+        if (! $this->canSendDraftToWaiter || $this->allGuestsReady) {
+            $this->sendNeedsReadyConfirmation = false;
+        }
     }
 
     public function toggleReadyStatus(): void
@@ -226,6 +238,45 @@ class DraftOrder extends Component
             : __('Вы отметили готовность.');
 
         $this->refreshDraft();
+    }
+
+    public function sendDraftToWaiter(bool $confirmedNotReady = false): void
+    {
+        $this->resetValidation();
+        $this->feedbackMessage = '';
+
+        if (! $this->allGuestsReady && ! $confirmedNotReady) {
+            $this->sendNeedsReadyConfirmation = true;
+
+            return;
+        }
+
+        $guest = $this->currentActiveGuest();
+        $draftOrder = $this->draftOrderForSending();
+
+        if (! $guest instanceof TableSessionGuest || ! $draftOrder instanceof DraftOrderModel) {
+            $this->addError('send_draft', __('Только активный гость за этим столом может отправить заказ официанту.'));
+
+            return;
+        }
+
+        try {
+            app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest);
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->closeEditItem();
+        $this->sendNeedsReadyConfirmation = false;
+        $this->feedbackMessage = __('Заказ отправлен официанту.');
+        $this->refreshDraft();
+    }
+
+    public function cancelSendDraftConfirmation(): void
+    {
+        $this->sendNeedsReadyConfirmation = false;
     }
 
     public function editItem(int $itemId): void
@@ -461,6 +512,18 @@ class DraftOrder extends Component
                     ])
                     ->orderBy('created_at')
                     ->orderBy('id'),
+            ])
+            ->where('table_session_id', $this->tableSessionId)
+            ->first();
+    }
+
+    private function draftOrderForSending(): ?DraftOrderModel
+    {
+        return DraftOrderModel::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'status',
             ])
             ->where('table_session_id', $this->tableSessionId)
             ->first();

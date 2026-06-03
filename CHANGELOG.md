@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 051 - Send Draft To Waiter
+
+- Added `SendDraftOrderToWaiterAction` so any active guest can send the shared table draft to waiter review.
+- The public shared cart now shows `Отправить официанту` and asks for inline confirmation when not all active guests are ready.
+- Sending the draft sets `draft_orders.status` to `sent_to_waiter`, fills `sent_to_waiter_at` and `sent_by_guest_id`, clears guest `ready_at`, and blocks further draft edits.
+- The related service point status now moves to `has_new_order` so a future waiter dashboard can surface the waiting draft.
+- Kept this step waiter-handoff-only: no waiter confirmation screen, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 050 - Guest Ready Status
 
 - Added `ready_at` to `table_session_guests` so each active guest can mark or clear readiness.

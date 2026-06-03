@@ -191,7 +191,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. It does not yet submit the shared draft to a waiter, start kitchen/bar flow, or create payment logic.
+The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Active guests can send the shared draft to the waiter for review. This does not start kitchen/bar flow or create payment logic.
 
 ## Area Nodes
 
@@ -376,11 +376,15 @@ An active guest can edit only their own draft positions. They can change quantit
 
 All active guests see the same grouped table cart information. Only the current guest gets edit and delete controls for their own positions.
 
-Each active guest can press `Я готов` in the shared cart to set `table_session_guests.ready_at`, or press `Снять готовность` to clear it. The guest list and shared cart show `Готов` / `Не готов`, plus the cart shows how many active guests are ready. This step does not send the draft to the waiter yet; the future send action should warn when not all active guests are ready and should clear `ready_at` after sending.
+Each active guest can press `Я готов` in the shared cart to set `table_session_guests.ready_at`, or press `Снять готовность` to clear it. The guest list and shared cart show `Готов` / `Не готов`, plus the cart shows how many active guests are ready.
+
+Any active guest can press `Отправить официанту` for the shared draft, even if some positions belong to other guests. If not all active guests are ready, the UI first shows an inline confirmation. After confirmation, the draft status becomes `sent_to_waiter`, `sent_to_waiter_at` and `sent_by_guest_id` are saved, guest readiness is cleared, and the service point status becomes `has_new_order`.
+
+This is only a waiter-review handoff. The order does not go to the kitchen or bar until a future waiter confirmation step is implemented.
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
-This stage does not add the waiter review screen, final orders, kitchen/bar workflows, or payments.
+This stage does not add the waiter review screen/dashboard, final orders, kitchen/bar workflows, or payments.
 
 ## Permanent QR Codes
 
@@ -454,7 +458,7 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display with modifier selection, shared table cart UI, guest ready status, and guest draft item creation/editing on the active public QR table page.
+- Cached guest menu display with modifier selection, shared table cart UI, guest ready status, send-to-waiter draft handoff, and guest draft item creation/editing on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - Shared draft order schema and guest-owned draft item creation/editing stored in `draft_orders` and `draft_order_items`.

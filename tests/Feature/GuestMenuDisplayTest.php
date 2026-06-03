@@ -426,6 +426,115 @@ test('draft order component lets active guests toggle ready status', function ()
         ->and($zara->fresh()->ready_at)->not->toBeNull();
 });
 
+test('draft order component asks confirmation when not all guests are ready before sending to waiter', function () {
+    [$qrCode, , $servicePoint, $tableSession, $ana] = createGuestMenuDisplayContext();
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+            'ready_at' => null,
+        ]);
+    $ana->update(['ready_at' => now()]);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create();
+    $draftOrderItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->create([
+            'item_name' => 'Water',
+            'total_price' => '10.00',
+        ]);
+
+    $component = Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSeeText('Отправить официанту')
+        ->assertSet('canSendDraftToWaiter', true)
+        ->assertSet('readyGuestCount', 1)
+        ->assertSet('allGuestsReady', false)
+        ->call('sendDraftToWaiter')
+        ->assertHasNoErrors()
+        ->assertSet('sendNeedsReadyConfirmation', true)
+        ->assertSeeText('Не все гости отметили готовность.');
+
+    expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft)
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+
+    $component
+        ->call('sendDraftToWaiter', true)
+        ->assertHasNoErrors()
+        ->assertSet('canEditDraft', false)
+        ->assertSet('canSendDraftToWaiter', false)
+        ->assertSet('sendNeedsReadyConfirmation', false)
+        ->assertSeeText('Заказ отправлен официанту.')
+        ->assertSeeText('Черновик отправлен официанту. Изменения сейчас недоступны.')
+        ->assertDontSeeText('Изменить')
+        ->call('editItem', $draftOrderItem->id)
+        ->assertHasErrors(['draft_order']);
+
+    $draftOrder = $draftOrder->fresh();
+
+    expect($draftOrder->status)->toBe(DraftOrderStatus::SentToWaiter)
+        ->and($draftOrder->sent_by_guest_id)->toBe($ana->id)
+        ->and($draftOrder->sent_to_waiter_at)->not->toBeNull()
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder)
+        ->and($ana->fresh()->ready_at)->toBeNull()
+        ->and($zara->fresh()->ready_at)->toBeNull();
+});
+
+test('any active guest can send the shared draft to waiter when everyone is ready', function () {
+    [$qrCode, , $servicePoint, $tableSession, $ana] = createGuestMenuDisplayContext();
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+            'ready_at' => now(),
+        ]);
+    $ana->update(['ready_at' => now()]);
+    $draftOrder = DraftOrderModel::factory()
+        ->for($tableSession)
+        ->create();
+    DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->create([
+            'item_name' => 'Margherita',
+            'total_price' => '12.50',
+        ]);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $zara->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $zara->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSet('allGuestsReady', true)
+        ->assertSet('readyGuestCount', 2)
+        ->assertSeeText('Отправить официанту')
+        ->call('sendDraftToWaiter')
+        ->assertHasNoErrors()
+        ->assertSet('canEditDraft', false)
+        ->assertSet('sendNeedsReadyConfirmation', false)
+        ->assertSeeText('Заказ отправлен официанту.');
+
+    $draftOrder = $draftOrder->fresh();
+
+    expect($draftOrder->status)->toBe(DraftOrderStatus::SentToWaiter)
+        ->and($draftOrder->sent_by_guest_id)->toBe($zara->id)
+        ->and($draftOrder->sent_to_waiter_at)->not->toBeNull()
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder)
+        ->and($ana->fresh()->ready_at)->toBeNull()
+        ->and($zara->fresh()->ready_at)->toBeNull();
+});
+
 test('draft order component lets active guest edit own draft item modifiers quantity and comment', function () {
     [$qrCode, $branch, , $tableSession, $ana] = createGuestMenuDisplayContext();
     [, , $availableItem] = createGuestMenuRows($branch);

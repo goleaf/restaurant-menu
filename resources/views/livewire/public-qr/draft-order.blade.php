@@ -72,6 +72,10 @@
         <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
     @enderror
 
+    @error('send_draft')
+        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+    @enderror
+
     <div class="mt-4 space-y-4">
         <section class="space-y-3">
             <div class="flex items-center justify-between gap-3">
@@ -196,6 +200,53 @@
                 {{ $totalAmount }} {{ $currency }}
             </span>
         </div>
+
+        @if ($canSendDraftToWaiter)
+            <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                @if ($sendNeedsReadyConfirmation)
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/70 dark:bg-amber-950/30">
+                        <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                            {{ __('Не все гости отметили готовность.') }}
+                        </p>
+                        <p class="mt-1 text-sm text-amber-800 dark:text-amber-100">
+                            {{ __('Можно отправить сейчас, но официант всё равно должен подтвердить заказ перед кухней или баром.') }}
+                        </p>
+
+                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                wire:click="sendDraftToWaiter(true)"
+                                wire:loading.attr="disabled"
+                                wire:target="sendDraftToWaiter"
+                                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-700 px-4 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-hidden focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                            >
+                                <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить всё равно') }}</span>
+                                <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                wire:click="cancelSendDraftConfirmation"
+                                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 dark:border-amber-900/70 dark:bg-zinc-900 dark:text-amber-200 dark:hover:bg-amber-950/30"
+                            >
+                                {{ __('Подождать гостей') }}
+                            </button>
+                        </div>
+                    </div>
+                @else
+                    <button
+                        type="button"
+                        wire:click="sendDraftToWaiter"
+                        wire:loading.attr="disabled"
+                        wire:target="sendDraftToWaiter"
+                        class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                    >
+                        <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить официанту') }}</span>
+                        <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
+                    </button>
+                @endif
+            </div>
+        @endif
     </div>
 
     @if ($editingItemId !== null)

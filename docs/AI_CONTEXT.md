@@ -51,14 +51,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
-- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, and an isolated shared table cart polling block grouped by guest.
+- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, and an isolated shared table cart polling block grouped by guest.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, waiter draft review screen, final order conversion, QR PDF generation, kitchen, bar, payment, or analytics logic has been implemented yet.
+No menu translation admin editor, waiter draft review screen/dashboard, final order conversion, QR PDF generation, kitchen, bar, payment, or analytics logic has been implemented yet.
 
 ## Tables
 
@@ -337,7 +337,7 @@ Draft order:
 - Each table session can have one shared draft order, enforced by a unique `table_session_id`.
 - Status is cast to `DraftOrderStatus`.
 - Status values are `draft`, `sent_to_waiter`, `waiter_review`, `rejected`, and `converted_to_order`.
-- Stores nullable `sent_to_waiter_at` and nullable `sent_by_guest_id` for the future guest submission path.
+- Stores nullable `sent_to_waiter_at` and nullable `sent_by_guest_id` for the guest submission path.
 - `sent_by_guest_id` points to `table_session_guests.id`.
 - `DraftOrder::items()` returns draft items ordered by creation time and id.
 - `DraftOrder::totalAmount()` calculates the whole table draft total from draft item `total_price` snapshots.
@@ -345,8 +345,10 @@ Draft order:
 - `AddGuestDraftOrderItemAction` creates the shared draft on first add and stores guest item snapshots.
 - `UpdateGuestDraftOrderItemAction` lets an active guest update only their own draft item quantity, comment, and selected modifiers while the draft is still `draft`.
 - `DeleteGuestDraftOrderItemAction` lets an active guest delete only their own draft item while the draft is still `draft`.
+- `SendDraftOrderToWaiterAction` lets any active guest in the same open table session send the shared draft to waiter review.
+- Sending sets the draft status to `sent_to_waiter`, stores `sent_to_waiter_at` and `sent_by_guest_id`, clears active guest `ready_at`, and moves the related service point to `has_new_order`.
 - `BuildDraftOrderItemModifierSnapshots` is shared by add and update actions for modifier selection validation and JSON snapshots.
-- This draft flow does not send anything to waiter, kitchen, bar, payment, or analytics yet.
+- This draft flow does not send anything to kitchen, bar, payment, or analytics yet; waiter confirmation is still required before kitchen/bar.
 
 Draft order item:
 
@@ -628,6 +630,7 @@ Local media storage:
 - Public QR route shows the active branch menu for active guests and allows item modifier/comment configuration that persists into `draft_order_items`.
 - Public QR route shows the shared table cart grouped by guests alphabetically.
 - Public QR route lets active guests edit or delete only their own draft positions from the basket before the draft is sent to waiter review.
+- Public QR route lets any active guest send the shared draft to waiter review from the basket.
 - Public QR route does not create final orders, payment records, or send anything to kitchen/bar yet.
 
 ## Current Guest Menu Display
@@ -670,14 +673,16 @@ Local media storage:
 - All active guests see the same grouped cart information.
 - The basket shows ready guest count versus active guest count and whether all active guests are ready.
 - The current active guest can toggle readiness through `ToggleTableSessionGuestReadyAction`, which sets or clears `table_session_guests.ready_at`.
-- The future send-to-waiter action should warn if not all active guests have `ready_at` set and should clear readiness after sending.
+- Any active guest can send the shared draft to waiter review through `SendDraftOrderToWaiterAction`.
+- If not all active guests have `ready_at` set, the basket shows inline confirmation before sending.
+- Sending clears active guests' `ready_at`, sets the draft to `sent_to_waiter`, stores sender/timestamp, and updates the service point to `has_new_order`.
 - The basket receives the public QR token so edit/delete actions can recheck the saved browser guest token.
 - Active guests can edit only their own positions from the basket.
 - Editing own positions supports quantity, comment, and currently available modifier selections.
 - Active guests can delete only their own positions from the basket.
 - Other guests' positions are read-only.
 - If the draft status is no longer `draft`, the basket shows a blocked-editing message and does not expose edit/delete actions.
-- `UpdateGuestDraftOrderItemAction` and `DeleteGuestDraftOrderItemAction` enforce the same ownership and status checks on the backend.
+- `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
 - Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
 - The basket does not submit the draft to waiter review and does not create final orders.
 
@@ -779,7 +784,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be sending the shared draft to waiter review, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be a waiter draft review dashboard, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -794,8 +799,10 @@ The next expected product step may be sending the shared draft to waiter review,
 - Do not add waiter review, AI translations, a complex translation editor, final orders, kitchen/bar, or payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
+- Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
+- Do not send guest drafts to kitchen/bar from the guest UI; waiter confirmation must come first.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
 - Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.

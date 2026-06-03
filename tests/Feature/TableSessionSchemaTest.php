@@ -35,10 +35,24 @@ test('table session guests table stores guest identity inside a table session', 
         'guest_name',
         'guest_token',
         'status',
+        'ready_at',
         'joined_at',
         'left_at',
         'metadata',
     ]))->toBeTrue();
+});
+
+test('table session guest readiness is stored separately from guest status', function () {
+    $readyAt = now()->startOfSecond();
+    $guest = TableSessionGuest::factory()->create(['ready_at' => null]);
+
+    expect($guest->fresh()->status)->toBe(TableSessionGuestStatus::Active)
+        ->and($guest->fresh()->ready_at)->toBeNull();
+
+    $guest->update(['ready_at' => $readyAt]);
+
+    expect($guest->fresh()->status)->toBe(TableSessionGuestStatus::Active)
+        ->and($guest->fresh()->ready_at?->equalTo($readyAt))->toBeTrue();
 });
 
 test('table session guest statuses include current and future join states', function () {

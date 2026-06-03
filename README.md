@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest item editing, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -310,7 +310,7 @@ Guest-created sessions can display the cached branch menu for active guests and 
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
 
-The table stores `guest_name`, a random `guest_token`, `status`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
+The table stores `guest_name`, a random `guest_token`, `status`, optional `ready_at`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
 
 Guests are not user accounts and do not need registration. The public QR entry flow queues the `guest_token` in a browser cookie so the guest can be recognized later without exposing internal IDs.
 
@@ -324,7 +324,7 @@ Supported guest statuses are:
 - `left`
 - `removed`
 
-The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name`.
+The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name` and show whether each guest is ready.
 
 ## Table Session Join Requests
 
@@ -375,6 +375,8 @@ The shared basket is a separate Livewire polling block. It groups active guests 
 An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, and draft status. Guests cannot edit or delete another guest's position.
 
 All active guests see the same grouped table cart information. Only the current guest gets edit and delete controls for their own positions.
+
+Each active guest can press `Я готов` in the shared cart to set `table_session_guests.ready_at`, or press `Снять готовность` to clear it. The guest list and shared cart show `Готов` / `Не готов`, plus the cart shows how many active guests are ready. This step does not send the draft to the waiter yet; the future send action should warn when not all active guests are ready and should clear `ready_at` after sending.
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
 
@@ -452,7 +454,7 @@ Implemented:
 - Service point schema and CRUD UI stored in `service_points`.
 - Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display with modifier selection, shared table cart UI, and guest draft item creation/editing on the active public QR table page.
+- Cached guest menu display with modifier selection, shared table cart UI, guest ready status, and guest draft item creation/editing on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - Shared draft order schema and guest-owned draft item creation/editing stored in `draft_orders` and `draft_order_items`.

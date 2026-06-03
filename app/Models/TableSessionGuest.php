@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'joined_at', 'left_at', 'metadata'])]
+#[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'ready_at', 'joined_at', 'left_at', 'metadata'])]
 class TableSessionGuest extends Model
 {
     /** @use HasFactory<TableSessionGuestFactory> */
@@ -30,6 +30,7 @@ class TableSessionGuest extends Model
     {
         return [
             'status' => TableSessionGuestStatus::class,
+            'ready_at' => 'datetime',
             'joined_at' => 'datetime',
             'left_at' => 'datetime',
             'metadata' => 'array',

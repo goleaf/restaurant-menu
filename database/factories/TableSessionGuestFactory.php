@@ -25,6 +25,7 @@ class TableSessionGuestFactory extends Factory
             'guest_name' => fake()->firstName(),
             'guest_token' => Str::random(64),
             'status' => TableSessionGuestStatus::Active,
+            'ready_at' => null,
             'joined_at' => now(),
             'left_at' => null,
             'metadata' => [],

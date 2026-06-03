@@ -340,11 +340,17 @@ test('draft order component shows shared items and guest totals through polling 
         ->assertSeeText('Margherita')
         ->assertSeeText('Water')
         ->assertSeeText('Large')
+        ->assertSeeText('Не готов')
         ->assertSeeText('Изменить')
+        ->assertSet('activeGuestCount', 2)
+        ->assertSet('readyGuestCount', 0)
+        ->assertSet('allGuestsReady', false)
         ->assertSet('guestSections.0.guest_name', 'Ana')
+        ->assertSet('guestSections.0.is_ready', false)
         ->assertSet('guestSections.0.items.0.item_name', 'Water')
         ->assertSet('guestSections.0.items.0.can_edit', true)
         ->assertSet('guestSections.1.guest_name', 'Zara')
+        ->assertSet('guestSections.1.is_ready', false)
         ->assertSet('guestSections.1.items.0.item_name', 'Margherita')
         ->assertSet('guestSections.1.items.0.can_edit', false)
         ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
@@ -365,6 +371,59 @@ test('draft order component shows shared items and guest totals through polling 
         ->assertSet('guestSections.1.items.0.can_edit', true)
         ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
         ->assertSeeText('22.50 EUR');
+});
+
+test('draft order component lets active guests toggle ready status', function () {
+    [$qrCode, , , $tableSession, $ana] = createGuestMenuDisplayContext();
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+            'ready_at' => now()->subMinute(),
+        ]);
+
+    $component = Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+        ])
+        ->assertSeeText('Я готов')
+        ->assertSeeText('Не все готовы')
+        ->assertSet('activeGuestCount', 2)
+        ->assertSet('readyGuestCount', 1)
+        ->assertSet('allGuestsReady', false)
+        ->assertSet('currentGuestReady', false)
+        ->assertSet('guestSections.0.guest_name', 'Ana')
+        ->assertSet('guestSections.0.is_ready', false)
+        ->assertSet('guestSections.1.guest_name', 'Zara')
+        ->assertSet('guestSections.1.is_ready', true)
+        ->call('toggleReadyStatus')
+        ->assertHasNoErrors()
+        ->assertSeeText('Вы отметили готовность.')
+        ->assertSeeText('Снять готовность')
+        ->assertSeeText('Все готовы')
+        ->assertSet('readyGuestCount', 2)
+        ->assertSet('allGuestsReady', true)
+        ->assertSet('currentGuestReady', true);
+
+    expect($ana->fresh()->ready_at)->not->toBeNull()
+        ->and($zara->fresh()->ready_at)->not->toBeNull();
+
+    $component
+        ->call('toggleReadyStatus')
+        ->assertHasNoErrors()
+        ->assertSeeText('Готовность снята.')
+        ->assertSeeText('Я готов')
+        ->assertSeeText('Не все готовы')
+        ->assertSet('readyGuestCount', 1)
+        ->assertSet('allGuestsReady', false)
+        ->assertSet('currentGuestReady', false);
+
+    expect($ana->fresh()->ready_at)->toBeNull()
+        ->and($zara->fresh()->ready_at)->not->toBeNull();
 });
 
 test('draft order component lets active guest edit own draft item modifiers quantity and comment', function () {

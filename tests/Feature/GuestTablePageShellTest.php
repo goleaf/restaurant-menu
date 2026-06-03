@@ -41,6 +41,9 @@ test('active guest sees the guest table page shell', function () {
 
 test('guest list is an isolated polling block with readable statuses', function () {
     [, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
+
+    $activeGuest->update(['ready_at' => now()]);
+
     TableSessionGuest::factory()
         ->for($tableSession)
         ->create([
@@ -63,7 +66,11 @@ test('guest list is an isolated polling block with readable statuses', function 
         ->assertSeeText('За столом')
         ->assertSeeText('Вы')
         ->assertSeeText('Ушёл')
-        ->assertSeeText('Удалён');
+        ->assertSeeText('Удалён')
+        ->assertSeeText('Готов')
+        ->assertSeeText('Не готов')
+        ->assertSet('guests.0.is_ready', true)
+        ->assertSet('guests.1.is_ready', false);
 
     expect(collect($component->get('guests'))->pluck('guest_name')->all())
         ->toBe(['Ana', 'Mila', 'Zane']);

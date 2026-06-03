@@ -51,7 +51,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
-- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, and an isolated shared table cart polling block grouped by guest.
+- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, and an isolated shared table cart polling block grouped by guest.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -311,7 +311,7 @@ Table session guest:
 
 - Stored in `table_session_guests`.
 - Belongs to one table session through `table_session_id`.
-- Stores `guest_name`, `guest_token`, `status`, `joined_at`, optional `left_at`, optional JSON `metadata`, and timestamps.
+- Stores `guest_name`, `guest_token`, `status`, optional `ready_at`, `joined_at`, optional `left_at`, optional JSON `metadata`, and timestamps.
 - `guest_token` is a random 64-character token and is unique.
 - Guests are not `users` records and do not require registration.
 - The public QR flow stores `guest_token` in a browser cookie named `guest_token_{hash}`.
@@ -325,9 +325,10 @@ Table session guest:
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
 - `TableSessionGuest::draftOrderItems()` exposes draft items owned by the guest.
+- `ready_at` marks that an active guest is ready; `null` means not ready.
 - Active guests can approve or reject new guest join requests from the public QR UI.
 - `App\Livewire\PublicQr\TableGuests` renders the guest list for active guests and polls only that block.
-- The guest list shows guest names alphabetically and human-readable guest statuses.
+- The guest list shows guest names alphabetically, human-readable guest statuses, and ready/not-ready labels.
 
 Draft order:
 
@@ -617,6 +618,7 @@ Local media storage:
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
 - Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with modifier selection, and the shared draft basket.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
+- The guest list shows each guest's ready/not-ready state from `table_session_guests.ready_at`.
 - The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
 - The shared draft basket in the shell is rendered by isolated `App\Livewire\PublicQr\DraftOrder` and uses `wire:poll.1s="refreshDraft"` so only the basket block refreshes.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
@@ -662,10 +664,13 @@ Local media storage:
 - The component is isolated and uses `wire:poll.1s="refreshDraft"`.
 - The component eager-loads draft items with their guest records before rendering; Blade does not query the database.
 - The basket groups guests alphabetically by `guest_name` in `guestSections`.
-- Each guest section shows that guest's item count, positions, line prices, selected modifier names, optional comments, quantity, and guest total.
+- Each guest section shows that guest's ready/not-ready state, item count, positions, line prices, selected modifier names, optional comments, quantity, and guest total.
 - The basket shows per-guest totals sorted alphabetically by `guest_name`.
 - The basket shows the total amount for the table.
 - All active guests see the same grouped cart information.
+- The basket shows ready guest count versus active guest count and whether all active guests are ready.
+- The current active guest can toggle readiness through `ToggleTableSessionGuestReadyAction`, which sets or clears `table_session_guests.ready_at`.
+- The future send-to-waiter action should warn if not all active guests have `ready_at` set and should clear readiness after sending.
 - The basket receives the public QR token so edit/delete actions can recheck the saved browser guest token.
 - Active guests can edit only their own positions from the basket.
 - Editing own positions supports quantity, comment, and currently available modifier selections.
@@ -792,6 +797,7 @@ The next expected product step may be sending the shared draft to waiter review,
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Keep the shared table cart grouped by guest alphabetically and keep draft cart reads live from the database.
+- Keep guest readiness on `table_session_guests.ready_at`; do not create a separate readiness table unless a later prompt explicitly asks for it.
 - Do not break guest menu language fallback: missing translations must show base category/item text.
 - Do not switch guest menu cache away from explicit database cache or remove language from guest menu cache keys.
 - Do not let users without `change_prices` change menu item prices.

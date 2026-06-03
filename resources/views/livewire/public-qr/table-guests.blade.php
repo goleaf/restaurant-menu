@@ -32,15 +32,25 @@
                         @endif
                     </div>
 
-                    <p @class([
-                        'mt-1 inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
-                        'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100' => $guest['status_tone'] === 'success',
-                        'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-100' => $guest['status_tone'] === 'warning',
-                        'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-100' => $guest['status_tone'] === 'danger',
-                        'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => $guest['status_tone'] === 'muted',
-                    ])>
-                        {{ $guest['status_label'] }}
-                    </p>
+                    <div class="mt-1 flex flex-wrap gap-1.5">
+                        <span @class([
+                            'inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
+                            'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-100' => $guest['status_tone'] === 'success',
+                            'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-100' => $guest['status_tone'] === 'warning',
+                            'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-100' => $guest['status_tone'] === 'danger',
+                            'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => $guest['status_tone'] === 'muted',
+                        ])>
+                            {{ $guest['status_label'] }}
+                        </span>
+
+                        <span @class([
+                            'inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
+                            'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100' => $guest['is_ready'],
+                            'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => ! $guest['is_ready'],
+                        ])>
+                            {{ $guest['ready_label'] }}
+                        </span>
+                    </div>
                 </div>
             </article>
         @empty

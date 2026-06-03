@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 050 - Guest Ready Status
+
+- Added `ready_at` to `table_session_guests` so each active guest can mark or clear readiness.
+- Added a backend action for toggling readiness with active guest and open table-session checks.
+- Added a `Я готов` / `Снять готовность` action to the isolated shared cart block.
+- The guest list and shared cart now show `Готов` / `Не готов`, and the cart shows ready guest count versus active guest count.
+- Kept this step readiness-only: no waiter submission action, final orders, kitchen/bar flow, payments, Redis, WebSocket, S3, Docker, or paid integrations.
+
 ### Prompt 049 - Shared Table Cart UI
 
 - Reworked the isolated public QR basket into a shared table cart grouped by active guests alphabetically.

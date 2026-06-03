@@ -16,7 +16,7 @@ class TableGuests extends Component
     public int $currentGuestId = 0;
 
     /**
-     * @var list<array{id: int, guest_name: string, status: string, status_label: string, status_tone: string, is_current: bool}>
+     * @var list<array{id: int, guest_name: string, status: string, status_label: string, status_tone: string, is_ready: bool, ready_label: string, is_current: bool}>
      */
     public array $guests = [];
 
@@ -36,6 +36,7 @@ class TableGuests extends Component
                 'table_session_id',
                 'guest_name',
                 'status',
+                'ready_at',
                 'joined_at',
             ])
             ->where('table_session_id', $this->tableSessionId)
@@ -49,6 +50,8 @@ class TableGuests extends Component
                 'status' => $guest->status->value,
                 'status_label' => $this->statusLabel($guest->status),
                 'status_tone' => $this->statusTone($guest->status),
+                'is_ready' => $guest->ready_at !== null,
+                'ready_label' => $guest->ready_at === null ? __('Не готов') : __('Готов'),
                 'is_current' => $guest->id === $this->currentGuestId,
             ])
             ->all();

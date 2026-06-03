@@ -5,6 +5,7 @@ namespace App\Livewire\PublicQr;
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
+use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\DraftOrder as DraftOrderModel;
@@ -34,7 +35,7 @@ class DraftOrder extends Component
     public array $items = [];
 
     /**
-     * @var list<array{guest_id: int, guest_name: string, total: string, is_current_guest: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
+     * @var list<array{guest_id: int, guest_name: string, total: string, is_current_guest: bool, is_ready: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
      */
     public array $guestSections = [];
 
@@ -48,6 +49,16 @@ class DraftOrder extends Component
     public int $itemCount = 0;
 
     public bool $canEditDraft = true;
+
+    public bool $canToggleReadyStatus = false;
+
+    public bool $currentGuestReady = false;
+
+    public bool $allGuestsReady = false;
+
+    public int $activeGuestCount = 0;
+
+    public int $readyGuestCount = 0;
 
     public string $feedbackMessage = '';
 
@@ -94,13 +105,27 @@ class DraftOrder extends Component
         $totalCents = 0;
 
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
+        $this->activeGuestCount = $guests->count();
+        $this->readyGuestCount = $guests->filter(fn (TableSessionGuest $guest): bool => $guest->ready_at !== null)->count();
+        $this->allGuestsReady = $this->activeGuestCount > 0 && $this->readyGuestCount === $this->activeGuestCount;
+        $this->currentGuestReady = false;
+        $this->canToggleReadyStatus = false;
 
         $guests->each(function (TableSessionGuest $guest) use (&$guestSections): void {
+            $isCurrentGuest = $guest->id === $this->currentGuestId;
+            $isReady = $guest->ready_at !== null;
+
+            if ($isCurrentGuest) {
+                $this->currentGuestReady = $isReady;
+                $this->canToggleReadyStatus = $this->publicToken !== '' && $this->canEditDraft;
+            }
+
             $guestSections[$guest->id] = [
                 'guest_id' => $guest->id,
                 'guest_name' => $guest->guest_name,
                 'total_cents' => 0,
-                'is_current_guest' => $guest->id === $this->currentGuestId,
+                'is_current_guest' => $isCurrentGuest,
+                'is_ready' => $isReady,
                 'items' => [],
             ];
         });
@@ -119,6 +144,7 @@ class DraftOrder extends Component
                         'guest_name' => $guestName,
                         'total_cents' => 0,
                         'is_current_guest' => $guestId === $this->currentGuestId,
+                        'is_ready' => false,
                         'items' => [],
                     ];
                 }
@@ -156,6 +182,7 @@ class DraftOrder extends Component
                 'guest_name' => $guestSection['guest_name'],
                 'total' => self::centsToDecimal($guestSection['total_cents']),
                 'is_current_guest' => $guestSection['is_current_guest'],
+                'is_ready' => $guestSection['is_ready'],
                 'items' => $guestSection['items'],
             ])
             ->values()
@@ -171,6 +198,34 @@ class DraftOrder extends Component
 
         $this->totalAmount = self::centsToDecimal($totalCents);
         $this->itemCount = count($this->items);
+    }
+
+    public function toggleReadyStatus(): void
+    {
+        $this->resetValidation();
+        $this->feedbackMessage = '';
+
+        $guest = $this->currentActiveGuest();
+
+        if (! $guest instanceof TableSessionGuest) {
+            $this->addError('ready_status', __('Только активный гость за этим столом может менять готовность.'));
+
+            return;
+        }
+
+        try {
+            $guest = app(ToggleTableSessionGuestReadyAction::class)->handle($guest);
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->feedbackMessage = $guest->ready_at === null
+            ? __('Готовность снята.')
+            : __('Вы отметили готовность.');
+
+        $this->refreshDraft();
     }
 
     public function editItem(int $itemId): void
@@ -363,6 +418,7 @@ class DraftOrder extends Component
                 'table_session_id',
                 'guest_name',
                 'status',
+                'ready_at',
             ])
             ->where('table_session_id', $this->tableSessionId)
             ->where('status', TableSessionGuestStatus::Active->value)
@@ -429,6 +485,7 @@ class DraftOrder extends Component
                 'guest_name',
                 'guest_token',
                 'status',
+                'ready_at',
                 'joined_at',
                 'left_at',
             ])

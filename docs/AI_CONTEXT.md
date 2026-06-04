@@ -86,6 +86,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Livewire guest polling optimization: the active public QR table page now polls guests, notifications, join requests, order statuses, draft positions, and draft totals as separate visible isolated components using the branch settings polling interval.
 - QR and guest session security hardening: inactive service points are rejected by guest entry, invite, join-request, draft item, and send-to-waiter backend paths; expired join requests are marked expired during guest restore/polling; disabled QR codes keep a public error state.
 - Guest error pages for public QR/session problems: QR not found, QR disabled/revoked, inactive service point, closed table session, rejected/removed/left guest entry, stale/closed invite links, and inactive restaurant subscription are shown through a mobile-first Blade component with clear text and safe return actions.
+- Soft deletes for important restaurant/menu entities: organizations, brands, branches, area nodes, service points, menus, menu categories, and menu items. Normal lists hide archived rows, while historical order/draft/kitchen links can still load archived context where needed.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -124,21 +125,29 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - `role_user`
 - `permission_user_overrides`
 - `organizations`
+  - Soft delete through `deleted_at`.
 - `organization_subscriptions`
 - `organization_users`
 - `brands`
+  - Soft delete through `deleted_at`.
 - `branches`
+  - Soft delete through `deleted_at`.
 - `menus`
+  - Soft delete through `deleted_at`.
 - `menu_categories`
+  - Soft delete through `deleted_at`.
 - `menu_category_translations`
 - `menu_items`
+  - Soft delete through `deleted_at`.
 - `menu_item_translations`
 - `kitchen_departments`
 - `modifier_groups`
 - `modifier_options`
 - `menu_item_modifier_groups`
 - `area_nodes`
+  - Soft delete through `deleted_at`.
 - `service_points`
+  - Soft delete through `deleted_at`.
 - `table_sessions`
 - `table_session_guests`
 - `table_session_join_requests`
@@ -172,12 +181,14 @@ Organization:
 - New organizations created through `CreateOrganizationAction` receive a default active subscription.
 - If an organization subscription is explicitly inactive, regular users cannot access that organization workspace; superadmins bypass this so they can reactivate it.
 - Stores optional `logo_path` for a locally stored logo.
+- Supports soft delete through `deleted_at`; ordinary organization lists hide soft-deleted organizations.
 
 Brand:
 
 - Belongs to an organization.
 - Has many branches.
 - Stores optional `logo_path` for a locally stored logo.
+- Supports soft delete through `deleted_at`; its organization relationship can still load an archived organization for historical context.
 
 Branch:
 
@@ -195,6 +206,7 @@ Branch:
 - New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
 - The branch list UI includes a `Настроить ресторан` setup wizard. It prepares zone, service point, and active QR counts in `App\Livewire\Organizations\Brands\Branches\Index` using Eloquent counts/eager loading and links only to existing routes.
 - The setup wizard steps are `Создать филиал`, `Добавить зоны`, `Добавить столы`, `Сгенерировать QR`, `Напечатать QR`, and `Открыть гостевое меню`.
+- Supports soft delete through `deleted_at`; branch links from orders, menus, areas, and service points can still load archived branch context when needed.
 
 Restaurant onboarding wizard:
 
@@ -217,6 +229,8 @@ Menu:
 - Has many categories and items.
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, and delete menus.
+- Supports soft delete through `deleted_at`.
+- Soft deleting a menu soft-deletes its categories, which soft-delete their child categories and menu items. The visible UI hides them, but the rows remain available through `withTrashed()` for history-safe relationships.
 - Active guests see the current branch's first active menu on the public QR table page.
 - Guest menu payloads are cached through the explicit `database` cache store with the key `guest-menu:branch:{branch_id}:language:{language_code}`.
 - `GetGuestMenuForBranchAction` builds and caches the guest menu payload for five minutes.
@@ -238,6 +252,8 @@ Menu category:
 - Managed from the branch menu page guarded by `manage_menu`.
 - The menu admin UI can create, edit, sort, activate/deactivate, and delete categories.
 - Category image paths still exist in the schema, but category upload UI is not implemented yet.
+- Supports soft delete through `deleted_at`.
+- Soft deleting a category soft-deletes child categories and menu items. Translations remain attached to the archived base category.
 
 Menu item:
 
@@ -264,6 +280,8 @@ Menu item:
 - Translation support exists for guest display, but a full admin editor for translations is not implemented yet.
 - Modifier assignment exists in admin CRUD and the guest UI can configure available modifiers and persist configured selections into `draft_order_items`.
 - Changing the dish department assignment clears the branch guest-menu database cache through `MenuItemObserver`.
+- Supports soft delete through `deleted_at`; normal menu/admin/guest queries hide deleted dishes.
+- Draft, order, and kitchen ticket item relationships to `menu_items` use archived context where needed, while confirmed `order_items` remain readable from stored snapshots even if the source dish is soft-deleted.
 
 Kitchen department:
 
@@ -1257,7 +1275,7 @@ Local media storage:
 - The page eager-loads categories, items, item category labels, item kitchen department labels, item modifier groups, modifier options, modifier item counts, kitchen department item counts, and menu counts; Blade must not query the database.
 - Price fields are only shown and applied for users with `change_prices`.
 - Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
-- Deleting dishes, categories, or menus removes related local dish photos.
+- Deleting dishes, categories, or menus removes related local dish photos and soft-deletes the database rows so ordinary lists hide them.
 - Dish price changes, dish availability changes, and dish deletion create `audit_logs` rows through `MenuItemObserver`.
 - Menu/category/item/translation/modifier model observers forget guest menu cache after menu changes.
 - The branch list shows a `Menu` action to users with `manage_menu` and a `Stop-list` action to users with `change_availability` only.
@@ -1377,7 +1395,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, and Prompt 085 QR/guest session hardening intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, and Prompt 087 important-entity soft deletes intact during future feature work.
 
 ## Do Not Break
 
@@ -1385,6 +1403,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not add unrelated future features.
 - Do not add tariff limits, Stripe, PayPal, webhooks, online billing, paid billing providers, external subscription services, or superadmin impersonation unless a future prompt explicitly asks for that exact step.
 - Do not delete organization data, restaurants, QR codes, orders, payments, or audit logs when a subscription is deactivated; it is an access/status toggle only.
+- Do not physically delete organizations, brands, branches, area nodes, service points, menus, menu categories, or menu items through ordinary UI actions; these important entities use soft deletes.
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
@@ -1443,6 +1462,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not duplicate the full kitchen/bar ticket UI; keep shared department screen logic where practical.
 - Do not switch kitchen or bar screens away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
+- Do not require a live, non-deleted menu item for old confirmed orders to display; deleted dishes must remain visible in old orders through `order_items` snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.
 - Do not let the branch menu admin save a blank dish department as `null`; blank means the default `kitchen` department.

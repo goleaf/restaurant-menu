@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 087 - Add Soft Deletes
+
+- Added soft-delete columns and indexes for organizations, brands, branches, menus, menu categories, and menu items, while preserving existing soft-delete support on area nodes and service points.
+- Enabled `SoftDeletes` on the important organization/brand/branch/menu models and kept historical relationships readable with `withTrashed()` where order, draft, kitchen, or route context may reference archived records.
+- Replaced hard-delete menu/category cascade behavior with soft-delete cascade behavior so ordinary admin and guest lists hide removed menus, categories, and dishes without physically removing rows.
+- Added focused regression coverage proving old confirmed order snapshots remain readable after soft-deleting the source organization, brand, branch, area, service point, menu, category, and dish.
+
 ### Prompt 086 - Guest Error Pages
 
 - Added a dedicated mobile-first guest error panel for public QR and guest-session problems.

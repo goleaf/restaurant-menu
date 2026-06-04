@@ -22,6 +22,7 @@ test('menu tables expose the required columns', function () {
             'sort_order',
             'created_at',
             'updated_at',
+            'deleted_at',
         ]))->toBeTrue()
         ->and(Schema::hasTable('menu_categories'))->toBeTrue()
         ->and(Schema::hasColumns('menu_categories', [
@@ -36,6 +37,7 @@ test('menu tables expose the required columns', function () {
             'is_active',
             'created_at',
             'updated_at',
+            'deleted_at',
         ]))->toBeTrue()
         ->and(Schema::hasTable('menu_items'))->toBeTrue()
         ->and(Schema::hasColumns('menu_items', [
@@ -54,6 +56,7 @@ test('menu tables expose the required columns', function () {
             'sort_order',
             'created_at',
             'updated_at',
+            'deleted_at',
         ]))->toBeTrue()
         ->and(Schema::hasTable('kitchen_departments'))->toBeTrue()
         ->and(Schema::hasColumns('kitchen_departments', [
@@ -227,10 +230,10 @@ test('menu items can be assigned reusable branch modifier groups with options', 
         ->and($option->is_available)->toBeTrue();
 });
 
-test('deleting a menu removes its categories and items', function () {
+test('soft deleting a menu hides its categories and items from normal queries', function () {
     $menu = Menu::factory()->create();
     $category = MenuCategory::factory()->for($menu)->create();
-    MenuItem::factory()
+    $translatedItem = MenuItem::factory()
         ->for($menu)
         ->for($category, 'category')
         ->has(MenuItemTranslation::factory()->state(['language_code' => 'lt']), 'translations')
@@ -238,7 +241,7 @@ test('deleting a menu removes its categories and items', function () {
     MenuCategoryTranslation::factory()
         ->for($category, 'category')
         ->create(['language_code' => 'lt']);
-    MenuItem::factory()
+    $item = MenuItem::factory()
         ->for($menu)
         ->for($category, 'category')
         ->create();
@@ -248,6 +251,10 @@ test('deleting a menu removes its categories and items', function () {
     expect(Menu::query()->exists())->toBeFalse()
         ->and(MenuCategory::query()->exists())->toBeFalse()
         ->and(MenuItem::query()->exists())->toBeFalse()
-        ->and(MenuCategoryTranslation::query()->exists())->toBeFalse()
-        ->and(MenuItemTranslation::query()->exists())->toBeFalse();
+        ->and(Menu::withTrashed()->findOrFail($menu->id)->trashed())->toBeTrue()
+        ->and(MenuCategory::withTrashed()->findOrFail($category->id)->trashed())->toBeTrue()
+        ->and(MenuItem::withTrashed()->findOrFail($translatedItem->id)->trashed())->toBeTrue()
+        ->and(MenuItem::withTrashed()->findOrFail($item->id)->trashed())->toBeTrue()
+        ->and(MenuCategoryTranslation::query()->exists())->toBeTrue()
+        ->and(MenuItemTranslation::query()->exists())->toBeTrue();
 });

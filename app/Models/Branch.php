@@ -10,12 +10,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['organization_id', 'brand_id', 'name', 'logo_path', 'address', 'city', 'country', 'timezone', 'currency', 'is_active'])]
 class Branch extends Model
 {
     /** @use HasFactory<BranchFactory> */
-    use HasFactory, HasLocalLogo;
+    use HasFactory, HasLocalLogo, SoftDeletes;
 
     /**
      * @return array<string, string>
@@ -32,7 +33,7 @@ class Branch extends Model
      */
     public function organization(): BelongsTo
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class)->withTrashed();
     }
 
     /**
@@ -40,7 +41,7 @@ class Branch extends Model
      */
     public function brand(): BelongsTo
     {
-        return $this->belongsTo(Brand::class);
+        return $this->belongsTo(Brand::class)->withTrashed();
     }
 
     /**

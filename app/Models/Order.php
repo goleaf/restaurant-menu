@@ -43,7 +43,7 @@ class Order extends Model
      */
     public function branch(): BelongsTo
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class)->withTrashed();
     }
 
     /**
@@ -51,7 +51,7 @@ class Order extends Model
      */
     public function servicePoint(): BelongsTo
     {
-        return $this->belongsTo(ServicePoint::class);
+        return $this->belongsTo(ServicePoint::class)->withTrashed();
     }
 
     /**

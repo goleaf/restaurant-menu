@@ -9,12 +9,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[Fillable(['branch_id', 'name', 'status', 'sort_order'])]
 class Menu extends Model
 {
     /** @use HasFactory<MenuFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * @var array<string, mixed>
@@ -40,7 +41,7 @@ class Menu extends Model
      */
     public function branch(): BelongsTo
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class)->withTrashed();
     }
 
     /**

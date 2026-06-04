@@ -29,6 +29,8 @@ class MenuCategoryObserver
      */
     public function deleted(MenuCategory $menuCategory): void
     {
+        $this->softDeleteChildren($menuCategory);
+        $this->softDeleteItems($menuCategory);
         $this->forgetGuestMenu($menuCategory);
     }
 
@@ -73,5 +75,31 @@ class MenuCategoryObserver
         if (is_numeric($branchId)) {
             GetGuestMenuForBranchAction::forgetForBranch((int) $branchId);
         }
+    }
+
+    private function softDeleteChildren(MenuCategory $menuCategory): void
+    {
+        if ($menuCategory->isForceDeleting()) {
+            return;
+        }
+
+        $menuCategory->children()
+            ->select(['id', 'menu_id', 'parent_id'])
+            ->get()
+            ->each
+            ->delete();
+    }
+
+    private function softDeleteItems(MenuCategory $menuCategory): void
+    {
+        if ($menuCategory->isForceDeleting()) {
+            return;
+        }
+
+        $menuCategory->items()
+            ->select(['id', 'menu_id', 'category_id'])
+            ->get()
+            ->each
+            ->delete();
     }
 }

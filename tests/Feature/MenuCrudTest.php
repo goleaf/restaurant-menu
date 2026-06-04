@@ -436,7 +436,8 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->call('deleteItem', $firstItem->id)
         ->assertHasNoErrors();
 
-    expect(MenuItem::query()->whereKey($firstItem->id)->exists())->toBeFalse();
+    expect(MenuItem::query()->whereKey($firstItem->id)->exists())->toBeFalse()
+        ->and(MenuItem::withTrashed()->findOrFail($firstItem->id)->trashed())->toBeTrue();
     Storage::disk('public')->assertMissing($firstItem->image);
 
     Livewire::actingAs($manager)
@@ -445,7 +446,9 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->assertHasNoErrors();
 
     expect(MenuCategory::query()->whereKey($category->id)->exists())->toBeFalse()
-        ->and(MenuItem::query()->whereKey($secondItem->id)->exists())->toBeFalse();
+        ->and(MenuItem::query()->whereKey($secondItem->id)->exists())->toBeFalse()
+        ->and(MenuCategory::withTrashed()->findOrFail($category->id)->trashed())->toBeTrue()
+        ->and(MenuItem::withTrashed()->findOrFail($secondItem->id)->trashed())->toBeTrue();
     Storage::disk('public')->assertMissing($secondItem->image);
 
     $remainingCategory = MenuCategory::factory()->for($menu)->create(['name' => 'Remaining Category']);
@@ -465,7 +468,10 @@ test('manager can delete dishes categories and menus while cleaning local dish p
 
     expect(Menu::query()->whereKey($menu->id)->exists())->toBeFalse()
         ->and(MenuCategory::query()->whereKey($remainingCategory->id)->exists())->toBeFalse()
-        ->and(MenuItem::query()->whereKey($remainingItem->id)->exists())->toBeFalse();
+        ->and(MenuItem::query()->whereKey($remainingItem->id)->exists())->toBeFalse()
+        ->and(Menu::withTrashed()->findOrFail($menu->id)->trashed())->toBeTrue()
+        ->and(MenuCategory::withTrashed()->findOrFail($remainingCategory->id)->trashed())->toBeTrue()
+        ->and(MenuItem::withTrashed()->findOrFail($remainingItem->id)->trashed())->toBeTrue();
     Storage::disk('public')->assertMissing($remainingItem->image);
 });
 

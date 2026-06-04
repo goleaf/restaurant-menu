@@ -52,7 +52,7 @@ class ServicePoint extends Model
      */
     public function branch(): BelongsTo
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class)->withTrashed();
     }
 
     /**
@@ -60,7 +60,7 @@ class ServicePoint extends Model
      */
     public function areaNode(): BelongsTo
     {
-        return $this->belongsTo(AreaNode::class);
+        return $this->belongsTo(AreaNode::class)->withTrashed();
     }
 
     /**

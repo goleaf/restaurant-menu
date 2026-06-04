@@ -330,6 +330,8 @@ Menu categories belong to one menu and can be nested with `parent_id`. They stor
 
 Menu items belong to one menu and one category. They can be assigned to one branch kitchen department through `kitchen_department_id`; when the admin leaves the selector on `Default kitchen`, the system stores the branch's default `kitchen` department. They store name, optional description, price, optional image path, optional weight, optional volume, optional calories, availability, and sort order.
 
+Organizations, brands, branches, area nodes, service points, menus, categories, and menu items use soft deletes. Normal admin and guest lists hide soft-deleted records, while historical orders keep working from immutable `order_items` snapshots such as dish name, guest name, selected modifiers, and prices. Deleting or renaming a live menu item does not rewrite old confirmed orders.
+
 Kitchen departments are stored per branch in `kitchen_departments`. Supported department types are `kitchen`, `bar`, `dessert`, `hookah`, and `custom`. New branches created through the backend action receive standard departments for kitchen, bar, dessert, and hookah; custom departments are created manually. Departments can be enabled or disabled, sorted, renamed, and assigned to dishes from the branch menu admin page. Typical routing is pizza to kitchen, coffee to bar, desserts to dessert, and hookah items to hookah.
 
 Menu modifiers are managed in the same branch menu admin page. A modifier group belongs to a branch and stores `name`, `is_required`, `min_select`, `max_select`, and `sort_order`. Modifier options belong to a modifier group and store `name`, `price_delta`, `is_available`, and `sort_order`. The `menu_item_modifier_groups` pivot assigns reusable branch modifier groups to dishes, so examples like pizza size, doneness, extra cheese, milk type, or syrup can be attached without duplicating group definitions.
@@ -897,6 +899,7 @@ Implemented:
 - CSV data exports for branch orders, payments, menu, and tables guarded by `export_data`.
 - Basic ru/en/lt localization foundation for admin profile language, branch-default guest language, guest language switching, and key UI strings.
 - Local branch currency settings with fixed supported currencies, readable price formatting, and no exchange rates or automatic conversion.
+- Soft deletes for organizations, brands, branches, area nodes, service points, menus, categories, and menu items, while old orders remain readable through stored snapshots.
 - Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - QR and guest session security hardening: unguessable QR/guest/invite tokens, expired join request blocking, inactive service point ordering checks, closed-session ordering blocks, and disabled QR public error handling.

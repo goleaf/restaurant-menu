@@ -42,6 +42,12 @@
                         </flux:sidebar.item>
                     @endif
 
+                    @if ($canAccessAuditLog ?? false)
+                        <flux:sidebar.item icon="shield-check" :href="route('restaurant.audit-log.index')" :current="request()->routeIs('restaurant.audit-log.*')" wire:navigate>
+                            {{ __('Audit log') }}
+                        </flux:sidebar.item>
+                    @endif
+
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
                             {{ __('Platform') }}

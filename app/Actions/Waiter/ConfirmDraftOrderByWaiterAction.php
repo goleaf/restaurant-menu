@@ -2,8 +2,10 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
@@ -23,6 +25,7 @@ class ConfirmDraftOrderByWaiterAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $confirmedBy): Order
@@ -106,6 +109,25 @@ class ConfirmDraftOrderByWaiterAction
                 metadata: [
                     'order_status' => OrderStatus::ConfirmedByWaiter->value,
                     'items_count' => $draftOrder->items->count(),
+                ],
+            );
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::OrderConfirmed,
+                entityType: 'order',
+                entityId: $order->id,
+                actorUser: $confirmedBy,
+                organizationId: $draftOrder->tableSession->branch?->organization_id,
+                branchId: $order->branch_id,
+                oldValues: [
+                    'draft_order_id' => $draftOrder->id,
+                    'draft_status' => $previousStatus,
+                ],
+                newValues: [
+                    'order_id' => $order->id,
+                    'order_status' => OrderStatus::ConfirmedByWaiter,
+                    'total_price' => $order->total_price,
+                    'currency' => $order->currency,
                 ],
             );
 

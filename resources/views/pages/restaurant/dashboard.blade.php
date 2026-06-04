@@ -67,6 +67,12 @@ new class extends Component
                         {{ __('Bar screen') }}
                     </flux:button>
                 @endif
+
+                @if ($canAccessAuditLog ?? false)
+                    <flux:button icon="shield-check" :href="route('restaurant.audit-log.index')" wire:navigate>
+                        {{ __('Audit log') }}
+                    </flux:button>
+                @endif
             </div>
         </div>
     </header>

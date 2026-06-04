@@ -2,7 +2,9 @@
 
 namespace App\Actions\Orders;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\AuditLogAction;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SystemPermission;
@@ -16,6 +18,7 @@ class ChangeOrderStatusAction
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     /**
@@ -48,6 +51,24 @@ class ChangeOrderStatusAction
                 metadata: ['source' => 'manual_status_change'] + $metadata,
             );
 
+            if ($newStatus === OrderStatus::Cancelled) {
+                $this->recordAuditLog->handle(
+                    action: AuditLogAction::OrderCancelled,
+                    entityType: 'order',
+                    entityId: $order->id,
+                    actorUser: $changedBy,
+                    organizationId: $order->branch?->organization_id,
+                    branchId: $order->branch_id,
+                    oldValues: [
+                        'status' => $previousStatus,
+                    ],
+                    newValues: [
+                        'status' => $newStatus,
+                        'reason' => $this->normalizeReason($reason),
+                    ],
+                );
+            }
+
             return $order->refresh();
         });
     }
@@ -63,6 +84,7 @@ class ChangeOrderStatusAction
                 'draft_order_id',
                 'status',
             ])
+            ->with(['branch:id,organization_id'])
             ->whereKey($order->id)
             ->firstOrFail();
     }

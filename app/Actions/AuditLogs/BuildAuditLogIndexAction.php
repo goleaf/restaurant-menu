@@ -1,0 +1,196 @@
+<?php
+
+namespace App\Actions\AuditLogs;
+
+use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\OrganizationUserStatus;
+use App\Enums\SystemPermission;
+use App\Models\AuditLog;
+use App\Models\Branch;
+use App\Models\Organization;
+use App\Models\OrganizationUser;
+use App\Models\Permission;
+use App\Models\User;
+use Illuminate\Support\Collection;
+
+class BuildAuditLogIndexAction
+{
+    public function __construct(
+        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+    ) {}
+
+    /**
+     * @return array{has_access: bool, logs: list<array<string, mixed>>, branch_count: int}
+     */
+    public function handle(User $user, int $limit = 100): array
+    {
+        $organizationIds = $this->accessibleOrganizationIds($user);
+        $branchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ViewAuditLog);
+
+        if (! $user->isSuperadmin() && $organizationIds->isEmpty()) {
+            return [
+                'has_access' => false,
+                'logs' => [],
+                'branch_count' => 0,
+            ];
+        }
+
+        $logs = AuditLog::query()
+            ->select([
+                'id',
+                'organization_id',
+                'branch_id',
+                'user_id',
+                'guest_id',
+                'guest_token',
+                'action',
+                'entity_type',
+                'entity_id',
+                'old_values',
+                'new_values',
+                'created_at',
+            ])
+            ->with([
+                'organization:id,name',
+                'branch:id,name',
+                'user:id,name,email',
+                'guest:id,guest_name',
+            ])
+            ->when(! $user->isSuperadmin(), function ($query) use ($organizationIds, $branchIds): void {
+                $query->where(function ($accessQuery) use ($organizationIds, $branchIds): void {
+                    if ($branchIds->isNotEmpty()) {
+                        $accessQuery->whereIn('branch_id', $branchIds);
+                    }
+
+                    $accessQuery->orWhere(function ($organizationQuery) use ($organizationIds): void {
+                        $organizationQuery
+                            ->whereNull('branch_id')
+                            ->whereIn('organization_id', $organizationIds);
+                    });
+                });
+            })
+            ->latest('created_at')
+            ->latest('id')
+            ->limit(max(1, min(200, $limit)))
+            ->get()
+            ->map(fn (AuditLog $auditLog): array => $this->row($auditLog))
+            ->all();
+
+        return [
+            'has_access' => true,
+            'logs' => $logs,
+            'branch_count' => $user->isSuperadmin()
+                ? Branch::query()->count()
+                : $branchIds->count(),
+        ];
+    }
+
+    public function userHasAccess(User $user): bool
+    {
+        return $user->isSuperadmin()
+            || $this->accessibleOrganizationIds($user)->isNotEmpty();
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    private function accessibleOrganizationIds(User $user): Collection
+    {
+        if ($user->isSuperadmin()) {
+            return Organization::query()
+                ->select(['id'])
+                ->orderBy('id')
+                ->pluck('id');
+        }
+
+        $permission = Permission::query()
+            ->select(['id', 'code'])
+            ->where('code', SystemPermission::ViewAuditLog->value)
+            ->first();
+
+        if (! $permission instanceof Permission) {
+            return collect();
+        }
+
+        $override = $user->permissionOverrides()
+            ->where('permissions.id', $permission->id)
+            ->first();
+
+        if ($override instanceof Permission && ! (bool) $override->pivot->enabled) {
+            return collect();
+        }
+
+        return OrganizationUser::query()
+            ->select(['id', 'organization_id', 'role_id'])
+            ->where('user_id', $user->id)
+            ->where('status', OrganizationUserStatus::Active->value)
+            ->when(! $override instanceof Permission, function ($query) use ($permission): void {
+                $query->whereHas('role.permissions', function ($permissionQuery) use ($permission): void {
+                    $permissionQuery
+                        ->where('permissions.id', $permission->id)
+                        ->where('permission_role.enabled', true);
+                });
+            })
+            ->orderBy('organization_id')
+            ->pluck('organization_id')
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function row(AuditLog $auditLog): array
+    {
+        return [
+            'id' => $auditLog->id,
+            'created_at' => $auditLog->created_at?->format('Y-m-d H:i:s'),
+            'action' => $auditLog->action->value,
+            'action_label' => $auditLog->action->label(),
+            'entity_type' => $auditLog->entity_type,
+            'entity_id' => $auditLog->entity_id,
+            'organization_name' => $auditLog->organization?->name,
+            'branch_name' => $auditLog->branch?->name,
+            'actor' => $auditLog->user?->name
+                ?? $auditLog->guest?->guest_name
+                ?? $auditLog->guest_token
+                ?? 'System',
+            'old_values' => $auditLog->old_values ?? [],
+            'new_values' => $auditLog->new_values ?? [],
+            'old_summary' => $this->valueSummary($auditLog->old_values ?? []),
+            'new_summary' => $this->valueSummary($auditLog->new_values ?? []),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    private function valueSummary(array $values): string
+    {
+        if ($values === []) {
+            return '—';
+        }
+
+        return collect($values)
+            ->map(fn (mixed $value, string $key): string => $key.': '.$this->displayValue($value))
+            ->implode('; ');
+    }
+
+    private function displayValue(mixed $value): string
+    {
+        if (is_bool($value)) {
+            return $value ? 'yes' : 'no';
+        }
+
+        if ($value === null) {
+            return 'empty';
+        }
+
+        if (is_array($value)) {
+            return json_encode($value, JSON_UNESCAPED_UNICODE) ?: '[]';
+        }
+
+        return (string) $value;
+    }
+}

@@ -2,9 +2,13 @@
 
 namespace App\Observers;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Enums\AuditLogAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class MenuItemObserver
 {
@@ -22,6 +26,7 @@ class MenuItemObserver
     public function updated(MenuItem $menuItem): void
     {
         $this->forgetGuestMenu($menuItem);
+        $this->recordAuditedChanges($menuItem);
     }
 
     /**
@@ -30,6 +35,7 @@ class MenuItemObserver
     public function deleted(MenuItem $menuItem): void
     {
         $this->forgetGuestMenu($menuItem);
+        $this->recordDeletion($menuItem);
     }
 
     /**
@@ -73,5 +79,101 @@ class MenuItemObserver
         if (is_numeric($branchId)) {
             GetGuestMenuForBranchAction::forgetForBranch((int) $branchId);
         }
+    }
+
+    private function recordAuditedChanges(MenuItem $menuItem): void
+    {
+        $context = $this->contextForMenuId($menuItem->menu_id);
+        $actor = $this->currentUser();
+
+        if ($menuItem->wasChanged('price')) {
+            app(RecordAuditLogAction::class)->handle(
+                action: AuditLogAction::MenuPriceChanged,
+                entityType: 'menu_item',
+                entityId: $menuItem->id,
+                actorUser: $actor,
+                organizationId: $context['organization_id'],
+                branchId: $context['branch_id'],
+                oldValues: [
+                    'name' => $menuItem->name,
+                    'price' => $menuItem->getOriginal('price'),
+                ],
+                newValues: [
+                    'name' => $menuItem->name,
+                    'price' => $menuItem->price,
+                ],
+            );
+        }
+
+        if ($menuItem->wasChanged('is_available')) {
+            app(RecordAuditLogAction::class)->handle(
+                action: AuditLogAction::MenuAvailabilityChanged,
+                entityType: 'menu_item',
+                entityId: $menuItem->id,
+                actorUser: $actor,
+                organizationId: $context['organization_id'],
+                branchId: $context['branch_id'],
+                oldValues: [
+                    'name' => $menuItem->name,
+                    'is_available' => (bool) $menuItem->getOriginal('is_available'),
+                ],
+                newValues: [
+                    'name' => $menuItem->name,
+                    'is_available' => (bool) $menuItem->is_available,
+                ],
+            );
+        }
+    }
+
+    private function recordDeletion(MenuItem $menuItem): void
+    {
+        $context = $this->contextForMenuId($menuItem->menu_id);
+
+        app(RecordAuditLogAction::class)->handle(
+            action: AuditLogAction::MenuItemDeleted,
+            entityType: 'menu_item',
+            entityId: $menuItem->id,
+            actorUser: $this->currentUser(),
+            organizationId: $context['organization_id'],
+            branchId: $context['branch_id'],
+            oldValues: [
+                'menu_id' => $menuItem->menu_id,
+                'category_id' => $menuItem->category_id,
+                'name' => $menuItem->name,
+                'price' => $menuItem->price,
+                'is_available' => (bool) $menuItem->is_available,
+            ],
+        );
+    }
+
+    /**
+     * @return array{organization_id: int|null, branch_id: int|null}
+     */
+    private function contextForMenuId(?int $menuId): array
+    {
+        if ($menuId === null) {
+            return [
+                'organization_id' => null,
+                'branch_id' => null,
+            ];
+        }
+
+        $menu = Menu::query()
+            ->select(['id', 'branch_id'])
+            ->with(['branch:id,organization_id'])
+            ->whereKey($menuId)
+            ->first();
+
+        return [
+            'organization_id' => $menu?->branch?->organization_id,
+            'branch_id' => $menu?->branch_id,
+        ];
+    }
+
+    private function currentUser(): ?User
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? $user : null;
     }
 }

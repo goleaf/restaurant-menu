@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 071 - Audit Logs
+
+- Added `audit_logs` as a general control journal with actor user, optional guest/guest token, action, entity, old/new JSON values, and creation timestamp.
+- Added `AuditLogAction`, `AuditLog`, `RecordAuditLogAction`, and `BuildAuditLogIndexAction`.
+- Logged menu price changes, menu availability changes, dish deletion, service point moves, manual QR reissue, staff permission override changes, waiter order confirmation, order cancellation, manual payment recording, and table-session close.
+- Added `/restaurant/audit-log` as a simple Blade + Livewire viewer guarded by `view_audit_log`, with sidebar/dashboard navigation only for users who can access the audit log.
+- Verified multiple audit events and `view_audit_log` UI restrictions on SQLite without Redis, WebSockets, S3, Docker, or external logging services.
+
 ### Prompt 070 - Restaurant Dashboard
 
 - Added `BuildRestaurantDashboardAction` for a branch/restaurant operational dashboard backed by the SQLite database cache store.

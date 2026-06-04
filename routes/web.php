@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
@@ -108,6 +109,7 @@ Route::middleware(['auth'])
     ->name('restaurant.')
     ->group(function () {
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
+        Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
 
         Route::prefix('kitchen')
             ->name('kitchen.')

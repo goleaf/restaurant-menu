@@ -31,6 +31,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Active guest bill requests must use `table_sessions.status = payment_requested`, local service point status, database notifications, and Livewire polling only.
 - Manual payments must be offline staff-entered records only; no Stripe, PayPal, online acquiring, or external payment service is connected.
 - Basic analytics must stay lightweight, branch-scoped, and cached through the database cache store; no Redis, external BI service, or heavy refresh query loop.
+- Audit logs must stay local in SQLite and be visible only through `view_audit_log` access.
 
 ## What Is Already Done
 
@@ -69,6 +70,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
+- General audit logs with a `view_audit_log`-guarded viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -121,6 +123,7 @@ No menu translation admin editor, QR PDF generation, online payment provider, or
 - `kitchen_tickets`
 - `kitchen_ticket_items`
 - `order_status_logs`
+- `audit_logs`
 - `qr_codes`
 - `branch_users`
 - `branch_settings`
@@ -580,7 +583,19 @@ Order status log:
 - Stores `status_type`, `previous_status`, `new_status`, optional `reason`, optional JSON `metadata`, and `occurred_at`.
 - `CreateOrderStatusLogAction` is the shared append-only writer used by guest draft actions, waiter review actions, explicit kitchen/bar dispatch, and confirmed order status changes.
 - Branch, service point, table session, draft order, order, table session guest, and user models expose order status log relationships.
-- There is no audit UI yet.
+
+Audit log:
+
+- Stored in `audit_logs`.
+- This is the general control journal and is separate from `order_status_logs`.
+- Belongs optionally to organization, branch, actor user, and table session guest.
+- Stores optional `guest_token` for future guest-originated audit actions that do not have a guest row loaded.
+- Stores `action`, `entity_type`, `entity_id`, optional JSON `old_values`, optional JSON `new_values`, and `created_at`.
+- Current action enum values are `menu_price_changed`, `menu_availability_changed`, `menu_item_deleted`, `service_point_moved`, `qr_reissued`, `staff_permission_changed`, `order_confirmed`, `order_cancelled`, `table_session_closed`, and `payment_recorded`.
+- `RecordAuditLogAction` is the shared writer. It normalizes enum/date/model values before storing JSON snapshots.
+- `BuildAuditLogIndexAction` prepares the `/restaurant/audit-log` payload and resolves access through `view_audit_log`.
+- Superadmins can view all audit rows. Regular users see only branch rows and organization-level rows where they have `view_audit_log`.
+- Audit UI is intentionally simple and local; no external logging service, Redis, WebSockets, S3, or Docker is used.
 
 Table session join request:
 
@@ -731,6 +746,7 @@ Staff permission overrides:
 - Critical permissions include `manage_staff`, `manage_subscription`, `manage_settings`, and `export_data`.
 - Critical permission changes show a warning.
 - Users cannot edit their own permission overrides from the staff permission page.
+- Permission override changes create `staff_permission_changed` audit rows with the target staff user, permission code, previous state, and new state.
 
 Local media storage:
 
@@ -785,6 +801,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
+- `GET /restaurant/audit-log` -> `restaurant.audit-log.index`
 - `GET /restaurant/bar/dashboard` -> `restaurant.bar.dashboard`
 - `GET /restaurant/kitchen/dashboard` -> `restaurant.kitchen.dashboard`
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
@@ -795,6 +812,7 @@ Local media storage:
 ## Livewire Components
 
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
+- `App\Livewire\AuditLogs\Index`
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
 - `App\Livewire\Organizations\Staff\Permissions`
@@ -935,10 +953,24 @@ Local media storage:
 - Waiter/operational users without `view_reports` still see active tables, new waiter drafts, cooking orders, and ready positions.
 - Quick actions include menu, tables/service points, QR print, waiter screen, kitchen screen, and reports.
 - Quick actions link only when the user has matching access; unavailable actions are disabled instead of linking to forbidden routes.
+- The dashboard header and sidebar show an audit log link only when `BuildAuditLogIndexAction::userHasAccess()` allows the current user.
 - Dashboard data uses Laravel's explicit `database` cache store for a short operational snapshot and has a manual refresh button.
 - The dashboard does not poll every second; keep 1-second polling isolated to waiter/kitchen/bar/guest blocks that need it.
 - Cache is invalidated by observers on `orders`, `order_items`, `manual_payments`, `table_sessions`, `draft_orders`, `kitchen_tickets`, and `kitchen_ticket_items`.
 - Keep this dashboard shared-hosting friendly: SQLite, database cache, no Redis, no cache tags, no WebSockets, no external BI service.
+
+## Current Audit Log
+
+- Audit log route is `GET /restaurant/audit-log`.
+- Livewire component is `App\Livewire\AuditLogs\Index`.
+- Data is prepared by `App\Actions\AuditLogs\BuildAuditLogIndexAction`; Blade receives arrays and must not query the database.
+- Access requires `view_audit_log` in an active organization context. Active branch assignments limit branch-level audit visibility through the existing branch resolver.
+- Superadmins can view all audit rows.
+- Sidebar navigation and the restaurant dashboard header show `Audit log` only when the current user has audit access.
+- The viewer shows the latest local audit rows with time, actor, action label, entity, organization/branch, and short before/after summaries.
+- Logged event types currently include menu price changes, menu availability changes, dish deletion, service point moves, manual QR reissue, staff permission override changes, waiter order confirmation, order cancellation, manual payment recording, and table-session close.
+- The audit table is append-only at the application level for this stage; no delete UI exists.
+- Audit logs stay in SQLite and do not use external logging, Redis, WebSockets, S3, Docker, or paid services.
 
 ## Current Waiter Dashboard
 
@@ -972,6 +1004,7 @@ Local media storage:
 - Waiter table total includes already confirmed non-cancelled orders plus the current open draft, but does not double-count a latest draft that is already `converted_to_order`.
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
+- Waiter confirmation creates an `order_confirmed` audit row in addition to the detailed `order_status_logs` entry.
 - The table detail page uses the latest draft for review/confirm/send-to-kitchen actions, while older converted drafts remain available through order history.
 - The table detail page can send a confirmed order to kitchen/bar for users with `send_to_kitchen`. This creates `kitchen_tickets` grouped by department, changes the order to `sent_to_kitchen_bar`, and moves the service point status to `cooking`.
 - The table detail page shows dispatched kitchen/bar ticket items, ready count, served count, department names, modifiers, comments, and item status once an order has been sent to kitchen/bar.
@@ -979,6 +1012,9 @@ Local media storage:
 - The table detail page shows a manual payment summary for users with `view_payments`, `manage_payments`, or fixed `cashier` access.
 - The table detail page can record whole-table or per-guest manual payment for users with `manage_payments` or fixed `cashier` access.
 - The table detail page can close a fully paid session for payment managers/cashiers or manually close an unpaid session for users with `close_table_sessions`.
+- Manual payment recording creates a `payment_recorded` audit row.
+- Closing a table session creates a `table_session_closed` audit row.
+- Manual order cancellation through `ChangeOrderStatusAction` creates an `order_cancelled` audit row.
 - Closed sessions keep old order history but old guest cookies/invite links cannot add positions because guest draft actions refuse `closed` sessions.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
 - The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
@@ -1041,6 +1077,7 @@ Local media storage:
 - Price fields are only shown and applied for users with `change_prices`.
 - Availability switches and manual availability changes are only shown and applied for users with `change_availability`.
 - Deleting dishes, categories, or menus removes related local dish photos.
+- Dish price changes, dish availability changes, and dish deletion create `audit_logs` rows through `MenuItemObserver`.
 - Menu/category/item/translation/modifier model observers forget guest menu cache after menu changes.
 - The branch list shows a `Menu` action only to users with `manage_menu`.
 - This UI now updates the data shown by the public QR guest menu through cache invalidation.
@@ -1070,6 +1107,7 @@ Local media storage:
 - The UI eager-loads `areaNode`, `activeQrCode`, and `activeTableSession`; Blade must not query the database.
 - The QR panel displays `short_code`, status, and `/q/{public_token}` only. It must not expose service point IDs, branch IDs, area names, or table numbers in the QR URL.
 - The `Show QR` action opens the QR admin page for the active QR record.
+- Moving a service point to another area creates a `service_point_moved` audit row through `UpdateServicePointAction`; renaming without a move does not create that specific audit action.
 
 ## Current QR Admin Page
 
@@ -1082,6 +1120,7 @@ Local media storage:
 - `downloadQrImage` streams a local SVG file generated from the public URL.
 - `disableQr` changes active QR status to `disabled`.
 - `reissueQr` is intentionally dangerous, requires a warning confirmation, revokes the current active QR, and creates one new active QR.
+- Manual reissue creates a `qr_reissued` audit row with revoked QR short codes and the new active QR short code.
 - The page links to the print template for the same QR record.
 - Normal service point edit actions must not call reissue or create a new QR.
 
@@ -1148,6 +1187,8 @@ The next expected product step may be manual payment reporting/refinement, ticke
 - Do not let closed table sessions accept guest draft items, guest invite joins, or any new guest ordering.
 - Do not reissue, disable, revoke, or regenerate a permanent QR when closing a table session.
 - Do not delete or overwrite old orders, order items, manual payments, or order status logs when closing a table session.
+- Do not delete or overwrite `audit_logs`; they are the local control journal.
+- Do not show audit log rows to users without `view_audit_log` or superadmin access.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

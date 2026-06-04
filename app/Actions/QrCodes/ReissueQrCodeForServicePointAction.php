@@ -2,7 +2,10 @@
 
 namespace App\Actions\QrCodes;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\QrCodeStatus;
+use App\Models\Branch;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
@@ -12,6 +15,7 @@ class ReissueQrCodeForServicePointAction
 {
     public function __construct(
         private readonly GenerateQrCodeForServicePointAction $generateQrCode,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(QrCode $qrCode, User $revokedBy): QrCode
@@ -43,7 +47,11 @@ class ReissueQrCodeForServicePointAction
                 $activeQrCode->save();
             }
 
-            return $this->generateQrCode->handle($servicePoint, $revokedBy);
+            $newQrCode = $this->generateQrCode->handle($servicePoint, $revokedBy);
+
+            $this->recordReissue($servicePoint, $activeQrCodes, $newQrCode, $revokedBy);
+
+            return $newQrCode;
         });
     }
 
@@ -67,5 +75,41 @@ class ReissueQrCodeForServicePointAction
                 'updated_at',
             ])
             ->firstOrFail();
+    }
+
+    private function recordReissue(ServicePoint $servicePoint, iterable $revokedQrCodes, QrCode $newQrCode, User $revokedBy): void
+    {
+        $branch = Branch::query()
+            ->select(['id', 'organization_id'])
+            ->whereKey($servicePoint->branch_id)
+            ->first();
+
+        $revoked = collect($revokedQrCodes)
+            ->map(fn (QrCode $qrCode): array => [
+                'id' => $qrCode->id,
+                'short_code' => $qrCode->short_code,
+                'status' => QrCodeStatus::Revoked->value,
+            ])
+            ->values()
+            ->all();
+
+        $this->recordAuditLog->handle(
+            action: AuditLogAction::QrReissued,
+            entityType: 'qr_code',
+            entityId: $newQrCode->id,
+            actorUser: $revokedBy,
+            organizationId: $branch?->organization_id,
+            branchId: $servicePoint->branch_id,
+            oldValues: [
+                'service_point_id' => $servicePoint->id,
+                'revoked_qr_codes' => $revoked,
+            ],
+            newValues: [
+                'service_point_id' => $servicePoint->id,
+                'qr_code_id' => $newQrCode->id,
+                'short_code' => $newQrCode->short_code,
+                'status' => QrCodeStatus::Active->value,
+            ],
+        );
     }
 }

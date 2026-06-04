@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -375,6 +375,33 @@ Analytics are built by `BuildBasicAnalyticsDashboardAction` and cached through L
 
 The analytics and dashboard caches are invalidated by model observers when `orders`, `order_items`, `manual_payments`, or `table_sessions` change. The restaurant dashboard cache is also invalidated by `draft_orders`, `kitchen_tickets`, and `kitchen_ticket_items` changes. This keeps order totals, popular dishes, waiter handoff counts, kitchen progress, payment-related dashboard state, and session counts fresh without Redis, cache tags, WebSockets, queues, or external services.
 
+## Audit Logs
+
+Important operational changes are stored in the `audit_logs` table. The audit log is separate from `order_status_logs`: order status logs keep detailed order history, while `audit_logs` is the general restaurant control journal.
+
+Audit rows store the acting `user_id`, optional `guest_id` or `guest_token`, `action`, `entity_type`, `entity_id`, JSON `old_values`, JSON `new_values`, and `created_at`. Optional `organization_id` and `branch_id` keep the log scoped for access checks.
+
+Current audited actions include:
+
+- dish price changes;
+- dish availability changes;
+- dish deletion;
+- service point moves between areas;
+- manual QR reissue;
+- staff permission override changes;
+- waiter order confirmation;
+- order cancellation;
+- table session close;
+- manual payment recording.
+
+The audit log viewer is available at:
+
+```text
+/restaurant/audit-log
+```
+
+Access requires `view_audit_log` in the organization/branch context. Superadmins can view all audit rows. Regular users only see rows for organizations and branches where they have audit access. The viewer is Blade + Livewire and does not use Redis, WebSockets, S3, Docker, or external logging services.
+
 ## Table Session Guests
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
@@ -652,6 +679,7 @@ Implemented:
 - Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
+- Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

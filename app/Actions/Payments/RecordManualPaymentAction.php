@@ -2,7 +2,9 @@
 
 namespace App\Actions\Payments;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\AuditLogAction;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\ServicePointStatus;
@@ -21,6 +23,7 @@ class RecordManualPaymentAction
         private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
         private readonly BuildManualPaymentSummaryAction $buildPaymentSummary,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function recordTable(
@@ -95,6 +98,25 @@ class RecordManualPaymentAction
                 remainingCentsAfterPayment: max(0, (int) $summary['remaining_total_cents'] - $amountCents),
             );
 
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::PaymentRecorded,
+                entityType: 'manual_payment',
+                entityId: $manualPayment->id,
+                actorUser: $recordedBy,
+                organizationId: $tableSession->branch?->organization_id,
+                branchId: $manualPayment->branch_id,
+                oldValues: [
+                    'remaining_total' => $summary['remaining_total'],
+                ],
+                newValues: [
+                    'scope' => $manualPayment->scope,
+                    'payment_method' => $manualPayment->payment_method,
+                    'amount' => $manualPayment->amount,
+                    'currency' => $manualPayment->currency,
+                    'table_session_guest_id' => $manualPayment->table_session_guest_id,
+                ],
+            );
+
             return $manualPayment->refresh();
         });
     }
@@ -111,7 +133,10 @@ class RecordManualPaymentAction
                 'closed_by_user_id',
                 'metadata',
             ])
-            ->with(['servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'is_active'])])
+            ->with([
+                'branch:id,organization_id',
+                'servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'is_active']),
+            ])
             ->whereKey($tableSession->id)
             ->firstOrFail();
     }

@@ -2,9 +2,11 @@
 
 namespace App\Actions\TableSessions;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Payments\ResolvePaymentAccessibleBranchIdsAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\AuditLogAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
@@ -20,6 +22,7 @@ class CloseTableSessionAction
         private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(TableSession $tableSession, User $closedBy): TableSession
@@ -53,6 +56,24 @@ class CloseTableSessionAction
                 $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Free);
             }
 
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::TableSessionClosed,
+                entityType: 'table_session',
+                entityId: $tableSession->id,
+                actorUser: $closedBy,
+                organizationId: $tableSession->branch?->organization_id,
+                branchId: $tableSession->branch_id,
+                oldValues: [
+                    'status' => $sessionStatus,
+                    'service_point_id' => $tableSession->service_point_id,
+                ],
+                newValues: [
+                    'status' => TableSessionStatus::Closed,
+                    'service_point_status' => ServicePointStatus::Free,
+                    'closed_by_user_id' => $closedBy->id,
+                ],
+            );
+
             return $tableSession->refresh();
         });
     }
@@ -69,7 +90,10 @@ class CloseTableSessionAction
                 'closed_by_user_id',
                 'metadata',
             ])
-            ->with(['servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status'])])
+            ->with([
+                'branch:id,organization_id',
+                'servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status']),
+            ])
             ->whereKey($tableSession->id)
             ->firstOrFail();
     }

@@ -202,6 +202,7 @@ class Index extends Component
             $updateServicePoint->handle(
                 $this->findBranchServicePoint($this->editingServicePointId),
                 $this->servicePointPayload($validated, 'editing'),
+                $this->currentUser(),
             );
         } catch (InvalidArgumentException $exception) {
             $this->addError('editingAreaNodeId', __($exception->getMessage()));

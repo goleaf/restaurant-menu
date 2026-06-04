@@ -97,7 +97,13 @@ class Permissions extends Component
             ->whereKey($permissionId)
             ->firstOrFail();
 
-        (new SetUserPermissionOverrideAction)->handle($this->staffMember, $permission, $overrideState);
+        app(SetUserPermissionOverrideAction::class)->handle(
+            user: $this->staffMember,
+            permission: $permission,
+            state: $overrideState,
+            changedBy: $this->currentUser(),
+            organizationId: $this->organization->id,
+        );
 
         $systemPermission = SystemPermission::tryFrom($permission->code);
 

@@ -68,7 +68,7 @@ test('qr admin page shows current service point data after move and rename witho
     $oldToken = $qrCode->public_token;
     $oldShortCode = $qrCode->short_code;
 
-    (new UpdateServicePointAction)->handle($servicePoint, [
+    app(UpdateServicePointAction::class)->handle($servicePoint, [
         'area_node_id' => $terrace->id,
         'type' => ServicePointType::Table->value,
         'name' => 'Terrace Table 12',
@@ -183,7 +183,7 @@ test('ordinary service point editing does not reissue qr', function () {
     $oldToken = $qrCode->public_token;
     $oldShortCode = $qrCode->short_code;
 
-    (new UpdateServicePointAction)->handle($servicePoint, [
+    app(UpdateServicePointAction::class)->handle($servicePoint, [
         'area_node_id' => $newArea->id,
         'type' => ServicePointType::Table->value,
         'name' => 'VIP Table 12',

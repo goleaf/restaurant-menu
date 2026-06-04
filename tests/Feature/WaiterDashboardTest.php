@@ -2,17 +2,24 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
+use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -20,6 +27,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Models\WaiterCall;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
 
@@ -172,6 +180,174 @@ test('waiter dashboard refresh shows newly sent draft without websockets', funct
         ->assertSee('7.00 EUR');
 });
 
+test('waiter dashboard groups tables by zones and surfaces urgent work', function () {
+    [$organization, , $branch] = createPrompt52Branch(branchName: 'Prompt 91 Branch');
+    $waiter = User::factory()->create(['name' => 'Prompt 91 Waiter']);
+    $waiterRole = attachPrompt52Waiter($waiter, $organization);
+    enablePrompt52Permission($waiterRole, SystemPermission::CloseTableSessions);
+
+    $mainHall = AreaNode::factory()
+        ->for($branch)
+        ->create(['name' => 'Main Hall']);
+    $terrace = AreaNode::factory()
+        ->for($branch)
+        ->create(['name' => 'Terrace']);
+
+    $freeTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($mainHall, 'areaNode')
+        ->create([
+            'name' => 'Free Window',
+            'display_number' => 'F1',
+            'status' => ServicePointStatus::Free,
+        ]);
+    $newOrderTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($mainHall, 'areaNode')
+        ->create([
+            'name' => 'New Order Table',
+            'display_number' => 'N1',
+            'status' => ServicePointStatus::HasNewOrder,
+        ]);
+    $callTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($terrace, 'areaNode')
+        ->create([
+            'name' => 'Call Terrace',
+            'display_number' => 'T2',
+            'status' => ServicePointStatus::WaitingWaiter,
+        ]);
+    $billTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($terrace, 'areaNode')
+        ->create([
+            'name' => 'Bill Terrace',
+            'display_number' => 'T3',
+            'status' => ServicePointStatus::PaymentRequested,
+        ]);
+    $readyTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($mainHall, 'areaNode')
+        ->create([
+            'name' => 'Ready Table',
+            'display_number' => 'R1',
+            'status' => ServicePointStatus::ReadyToServe,
+        ]);
+
+    $newOrderSession = TableSession::factory()
+        ->forServicePoint($newOrderTable)
+        ->active()
+        ->create();
+    $newOrderGuest = TableSessionGuest::factory()
+        ->for($newOrderSession)
+        ->create(['guest_name' => 'Anna']);
+    $draftOrder = DraftOrder::factory()
+        ->for($newOrderSession)
+        ->create([
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now(),
+            'sent_by_guest_id' => $newOrderGuest->id,
+        ]);
+    DraftOrderItem::factory()
+        ->for($draftOrder, 'draftOrder')
+        ->for($newOrderGuest, 'guest')
+        ->create([
+            'menu_item_id' => null,
+            'item_name' => 'Prompt 91 Pasta',
+            'quantity' => 1,
+            'unit_price' => '12.00',
+            'total_price' => '12.00',
+        ]);
+
+    $callSession = TableSession::factory()
+        ->forServicePoint($callTable)
+        ->active()
+        ->create();
+    $callGuest = TableSessionGuest::factory()
+        ->for($callSession)
+        ->create(['guest_name' => 'Boris']);
+    WaiterCall::factory()
+        ->forTableSession($callSession)
+        ->create(['requested_by_guest_id' => $callGuest->id]);
+
+    TableSession::factory()
+        ->forServicePoint($billTable)
+        ->active()
+        ->create(['status' => TableSessionStatus::PaymentRequested]);
+
+    $readySession = TableSession::factory()
+        ->forServicePoint($readyTable)
+        ->active()
+        ->create();
+    $readyGuest = TableSessionGuest::factory()
+        ->for($readySession)
+        ->create(['guest_name' => 'Clara']);
+    $order = Order::factory()
+        ->for($readySession)
+        ->create([
+            'branch_id' => $branch->id,
+            'service_point_id' => $readyTable->id,
+            'table_session_id' => $readySession->id,
+            'status' => OrderStatus::Ready,
+            'currency' => 'EUR',
+        ]);
+    $orderItem = OrderItem::factory()
+        ->for($order)
+        ->for($readyGuest, 'guest')
+        ->create([
+            'guest_name' => 'Clara',
+            'guest_name_snapshot' => 'Clara',
+            'item_name' => 'Prompt 91 Soup',
+            'item_name_snapshot' => 'Prompt 91 Soup',
+            'quantity' => 2,
+        ]);
+    $ticket = KitchenTicket::factory()
+        ->for($order)
+        ->create([
+            'branch_id' => $branch->id,
+            'service_point_id' => $readyTable->id,
+            'table_session_id' => $readySession->id,
+            'department_name' => 'Kitchen',
+        ]);
+    KitchenTicketItem::factory()
+        ->for($ticket, 'kitchenTicket')
+        ->for($orderItem, 'orderItem')
+        ->create([
+            'table_session_guest_id' => $readyGuest->id,
+            'guest_name' => 'Clara',
+            'item_name' => 'Prompt 91 Soup',
+            'quantity' => 2,
+            'status' => KitchenTicketItemStatus::Ready,
+            'served_at' => null,
+        ]);
+
+    Livewire::actingAs($waiter)
+        ->test(WaiterDashboard::class)
+        ->assertSet('newDraftCount', 1)
+        ->assertSet('waiterCallCount', 1)
+        ->assertSet('billRequestCount', 1)
+        ->assertSet('readyItemCount', 1)
+        ->assertSee('Main Hall')
+        ->assertSee('Terrace')
+        ->assertSee('New orders')
+        ->assertSee('Guest calls')
+        ->assertSee('Bill requests')
+        ->assertSee('Ready items')
+        ->assertSee('Prompt 91 Soup')
+        ->assertSee('Close table')
+        ->assertSee('Free Window')
+        ->assertSee('Open table')
+        ->call('openTable', $freeTable->id)
+        ->assertHasNoErrors()
+        ->assertSee('Стол открыт.');
+
+    expect(TableSession::query()
+        ->where('service_point_id', $freeTable->id)
+        ->where('status', TableSessionStatus::Active->value)
+        ->count())->toBe(1)
+        ->and($freeTable->fresh()->status)->toBe(ServicePointStatus::Occupied);
+});
+
 function createPrompt52Branch(
     string $organizationName = 'Waiter Group',
     string $brandName = 'Waiter Brand',
@@ -213,4 +389,13 @@ function attachPrompt52Waiter(User $user, Organization $organization): Role
     ]);
 
     return $waiterRole;
+}
+
+function enablePrompt52Permission(Role $role, SystemPermission $permissionCode): void
+{
+    $permission = Permission::query()
+        ->where('code', $permissionCode->value)
+        ->firstOrFail();
+
+    $role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);
 }

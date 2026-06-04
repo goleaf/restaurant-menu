@@ -230,7 +230,7 @@
             @enderror
 
             @if (data_get($table, 'session.can_close'))
-                <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                <div id="close-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                     <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Close table session') }}</h3>
 
                     @if (data_get($table, 'session.close_requires_warning'))

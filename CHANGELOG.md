@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 091 - Polish Waiter UX
+
+- Reworked the waiter dashboard into a faster restaurant work surface with priority blocks for new orders, waiter calls, bill requests, and ready kitchen/bar items.
+- Grouped service points by current zone and added color-coded table cards with status, urgency badges, guests, draft/payment state, and quick detail links.
+- Added a dashboard-level `Open table` action using the existing table-session action and branch-level order access checks.
+- Added `Close table` dashboard links only for users with `close_table_sessions`, while keeping the actual close warning/action on the existing waiter table detail page.
+- Kept order confirmation, kitchen/bar dispatch, payments, polling, storage, and infrastructure rules unchanged: SQLite, database drivers, Livewire polling, no Redis/WebSockets/S3/Docker.
+
 ### Prompt 090 - Polish Guest Mobile UI
 
 - Polished the public QR guest entry screen with a stronger mobile welcome card, venue/logo context, current zone/place details, QR short code, large name input, and reachable bottom action.

@@ -3,12 +3,15 @@
 namespace App\Actions\Waiter;
 
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\ServicePointStatus;
+use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicketItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
@@ -30,12 +33,20 @@ class BuildWaiterDashboardAction
      *     active_session_count: int,
      *     new_draft_count: int,
      *     waiter_call_count: int,
-     *     bill_request_count: int
+     *     bill_request_count: int,
+     *     ready_item_count: int
      * }
      */
     public function handle(User $user): array
     {
         $branchIds = $this->accessibleBranchIds($user);
+        $openTableBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ViewOrders)
+            ->merge($this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
+            ->unique()
+            ->values();
+        $closeTableBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::CloseTableSessions);
 
         if ($branchIds->isEmpty()) {
             return [
@@ -46,6 +57,7 @@ class BuildWaiterDashboardAction
                 'new_draft_count' => 0,
                 'waiter_call_count' => 0,
                 'bill_request_count' => 0,
+                'ready_item_count' => 0,
             ];
         }
 
@@ -87,13 +99,20 @@ class BuildWaiterDashboardAction
 
         $draftOrders = $this->sentDraftOrders($sessions->pluck('id'));
         $waiterCalls = $this->pendingWaiterCalls($branchIds);
+        $readyItems = $this->readyTicketItems($branchIds);
         $draftsBySessionId = $draftOrders->keyBy('table_session_id');
         $sessionsByServicePointId = $sessions->groupBy('service_point_id');
         $waiterCallsByServicePointId = $waiterCalls->groupBy('service_point_id');
+        $readyItemsByServicePointId = $readyItems->groupBy(
+            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket?->service_point_id,
+        );
         $servicePointsByBranchId = $servicePoints->groupBy('branch_id');
         $sessionsByBranchId = $sessions->groupBy('branch_id');
         $draftsByBranchId = $this->draftsByBranchId($draftOrders, $sessions);
         $waiterCallsByBranchId = $waiterCalls->groupBy('branch_id');
+        $readyItemsByBranchId = $readyItems->groupBy(
+            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket?->branch_id,
+        );
         $billRequestsByBranchId = $this->billRequestsByBranchId($sessions);
         $billRequestCount = $billRequestsByBranchId->sum(fn (Collection $branchBillRequests): int => count($branchBillRequests));
 
@@ -107,9 +126,13 @@ class BuildWaiterDashboardAction
                     drafts: $draftsByBranchId->get($branch->id, new Collection),
                     waiterCalls: $waiterCallsByBranchId->get($branch->id, new Collection),
                     billRequests: $billRequestsByBranchId->get($branch->id, new Collection),
+                    readyItems: $readyItemsByBranchId->get($branch->id, new Collection),
                     sessionsByServicePointId: $sessionsByServicePointId,
                     draftsBySessionId: $draftsBySessionId,
                     waiterCallsByServicePointId: $waiterCallsByServicePointId,
+                    readyItemsByServicePointId: $readyItemsByServicePointId,
+                    canOpenTable: $openTableBranchIds->contains((int) $branch->id),
+                    canCloseTable: $closeTableBranchIds->contains((int) $branch->id),
                 ))
                 ->values()
                 ->all(),
@@ -118,6 +141,7 @@ class BuildWaiterDashboardAction
             'new_draft_count' => $draftOrders->count(),
             'waiter_call_count' => $waiterCalls->count(),
             'bill_request_count' => $billRequestCount,
+            'ready_item_count' => $readyItems->count(),
         ];
     }
 
@@ -192,6 +216,51 @@ class BuildWaiterDashboardAction
     }
 
     /**
+     * @param  Collection<int, int>  $branchIds
+     * @return EloquentCollection<int, KitchenTicketItem>
+     */
+    private function readyTicketItems(Collection $branchIds): EloquentCollection
+    {
+        if ($branchIds->isEmpty()) {
+            return new EloquentCollection;
+        }
+
+        return KitchenTicketItem::query()
+            ->select([
+                'id',
+                'kitchen_ticket_id',
+                'table_session_guest_id',
+                'guest_name',
+                'item_name',
+                'quantity',
+                'status',
+                'served_at',
+                'comment',
+                'created_at',
+                'updated_at',
+            ])
+            ->with([
+                'kitchenTicket' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'service_point_id',
+                    'table_session_id',
+                    'department_name',
+                    'sent_at',
+                ]),
+            ])
+            ->where('status', KitchenTicketItemStatus::Ready->value)
+            ->whereNull('served_at')
+            ->whereHas('kitchenTicket', function ($query) use ($branchIds): void {
+                $query->whereIn('branch_id', $branchIds);
+            })
+            ->orderBy('updated_at')
+            ->orderBy('id')
+            ->limit(150)
+            ->get();
+    }
+
+    /**
      * @return list<string>
      */
     private function openSessionStatuses(): array
@@ -210,9 +279,11 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, DraftOrder>  $drafts
      * @param  Collection<int, WaiterCall>  $waiterCalls
      * @param  Collection<int, TableSession>  $billRequests
+     * @param  Collection<int, KitchenTicketItem>  $readyItems
      * @param  Collection<int, Collection<int, TableSession>>  $sessionsByServicePointId
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
      * @param  Collection<int, Collection<int, WaiterCall>>  $waiterCallsByServicePointId
+     * @param  Collection<int, Collection<int, KitchenTicketItem>>  $readyItemsByServicePointId
      * @return array<string, mixed>
      */
     private function branchPayload(
@@ -222,11 +293,27 @@ class BuildWaiterDashboardAction
         Collection $drafts,
         Collection $waiterCalls,
         Collection $billRequests,
+        Collection $readyItems,
         Collection $sessionsByServicePointId,
         Collection $draftsBySessionId,
         Collection $waiterCallsByServicePointId,
+        Collection $readyItemsByServicePointId,
+        bool $canOpenTable,
+        bool $canCloseTable,
     ): array {
         $servicePointsById = $servicePoints->keyBy('id');
+        $servicePointPayloads = $servicePoints
+            ->map(fn (ServicePoint $servicePoint): array => $this->servicePointPayload(
+                servicePoint: $servicePoint,
+                sessions: $sessionsByServicePointId->get($servicePoint->id, new Collection),
+                draftsBySessionId: $draftsBySessionId,
+                waiterCalls: $waiterCallsByServicePointId->get($servicePoint->id, new Collection),
+                readyItems: $readyItemsByServicePointId->get($servicePoint->id, new Collection),
+                currency: $branch->currency,
+                canOpenTable: $canOpenTable,
+                canCloseTable: $canCloseTable,
+            ))
+            ->values();
 
         return [
             'id' => $branch->id,
@@ -241,16 +328,9 @@ class BuildWaiterDashboardAction
             'new_draft_count' => count($drafts),
             'waiter_call_count' => count($waiterCalls),
             'bill_request_count' => count($billRequests),
-            'service_points' => $servicePoints
-                ->map(fn (ServicePoint $servicePoint): array => $this->servicePointPayload(
-                    servicePoint: $servicePoint,
-                    sessions: $sessionsByServicePointId->get($servicePoint->id, new Collection),
-                    draftsBySessionId: $draftsBySessionId,
-                    waiterCalls: $waiterCallsByServicePointId->get($servicePoint->id, new Collection),
-                    currency: $branch->currency,
-                ))
-                ->values()
-                ->all(),
+            'ready_item_count' => count($readyItems),
+            'service_points' => $servicePointPayloads->all(),
+            'service_point_zones' => $this->servicePointZonePayloads($servicePointPayloads),
             'drafts' => $drafts
                 ->map(fn (DraftOrder $draftOrder): array => $this->draftPayload($draftOrder, $branch->currency))
                 ->values()
@@ -266,6 +346,13 @@ class BuildWaiterDashboardAction
                 ))
                 ->values()
                 ->all(),
+            'ready_items' => $readyItems
+                ->map(fn (KitchenTicketItem $item): array => $this->readyItemPayload(
+                    item: $item,
+                    servicePoint: $servicePointsById->get((int) $item->kitchenTicket?->service_point_id),
+                ))
+                ->values()
+                ->all(),
         ];
     }
 
@@ -273,18 +360,43 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, TableSession>  $sessions
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
      * @param  Collection<int, WaiterCall>  $waiterCalls
+     * @param  Collection<int, KitchenTicketItem>  $readyItems
      * @return array<string, mixed>
      */
-    private function servicePointPayload(ServicePoint $servicePoint, Collection $sessions, Collection $draftsBySessionId, Collection $waiterCalls, string $currency): array
-    {
+    private function servicePointPayload(
+        ServicePoint $servicePoint,
+        Collection $sessions,
+        Collection $draftsBySessionId,
+        Collection $waiterCalls,
+        Collection $readyItems,
+        string $currency,
+        bool $canOpenTable,
+        bool $canCloseTable,
+    ): array {
         $status = $servicePoint->status instanceof ServicePointStatus
             ? $servicePoint->status
             : ServicePointStatus::from((string) $servicePoint->status);
+        $sessionPayloads = $sessions
+            ->map(fn (TableSession $tableSession): array => $this->sessionPayload(
+                tableSession: $tableSession,
+                draftOrder: $draftsBySessionId->get($tableSession->id),
+                currency: $currency,
+                canCloseTable: $canCloseTable,
+            ))
+            ->values();
+        $newDraftCount = $sessionPayloads
+            ->filter(fn (array $session): bool => is_array($session['draft']))
+            ->count();
+        $billRequestCount = $sessions
+            ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
+            ->count();
+        $readyItemCount = count($readyItems);
 
         return [
             'id' => $servicePoint->id,
             'name' => $servicePoint->name,
             'display_number' => $servicePoint->display_number,
+            'area_id' => $servicePoint->area_node_id,
             'area_name' => $servicePoint->areaNode?->name,
             'status' => $status->value,
             'status_label' => $status->label(),
@@ -292,18 +404,82 @@ class BuildWaiterDashboardAction
             'capacity' => $servicePoint->capacity,
             'is_active' => $servicePoint->is_active,
             'waiter_call_count' => count($waiterCalls),
-            'bill_request_count' => $sessions
-                ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
-                ->count(),
-            'sessions' => $sessions
-                ->map(fn (TableSession $tableSession): array => $this->sessionPayload(
-                    tableSession: $tableSession,
-                    draftOrder: $draftsBySessionId->get($tableSession->id),
-                    currency: $currency,
-                ))
-                ->values()
-                ->all(),
+            'bill_request_count' => $billRequestCount,
+            'ready_item_count' => $readyItemCount,
+            'new_draft_count' => $newDraftCount,
+            'has_open_session' => $sessionPayloads->isNotEmpty(),
+            'has_priority' => $newDraftCount > 0 || count($waiterCalls) > 0 || $billRequestCount > 0 || $readyItemCount > 0,
+            'priority_rank' => $this->servicePointPriorityRank($newDraftCount, count($waiterCalls), $billRequestCount, $readyItemCount, $status),
+            'can_open_table' => $canOpenTable
+                && (bool) $servicePoint->is_active
+                && $sessionPayloads->isEmpty()
+                && ! in_array($status, [ServicePointStatus::Blocked, ServicePointStatus::Closed], true),
+            'sessions' => $sessionPayloads->all(),
         ];
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $servicePointPayloads
+     * @return list<array<string, mixed>>
+     */
+    private function servicePointZonePayloads(Collection $servicePointPayloads): array
+    {
+        return $servicePointPayloads
+            ->groupBy(fn (array $servicePoint): string => (string) ($servicePoint['area_id'] ?? 'no-zone'))
+            ->map(function (Collection $zoneServicePoints): array {
+                $sortedServicePoints = $zoneServicePoints
+                    ->sortBy(fn (array $servicePoint): string => str_pad((string) $servicePoint['priority_rank'], 2, '0', STR_PAD_LEFT)
+                        .mb_strtolower((string) $servicePoint['name'])
+                        .str_pad((string) $servicePoint['id'], 8, '0', STR_PAD_LEFT))
+                    ->values();
+
+                return [
+                    'area_id' => $sortedServicePoints->first()['area_id'] ?? null,
+                    'name' => $sortedServicePoints->first()['area_name'] ?? null,
+                    'service_point_count' => $sortedServicePoints->count(),
+                    'priority_count' => $sortedServicePoints
+                        ->filter(fn (array $servicePoint): bool => (bool) $servicePoint['has_priority'])
+                        ->count(),
+                    'service_points' => $sortedServicePoints->all(),
+                ];
+            })
+            ->sortBy(fn (array $zone): string => ($zone['name'] === null ? 'zzzz' : mb_strtolower((string) $zone['name'])))
+            ->values()
+            ->all();
+    }
+
+    private function servicePointPriorityRank(
+        int $newDraftCount,
+        int $waiterCallCount,
+        int $billRequestCount,
+        int $readyItemCount,
+        ServicePointStatus $status,
+    ): int {
+        if ($newDraftCount > 0) {
+            return 10;
+        }
+
+        if ($waiterCallCount > 0) {
+            return 20;
+        }
+
+        if ($billRequestCount > 0) {
+            return 30;
+        }
+
+        if ($readyItemCount > 0 || $status === ServicePointStatus::ReadyToServe) {
+            return 40;
+        }
+
+        if ($status === ServicePointStatus::Cooking) {
+            return 50;
+        }
+
+        if ($status === ServicePointStatus::Occupied) {
+            return 60;
+        }
+
+        return 90;
     }
 
     /**
@@ -326,8 +502,12 @@ class BuildWaiterDashboardAction
     /**
      * @return array<string, mixed>
      */
-    private function sessionPayload(TableSession $tableSession, ?DraftOrder $draftOrder, string $currency): array
-    {
+    private function sessionPayload(
+        TableSession $tableSession,
+        ?DraftOrder $draftOrder,
+        string $currency,
+        bool $canCloseTable,
+    ): array {
         $status = $tableSession->status instanceof TableSessionStatus
             ? $tableSession->status
             : TableSessionStatus::from((string) $tableSession->status);
@@ -341,6 +521,7 @@ class BuildWaiterDashboardAction
             'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
             'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
+            'can_close' => $canCloseTable,
             'draft' => $draftOrder instanceof DraftOrder ? $this->draftPayload($draftOrder, $currency) : null,
         ];
     }
@@ -385,6 +566,32 @@ class BuildWaiterDashboardAction
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
             'requested_at' => $waiterCall->requested_at?->format('Y-m-d H:i'),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function readyItemPayload(KitchenTicketItem $item, ?ServicePoint $servicePoint): array
+    {
+        $status = $item->status instanceof KitchenTicketItemStatus
+            ? $item->status
+            : KitchenTicketItemStatus::from((string) $item->status);
+
+        return [
+            'id' => $item->id,
+            'table_session_id' => $item->kitchenTicket?->table_session_id,
+            'detail_url' => route('restaurant.waiter.tables.show', $item->kitchenTicket?->table_session_id),
+            'service_point_name' => $servicePoint?->name,
+            'service_point_display_number' => $servicePoint?->display_number,
+            'area_name' => $servicePoint?->areaNode?->name,
+            'guest_name' => $item->guest_name,
+            'item_name' => $item->item_name,
+            'quantity' => (int) $item->quantity,
+            'department_name' => $item->kitchenTicket?->department_name,
+            'status_label' => $status->label(),
+            'status_color' => $status->badgeColor(),
+            'ready_at' => $item->updated_at?->format('Y-m-d H:i') ?? $item->created_at?->format('Y-m-d H:i'),
         ];
     }
 

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -831,16 +831,21 @@ The waiter dashboard shell is available at:
 
 Access requires authentication and the `view_orders` permission in the organization context. Superadmins keep the normal platform-level permission bypass. If a user has active `branch_users` assignments, the dashboard shows only those assigned branches; otherwise it shows the branches from organizations where the user can view orders.
 
-The dashboard uses Livewire polling every 1 second and does not use WebSockets. It shows:
+The dashboard uses Livewire polling every 1 second and does not use WebSockets. The screen is optimized for restaurant work: new orders stay at the top, urgent work is color-coded, and service points are grouped by their current zones.
+
+It shows:
 
 - branches available to the waiter;
-- service points in those branches;
-- service point statuses;
+- service points grouped by current area/zone;
+- color-coded service point statuses and urgency badges;
 - open table sessions;
 - pending guest waiter calls;
 - guest bill requests;
+- ready kitchen/bar items waiting to be served;
 - shared drafts with `sent_to_waiter` or `waiter_review` status;
-- a small browser audio notice when a new sent draft, guest waiter call, or bill request appears during polling.
+- a small browser audio notice when a new sent draft, guest waiter call, bill request, or ready item appears during polling.
+
+Free active service points show an `Open table` action for users with order access. Existing sessions show a detailed table card with guests, draft/payment state, a detail link, and a `Close table` link only for users who have `close_table_sessions`; the actual close action and warning remain on the waiter table detail page.
 
 Each open session links to a waiter table detail page:
 

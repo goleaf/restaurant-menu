@@ -18,6 +18,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Fixed branch currencies through `App\Enums\SupportedCurrency`
 - Small Blade design-system primitives in `resources/views/components/ui`
 - Polished mobile-first guest QR/table/menu UI layered on existing Livewire components
+- Polished waiter dashboard with zone grouping, priority work queues, and quick table actions
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -77,7 +78,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Draft order schema with repeat draft history per table session, latest/current draft access, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and split isolated guest polling blocks for draft items, draft totals, and order statuses.
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with explicit order item snapshots for source menu item id, guest name, item name/description, unit price, selected modifiers, future tax/service payloads, and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
-- Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
+- Polished waiter dashboard with branch-scoped zone grouping, priority queues for new orders/calls/bills/ready items, color-coded service point cards, quick open-table action, close links for permitted users, and waiter table detail with sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
 - Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
@@ -536,6 +537,21 @@ Bill request:
 - Waiter notification recipients are resolved through the same `ResolveWaiterNotificationRecipientsAction` and branch-level `view_orders` access as guest waiter calls.
 - Waiters can see the bill request in the waiter dashboard polling payload.
 - The guest `Попросить счёт` button does not create `manual_payments`; only staff can record payment later.
+
+Waiter dashboard:
+
+- Route is `GET /restaurant/waiter/dashboard`.
+- Component is `App\Livewire\Waiter\Dashboard`.
+- Payload builder is `App\Actions\Waiter\BuildWaiterDashboardAction`.
+- Access requires branch-level `view_orders`; superadmin bypass and active branch assignments are resolved through `ResolveWaiterAccessibleBranchIdsAction`.
+- The dashboard uses `wire:poll.visible.1s="refreshDashboard"` and no WebSockets.
+- Prompt 091 groups service point cards by their current `area_node_id` / area name in `service_point_zones`.
+- Priority blocks at the top show new sent/waiter-review drafts first, then pending waiter calls, bill-request sessions, and unserved ready kitchen/bar items.
+- Ready items are read from `kitchen_ticket_items.status = ready` with `served_at = null` through selected/eager-loaded Eloquent data; the dashboard only links to the table detail where staff can mark them served.
+- Service point cards include color-coded status/urgency, active session details, guest count, draft total, payment-request state, and open/close/detail actions.
+- The dashboard `openTable()` method reuses `OpenTableSessionForServicePointAction`, checks branch access through `view_orders` or `confirm_orders`, and refreshes the same dashboard payload.
+- `Close table` on the dashboard is only a link to the existing waiter table detail close block and is shown only when the user has `close_table_sessions`; the actual close action remains `CloseTableSessionAction`.
+- The dashboard must not confirm drafts, reject drafts, send orders to kitchen/bar, record payments, or mark ticket items served directly; those actions stay on `App\Livewire\Waiter\TableDetail`.
 
 Manual payment:
 
@@ -1016,7 +1032,7 @@ Local media storage:
 - `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
 - `App\Livewire\Superadmin\Dashboard` shows platform records, service point/order stats, local SQLite backup action, organization aggregate counters, detail/audit links, and organization subscription activate/suspend controls.
-- `App\Livewire\Waiter\Dashboard` keeps visible-only 1-second polling for live service-point, session, draft, waiter-call, and bill-request state.
+- `App\Livewire\Waiter\Dashboard` keeps visible-only 1-second polling for live zone-grouped service-point cards, sessions, sent drafts, waiter calls, bill requests, ready items, and quick open-table actions.
 - `App\Livewire\Waiter\TableDetail` keeps visible-only 1-second polling for the current table detail.
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
@@ -1437,7 +1453,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, and Prompt 090 polished guest mobile UI intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, and Prompt 091 polished waiter dashboard UX intact during future feature work.
 
 ## Do Not Break
 
@@ -1453,6 +1469,10 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not send operational notifications through Push, WebSockets, Redis, SMS, Telegram API, mail delivery, or paid notification providers; keep them in Laravel database notifications.
 - Do not replace notification UI polling with full-page refreshes or WebSockets; keep updates scoped to Livewire notification blocks.
 - Do not remove `wire:poll.visible` from hot polling blocks or increase polling query payloads without a clear reason.
+- Do not turn the waiter dashboard back into a flat ungrouped service point list unless a future prompt explicitly asks for that; Prompt 091 groups tables by current zones for restaurant work.
+- Do not move draft confirmation/rejection, kitchen/bar dispatch, manual payment, close execution, or served-item execution into waiter dashboard priority cards; the dashboard may link to the existing table detail actions.
+- Do not show dashboard close-table links to users without `close_table_sessions`; actual close enforcement must stay in `CloseTableSessionAction`.
+- Do not make waiter dashboard polling load unbounded history/logs or analytics; keep its queries selected, eager-loaded, bounded, and focused on current operational state.
 - Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.
 - Do not turn audit/history screens back into unpaginated fixed-size lists; keep cursor pagination or another bounded pagination strategy.
 - Do not use Redis cache tags for analytics invalidation; use explicit database-cache keys and model observers.

@@ -2,8 +2,12 @@
 
 namespace App\Livewire\Waiter;
 
+use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\MarkWaiterCallHandledAction;
+use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\SystemPermission;
+use App\Models\ServicePoint;
 use App\Models\User;
 use App\Models\WaiterCall;
 use Illuminate\Support\Facades\Auth;
@@ -30,13 +34,19 @@ class Dashboard extends Component
 
     public int $billRequestCount = 0;
 
+    public int $readyItemCount = 0;
+
     public ?int $previousNewDraftCount = null;
 
     public ?int $previousWaiterCallCount = null;
 
     public ?int $previousBillRequestCount = null;
 
+    public ?int $previousReadyItemCount = null;
+
     public string $waiterCallMessage = '';
+
+    public string $tableActionMessage = '';
 
     public string $refreshedAt = '';
 
@@ -46,6 +56,7 @@ class Dashboard extends Component
         $this->previousNewDraftCount = $this->newDraftCount;
         $this->previousWaiterCallCount = $this->waiterCallCount;
         $this->previousBillRequestCount = $this->billRequestCount;
+        $this->previousReadyItemCount = $this->readyItemCount;
     }
 
     public function refreshDashboard(): void
@@ -59,6 +70,7 @@ class Dashboard extends Component
         $previousNewDraftCount = $this->previousNewDraftCount;
         $previousWaiterCallCount = $this->previousWaiterCallCount;
         $previousBillRequestCount = $this->previousBillRequestCount;
+        $previousReadyItemCount = $this->previousReadyItemCount;
 
         $this->branches = $payload['branches'];
         $this->servicePointCount = $payload['service_point_count'];
@@ -66,6 +78,7 @@ class Dashboard extends Component
         $this->newDraftCount = $payload['new_draft_count'];
         $this->waiterCallCount = $payload['waiter_call_count'];
         $this->billRequestCount = $payload['bill_request_count'];
+        $this->readyItemCount = $payload['ready_item_count'];
         $this->refreshedAt = now()->format('H:i:s');
 
         if ($previousNewDraftCount !== null && $this->newDraftCount > $previousNewDraftCount) {
@@ -80,9 +93,44 @@ class Dashboard extends Component
             $this->dispatch('waiter-bill-requested');
         }
 
+        if ($previousReadyItemCount !== null && $this->readyItemCount > $previousReadyItemCount) {
+            $this->dispatch('waiter-item-ready');
+        }
+
         $this->previousNewDraftCount = $this->newDraftCount;
         $this->previousWaiterCallCount = $this->waiterCallCount;
         $this->previousBillRequestCount = $this->billRequestCount;
+        $this->previousReadyItemCount = $this->readyItemCount;
+    }
+
+    public function openTable(
+        int $servicePointId,
+        OpenTableSessionForServicePointAction $openTableSession,
+        ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+    ): void {
+        $user = $this->currentUser();
+        $servicePoint = ServicePoint::query()
+            ->select(['id', 'branch_id'])
+            ->whereKey($servicePointId)
+            ->firstOrFail();
+        $openTableBranchIds = $resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ViewOrders)
+            ->merge($resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
+            ->unique()
+            ->values();
+
+        if (! $openTableBranchIds->contains((int) $servicePoint->branch_id)) {
+            abort(403);
+        }
+
+        try {
+            $openTableSession->handle($servicePoint, $user);
+            $this->tableActionMessage = __('Стол открыт.');
+        } catch (ValidationException $exception) {
+            $this->tableActionMessage = $this->firstValidationMessage($exception);
+        }
+
+        $this->refreshDashboard();
     }
 
     public function markWaiterCallHandled(int $waiterCallId, MarkWaiterCallHandledAction $markHandled): void

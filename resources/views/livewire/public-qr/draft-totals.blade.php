@@ -10,27 +10,24 @@
         </div>
 
         <div class="flex shrink-0 flex-col items-end gap-2">
-            <span class="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            <x-ui.status-badge tone="muted">
                 {{ trans_choice(':count позиция|:count позиции|:count позиций', $itemCount, ['count' => $itemCount]) }}
-            </span>
+            </x-ui.status-badge>
 
             @if ($canToggleReadyStatus)
-                <button
+                <x-ui.button
                     type="button"
                     wire:click="toggleReadyStatus"
                     wire:loading.attr="disabled"
                     wire:target="toggleReadyStatus"
-                    @class([
-                        'inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                        'bg-emerald-700 text-white hover:bg-emerald-800' => ! $currentGuestReady,
-                        'border border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-emerald-950/30' => $currentGuestReady,
-                    ])
+                    :variant="$currentGuestReady ? 'secondary' : 'primary'"
+                    size="sm"
                 >
                     <span wire:loading.remove wire:target="toggleReadyStatus">
                         {{ $currentGuestReady ? __('Снять готовность') : __('Я готов') }}
                     </span>
                     <span wire:loading wire:target="toggleReadyStatus">{{ __('Сохраняем') }}</span>
-                </button>
+                </x-ui.button>
             @endif
         </div>
     </div>
@@ -39,31 +36,27 @@
         <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">
             {{ __('Готовы') }}: {{ $readyGuestCount }}/{{ $activeGuestCount }}
         </span>
-        <span @class([
-            'rounded-md px-2 py-0.5 text-xs font-semibold',
-            'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100' => $allGuestsReady,
-            'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-100' => ! $allGuestsReady,
-        ])>
+        <x-ui.status-badge :tone="$allGuestsReady ? 'success' : 'warning'">
             {{ $allGuestsReady ? __('Все готовы') : __('Не все готовы') }}
-        </span>
+        </x-ui.status-badge>
     </div>
 
     @if ($feedbackMessage)
-        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <x-ui.alert tone="success" class="mt-4">
             {{ $feedbackMessage }}
-        </p>
+        </x-ui.alert>
     @endif
 
     @error('ready_status')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
     @enderror
 
     @error('send_draft')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
     @enderror
 
     @error('bill_request')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
     @enderror
 
     <div class="mt-4 space-y-3">
@@ -80,9 +73,9 @@
                             <p class="truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestTotal['guest_name'] }}</p>
 
                             @if ($guestTotal['is_current_guest'])
-                                <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100">
+                                <x-ui.status-badge tone="success">
                                     {{ __('Вы') }}
-                                </span>
+                                </x-ui.status-badge>
                             @endif
                         </div>
 
@@ -99,9 +92,10 @@
                     <p class="shrink-0 text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestTotal['total'] }} {{ $currency }}</p>
                 </div>
             @empty
-                <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
-                    {{ __('Суммы появятся после добавления позиций.') }}
-                </p>
+                <x-ui.empty-state
+                    icon="shopping-cart"
+                    :heading="__('Суммы появятся после добавления позиций.')"
+                />
             @endforelse
         </section>
 
@@ -128,71 +122,72 @@
             </div>
         @endif
 
-        <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+        @if ($billRequested || $canRequestBill || $canSendDraftToWaiter)
+        <x-ui.mobile-bottom-actions :summary="__('Итого за стол').': '.$tableTotalAmount.' '.$currency">
             @if ($billRequested)
-                <div class="rounded-lg bg-sky-50 px-3 py-3 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                <x-ui.alert tone="info">
                     {{ __('Счёт запрошен. Официант скоро подойдёт.') }}
                     <span class="mt-1 block font-normal">{{ __('Итого за стол') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
-                </div>
+                </x-ui.alert>
             @elseif ($canRequestBill)
-                <button
+                <x-ui.button
                     type="button"
                     wire:click="requestBill"
                     wire:loading.attr="disabled"
                     wire:target="requestBill"
-                    class="flex min-h-12 w-full items-center justify-center rounded-lg bg-sky-700 px-4 text-base font-semibold text-white transition hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                    variant="info"
+                    size="lg"
+                    full-width
                 >
                     <span wire:loading.remove wire:target="requestBill">{{ __('Попросить счёт') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
                     <span wire:loading wire:target="requestBill">{{ __('Отправляем') }}</span>
-                </button>
+                </x-ui.button>
             @endif
-        </div>
 
-        @if ($canSendDraftToWaiter)
-            <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            @if ($canSendDraftToWaiter)
                 @if ($sendNeedsReadyConfirmation)
-                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/70 dark:bg-amber-950/30">
-                        <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                            {{ __('Не все гости отметили готовность.') }}
-                        </p>
-                        <p class="mt-1 text-sm text-amber-800 dark:text-amber-100">
+                    <x-ui.alert tone="warning" :heading="__('Не все гости отметили готовность.')">
+                        <p>
                             {{ __('Можно отправить сейчас, но официант всё равно должен подтвердить заказ перед кухней или баром.') }}
                         </p>
 
                         <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                            <button
+                            <x-ui.button
                                 type="button"
                                 wire:click="sendDraftToWaiter(true)"
                                 wire:loading.attr="disabled"
                                 wire:target="sendDraftToWaiter"
-                                class="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-700 px-4 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-hidden focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                                variant="warning"
                             >
                                 <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить всё равно') }}</span>
                                 <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
-                            </button>
+                            </x-ui.button>
 
-                            <button
+                            <x-ui.button
                                 type="button"
                                 wire:click="cancelSendDraftConfirmation"
-                                class="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 dark:border-amber-900/70 dark:bg-zinc-900 dark:text-amber-200 dark:hover:bg-amber-950/30"
+                                variant="secondary"
                             >
                                 {{ __('Подождать гостей') }}
-                            </button>
+                            </x-ui.button>
                         </div>
-                    </div>
+                    </x-ui.alert>
                 @else
-                    <button
+                    <x-ui.button
                         type="button"
                         wire:click="sendDraftToWaiter"
                         wire:loading.attr="disabled"
                         wire:target="sendDraftToWaiter"
-                        class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                        variant="primary"
+                        size="lg"
+                        full-width
                     >
                         <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить официанту') }}</span>
                         <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
-                    </button>
+                    </x-ui.button>
                 @endif
-            </div>
+            @endif
+        </x-ui.mobile-bottom-actions>
         @endif
     </div>
 </section>

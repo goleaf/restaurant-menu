@@ -21,9 +21,9 @@
                         @endforeach
                     </select>
 
-                    <span class="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                    <x-ui.status-badge tone="success">
                         {{ $landing['short_code'] }}
-                    </span>
+                    </x-ui.status-badge>
                 @endif
             </div>
         </div>
@@ -89,31 +89,32 @@
                         @endif
                     </div>
 
-                    <section data-component="guest-request-waiter" class="rounded-lg border border-orange-200 bg-orange-50 p-4 shadow-sm dark:border-orange-900 dark:bg-orange-950/30">
+                    <x-ui.card data-component="guest-request-waiter" tone="warning">
                         <div class="flex flex-col gap-3">
                             <div class="min-w-0">
-                                <p class="text-xs font-medium uppercase text-orange-700 dark:text-orange-300">{{ __('Помощь') }}</p>
+                                <p class="text-xs font-medium uppercase text-amber-700 dark:text-amber-300">{{ __('Помощь') }}</p>
                                 <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Позвать официанта') }}</h2>
                             </div>
 
                             @if ($waiterCallMessage)
-                                <p class="rounded-lg bg-white/80 px-3 py-2 text-sm font-medium text-orange-900 dark:bg-zinc-950/50 dark:text-orange-100">
+                                <x-ui.alert tone="warning">
                                     {{ $waiterCallMessage }}
-                                </p>
+                                </x-ui.alert>
                             @endif
 
-                            <button
+                            <x-ui.button
                                 type="button"
                                 wire:click="requestWaiter"
                                 wire:loading.attr="disabled"
                                 wire:target="requestWaiter"
-                                class="flex h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white transition hover:bg-orange-700 focus:outline-hidden focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-orange-300 dark:focus:ring-offset-zinc-900"
+                                variant="warning"
+                                full-width
                             >
                                 <span wire:loading.remove wire:target="requestWaiter">{{ __('Позвать официанта') }}</span>
                                 <span wire:loading wire:target="requestWaiter">{{ __('Отправляем вызов') }}</span>
-                            </button>
+                            </x-ui.button>
                         </div>
-                    </section>
+                    </x-ui.card>
 
                     <livewire:public-qr.table-guests
                         :table-session-id="$currentTableSessionId"
@@ -130,29 +131,31 @@
                         wire:key="guest-notifications-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
-                    <section data-component="guest-invite-share" class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <x-ui.card data-component="guest-invite-share">
                         <div class="space-y-1">
                             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Гости') }}</p>
                             <h2 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Пригласить гостя') }}</h2>
                         </div>
 
                         @if ($guestInviteMessage)
-                            <p class="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                            <x-ui.alert tone="info" class="mt-3">
                                 {{ $guestInviteMessage }}
-                            </p>
+                            </x-ui.alert>
                         @endif
 
                         @if ($guestInviteUrl === '')
-                            <button
+                            <x-ui.button
                                 type="button"
                                 wire:click="createGuestInviteLink"
                                 wire:loading.attr="disabled"
                                 wire:target="createGuestInviteLink"
-                                class="mt-4 flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900"
+                                variant="dark"
+                                full-width
+                                class="mt-4"
                             >
                                 <span wire:loading.remove wire:target="createGuestInviteLink">{{ __('Пригласить гостя') }}</span>
                                 <span wire:loading wire:target="createGuestInviteLink">{{ __('Готовим ссылку') }}</span>
-                            </button>
+                            </x-ui.button>
                         @else
                             <div
                                 class="mt-4 space-y-2"
@@ -185,39 +188,43 @@
                             >
                                 <input x-ref="inviteLink" type="text" readonly value="{{ $guestInviteUrl }}" class="sr-only" tabindex="-1" aria-hidden="true">
 
-                                <button
+                                <x-ui.button
                                     x-show="supportsNativeShare"
                                     type="button"
                                     x-on:click="shareInvite"
-                                    class="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900"
+                                    variant="dark"
+                                    full-width
                                 >
                                     {{ __('Пригласить гостя') }}
-                                </button>
+                                </x-ui.button>
 
-                                <button
+                                <x-ui.button
                                     x-show="! supportsNativeShare"
                                     type="button"
                                     x-on:click="copyInvite"
-                                    class="flex h-11 w-full items-center justify-center rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900"
+                                    variant="dark"
+                                    full-width
                                 >
                                     {{ __('Скопировать ссылку') }}
-                                </button>
+                                </x-ui.button>
 
-                                <button
+                                <x-ui.button
                                     x-show="supportsNativeShare"
                                     type="button"
                                     x-on:click="copyInvite"
-                                    class="flex h-10 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900 dark:focus:ring-offset-zinc-900"
+                                    variant="secondary"
+                                    size="sm"
+                                    full-width
                                 >
                                     {{ __('Скопировать ссылку') }}
-                                </button>
+                                </x-ui.button>
 
-                                <p x-cloak x-show="copied" class="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                                <x-ui.alert x-cloak x-show="copied" tone="success">
                                     {{ __('Ссылка скопирована.') }}
-                                </p>
+                                </x-ui.alert>
                             </div>
                         @endif
-                    </section>
+                    </x-ui.card>
 
                     <livewire:public-qr.join-requests
                         :table-session-id="$currentTableSessionId"
@@ -287,7 +294,7 @@
                             </div>
                         </div>
 
-                        <div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                        <x-ui.card>
                             <dl class="grid gap-4">
                                 <div>
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Зона') }}</dt>
@@ -313,33 +320,33 @@
                                     <dd class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</dd>
                                 </div>
                             </dl>
-                        </div>
+                        </x-ui.card>
                     </div>
 
                     <form wire:submit="enterTable" class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <label for="guest-name" class="text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ __('Ваше имя') }}</label>
-                        <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
-
-                        <input
-                            id="guest-name"
-                            name="guest_name"
-                            wire:model="guestName"
-                            type="text"
-                            required
-                            minlength="2"
-                            maxlength="80"
-                            autocomplete="name"
-                            class="mt-2 block h-12 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 outline-hidden transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                        <x-ui.form-field
+                            for="guest-name"
+                            name="guestName"
+                            :label="__('Ваше имя')"
+                            :description="$message"
                         >
-
-                        @error('guestName')
-                            <p class="mt-2 text-sm text-red-600 dark:text-red-300">{{ $message }}</p>
-                        @enderror
+                            <input
+                                id="guest-name"
+                                name="guest_name"
+                                wire:model="guestName"
+                                type="text"
+                                required
+                                minlength="2"
+                                maxlength="80"
+                                autocomplete="name"
+                                class="block h-12 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 outline-hidden transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                            >
+                        </x-ui.form-field>
 
                         @if ($preparedGuestName)
-                            <p class="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                            <x-ui.alert tone="success" class="mt-3">
                                 {{ __('Добро пожаловать, :name.', ['name' => $preparedGuestName]) }}
-                            </p>
+                            </x-ui.alert>
                         @endif
 
                         @if ($entryIssueCard['visible'])
@@ -356,20 +363,23 @@
                                 @if ($currentJoinRequestId) wire:poll.visible.{{ $landing['polling_interval_seconds'] }}s="refreshJoinRequestStatus" @endif
                             >
                                 @if ($entryMessage)
-                                    <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                                    <x-ui.alert tone="info">
                                         {{ $entryMessage }}
-                                    </p>
+                                    </x-ui.alert>
                                 @endif
                             </div>
                         @endif
 
-                        <button
+                        <x-ui.button
                             type="submit"
-                            @if ($currentGuestId || $currentJoinRequestId) disabled @endif
-                            class="mt-4 flex h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:focus:ring-offset-zinc-900"
+                            :disabled="$currentGuestId || $currentJoinRequestId"
+                            variant="primary"
+                            size="lg"
+                            full-width
+                            class="mt-4"
                         >
                             {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('Запрос закрыт') : __('Запрос отправлен')) : ($currentGuestId ? __('Вход сохранён') : __('Войти за стол')) }}
-                        </button>
+                        </x-ui.button>
                     </form>
                 </section>
             @endif

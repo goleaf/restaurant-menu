@@ -42,14 +42,16 @@
     @else
         <div class="min-w-0" style="padding-left: {{ min($node['depth'], 8) * 1.25 }}rem">
             <div class="flex flex-wrap items-center gap-2">
+                <x-ui.area-icon :type="$node['type']" :icon="$node['icon']" :label="__($node['type_label'])" :active="$node['is_active']" />
+
                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $node['name'] }}</h2>
 
-                <flux:badge :icon="$node['icon']">{{ __($node['type_label']) }}</flux:badge>
+                <x-ui.status-badge tone="muted">{{ __($node['type_label']) }}</x-ui.status-badge>
 
                 @if ($node['is_active'])
-                    <flux:badge color="green">{{ __('Работает') }}</flux:badge>
+                    <x-ui.status-badge tone="success" dot>{{ __('Работает') }}</x-ui.status-badge>
                 @else
-                    <flux:badge color="zinc">{{ __('Выключена') }}</flux:badge>
+                    <x-ui.status-badge tone="muted" dot>{{ __('Выключена') }}</x-ui.status-badge>
                 @endif
             </div>
         </div>
@@ -75,7 +77,7 @@
         </div>
 
         @if ($deletingAreaNodeId === $node['id'])
-            <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
+            <x-ui.alert tone="danger" class="md:col-span-2">
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <span>{{ __('Удалить эту зону?') }}</span>
 
@@ -89,7 +91,7 @@
                         </flux:button>
                     </div>
                 </div>
-            </div>
+            </x-ui.alert>
         @endif
     @endif
 

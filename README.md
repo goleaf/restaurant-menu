@@ -17,6 +17,29 @@ This project is not only a QR menu. The current codebase is a clean shared-hosti
 
 The project intentionally does not use Redis, WebSockets, Docker as a requirement, S3, paid external services, React, Vue, or a separate SPA frontend.
 
+## Simple Design System
+
+Reusable Blade UI primitives live in:
+
+```text
+resources/views/components/ui
+```
+
+Current primitives cover:
+
+- buttons;
+- cards;
+- status badges;
+- form fields;
+- empty states;
+- alerts and warnings;
+- mobile bottom action bars for guest screens;
+- clear area and service point icons using the existing Flux icon set.
+
+The design system is intentionally small: Tailwind CSS, Blade components, Livewire-friendly attributes, and existing Flux icons only. It does not add React, Vue, a SPA frontend, a heavy UI framework, WebSockets, Redis, S3, Docker, or external services.
+
+The first applied screens are guest QR/table/menu actions, branch area management, and branch service point management.
+
 ## Database Notifications
 
 Operational notifications are stored in Laravel's local `notifications` table and are delivered only through the `database` channel.

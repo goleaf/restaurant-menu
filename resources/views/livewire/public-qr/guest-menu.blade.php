@@ -24,18 +24,20 @@
     </div>
 
     @if ($guestMenu['menu'] === null)
-        <div class="mt-4 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-center dark:border-zinc-700 dark:bg-zinc-950/60">
-            <p class="text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('Меню пока недоступно') }}</p>
-        </div>
+        <x-ui.empty-state
+            class="mt-4"
+            icon="book-open"
+            :heading="__('Меню пока недоступно')"
+        />
     @else
         @if ($feedbackMessage)
-            <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+            <x-ui.alert tone="success" class="mt-4">
                 {{ $feedbackMessage }}
-            </p>
+            </x-ui.alert>
         @endif
 
         @error('guest')
-            <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+            <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
         @enderror
 
         <div class="mt-4 space-y-5">
@@ -98,26 +100,27 @@
                                         <div class="mt-3">
                                             @if ($item['is_available'] && $guestCanAddItems)
                                                 <div class="flex flex-wrap items-center gap-2">
-                                                    <span class="inline-flex rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                                    <x-ui.status-badge tone="success">
                                                         {{ __('Доступно') }}
-                                                    </span>
+                                                    </x-ui.status-badge>
 
-                                                    <button
+                                                    <x-ui.button
                                                         type="button"
                                                         wire:click="openItem({{ $item['id'] }})"
-                                                        class="inline-flex min-h-9 items-center justify-center rounded-lg bg-zinc-900 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 focus:outline-hidden focus:ring-2 focus:ring-zinc-600 focus:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:focus:ring-offset-zinc-900"
+                                                        variant="dark"
+                                                        size="sm"
                                                     >
                                                         {{ __('Добавить') }}
-                                                    </button>
+                                                    </x-ui.button>
                                                 </div>
                                             @elseif ($item['is_available'])
-                                                <span class="inline-flex rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                <x-ui.status-badge tone="muted">
                                                     {{ __('Недоступно') }}
-                                                </span>
+                                                </x-ui.status-badge>
                                             @else
-                                                <span class="inline-flex rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                                <x-ui.status-badge tone="muted">
                                                     {{ __('Нет в наличии') }}
-                                                </span>
+                                                </x-ui.status-badge>
                                             @endif
                                         </div>
 
@@ -143,16 +146,18 @@
                                 </div>
                             </article>
                         @empty
-                            <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                                {{ __('В этой категории пока нет блюд') }}
-                            </p>
+                            <x-ui.empty-state
+                                icon="cake"
+                                :heading="__('В этой категории пока нет блюд')"
+                            />
                         @endforelse
                     </div>
                 </section>
             @empty
-                <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                    {{ __('Категории меню пока не настроены') }}
-                </p>
+                <x-ui.empty-state
+                    icon="book-open"
+                    :heading="__('Категории меню пока не настроены')"
+                />
             @endforelse
         </div>
     @endif
@@ -170,10 +175,10 @@
                     <button
                         type="button"
                         wire:click="closeItemSheet"
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
                         aria-label="{{ __('Закрыть') }}"
                     >
-                        ×
+                        <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
                 </div>
 
@@ -213,9 +218,10 @@
                                         </span>
                                     </button>
                                 @empty
-                                    <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                                        {{ __('Нет доступных вариантов') }}
-                                    </p>
+                                    <x-ui.empty-state
+                                        icon="adjustments-horizontal"
+                                        :heading="__('Нет доступных вариантов')"
+                                    />
                                 @endforelse
                             </div>
 
@@ -224,9 +230,10 @@
                             @enderror
                         </fieldset>
                     @empty
-                        <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                            {{ __('Для этого блюда нет дополнительных настроек') }}
-                        </p>
+                        <x-ui.empty-state
+                            icon="adjustments-horizontal"
+                            :heading="__('Для этого блюда нет дополнительных настроек')"
+                        />
                     @endforelse
 
                     <label class="grid gap-1 text-sm">
@@ -243,18 +250,20 @@
                     </label>
                 </div>
 
-                <div class="sticky bottom-0 -mx-4 mt-5 border-t border-zinc-200 bg-white px-4 pt-3 dark:border-zinc-800 dark:bg-zinc-950">
-                    <button
+                <x-ui.mobile-bottom-actions class="mt-5">
+                    <x-ui.button
                         type="button"
                         wire:click="saveConfiguredItem"
                         wire:loading.attr="disabled"
                         wire:target="saveConfiguredItem"
-                        class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                        variant="primary"
+                        size="lg"
+                        full-width
                     >
                         <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('Добавить') }} · {{ $selectedItemTotal }}</span>
                         <span wire:loading wire:target="saveConfiguredItem">{{ __('Добавляем') }}</span>
-                    </button>
-                </div>
+                    </x-ui.button>
+                </x-ui.mobile-bottom-actions>
             </div>
         </div>
     @endif

@@ -16,6 +16,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Local public storage in `storage/app/public`
 - Fixed interface locales: `ru`, `en`, `lt`
 - Fixed branch currencies through `App\Enums\SupportedCurrency`
+- Small Blade design-system primitives in `resources/views/components/ui`
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -95,6 +96,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - CSV data exports for branch orders, manual payments, menu items, and service points through streamed responses guarded by `export_data`.
 - Basic localization foundation with `SupportedLocale`, `users.locale`, `SetInterfaceLocale` web middleware, profile language selection, guest QR language selection, and local JSON strings in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
 - Basic currency settings with `SupportedCurrency`, `MoneyFormatter`, branch/settings currency selectors, settings-to-branch currency sync, and formatted guest/menu price display.
+- Simple reusable Blade design system for lightweight buttons, cards, status badges, form fields, empty states, alerts/warnings, mobile guest bottom action bars, and clear zone/service-point icons. The first applied screens are public QR guest table/menu actions, branch area management, and branch service point management.
 - Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -970,6 +972,14 @@ Local media storage:
 
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
 - `resources/views/components/guest-error-panel.blade.php` renders mobile-first public guest error panels from prepared Livewire state only.
+- `resources/views/components/ui/button.blade.php` is the shared Blade button primitive. It forwards normal HTML and `wire:*` attributes.
+- `resources/views/components/ui/card.blade.php` is the shared card/surface primitive.
+- `resources/views/components/ui/status-badge.blade.php` is the shared status badge primitive.
+- `resources/views/components/ui/form-field.blade.php` is the shared simple form field wrapper.
+- `resources/views/components/ui/empty-state.blade.php` is the shared empty-state primitive.
+- `resources/views/components/ui/alert.blade.php` is the shared warning/success/error/info message primitive.
+- `resources/views/components/ui/mobile-bottom-actions.blade.php` is the shared guest mobile bottom action primitive.
+- `resources/views/components/ui/area-icon.blade.php` and `resources/views/components/ui/service-point-icon.blade.php` map existing zone/service point types to clear Flux icons.
 - `App\Livewire\AuditLogs\Index`
 - `App\Livewire\Exports\Index`
 - `App\Livewire\Settings\Profile` now includes admin interface language selection.
@@ -1012,6 +1022,22 @@ Local media storage:
 - `App\Livewire\Settings\DeleteUserForm`
 - `App\Livewire\Settings\TwoFactor\RecoveryCodes`
 - `App\Livewire\Actions\Logout`
+
+## Current Design System
+
+- Design primitives are anonymous Blade components under `resources/views/components/ui`.
+- The system uses Tailwind utility classes and the existing Flux icon components only.
+- No package, route, database table, business action, or Livewire class was added for Prompt 089.
+- `x-ui.button` keeps Livewire-friendly attribute forwarding, so `wire:click`, `wire:loading`, `href`, `type`, and `disabled` continue to work from the calling view.
+- `x-ui.mobile-bottom-actions` is for guest mobile screens where primary actions should stay easy to reach.
+- `x-ui.area-icon` and `x-ui.service-point-icon` map type values like `hall`, `terrace`, `vip_room`, `table`, `bar_seat`, and `pickup_window` to existing Flux icons.
+- First applied screens:
+  - public QR guest landing/table/menu views;
+  - public QR draft totals bottom actions;
+  - branch area CRUD;
+  - branch service point CRUD.
+- The design system must stay lightweight and shared-hosting friendly. Do not add React, Vue, Inertia, a SPA frontend, heavy UI libraries, WebSockets, Redis, S3, Docker, or external services for UI polish.
+- Keep Blade display-only: data must still be prepared by Livewire components/actions, not queried from Blade templates.
 
 ## Local Backup Access
 
@@ -1400,7 +1426,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, and Prompt 088 explicit order item snapshots intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, and Prompt 089 lightweight Blade design-system primitives intact during future feature work.
 
 ## Do Not Break
 
@@ -1412,6 +1438,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
+- Do not replace the small Blade design-system primitives with a heavy UI framework or a client-side SPA.
 - Do not send operational notifications through Push, WebSockets, Redis, SMS, Telegram API, mail delivery, or paid notification providers; keep them in Laravel database notifications.
 - Do not replace notification UI polling with full-page refreshes or WebSockets; keep updates scoped to Livewire notification blocks.
 - Do not remove `wire:poll.visible` from hot polling blocks or increase polling query payloads without a clear reason.

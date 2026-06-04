@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 089 - Add Simple Design System
+
+- Added small reusable Blade design-system primitives under `resources/views/components/ui` for buttons, cards, status badges, form fields, empty states, alerts, mobile guest bottom actions, and zone/service-point icons.
+- Applied the new primitives to the guest QR/table/menu actions and the branch area/service point screens without changing business logic, routes, tables, drivers, or polling behavior.
+- Kept the UI stack lightweight: Blade + Livewire + Tailwind + existing Flux icons only, with no React/Vue SPA, heavy UI framework, Redis, WebSockets, S3, Docker, or external services.
+- Added focused Blade render coverage for the design-system components.
+
 ### Prompt 088 - Improve Order Snapshots
 
 - Added explicit `order_items` snapshot columns for original menu item id, guest name, item name/description, unit price, selected modifiers, and future tax/service payloads.

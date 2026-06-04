@@ -16,11 +16,10 @@
     </header>
 
     @if ($canManageServicePoints)
-        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="flex flex-col gap-1">
-                <flux:heading size="lg">{{ __('Шаг 3: добавьте столы') }}</flux:heading>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Выберите тип места, задайте понятное название и при необходимости номер на наклейке.') }}</p>
-            </div>
+        <x-ui.card
+            :heading="__('Шаг 3: добавьте столы')"
+            :description="__('Выберите тип места, задайте понятное название и при необходимости номер на наклейке.')"
+        >
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($this->quickCreateOptions as $option)
@@ -70,10 +69,10 @@
                     </flux:button>
                 </div>
             </form>
-        </div>
+        </x-ui.card>
     @endif
 
-    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <flux:heading size="lg">
                 {{ __('Столы и места филиала') }}
@@ -128,35 +127,37 @@
                     @else
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
+                                <x-ui.service-point-icon :type="$servicePoint->type" :icon="$servicePoint->icon" :label="__($servicePoint->type->label())" :active="$servicePoint->is_active" />
+
                                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint->name }}</h2>
 
-                                <flux:badge :icon="$servicePoint->icon ?? 'bookmark'">{{ __($servicePoint->type->label()) }}</flux:badge>
-                                <flux:badge :color="$servicePoint->status->badgeColor()">{{ __($servicePoint->status->label()) }}</flux:badge>
+                                <x-ui.status-badge tone="muted">{{ __($servicePoint->type->label()) }}</x-ui.status-badge>
+                                <x-ui.status-badge :tone="$servicePoint->status->badgeColor()" dot>{{ __($servicePoint->status->label()) }}</x-ui.status-badge>
 
                                 @if ($servicePoint->is_active)
-                                    <flux:badge color="green">{{ __('Работает') }}</flux:badge>
+                                    <x-ui.status-badge tone="success">{{ __('Работает') }}</x-ui.status-badge>
                                 @else
-                                    <flux:badge color="zinc">{{ __('Выключено') }}</flux:badge>
+                                    <x-ui.status-badge tone="muted">{{ __('Выключено') }}</x-ui.status-badge>
                                 @endif
 
                                 @if ($servicePoint->activeTableSession)
-                                    <flux:badge color="blue">
+                                    <x-ui.status-badge tone="info">
                                         {{ __('Стол открыт') }}
                                         <span class="sr-only">{{ __('Active session') }}</span>
-                                    </flux:badge>
+                                    </x-ui.status-badge>
                                 @endif
 
                                 @if ($canGenerateQr)
                                     @if ($servicePoint->activeQrCode)
-                                        <flux:badge color="green">
+                                        <x-ui.status-badge tone="success" icon="qr-code">
                                             {{ __('QR готов') }}
                                             <span class="sr-only">{{ __('QR active') }}</span>
-                                        </flux:badge>
+                                        </x-ui.status-badge>
                                     @else
-                                        <flux:badge color="zinc">
+                                        <x-ui.status-badge tone="muted" icon="qr-code">
                                             {{ __('QR нет') }}
                                             <span class="sr-only">{{ __('No QR') }}</span>
-                                        </flux:badge>
+                                        </x-ui.status-badge>
                                     @endif
                                 @endif
                             </div>
@@ -274,11 +275,15 @@
                     @endif
                 </div>
             @empty
-                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('Столов и мест пока нет. Начните с кнопки “Стол”.') }}
+                <div class="p-4">
+                    <x-ui.empty-state
+                        icon="squares-2x2"
+                        :heading="__('Столов и мест пока нет')"
+                        :description="__('Начните с кнопки “Стол”. QR позже привяжется к месту и не изменится при переименовании или переносе.')"
+                    />
                     <span class="sr-only">{{ __('No service points yet.') }}</span>
                 </div>
             @endforelse
         </div>
-    </div>
+    </x-ui.card>
 </section>

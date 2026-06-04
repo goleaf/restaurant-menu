@@ -15,11 +15,10 @@
         </div>
     </header>
 
-    <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="flex flex-col gap-1">
-            <flux:heading size="lg">{{ __('Шаг 2: добавьте зоны') }}</flux:heading>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Нажмите готовый вариант, впишите название и сохраните.') }}</p>
-        </div>
+    <x-ui.card
+        :heading="__('Шаг 2: добавьте зоны')"
+        :description="__('Нажмите готовый вариант, впишите название и сохраните.')"
+    >
 
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($this->quickCreateOptions as $option)
@@ -68,9 +67,9 @@
                 </flux:button>
             </div>
         </form>
-    </div>
+    </x-ui.card>
 
-    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <flux:heading size="lg">{{ __('Список зон') }}</flux:heading>
         </div>
@@ -79,11 +78,15 @@
             @forelse ($this->treeNodes as $node)
                 @include('livewire.organizations.brands.branches.area-node-row', ['node' => $node])
             @empty
-                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('Зон пока нет. Начните с зала или террасы.') }}
+                <div class="p-4">
+                    <x-ui.empty-state
+                        icon="squares-2x2"
+                        :heading="__('Зон пока нет')"
+                        :description="__('Начните с зала, террасы или VIP-зоны. Потом столы можно будет привязать к этим зонам.')"
+                    />
                     <span class="sr-only">{{ __('No areas yet.') }}</span>
                 </div>
             @endforelse
         </div>
-    </div>
+    </x-ui.card>
 </section>

@@ -22,6 +22,7 @@ use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
 use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
 use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\QrCodes\ShortCodeLookup as QrShortCodeLookup;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
@@ -121,6 +122,7 @@ Route::middleware(['auth'])
     ->name('restaurant.')
     ->group(function () {
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
+        Route::livewire('qr-lookup', QrShortCodeLookup::class)->name('qr-lookup.index');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
 
         Route::prefix('exports')

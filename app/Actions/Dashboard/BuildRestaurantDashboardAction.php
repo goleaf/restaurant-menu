@@ -457,6 +457,13 @@ class BuildRestaurantDashboardAction
                 branchIds: $access['qr'],
             ),
             $this->screenQuickAction(
+                label: 'QR lookup',
+                description: 'Find a printed QR sticker',
+                icon: 'magnifying-glass',
+                routeName: 'restaurant.qr-lookup.index',
+                isAvailable: $access['qr']->isNotEmpty(),
+            ),
+            $this->screenQuickAction(
                 label: 'Waiter screen',
                 description: 'Open live waiter workspace',
                 icon: 'clipboard-document-list',

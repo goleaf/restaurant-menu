@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD and bulk creation, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD and bulk creation, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,9 +47,9 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 108 QR label design presets. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, and waiter-side schedule checks are now part of the baseline branch setup and order-review context.
+Latest memory refresh: 2026-06-04 after Prompt 109 QR short-code lookup. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, and waiter-side schedule checks are now part of the baseline branch setup and order-review context.
 
-The memory refresh after Prompt 108 records the current QR print status and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
+The memory refresh after Prompt 109 records the current QR lookup status and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
 
 ## Functional Consistency Pass
 
@@ -1121,6 +1121,14 @@ Disabled and revoked QR codes show a clear public error message. Active QR codes
 Users with `generate_qr` can open the QR admin page from a service point. The page shows the branch, current area, current service point, public URL, local SVG QR image, short code, status, and creation date. It can open the guest URL, download the QR SVG image, disable the QR, or manually reissue the QR after a danger warning.
 
 Manual reissue revokes the current active QR and creates a new active QR for the same service point. Normal service point editing, including rename and area move, does not reissue or change the QR.
+
+Users with `generate_qr` can also open the restaurant QR lookup page:
+
+```text
+/restaurant/qr-lookup
+```
+
+The lookup searches by printed `short_code`, shows only QR records from branches accessible to the current user, and displays branch, current zone, current service point, QR status, and the public `/q/{public_token}` URL. The page can open the QR admin page, open the guest URL, disable the QR, or manually reissue it after the same danger warning. Searching by `short_code` does not create, disable, reissue, revoke, or otherwise change QR records.
 
 Users with `generate_qr` can also open a browser print-friendly sticker template for one service point QR. The sticker shows a restaurant logo only if a local logo field already exists, otherwise it uses the brand name as a simple text mark. It prints the text `Сканируйте, чтобы открыть меню`, the QR image, and the `short_code`.
 

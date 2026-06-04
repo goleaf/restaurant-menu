@@ -4,24 +4,26 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 108 QR label design presets.
+Last memory refresh: 2026-06-04 after Prompt 109 QR short-code lookup.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
-modes, bulk service point creation, QR label design presets, and waiter-side
-schedule checks should be treated as current baseline for future guest UI, QR
-landing, ordering work, staff review, and branch setup.
+modes, bulk service point creation, QR label design presets, QR short-code
+lookup, and waiter-side schedule checks should be treated as current baseline
+for future guest UI, QR landing, ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt
 
-Prompt 109: add simple QR label size presets for browser print, only if the user explicitly requests it.
+Prompt 110: add simple QR label size presets for browser print, only if the user explicitly requests it.
 
-Prompt 109 scope, if requested:
+Prompt 110 scope, if requested:
 
 - Keep it CSS/Livewire-only unless a later prompt explicitly asks for persisted branch defaults.
 - Reuse `App\Enums\QrLabelPreset` patterns if a new fixed size enum is useful.
 - Do not add PDF generation, paid PDF services, browser plugins, external QR services, or heavy libraries.
 - Do not create, reissue, disable, revoke, or otherwise alter QR records.
 - Keep single and bulk QR print behavior aligned.
+- Keep QR short-code lookup read-only unless the user explicitly clicks disable
+  or reissue.
 
 Alternative queued prompt:
 
@@ -58,6 +60,8 @@ Risky places:
 - QR print CSS is shared by single and bulk printing; keep class changes scoped to `qr-sticker` and print media.
 - `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate` and `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint` both keep URL-backed print state; keep defaults safe.
 - Permanent QR identity must never depend on print preset, print size, service point name, service point number, or area.
+- QR short-code lookup must stay scoped to `generate_qr` and accessible branch
+  ids; a printed `short_code` is not a public guest token.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -100,6 +104,11 @@ switch between `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and
 `premium` browser print-friendly CSS presets. Preset changes are presentation
 only and do not change QR identity or print mutable service point text by
 default.
+
+Prompt 109 added QR short-code lookup: users with `generate_qr` can open
+`/restaurant/qr-lookup`, search a printed code such as `QR-8F92`, and see only
+accessible branch QR details with branch, zone, service point, status, public
+URL, and explicit open/disable/reissue actions.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

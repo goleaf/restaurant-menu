@@ -28,6 +28,12 @@
                         {{ __('Restaurant') }}
                     </flux:sidebar.item>
 
+                    @if ($canAccessQrLookup ?? false)
+                        <flux:sidebar.item icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="request()->routeIs('restaurant.qr-lookup.*')" wire:navigate>
+                            {{ __('QR lookup') }}
+                        </flux:sidebar.item>
+                    @endif
+
                     @if ($canAccessWaiterDashboard ?? false)
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="request()->routeIs('restaurant.waiter.*')" wire:navigate>
                             {{ __('Waiter') }}

@@ -13,6 +13,40 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 109 QR Short Code Lookup Results
+
+Programmatic coverage was added in `tests/Feature/QrShortCodeLookupTest.php`.
+The feature currently verifies:
+
+- `/restaurant/qr-lookup` requires authentication and `generate_qr` access;
+- a manager can find an existing QR by printed `short_code`;
+- lookup shows branch, current zone, service point, QR status, and public URL;
+- lookup is scoped to accessible branches and does not reveal another branch;
+- searching does not change QR token, short code, status, or create a second QR;
+- disable and manual reissue actions work from the lookup page and keep the
+  one-active-QR rule.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/QrShortCodeLookupTest.php
+```
+
+Manual check:
+
+1. Open `/restaurant/qr-lookup` as a user without `generate_qr` and confirm
+   access is forbidden.
+2. Open the same page as a user with `generate_qr`.
+3. Search a printed short code such as `QR-8F92`.
+4. Confirm branch, zone, service point, QR status, and public URL are shown.
+5. Open the QR admin page and guest URL from the result.
+6. Confirm repeating the search does not change `public_token`, `short_code`,
+   QR status, or active QR count.
+7. Disable an active QR from the lookup page and confirm the status changes to
+   disabled.
+8. Reissue a QR only after the warning and confirm the old QR is revoked and one
+   new active QR exists.
+
 ## Prompt 108 QR Label Design Presets Results
 
 Programmatic coverage was added to existing QR print tests. The feature
@@ -87,13 +121,13 @@ Current known future-product gaps from the Prompt 280 checklist:
 Do not add those during consistency/bugfix prompts without a separate explicit
 scope.
 
-## Daily Memory Update - 2026-06-04 After Prompt 108
+## Daily Memory Update - 2026-06-04 After Prompt 109
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 108. Branch service
-modes, bulk service point creation, and QR label design presets are now part of
-branch setup and QR print. Prompt 109 is the next recommended small prompt only
-if explicitly requested.
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 109. Branch service
+modes, bulk service point creation, QR label design presets, and QR short-code
+lookup are now part of branch setup and QR administration. Prompt 110 is the
+next recommended small prompt only if explicitly requested.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is
@@ -138,6 +172,10 @@ After Prompt 108, include QR label presets in QR print smoke checks: open single
 and bulk QR print pages, switch through `minimal`, `classic`, `restaurant`,
 `bar`, `hotel`, and `premium`, confirm browser print preview works, and confirm
 service point number/area are not printed unless `print_table_number` is enabled.
+
+After Prompt 109, include QR short-code lookup in QR admin smoke checks: search
+an existing printed code, confirm the result is branch-scoped and current, and
+confirm lookup itself does not change QR identity.
 
 Use these focused checks after documentation-only maintenance:
 

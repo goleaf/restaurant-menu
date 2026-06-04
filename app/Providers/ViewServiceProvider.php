@@ -7,6 +7,8 @@ use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
 use App\Actions\Exports\BuildDataExportsIndexAction;
 use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
+use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\SystemPermission;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
@@ -59,6 +61,13 @@ class ViewServiceProvider extends ServiceProvider
             $view->with(
                 'canAccessDataExports',
                 $user instanceof User && app(BuildDataExportsIndexAction::class)->userHasAccess($user),
+            );
+
+            $view->with(
+                'canAccessQrLookup',
+                $user instanceof User && app(ResolveWaiterAccessibleBranchIdsAction::class)
+                    ->handle($user, SystemPermission::GenerateQr)
+                    ->isNotEmpty(),
             );
         });
     }

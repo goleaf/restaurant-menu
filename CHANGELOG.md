@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 109 - QR Short Code Lookup
+
+- Added an authenticated restaurant-admin QR lookup page at `/restaurant/qr-lookup`.
+- Users with `generate_qr` can search by printed `short_code` and see the branch, current zone, current service point, QR status, and public `/q/{public_token}` URL for accessible branches only.
+- The lookup page links to the existing QR admin page and guest URL, and reuses the existing disable and manual reissue actions with the danger warning.
+- Searching by `short_code` is read-only and does not create, reissue, disable, revoke, or otherwise change QR records.
+- Touched modules/files: `App\Livewire\QrCodes\ShortCodeLookup`, `routes/web.php`, `ViewServiceProvider`, restaurant dashboard quick actions, app sidebar, QR lookup Blade view, README, AI context, smoke checklist, next-step notes, and `tests/Feature/QrShortCodeLookupTest.php`.
+- Limitations: no new database schema, no public lookup by short code, no external QR service, no PDF service, no Redis/WebSockets/S3/Docker, and no change to permanent QR identity.
+- Manual check: open `/restaurant/qr-lookup` as a user with `generate_qr`, search a printed code such as `QR-8F92`, confirm current branch/zone/place and public URL are shown, confirm a user without `generate_qr` receives forbidden access, then test disable and manual reissue from the lookup page.
+
 ### Prompt 108 - QR Label Design Presets
 
 - Added fixed browser print-friendly QR label design presets: `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and `premium`.

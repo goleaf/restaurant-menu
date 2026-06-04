@@ -179,6 +179,40 @@ php artisan db:seed
 
 Do not commit real superadmin credentials. The seeder stores only the user and assigns the fixed `superadmin` role.
 
+## Demo Seed
+
+A local demo restaurant can be seeded explicitly after migrations:
+
+```bash
+php artisan db:seed --class=DemoRestaurantSeeder
+```
+
+The demo seed is intentionally not called from the default `DatabaseSeeder`; run it only when you want sample data for development, QA, or a fresh shared-hosting installation.
+
+It creates:
+
+- organization `Demo Food Group`;
+- brand `Bella Pizza`;
+- branch `Demo Old Town`;
+- zones `Главный зал`, `Терраса`, and `Бар`;
+- seven service points with one active permanent QR each;
+- an active demo menu with pizza, drinks, and dessert categories;
+- several dishes with kitchen/bar/dessert department assignment and ru/en/lt menu translations;
+- demo staff users for owner, restaurant admin, waiter, chef, bartender, and cashier.
+
+Demo user emails:
+
+```text
+demo.owner@example.com
+demo.admin@example.com
+demo.waiter@example.com
+demo.chef@example.com
+demo.bartender@example.com
+demo.cashier@example.com
+```
+
+The default password for demo users is `password`. Change or remove these accounts before using real production data. Re-running the demo seeder updates the same demo records and should not create duplicate demo restaurants, service points, menus, or active QR codes.
+
 ## SaaS Subscription
 
 Organizations have one local SaaS subscription record in `organization_subscriptions`. There is only one plan for everyone, and the system does not enforce tariff limits.
@@ -921,6 +955,7 @@ Implemented:
 - Laravel/Fortify authentication with Livewire-friendly screens.
 - Fixed system roles seeded from enums.
 - Flexible permissions with role permissions and user overrides.
+- Explicit demo restaurant seed for local QA and first-run testing.
 - Organizations with owner membership.
 - Simple one-plan SaaS subscription status stored in `organization_subscriptions` with superadmin manual activation/suspension.
 - Organization users with role, status, joined date, and inviter fields.

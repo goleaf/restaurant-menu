@@ -66,6 +66,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branch settings.
 - Centralized branch cache invalidation through `App\Actions\Branches\ForgetBranchCacheAction` for database-cache guest menu, legacy menu, and polling interval keys.
 - Restaurant onboarding wizard at `/onboarding/restaurant` for creating a starter organization, brand, branch, first zone, first service points, permanent QR codes, first active menu, and a test public guest page.
+- Explicit demo restaurant seed through `Database\Seeders\DemoRestaurantSeeder` for local QA and first-run testing.
 - Simplified branch setup UI with the `Настроить ресторан` wizard for branch, zones, service points, QR generation, QR print, and guest-menu opening.
 - Local media storage for organization, brand, and branch logos.
 - Area nodes nested branch schema and CRUD UI.
@@ -226,6 +227,19 @@ Restaurant onboarding wizard:
 - Starter menu creation is isolated in `App\Actions\Onboarding\CreateStarterMenuAction` and writes the existing `menus`, `menu_categories`, and `menu_items` tables only.
 - The final test guest link uses the existing public QR route and remains `/q/{public_token}`.
 - The wizard does not replace ordinary CRUD screens.
+
+Demo restaurant seed:
+
+- Seeder class is `Database\Seeders\DemoRestaurantSeeder`.
+- It is run explicitly with `php artisan db:seed --class=DemoRestaurantSeeder`.
+- It is not called from `DatabaseSeeder`, so production/base seeding does not automatically create demo restaurant data.
+- It creates `Demo Food Group`, `Bella Pizza`, and `Demo Old Town`.
+- It creates zones `Главный зал`, `Терраса`, and `Бар`.
+- It creates seven service points with stable demo `internal_code` values and one active permanent QR each.
+- It creates `Bella Pizza Demo Menu` with pizza, drinks, and dessert categories, seven dishes, kitchen/bar/dessert department assignments, and ru/en/lt menu/category translations.
+- It creates demo users `demo.owner@example.com`, `demo.admin@example.com`, `demo.waiter@example.com`, `demo.chef@example.com`, `demo.bartender@example.com`, and `demo.cashier@example.com` with default password `password`.
+- Demo access uses organization/branch memberships plus user-level permission overrides, not global role-permission changes.
+- Re-running the seeder should update the same demo rows and must not duplicate the demo organization, brand, branch, service points, menu, menu items, or active QR codes.
 
 Menu:
 
@@ -1464,7 +1478,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, and Prompt 093 centralized branch cache invalidation intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, and Prompt 094 explicit idempotent demo seed intact during future feature work.
 
 ## Do Not Break
 
@@ -1474,6 +1488,8 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not delete organization data, restaurants, QR codes, orders, payments, or audit logs when a subscription is deactivated; it is an access/status toggle only.
 - Do not physically delete organizations, brands, branches, area nodes, service points, menus, menu categories, or menu items through ordinary UI actions; these important entities use soft deletes.
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
+- Do not call `DemoRestaurantSeeder` from `DatabaseSeeder` unless a future prompt explicitly changes the seeding strategy; demo restaurant data must stay opt-in.
+- Do not make the demo seed change global role-permission defaults for real users; keep demo access scoped to demo users and memberships.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not replace the small Blade design-system primitives with a heavy UI framework or a client-side SPA.

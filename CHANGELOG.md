@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 094 - Add Demo Restaurant Seed
+
+- Added an explicit `DemoRestaurantSeeder` for a runnable demo restaurant without wiring it into the default production seed path.
+- Seeded `Demo Food Group`, `Bella Pizza`, `Demo Old Town`, three branch zones, seven service points, one active permanent QR per service point, an active demo menu with categories, dishes, and ru/en/lt translations.
+- Added demo staff users for owner, restaurant admin, waiter, chef, bartender, and cashier with branch memberships and user-level permission overrides for testing the existing flow.
+- Documented the manual demo seed command and added focused coverage proving the seeder creates runnable data and can be run twice without duplicating demo rows.
+
 ### Prompt 093 - Centralize Branch Cache Invalidation
 
 - Added `ForgetBranchCacheAction` as the central branch cache invalidation point for SQLite-backed database cache keys.

@@ -18,6 +18,10 @@ SQLite setup.
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`.
 
+After Prompt 102, treat branch opening hours as part of the normal guest QR
+smoke flow: QR/menu viewing stays available while closed, but ordering is
+blocked when a configured schedule says the branch is closed.
+
 After Prompt 101, include the public restaurant profile in setup smoke checks:
 branch settings should save public name, description, local logo/cover, contact
 links, default language, and default currency, and the QR landing should show

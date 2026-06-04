@@ -47,6 +47,8 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
+Latest memory refresh: 2026-06-04 after Prompt 102. Branch public profiles and branch opening hours are now part of the baseline guest QR context.
+
 ## Project Cleanup Consistency
 
 Prompt 098 cleaned remaining starter-kit and temporary surfaces without adding new product features.

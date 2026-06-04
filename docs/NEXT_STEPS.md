@@ -4,9 +4,9 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 102. The implemented public
-restaurant profile and branch opening hours should be treated as current
-baseline for future guest UI and QR landing work.
+Last memory refresh: 2026-06-04 after the Prompt 102 feature commit. The
+implemented public restaurant profile and branch opening hours should be treated
+as current baseline for future guest UI and QR landing work.
 
 ## Current Recommended Prompt
 

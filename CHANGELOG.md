@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Prompt 100 - Document Current Version
+
+- Added `docs/CURRENT_VERSION.md` as a short current-version snapshot for the next developer or coding agent.
+- Documented Organization, Brand, Branch, Area Node, Service Point, permanent QR identity, table sessions, guest entry/approval, shared drafts, waiter confirmation, kitchen/bar dispatch, manual payment/close, shared-hosting mode, current limits, and likely next steps.
+- Linked the snapshot from README and updated AI context while keeping the project scope unchanged: SQLite, database cache/session/queue, Blade + Livewire, no Redis, WebSockets, S3, Docker, paid services, or separate SPA.
+
 ### Prompt 099 - Review Vertical Slice
 
 - Added `tests/Feature/VerticalSliceFlowTest.php` as a focused first vertical-slice regression from registration through restaurant setup, permanent QR, guest entry, invite approval, shared draft, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, and table-session close.

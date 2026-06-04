@@ -27,6 +27,14 @@ docs/DEPLOY_SHARED_HOSTING.md
 
 The guide covers SQLite, writable directories, `storage:link` and shared-hosting alternatives, migrations, database cache, database sessions, database queue, optional scheduler cron, local storage boundaries, and files that must never be committed.
 
+## Current Version Snapshot
+
+A short developer/coding-agent overview of the current domain model, QR/session flow, shared-hosting mode, limitations, and next-step guardrails lives in:
+
+```text
+docs/CURRENT_VERSION.md
+```
+
 ## Project Cleanup Consistency
 
 Prompt 098 cleaned remaining starter-kit and temporary surfaces without adding new product features.

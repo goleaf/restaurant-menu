@@ -57,6 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - SQLite-only database configuration.
 - Database-backed cache, sessions, and queues.
 - Shared-hosting deployment notes in `docs/DEPLOY_SHARED_HOSTING.md`.
+- Current-version developer snapshot in `docs/CURRENT_VERSION.md`, covering the domain terms, permanent QR rule, table-session/guest/draft/order flow, shared-hosting mode, limits, and next-step guardrails.
 - Prompt 099 first vertical-slice regression: `tests/Feature/VerticalSliceFlowTest.php` covers registration, organization/brand/branch/zone/service point setup, permanent QR, public QR guest entry, invite approval for the second guest, shared draft items, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, table-session close, and permanent QR stability.
 - Prompt 098 project cleanup: removed starter placeholder pages/copy, removed default `test@example.com` seeding, removed unused starter header/icon overrides, removed `laravel/sail`, and added focused cleanup regression coverage.
 - Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
@@ -1518,7 +1519,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, and Prompt 099 vertical-slice regression intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, and Prompt 100 current-version snapshot intact during future feature work.
 
 ## Do Not Break
 
@@ -1534,6 +1535,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not make the demo seed change global role-permission defaults for real users; keep demo access scoped to demo users and memberships.
 - Do not replace the manual smoke checklist with a heavy browser/E2E dependency unless a future prompt explicitly asks for that testing layer.
 - Do not remove or weaken the Prompt 099 vertical-slice regression when editing the main guest/waiter/kitchen/payment/session flow; update it only when a future prompt intentionally changes the flow.
+- Do not let `docs/CURRENT_VERSION.md` drift when a future prompt changes the domain map, QR/session flow, shared-hosting mode, current limits, or next-step guardrails.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not reintroduce `laravel/sail`, Docker compose files, an S3 filesystem disk, starter-kit repository/documentation links, or placeholder public pages during cleanup.

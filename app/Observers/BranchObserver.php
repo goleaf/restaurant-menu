@@ -24,7 +24,22 @@ class BranchObserver
      */
     public function updated(Branch $branch): void
     {
-        if ($branch->wasChanged('logo_path')) {
+        if ($branch->wasChanged([
+            'public_name',
+            'public_description',
+            'logo_path',
+            'cover_image_path',
+            'address',
+            'phone',
+            'email',
+            'website_url',
+            'instagram_url',
+            'facebook_url',
+            'tiktok_url',
+            'city',
+            'country',
+            'currency',
+        ])) {
             $this->forgetBranchCache->handle((int) $branch->id);
         }
     }

@@ -36,6 +36,40 @@ npm run build
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
 
+## Prompt 101 Restaurant Public Profile Results
+
+Programmatic coverage was added in `tests/Feature/RestaurantPublicProfileTest.php`.
+The feature currently verifies:
+
+- `branches` stores public profile fields for venue name, description, cover
+  image, phone, email, website, Instagram, Facebook, and TikTok;
+- a branch manager can update the profile from the existing branch settings
+  page;
+- logo and cover uploads are stored locally on the `public` disk;
+- default language and default currency remain local branch/settings data;
+- public `/q/{public_token}` landing shows the branch public profile;
+- missing profile details show tidy fallback text;
+- the QR URL stays token-only.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/RestaurantPublicProfileTest.php
+```
+
+Manual check:
+
+1. Open branch settings.
+2. Fill public venue name, short description, phone, email, website, and social
+   links.
+3. Upload a logo and cover image.
+4. Save settings.
+5. Open a service point QR URL `/q/{public_token}`.
+6. Confirm the landing page shows the public profile, local images, default
+   language, default currency, current zone, and current service point.
+7. Clear optional profile/contact fields and confirm the guest fallback text is
+   still polished.
+
 ## Prompt 096 Access Control Results
 
 Programmatic audit coverage was added in `tests/Feature/AccessControlAuditTest.php`.
@@ -170,33 +204,43 @@ Use `demo.admin@example.com` or `demo.owner@example.com`.
    - Example name: `Smoke Test Branch`.
    - Use `EUR`, `Europe/Vilnius`, active state.
 6. Open branch settings.
-7. Confirm safe defaults:
+7. Fill or confirm the public restaurant profile:
+   - public venue name;
+   - short description;
+   - logo;
+   - cover image;
+   - phone/email/site/social links if available;
+   - default language;
+   - default currency.
+8. Confirm safe defaults:
    - waiter confirmation required for orders;
    - guest-created sessions allowed;
    - waiter-opened sessions allowed;
    - guest invite links allowed;
    - new guests require approval;
    - polling interval is 1 second.
-8. Open branch zones.
-9. Create a zone.
+9. Open branch zones.
+10. Create a zone.
    - Example name: `Smoke Main Hall`.
-10. Open branch service points.
-11. Create a service point.
+11. Open branch service points.
+12. Create a service point.
     - Type: table.
     - Example name: `Smoke Table 1`.
     - Capacity: 4.
     - Assign it to `Smoke Main Hall`.
-12. Generate QR for the service point.
-13. Confirm the QR page shows:
+13. Generate QR for the service point.
+14. Confirm the QR page shows:
     - branch;
     - current zone;
     - current service point;
     - public URL;
     - QR image;
     - short code.
-14. Open the public QR URL.
-15. Confirm the URL is `/q/{public_token}` and does not expose organization,
+15. Open the public QR URL.
+16. Confirm the URL is `/q/{public_token}` and does not expose organization,
     branch, service point, table ID, table number, or area ID.
+17. Confirm the QR landing shows the public restaurant profile or tidy fallback
+    text when optional profile details are empty.
 
 ## Menu Flow
 

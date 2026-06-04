@@ -11,6 +11,7 @@ use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\QrCodeStatus;
+use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
@@ -83,7 +84,7 @@ class Show extends Component
     public bool $waiterCallPending = false;
 
     /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, polling_interval_seconds: int, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_address: string, branch_currency: string, default_language: string, default_language_label: string, default_currency: string, polling_interval_seconds: int, venue_name: string, public_description: string, logo_url: string|null, cover_image_url: string|null, phone: string|null, email: string|null, website_url: string|null, instagram_url: string|null, facebook_url: string|null, tiktok_url: string|null, has_contact_details: bool, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
@@ -93,10 +94,23 @@ class Show extends Component
         'branch_name' => '',
         'branch_city' => '',
         'branch_country' => '',
+        'branch_address' => '',
         'branch_currency' => 'EUR',
+        'default_language' => 'en',
+        'default_language_label' => 'English',
+        'default_currency' => 'EUR',
         'polling_interval_seconds' => 1,
         'venue_name' => '',
+        'public_description' => '',
         'logo_url' => null,
+        'cover_image_url' => null,
+        'phone' => null,
+        'email' => null,
+        'website_url' => null,
+        'instagram_url' => null,
+        'facebook_url' => null,
+        'tiktok_url' => null,
+        'has_contact_details' => false,
         'service_point_name' => '',
         'service_point_display_number' => null,
         'service_point_type' => '',
@@ -180,8 +194,26 @@ class Show extends Component
         );
         $this->applyGuestLocale();
 
+        $branchSettings = $branch->settings;
+        $defaultLanguage = SupportedLocale::normalize($branchSettings?->default_language);
+        $defaultCurrency = SupportedCurrency::normalize($branchSettings?->default_currency ?? $branch->currency);
+        $languageLabels = SupportedLocale::labels();
+        $venueName = $branch->publicDisplayName();
+        $publicDescription = filled($branch->public_description)
+            ? (string) $branch->public_description
+            : __('Restaurant details will appear here soon.');
+        $logoUrl = $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl();
+        $contactLinks = [
+            'phone' => $this->nullableLandingString($branch->phone),
+            'email' => $this->nullableLandingString($branch->email),
+            'website_url' => $this->nullableLandingString($branch->website_url),
+            'instagram_url' => $this->nullableLandingString($branch->instagram_url),
+            'facebook_url' => $this->nullableLandingString($branch->facebook_url),
+            'tiktok_url' => $this->nullableLandingString($branch->tiktok_url),
+        ];
+
         $this->state = 'ready';
-        $this->title = $branch->name;
+        $this->title = $venueName;
         $this->message = $this->currentInviteToken === null
             ? __('Enter your name to continue.')
             : __('Введите имя, чтобы попроситься к этому столу.');
@@ -193,10 +225,23 @@ class Show extends Component
             'branch_name' => $branch->name,
             'branch_city' => $branch->city,
             'branch_country' => $branch->country,
-            'branch_currency' => $branch->currency,
+            'branch_address' => (string) $branch->address,
+            'branch_currency' => $defaultCurrency,
+            'default_language' => $defaultLanguage,
+            'default_language_label' => $languageLabels[$defaultLanguage] ?? $defaultLanguage,
+            'default_currency' => $defaultCurrency,
             'polling_interval_seconds' => app(GetBranchPollingIntervalAction::class)->handle($branch->id),
-            'venue_name' => $branch->name,
-            'logo_url' => $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl(),
+            'venue_name' => $venueName,
+            'public_description' => $publicDescription,
+            'logo_url' => $logoUrl,
+            'cover_image_url' => $branch->coverImageUrl(),
+            'phone' => $contactLinks['phone'],
+            'email' => $contactLinks['email'],
+            'website_url' => $contactLinks['website_url'],
+            'instagram_url' => $contactLinks['instagram_url'],
+            'facebook_url' => $contactLinks['facebook_url'],
+            'tiktok_url' => $contactLinks['tiktok_url'],
+            'has_contact_details' => collect($contactLinks)->filter()->isNotEmpty(),
             'service_point_name' => $servicePoint->name,
             'service_point_display_number' => $servicePoint->display_number,
             'service_point_type' => $servicePoint->type->label(),
@@ -475,12 +520,28 @@ class Show extends Component
                                 'organization_id',
                                 'brand_id',
                                 'name',
+                                'public_name',
+                                'public_description',
                                 'logo_path',
+                                'cover_image_path',
+                                'address',
+                                'phone',
+                                'email',
+                                'website_url',
+                                'instagram_url',
+                                'facebook_url',
+                                'tiktok_url',
                                 'city',
                                 'country',
                                 'currency',
                             ])
                             ->with([
+                                'settings' => fn ($query) => $query->select([
+                                    'id',
+                                    'branch_id',
+                                    'default_language',
+                                    'default_currency',
+                                ]),
                                 'brand' => fn ($query) => $query->select([
                                     'id',
                                     'organization_id',
@@ -864,6 +925,15 @@ class Show extends Component
         $this->title = $title;
         $this->message = $message;
         $this->entryIssueCode = '';
+    }
+
+    private function nullableLandingString(mixed $value): ?string
+    {
+        if (! is_string($value) || blank($value)) {
+            return null;
+        }
+
+        return $value;
     }
 
     private function inviteTokenFromRequest(): ?string

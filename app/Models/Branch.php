@@ -11,8 +11,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['organization_id', 'brand_id', 'name', 'logo_path', 'address', 'city', 'country', 'timezone', 'currency', 'is_active'])]
+#[Fillable([
+    'organization_id',
+    'brand_id',
+    'name',
+    'public_name',
+    'public_description',
+    'logo_path',
+    'cover_image_path',
+    'address',
+    'phone',
+    'email',
+    'website_url',
+    'instagram_url',
+    'facebook_url',
+    'tiktok_url',
+    'city',
+    'country',
+    'timezone',
+    'currency',
+    'is_active',
+])]
 class Branch extends Model
 {
     /** @use HasFactory<BranchFactory> */
@@ -50,6 +71,28 @@ class Branch extends Model
     public function settings(): HasOne
     {
         return $this->hasOne(BranchSetting::class);
+    }
+
+    public function publicDisplayName(): string
+    {
+        $publicName = $this->getAttribute('public_name');
+
+        if (is_string($publicName) && filled($publicName)) {
+            return $publicName;
+        }
+
+        return (string) $this->getAttribute('name');
+    }
+
+    public function coverImageUrl(): ?string
+    {
+        $coverImagePath = $this->getAttribute('cover_image_path');
+
+        if (! is_string($coverImagePath) || blank($coverImagePath)) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($coverImagePath);
     }
 
     /**

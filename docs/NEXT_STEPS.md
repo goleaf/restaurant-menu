@@ -6,7 +6,7 @@ anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 
 ## Current Recommended Prompt
 
-Prompt 101: add a simple menu translation admin editor.
+Prompt 102: add a simple menu translation admin editor.
 
 Scope:
 
@@ -17,6 +17,17 @@ Scope:
 - Clear branch menu cache through `App\Actions\Branches\ForgetBranchCacheAction`.
 - Keep access behind existing menu-management permissions.
 
+Risky places:
+
+- `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
+  keep the translation editor small and avoid broad refactors.
+- Guest menu cache is language-specific; translation saves must clear every
+  branch language cache key through `ForgetBranchCacheAction`.
+- Supported languages must come from `App\Enums\SupportedLocale`, not a second
+  hardcoded language list.
+- Do not let translation editing change base menu item prices, availability,
+  modifiers, or kitchen department assignment.
+
 Do not add:
 
 - AI translation.
@@ -25,6 +36,14 @@ Do not add:
 - New frontend SPA.
 - New menu schema.
 - New language list outside the existing supported locales.
+
+## Recently Completed
+
+Prompt 101 added the branch public restaurant profile used by QR landing and
+guest UI: public venue name, short description, local logo/cover image,
+address/contact/social links, default language, and default currency. Profile
+images stay local in `storage/app/public`; no maps, external APIs, S3,
+WebSockets, paid services, React, or Vue were added.
 
 ## Other Good Future Prompts
 

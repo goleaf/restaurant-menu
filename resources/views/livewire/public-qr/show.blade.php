@@ -63,6 +63,7 @@
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
                                 <h1 class="mt-1 text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
+                                <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $landing['public_description'] }}</p>
                                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
                                     {{ __('Место') }}: <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $landing['service_point_name'] }}</span>
                                 </p>
@@ -296,26 +297,85 @@
             @else
                 <section data-page="guest-qr-landing" class="flex min-h-[calc(100svh-5rem)] flex-col justify-between gap-5 pb-3">
                     <div class="space-y-4">
-                        <div class="rounded-lg border border-zinc-200 bg-white p-5 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                            <div class="flex flex-col items-center">
-                            @if ($landing['logo_url'])
+                        <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            @if ($landing['cover_image_url'])
                                 <img
-                                    src="{{ $landing['logo_url'] }}"
+                                    src="{{ $landing['cover_image_url'] }}"
                                     alt="{{ $landing['venue_name'] }}"
-                                    class="size-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+                                    class="h-36 w-full object-cover"
                                 >
                             @else
-                                <div class="flex size-20 items-center justify-center rounded-lg border border-zinc-200 bg-white text-2xl font-semibold text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
-                                    {{ $landing['brand_initial'] }}
-                                </div>
+                                <div class="h-20 w-full bg-zinc-100 dark:bg-zinc-950/70"></div>
                             @endif
+
+                            <div class="-mt-10 flex flex-col items-center px-5 pb-5">
+                                @if ($landing['logo_url'])
+                                    <img
+                                        src="{{ $landing['logo_url'] }}"
+                                        alt="{{ $landing['venue_name'] }}"
+                                        class="size-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+                                    >
+                                @else
+                                    <div class="flex size-20 items-center justify-center rounded-lg border border-zinc-200 bg-white text-2xl font-semibold text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                        {{ $landing['brand_initial'] }}
+                                    </div>
+                                @endif
 
                                 <p class="mt-4 max-w-full truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
                                 <h1 class="mt-1 text-3xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
+                                <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $landing['public_description'] }}</p>
                                 <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
                             </div>
 
-                            <dl class="mt-5 grid gap-2 text-left">
+                            <dl class="grid gap-2 px-5 pb-5 text-left">
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Restaurant') }}</dt>
+                                    <dd class="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                        {{ $landing['branch_address'] ? $landing['branch_address'].', ' : '' }}{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}
+                                    </dd>
+                                </div>
+
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Contact') }}</dt>
+
+                                    @if ($landing['has_contact_details'])
+                                        <dd class="mt-2 flex flex-wrap gap-2">
+                                            @if ($landing['phone'])
+                                                <a href="tel:{{ $landing['phone'] }}" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $landing['phone'] }}</a>
+                                            @endif
+
+                                            @if ($landing['email'])
+                                                <a href="mailto:{{ $landing['email'] }}" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $landing['email'] }}</a>
+                                            @endif
+
+                                            @foreach ([
+                                                'website_url' => __('Website'),
+                                                'instagram_url' => 'Instagram',
+                                                'facebook_url' => 'Facebook',
+                                                'tiktok_url' => 'TikTok',
+                                            ] as $linkKey => $linkLabel)
+                                                @if ($landing[$linkKey])
+                                                    <a href="{{ $landing[$linkKey] }}" rel="noopener noreferrer" target="_blank" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $linkLabel }}</a>
+                                                @endif
+                                            @endforeach
+                                        </dd>
+                                    @else
+                                        <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('Contact details are not published yet.') }}</dd>
+                                    @endif
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Language') }}</dt>
+                                        <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_language_label'] }} ({{ $landing['default_language'] }})</dd>
+                                    </div>
+
+                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Currency') }}</dt>
+                                        <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_currency'] }}</dd>
+                                    </div>
+                                </div>
+
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Зона') }}</dt>
                                     <dd class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">

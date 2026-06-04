@@ -2,6 +2,31 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 101 - Restaurant Public Profile
+
+Prompt 101 added a branch-level public restaurant profile for the guest QR landing page and guest table header.
+
+Implemented:
+
+- New nullable `branches` columns: `public_name`, `public_description`, `cover_image_path`, `phone`, `email`, `website_url`, `instagram_url`, `facebook_url`, and `tiktok_url`.
+- `Branch::publicDisplayName()` falls back to `branches.name`; `Branch::coverImageUrl()` returns a local public-storage URL.
+- `App\Actions\Branches\UpdateBranchPublicProfileAction` saves public profile text/link fields.
+- Existing branch settings page now edits public profile data and uploads local logo/cover images.
+- Public QR `/q/{public_token}` landing now shows venue name, description, local logo, local cover, address, contact links, social links, default language, default currency, current zone, and current service point.
+- Guest-facing fallbacks are shown when description or contact details are missing.
+- Branch cache invalidation now includes public profile/contact/media field changes.
+- Focused coverage lives in `tests/Feature/RestaurantPublicProfileTest.php`.
+
+Constraints kept:
+
+- No maps, external APIs, paid services, S3, WebSockets, Redis, Docker requirement, React/Vue SPA, or social-platform integrations.
+- Public QR URLs remain token-only and do not expose organization, branch, area, service point, table, or session IDs.
+- Images remain local in `storage/app/public/media/...`.
+
+Next recommended prompt:
+
+- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Daily Project Memory Update - 2026-06-04
 
 This is a documentation-only memory refresh. No product features, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
@@ -20,7 +45,8 @@ Already implemented:
 
 - Auth, profile/security settings, fixed roles, flexible permissions, role permissions, user overrides, and superadmin access.
 - Organizations, one-plan local SaaS subscription status, organization users, brands, branches, branch users, branch settings, staff invitations, staff UI, and permission override UI.
-- Local media storage for organization, brand, branch logos, and dish images.
+- Local media storage for organization, brand, branch logos, branch public profile cover images, and dish images.
+- Branch public restaurant profiles for guest QR landing and guest table context.
 - Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
 - Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
 - Menu flow: menus, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
@@ -30,7 +56,7 @@ Current tables:
 
 - `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
 - `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
-- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings`, `invitations`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches` with public profile fields, `branch_users`, `branch_settings`, `invitations`.
 - `area_nodes`, `service_points`, `qr_codes`.
 - `menus`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
 - `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`.
@@ -88,7 +114,7 @@ Do not use:
 
 Next recommended prompt:
 
-- Prompt 101: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Current Stack
 
@@ -160,6 +186,7 @@ Next recommended prompt:
 - Brands.
 - Branches.
 - Branch settings.
+- Branch public restaurant profile for QR landing and guest UI: public venue name, description, local logo/cover, address, contacts, social links, default language, and default currency.
 - Centralized branch cache invalidation through `App\Actions\Branches\ForgetBranchCacheAction` for database-cache guest menu, legacy menu, and polling interval keys.
 - Restaurant onboarding wizard at `/onboarding/restaurant` for creating a starter organization, brand, branch, first zone, first service points, permanent QR codes, first active menu, and a test public guest page.
 - Explicit demo restaurant seed through `Database\Seeders\DemoRestaurantSeeder` for local QA and first-run testing.
@@ -250,6 +277,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
   - Soft delete through `deleted_at`.
 - `branches`
   - Soft delete through `deleted_at`.
+  - Includes public restaurant profile fields: `public_name`, `public_description`, `cover_image_path`, `phone`, `email`, `website_url`, `instagram_url`, `facebook_url`, and `tiktok_url`.
 - `menus`
   - Soft delete through `deleted_at`.
 - `menu_categories`
@@ -314,6 +342,8 @@ Branch:
 - Belongs to a brand and an organization.
 - Is the current working unit for future menu, zones, service points, and orders.
 - Has one settings record.
+- Stores the public restaurant profile used by guest QR screens: public venue name, short description, local logo, local cover image, address/city/country, phone, email, website, Instagram, Facebook, TikTok, default language, and default currency.
+- Public venue name falls back to `branches.name`; missing description/contact data is shown to guests with tidy fallback text.
 - Has many menus.
 - Has many kitchen departments.
 - Has many modifier groups.

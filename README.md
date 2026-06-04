@@ -135,6 +135,29 @@ Active guests see a polished table page with:
 
 This UI polish does not change guest business rules: guests are still not user accounts, the menu still uses database cache, draft reads still come from SQLite, and realtime behavior still uses isolated Livewire polling blocks rather than WebSockets.
 
+## Restaurant Public Profile
+
+Each branch has a public restaurant profile used by the QR landing page and guest table UI.
+
+The profile stores:
+
+- public venue name with fallback to the branch name;
+- short description with a guest-friendly fallback;
+- local logo and cover image;
+- address, city, country;
+- phone, email, website;
+- Instagram, Facebook, and TikTok links as plain external links;
+- default language from branch settings;
+- default currency from branch settings / branch currency.
+
+Public profile editing lives on the existing branch settings page:
+
+```text
+/organizations/{organization}/brands/{brand}/branches/{branch}/settings
+```
+
+Images are uploaded to the local public disk under `storage/app/public/media/...`. No maps, external APIs, social integrations, S3, paid services, React, Vue, or WebSockets are used. The public QR URL stays `/q/{public_token}` and does not expose branch or service point IDs.
+
 ## Database Notifications
 
 Operational notifications are stored in Laravel's local `notifications` table and are delivered only through the `database` channel.

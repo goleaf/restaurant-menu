@@ -3,7 +3,9 @@
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\EnsureBranchSettingsAction;
+use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
+use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
@@ -13,16 +15,20 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use Flux\Flux;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Branch settings')]
 class Settings extends Component
 {
+    use WithFileUploads;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -52,6 +58,30 @@ class Settings extends Component
     public bool $tipsEnabled = false;
 
     public string $orderFlowMode = 'waiter_confirmation';
+
+    public string $publicName = '';
+
+    public string $publicDescription = '';
+
+    public string $phone = '';
+
+    public string $email = '';
+
+    public string $websiteUrl = '';
+
+    public string $instagramUrl = '';
+
+    public string $facebookUrl = '';
+
+    public string $tiktokUrl = '';
+
+    public ?string $currentLogoUrl = null;
+
+    public ?string $currentCoverImageUrl = null;
+
+    public mixed $publicLogo = null;
+
+    public mixed $coverImage = null;
 
     public bool $saved = false;
 
@@ -95,10 +125,14 @@ class Settings extends Component
         }
 
         $this->fillFromSettings($ensureBranchSettings->handle($branch));
+        $this->fillFromBranchProfile($this->branch);
     }
 
-    public function save(UpdateBranchSettingsAction $updateBranchSettings): void
-    {
+    public function save(
+        UpdateBranchSettingsAction $updateBranchSettings,
+        UpdateBranchPublicProfileAction $updateBranchPublicProfile,
+        StoreLocalImageAction $storeLocalImage,
+    ): void {
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
 
         $validated = $this->validate($this->rules());
@@ -120,7 +154,38 @@ class Settings extends Component
             ],
         );
 
+        $profilePayload = [
+            'public_name' => $validated['publicName'],
+            'public_description' => $validated['publicDescription'],
+            'phone' => $validated['phone'],
+            'email' => $validated['email'],
+            'website_url' => $validated['websiteUrl'],
+            'instagram_url' => $validated['instagramUrl'],
+            'facebook_url' => $validated['facebookUrl'],
+            'tiktok_url' => $validated['tiktokUrl'],
+        ];
+
+        if ($this->publicLogo instanceof UploadedFile) {
+            $profilePayload['logo_path'] = $storeLocalImage->handle(
+                file: $this->publicLogo,
+                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/logos',
+                oldPath: $this->branch->logo_path,
+            );
+        }
+
+        if ($this->coverImage instanceof UploadedFile) {
+            $profilePayload['cover_image_path'] = $storeLocalImage->handle(
+                file: $this->coverImage,
+                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/covers',
+                oldPath: $this->branch->cover_image_path,
+            );
+        }
+
+        $branch = $updateBranchPublicProfile->handle($this->branch, $profilePayload);
+
         $this->fillFromSettings($settings);
+        $this->fillFromBranchProfile($branch);
+        $this->reset('publicLogo', 'coverImage');
         $this->saved = true;
 
         Flux::toast(variant: 'success', text: __('Settings saved.'));
@@ -157,6 +222,16 @@ class Settings extends Component
             'serviceChargeEnabled' => ['boolean'],
             'tipsEnabled' => ['boolean'],
             'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
+            'publicName' => ['nullable', 'string', 'max:160'],
+            'publicDescription' => ['nullable', 'string', 'max:1200'],
+            'phone' => ['nullable', 'string', 'max:80'],
+            'email' => ['nullable', 'email:rfc', 'max:255'],
+            'websiteUrl' => ['nullable', 'url', 'max:2048'],
+            'instagramUrl' => ['nullable', 'url', 'max:2048'],
+            'facebookUrl' => ['nullable', 'url', 'max:2048'],
+            'tiktokUrl' => ['nullable', 'url', 'max:2048'],
+            'publicLogo' => $this->optionalImageRules(),
+            'coverImage' => $this->optionalImageRules(),
         ];
     }
 
@@ -175,6 +250,34 @@ class Settings extends Component
         $this->tipsEnabled = $settings->tips_enabled;
         $this->orderFlowMode = $settings->order_flow_mode->value;
         $this->branch->refresh();
+    }
+
+    private function fillFromBranchProfile(Branch $branch): void
+    {
+        $this->branch = $branch->refresh();
+        $this->publicName = (string) ($this->branch->public_name ?? '');
+        $this->publicDescription = (string) ($this->branch->public_description ?? '');
+        $this->phone = (string) ($this->branch->phone ?? '');
+        $this->email = (string) ($this->branch->email ?? '');
+        $this->websiteUrl = (string) ($this->branch->website_url ?? '');
+        $this->instagramUrl = (string) ($this->branch->instagram_url ?? '');
+        $this->facebookUrl = (string) ($this->branch->facebook_url ?? '');
+        $this->tiktokUrl = (string) ($this->branch->tiktok_url ?? '');
+        $this->currentLogoUrl = $this->branch->logoUrl();
+        $this->currentCoverImageUrl = $this->branch->coverImageUrl();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function optionalImageRules(): array
+    {
+        return [
+            'nullable',
+            'image',
+            'mimes:jpg,jpeg,png,webp',
+            'max:'.StoreLocalImageAction::MAX_IMAGE_KILOBYTES,
+        ];
     }
 
     private function findSettings(): BranchSetting

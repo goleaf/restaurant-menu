@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 101 - Restaurant Public Profile
+
+- Added branch-level public restaurant profile fields for public venue name, short description, local cover image, phone, email, website, and Instagram/Facebook/TikTok links while reusing existing branch logo, address, city, country, default language, and default currency data.
+- Extended the existing branch settings Livewire page with a simple public profile form and local image uploads for logo/cover images.
+- Updated the public QR guest landing page and active guest table header to use the branch public profile with tidy fallback text when profile details are missing.
+- Touched modules/files: `branches` migration/model, `App\Actions\Branches\UpdateBranchPublicProfileAction`, `App\Livewire\Organizations\Brands\Branches\Settings`, `App\Livewire\PublicQr\Show`, QR landing Blade UI, branch cache invalidation observer, docs, and `tests/Feature/RestaurantPublicProfileTest.php`.
+- Limitations: no maps, no external profile/social APIs, no paid services, no S3, no WebSockets, no separate public restaurant directory, and no online booking or marketing integrations.
+- Manual check: open branch settings, save public name/description/contact/social links plus logo and cover image, scan/open `/q/{public_token}`, and confirm the QR landing shows the profile while the URL stays token-only.
+
 ### Docs - Daily Project Memory Update
 
 - Refreshed project memory docs for the current Laravel + Livewire + SQLite shared-hosting baseline without adding features.

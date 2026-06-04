@@ -9,6 +9,7 @@ use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
+use App\Models\ServicePoint;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -100,9 +101,16 @@ class UpdateGuestDraftOrderItemAction
                     ->with([
                         'tableSession' => fn ($tableSessionQuery) => $tableSessionQuery->select([
                             'id',
+                            'service_point_id',
                             'status',
                             'ended_at',
-                        ]),
+                        ])
+                            ->with([
+                                'servicePoint' => fn ($servicePointQuery) => $servicePointQuery->select([
+                                    'id',
+                                    'is_active',
+                                ]),
+                            ]),
                     ]),
                 'menuItem' => fn ($query) => $query->select(['id']),
             ])
@@ -130,11 +138,14 @@ class UpdateGuestDraftOrderItemAction
     {
         $draftOrder = $draftOrderItem->draftOrder;
         $tableSession = $draftOrder?->tableSession;
+        $servicePoint = $tableSession?->servicePoint;
 
         if ($draftOrderItem->table_session_guest_id !== $guest->id
             || $draftOrder?->table_session_id !== $guest->table_session_id
             || $guest->status !== TableSessionGuestStatus::Active
             || $tableSession === null
+            || ! $servicePoint instanceof ServicePoint
+            || ! $servicePoint->is_active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
                 'draft_item' => __('Можно изменять только свои позиции за этим столом.'),

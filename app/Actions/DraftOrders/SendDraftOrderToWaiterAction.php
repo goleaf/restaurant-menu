@@ -11,6 +11,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Notifications\DraftOrderSentToWaiterNotification;
@@ -94,6 +95,7 @@ class SendDraftOrderToWaiterAction
                         'servicePoint' => fn ($servicePointQuery) => $servicePointQuery->select([
                             'id',
                             'status',
+                            'is_active',
                         ]),
                     ]),
             ])
@@ -169,8 +171,11 @@ class SendDraftOrderToWaiterAction
     private function ensureDraftCanBeSent(DraftOrder $draftOrder, TableSessionGuest $guest): void
     {
         $tableSession = $draftOrder->tableSession;
+        $servicePoint = $tableSession?->servicePoint;
 
         if ($tableSession === null
+            || ! $servicePoint instanceof ServicePoint
+            || ! $servicePoint->is_active
             || $guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {

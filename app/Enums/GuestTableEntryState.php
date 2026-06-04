@@ -9,4 +9,5 @@ enum GuestTableEntryState: string
     case PendingSessionExists = 'pending_session_exists';
     case JoinRequestCreated = 'join_request_created';
     case GuestCreatedSessionsDisabled = 'guest_created_sessions_disabled';
+    case ServicePointUnavailable = 'service_point_unavailable';
 }

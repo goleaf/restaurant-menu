@@ -367,9 +367,13 @@ class Show extends Component
         $joinRequest ??= $this->findJoinRequestByCurrentState($this->currentJoinRequestId);
 
         if (! $joinRequest instanceof TableSessionJoinRequest || ! $joinRequest->tableSession instanceof TableSession) {
+            $this->entryState = 'join_request_blocked';
+            $this->guestCanAddItems = false;
+
             return;
         }
 
+        $joinRequest = $this->expireJoinRequestIfNeeded($joinRequest);
         $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
 
         if ($joinRequest->status === TableSessionJoinRequestStatus::Approved) {
@@ -521,6 +525,7 @@ class Show extends Component
         }
 
         $tableSession = $joinRequest->tableSession;
+        $joinRequest = $this->expireJoinRequestIfNeeded($joinRequest);
 
         $this->guestName = $joinRequest->guest_name;
         $this->preparedGuestName = $joinRequest->guest_name;
@@ -902,6 +907,19 @@ class Show extends Component
             && $joinRequest->expires_at->isPast();
     }
 
+    private function expireJoinRequestIfNeeded(TableSessionJoinRequest $joinRequest): TableSessionJoinRequest
+    {
+        if (! $this->joinRequestIsExpired($joinRequest)) {
+            return $joinRequest;
+        }
+
+        $joinRequest
+            ->forceFill(['status' => TableSessionJoinRequestStatus::Expired])
+            ->save();
+
+        return $joinRequest->refresh();
+    }
+
     private function messageForGuestAccess(TableSessionGuest $guest, TableSession $tableSession): string
     {
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
@@ -941,6 +959,7 @@ class Show extends Component
             GuestTableEntryState::PendingSessionExists => __('Стол уже ожидает подтверждения официанта. На следующем этапе здесь появится присоединение к текущей сессии.'),
             GuestTableEntryState::JoinRequestCreated => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
             GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
+            GuestTableEntryState::ServicePointUnavailable => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
         };
     }
 

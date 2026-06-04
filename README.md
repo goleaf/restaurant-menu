@@ -601,7 +601,7 @@ Access requires `view_audit_log` in the organization/branch context. Superadmins
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
 
-The table stores `guest_name`, a random `guest_token`, `status`, optional `ready_at`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
+The table stores `guest_name`, a random 64-character `guest_token`, `status`, optional `ready_at`, `joined_at`, optional `left_at`, and optional JSON `metadata`.
 
 Guests are not user accounts and do not need registration. The public QR entry flow queues the `guest_token` in a browser cookie so the guest can be recognized later without exposing internal IDs.
 
@@ -623,7 +623,7 @@ Active guests can request waiter help from the guest table shell. Waiter-call st
 
 Join requests are stored in the `table_session_join_requests` table and belong to one table session.
 
-The table stores `guest_name`, a random `guest_token`, `status`, optional approval/rejection audit fields for guests and users, and `expires_at`.
+The table stores `guest_name`, a random 64-character `guest_token`, `status`, optional approval/rejection audit fields for guests and users, and `expires_at`.
 
 Supported join request statuses are:
 
@@ -632,11 +632,11 @@ Supported join request statuses are:
 - `rejected`
 - `expired`
 
-If a table session already has active guests, a new QR guest creates a pending join request and does not enter the table immediately. Any active guest from the same table session can approve or reject the request through backend actions. Approval creates a real `table_session_guests` record using the request guest name and token. Rejection does not create a guest.
+If a table session already has active guests, a new QR guest creates a pending join request and does not enter the table immediately. Any active guest from the same table session can approve or reject the request through backend actions. Approval creates a real `table_session_guests` record using the request guest name and token. Rejection does not create a guest. Expired join requests are marked `expired` during guest polling or moderation attempts and cannot be approved into guests.
 
 The public QR page now shows a waiting state for the new guest. Active guests see a small Livewire polling block with pending join requests and can accept or reject them without WebSockets. The waiting guest's status block also refreshes through Livewire polling and shows approved or rejected state clearly.
 
-Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
+Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link with a hidden 64-character token, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. Closed sessions and inactive service points cannot create new guest invite links. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
 
 After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, order status, draft positions, and draft totals.
 
@@ -661,19 +661,19 @@ Draft order statuses are:
 
 Each draft item belongs to one concrete `table_session_guest` and may reference a `menu_item`. The item stores a snapshot of `item_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers as JSON, and an optional guest comment. This keeps the table draft stable if menu names or prices change later.
 
-Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
+Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, service point activity, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
 
 The shared draft item list is a separate Livewire polling block. It groups active guests alphabetically by `guest_name` and shows each guest's positions, line prices, selected modifiers, comments, item count, and current-draft guest total.
 
 Draft totals and order statuses are separate Livewire polling blocks. Totals show per-guest totals, current draft total, already confirmed non-cancelled orders, table total, ready counts, `Я готов`, `Отправить официанту`, and `Попросить счёт`. Order statuses show waiter rejection, waiter confirmation, kitchen/bar accepted state, and guest-facing cooking/ready/served status.
 
-An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, and draft status. Guests cannot edit or delete another guest's position.
+An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, service point activity, and draft status. Guests cannot edit or delete another guest's position.
 
 All active guests see the same grouped table cart information. Only the current guest gets edit and delete controls for their own positions.
 
 Each active guest can press `Я готов` in the shared cart to set `table_session_guests.ready_at`, or press `Снять готовность` to clear it. The guest list and shared cart show `Готов` / `Не готов`, plus the cart shows how many active guests are ready.
 
-Any active guest can press `Отправить официанту` for the shared draft, even if some positions belong to other guests. If not all active guests are ready, the UI first shows an inline confirmation. After confirmation, the draft status becomes `sent_to_waiter`, `sent_to_waiter_at` and `sent_by_guest_id` are saved, guest readiness is cleared, and the service point status becomes `has_new_order`.
+Any active guest can press `Отправить официанту` for the shared draft, even if some positions belong to other guests. If not all active guests are ready, the UI first shows an inline confirmation. The backend also rechecks that the service point is still active. After confirmation, the draft status becomes `sent_to_waiter`, `sent_to_waiter_at` and `sent_by_guest_id` are saved, guest readiness is cleared, and the service point status becomes `has_new_order`.
 
 This guest action is only a waiter-review handoff. The draft does not become a real order until the waiter confirms it, and it still does not go to kitchen or bar until the waiter explicitly sends the confirmed order to kitchen/bar.
 
@@ -816,7 +816,7 @@ SQLite enforces one active QR per service point through an internal nullable `ac
 
 `GenerateQrCodeForServicePointAction` creates a QR only when the service point does not already have an active QR. If an active QR already exists, the action returns the existing record instead of creating a second active QR automatically.
 
-Generated QR URLs use:
+Generated QR URLs use a random 64-character `public_token`:
 
 ```text
 /q/{public_token}
@@ -824,9 +824,9 @@ Generated QR URLs use:
 
 The public `/q/{public_token}` route resolves the QR token, checks the QR status, loads the current service point, current area, branch, brand, organization, and local logo, and opens a mobile-first guest landing page. The URL does not include organization IDs, branch IDs, service point IDs, table numbers, or area names.
 
-The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it, then stores the guest token in a browser cookie. Refreshing the page restores that guest from the cookie. If an active or pending session already has active guests, submitting the name creates a pending join request instead of adding the guest immediately.
+The guest landing page shows the venue name, logo when available, current area, current service point, a guest name field, and the `Войти за стол` button. If there is no active or pending table session and `allow_guest_created_sessions` is enabled, submitting the name creates a pending table session and the first active guest inside it, then stores the random guest token in a browser cookie. Refreshing the page restores that guest from the cookie. If an active or pending session already has active guests, submitting the name creates a pending join request instead of adding the guest immediately.
 
-Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
+Disabled and revoked QR codes show a clear public error message. Active QR codes for inactive service points show a clear message telling the guest to ask staff, and backend guest actions also reject ordering/invite attempts for inactive service points. Moving or renaming a service point does not change the QR URL; the public page loads the current service point data each time.
 
 Users with `generate_qr` can open the QR admin page from a service point. The page shows the branch, current area, current service point, public URL, local SVG QR image, short code, status, and creation date. It can open the guest URL, download the QR SVG image, disable the QR, or manually reissue the QR after a danger warning.
 
@@ -883,6 +883,7 @@ Implemented:
 - Local branch currency settings with fixed supported currencies, readable price formatting, and no exchange rates or automatic conversion.
 - Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
+- QR and guest session security hardening: unguessable QR/guest/invite tokens, expired join request blocking, inactive service point ordering checks, closed-session ordering blocks, and disabled QR public error handling.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
 - Simple staff management UI for organization and branch staff.

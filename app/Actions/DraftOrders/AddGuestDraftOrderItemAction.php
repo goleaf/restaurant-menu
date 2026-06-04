@@ -12,6 +12,7 @@ use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,12 @@ class AddGuestDraftOrderItemAction
                 'status',
                 'ended_at',
             ])
+            ->with([
+                'servicePoint' => fn ($query) => $query->select([
+                    'id',
+                    'is_active',
+                ]),
+            ])
             ->whereKey($tableSession->id)
             ->firstOrFail();
     }
@@ -153,6 +160,14 @@ class AddGuestDraftOrderItemAction
 
     private function ensureGuestCanAddItems(TableSession $tableSession, TableSessionGuest $guest): void
     {
+        $servicePoint = $tableSession->servicePoint;
+
+        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
+            throw ValidationException::withMessages([
+                'guest' => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
+            ]);
+        }
+
         if ($guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {

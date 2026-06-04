@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 085 - Harden QR and Guest Session Security
+
+- Added backend checks so inactive service points cannot create guest sessions, guest invite links, join requests, draft item changes, or send a draft to waiter review.
+- Marked expired join requests as `expired` when restored through guest polling, keeping them blocked from approval and guest creation.
+- Added focused regression tests for inactive service point ordering, rejected guest draft writes, expired join restores, and disabled QR public errors.
+- Kept the stack unchanged: SQLite, database cache/session/queue, Livewire polling, and no Redis, WebSockets, S3, Docker, or external services.
+
 ### Prompt 084 - Optimize Livewire Polling
 
 - Split the public QR guest table into smaller isolated polling blocks for guests, notifications, join requests, order statuses, draft items, and draft totals.

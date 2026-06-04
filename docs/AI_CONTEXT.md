@@ -26,6 +26,8 @@ This file is the working memory for coding agents. Read it before each prompt an
 - The SaaS billing model currently has one plan for all organizations, no tariff limits, no online billing provider, and manual superadmin activation/suspension only.
 - One physical table / place / service point should have one active permanent QR code.
 - QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
+- QR `public_token`, guest `guest_token`, and table-session guest invite tokens must stay random, hidden, and unguessable.
+- Closed/cancelled table sessions, rejected/removed guests, expired join requests, and inactive service points must not accept guest ordering actions.
 - Orders must require waiter confirmation by default.
 - Each repeat order in the same table session must create a new draft, require waiter confirmation, and preserve previous confirmed orders.
 - New guests must require approval by default.
@@ -81,6 +83,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Database notifications for new join requests, drafts sent to waiters, guest waiter calls, bill requests, waiter-confirmed draft orders, kitchen/bar item cooking/ready states, and rejected draft orders, plus authenticated and guest Livewire notification UI blocks that poll the local database.
 - SQLite performance guardrails for shared hosting: extra hot-path indexes, visible-only polling attributes, database-cache dashboard preservation, and cursor-paginated audit log history.
 - Livewire guest polling optimization: the active public QR table page now polls guests, notifications, join requests, order statuses, draft positions, and draft totals as separate visible isolated components using the branch settings polling interval.
+- QR and guest session security hardening: inactive service points are rejected by guest entry, invite, join-request, draft item, and send-to-waiter backend paths; expired join requests are marked expired during guest restore/polling; disabled QR codes keep a public error state.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -425,11 +428,13 @@ Table session:
 - If an active or bill-requested session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
 - Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`; returning a bill-requested session keeps the service point at `payment_requested`.
 - `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
+- `CreateGuestPendingTableSessionAction` returns `service_point_unavailable` and does not create a session when the service point is inactive.
 - If an active or pending session already exists and has active guests, guest QR entry creates a pending table session join request instead of a guest.
 - If an active or pending session already exists without active guests, guest QR entry returns the existing-session message without creating a join request.
 - `CreateGuestInviteLinkAction` creates or reuses one hidden invite token for the current table session.
 - Only an active guest in the same table session can create the guest invite link.
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
+- Guest invite link creation and join request creation are blocked when the service point is inactive.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
 - Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, request-bill status flow, manual offline payment flow, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Online payment provider logic does not exist yet.
@@ -449,6 +454,7 @@ Table session guest:
 - The first guest from a guest-created pending session is stored as `active`.
 - Rejected and removed guests are restored for messaging but cannot use the future item-adding path.
 - Closed or cancelled table sessions are restored for messaging but cannot use the future item-adding path.
+- Inactive service points block backend guest ordering/invite actions even if a stale guest component still has saved state.
 - `TableSession::guests()` returns all session guests ordered by `guest_name` and id.
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
@@ -766,6 +772,7 @@ QR code:
 - Active QR codes load the current service point, current area, branch, brand, organization, and local logo path for the guest landing page.
 - Disabled and revoked QR codes show public error messages instead of opening the guest landing state.
 - Active QR codes attached to inactive service points show a public unavailable message.
+- Inactive service points are also rejected by backend guest entry, invite, join-request, draft item, and send-to-waiter actions.
 - Moving or renaming a service point keeps the same QR URL and the public page shows current service point data.
 - The public guest landing page shows venue name, local logo when available, current area, current service point, short code, guest name field, and `Войти за стол`.
 - Submitting the guest name validates and creates a pending guest-created table session only when no active or pending session exists and branch settings allow guest-created sessions.
@@ -781,6 +788,7 @@ QR code:
 - The guest table shell can add menu items to `draft_order_items`, shows a shared cart grouped by guests alphabetically, lets active guests edit/delete only their own draft positions, and lets any active guest send the shared draft to waiter review, but it does not create final orders, payments, kitchen tasks, or bar tasks.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
+- Expired pending join requests are marked `expired` when restored or polled by the waiting guest.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
 - The waiting guest status block in `App\Livewire\PublicQr\Show` polls only the join request status and turns approved requests into active guest state.
 - Restored active guests get `guestCanAddItems = true` for future order-position UI.
@@ -1065,7 +1073,7 @@ Local media storage:
 - `price_delta` values from selected options affect the displayed local item total.
 - Guests can add a local dish comment up to 500 characters.
 - Completing the sheet creates a `draft_order_items` row through `AddGuestDraftOrderItemAction` and shows a local confirmation on the dish card.
-- `AddGuestDraftOrderItemAction` rechecks the guest token, active guest status, table session status, menu item availability, active category, active menu, and selected modifier option availability before writing.
+- `AddGuestDraftOrderItemAction` rechecks the guest token, active guest status, table session status, service point activity, menu item availability, active category, active menu, and selected modifier option availability before writing.
 - Add/update draft item modifier snapshots must use `BuildDraftOrderItemModifierSnapshots` so add and edit rules stay aligned.
 - Changing guest menu language clears local confirmation summaries to avoid mixed translated labels.
 - The guest menu block is mobile-first and uses stable image dimensions.
@@ -1363,7 +1371,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails and Prompt 084 split guest polling intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, and Prompt 085 QR/guest session hardening intact during future feature work.
 
 ## Do Not Break
 
@@ -1388,6 +1396,8 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not allow manual payment while the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`.
 - Do not allow opening a second table session for a service point while its current session is `payment_requested`.
 - Do not let closed table sessions accept guest draft items, guest invite joins, or any new guest ordering.
+- Do not let inactive service points accept guest-created sessions, guest invite links, join requests, draft item changes, or send-to-waiter actions.
+- Do not replace random hidden QR, guest, or invite tokens with visible IDs, table numbers, names, or short codes.
 - Do not reissue, disable, revoke, or regenerate a permanent QR when closing a table session.
 - Do not delete or overwrite old orders, order items, manual payments, or order status logs when closing a table session.
 - Do not delete or overwrite `audit_logs`; they are the local control journal.

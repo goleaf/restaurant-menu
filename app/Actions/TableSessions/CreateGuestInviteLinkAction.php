@@ -6,6 +6,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\BranchSetting;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,10 @@ class CreateGuestInviteLinkAction
                             'allow_guest_invite_links',
                         ]),
                     ]),
+                'servicePoint' => fn ($query) => $query->select([
+                    'id',
+                    'is_active',
+                ]),
             ])
             ->whereKey($tableSession->id)
             ->firstOrFail();
@@ -90,6 +95,12 @@ class CreateGuestInviteLinkAction
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
                 'guest_invite' => __('Эта сессия стола уже закрыта. Новых гостей пригласить нельзя.'),
+            ]);
+        }
+
+        if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
+            throw ValidationException::withMessages([
+                'guest_invite' => __('Это место сейчас недоступно. Новых гостей пригласить нельзя.'),
             ]);
         }
 

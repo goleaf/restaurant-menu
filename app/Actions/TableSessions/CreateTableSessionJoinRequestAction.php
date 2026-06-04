@@ -5,6 +5,7 @@ namespace App\Actions\TableSessions;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
@@ -23,6 +24,10 @@ class CreateTableSessionJoinRequestAction
             $tableSession = $this->reloadTableSession($tableSession);
 
             if (! in_array($tableSession->status, [TableSessionStatus::Pending, TableSessionStatus::Active], true)) {
+                return null;
+            }
+
+            if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
                 return null;
             }
 
@@ -64,6 +69,12 @@ class CreateTableSessionJoinRequestAction
                 'metadata',
                 'created_at',
                 'updated_at',
+            ])
+            ->with([
+                'servicePoint' => fn ($query) => $query->select([
+                    'id',
+                    'is_active',
+                ]),
             ])
             ->whereKey($tableSession->id)
             ->firstOrFail();

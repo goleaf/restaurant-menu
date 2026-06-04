@@ -31,6 +31,10 @@ class CreateGuestPendingTableSessionAction
         return DB::transaction(function () use ($servicePoint, $normalizedGuestName): array {
             $servicePoint = $this->reloadServicePoint($servicePoint);
 
+            if (! $servicePoint->is_active) {
+                return $this->result(GuestTableEntryState::ServicePointUnavailable);
+            }
+
             $activeTableSession = $this->findTableSession($servicePoint, TableSessionStatus::Active);
 
             if ($activeTableSession instanceof TableSession) {

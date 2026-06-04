@@ -54,7 +54,7 @@ test('superadmin can deactivate and activate organization subscription', functio
         ->test(SuperadminDashboard::class)
         ->assertSee('Manual Billing Group')
         ->assertSee('Active')
-        ->call('deactivateOrganization', $organization->id)
+        ->call('suspendOrganization', $organization->id)
         ->assertSee('Inactive');
 
     expect($organization->fresh()->subscription->status)->toBe(OrganizationSubscriptionStatus::Inactive);

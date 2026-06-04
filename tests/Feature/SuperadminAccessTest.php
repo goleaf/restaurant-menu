@@ -2,10 +2,16 @@
 
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Settings;
+use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Models\Brand;
+use App\Models\DraftOrder;
+use App\Models\Order;
 use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\FirstSuperadminSeeder;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -65,6 +71,55 @@ test('superadmin can access platform dashboard and see platform records', functi
         ->assertSee($brand->name)
         ->assertSee($branch->name)
         ->assertSee($visibleUser->email);
+});
+
+test('superadmin sees expanded organization controls and counts', function () {
+    [$organization, $brand, $branch] = createPlatformRecordsForSuperadmin();
+    $superadmin = createSuperadminUser();
+    $inactiveBranch = (new CreateBranchAction)->handle($brand, [
+        'name' => 'Platform Paused Branch',
+        'address' => 'Side Street 2',
+        'city' => 'Kaunas',
+        'country' => 'Lithuania',
+        'timezone' => 'Europe/Vilnius',
+        'currency' => 'EUR',
+        'is_active' => false,
+    ]);
+    $firstServicePoint = ServicePoint::factory()->for($branch)->create(['name' => 'Dashboard Table 1']);
+    ServicePoint::factory()->for($inactiveBranch)->create(['name' => 'Dashboard Table 2']);
+    $tableSession = TableSession::factory()->forServicePoint($firstServicePoint)->active()->create();
+    $draftOrder = DraftOrder::factory()->for($tableSession)->create();
+    Order::factory()->create([
+        'branch_id' => $branch->id,
+        'service_point_id' => $firstServicePoint->id,
+        'table_session_id' => $tableSession->id,
+        'draft_order_id' => $draftOrder->id,
+        'total_price' => '25.00',
+    ]);
+
+    $this->actingAs($superadmin)
+        ->get(route('superadmin.dashboard'))
+        ->assertOk()
+        ->assertSee('Service Points')
+        ->assertSee('Orders')
+        ->assertSee('Activity active')
+        ->assertSee('Service points')
+        ->assertSee('Platform Visible Group')
+        ->assertSee('Platform Visible Brand')
+        ->assertSee('Platform Visible Branch')
+        ->assertSee('Open details')
+        ->assertSee('Audit log')
+        ->assertSee(route('organizations.brands.index', $organization), false)
+        ->assertSee(route('restaurant.audit-log.index', ['organization' => $organization->id]), false);
+
+    Livewire::actingAs($superadmin)
+        ->test(SuperadminDashboard::class)
+        ->call('suspendOrganization', $organization->id)
+        ->assertSee('Activity suspended')
+        ->call('activateOrganization', $organization->id)
+        ->assertSee('Activity active');
+
+    expect($organization->fresh()->subscription->status)->toBe(OrganizationSubscriptionStatus::Active);
 });
 
 test('superadmin bypasses organization branch restrictions', function () {

@@ -23,7 +23,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 
 - The product is a SaaS platform for restaurants, cafes, bars, hotels, food courts, and similar venues.
 - It must grow beyond a simple QR menu, but each prompt must stay small.
-- The SaaS billing model currently has one plan for all organizations, no tariff limits, no online billing provider, and manual superadmin activation/deactivation only.
+- The SaaS billing model currently has one plan for all organizations, no tariff limits, no online billing provider, and manual superadmin activation/suspension only.
 - One physical table / place / service point should have one active permanent QR code.
 - QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
 - Orders must require waiter confirmation by default.
@@ -50,7 +50,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Fixed system roles.
 - Flexible permissions with role permissions and user overrides.
 - Organizations.
-- Simple one-plan SaaS subscriptions for organizations with local status/payment fields and superadmin manual activation/deactivation.
+- Simple one-plan SaaS subscriptions for organizations with local status/payment fields and superadmin manual activation/suspension.
 - Organization user memberships.
 - Brands.
 - Branches.
@@ -153,6 +153,8 @@ Organization:
 - Represents the company or owner of a restaurant business.
 - Has many brands.
 - Has many branches.
+- Has many service points through branches.
+- Has many orders through branches.
 - Has many users through `organization_users`.
 - Has one SaaS subscription through `organization_subscriptions`.
 - New organizations created through `CreateOrganizationAction` receive a default active subscription.
@@ -764,8 +766,10 @@ Superadmin access:
 - The superadmin route is protected by `superadmin` middleware.
 - The platform dashboard is visible only to superadmins.
 - Superadmins can see all organizations, brands, branches, and users.
-- Superadmins can see organization subscription status, started date, next payment date, and manual payment status on the platform dashboard.
-- Superadmins can activate or deactivate organization subscriptions from the platform dashboard.
+- Superadmins can see top-level organization, brand, branch, service point, order, and user counts on the platform dashboard.
+- Superadmins can see organization subscription status, activity state, started date, next payment date, manual payment status, brand count, total/active branch count, service point count, and order count on the platform dashboard.
+- Superadmins can open existing organization details, open the audit log, suspend an organization subscription, and reactivate it from the platform dashboard.
+- Superadmin impersonation is not implemented yet.
 - Superadmins bypass organization and branch-level access checks.
 - Regular users keep organization-scoped access only.
 
@@ -778,7 +782,7 @@ SaaS subscription:
 - Payment status values are `pending`, `paid`, `overdue`, and `failed`, cast by `OrganizationSubscriptionPaymentStatus`.
 - Stores nullable `started_at` and `next_payment_at`.
 - `EnsureOrganizationSubscriptionAction` creates the default active local subscription with `payment_status = pending`, `started_at = now()`, and `next_payment_at = now() + 1 month`.
-- `SetOrganizationSubscriptionStatusAction` is the manual superadmin action used by the platform dashboard to activate or deactivate organizations.
+- `SetOrganizationSubscriptionStatusAction` is the manual superadmin action used by the platform dashboard to activate or suspend organizations.
 - Inactive subscriptions block regular organization access through `User::canAccessOrganization()` and `User::hasOrganizationRole()`.
 - Missing subscription rows are treated as active for legacy records until a subscription is created, so old local data is not locked by the migration alone.
 - No Stripe, PayPal, online acquiring, invoices, webhooks, external billing provider, or paid billing service exists.
@@ -923,7 +927,7 @@ Local media storage:
 - `App\Livewire\Departments\Dashboard` shared abstract department ticket screen
 - `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
-- `App\Livewire\Superadmin\Dashboard` shows platform records, local SQLite backup action, and organization subscription activate/deactivate controls.
+- `App\Livewire\Superadmin\Dashboard` shows platform records, service point/order stats, local SQLite backup action, organization aggregate counters, detail/audit links, and organization subscription activate/suspend controls.
 - `App\Livewire\Waiter\Dashboard`
 - `App\Livewire\Waiter\TableDetail`
 - `App\Livewire\Settings\Profile`
@@ -1319,7 +1323,7 @@ The next expected product step may be expanding local UI translation coverage, P
 
 - Do not rewrite architecture.
 - Do not add unrelated future features.
-- Do not add tariff limits, Stripe, PayPal, webhooks, online billing, paid billing providers, or external subscription services unless a future prompt explicitly asks for that exact step.
+- Do not add tariff limits, Stripe, PayPal, webhooks, online billing, paid billing providers, external subscription services, or superadmin impersonation unless a future prompt explicitly asks for that exact step.
 - Do not delete organization data, restaurants, QR codes, orders, payments, or audit logs when a subscription is deactivated; it is an access/status toggle only.
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.

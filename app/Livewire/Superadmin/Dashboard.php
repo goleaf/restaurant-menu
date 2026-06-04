@@ -6,7 +6,9 @@ use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\Order;
 use App\Models\Organization;
+use App\Models\ServicePoint;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Pagination\CursorPaginator;
@@ -23,7 +25,7 @@ class Dashboard extends Component
     use WithPagination;
 
     /**
-     * @return array{organizations: int, brands: int, branches: int, users: int}
+     * @return array{organizations: int, brands: int, branches: int, service_points: int, orders: int, users: int}
      */
     #[Computed]
     public function stats(): array
@@ -32,6 +34,8 @@ class Dashboard extends Component
             'organizations' => Organization::query()->count(),
             'brands' => Brand::query()->count(),
             'branches' => Branch::query()->count(),
+            'service_points' => ServicePoint::query()->count(),
+            'orders' => Order::query()->count(),
             'users' => User::query()->count(),
         ];
     }
@@ -56,6 +60,13 @@ class Dashboard extends Component
                     'created_at',
                 ]),
             ])
+            ->withCount([
+                'brands',
+                'branches',
+                'servicePoints',
+                'orders',
+                'branches as active_branches_count' => fn ($query) => $query->where('is_active', true),
+            ])
             ->orderBy('id')
             ->cursorPaginate(10, ['id', 'owner_user_id', 'name', 'created_at'], 'organizationsCursor');
     }
@@ -74,7 +85,7 @@ class Dashboard extends Component
         Flux::toast(variant: 'success', text: __('Organization activated.'));
     }
 
-    public function deactivateOrganization(
+    public function suspendOrganization(
         int $organizationId,
         SetOrganizationSubscriptionStatusAction $setOrganizationSubscriptionStatus,
     ): void {
@@ -85,7 +96,7 @@ class Dashboard extends Component
 
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('Organization deactivated.'));
+        Flux::toast(variant: 'success', text: __('Organization suspended.'));
     }
 
     /**

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['owner_user_id', 'name', 'logo_path'])]
@@ -68,6 +69,22 @@ class Organization extends Model
     public function branches(): HasMany
     {
         return $this->hasMany(Branch::class);
+    }
+
+    /**
+     * @return HasManyThrough<ServicePoint, Branch, $this>
+     */
+    public function servicePoints(): HasManyThrough
+    {
+        return $this->hasManyThrough(ServicePoint::class, Branch::class);
+    }
+
+    /**
+     * @return HasManyThrough<Order, Branch, $this>
+     */
+    public function orders(): HasManyThrough
+    {
+        return $this->hasManyThrough(Order::class, Branch::class);
     }
 
     /**

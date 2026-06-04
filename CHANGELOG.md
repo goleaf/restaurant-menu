@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 080 - Expand Superadmin Organization Controls
+
+- Expanded the platform dashboard top stats with service point and order counts.
+- Added organization-level counters for brands, total branches, active branches, service points, and orders using Eloquent relationships and `withCount`.
+- Added superadmin organization controls to open existing organization details, open the audit log, suspend an organization, and reactivate it.
+- Renamed the visible inactive action to `Suspend` while keeping the one-plan local subscription model and superadmin bypass intact.
+- Kept the stack unchanged: SQLite, database cache/session/queue, Blade + Livewire, no Redis, WebSockets, S3, Docker, Stripe, PayPal, impersonation, or paid billing services.
+
 ### Prompt 079 - Simple SaaS Subscription
 
 - Added local `organization_subscriptions` for the single SaaS plan without tariff limits or online billing providers.

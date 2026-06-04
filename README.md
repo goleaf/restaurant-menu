@@ -63,7 +63,28 @@ No exchange-rate API, paid currency service, or external financial integration i
 /superadmin/dashboard
 ```
 
-The platform dashboard shows organizations, brands, branches, and users across the whole SaaS platform. Regular users do not see the platform dashboard link and receive `403 Forbidden` if they open the superadmin URL directly.
+The platform dashboard shows organizations, brands, branches, service points, orders, and users across the whole SaaS platform. Regular users do not see the platform dashboard link and receive `403 Forbidden` if they open the superadmin URL directly.
+
+For each organization, superadmin can see:
+
+- subscription status;
+- activity state;
+- owner email;
+- started and next-payment dates;
+- manual payment status;
+- brand count;
+- total and active branch count;
+- service point count;
+- order count.
+
+Organization actions on the platform dashboard:
+
+- open existing organization details;
+- open the audit log;
+- suspend organization access;
+- reactivate organization access.
+
+Impersonation is not implemented yet.
 
 The first superadmin can be created by setting these values in `.env` before running the database seeder:
 
@@ -92,7 +113,7 @@ The subscription stores:
 - `next_payment_at`;
 - `payment_status`: `pending`, `paid`, `overdue`, or `failed`.
 
-New organizations created through the application receive an active default subscription with a pending manual payment status. Superadmins can activate or deactivate an organization from `/superadmin/dashboard`.
+New organizations created through the application receive an active default subscription with a pending manual payment status. Superadmins can activate or suspend an organization from `/superadmin/dashboard`.
 
 When an organization is explicitly inactive, regular users can no longer access that organization workspace. Superadmins keep platform-level access so they can reactivate it. Deactivation does not delete restaurants, menus, QR codes, guests, orders, payments, or audit logs.
 
@@ -794,7 +815,7 @@ Implemented:
 - Fixed system roles seeded from enums.
 - Flexible permissions with role permissions and user overrides.
 - Organizations with owner membership.
-- Simple one-plan SaaS subscription status stored in `organization_subscriptions` with superadmin manual activation/deactivation.
+- Simple one-plan SaaS subscription status stored in `organization_subscriptions` with superadmin manual activation/suspension.
 - Organization users with role, status, joined date, and inviter fields.
 - Brands inside organizations.
 - Branches inside brands and organizations.

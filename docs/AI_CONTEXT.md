@@ -15,6 +15,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Database queue
 - Local public storage in `storage/app/public`
 - Fixed interface locales: `ru`, `en`, `lt`
+- Fixed branch currencies through `App\Enums\SupportedCurrency`
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -36,6 +37,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Local backups must stay shared-hosting friendly: superadmin-only SQLite download, no S3, no paid backup services, no Docker, and no committed backup files.
 - Data exports must stay branch-scoped, CSV-first, protected by `export_data`, and must not leak another branch's orders, payments, menu, or service points.
 - Localization must stay local and fixed to `ru`, `en`, and `lt`; do not add AI translation, paid translation APIs, or external localization services.
+- Currency handling must stay local: no exchange-rate APIs, no paid currency services, and no automatic conversion of stored menu/order/payment amounts.
 
 ## What Is Already Done
 
@@ -79,6 +81,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - General audit logs with a `view_audit_log`-guarded viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - CSV data exports for branch orders, manual payments, menu items, and service points through streamed responses guarded by `export_data`.
 - Basic localization foundation with `SupportedLocale`, `users.locale`, `SetInterfaceLocale` web middleware, profile language selection, guest QR language selection, and local JSON strings in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
+- Basic currency settings with `SupportedCurrency`, `MoneyFormatter`, branch/settings currency selectors, settings-to-branch currency sync, and formatted guest/menu price display.
 - Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -168,6 +171,7 @@ Branch:
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
 - Stores optional `logo_path` for a locally stored logo.
+- Stores operational `currency`; branch settings store `default_currency`, and both are kept synced by branch/settings update actions.
 - New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
 - The branch list UI includes a `Настроить ресторан` setup wizard. It prepares zone, service point, and active QR counts in `App\Livewire\Organizations\Brands\Branches\Index` using Eloquent counts/eager loading and links only to existing routes.
 - The setup wizard steps are `Создать филиал`, `Добавить зоны`, `Добавить столы`, `Сгенерировать QR`, `Напечатать QR`, and `Открыть гостевое меню`.
@@ -231,6 +235,7 @@ Menu item:
 - Creating or editing dish price requires `change_prices`; without it, price edits are preserved as the current value.
 - Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
 - Guest menu display shows item price, photo when present, and unavailable state as `Нет в наличии`.
+- Guest menu price display uses the current branch currency formatter; stored menu item prices are not converted.
 - Unavailable dishes remain visible to guests by default but cannot be opened or added to `draft_order_items`.
 - Has many translations through `menu_item_translations`.
 - Has many reusable modifier groups through `menu_item_modifier_groups`.
@@ -319,6 +324,15 @@ Localization:
 - Guest menu receives the selected language and still falls back to base menu/category/item text if translations are missing.
 - Baseline UI strings live in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
 - This is not a complete translation pass for every historical UI string; future prompts may expand the local JSON files.
+
+Currency:
+
+- Supported branch currencies are fixed in `App\Enums\SupportedCurrency`.
+- Default currency is `EUR`.
+- `branch_settings.default_currency` and `branches.currency` must stay synced.
+- `App\Support\MoneyFormatter` formats display strings such as `€14.50`, `$14.50`, or `14.50 PLN`.
+- Currency settings do not change stored menu item prices, modifier price deltas, draft item totals, order totals, or manual payment values.
+- There is no exchange-rate API, no paid currency provider, and no automatic conversion.
 
 Area node:
 
@@ -863,6 +877,8 @@ Local media storage:
 - `App\Livewire\Settings\Profile` now includes admin interface language selection.
 - `App\Livewire\PublicQr\Show` now includes guest language selection and branch-default language resolution.
 - `App\Livewire\PublicQr\GuestMenu` receives/applies the selected guest language.
+- `App\Livewire\Organizations\Brands\Branches\Index` and `App\Livewire\Organizations\Brands\Branches\Settings` expose supported currency selectors.
+- `App\Livewire\PublicQr\GuestMenu` formats guest-facing menu prices with the current branch currency.
 - `App\Livewire\Onboarding\RestaurantSetup`
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
@@ -1275,7 +1291,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1304,6 +1320,8 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not add paid CSV/PDF libraries for exports.
 - Do not add AI translation, external translate APIs, or paid localization services.
 - Do not add unsupported interface languages outside `ru`, `en`, and `lt` without an explicit prompt.
+- Do not add exchange-rate APIs, paid currency services, or automatic currency conversion.
+- Do not let `branch_settings.default_currency` drift away from `branches.currency` when branch/settings actions change currency.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

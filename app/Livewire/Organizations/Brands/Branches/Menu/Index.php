@@ -19,6 +19,7 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
@@ -1888,7 +1889,7 @@ class Index extends Component
                         'menu_name' => $menu->name,
                         'category_name' => $item->category?->name ?? __('No category'),
                         'department_name' => $item->kitchenDepartment?->name ?? __('Default kitchen'),
-                        'price' => $item->price,
+                        'price' => MoneyFormatter::format($item->price, $this->branch->currency),
                         'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
                     ])
                     ->values()

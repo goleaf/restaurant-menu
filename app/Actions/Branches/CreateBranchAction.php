@@ -3,6 +3,7 @@
 namespace App\Actions\Branches;
 
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
+use App\Enums\SupportedCurrency;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -16,6 +17,8 @@ class CreateBranchAction
     public function handle(Brand $brand, array $data): Branch
     {
         return DB::transaction(function () use ($brand, $data): Branch {
+            $currency = SupportedCurrency::normalize($data['currency'] ?? null);
+
             $branch = $brand->branches()->create([
                 'organization_id' => $brand->organization_id,
                 'name' => $data['name'],
@@ -23,7 +26,7 @@ class CreateBranchAction
                 'city' => $data['city'],
                 'country' => $data['country'],
                 'timezone' => $data['timezone'],
-                'currency' => $data['currency'],
+                'currency' => $currency,
                 'is_active' => $data['is_active'],
             ]);
 

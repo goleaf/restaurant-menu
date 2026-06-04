@@ -104,6 +104,7 @@ test('owner can update branch settings', function () {
     expect($settings->polling_interval_seconds)->toBe(5);
     expect($settings->default_language)->toBe('lt');
     expect($settings->default_currency)->toBe('USD');
+    expect($branch->fresh()->currency)->toBe('USD');
     expect($settings->service_charge_enabled)->toBeTrue();
     expect($settings->tips_enabled)->toBeTrue();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::StaffManaged);
@@ -167,7 +168,7 @@ test('settings validation keeps polling and order flow safe', function () {
         ->call('save')
         ->assertHasErrors([
             'pollingIntervalSeconds' => ['min'],
-            'defaultCurrency' => ['size'],
+            'defaultCurrency' => ['size', 'in'],
             'orderFlowMode' => ['in'],
         ]);
 });

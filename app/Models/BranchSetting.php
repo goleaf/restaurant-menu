@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BranchOrderFlowMode;
+use App\Enums\SupportedCurrency;
 use Database\Factories\BranchSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -96,7 +97,7 @@ class BranchSetting extends Model
             'guest_join_requires_approval' => true,
             'polling_interval_seconds' => 1,
             'default_language' => 'en',
-            'default_currency' => strtoupper($branch?->currency ?? 'EUR'),
+            'default_currency' => SupportedCurrency::normalize($branch?->currency),
             'service_charge_enabled' => false,
             'tips_enabled' => false,
             'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,

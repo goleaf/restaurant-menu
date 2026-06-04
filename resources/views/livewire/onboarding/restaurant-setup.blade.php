@@ -119,7 +119,17 @@
                         <flux:input wire:model="branchCity" :label="__('Город')" type="text" required maxlength="120" />
                         <flux:input wire:model="branchCountry" :label="__('Страна')" type="text" required maxlength="120" />
                         <flux:input wire:model="branchTimezone" :label="__('Часовой пояс')" type="text" required maxlength="64" />
-                        <flux:input wire:model="branchCurrency" :label="__('Валюта')" type="text" required maxlength="3" />
+                        <flux:field>
+                            <flux:label>{{ __('Валюта') }}</flux:label>
+                            <flux:select wire:model="branchCurrency">
+                                @foreach ($currencyOptions as $currencyCode => $currencyLabel)
+                                    <flux:select.option wire:key="onboarding-branch-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
+                                        {{ $currencyLabel }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+                            <flux:error name="branchCurrency" />
+                        </flux:field>
                     </div>
 
                     <div class="flex flex-wrap gap-3">

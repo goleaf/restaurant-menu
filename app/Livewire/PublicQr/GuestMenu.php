@@ -4,10 +4,12 @@ namespace App\Livewire\PublicQr;
 
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -68,6 +70,7 @@ class GuestMenu extends Component
         $this->currentGuestId = $currentGuestId;
         $this->publicToken = $publicToken;
         $this->guestCanAddItems = $guestCanAddItems;
+        $this->currency = SupportedCurrency::normalize($currency);
         $this->languageOptions = GetGuestMenuForBranchAction::supportedLanguageLabels();
         $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $language ?? $this->language);
         $this->applyLocale();
@@ -199,7 +202,7 @@ class GuestMenu extends Component
 
         $this->configuredItems[$item['id']] = [
             'name' => $draftOrderItem->item_name,
-            'total_price' => $draftOrderItem->total_price,
+            'total_price' => MoneyFormatter::format($draftOrderItem->total_price, $this->currency),
             'modifier_summary' => $this->selectedModifierSummary($item),
             'comment' => $draftOrderItem->comment,
         ];
@@ -224,9 +227,9 @@ class GuestMenu extends Component
         $selectedItem = $this->selectedItem();
 
         return view('livewire.public-qr.guest-menu', [
-            'guestMenu' => $this->guestMenu,
-            'selectedItem' => $selectedItem,
-            'selectedItemTotal' => $selectedItem === null ? '0.00' : $this->selectedItemTotal($selectedItem),
+            'guestMenu' => $this->displayGuestMenu(),
+            'selectedItem' => $selectedItem === null ? null : $this->displayItem($selectedItem),
+            'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::format(0, $this->currency) : $this->selectedItemTotal($selectedItem),
         ]);
     }
 
@@ -365,19 +368,19 @@ class GuestMenu extends Component
      */
     private function selectedItemTotal(array $item): string
     {
-        $totalCents = $this->decimalToCents((string) $item['price']);
+        $totalCents = MoneyFormatter::decimalToCents((string) $item['price']);
 
         foreach ($item['modifier_groups'] as $modifierGroup) {
             $selectedOptionIds = $this->selectedOptionIdsForGroup((int) $modifierGroup['id'], $item);
 
             foreach ($modifierGroup['options'] as $modifierOption) {
                 if (in_array((int) $modifierOption['id'], $selectedOptionIds, true)) {
-                    $totalCents += $this->decimalToCents((string) $modifierOption['price_delta']);
+                    $totalCents += MoneyFormatter::decimalToCents((string) $modifierOption['price_delta']);
                 }
             }
         }
 
-        return $this->centsToDecimal(max(0, $totalCents));
+        return MoneyFormatter::formatCents(max(0, $totalCents), $this->currency);
     }
 
     /**
@@ -401,14 +404,54 @@ class GuestMenu extends Component
         return $summary;
     }
 
-    private function decimalToCents(string $amount): int
+    /**
+     * @return array<string, mixed>
+     */
+    private function displayGuestMenu(): array
     {
-        return (int) round(((float) $amount) * 100);
+        $guestMenu = $this->guestMenu;
+        $guestMenu['categories'] = collect($guestMenu['categories'])
+            ->map(function (array $category): array {
+                $category['items'] = collect($category['items'])
+                    ->map(fn (array $item): array => $this->displayItem($item))
+                    ->values()
+                    ->all();
+
+                return $category;
+            })
+            ->values()
+            ->all();
+
+        return $guestMenu;
     }
 
-    private function centsToDecimal(int $amount): string
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>
+     */
+    private function displayItem(array $item): array
     {
-        return number_format($amount / 100, 2, '.', '');
+        $item['formatted_price'] = MoneyFormatter::format((string) $item['price'], $this->currency);
+        $item['modifier_groups'] = collect($item['modifier_groups'])
+            ->map(function (array $modifierGroup): array {
+                $modifierGroup['options'] = collect($modifierGroup['options'])
+                    ->map(function (array $modifierOption): array {
+                        $modifierOption['formatted_price_delta'] = MoneyFormatter::formatSigned(
+                            (string) $modifierOption['price_delta'],
+                            $this->currency,
+                        );
+
+                        return $modifierOption;
+                    })
+                    ->values()
+                    ->all();
+
+                return $modifierGroup;
+            })
+            ->values()
+            ->all();
+
+        return $item;
     }
 
     private function currentTableSession(): ?TableSession

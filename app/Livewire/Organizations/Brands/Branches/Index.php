@@ -8,6 +8,7 @@ use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\QrCodeStatus;
+use App\Enums\SupportedCurrency;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
@@ -91,10 +92,16 @@ class Index extends Component
 
     public bool $canManageStaff = false;
 
+    /**
+     * @var array<string, string>
+     */
+    public array $currencyOptions = [];
+
     public function mount(Organization $organization, Brand $brand): void
     {
         $this->organization = $organization;
         $this->brand = $brand;
+        $this->currencyOptions = SupportedCurrency::labels();
 
         if ($brand->organization_id !== $organization->id) {
             abort(403);
@@ -120,6 +127,7 @@ class Index extends Component
     public function create(CreateBranchAction $createBranch): void
     {
         $this->authorizeBranchManagement();
+        $this->currency = SupportedCurrency::clean($this->currency);
 
         $validated = $this->validate($this->branchRules());
 
@@ -170,6 +178,8 @@ class Index extends Component
         if ($this->editingBranchId === null) {
             return;
         }
+
+        $this->editingCurrency = SupportedCurrency::clean($this->editingCurrency);
 
         $validated = $this->validate($this->branchRules('editing', $this->editingBranchId));
 
@@ -374,7 +384,7 @@ class Index extends Component
             $fieldPrefix === '' ? 'city' : $fieldPrefix.'City' => ['required', 'string', 'max:120'],
             $fieldPrefix === '' ? 'country' : $fieldPrefix.'Country' => ['required', 'string', 'max:120'],
             $fieldPrefix === '' ? 'timezone' : $fieldPrefix.'Timezone' => ['required', 'timezone', 'max:64'],
-            $fieldPrefix === '' ? 'currency' : $fieldPrefix.'Currency' => ['required', 'string', 'size:3'],
+            $fieldPrefix === '' ? 'currency' : $fieldPrefix.'Currency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             $fieldPrefix === '' ? 'isActive' : $fieldPrefix.'IsActive' => ['boolean'],
         ];
     }
@@ -391,7 +401,7 @@ class Index extends Component
             'city' => $validated[$prefix === '' ? 'city' : $prefix.'City'],
             'country' => $validated[$prefix === '' ? 'country' : $prefix.'Country'],
             'timezone' => $validated[$prefix === '' ? 'timezone' : $prefix.'Timezone'],
-            'currency' => strtoupper($validated[$prefix === '' ? 'currency' : $prefix.'Currency']),
+            'currency' => SupportedCurrency::normalize($validated[$prefix === '' ? 'currency' : $prefix.'Currency']),
             'is_active' => (bool) $validated[$prefix === '' ? 'isActive' : $prefix.'IsActive'],
         ];
     }

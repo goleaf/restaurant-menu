@@ -41,7 +41,17 @@
                     </flux:select>
                     <flux:error name="defaultLanguage" />
                 </flux:field>
-                <flux:input wire:model="defaultCurrency" :label="__('Default currency')" type="text" required maxlength="3" />
+                <flux:field>
+                    <flux:label>{{ __('Default currency') }}</flux:label>
+                    <flux:select wire:model="defaultCurrency">
+                        @foreach ($currencyOptions as $currencyCode => $currencyLabel)
+                            <flux:select.option wire:key="branch-default-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
+                                {{ $currencyLabel }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:error name="defaultCurrency" />
+                </flux:field>
 
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('Order flow mode') }}</span>

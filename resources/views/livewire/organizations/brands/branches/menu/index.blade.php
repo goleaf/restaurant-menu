@@ -34,7 +34,7 @@
                                         <div class="flex flex-wrap items-center gap-2">
                                             <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $stopListItem['name'] }}</h2>
                                             <flux:badge color="zinc">{{ __('Out of stock') }}</flux:badge>
-                                            <flux:badge>{{ $stopListItem['price'] }} {{ $branch->currency }}</flux:badge>
+                                            <flux:badge>{{ $stopListItem['price'] }}</flux:badge>
                                         </div>
 
                                         <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -77,7 +77,7 @@
                                         <div class="flex flex-wrap items-center gap-2">
                                             <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $availableItem['name'] }}</h2>
                                             <flux:badge color="green">{{ __('Available') }}</flux:badge>
-                                            <flux:badge>{{ $availableItem['price'] }} {{ $branch->currency }}</flux:badge>
+                                            <flux:badge>{{ $availableItem['price'] }}</flux:badge>
                                         </div>
 
                                         <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">

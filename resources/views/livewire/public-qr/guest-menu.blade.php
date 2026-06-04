@@ -73,7 +73,7 @@
                                         <div class="grid gap-1">
                                             <h4 class="min-w-0 text-sm font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['name'] }}</h4>
                                             <span class="text-sm font-semibold text-zinc-950 dark:text-white">
-                                                {{ $item['price'] }} {{ $currency }}
+                                                {{ $item['formatted_price'] }}
                                             </span>
                                         </div>
 
@@ -125,7 +125,7 @@
                                             <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
                                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                                     <span class="font-semibold">{{ __('Добавлено') }}</span>
-                                                    <span class="font-semibold">{{ $configuredItems[$item['id']]['total_price'] }} {{ $currency }}</span>
+                                                    <span class="font-semibold">{{ $configuredItems[$item['id']]['total_price'] }}</span>
                                                 </div>
 
                                                 @if ($configuredItems[$item['id']]['modifier_summary'] !== [])
@@ -164,7 +164,7 @@
                     <div class="min-w-0">
                         <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Ваш выбор') }}</p>
                         <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $selectedItem['name'] }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }} {{ $currency }}</p>
+                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
                     </div>
 
                     <button
@@ -209,7 +209,7 @@
                                     >
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">
-                                            {{ ((float) $modifierOption['price_delta']) >= 0 ? '+' : '' }}{{ $modifierOption['price_delta'] }} {{ $currency }}
+                                            {{ $modifierOption['formatted_price_delta'] }}
                                         </span>
                                     </button>
                                 @empty
@@ -251,7 +251,7 @@
                         wire:target="saveConfiguredItem"
                         class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                     >
-                        <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('Добавить') }} · {{ $selectedItemTotal }} {{ $currency }}</span>
+                        <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('Добавить') }} · {{ $selectedItemTotal }}</span>
                         <span wire:loading wire:target="saveConfiguredItem">{{ __('Добавляем') }}</span>
                     </button>
                 </div>

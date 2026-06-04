@@ -2,7 +2,9 @@
 
 namespace App\Actions\Branches;
 
+use App\Enums\SupportedCurrency;
 use App\Models\BranchSetting;
+use Illuminate\Support\Facades\DB;
 
 class UpdateBranchSettingsAction
 {
@@ -23,9 +25,17 @@ class UpdateBranchSettingsAction
      */
     public function handle(BranchSetting $settings, array $data): BranchSetting
     {
-        $settings->fill($data);
-        $settings->save();
+        return DB::transaction(function () use ($settings, $data): BranchSetting {
+            $data['default_currency'] = SupportedCurrency::normalize($data['default_currency'] ?? null);
 
-        return $settings;
+            $settings->fill($data);
+            $settings->save();
+
+            $settings->branch()
+                ->select(['id', 'currency'])
+                ->update(['currency' => $data['default_currency']]);
+
+            return $settings->refresh();
+        });
     }
 }

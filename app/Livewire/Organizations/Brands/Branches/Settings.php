@@ -5,6 +5,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Actions\Branches\EnsureBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Enums\BranchOrderFlowMode;
+use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -59,6 +60,11 @@ class Settings extends Component
      */
     public array $languageOptions = [];
 
+    /**
+     * @var array<string, string>
+     */
+    public array $currencyOptions = [];
+
     public function mount(
         Organization $organization,
         Brand $brand,
@@ -69,6 +75,7 @@ class Settings extends Component
         $this->brand = $brand;
         $this->branch = $branch;
         $this->languageOptions = SupportedLocale::labels();
+        $this->currencyOptions = SupportedCurrency::labels();
 
         if (
             $brand->organization_id !== $organization->id
@@ -92,6 +99,8 @@ class Settings extends Component
 
     public function save(UpdateBranchSettingsAction $updateBranchSettings): void
     {
+        $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
+
         $validated = $this->validate($this->rules());
 
         $settings = $updateBranchSettings->handle(
@@ -104,7 +113,7 @@ class Settings extends Component
                 'guest_join_requires_approval' => (bool) $validated['guestJoinRequiresApproval'],
                 'polling_interval_seconds' => (int) $validated['pollingIntervalSeconds'],
                 'default_language' => SupportedLocale::normalize($validated['defaultLanguage']),
-                'default_currency' => strtoupper($validated['defaultCurrency']),
+                'default_currency' => SupportedCurrency::normalize($validated['defaultCurrency']),
                 'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
                 'tips_enabled' => (bool) $validated['tipsEnabled'],
                 'order_flow_mode' => $validated['orderFlowMode'],
@@ -144,7 +153,7 @@ class Settings extends Component
             'guestJoinRequiresApproval' => ['boolean'],
             'pollingIntervalSeconds' => ['required', 'integer', 'min:1', 'max:60'],
             'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
-            'defaultCurrency' => ['required', 'string', 'size:3'],
+            'defaultCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             'serviceChargeEnabled' => ['boolean'],
             'tipsEnabled' => ['boolean'],
             'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
@@ -161,10 +170,11 @@ class Settings extends Component
         $this->guestJoinRequiresApproval = $settings->guest_join_requires_approval;
         $this->pollingIntervalSeconds = $settings->polling_interval_seconds;
         $this->defaultLanguage = $settings->default_language;
-        $this->defaultCurrency = $settings->default_currency;
+        $this->defaultCurrency = SupportedCurrency::normalize($settings->default_currency);
         $this->serviceChargeEnabled = $settings->service_charge_enabled;
         $this->tipsEnabled = $settings->tips_enabled;
         $this->orderFlowMode = $settings->order_flow_mode->value;
+        $this->branch->refresh();
     }
 
     private function findSettings(): BranchSetting

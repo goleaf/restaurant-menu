@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 078 - Currency Settings
+
+- Added a fixed local `SupportedCurrency` list for branch currency settings without exchange APIs or paid services.
+- Added a shared `MoneyFormatter` for readable branch-currency display such as `€14.50`, `$14.50`, or `14.50 PLN`.
+- Changed branch creation/editing and branch settings currency inputs from free text to validated currency selectors.
+- Synced `branch_settings.default_currency` with `branches.currency` so guest/menu/order-facing screens use the selected branch currency.
+- Updated guest menu and admin stop-list price display while preserving stored menu prices and modifier price deltas without automatic conversion.
+
 ### Prompt 077 - Basic Localization
 
 - Added fixed supported interface locales `ru`, `en`, and `lt` through a shared `SupportedLocale` enum.

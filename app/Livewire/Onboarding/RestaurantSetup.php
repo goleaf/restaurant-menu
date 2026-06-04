@@ -11,6 +11,7 @@ use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Enums\AreaNodeType;
 use App\Enums\ServicePointType;
+use App\Enums\SupportedCurrency;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -92,6 +93,16 @@ class RestaurantSetup extends Component
 
     public string $itemPrice = '10.00';
 
+    /**
+     * @var array<string, string>
+     */
+    public array $currencyOptions = [];
+
+    public function mount(): void
+    {
+        $this->currencyOptions = SupportedCurrency::labels();
+    }
+
     public function createOrganization(CreateOrganizationAction $createOrganization): void
     {
         $this->organizationName = trim($this->organizationName);
@@ -150,7 +161,7 @@ class RestaurantSetup extends Component
         $this->branchAddress = trim($this->branchAddress);
         $this->branchCity = trim($this->branchCity);
         $this->branchCountry = trim($this->branchCountry);
-        $this->branchCurrency = mb_strtoupper(trim($this->branchCurrency));
+        $this->branchCurrency = SupportedCurrency::clean($this->branchCurrency);
 
         $validated = $this->validate([
             'branchName' => [
@@ -164,7 +175,7 @@ class RestaurantSetup extends Component
             'branchCity' => ['required', 'string', 'max:120'],
             'branchCountry' => ['required', 'string', 'max:120'],
             'branchTimezone' => ['required', 'timezone', 'max:64'],
-            'branchCurrency' => ['required', 'string', 'size:3'],
+            'branchCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
         ]);
 
         $branch = $createBranch->handle($brand, [
@@ -173,7 +184,7 @@ class RestaurantSetup extends Component
             'city' => $validated['branchCity'],
             'country' => $validated['branchCountry'],
             'timezone' => $validated['branchTimezone'],
-            'currency' => $validated['branchCurrency'],
+            'currency' => SupportedCurrency::normalize($validated['branchCurrency']),
             'is_active' => true,
         ]);
 

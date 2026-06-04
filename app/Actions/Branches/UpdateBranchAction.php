@@ -2,7 +2,9 @@
 
 namespace App\Actions\Branches;
 
+use App\Enums\SupportedCurrency;
 use App\Models\Branch;
+use Illuminate\Support\Facades\DB;
 
 class UpdateBranchAction
 {
@@ -11,18 +13,26 @@ class UpdateBranchAction
      */
     public function handle(Branch $branch, array $data): Branch
     {
-        $branch->fill([
-            'name' => $data['name'],
-            'address' => $data['address'],
-            'city' => $data['city'],
-            'country' => $data['country'],
-            'timezone' => $data['timezone'],
-            'currency' => $data['currency'],
-            'is_active' => $data['is_active'],
-        ]);
+        return DB::transaction(function () use ($branch, $data): Branch {
+            $currency = SupportedCurrency::normalize($data['currency'] ?? null);
 
-        $branch->save();
+            $branch->fill([
+                'name' => $data['name'],
+                'address' => $data['address'],
+                'city' => $data['city'],
+                'country' => $data['country'],
+                'timezone' => $data['timezone'],
+                'currency' => $currency,
+                'is_active' => $data['is_active'],
+            ]);
 
-        return $branch;
+            $branch->save();
+
+            $branch->settings()
+                ->select(['id', 'branch_id', 'default_currency'])
+                ->update(['default_currency' => $currency]);
+
+            return $branch->refresh();
+        });
     }
 }

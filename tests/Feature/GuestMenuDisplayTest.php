@@ -46,7 +46,7 @@ test('active guest sees active branch menu on guest table page', function () {
         ->assertSeeText($category->name)
         ->assertSeeText($availableItem->name)
         ->assertSeeText($unavailableItem->name)
-        ->assertSeeText('14.50 EUR')
+        ->assertSeeText('€14.50')
         ->assertSeeText('Out of stock')
         ->assertSee(Storage::disk('public')->url((string) $availableItem->image), false)
         ->assertDontSeeText('Draft only dish')
@@ -120,8 +120,8 @@ test('guest menu component uses cached active menu payload', function () {
         'branchId' => $branch->id,
         'currency' => 'EUR',
     ])
-        ->assertSeeText('18.75 EUR')
-        ->assertDontSeeText('14.50 EUR');
+        ->assertSeeText('€18.75')
+        ->assertDontSeeText('€14.50');
 
     expect($qrCode->public_token)->not->toBeEmpty();
 });
@@ -251,13 +251,13 @@ test('guest menu lets active guest add configured item to the shared draft', fun
         ->assertSeeText('Large')
         ->assertSeeText('Extra cheese')
         ->assertDontSeeText('Sold out')
-        ->assertSeeText('14.50 EUR')
+        ->assertSeeText('€14.50')
         ->set('selectedModifierOptions.'.(string) $requiredGroup->id, [$soldOutOption->id])
         ->call('saveConfiguredItem')
         ->assertHasErrors(['selectedModifierOptions.'.(string) $requiredGroup->id])
         ->call('toggleModifierOption', $requiredGroup->id, $largeOption->id)
         ->call('toggleModifierOption', $optionalGroup->id, $cheeseOption->id)
-        ->assertSeeText('19.25 EUR')
+        ->assertSeeText('€19.25')
         ->set('itemComment', 'No garlic please')
         ->call('saveConfiguredItem')
         ->assertHasNoErrors()
@@ -267,7 +267,7 @@ test('guest menu lets active guest add configured item to the shared draft', fun
         ->assertSeeText('Extra cheese')
         ->assertSeeText('No garlic please')
         ->assertSeeText('Item added to the shared order.')
-        ->assertSeeText('19.25 EUR');
+        ->assertSeeText('€19.25');
 
     $draftOrder = DraftOrderModel::query()
         ->where('table_session_id', $tableSession->id)

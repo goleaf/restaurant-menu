@@ -27,7 +27,17 @@
                 <flux:input wire:model="city" :label="__('Город')" type="text" required maxlength="120" />
                 <flux:input wire:model="country" :label="__('Страна')" type="text" required maxlength="120" />
                 <flux:input wire:model="timezone" :label="__('Часовой пояс')" type="text" required maxlength="64" />
-                <flux:input wire:model="currency" :label="__('Валюта')" type="text" required maxlength="3" />
+                <flux:field>
+                    <flux:label>{{ __('Валюта') }}</flux:label>
+                    <flux:select wire:model="currency">
+                        @foreach ($currencyOptions as $currencyCode => $currencyLabel)
+                            <flux:select.option wire:key="branch-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
+                                {{ $currencyLabel }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:error name="currency" />
+                </flux:field>
 
                 <div class="flex items-end justify-between gap-4 md:col-span-2">
                     <flux:switch wire:model="isActive" :label="__('Филиал работает')" />
@@ -60,7 +70,17 @@
                             <flux:input wire:model="editingCity" :label="__('Город')" type="text" required maxlength="120" />
                             <flux:input wire:model="editingCountry" :label="__('Страна')" type="text" required maxlength="120" />
                             <flux:input wire:model="editingTimezone" :label="__('Часовой пояс')" type="text" required maxlength="64" />
-                            <flux:input wire:model="editingCurrency" :label="__('Валюта')" type="text" required maxlength="3" />
+                            <flux:field>
+                                <flux:label>{{ __('Валюта') }}</flux:label>
+                                <flux:select wire:model="editingCurrency">
+                                    @foreach ($currencyOptions as $currencyCode => $currencyLabel)
+                                        <flux:select.option wire:key="branch-editing-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
+                                            {{ $currencyLabel }}
+                                        </flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                                <flux:error name="editingCurrency" />
+                            </flux:field>
 
                             <div class="flex items-end justify-between gap-4 md:col-span-2">
                                 <flux:switch wire:model="editingIsActive" :label="__('Филиал работает')" />
@@ -105,7 +125,7 @@
                                     </p>
 
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ __('Время') }}: {{ $branch->timezone }} / {{ __('Валюта') }}: {{ $branch->currency }}
+                                        {{ __('Время') }}: {{ $branch->timezone }} / {{ __('Валюта') }}: {{ $currencyOptions[$branch->currency] ?? $branch->currency }}
                                     </p>
                                 </div>
                             </div>

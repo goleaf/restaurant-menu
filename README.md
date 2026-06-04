@@ -39,6 +39,22 @@ lang/lt.json
 
 No AI translation, external translate API, or paid localization service is used.
 
+## Currency Settings
+
+Branch currency is local and fixed to a supported list in `App\Enums\SupportedCurrency`. The default is `EUR`.
+
+Currency can be selected when creating/editing a branch and from branch settings. Branch settings store the chosen value in `branch_settings.default_currency`, and the application keeps it synced with `branches.currency` because guest screens, orders, payments, analytics, and exports use the branch currency.
+
+Prices are not converted automatically. Menu item prices and modifier price deltas remain the exact values entered by staff; the selected branch currency only controls display formatting. Common examples:
+
+```text
+EUR -> €14.50
+USD -> $14.50
+PLN -> 14.50 PLN
+```
+
+No exchange-rate API, paid currency service, or external financial integration is used.
+
 ## Superadmin Access
 
 `superadmin` is a platform-level role for SaaS administration. Superadmins can access the platform dashboard at:
@@ -785,6 +801,7 @@ Implemented:
 - Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - CSV data exports for branch orders, payments, menu, and tables guarded by `export_data`.
 - Basic ru/en/lt localization foundation for admin profile language, branch-default guest language, guest language switching, and key UI strings.
+- Local branch currency settings with fixed supported currencies, readable price formatting, and no exchange rates or automatic conversion.
 - Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.

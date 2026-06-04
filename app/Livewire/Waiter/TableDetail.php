@@ -8,12 +8,14 @@ use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\DeleteDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Waiter\ReturnRejectedDraftOrderToDraftAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
 use App\Enums\MenuStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\TableSession;
@@ -361,6 +363,34 @@ class TableDetail extends Component
         }
 
         $this->reviewFeedbackMessage = __('Заказ отправлен на кухню/бар. Гости увидят, что заказ принят.');
+        $this->refreshTable();
+    }
+
+    public function markTicketItemServed(int $ticketItemId, MarkKitchenTicketItemServedAction $markKitchenTicketItemServed): void
+    {
+        $this->resetValidation();
+        $this->reviewFeedbackMessage = '';
+
+        $ticketItem = KitchenTicketItem::query()
+            ->select(['id'])
+            ->whereKey($ticketItemId)
+            ->first();
+
+        if (! $ticketItem instanceof KitchenTicketItem) {
+            $this->addError('order_service', __('Позиция не найдена.'));
+
+            return;
+        }
+
+        try {
+            $markKitchenTicketItemServed->handle($ticketItem, $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->reviewFeedbackMessage = __('Позиция отмечена как поданная. Гости увидят обновлённый статус.');
         $this->refreshTable();
     }
 

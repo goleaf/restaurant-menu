@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 063 - Ready Items To Waiter
+
+- Added waiter served tracking on `kitchen_ticket_items` through `served_at` and `served_by_user_id`.
+- Added order/service point status sync from kitchen/bar ticket item states: in progress, ready, and served.
+- Extended waiter table detail polling so ready kitchen/bar positions are visible with ready/served counts and can be marked served by a waiter.
+- Extended the guest shared cart polling block so guests see `Принято`, `Готовится`, `Готово`, or `Подано` from confirmed order and ticket item states.
+- Protected served ticket items from being changed again by kitchen/bar staff and kept guests unable to mark items served.
+- Verified the full flow kitchen ready -> waiter sees ready -> waiter marks served -> guest sees served without Redis, WebSockets, S3, Docker, or paid services.
+
 ### Prompt 062 - Bar Department Screen
 
 - Added a bar dashboard at `/restaurant/bar/dashboard` with Livewire polling every 1 second and no WebSockets.

@@ -3,6 +3,7 @@
 namespace App\Actions\Waiter;
 
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
@@ -11,6 +12,8 @@ use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -98,11 +101,28 @@ class BuildWaiterTableDetailAction
                                 'total_price',
                             ])
                             ->withCount('kitchenTickets')
-                            ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery->select([
-                                'id',
-                                'order_id',
-                                'department_name',
-                            ])]),
+                            ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
+                                ->select([
+                                    'id',
+                                    'order_id',
+                                    'department_name',
+                                ])
+                                ->with(['items' => fn ($itemQuery) => $itemQuery
+                                    ->select([
+                                        'id',
+                                        'kitchen_ticket_id',
+                                        'guest_name',
+                                        'item_name',
+                                        'quantity',
+                                        'status',
+                                        'served_at',
+                                        'served_by_user_id',
+                                        'selected_modifiers',
+                                        'comment',
+                                        'created_at',
+                                    ])
+                                    ->orderBy('created_at')
+                                    ->orderBy('id')])]),
                         'items' => fn ($itemsQuery) => $itemsQuery
                             ->select([
                                 'id',
@@ -337,6 +357,9 @@ class BuildWaiterTableDetailAction
                 'order_status_label' => null,
                 'order_ticket_count' => 0,
                 'order_ticket_departments' => [],
+                'order_ticket_items' => [],
+                'ready_ticket_item_count' => 0,
+                'served_ticket_item_count' => 0,
                 'total' => '0.00 '.$currency,
                 'can_confirm' => false,
                 'can_reject' => false,
@@ -363,6 +386,13 @@ class BuildWaiterTableDetailAction
                 ->unique()
                 ->values()
                 ->all();
+        $orderTicketItems = $this->orderTicketItems($draftOrder, $currency);
+        $readyTicketItemCount = collect($orderTicketItems)
+            ->filter(fn (array $item): bool => (bool) $item['is_ready'])
+            ->count();
+        $servedTicketItemCount = collect($orderTicketItems)
+            ->filter(fn (array $item): bool => (bool) $item['is_served'])
+            ->count();
 
         return [
             'id' => $draftOrder->id,
@@ -380,12 +410,59 @@ class BuildWaiterTableDetailAction
             'order_status_label' => $orderStatus?->label(),
             'order_ticket_count' => $orderTicketCount,
             'order_ticket_departments' => $orderTicketDepartments,
+            'order_ticket_items' => $orderTicketItems,
+            'ready_ticket_item_count' => $readyTicketItemCount,
+            'served_ticket_item_count' => $servedTicketItemCount,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
             'can_edit' => $canEditPendingDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_send_to_kitchen' => $canSendToKitchen && $orderStatus === OrderStatus::ConfirmedByWaiter,
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function orderTicketItems(DraftOrder $draftOrder, string $currency): array
+    {
+        if ($draftOrder->order === null) {
+            return [];
+        }
+
+        return $draftOrder->order
+            ->kitchenTickets
+            ->flatMap(fn (KitchenTicket $ticket): Collection => $ticket->items->map(
+                fn (KitchenTicketItem $item): array => $this->orderTicketItemPayload($ticket, $item, $currency),
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function orderTicketItemPayload(KitchenTicket $ticket, KitchenTicketItem $item, string $currency): array
+    {
+        $status = $item->status instanceof KitchenTicketItemStatus
+            ? $item->status
+            : KitchenTicketItemStatus::from((string) $item->status);
+
+        return [
+            'id' => $item->id,
+            'department_name' => $ticket->department_name,
+            'guest_name' => $item->guest_name,
+            'item_name' => $item->item_name,
+            'quantity' => $item->quantity,
+            'status_value' => $status->value,
+            'status_label' => $status->label(),
+            'status_color' => $item->served_at === null ? $status->badgeColor() : 'sky',
+            'is_ready' => $status === KitchenTicketItemStatus::Ready,
+            'is_served' => $item->served_at !== null,
+            'served_at' => $item->served_at?->format('Y-m-d H:i'),
+            'comment' => $item->comment,
+            'modifiers' => $this->modifierSummary($item->selected_modifiers ?? [], $currency),
         ];
     }
 

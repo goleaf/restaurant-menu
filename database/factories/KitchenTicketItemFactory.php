@@ -40,6 +40,8 @@ class KitchenTicketItemFactory extends Factory
             'item_name' => $orderItem->item_name,
             'quantity' => $orderItem->quantity,
             'status' => KitchenTicketItemStatus::New,
+            'served_at' => null,
+            'served_by_user_id' => null,
             'selected_modifiers' => $orderItem->selected_modifiers ?? [],
             'comment' => $orderItem->comment,
         ];

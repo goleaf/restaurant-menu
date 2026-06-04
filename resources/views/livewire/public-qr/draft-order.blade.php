@@ -55,9 +55,19 @@
                 <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $rejectionReason }}</span>
             @endif
         </p>
-    @elseif ($draftStatusValue === 'converted_to_order' && $orderStatusValue === 'sent_to_kitchen_bar')
-        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-            {{ __('Заказ принят. Кухня и бар получили позиции.') }}
+    @elseif ($serviceStatusValue !== '')
+        <p @class([
+            'mt-4 rounded-lg px-3 py-2 text-sm font-medium',
+            'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $serviceStatusTone === 'emerald',
+            'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => $serviceStatusTone === 'amber',
+            'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $serviceStatusTone === 'sky',
+            'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $serviceStatusTone === 'zinc',
+        ])>
+            {{ __('Статус заказа') }}: {{ $serviceStatusLabel }}
+
+            @if ($serviceStatusValue === 'accepted' && $orderStatusValue === 'sent_to_kitchen_bar')
+                <span class="block pt-1 font-normal">{{ __('Заказ принят. Кухня и бар получили позиции.') }}</span>
+            @endif
         </p>
     @elseif ($draftStatusValue === 'converted_to_order')
         <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">

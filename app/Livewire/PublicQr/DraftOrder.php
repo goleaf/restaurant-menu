@@ -8,10 +8,12 @@ use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Collection;
@@ -65,6 +67,12 @@ class DraftOrder extends Component
     public ?string $orderStatusValue = null;
 
     public string $orderStatusLabel = '';
+
+    public string $serviceStatusValue = '';
+
+    public string $serviceStatusLabel = '';
+
+    public string $serviceStatusTone = 'zinc';
 
     public ?string $rejectionReason = null;
 
@@ -125,8 +133,14 @@ class DraftOrder extends Component
         $orderStatus = $draftOrder?->order?->status instanceof OrderStatus
             ? $draftOrder->order->status
             : null;
+        $ticketItems = $this->orderTicketItems($draftOrder);
+        $serviceStatus = $this->guestServiceStatus($draftOrder, $orderStatus, $ticketItems);
+
         $this->orderStatusValue = $orderStatus?->value;
         $this->orderStatusLabel = $orderStatus?->label() ?? '';
+        $this->serviceStatusValue = $serviceStatus['value'];
+        $this->serviceStatusLabel = $serviceStatus['label'];
+        $this->serviceStatusTone = $serviceStatus['tone'];
         $this->rejectionReason = $draftOrder?->rejection_reason;
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
         $this->activeGuestCount = $guests->count();
@@ -512,7 +526,16 @@ class DraftOrder extends Component
                     'id',
                     'draft_order_id',
                     'status',
-                ]),
+                ])
+                    ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
+                        ->select(['id', 'order_id'])
+                        ->with(['items' => fn ($itemQuery) => $itemQuery
+                            ->select([
+                                'id',
+                                'kitchen_ticket_id',
+                                'status',
+                                'served_at',
+                            ])])]),
                 'items' => fn ($query) => $query
                     ->select([
                         'id',
@@ -540,6 +563,66 @@ class DraftOrder extends Component
             ])
             ->where('table_session_id', $this->tableSessionId)
             ->first();
+    }
+
+    /**
+     * @return Collection<int, KitchenTicketItem>
+     */
+    private function orderTicketItems(?DraftOrderModel $draftOrder): Collection
+    {
+        if ($draftOrder?->order === null) {
+            return collect();
+        }
+
+        return $draftOrder->order
+            ->kitchenTickets
+            ->flatMap(fn ($ticket): Collection => $ticket->items)
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, KitchenTicketItem>  $ticketItems
+     * @return array{value: string, label: string, tone: string}
+     */
+    private function guestServiceStatus(?DraftOrderModel $draftOrder, ?OrderStatus $orderStatus, Collection $ticketItems): array
+    {
+        if (! $draftOrder instanceof DraftOrderModel || $draftOrder->status !== DraftOrderStatus::ConvertedToOrder) {
+            return ['value' => '', 'label' => '', 'tone' => 'zinc'];
+        }
+
+        if ($orderStatus === OrderStatus::Served || ($ticketItems->isNotEmpty() && $ticketItems->every(
+            fn (KitchenTicketItem $item): bool => $item->served_at !== null,
+        ))) {
+            return ['value' => 'served', 'label' => __('Подано'), 'tone' => 'sky'];
+        }
+
+        if ($orderStatus === OrderStatus::Ready || ($ticketItems->isNotEmpty() && $ticketItems->every(
+            fn (KitchenTicketItem $item): bool => $this->ticketItemStatus($item) === KitchenTicketItemStatus::Ready,
+        ))) {
+            return ['value' => 'ready', 'label' => __('Готово'), 'tone' => 'emerald'];
+        }
+
+        if ($orderStatus === OrderStatus::InProgress || $ticketItems->contains(
+            fn (KitchenTicketItem $item): bool => in_array($this->ticketItemStatus($item), [
+                KitchenTicketItemStatus::InProgress,
+                KitchenTicketItemStatus::Ready,
+            ], true),
+        )) {
+            return ['value' => 'cooking', 'label' => __('Готовится'), 'tone' => 'amber'];
+        }
+
+        if (in_array($orderStatus, [OrderStatus::ConfirmedByWaiter, OrderStatus::SentToKitchenBar], true)) {
+            return ['value' => 'accepted', 'label' => __('Принято'), 'tone' => 'emerald'];
+        }
+
+        return ['value' => '', 'label' => '', 'tone' => 'zinc'];
+    }
+
+    private function ticketItemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
+    {
+        return $item->status instanceof KitchenTicketItemStatus
+            ? $item->status
+            : KitchenTicketItemStatus::from((string) $item->status);
     }
 
     private function draftOrderForSending(): ?DraftOrderModel

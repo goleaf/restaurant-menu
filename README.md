@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -423,6 +423,8 @@ Kitchen ticket item statuses are:
 - `in_progress`
 - `ready`
 
+Ticket items also store waiter service tracking through `served_at` and `served_by_user_id`. Kitchen and bar staff mark production progress; the waiter marks a ready position as served. When all dispatched ticket items are ready, the order status becomes `ready` and the service point can move to `ready_to_serve`. When all dispatched ticket items are served, the order status becomes `served`.
+
 The kitchen screen is available at:
 
 ```text
@@ -440,6 +442,8 @@ The bar screen is available at:
 ```
 
 The bar screen reuses the same shared department screen logic as the kitchen screen, but filters departments to type `bar`. It shows dispatched bar tickets only: service point, zone, drinks, modifiers, comments, item status, and a live timer. Access is allowed for superadmins, users with the fixed `bartender` or `head_chef` role, or users with `view_orders` or `send_to_kitchen`. Active `branch_users` assignments still limit visible bar departments to assigned branches.
+
+The guest shared cart polls only its basket block and shows the overall order service state as `Принято`, `Готовится`, `Готово`, or `Подано` after waiter confirmation and dispatch. These labels come from the confirmed order and ticket item states; guests do not mark items served.
 
 Order status logs are the persistent history for draft and confirmed order events. They record branch, service point, table session, draft order, optional confirmed order, actor user or guest, actor type/name snapshot, event, previous status, new status, optional reason, metadata, and `occurred_at`.
 
@@ -490,7 +494,7 @@ Each open session links to a waiter table detail page:
 
 The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, draft status, guests sorted alphabetically, each guest's positions, comments, selected modifiers, per-guest totals, and the total amount for the table.
 
-The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Users with `send_to_kitchen` can send a confirmed order to kitchen/bar, which creates department tickets and moves the service point to `cooking`.
+The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Users with `send_to_kitchen` can send a confirmed order to kitchen/bar, which creates department tickets and moves the service point to `cooking`. Once kitchen or bar marks positions ready, the waiter table detail shows the ready/served counts and lets the waiter mark ready positions as served.
 
 ## Permanent QR Codes
 
@@ -580,6 +584,7 @@ Implemented:
 - Real order snapshot tables stored in `orders` and `order_items` after waiter confirmation.
 - Kitchen/bar dispatch tickets stored in `kitchen_tickets` and `kitchen_ticket_items` after explicit waiter dispatch.
 - Basic kitchen and bar screens for dispatched department tickets with item statuses and Livewire polling.
+- Ready/served handoff where kitchen/bar marks positions ready, the waiter sees ready items and marks them served, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 
 Branch settings currently include safe defaults:
 

@@ -226,6 +226,10 @@
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
+                @error('order_service')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
                 @error('rejectionReason')
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
@@ -439,13 +443,15 @@
                             {{ __('Status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
                         </p>
 
-                        @if (data_get($table, 'draft.order_status_value') === 'sent_to_kitchen_bar')
+                        @if (in_array(data_get($table, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
                             <p class="mt-1 text-emerald-700 dark:text-emerald-300">
                                 {{ __('Kitchen/bar received this order.') }}
                             </p>
 
                             <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                 {{ __('Tickets') }}: {{ data_get($table, 'draft.order_ticket_count', 0) }}
+                                · {{ __('Ready') }}: {{ data_get($table, 'draft.ready_ticket_item_count', 0) }}
+                                · {{ __('Served') }}: {{ data_get($table, 'draft.served_ticket_item_count', 0) }}
                                 @if (data_get($table, 'draft.order_ticket_departments'))
                                     · {{ implode(', ', data_get($table, 'draft.order_ticket_departments', [])) }}
                                 @endif
@@ -454,6 +460,69 @@
                             <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                 {{ __('Prepared for kitchen/bar dispatch, but not sent yet.') }}
                             </p>
+                        @endif
+
+                        @if (data_get($table, 'draft.order_ticket_items'))
+                            <div class="mt-4 space-y-2">
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Kitchen/bar positions') }}</p>
+
+                                @foreach (data_get($table, 'draft.order_ticket_items', []) as $ticketItem)
+                                    <article wire:key="waiter-ticket-item-{{ $ticketItem['id'] }}" class="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <p class="font-medium text-zinc-950 dark:text-white">
+                                                    {{ $ticketItem['quantity'] }} x {{ $ticketItem['item_name'] }}
+                                                </p>
+                                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {{ $ticketItem['department_name'] }}
+                                                    @if ($ticketItem['guest_name'])
+                                                        · {{ $ticketItem['guest_name'] }}
+                                                    @endif
+                                                </p>
+                                            </div>
+
+                                            <flux:badge :color="$ticketItem['status_color']">
+                                                {{ $ticketItem['is_served'] ? __('Served') : __($ticketItem['status_label']) }}
+                                            </flux:badge>
+                                        </div>
+
+                                        @if ($ticketItem['modifiers'] !== [])
+                                            <div class="mt-2 flex flex-wrap gap-2">
+                                                @foreach ($ticketItem['modifiers'] as $modifier)
+                                                    <flux:badge wire:key="waiter-ticket-item-{{ $ticketItem['id'] }}-modifier-{{ $loop->index }}" color="zinc">
+                                                        {{ $modifier['label'] }}
+                                                    </flux:badge>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        @if ($ticketItem['comment'])
+                                            <p class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
+                                                {{ __('Comment') }}: {{ $ticketItem['comment'] }}
+                                            </p>
+                                        @endif
+
+                                        @if ($ticketItem['is_served'])
+                                            <p class="mt-2 text-xs text-sky-700 dark:text-sky-300">
+                                                {{ __('Served at') }}: {{ $ticketItem['served_at'] ?? __('time not set') }}
+                                            </p>
+                                        @elseif ($ticketItem['is_ready'])
+                                            <flux:button
+                                                size="sm"
+                                                icon="check"
+                                                type="button"
+                                                class="mt-3 w-full"
+                                                wire:click="markTicketItemServed({{ $ticketItem['id'] }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="markTicketItemServed({{ $ticketItem['id'] }})"
+                                            >
+                                                <span wire:loading.remove wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('Mark served') }}</span>
+                                                <span wire:loading wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('Saving') }}</span>
+                                            </flux:button>
+                                        @endif
+                                    </article>
+                                @endforeach
+                            </div>
                         @endif
 
                         @if (data_get($table, 'draft.can_send_to_kitchen'))

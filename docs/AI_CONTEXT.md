@@ -57,6 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
 - Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
+- Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -428,6 +429,7 @@ Order:
 - Stores `confirmed_by_user_id`, `confirmed_at`, `total_price`, `currency`, and optional JSON `metadata`.
 - Metadata initially marks that kitchen/bar dispatch is prepared but not sent.
 - `SendOrderToKitchenBarAction` requires `send_to_kitchen`, creates department-split kitchen tickets, changes the status to `sent_to_kitchen_bar`, stores dispatch metadata, updates the service point status to `cooking`, and writes an `order_status_logs` row.
+- `SyncOrderStatusFromTicketItemsAction` syncs confirmed order status from dispatched ticket items after kitchen/bar status changes or waiter service. It can move orders through `sent_to_kitchen_bar`, `in_progress`, `ready`, and `served`, and updates service point status to `cooking`, `ready_to_serve`, or back to `occupied` for served.
 - Has many `order_items`.
 - Has many `kitchen_tickets`.
 - Branch, service point, table session, and draft order models expose order relationships.
@@ -466,6 +468,9 @@ Kitchen ticket item:
 - Stores guest name, item name, quantity, item work status, selected modifiers, and optional comment snapshots for the department ticket.
 - Status is cast to `KitchenTicketItemStatus`.
 - Status values are `new`, `in_progress`, and `ready`.
+- Stores waiter service tracking in `served_at` and `served_by_user_id`.
+- Kitchen/bar status actions refuse to change an item after `served_at` is filled.
+- Waiters mark ready items served through `MarkKitchenTicketItemServedAction`, which requires branch-level `view_orders` access and only accepts `ready` items.
 
 Order status log:
 
@@ -807,6 +812,8 @@ Local media storage:
 - If the draft status is `converted_to_order`, the basket tells guests that the order was confirmed and editing is closed.
 - `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
 - Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
+- After a draft is converted to an order, the cart shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
+- Guests only see the shared status. They cannot mark kitchen/bar ticket items ready or served.
 - The basket can submit the draft only to waiter review and does not create final orders directly.
 
 ## Current Waiter Dashboard
@@ -835,6 +842,8 @@ Local media storage:
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
 - The table detail page can send a confirmed order to kitchen/bar for users with `send_to_kitchen`. This creates `kitchen_tickets` grouped by department, changes the order to `sent_to_kitchen_bar`, and moves the service point status to `cooking`.
+- The table detail page shows dispatched kitchen/bar ticket items, ready count, served count, department names, modifiers, comments, and item status once an order has been sent to kitchen/bar.
+- The table detail page lets a waiter with `view_orders` mark ready ticket items as served. This fills `kitchen_ticket_items.served_at` and `served_by_user_id`, updates the order status when all items are served, and refreshes through polling.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
 - The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
@@ -854,6 +863,8 @@ Local media storage:
 - The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
 - The screen shows service point display/name, zone, ticket creation time, timer, item name, quantity, guest name, modifiers, comments, and item status.
 - `App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
+- Kitchen item status changes call shared order/ticket sync, so waiter and guest polling see `Готовится` or `Готово` without WebSockets.
+- Kitchen cannot change a ticket item after the waiter marks it served.
 - Ticket-level work status is computed from item statuses for display only.
 - The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
 - The restaurant sidebar and restaurant dashboard show a kitchen link only when the current user can access at least one active department.
@@ -872,6 +883,8 @@ Local media storage:
 - The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
 - The screen shows service point display/name, zone, ticket creation time, timer, drink item name, quantity, guest name, modifiers, comments, and item status.
 - `App\Actions\Bar\UpdateBarTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
+- Bar item status changes use the same shared order/ticket sync as kitchen, so waiter and guest polling see `Готовится` or `Готово` without WebSockets.
+- Bar cannot change a ticket item after the waiter marks it served.
 - Ticket-level work status is computed from item statuses for display only.
 - The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
 - The restaurant sidebar and restaurant dashboard show a bar link only when the current user can access at least one active bar department.
@@ -979,7 +992,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be kitchen ticket status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1002,6 +1015,8 @@ The next expected product step may be kitchen ticket status history, a bar-speci
 - Do not auto-dispatch confirmed orders during waiter confirmation; kitchen/bar tickets must be created only by explicit `SendOrderToKitchenBarAction`.
 - Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; these screens must read only dispatched tickets.
 - Do not show non-bar department tickets on the bar screen.
+- Do not let kitchen/bar change a ticket item after the waiter has marked it served.
+- Do not let guests mark ticket items ready or served.
 - Do not duplicate the full kitchen/bar ticket UI; keep shared department screen logic where practical.
 - Do not switch kitchen or bar screens away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.

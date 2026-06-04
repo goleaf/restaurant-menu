@@ -13,6 +13,12 @@
 - Limitations: no new routes, no migrations, no direct kitchen/bar dispatch, no guest user accounts, no phone/email sending, no Redis/WebSockets/S3/Docker, and no paid services.
 - Manual check: open an active waiter table with no current draft, type a new guest name, choose a dish with required modifiers, add it, confirm the draft becomes `Waiter review`, confirm the order, and verify guests in the same session see the updated draft through polling.
 
+### Docs - Daily Project Memory Update After Prompt 113
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 113 without adding product features.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local public storage only.
+- Recorded manual waiter order entry as part of the waiter/order-review baseline and kept future work blocked until the next explicit prompt.
+
 ### Prompt 112 - Waiter Zone Assignment
 
 - Added `area_node_waiters` as the branch-zone assignment table for waiters.

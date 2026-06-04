@@ -49,6 +49,14 @@ Manual check:
    is pressed.
 8. Confirm a user with only `view_orders` cannot manually add a position.
 
+## Daily Memory Update - 2026-06-04 After Prompt 113
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 113. Manual waiter order entry is now part of the waiter/order-review
+baseline. Future prompts must still preserve waiter confirmation before
+kitchen/bar dispatch.
+
 ## Prompt 112 Waiter Zone Assignment Results
 
 Programmatic coverage was added in `tests/Feature/WaiterZoneAssignmentsTest.php`

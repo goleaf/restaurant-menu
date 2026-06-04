@@ -16,7 +16,8 @@ staff review, and branch setup.
 ## Current Recommended Prompt
 
 Wait for the next explicit user prompt. Do not continue feature work
-automatically.
+automatically. The post-feature daily memory update after Prompt 113 is
+complete; manual waiter entry is now baseline behavior, not a pending prompt.
 
 Alternative queued prompt:
 

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -104,6 +104,26 @@ database/database.sqlite
 This file is inside the project and outside `public/`, which keeps it suitable for shared hosting when the web root points to `public/`.
 
 `.env.example` leaves `DB_DATABASE` empty so Laravel uses the safe default from `config/database.php`.
+
+## Local Backups
+
+Superadmins can download the current SQLite database file from the platform dashboard or directly at:
+
+```text
+/superadmin/backups/sqlite
+```
+
+The route is protected by `auth` and `superadmin` middleware. Regular users receive `403 Forbidden` and do not see the backup controls.
+
+The download streams the configured SQLite file, normally:
+
+```text
+database/database.sqlite
+```
+
+No backup file is created on the server during this action. If you manually store backup copies on shared hosting, keep them outside the public web root and outside git. A backup contains sensitive data: users, staff access, guest sessions, orders, payments, guest tokens, and audit records.
+
+Do not commit downloaded or manually created backup files. The repository already ignores SQLite database files under `database/`, and `storage/app/` is reserved for local generated files. Future media ZIP export should read from `storage/app/public` and must stay local, without S3 or paid backup services.
 
 ## Local Media Storage
 
@@ -722,6 +742,7 @@ Implemented:
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
 - Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
+- Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

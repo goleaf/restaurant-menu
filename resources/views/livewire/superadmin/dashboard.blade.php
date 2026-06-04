@@ -16,6 +16,27 @@
         @endforeach
     </section>
 
+    <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/30">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <flux:heading size="lg">{{ __('Local backups') }}</flux:heading>
+                <p class="mt-2 max-w-3xl text-sm text-amber-900 dark:text-amber-100">
+                    {{ __('SQLite backup contains sensitive data: users, staff access, guest sessions, orders, payments, tokens, and audit records. Store downloaded files outside git and share them carefully.') }}
+                </p>
+            </div>
+
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <flux:button icon="arrow-down-tray" variant="primary" :href="route('superadmin.backups.sqlite.download')">
+                    {{ __('Download SQLite') }}
+                </flux:button>
+
+                <flux:button icon="archive-box" disabled>
+                    {{ __('Media ZIP later') }}
+                </flux:button>
+            </div>
+        </div>
+    </section>
+
     <section class="grid gap-6 xl:grid-cols-2">
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">

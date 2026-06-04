@@ -32,6 +32,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Manual payments must be offline staff-entered records only; no Stripe, PayPal, online acquiring, or external payment service is connected.
 - Basic analytics must stay lightweight, branch-scoped, and cached through the database cache store; no Redis, external BI service, or heavy refresh query loop.
 - Audit logs must stay local in SQLite and be visible only through `view_audit_log` access.
+- Local backups must stay shared-hosting friendly: superadmin-only SQLite download, no S3, no paid backup services, no Docker, and no committed backup files.
 
 ## What Is Already Done
 
@@ -73,6 +74,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
 - General audit logs with a `view_audit_log`-guarded viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
+- Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -828,6 +830,7 @@ Local media storage:
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
 - `GET /restaurant/waiter/tables/{tableSession}` -> `restaurant.waiter.tables.show`
 - `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
+- `GET /superadmin/backups/sqlite` -> `superadmin.backups.sqlite.download` guarded by `auth` + `superadmin`
 - Auth and profile routes are provided by Fortify and `routes/settings.php`.
 
 ## Livewire Components
@@ -865,6 +868,16 @@ Local media storage:
 - `App\Livewire\Settings\DeleteUserForm`
 - `App\Livewire\Settings\TwoFactor\RecoveryCodes`
 - `App\Livewire\Actions\Logout`
+
+## Local Backup Access
+
+- `App\Actions\Backups\ResolveSqliteBackupFileAction` resolves the configured SQLite file and rejects non-SQLite, `:memory:`, missing, or unreadable database paths.
+- `App\Http\Controllers\Superadmin\DownloadSqliteBackupController` streams the current SQLite file through `response()->download()` with an ASCII filename.
+- The download route is `/superadmin/backups/sqlite` and is named `superadmin.backups.sqlite.download`.
+- Access is only through `auth` + `superadmin`; ordinary users must receive `403 Forbidden`.
+- The platform dashboard shows a sensitive-data warning and a download button only inside the superadmin area.
+- The action does not create backup files on the server. If manual backup copies are created later, keep them outside `public/` and out of git.
+- Media ZIP export is not implemented yet; future work should read local files from `storage/app/public` and stay local-only.
 
 ## Current Public QR Route
 
@@ -1221,7 +1234,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1285,7 +1298,9 @@ The next expected product step may be manual payment reporting/refinement, ticke
 - Do not print service point number or area by default on QR stickers.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.
-- Do not commit `.env`, SQLite database files, `vendor`, `node_modules`, or storage uploads.
+- Do not commit `.env`, SQLite database files, backup files, `vendor`, `node_modules`, or storage uploads.
+- Do not expose backup downloads outside the `superadmin` middleware.
+- Do not add S3, paid backup services, Docker, or external backup storage.
 - Do not add business logic to Blade templates.
 - Do not add raw SQL strings.
 

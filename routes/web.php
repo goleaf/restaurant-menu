@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
@@ -146,6 +147,12 @@ Route::middleware(['auth'])
         Route::middleware(['superadmin'])
             ->group(function () {
                 Route::livewire('dashboard', SuperadminDashboard::class)->name('dashboard');
+
+                Route::prefix('backups')
+                    ->name('backups.')
+                    ->group(function () {
+                        Route::get('sqlite', DownloadSqliteBackupController::class)->name('sqlite.download');
+                    });
             });
     });
 

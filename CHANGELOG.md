@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 075 - Local SQLite Backup Action
+
+- Added a superadmin-only `/superadmin/backups/sqlite` download route for the configured SQLite database file.
+- Added a small backup resolver Action and invokable controller that stream the current SQLite file without creating backup files on the server.
+- Added a platform dashboard backup section with a sensitive-data warning and a disabled media ZIP placeholder for a later local-only step.
+- Documented where the SQLite file lives, what backup files must stay out of git, and kept the shared-hosting stack unchanged: no S3, paid backup services, Docker, Redis, or WebSockets.
+
 ### Prompt 074 - Add Onboarding Wizard
 
 - Added an authenticated `/onboarding/restaurant` Livewire wizard for creating a new starter restaurant setup from one simple flow.

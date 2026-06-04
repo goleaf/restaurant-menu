@@ -47,7 +47,7 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 102. Branch public profiles and branch opening hours are now part of the baseline guest QR context.
+Latest memory refresh: 2026-06-04 after Prompt 103. Branch public profiles, branch opening hours, and temporary branch closed mode are now part of the baseline guest QR context.
 
 ## Project Cleanup Consistency
 
@@ -167,6 +167,12 @@ Each branch can store a weekly opening schedule from the branch settings page. T
 When opening hours are configured and the branch is currently closed, the public QR page still opens and guests can still view the restaurant profile and menu. Guest ordering actions are blocked with clear text such as `Сейчас закрыто` and `Откроется в 10:00`. If a branch has no schedule configured, opening hours do not block ordering.
 
 The schedule is stored locally in SQLite in `branch_opening_hours`. No external calendar, map, booking, or paid service is used.
+
+## Temporary Branch Closed Mode
+
+Each branch can be temporarily closed from the existing branch settings page without disabling its permanent QR codes. The mode stores a required human reason, an optional `closed until` date/time in the branch timezone, and keeps QR/menu browsing available for guests.
+
+While temporary closed mode is active, the guest QR page shows a clear message such as `Ресторан временно закрыт`, includes the closure reason, and blocks new draft item creation or sending a draft to the waiter. The waiter dashboard also shows the branch warning and lets staff with order access reopen ordering with one action. No external APIs, maps, paid services, Redis, WebSockets, S3, or Docker are used.
 
 ## Database Notifications
 
@@ -1135,6 +1141,8 @@ Branch settings currently include safe defaults:
 
 Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page. The public guest page reads the polling interval through the SQLite-backed database cache; saving settings clears centralized branch cache through `ForgetBranchCacheAction`.
 
+Temporary branch closure fields live directly on `branches`: `is_temporarily_closed`, `temporary_closed_reason`, and `temporary_closed_until`. The status check resolves the saved UTC timestamp into the branch timezone so guest/admin text stays consistent on SQLite and shared hosting.
+
 Not implemented yet:
 
 - Menu translation admin editor.
@@ -1145,13 +1153,14 @@ Not implemented yet:
 
 ## Project Memory
 
-After Prompt 102, the current working memory is:
+After Prompt 103, the current working memory is:
 
 - branch public restaurant profiles are implemented and used by QR landing / guest UI;
 - branch opening hours are implemented and block guest ordering while a configured branch is closed;
+- temporary branch closed mode is implemented and blocks new guest ordering while preserving QR and menu viewing;
 - SQLite, database cache, database sessions, database queue, local storage, Blade, and Livewire remain the required stack;
 - Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
-- the next recommended prompt is Prompt 103: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
+- the next recommended prompt is Prompt 104: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
 
 Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
 

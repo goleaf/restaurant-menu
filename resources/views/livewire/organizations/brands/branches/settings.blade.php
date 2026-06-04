@@ -70,6 +70,50 @@
             <section class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="flex flex-col gap-1">
+                        <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Temporary closure') }}</p>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('QR and menu browsing stay available, but guests cannot send new orders while this mode is active.') }}</p>
+                    </div>
+
+                    <flux:switch wire:model.live="temporarilyClosed" :label="__('Restaurant is temporarily closed')" />
+                </div>
+
+                @if ($temporarilyClosed)
+                    <x-ui.alert tone="danger" :heading="__('Ресторан временно закрыт')">
+                        {{ __('Guests will see this warning and ordering will be blocked until you turn the mode off or the optional time passes.') }}
+                    </x-ui.alert>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <flux:input
+                            wire:model="temporaryClosedReason"
+                            :label="__('Reason')"
+                            maxlength="255"
+                            list="temporary-closed-reasons"
+                            :placeholder="__('Технические работы')"
+                        />
+
+                        <flux:input
+                            wire:model="temporaryClosedUntil"
+                            :label="__('Closed until, optional')"
+                            type="datetime-local"
+                        />
+                    </div>
+
+                    <datalist id="temporary-closed-reasons">
+                        <option value="{{ __('Технические работы') }}"></option>
+                        <option value="{{ __('Частное мероприятие') }}"></option>
+                        <option value="{{ __('Кухня закрыта') }}"></option>
+                        <option value="{{ __('Ресторан закрыт сегодня') }}"></option>
+                    </datalist>
+                @else
+                    <p class="rounded-lg bg-white px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                        {{ __('Temporary closure is off. Guests can order according to opening hours and table rules.') }}
+                    </p>
+                @endif
+            </section>
+
+            <section class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex flex-col gap-1">
                         <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Opening hours') }}</p>
                         <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Guests can still open the QR page and view the menu when the restaurant is closed.') }}</p>
                     </div>

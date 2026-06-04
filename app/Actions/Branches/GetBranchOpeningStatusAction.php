@@ -19,6 +19,12 @@ class GetBranchOpeningStatusAction
         $currentTime = $now instanceof CarbonInterface
             ? Carbon::instance($now->toDateTime())->setTimezone($timezone)
             : now($timezone);
+        $temporaryClosedStatus = $this->temporaryClosedStatus($branch, $currentTime, $timezone);
+
+        if ($temporaryClosedStatus !== null) {
+            return $temporaryClosedStatus;
+        }
+
         $openingHours = $this->openingHoursFor($branch);
 
         if ($openingHours->isEmpty()) {
@@ -63,6 +69,53 @@ class GetBranchOpeningStatusAction
                 : __('Откроется в :time', ['time' => $nextOpening['label']]),
             'tone' => 'warning',
             'next_opens_at' => $nextOpening['time'] ?? null,
+            'closes_at' => null,
+            'timezone' => $timezone,
+        ];
+    }
+
+    /**
+     * @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string}|null
+     */
+    private function temporaryClosedStatus(Branch $branch, CarbonInterface $now, string $timezone): ?array
+    {
+        if (! (bool) $branch->getAttribute('is_temporarily_closed')) {
+            return null;
+        }
+
+        $closedUntil = $branch->temporaryClosedUntilForBranch();
+
+        if ($closedUntil instanceof CarbonInterface) {
+            if ($closedUntil->lessThanOrEqualTo($now)) {
+                return null;
+            }
+        }
+
+        $reason = str((string) $branch->getAttribute('temporary_closed_reason'))->squish()->toString();
+        $detailParts = [];
+
+        if ($reason !== '') {
+            $detailParts[] = $reason;
+        }
+
+        if ($closedUntil instanceof CarbonInterface) {
+            $detailParts[] = __('Закрыто до :time', [
+                'time' => $closedUntil->isSameDay($now)
+                    ? $closedUntil->format('H:i')
+                    : $closedUntil->format('d.m H:i'),
+            ]);
+        } else {
+            $detailParts[] = __('Откроемся позже.');
+        }
+
+        return [
+            'is_configured' => true,
+            'is_open' => false,
+            'can_accept_orders' => false,
+            'label' => __('Ресторан временно закрыт'),
+            'detail' => implode('. ', $detailParts),
+            'tone' => 'danger',
+            'next_opens_at' => $closedUntil instanceof CarbonInterface ? $closedUntil->toIso8601String() : null,
             'closes_at' => null,
             'timezone' => $timezone,
         ];

@@ -62,7 +62,19 @@ class BuildWaiterDashboardAction
         }
 
         $branches = Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name', 'city', 'timezone', 'currency', 'is_active'])
+            ->select([
+                'id',
+                'organization_id',
+                'brand_id',
+                'name',
+                'city',
+                'timezone',
+                'currency',
+                'is_active',
+                'is_temporarily_closed',
+                'temporary_closed_reason',
+                'temporary_closed_until',
+            ])
             ->with([
                 'organization' => fn ($query) => $query->select(['id', 'name']),
                 'brand' => fn ($query) => $query->select(['id', 'organization_id', 'name']),
@@ -323,6 +335,9 @@ class BuildWaiterDashboardAction
             'city' => $branch->city,
             'currency' => $branch->currency,
             'is_active' => $branch->is_active,
+            'temporary_closure_active' => $this->temporaryClosureIsActive($branch),
+            'temporary_closed_reason' => $branch->temporary_closed_reason,
+            'temporary_closed_until_label' => $this->temporaryClosedUntilLabel($branch),
             'service_point_count' => count($servicePoints),
             'active_session_count' => count($sessions),
             'new_draft_count' => count($drafts),
@@ -618,6 +633,34 @@ class BuildWaiterDashboardAction
         return $sessions
             ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
             ->groupBy('branch_id');
+    }
+
+    private function temporaryClosureIsActive(Branch $branch): bool
+    {
+        if (! (bool) $branch->is_temporarily_closed) {
+            return false;
+        }
+
+        $closedUntil = $branch->temporaryClosedUntilForBranch();
+
+        if ($closedUntil === null) {
+            return true;
+        }
+
+        $timezone = $branch->timezone ?: config('app.timezone');
+
+        return $closedUntil->greaterThan(now($timezone));
+    }
+
+    private function temporaryClosedUntilLabel(Branch $branch): ?string
+    {
+        $closedUntil = $branch->temporaryClosedUntilForBranch();
+
+        if ($closedUntil === null) {
+            return null;
+        }
+
+        return $closedUntil->format('d.m H:i');
     }
 
     private function decimalToCents(string|int|float|null $amount): int

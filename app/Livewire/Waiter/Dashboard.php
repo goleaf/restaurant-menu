@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Waiter;
 
+use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\MarkWaiterCallHandledAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\SystemPermission;
+use App\Models\Branch;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Models\WaiterCall;
@@ -146,6 +148,33 @@ class Dashboard extends Component
         } catch (ValidationException $exception) {
             $this->waiterCallMessage = $this->firstValidationMessage($exception);
         }
+
+        $this->refreshDashboard();
+    }
+
+    public function disableTemporaryClosure(
+        int $branchId,
+        UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
+        ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+    ): void {
+        $user = $this->currentUser();
+        $branchIds = $resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ViewOrders)
+            ->merge($resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
+            ->unique()
+            ->values();
+
+        if (! $branchIds->contains($branchId)) {
+            abort(403);
+        }
+
+        $branch = Branch::query()
+            ->select(['id', 'timezone', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until'])
+            ->whereKey($branchId)
+            ->firstOrFail();
+
+        $updateBranchTemporaryClosure->handle($branch, false);
+        $this->tableActionMessage = __('Ресторан снова открыт для заказов.');
 
         $this->refreshDashboard();
     }

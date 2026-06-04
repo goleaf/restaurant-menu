@@ -116,6 +116,34 @@
                     </div>
                 </div>
 
+                @if ($branch['temporary_closure_active'])
+                    <div class="border-b border-rose-200 bg-rose-50 px-4 py-4 dark:border-rose-900/70 dark:bg-rose-950/30">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-rose-900 dark:text-rose-100">{{ __('Ресторан временно закрыт') }}</p>
+                                <p class="mt-1 text-sm text-rose-800 dark:text-rose-200">
+                                    {{ $branch['temporary_closed_reason'] ?: __('Причина не указана.') }}
+                                    @if ($branch['temporary_closed_until_label'])
+                                        · {{ __('Закрыто до') }} {{ $branch['temporary_closed_until_label'] }}
+                                    @endif
+                                </p>
+                            </div>
+
+                            <flux:button
+                                size="sm"
+                                icon="check"
+                                type="button"
+                                wire:click="disableTemporaryClosure({{ $branch['id'] }})"
+                                wire:loading.attr="disabled"
+                                wire:target="disableTemporaryClosure({{ $branch['id'] }})"
+                            >
+                                <span wire:loading.remove wire:target="disableTemporaryClosure({{ $branch['id'] }})">{{ __('Открыть заказы') }}</span>
+                                <span wire:loading wire:target="disableTemporaryClosure({{ $branch['id'] }})">{{ __('Открываем') }}</span>
+                            </flux:button>
+                        </div>
+                    </div>
+                @endif
+
                 <div class="grid border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/40 xl:grid-cols-4">
                     <section class="border-b border-zinc-200 p-4 dark:border-zinc-800 xl:border-b-0 xl:border-e">
                         <h3 class="text-sm font-semibold text-rose-800 dark:text-rose-200">{{ __('New orders') }}</h3>

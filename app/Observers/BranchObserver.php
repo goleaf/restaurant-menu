@@ -39,6 +39,9 @@ class BranchObserver
             'city',
             'country',
             'currency',
+            'is_temporarily_closed',
+            'temporary_closed_reason',
+            'temporary_closed_until',
         ])) {
             $this->forgetBranchCache->handle((int) $branch->id);
         }

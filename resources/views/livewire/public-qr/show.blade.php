@@ -98,7 +98,9 @@
                             <p class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $landing['opening_status_detail'] }}</p>
 
                             @if (! $landing['can_accept_orders'])
-                                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ __('Заказы принимаем в часы работы ресторана.') }}</p>
+                                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                                    {{ $landing['opening_status_tone'] === 'danger' ? __('Заказы принимаем после открытия ресторана.') : __('Заказы принимаем в часы работы ресторана.') }}
+                                </p>
                             @endif
                         </div>
 

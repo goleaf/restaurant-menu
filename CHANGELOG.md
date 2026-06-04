@@ -2,11 +2,21 @@
 
 ## 2026-06-04
 
+### Prompt 103 - Temporary Branch Closed Mode
+
+- Added branch-level temporary closed mode with `is_temporarily_closed`, `temporary_closed_reason`, and optional `temporary_closed_until` stored on `branches`.
+- Extended the existing branch settings Livewire page with a simple closure form, preset reason examples, and an admin warning while closed mode is enabled.
+- Updated branch open/closed status resolution so temporary closure takes priority over opening hours, QR pages still open, menu browsing still works, and guest draft creation/send-to-waiter actions are blocked while temporary closure is active.
+- Added waiter dashboard visibility for temporary branch closure plus a small action for order-access staff to reopen ordering.
+- Touched modules/files: `Branch`, `GetBranchOpeningStatusAction`, `UpdateBranchTemporaryClosureAction`, branch settings Livewire UI, public QR guest UI, waiter dashboard payload/action/UI, draft-order guard actions, branch cache observer, migration, docs, and `tests/Feature/BranchTemporaryClosedModeTest.php`.
+- Limitations: no holiday calendar, no external status API, no automatic social/map/banner integrations, no paid services, no Redis/WebSockets/S3/Docker, and no order-taking while temporary closure is active.
+- Manual check: enable temporary closure from branch settings with a reason and optional until time, open `/q/{public_token}` to confirm QR/menu viewing still works and ordering is blocked, then reopen ordering from branch settings or waiter dashboard.
+
 ### Docs - Daily Project Memory Update After Prompt 102
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 102 without adding product features.
 - Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local public storage only.
-- Recorded Prompt 103 as the next recommended prompt: a small menu translation admin editor using the existing translation tables and centralized database cache invalidation.
+- Recorded Prompt 104 as the next recommended prompt: a small menu translation admin editor using the existing translation tables and centralized database cache invalidation.
 
 ### Prompt 102 - Branch Opening Hours
 
@@ -22,7 +32,7 @@
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 101 without adding product features.
 - Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local storage only.
-- Recorded Prompt 103 as the next recommended prompt after Prompt 102 completion: a small menu translation admin editor using existing translation tables and database cache invalidation.
+- Kept the future menu translation admin editor scoped to existing translation tables and database cache invalidation.
 
 ### Prompt 101 - Restaurant Public Profile
 

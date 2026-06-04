@@ -7,6 +7,7 @@ use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Branches\UpdateBranchOpeningHoursAction;
 use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
+use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\SupportedCurrency;
@@ -86,6 +87,12 @@ class Settings extends Component
 
     public mixed $coverImage = null;
 
+    public bool $temporarilyClosed = false;
+
+    public string $temporaryClosedReason = '';
+
+    public string $temporaryClosedUntil = '';
+
     public bool $openingHoursConfigured = false;
 
     /**
@@ -136,6 +143,7 @@ class Settings extends Component
 
         $this->fillFromSettings($ensureBranchSettings->handle($branch));
         $this->fillFromBranchProfile($this->branch);
+        $this->fillFromTemporaryClosure($this->branch);
         $this->fillFromOpeningHours($this->branch);
     }
 
@@ -143,6 +151,7 @@ class Settings extends Component
         UpdateBranchSettingsAction $updateBranchSettings,
         UpdateBranchPublicProfileAction $updateBranchPublicProfile,
         UpdateBranchOpeningHoursAction $updateBranchOpeningHours,
+        UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
         StoreLocalImageAction $storeLocalImage,
     ): void {
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
@@ -198,10 +207,17 @@ class Settings extends Component
         }
 
         $branch = $updateBranchPublicProfile->handle($this->branch, $profilePayload);
+        $branch = $updateBranchTemporaryClosure->handle(
+            branch: $branch,
+            isTemporarilyClosed: (bool) $validated['temporarilyClosed'],
+            reason: $validated['temporaryClosedReason'],
+            closedUntil: $validated['temporaryClosedUntil'],
+        );
         $updateBranchOpeningHours->handle($branch, $openingHours, $openingHoursConfigured);
 
         $this->fillFromSettings($settings);
         $this->fillFromBranchProfile($branch);
+        $this->fillFromTemporaryClosure($branch);
         $this->fillFromOpeningHours($branch);
         $this->reset('publicLogo', 'coverImage');
         $this->saved = true;
@@ -284,6 +300,17 @@ class Settings extends Component
             'tiktokUrl' => ['nullable', 'url', 'max:2048'],
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
+            'temporarilyClosed' => ['boolean'],
+            'temporaryClosedReason' => [
+                Rule::requiredIf($this->temporarilyClosed),
+                'nullable',
+                'string',
+                'max:255',
+            ],
+            'temporaryClosedUntil' => [
+                'nullable',
+                'date',
+            ],
             'openingHoursConfigured' => ['boolean'],
             'openingHours' => ['array', 'size:7'],
             'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7'],
@@ -325,6 +352,17 @@ class Settings extends Component
         $this->tiktokUrl = (string) ($this->branch->tiktok_url ?? '');
         $this->currentLogoUrl = $this->branch->logoUrl();
         $this->currentCoverImageUrl = $this->branch->coverImageUrl();
+    }
+
+    private function fillFromTemporaryClosure(Branch $branch): void
+    {
+        $this->branch = $branch->refresh();
+        $this->temporarilyClosed = (bool) $this->branch->is_temporarily_closed;
+        $this->temporaryClosedReason = (string) ($this->branch->temporary_closed_reason ?? '');
+        $temporaryClosedUntil = $this->branch->temporaryClosedUntilForBranch();
+        $this->temporaryClosedUntil = $temporaryClosedUntil === null
+            ? ''
+            : $temporaryClosedUntil->format('Y-m-d\TH:i');
     }
 
     private function fillFromOpeningHours(Branch $branch): void
@@ -467,6 +505,13 @@ class Settings extends Component
             ->whereKey($this->settingsId)
             ->where('branch_id', $this->branch->id)
             ->firstOrFail();
+    }
+
+    private function branchTimezone(): string
+    {
+        $timezone = $this->branch->timezone;
+
+        return is_string($timezone) && $timezone !== '' ? $timezone : config('app.timezone', 'UTC');
     }
 
     private function currentUser(): User

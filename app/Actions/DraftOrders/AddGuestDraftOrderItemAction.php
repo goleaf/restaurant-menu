@@ -226,7 +226,13 @@ class AddGuestDraftOrderItemAction
     private function ensureBranchAcceptsOrders(int $branchId, string $field): void
     {
         $branch = Branch::query()
-            ->select(['id', 'timezone'])
+            ->select([
+                'id',
+                'timezone',
+                'is_temporarily_closed',
+                'temporary_closed_reason',
+                'temporary_closed_until',
+            ])
             ->whereKey($branchId)
             ->first();
 
@@ -241,7 +247,10 @@ class AddGuestDraftOrderItemAction
         }
 
         throw ValidationException::withMessages([
-            $field => __('Сейчас закрыто. :detail', ['detail' => $openingStatus['detail']]),
+            $field => __(':label. :detail', [
+                'label' => $openingStatus['label'],
+                'detail' => $openingStatus['detail'],
+            ]),
         ]);
     }
 

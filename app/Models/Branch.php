@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasLocalLogo;
+use Carbon\CarbonInterface;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
@@ -33,6 +35,9 @@ use Illuminate\Support\Facades\Storage;
     'timezone',
     'currency',
     'is_active',
+    'is_temporarily_closed',
+    'temporary_closed_reason',
+    'temporary_closed_until',
 ])]
 class Branch extends Model
 {
@@ -46,6 +51,8 @@ class Branch extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_temporarily_closed' => 'boolean',
+            'temporary_closed_until' => 'datetime',
         ];
     }
 
@@ -83,6 +90,28 @@ class Branch extends Model
             ->orderBy('sort_order')
             ->orderBy('opens_at')
             ->orderBy('id');
+    }
+
+    public function temporaryClosedUntilForBranch(): ?CarbonInterface
+    {
+        $timezone = $this->timezone ?: config('app.timezone', 'UTC');
+        $rawValue = $this->getRawOriginal('temporary_closed_until');
+
+        if ($rawValue instanceof CarbonInterface) {
+            return $rawValue->copy()->setTimezone($timezone);
+        }
+
+        if (is_string($rawValue) && trim($rawValue) !== '') {
+            return Carbon::parse($rawValue, 'UTC')->setTimezone($timezone);
+        }
+
+        $value = $this->getAttribute('temporary_closed_until');
+
+        if ($value instanceof CarbonInterface) {
+            return $value->copy()->setTimezone($timezone);
+        }
+
+        return null;
     }
 
     public function publicDisplayName(): string

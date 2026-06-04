@@ -2,6 +2,34 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 103 - Branch Closed Mode
+
+Prompt 103 added temporary closed mode for each branch without disabling permanent QR codes or menu browsing.
+
+Implemented:
+
+- New `branches` columns: `is_temporarily_closed`, `temporary_closed_reason`, and nullable `temporary_closed_until`.
+- `Branch::temporaryClosedUntilForBranch()` resolves the stored UTC value into the branch timezone for guest/admin display.
+- `App\Actions\Branches\UpdateBranchTemporaryClosureAction` saves or clears temporary closure state from validated UI data.
+- `App\Actions\Branches\GetBranchOpeningStatusAction` now gives temporary closure priority over weekly opening hours and returns `can_accept_orders = false`.
+- Existing branch settings UI now shows a temporary closure form, reason examples, optional until time, and admin warning.
+- Public QR guest UI shows `Ресторан временно закрыт` with the reason while still allowing QR/menu viewing.
+- Guest draft item creation and send-to-waiter backend actions now block while temporary closure is active.
+- Waiter dashboard shows branch closure warnings and lets staff with order access reopen ordering.
+- Focused coverage lives in `tests/Feature/BranchTemporaryClosedModeTest.php`.
+
+Rules:
+
+- Temporary closure does not revoke or disable QR codes.
+- Guests can still open `/q/{public_token}` and view the public profile/menu.
+- New draft items and sending draft orders to waiters are blocked while temporary closure is active.
+- Admin can disable temporary closure from branch settings; waiter/order-access staff can disable it from the waiter dashboard.
+- No external APIs, maps, Redis, WebSockets, S3, Docker, paid services, or online payments are used.
+
+Next recommended prompt:
+
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Daily Project Memory Update After Prompt 102 - 2026-06-04
 
 This is a documentation-only memory refresh after Prompt 102. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
@@ -25,7 +53,7 @@ Current state:
 
 Next recommended prompt:
 
-- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Prompt 102 - Branch Opening Hours
 
@@ -53,7 +81,7 @@ Rules:
 
 Next recommended prompt:
 
-- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update After Prompt 101 - 2026-06-04
 
@@ -78,7 +106,7 @@ Current state:
 
 Next recommended prompt:
 
-- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Prompt 101 - Restaurant Public Profile
 
@@ -103,7 +131,7 @@ Constraints kept:
 
 Next recommended prompt:
 
-- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update - 2026-06-04
 
@@ -126,6 +154,7 @@ Already implemented:
 - Local media storage for organization, brand, branch logos, branch public profile cover images, and dish images.
 - Branch public restaurant profiles for guest QR landing and guest table context.
 - Branch opening hours for timezone-aware guest open/closed status and ordering guardrails.
+- Temporary branch closed mode for operational closures that keep QR/menu viewing available while blocking new guest ordering.
 - Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
 - Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
 - Menu flow: menus, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
@@ -135,7 +164,7 @@ Current tables:
 
 - `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
 - `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
-- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches` with public profile fields, `branch_users`, `branch_settings`, `invitations`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches` with public profile and temporary closure fields, `branch_users`, `branch_settings`, `invitations`.
 - `branch_opening_hours`.
 - `area_nodes`, `service_points`, `qr_codes`.
 - `menus`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
@@ -173,6 +202,7 @@ Mandatory business rules:
 - New guests require approval by current active guests when active guests already exist.
 - Guests can edit only their own draft items and only while the draft is still `draft`.
 - If branch opening hours are configured and the branch is currently closed, guests can still open QR/menu pages but cannot add draft items or send a draft to the waiter.
+- If a branch is temporarily closed, temporary closure takes priority over opening hours: QR/menu viewing still works, but guests cannot add draft items or send a draft to the waiter until admin/waiter reopens ordering or the optional closure time has passed.
 - Every draft, including repeat orders, must be sent to and confirmed by a waiter before becoming a real order.
 - Kitchen/bar sees only explicitly dispatched confirmed orders, never guest drafts or merely confirmed-but-not-dispatched orders.
 - Order items must keep immutable snapshots of guest/item/modifier/price data.
@@ -195,7 +225,7 @@ Do not use:
 
 Next recommended prompt:
 
-- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Current Stack
 

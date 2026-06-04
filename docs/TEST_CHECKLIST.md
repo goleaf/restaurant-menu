@@ -32,6 +32,12 @@ branch settings should save closed days and several intervals per day, the QR
 landing should show whether the restaurant is open or closed, and guest ordering
 should be blocked while a configured branch is closed.
 
+After Prompt 103, include temporary branch closed mode in setup and guest smoke
+checks: branch settings should save a closure reason and optional until time,
+the QR landing should still open, menu browsing should remain available, new
+guest ordering should be blocked, and waiter/order-access staff should be able
+to reopen ordering.
+
 Use these focused checks after documentation-only maintenance:
 
 ```bash
@@ -49,6 +55,40 @@ npm run build
 
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
+
+## Prompt 103 Temporary Branch Closed Mode Results
+
+Programmatic coverage was added in `tests/Feature/BranchTemporaryClosedModeTest.php`.
+The feature currently verifies:
+
+- `branches` stores temporary closure fields;
+- branch settings can enable and disable temporary closure;
+- temporary closure takes priority over opening hours;
+- expired temporary closure no longer blocks opening-hours status;
+- public QR still opens while temporarily closed;
+- guests can view the menu but cannot add draft items while temporarily closed;
+- sending a draft to the waiter is blocked while temporarily closed;
+- waiter dashboard shows the closure warning and can reopen ordering.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/BranchTemporaryClosedModeTest.php
+```
+
+Manual check:
+
+1. Open branch settings.
+2. Enable temporary closure.
+3. Enter a reason such as `Технические работы`.
+4. Optionally enter a `closed until` date/time in the branch timezone.
+5. Save settings.
+6. Open a QR URL for the branch.
+7. Confirm the QR landing shows `Ресторан временно закрыт` and the reason.
+8. Confirm the menu remains visible.
+9. Confirm adding a dish and sending a draft to the waiter are blocked.
+10. Open the waiter dashboard and confirm the branch warning is visible.
+11. Click `Открыть заказы` and confirm new ordering is available again.
 
 ## Prompt 102 Branch Opening Hours Results
 

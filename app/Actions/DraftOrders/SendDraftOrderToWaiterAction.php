@@ -205,7 +205,13 @@ class SendDraftOrderToWaiterAction
     private function ensureBranchAcceptsOrders(int $branchId): void
     {
         $branch = Branch::query()
-            ->select(['id', 'timezone'])
+            ->select([
+                'id',
+                'timezone',
+                'is_temporarily_closed',
+                'temporary_closed_reason',
+                'temporary_closed_until',
+            ])
             ->whereKey($branchId)
             ->first();
 
@@ -220,7 +226,10 @@ class SendDraftOrderToWaiterAction
         }
 
         throw ValidationException::withMessages([
-            'send_draft' => __('Сейчас закрыто. :detail', ['detail' => $openingStatus['detail']]),
+            'send_draft' => __(':label. :detail', [
+                'label' => $openingStatus['label'],
+                'detail' => $openingStatus['detail'],
+            ]),
         ]);
     }
 }

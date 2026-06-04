@@ -555,6 +555,9 @@ class Show extends Component
                                 'country',
                                 'timezone',
                                 'currency',
+                                'is_temporarily_closed',
+                                'temporary_closed_reason',
+                                'temporary_closed_until',
                             ])
                             ->with([
                                 'settings' => fn ($query) => $query->select([

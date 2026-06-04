@@ -13,6 +13,42 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 113 Manual Waiter Order Entry Results
+
+Programmatic coverage was added in `tests/Feature/WaiterDraftEditingTest.php`.
+The feature currently verifies:
+
+- an authorized waiter can open an active table with no current draft;
+- the waiter table detail screen shows `Manual waiter order`;
+- the waiter can type a new guest name and add a dish with required modifiers;
+- the system creates an active `table_session_guest` with manual-entry metadata;
+- the system creates a waiter-review `draft_order` with no `sent_by_guest_id`;
+- the normal waiter confirmation action converts the draft into an `order`;
+- order item snapshots preserve guest name, item name, unit price, modifiers,
+  and comment.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/WaiterDraftEditingTest.php
+```
+
+Manual check:
+
+1. Open `/restaurant/waiter/tables/{tableSession}` as staff with
+   `confirm_orders` for an active table that has no current draft.
+2. Confirm the `Manual waiter order` block appears.
+3. Type a new guest name, choose a dish, choose required modifiers, set
+   quantity/comment, and add the position.
+4. Confirm the guest appears in the table list and the draft status becomes
+   `Waiter review`.
+5. Confirm an active guest already in the same session sees the updated draft
+   through polling.
+6. Confirm the waiter can press `Confirm order` and a real order is created.
+7. Confirm kitchen/bar still does not see the order until `Send to kitchen/bar`
+   is pressed.
+8. Confirm a user with only `view_orders` cannot manually add a position.
+
 ## Prompt 112 Waiter Zone Assignment Results
 
 Programmatic coverage was added in `tests/Feature/WaiterZoneAssignmentsTest.php`

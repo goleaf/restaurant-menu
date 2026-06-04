@@ -212,6 +212,7 @@ class BuildWaiterTableDetailAction
             $canManuallyCloseTableSession
             || ($canManagePayments && $sessionStatus === TableSessionStatus::Paid)
         );
+        $canAddManualOrderItems = $canEditPendingDraft && $sessionStatus === TableSessionStatus::Active;
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -273,6 +274,9 @@ class BuildWaiterTableDetailAction
                 canViewPayments: $canViewPayments,
                 canManagePayments: $canManagePayments,
             ),
+            'manual_order' => [
+                'can_add' => $canAddManualOrderItems,
+            ],
             'guest_sections' => $guestSections,
             'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
             'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,

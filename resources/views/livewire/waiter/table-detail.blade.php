@@ -445,9 +445,14 @@
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
-                @if (data_get($table, 'draft.can_edit'))
+                @if (data_get($table, 'manual_order.can_add'))
                     <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                        <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Edit draft') }}</h3>
+                        <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">
+                            {{ data_get($table, 'draft.can_edit') ? __('Edit draft') : __('Manual waiter order') }}
+                        </h3>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                            {{ __('Add dishes for a guest who orders through the waiter. The order still needs waiter confirmation.') }}
+                        </p>
 
                         <div class="mt-3 space-y-3">
                             <flux:select wire:model="addingGuestId" :label="__('Guest')">
@@ -460,6 +465,17 @@
                             </flux:select>
 
                             @error('addingGuestId')
+                                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+
+                            <flux:input
+                                wire:model="manualGuestName"
+                                :label="__('New guest name')"
+                                maxlength="80"
+                                placeholder="{{ __('Type a name if the guest is not in the list') }}"
+                            />
+
+                            @error('manualGuestName')
                                 <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
 

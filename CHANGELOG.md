@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 113 - Manual Waiter Order Entry
+
+- Added manual waiter order entry to the existing waiter table detail screen.
+- Staff with waiter draft-edit access can add a dish to an active table even when no guest-sent draft exists yet.
+- The waiter can choose an existing active guest or type a new guest name; new manual guests are stored in `table_session_guests` with non-guessable tokens and `waiter_manual_entry` metadata.
+- Added `AddManualWaiterOrderItemAction` to create/reuse a waiter-review `draft_order`, then reuse the existing waiter draft item action so item names, prices, modifiers, comments, and totals stay snapshotted consistently.
+- The normal waiter confirmation flow still creates the real `orders` / `order_items` snapshots; kitchen/bar still sees nothing until the confirmed order is explicitly dispatched.
+- Touched modules/files: `App\Actions\Waiter\AddManualWaiterOrderItemAction`, `App\Actions\Waiter\BuildWaiterTableDetailAction`, `App\Livewire\Waiter\TableDetail`, waiter table detail Blade view, `tests/Feature/WaiterDraftEditingTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no new routes, no migrations, no direct kitchen/bar dispatch, no guest user accounts, no phone/email sending, no Redis/WebSockets/S3/Docker, and no paid services.
+- Manual check: open an active waiter table with no current draft, type a new guest name, choose a dish with required modifiers, add it, confirm the draft becomes `Waiter review`, confirm the order, and verify guests in the same session see the updated draft through polling.
+
 ### Prompt 112 - Waiter Zone Assignment
 
 - Added `area_node_waiters` as the branch-zone assignment table for waiters.

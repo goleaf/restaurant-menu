@@ -163,6 +163,62 @@ test('waiter can add and delete draft positions before confirmation', function (
         ->assertDontSee('Pizza Margherita');
 });
 
+test('waiter can manually create guest draft item and confirm it from active table', function () {
+    [
+        'organization' => $organization,
+        'tableSession' => $tableSession,
+        'pizzaItem' => $pizzaItem,
+        'sizeGroup' => $sizeGroup,
+        'largeOption' => $largeOption,
+    ] = createPrompt113ManualOrderScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 113 Waiter']);
+    attachPrompt55Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
+
+    Livewire::actingAs($waiter)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->assertSee('Manual waiter order')
+        ->set('manualGuestName', 'Mrs Ona')
+        ->set('addingMenuItemId', (string) $pizzaItem->id)
+        ->set('addingQuantity', 2)
+        ->set('addingComment', 'Less salt')
+        ->set('addingModifierOptions.'.(string) $sizeGroup->id, [$largeOption->id])
+        ->call('addDraftItem')
+        ->assertHasNoErrors()
+        ->assertSee('Mrs Ona')
+        ->assertSee('Waiter review')
+        ->assertSee('Less salt')
+        ->assertSee('25.00 EUR')
+        ->assertSee('Confirm order')
+        ->call('confirmDraft')
+        ->assertHasNoErrors()
+        ->assertSee('Order #');
+
+    $manualGuest = TableSessionGuest::query()
+        ->where('table_session_id', $tableSession->id)
+        ->where('guest_name', 'Mrs Ona')
+        ->firstOrFail();
+    $draftOrder = DraftOrder::query()
+        ->with(['items'])
+        ->where('table_session_id', $tableSession->id)
+        ->firstOrFail();
+    $order = Order::query()
+        ->with(['items'])
+        ->where('draft_order_id', $draftOrder->id)
+        ->firstOrFail();
+
+    expect($manualGuest->status)->toBe(TableSessionGuestStatus::Active)
+        ->and($manualGuest->metadata['source'])->toBe('waiter_manual_entry')
+        ->and($draftOrder->status)->toBe(DraftOrderStatus::ConvertedToOrder)
+        ->and($draftOrder->sent_by_guest_id)->toBeNull()
+        ->and($order->total_price)->toBe('25.00')
+        ->and($order->items)->toHaveCount(1)
+        ->and($order->items->first()->guest_name_snapshot)->toBe('Mrs Ona')
+        ->and($order->items->first()->item_name_snapshot)->toBe('Pizza Margherita')
+        ->and($order->items->first()->unit_price_snapshot)->toBe('10.00')
+        ->and($order->items->first()->modifiers_snapshot[0]['option_name'])->toBe('Large')
+        ->and($order->items->first()->comment)->toBe('Less salt');
+});
+
 test('waiter cannot add draft item from menu outside current schedule', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-01 15:30:00', 'Europe/Vilnius'));
 
@@ -257,6 +313,80 @@ test('user with view orders only cannot edit sent draft', function () {
     expect($pizzaDraftItem->fresh())->toBeInstanceOf(DraftOrderItem::class)
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::SentToWaiter);
 });
+
+/**
+ * @return array<string, mixed>
+ */
+function createPrompt113ManualOrderScenario(): array
+{
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Prompt 113 Group']);
+    $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 113 Brand']);
+    $branch = Branch::factory()
+        ->for($organization)
+        ->for($brand)
+        ->create([
+            'name' => 'Prompt 113 Branch',
+            'currency' => 'EUR',
+        ]);
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Prompt 113 Hall']);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->for($areaNode)
+        ->create([
+            'name' => 'Prompt 113 Table',
+            'status' => ServicePointStatus::Occupied,
+        ]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create(['status' => TableSessionStatus::Active]);
+
+    $menu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Prompt 113 Menu',
+            'status' => MenuStatus::Active,
+        ]);
+    $category = MenuCategory::factory()
+        ->for($menu)
+        ->create([
+            'name' => 'Mains',
+            'is_active' => true,
+        ]);
+    $pizzaItem = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create([
+            'name' => 'Pizza Margherita',
+            'price' => '10.00',
+            'is_available' => true,
+        ]);
+    $sizeGroup = ModifierGroup::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Size',
+            'is_required' => true,
+            'min_select' => 1,
+            'max_select' => 1,
+        ]);
+    $largeOption = ModifierOption::factory()
+        ->for($sizeGroup)
+        ->create([
+            'name' => 'Large',
+            'price_delta' => '2.50',
+            'is_available' => true,
+        ]);
+    $pizzaItem->modifierGroups()->attach($sizeGroup->id);
+
+    return [
+        'organization' => $organization,
+        'tableSession' => $tableSession,
+        'pizzaItem' => $pizzaItem,
+        'sizeGroup' => $sizeGroup,
+        'largeOption' => $largeOption,
+    ];
+}
 
 /**
  * @return array<string, mixed>

@@ -4,12 +4,12 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 112 waiter zone assignments.
+Last memory refresh: 2026-06-04 after Prompt 113 manual waiter order entry.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
-board, waiter zone assignments, and waiter-side schedule checks should be
+board, waiter zone assignments, waiter manual order entry, and waiter-side schedule checks should be
 treated as current baseline for future guest UI, QR landing, ordering work,
 staff review, and branch setup.
 
@@ -66,6 +66,9 @@ Risky places:
   them as a replacement for organization/branch access checks.
 - If a waiter has no assigned zones, the current behavior is to show all
   accessible branch places with a hint.
+- Manual waiter order entry creates or reuses a waiter-review draft for an
+  active table and still requires normal waiter confirmation before kitchen/bar
+  dispatch. Do not bypass confirmation in future waiter shortcuts.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -129,6 +132,11 @@ logic, routes, schema, or heavy JavaScript.
 Prompt 112 added waiter zone assignments: managers with `manage_staff` can
 assign fixed branch waiters to active `area_nodes` from the branch staff page,
 and the waiter dashboard can switch between `My zones` and `All zones`.
+
+Prompt 113 added manual waiter order entry: on an active table, authorized
+waiter staff can choose an active guest or type a new guest name, add dishes to
+a waiter-review draft, preserve snapshots, and then confirm through the normal
+order flow before any kitchen/bar dispatch.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

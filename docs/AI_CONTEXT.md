@@ -2,6 +2,89 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 113 Manual Waiter Order Entry - 2026-06-04
+
+Prompt 113 added manual waiter order entry on the existing waiter table detail screen. It did not add routes, migrations, roles, permissions, guest accounts, direct kitchen/bar dispatch, WebSockets, Redis, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block guest ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search and filter service points and paginate results without loading every service point at once.
+- Prompt 111: the same page has a simple visual board that groups the currently loaded service point page by zone.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or show `All zones`.
+- Prompt 113: a waiter can manually add positions to an active table, choose an active guest or create a manual guest name, create/reuse a waiter-review draft, and confirm it through the normal order snapshot flow.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- No new table or column was added in Prompt 113.
+- Existing affected tables: `table_sessions`, `table_session_guests`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `menu_items`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`.
+- Manual guests are stored in `table_session_guests` with `metadata.source = waiter_manual_entry` and a non-guessable `guest_token`; they are not `users`.
+- Full inventory still includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 113.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, or table IDs.
+
+Current Livewire components and actions:
+
+- `App\Livewire\Waiter\TableDetail` now exposes `manualGuestName` and uses `AddManualWaiterOrderItemAction` for the add-position flow.
+- The waiter table detail Blade view shows `Manual waiter order` when an active table has no editable draft, and `Edit draft` when a waiter-review/sent draft already exists.
+- `App\Actions\Waiter\AddManualWaiterOrderItemAction` creates/reuses a waiter-review draft, creates a manual active guest when needed, then delegates actual item creation to the existing waiter draft item action.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` now returns `manual_order.can_add` for active sessions where the user has `confirm_orders` or `edit_pending_orders` in an accessible branch.
+
+Mandatory business rules:
+
+- Manual waiter entry is only for active `table_sessions`.
+- A manual guest is a `table_session_guest`, not a normal registered `user`.
+- Manual guest tokens must remain non-guessable.
+- A waiter can choose an existing active guest or type a new guest name.
+- Manual items enter the existing draft/order flow and use the same snapshot logic for menu item name, unit price, modifiers, comments, and totals.
+- The draft still requires waiter confirmation before a real `order` exists.
+- Kitchen/bar still sees nothing until the confirmed order is explicitly dispatched.
+- Guests already in the session should see waiter-entered draft changes through existing Livewire polling.
+- QR identity and table-session close rules are unchanged.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep waiter table polling bounded by selected/eager-loaded Eloquent queries; do not query from Blade.
+- No new infrastructure is required for waiter manual entry.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 113 notes:
+
+- New action: `App\Actions\Waiter\AddManualWaiterOrderItemAction`.
+- Focused coverage: `tests/Feature/WaiterDraftEditingTest.php`.
+- Verification run included focused waiter draft tests, waiter detail/review/repeat order tests, SQLite migration status, route list, database driver config checks, and HTTP smoke for `/`, `/login`, and waiter dashboard redirect.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 112 Waiter Zone Assignments - 2026-06-04
 
 Prompt 112 added branch area-node assignments for waiters. It did not add routes, roles, permissions, QR changes, maps, canvas floor plans, WebSockets, Redis, S3, Docker, or paid services.

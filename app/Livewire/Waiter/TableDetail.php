@@ -7,7 +7,7 @@ use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
-use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\DeleteDraftOrderItemByWaiterAction;
@@ -61,6 +61,8 @@ class TableDetail extends Component
     public ?int $addableMenuItemsBranchId = null;
 
     public string $addingGuestId = '';
+
+    public string $manualGuestName = '';
 
     public string $addingMenuItemId = '';
 
@@ -171,27 +173,27 @@ class TableDetail extends Component
         $this->refreshEditingItemTotal();
     }
 
-    public function addDraftItem(AddDraftOrderItemByWaiterAction $addDraftOrderItem): void
+    public function addDraftItem(AddManualWaiterOrderItemAction $addManualWaiterOrderItem): void
     {
         $this->resetValidation();
         $this->reviewFeedbackMessage = '';
 
-        $draftOrder = $this->currentDraftOrder();
         $guest = $this->selectedAddingGuest();
         $menuItem = $this->selectedAddingMenuItem();
 
-        if (! $draftOrder instanceof DraftOrder || ! $guest instanceof TableSessionGuest || ! $menuItem instanceof MenuItem) {
-            $this->addError('draft_edit', __('Выберите гостя и блюдо перед добавлением позиции.'));
+        if (! $menuItem instanceof MenuItem) {
+            $this->addError('addingMenuItemId', __('Выберите блюдо перед добавлением позиции.'));
 
             return;
         }
 
         try {
-            $addDraftOrderItem->handle(
-                draftOrder: $draftOrder,
+            $draftOrderItem = $addManualWaiterOrderItem->handle(
+                tableSession: $this->currentTableSession(),
+                waiter: $this->currentUser(),
                 guest: $guest,
+                guestName: $this->manualGuestName,
                 menuItem: $menuItem,
-                editedBy: $this->currentUser(),
                 quantity: (int) $this->addingQuantity,
                 selectedModifierOptions: $this->addingModifierOptions,
                 comment: $this->addingComment,
@@ -204,6 +206,8 @@ class TableDetail extends Component
         }
 
         $this->reviewFeedbackMessage = __('Позиция добавлена. Гости увидят обновлённый черновик.');
+        $this->addingGuestId = (string) $draftOrderItem->table_session_guest_id;
+        $this->manualGuestName = '';
         $this->resetAddingForm();
         $this->refreshTable();
     }
@@ -722,10 +726,10 @@ class TableDetail extends Component
 
     private function syncAddableMenuItems(): void
     {
-        $canEditDraft = (bool) data_get($this->table, 'draft.can_edit');
+        $canAddManualOrder = (bool) data_get($this->table, 'manual_order.can_add');
         $branchId = (int) data_get($this->table, 'branch.id');
 
-        if (! $canEditDraft || $branchId < 1) {
+        if (! $canAddManualOrder || $branchId < 1) {
             $this->addableMenuItems = [];
             $this->addableMenuItemsBranchId = null;
 

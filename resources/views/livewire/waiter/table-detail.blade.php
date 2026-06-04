@@ -219,15 +219,47 @@
                 @endif
             </dl>
 
+            @if ($paymentFeedbackMessage)
+                <p class="mt-5 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                    {{ $paymentFeedbackMessage }}
+                </p>
+            @endif
+
+            @error('table_session')
+                <p class="mt-5 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+            @enderror
+
+            @if (data_get($table, 'session.can_close'))
+                <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Close table session') }}</h3>
+
+                    @if (data_get($table, 'session.close_requires_warning'))
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                            {{ __('Manual close blocks guests from ordering and frees this place. Old orders stay saved.') }}
+                        </p>
+                    @else
+                        <p class="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+                            {{ __('Close the paid session and make this place available for the next guests.') }}
+                        </p>
+                    @endif
+
+                    <flux:button
+                        icon="check"
+                        type="button"
+                        class="mt-3 w-full"
+                        wire:click="closeTableSession"
+                        wire:loading.attr="disabled"
+                        wire:target="closeTableSession"
+                    >
+                        <span wire:loading.remove wire:target="closeTableSession">{{ __('Close table') }}</span>
+                        <span wire:loading wire:target="closeTableSession">{{ __('Closing') }}</span>
+                    </flux:button>
+                </div>
+            @endif
+
             @if (data_get($table, 'payment.can_view'))
                 <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                     <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Payments') }}</h3>
-
-                    @if ($paymentFeedbackMessage)
-                        <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                            {{ $paymentFeedbackMessage }}
-                        </p>
-                    @endif
 
                     @error('manual_payment')
                         <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
@@ -295,19 +327,6 @@
                                 </flux:button>
                             @endif
 
-                            @if (data_get($table, 'payment.can_close_session'))
-                                <flux:button
-                                    icon="check"
-                                    type="button"
-                                    class="w-full"
-                                    wire:click="closePaidSession"
-                                    wire:loading.attr="disabled"
-                                    wire:target="closePaidSession"
-                                >
-                                    <span wire:loading.remove wire:target="closePaidSession">{{ __('Close table') }}</span>
-                                    <span wire:loading wire:target="closePaidSession">{{ __('Closing') }}</span>
-                                </flux:button>
-                            @endif
                         </div>
                     @endif
 

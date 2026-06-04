@@ -325,6 +325,8 @@ Manual payment never pays an open draft. If the latest draft is still `draft`, `
 
 When the remaining confirmed order balance reaches zero, the table session status becomes `paid` and the service point status becomes `paid`. Staff can then close the paid session from the same page; closing sets the table session status to `closed`, fills `closed_by_user_id` / `ended_at`, and moves the service point back to `free`.
 
+Users with the critical `close_table_sessions` permission can also close an unpaid active session manually from waiter table detail. Manual close blocks old guest tokens and invite links from adding positions, frees the service point for the next seating, keeps old orders and payment history intact, and does not reissue or modify the permanent QR code.
+
 ## Table Session Guests
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
@@ -600,6 +602,7 @@ Implemented:
 - Guest waiter-call requests stored in `waiter_calls` with Laravel database notifications for the waiter dashboard.
 - Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
 - Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
+- Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

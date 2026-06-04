@@ -202,6 +202,16 @@ class BuildWaiterTableDetailAction
         $paymentManageableBranchIds = $this->resolvePaymentAccess->manageableBranchIds($user);
         $canViewPayments = $paymentViewableBranchIds->contains((int) $tableSession->branch_id);
         $canManagePayments = $paymentManageableBranchIds->contains((int) $tableSession->branch_id);
+        $closeTableSessionBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::CloseTableSessions);
+        $canManuallyCloseTableSession = $closeTableSessionBranchIds->contains((int) $tableSession->branch_id);
+        $canCloseTableSession = ! in_array($sessionStatus, [
+            TableSessionStatus::Closed,
+            TableSessionStatus::Cancelled,
+        ], true) && (
+            $canManuallyCloseTableSession
+            || ($canManagePayments && $sessionStatus === TableSessionStatus::Paid)
+        );
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -245,6 +255,9 @@ class BuildWaiterTableDetailAction
                 'source_label' => $sessionSource->label(),
                 'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
                 'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
+                'can_close' => $canCloseTableSession,
+                'can_close_manually' => $canManuallyCloseTableSession,
+                'close_requires_warning' => $canCloseTableSession && $sessionStatus !== TableSessionStatus::Paid,
             ],
             'draft' => $this->draftPayload(
                 draftOrder: $draftOrder,

@@ -24,6 +24,7 @@ enum SystemPermission: string
     case ManageSubscription = 'manage_subscription';
     case ViewPayments = 'view_payments';
     case ManagePayments = 'manage_payments';
+    case CloseTableSessions = 'close_table_sessions';
     case ExportData = 'export_data';
     case ManageSettings = 'manage_settings';
     case ViewAuditLog = 'view_audit_log';
@@ -51,6 +52,7 @@ enum SystemPermission: string
             self::ManageSubscription => 'Manage subscription',
             self::ViewPayments => 'View payments',
             self::ManagePayments => 'Manage payments',
+            self::CloseTableSessions => 'Close table sessions',
             self::ExportData => 'Export data',
             self::ManageSettings => 'Manage settings',
             self::ViewAuditLog => 'View audit log',
@@ -69,6 +71,7 @@ enum SystemPermission: string
             self::EditPendingOrders,
             self::ManageSubscription,
             self::ManagePayments,
+            self::CloseTableSessions,
             self::ManageSettings,
             self::ExportData,
         ], true);

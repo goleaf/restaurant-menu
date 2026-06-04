@@ -64,7 +64,8 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
-- Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and close-paid-session action.
+- Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
+- Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -419,6 +420,7 @@ Manual payment:
 - `ManualPayment` casts scope to `ManualPaymentScope`, method to `ManualPaymentMethod`, amount to decimal, `paid_at` to datetime, and metadata to array.
 - `TableSession::manualPayments()`, `TableSessionGuest::manualPayments()`, `ServicePoint::manualPayments()`, and `User::manualPayments()` expose payment history.
 - `SystemPermission::ManagePayments` exists as `manage_payments` and is marked critical.
+- `SystemPermission::CloseTableSessions` exists as `close_table_sessions` and is marked critical.
 - Users with `view_payments` can view the payment summary.
 - Users with `manage_payments` or the fixed `cashier` organization role can record manual payments.
 - `ResolvePaymentAccessibleBranchIdsAction` resolves view/manage branch access through permissions, superadmin bypass, cashier organization role, and active branch assignments.
@@ -427,7 +429,9 @@ Manual payment:
 - `RecordManualPaymentAction` records either whole-table or guest-scoped payment and refuses payment while the latest draft is `draft`, `sent_to_waiter`, or `waiter_review`.
 - If the remaining confirmed order balance reaches zero, `RecordManualPaymentAction` sets `table_sessions.status` to `paid`, stores `metadata.paid_at` and `metadata.paid_by_user_id`, and moves the service point to `paid`.
 - Partial guest payment keeps or moves the session to `payment_requested` and the service point to `payment_requested`.
-- `ClosePaidTableSessionAction` closes only `paid` sessions, fills `closed_by_user_id` and `ended_at`, sets status to `closed`, and moves the service point to `free`.
+- `CloseTableSessionAction` closes paid sessions for users who can manage payments and closes unpaid sessions for users with `close_table_sessions`.
+- `ClosePaidTableSessionAction` remains as a compatibility wrapper around `CloseTableSessionAction`.
+- Closing fills `closed_by_user_id` and `ended_at`, sets status to `closed`, moves the service point to `free`, and does not touch `orders`, `order_items`, or `qr_codes`.
 - Manual payments do not change kitchen tickets, do not dispatch orders, and do not connect Stripe, PayPal, online acquiring, or other external services.
 
 Draft order:
@@ -932,7 +936,8 @@ Local media storage:
 - The table detail page lets a waiter with `view_orders` mark ready ticket items as served. This fills `kitchen_ticket_items.served_at` and `served_by_user_id`, updates the order status when all items are served, and refreshes through polling.
 - The table detail page shows a manual payment summary for users with `view_payments`, `manage_payments`, or fixed `cashier` access.
 - The table detail page can record whole-table or per-guest manual payment for users with `manage_payments` or fixed `cashier` access.
-- The table detail page can close a fully paid session, moving the table session to `closed` and the service point to `free`.
+- The table detail page can close a fully paid session for payment managers/cashiers or manually close an unpaid session for users with `close_table_sessions`.
+- Closed sessions keep old order history but old guest cookies/invite links cannot add positions because guest draft actions refuse `closed` sessions.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
 - The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
@@ -1096,6 +1101,9 @@ The next expected product step may be manual payment reporting/refinement, ticke
 - Do not add Stripe, PayPal, online acquiring, or paid payment providers to the manual payment flow.
 - Do not allow manual payment while the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`.
 - Do not allow opening a second table session for a service point while its current session is `payment_requested`.
+- Do not let closed table sessions accept guest draft items, guest invite joins, or any new guest ordering.
+- Do not reissue, disable, revoke, or regenerate a permanent QR when closing a table session.
+- Do not delete or overwrite old orders, order items, manual payments, or order status logs when closing a table session.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

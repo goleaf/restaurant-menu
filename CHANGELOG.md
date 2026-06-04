@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 068 - Close Table Sessions
+
+- Added the critical `close_table_sessions` permission for manually closing table sessions without granting payment management.
+- Added `CloseTableSessionAction` and kept `ClosePaidTableSessionAction` as a compatibility wrapper for the paid-session close flow.
+- Extended waiter table detail with close-session flags, a manual-close warning, and a `closeTableSession` Livewire action.
+- Closing a session now sets `table_sessions.status` to `closed`, fills `closed_by_user_id` / `ended_at`, moves the service point to `free`, blocks old guest ordering through the closed session, and preserves old orders.
+- Verified that closing does not reissue or modify the permanent QR and that a new waiter-opened seating creates a new table session for the same service point.
+- Kept SQLite, database drivers, Livewire polling, local storage, and the no Redis/WebSocket/S3/Docker baseline.
+
 ### Prompt 067 - Manual Payments
 
 - Added local `manual_payments` records for staff-entered cash, card-terminal, and other offline payments.

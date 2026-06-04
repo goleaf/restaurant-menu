@@ -4,8 +4,8 @@ namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
-use App\Actions\Payments\ClosePaidTableSessionAction;
 use App\Actions\Payments\RecordManualPaymentAction;
+use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -509,13 +509,18 @@ class TableDetail extends Component
         $this->refreshTable();
     }
 
-    public function closePaidSession(ClosePaidTableSessionAction $closePaidTableSession): void
+    public function closePaidSession(CloseTableSessionAction $closeTableSession): void
+    {
+        $this->closeTableSession($closeTableSession);
+    }
+
+    public function closeTableSession(CloseTableSessionAction $closeTableSession): void
     {
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
 
         try {
-            $closePaidTableSession->handle($this->currentTableSession(), $this->currentUser());
+            $closeTableSession->handle($this->currentTableSession(), $this->currentUser());
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 

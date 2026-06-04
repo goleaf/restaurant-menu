@@ -29,7 +29,8 @@
         <div class="p-4">
             <x-ui.empty-state
                 icon="book-open"
-                :heading="__('Меню пока недоступно')"
+                :heading="$guestMenu['availability']['label'] ?? __('Меню пока недоступно')"
+                :description="$guestMenu['availability']['detail'] ?? null"
             />
         </div>
     @else

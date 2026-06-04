@@ -6,6 +6,7 @@ use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
+use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
@@ -13,6 +14,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\KitchenDepartment;
 use App\Models\Menu;
+use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
@@ -55,6 +57,14 @@ class Index extends Component
     public string $editingMenuStatus = 'draft';
 
     public int $editingMenuSortOrder = 0;
+
+    public string $scheduleMenuId = '';
+
+    public string $scheduleDayOfWeek = '1';
+
+    public string $scheduleStartsAt = '08:00';
+
+    public string $scheduleEndsAt = '12:00';
 
     public string $categoryMenuId = '';
 
@@ -243,6 +253,7 @@ class Index extends Component
 
         if (is_int($firstMenuId)) {
             $this->categoryMenuId = (string) $firstMenuId;
+            $this->scheduleMenuId = (string) $firstMenuId;
             $this->itemMenuId = (string) $firstMenuId;
             $this->itemCategoryId = $this->firstCategoryIdForMenu($this->itemMenuId);
             $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
@@ -367,6 +378,46 @@ class Index extends Component
         $this->forgetMenuComputed();
 
         Flux::toast(variant: 'success', text: __('Menu removed.'));
+    }
+
+    public function createMenuSchedule(?int $menuId = null): void
+    {
+        $this->authorizeMenuManagement();
+
+        if ($menuId !== null) {
+            $this->scheduleMenuId = (string) $menuId;
+        }
+
+        $validated = $this->validate($this->menuScheduleRules());
+        $menu = $this->findBranchMenu((int) $validated['scheduleMenuId']);
+
+        $menu->availabilitySchedules()->create([
+            'day_of_week' => (int) $validated['scheduleDayOfWeek'],
+            'starts_at' => $validated['scheduleStartsAt'],
+            'ends_at' => $validated['scheduleEndsAt'],
+        ]);
+
+        $this->resetMenuScheduleForm((string) $menu->id);
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Menu schedule saved.'));
+    }
+
+    public function deleteMenuSchedule(int $scheduleId): void
+    {
+        $this->authorizeMenuManagement();
+
+        $schedule = $this->findBranchMenuSchedule($scheduleId);
+        $menuId = (string) $schedule->menu_id;
+
+        $schedule->delete();
+
+        $this->resetMenuScheduleForm($menuId);
+        $this->forgetMenuComputed();
+        $this->forgetBranchMenuCache();
+
+        Flux::toast(variant: 'success', text: __('Menu schedule removed.'));
     }
 
     public function createCategory(): void
@@ -958,6 +1009,16 @@ class Index extends Component
                 'updated_at',
             ])
             ->with([
+                'branch' => fn ($query) => $query->select(['id', 'timezone']),
+                'availabilitySchedules' => fn ($query) => $query->select([
+                    'id',
+                    'menu_id',
+                    'day_of_week',
+                    'starts_at',
+                    'ends_at',
+                    'created_at',
+                    'updated_at',
+                ]),
                 'categories' => fn ($query) => $query->select([
                     'id',
                     'menu_id',
@@ -1144,6 +1205,28 @@ class Index extends Component
     }
 
     /**
+     * @return array<int, string>
+     */
+    public function scheduleDayOptions(): array
+    {
+        return GetMenuAvailabilityStatusAction::dayLabels();
+    }
+
+    /**
+     * @return array{label: string, detail: string, tone: string}
+     */
+    public function menuAvailabilityStatus(Menu $menu): array
+    {
+        $status = app(GetMenuAvailabilityStatusAction::class)->handle($menu);
+
+        return [
+            'label' => (string) $status['label'],
+            'detail' => (string) $status['detail'],
+            'tone' => (string) $status['tone'],
+        ];
+    }
+
+    /**
      * @return list<array{value: string, label: string}>
      */
     public function categoryOptionsForMenu(string $menuId, bool $includeInactive = true): array
@@ -1263,6 +1346,19 @@ class Index extends Component
             'categoryIcon' => ['nullable', 'string', Rule::in(array_keys($this->iconOptions))],
             'categorySortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
             'categoryIsActive' => ['boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function menuScheduleRules(): array
+    {
+        return [
+            'scheduleMenuId' => ['required', 'integer', $this->menuRule()],
+            'scheduleDayOfWeek' => ['required', 'integer', 'min:1', 'max:7'],
+            'scheduleStartsAt' => ['required', 'date_format:H:i'],
+            'scheduleEndsAt' => ['required', 'date_format:H:i'],
         ];
     }
 
@@ -1487,6 +1583,14 @@ class Index extends Component
         $this->menuSortOrder = 0;
     }
 
+    private function resetMenuScheduleForm(?string $keepMenuId = null): void
+    {
+        $this->scheduleMenuId = $keepMenuId ?? $this->scheduleMenuId;
+        $this->scheduleDayOfWeek = '1';
+        $this->scheduleStartsAt = '08:00';
+        $this->scheduleEndsAt = '12:00';
+    }
+
     private function resetCategoryForm(): void
     {
         $selectedMenuId = $this->categoryMenuId;
@@ -1552,6 +1656,7 @@ class Index extends Component
         $menuId = is_int($firstMenuId) ? (string) $firstMenuId : '';
 
         $this->categoryMenuId = $menuId;
+        $this->scheduleMenuId = $menuId;
         $this->categoryParentId = '';
         $this->itemMenuId = $menuId;
         $this->itemCategoryId = $this->firstCategoryIdForMenu($menuId);
@@ -1595,6 +1700,23 @@ class Index extends Component
             ])
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branch->id))
             ->whereKey($categoryId)
+            ->firstOrFail();
+    }
+
+    private function findBranchMenuSchedule(int $scheduleId): MenuAvailabilitySchedule
+    {
+        return MenuAvailabilitySchedule::query()
+            ->select([
+                'id',
+                'menu_id',
+                'day_of_week',
+                'starts_at',
+                'ends_at',
+                'created_at',
+                'updated_at',
+            ])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branch->id))
+            ->whereKey($scheduleId)
             ->firstOrFail();
     }
 

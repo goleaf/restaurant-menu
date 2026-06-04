@@ -13,10 +13,10 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
-## Daily Memory Update - 2026-06-04 After Prompt 103
+## Daily Memory Update - 2026-06-04 After Prompt 104
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`. Prompt 104 is the next
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`. Prompt 105 is the next
 recommended small prompt and should not be implemented until explicitly
 requested.
 
@@ -40,6 +40,11 @@ the QR landing should still open, menu browsing should remain available, new
 guest ordering should be blocked, and waiter/order-access staff should be able
 to reopen ordering.
 
+After Prompt 104, include menu schedules in menu and guest smoke checks:
+branch menu admin should save weekday intervals per menu, the guest menu should
+show only menus available in the branch timezone, and adding/sending draft items
+should be blocked when the selected menu is outside its schedule.
+
 Use these focused checks after documentation-only maintenance:
 
 ```bash
@@ -57,6 +62,42 @@ npm run build
 
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
+
+## Prompt 104 Menu Schedules Results
+
+Programmatic coverage was added in `tests/Feature/MenuScheduleTest.php`.
+The feature currently verifies:
+
+- `menu_availability_schedules` stores weekday menu intervals;
+- availability checks respect `branches.timezone`;
+- the guest menu returns only menus available right now;
+- unavailable menus show a next availability message;
+- menu schedule changes clear the SQLite database cache;
+- branch menu admin can add and delete intervals;
+- guest draft item creation and send-to-waiter are blocked when a scheduled
+  menu is unavailable.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/MenuScheduleTest.php
+```
+
+Manual check:
+
+1. Open a branch menu page.
+2. Create or choose an active breakfast menu and add a Monday `08:00-12:00`
+   interval.
+3. Create or choose an active lunch menu and add a Monday `12:00-16:00`
+   interval.
+4. Open a QR guest page during the breakfast interval and confirm only the
+   breakfast menu appears.
+5. Open the same QR page outside both intervals and confirm it shows
+   `Меню сейчас недоступно` with the next availability time.
+6. Try to add a breakfast item after the breakfast window ends and confirm it
+   is blocked.
+7. Try to send an old draft after the menu window ends and confirm it is
+   blocked before reaching the waiter.
 
 ## Prompt 103 Temporary Branch Closed Mode Results
 

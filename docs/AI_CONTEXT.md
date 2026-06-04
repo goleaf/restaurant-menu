@@ -2,6 +2,33 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 104 - Menu Schedules
+
+Prompt 104 added branch-timezone menu availability schedules.
+
+Implemented:
+
+- New `menu_availability_schedules` table with `menu_id`, ISO weekday `day_of_week`, `starts_at`, and `ends_at`.
+- New `App\Models\MenuAvailabilitySchedule` model, factory, `Menu::availabilitySchedules()` relationship, and `MenuAvailabilityScheduleObserver`.
+- New `App\Actions\Menus\GetMenuAvailabilityStatusAction` for timezone-aware current/next menu availability.
+- `App\Actions\Menus\GetGuestMenuForBranchAction` now returns only the first active menu currently available by schedule, keeps using the database cache store, and returns a guest-facing availability message when all active menus are outside schedule.
+- Branch menu admin Livewire UI shows each menu schedule, current availability, and simple add/delete interval controls behind `manage_menu`.
+- Guest menu empty state now shows schedule status such as `Меню сейчас недоступно` and `Будет доступно с 12:00`.
+- Guest add-to-draft and send-to-waiter actions recheck menu availability server-side so stale tabs cannot order unavailable menus.
+- Focused coverage lives in `tests/Feature/MenuScheduleTest.php`.
+
+Rules:
+
+- A menu with no schedule rows is available all day for backward compatibility.
+- Schedule checks use `branches.timezone`; no external calendar, holiday, map, or paid service is used.
+- End time earlier than or equal to start time is treated as an overnight interval, so `22:00-02:00` and all-day `00:00-00:00` work.
+- If every active menu is unavailable right now, guests can still view the QR/table shell but cannot order from that menu window.
+- Menu schedule create/update/delete clears centralized branch cache through `ForgetBranchCacheAction`.
+
+Next recommended prompt:
+
+- Prompt 105: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Daily Project Memory Update After Prompt 103 - 2026-06-04
 
 This is a documentation-only memory refresh after Prompt 103. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
@@ -182,7 +209,7 @@ Already implemented:
 - Temporary branch closed mode for operational closures that keep QR/menu viewing available while blocking new guest ordering.
 - Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
 - Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
-- Menu flow: menus, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
+- Menu flow: menus, menu availability schedules, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
 - Order flow: shared `draft_orders`, guest-owned draft items, waiter dashboard, waiter table detail, waiter draft editing/confirm/reject, real `orders` and snapshot `order_items`, order status logs, explicit kitchen/bar dispatch, department tickets, kitchen/bar screens, ready/served handoff, repeat orders, manual payments, table-session close, analytics, restaurant dashboard, audit logs, database notifications, CSV exports, demo seed, smoke checklist, shared-hosting deployment notes, and current-version docs.
 
 Current tables:
@@ -192,7 +219,7 @@ Current tables:
 - `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches` with public profile and temporary closure fields, `branch_users`, `branch_settings`, `invitations`.
 - `branch_opening_hours`.
 - `area_nodes`, `service_points`, `qr_codes`.
-- `menus`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
+- `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
 - `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`.
 - `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`, `migrations`.
 
@@ -228,6 +255,7 @@ Mandatory business rules:
 - Guests can edit only their own draft items and only while the draft is still `draft`.
 - If branch opening hours are configured and the branch is currently closed, guests can still open QR/menu pages but cannot add draft items or send a draft to the waiter.
 - If a branch is temporarily closed, temporary closure takes priority over opening hours: QR/menu viewing still works, but guests cannot add draft items or send a draft to the waiter until admin/waiter reopens ordering or the optional closure time has passed.
+- If menu schedules are configured and the active menu is currently outside its branch-timezone interval, guests can still keep the QR/table page open but cannot add or send draft items from that unavailable menu.
 - Every draft, including repeat orders, must be sent to and confirmed by a waiter before becoming a real order.
 - Kitchen/bar sees only explicitly dispatched confirmed orders, never guest drafts or merely confirmed-but-not-dispatched orders.
 - Order items must keep immutable snapshots of guest/item/modifier/price data.
@@ -250,7 +278,7 @@ Do not use:
 
 Next recommended prompt:
 
-- Prompt 104: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 105: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Current Stack
 

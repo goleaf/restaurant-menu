@@ -63,4 +63,15 @@ class Menu extends Model
             ->orderBy('sort_order')
             ->orderBy('name');
     }
+
+    /**
+     * @return HasMany<MenuAvailabilitySchedule, $this>
+     */
+    public function availabilitySchedules(): HasMany
+    {
+        return $this->hasMany(MenuAvailabilitySchedule::class)
+            ->orderBy('day_of_week')
+            ->orderBy('starts_at')
+            ->orderBy('id');
+    }
 }

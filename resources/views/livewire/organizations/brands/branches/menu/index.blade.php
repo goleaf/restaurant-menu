@@ -293,6 +293,8 @@
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($this->menus as $menu)
                 <div wire:key="menu-{{ $menu->id }}" class="grid gap-4 px-4 py-4">
+                    @php($availabilityStatus = $this->menuAvailabilityStatus($menu))
+
                     @if ($editingMenuId === $menu->id)
                         <form wire:submit="updateMenu" class="grid gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
                             <flux:input wire:model="editingMenuName" :label="__('Name')" type="text" required maxlength="160" />
@@ -342,6 +344,55 @@
                             </div>
                         </div>
                     @endif
+
+                    <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+                        <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Menu schedule') }}</p>
+                                    <flux:badge :color="$availabilityStatus['tone'] === 'success' ? 'green' : ($availabilityStatus['tone'] === 'warning' ? 'amber' : 'zinc')">
+                                        {{ $availabilityStatus['label'] }}
+                                    </flux:badge>
+                                </div>
+
+                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $availabilityStatus['detail'] }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 grid gap-2">
+                            @forelse ($menu->availabilitySchedules as $schedule)
+                                <div wire:key="menu-schedule-{{ $schedule->id }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
+                                    <div class="flex flex-wrap items-center gap-2 text-sm">
+                                        <flux:badge>{{ $this->scheduleDayOptions()[$schedule->day_of_week] ?? __('Day') }}</flux:badge>
+                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ substr((string) $schedule->starts_at, 0, 5) }}-{{ substr((string) $schedule->ends_at, 0, 5) }}</span>
+                                    </div>
+
+                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule->id }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule->id }})">
+                                        {{ __('Delete') }}
+                                    </flux:button>
+                                </div>
+                            @empty
+                                <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                    {{ __('No schedule yet. This menu is available all day.') }}
+                                </p>
+                            @endforelse
+                        </div>
+
+                        <form wire:submit="createMenuSchedule({{ $menu->id }})" class="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
+                            <flux:select wire:model="scheduleDayOfWeek" :label="__('Day')">
+                                @foreach ($this->scheduleDayOptions() as $dayValue => $dayLabel)
+                                    <flux:select.option wire:key="menu-schedule-day-{{ $menu->id }}-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <flux:input wire:model="scheduleStartsAt" :label="__('Start')" type="time" required />
+                            <flux:input wire:model="scheduleEndsAt" :label="__('End')" type="time" required />
+
+                            <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenuSchedule({{ $menu->id }})">
+                                {{ __('Add interval') }}
+                            </flux:button>
+                        </form>
+                    </div>
 
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
                         <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">

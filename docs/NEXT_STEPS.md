@@ -4,14 +4,14 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 103 and the follow-up daily memory
-update. The implemented public restaurant profile, branch opening hours, and
-temporary branch closed mode should be treated as current baseline for future
-guest UI and QR landing work.
+Last memory refresh: 2026-06-04 after Prompt 104 and the follow-up daily memory
+update. The implemented public restaurant profile, branch opening hours,
+temporary branch closed mode, and menu schedules should be treated as current
+baseline for future guest UI, QR landing, and ordering work.
 
 ## Current Recommended Prompt
 
-Prompt 104: add a simple menu translation admin editor.
+Prompt 105: add a simple menu translation admin editor.
 
 Scope:
 
@@ -31,7 +31,7 @@ Risky places:
 - Supported languages must come from `App\Enums\SupportedLocale`, not a second
   hardcoded language list.
 - Do not let translation editing change base menu item prices, availability,
-  modifiers, or kitchen department assignment.
+  modifiers, kitchen department assignment, or menu schedules.
 
 Do not add:
 
@@ -54,6 +54,11 @@ Prompt 103 added temporary branch closed mode: branch settings can enable a
 reason and optional until time, QR/menu viewing stays available, new guest
 ordering is blocked while the mode is active, and order-access staff can reopen
 ordering from the waiter dashboard.
+
+Prompt 104 added menu schedules: each active menu can have weekday availability
+intervals in the branch timezone, guest menu payloads show only menus available
+right now, schedule changes clear database cache, and guest add/send draft
+actions block unavailable menu windows server-side.
 
 Prompt 101 added the branch public restaurant profile used by QR landing and
 guest UI: public venue name, short description, local logo/cover image,

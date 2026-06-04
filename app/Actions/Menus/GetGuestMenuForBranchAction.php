@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Cache;
 
 class GetGuestMenuForBranchAction
 {
-    private const CACHE_SECONDS = 300;
+    private const CACHE_SECONDS = 60;
 
     private const CACHE_STORE = 'database';
 
@@ -28,7 +28,7 @@ class GetGuestMenuForBranchAction
     private const LOCK_WAIT_SECONDS = 3;
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     public function handle(int $branchId, ?string $languageCode = null): array
     {
@@ -129,7 +129,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     private function rememberFreshPayload(CacheRepository $cache, int $branchId, string $languageCode, string $defaultLanguage): array
     {
@@ -148,10 +148,22 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
      */
     private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage): array
     {
+        [$availableMenu, $availability] = $this->availableMenuForBranch($branchId);
+
+        if (! $availableMenu instanceof Menu) {
+            return [
+                'language' => $languageCode,
+                'default_language' => $defaultLanguage,
+                'availability' => $availability,
+                'menu' => null,
+                'categories' => [],
+            ];
+        }
+
         $menu = Menu::query()
             ->select([
                 'id',
@@ -234,17 +246,14 @@ class GetGuestMenuForBranchAction
                     ->orderBy('name')
                     ->orderBy('id'),
             ])
-            ->where('branch_id', $branchId)
-            ->where('status', MenuStatus::Active->value)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
+            ->whereKey($availableMenu->id)
             ->first();
 
         if (! $menu instanceof Menu) {
             return [
                 'language' => $languageCode,
                 'default_language' => $defaultLanguage,
+                'availability' => $this->emptyAvailabilityStatus(),
                 'menu' => null,
                 'categories' => [],
             ];
@@ -253,6 +262,7 @@ class GetGuestMenuForBranchAction
         return [
             'language' => $languageCode,
             'default_language' => $defaultLanguage,
+            'availability' => $availability,
             'menu' => [
                 'id' => $menu->id,
                 'name' => $menu->name,
@@ -261,6 +271,98 @@ class GetGuestMenuForBranchAction
                 ->map(fn (MenuCategory $category): array => $this->categoryPayload($category))
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * @return array{0: Menu|null, 1: array<string, mixed>}
+     */
+    private function availableMenuForBranch(int $branchId): array
+    {
+        $availabilityAction = app(GetMenuAvailabilityStatusAction::class);
+        $nextUnavailableStatus = null;
+        $menus = Menu::query()
+            ->select([
+                'id',
+                'branch_id',
+                'name',
+                'status',
+                'sort_order',
+            ])
+            ->with([
+                'branch' => fn ($query) => $query->select(['id', 'timezone']),
+                'availabilitySchedules' => fn ($query) => $query->select([
+                    'id',
+                    'menu_id',
+                    'day_of_week',
+                    'starts_at',
+                    'ends_at',
+                ]),
+            ])
+            ->where('branch_id', $branchId)
+            ->where('status', MenuStatus::Active->value)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($menus as $menu) {
+            $availability = $availabilityAction->handle($menu);
+
+            if ($availability['is_available']) {
+                return [$menu, $availability];
+            }
+
+            if ($this->statusIsSooner($availability, $nextUnavailableStatus)) {
+                $nextUnavailableStatus = $availability;
+            }
+        }
+
+        return [null, $nextUnavailableStatus ?? $this->emptyAvailabilityStatus()];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $currentStatus
+     * @param  array<string, mixed>|null  $storedStatus
+     */
+    private function statusIsSooner(?array $currentStatus, ?array $storedStatus): bool
+    {
+        if ($currentStatus === null) {
+            return false;
+        }
+
+        if ($storedStatus === null) {
+            return true;
+        }
+
+        $currentNextAvailableAt = $currentStatus['next_available_at'] ?? null;
+        $storedNextAvailableAt = $storedStatus['next_available_at'] ?? null;
+
+        if (! is_string($currentNextAvailableAt)) {
+            return false;
+        }
+
+        if (! is_string($storedNextAvailableAt)) {
+            return true;
+        }
+
+        return strcmp($currentNextAvailableAt, $storedNextAvailableAt) < 0;
+    }
+
+    /**
+     * @return array{is_configured: bool, is_available: bool, label: string, detail: string, tone: string, next_available_at: string|null, available_until: string|null, timezone: string}
+     */
+    private function emptyAvailabilityStatus(): array
+    {
+        return [
+            'is_configured' => false,
+            'is_available' => false,
+            'label' => __('Меню пока недоступно'),
+            'detail' => __('Активное меню ещё не настроено.'),
+            'tone' => 'muted',
+            'next_available_at' => null,
+            'available_until' => null,
+            'timezone' => config('app.timezone', 'UTC'),
         ];
     }
 

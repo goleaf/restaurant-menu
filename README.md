@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,9 +47,9 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 103. Branch public profiles, branch opening hours, and temporary branch closed mode are now part of the baseline guest QR context.
+Latest memory refresh: 2026-06-04 after Prompt 104. Branch public profiles, branch opening hours, temporary branch closed mode, and menu availability schedules are now part of the baseline guest QR context.
 
-The daily memory refresh after Prompt 103 is documentation-only and confirms Prompt 104 as the next recommended small step.
+The daily memory refresh after Prompt 104 is documentation-only and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
 
 ## Project Cleanup Consistency
 
@@ -522,6 +522,7 @@ Dish images use the same local public storage approach and are stored under bran
 The base menu tables are:
 
 - `menus`
+- `menu_availability_schedules`
 - `menu_categories`
 - `menu_items`
 - `kitchen_departments`
@@ -530,6 +531,8 @@ The base menu tables are:
 - `menu_item_modifier_groups`
 
 Each menu belongs to a branch through `branch_id`, stores a name, a fixed status, and a sort order. Current menu statuses are `draft`, `active`, and `archived`.
+
+Menu availability schedules are stored in `menu_availability_schedules`. Each row belongs to one menu and stores ISO weekday `day_of_week` (`1` Monday through `7` Sunday), local `starts_at`, and local `ends_at`. Status checks use `branches.timezone`. A menu with no schedule rows is available all day for backward compatibility. A schedule where the end time is earlier than or equal to the start time is treated as an overnight interval, so examples such as `22:00-02:00` and all-day `00:00-00:00` are supported without external services.
 
 Menu categories belong to one menu and can be nested with `parent_id`. They store name, optional description, optional image path, optional icon, sort order, and `is_active`.
 
@@ -560,11 +563,11 @@ The same branch menu page also contains a simple stop-list for users with `chang
 
 Stop-listed dishes remain visible in the admin UI and in the guest menu as `Нет в наличии`, but guests cannot add them to the shared draft order. Availability changes clear the branch guest-menu database cache and create `menu_availability_changed` audit log rows.
 
-Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
+Active guests on the public QR table page see the current branch's first active menu that is available right now by menu schedule. If every active menu is outside its schedule, the guest page shows a clear message such as `Меню сейчас недоступно` and `Будет доступно с 12:00`. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
 
 When an active guest taps an available dish, a mobile-first bottom sheet lets them choose modifier options, satisfy required modifier groups, see the final item price with `price_delta`, and add a dish comment. Saving the sheet adds the position to the shared draft order for the table.
 
-The guest menu payload is cached through Laravel's `database` cache store for 300 seconds with language-specific keys:
+The guest menu payload is cached through Laravel's `database` cache store for a short shared-hosting-friendly window with language-specific keys:
 
 ```text
 guest-menu:branch:{branch_id}:language:{language_code}
@@ -572,11 +575,11 @@ guest-menu:branch:{branch_id}:language:{language_code}
 
 Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
 
-Branch cache invalidation is centralized in `App\Actions\Branches\ForgetBranchCacheAction`. The action clears branch-scoped database cache keys for guest menu payloads across supported languages, the legacy guest-menu key, and the cached guest polling interval. It is used by menu, category, dish, modifier, translation, branch settings, and local logo change paths.
+Branch cache invalidation is centralized in `App\Actions\Branches\ForgetBranchCacheAction`. The action clears branch-scoped database cache keys for guest menu payloads across supported languages, the legacy guest-menu key, and the cached guest polling interval. It is used by menu, schedule, category, dish, modifier, translation, branch settings, and local logo change paths.
 
-Menu cache is forgotten automatically when menus, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, availability changes, department assignment changes, modifier changes, translation changes, branch settings changes, and organization/brand/branch logo changes clear the centralized branch cache, so the next guest read rebuilds the payload and shows the current content.
+Menu cache is forgotten automatically when menus, menu schedules, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, availability changes, department assignment changes, modifier changes, schedule changes, translation changes, branch settings changes, and organization/brand/branch logo changes clear the centralized branch cache, so the next guest read rebuilds the payload and shows the current content.
 
-The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
+The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The backend rechecks the menu schedule when adding a draft item and again when sending a draft to the waiter, so a menu that is no longer available cannot be ordered from an old tab. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
 
 ## Restaurant Onboarding Wizard
 
@@ -1097,10 +1100,10 @@ Implemented:
 - Local logo uploads for organizations, brands, and branches.
 - Nested branch areas stored in `area_nodes`.
 - Service point schema and CRUD UI stored in `service_points`.
-- Branch menu CRUD stored in `menus`, `menu_categories`, and `menu_items`.
+- Branch menu CRUD stored in `menus`, `menu_availability_schedules`, `menu_categories`, and `menu_items`.
 - Branch kitchen departments stored in `kitchen_departments`, assignable to menu items and snapshotted into confirmed order items.
 - Branch menu modifier CRUD stored in `modifier_groups`, `modifier_options`, and `menu_item_modifier_groups`.
-- Cached guest menu display with modifier selection, shared table cart UI, guest ready status, send-to-waiter draft handoff, and guest draft item creation/editing on the active public QR table page.
+- Cached schedule-aware guest menu display with modifier selection, shared table cart UI, guest ready status, send-to-waiter draft handoff, and guest draft item creation/editing on the active public QR table page.
 - Service point operational statuses and manual status changes.
 - Table session schema stored in `table_sessions`.
 - Shared draft order schema and guest-owned draft item creation/editing stored in `draft_orders` and `draft_order_items`.
@@ -1155,14 +1158,15 @@ Not implemented yet:
 
 ## Project Memory
 
-After Prompt 103, the current working memory is:
+After Prompt 104, the current working memory is:
 
 - branch public restaurant profiles are implemented and used by QR landing / guest UI;
 - branch opening hours are implemented and block guest ordering while a configured branch is closed;
 - temporary branch closed mode is implemented and blocks new guest ordering while preserving QR and menu viewing;
+- menu availability schedules are implemented and block guest ordering when the active menu is outside its configured branch-timezone interval;
 - SQLite, database cache, database sessions, database queue, local storage, Blade, and Livewire remain the required stack;
 - Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
-- the next recommended prompt is Prompt 104: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
+- the next recommended prompt is Prompt 105: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
 
 Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
 

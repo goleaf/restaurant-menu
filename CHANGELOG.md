@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 104 - Menu Schedules
+
+- Added `menu_availability_schedules` for weekday menu availability intervals using each branch timezone.
+- Added `MenuAvailabilitySchedule`, factory, `Menu::availabilitySchedules()`, `GetMenuAvailabilityStatusAction`, and an observer that clears centralized branch database cache on schedule changes.
+- Extended the branch menu Livewire admin page with a simple schedule block per menu: current status, existing intervals, add interval, and delete interval, guarded by `manage_menu`.
+- Updated guest menu payload selection so guests see only the first active menu that is available right now; if all active menus are outside schedule, the guest menu shows a clear next-availability message.
+- Added backend guards in guest draft item creation and send-to-waiter flow so unavailable scheduled menus cannot be ordered from stale tabs.
+- Touched modules/files: `menus` model relationship, new schedule migration/model/factory/observer/action, `GetGuestMenuForBranchAction`, draft-order guard actions, branch menu Livewire UI, guest menu empty state, docs, and `tests/Feature/MenuScheduleTest.php`.
+- Limitations: no special holiday calendar, no per-date overrides, no external calendar APIs, no Redis/WebSockets/S3/Docker, and no online ordering outside active menu schedule windows.
+- Manual check: add breakfast and lunch intervals to two active menus on the branch menu page, open the QR guest menu before/during/after each interval, confirm only the currently available menu appears, then try to add/send a draft after the menu window ends and confirm it is blocked.
+
 ### Docs - Daily Project Memory Update After Prompt 103
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 103 without adding product features.

@@ -3,6 +3,7 @@
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
+use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
@@ -13,6 +14,8 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
+use App\Models\DraftOrderItem;
+use App\Models\Menu;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -200,6 +203,72 @@ class SendDraftOrderToWaiterAction
         }
 
         $this->ensureBranchAcceptsOrders((int) $tableSession->branch_id);
+        $this->ensureDraftMenusAreAvailable($draftOrder);
+    }
+
+    private function ensureDraftMenusAreAvailable(DraftOrder $draftOrder): void
+    {
+        $items = DraftOrderItem::query()
+            ->select([
+                'id',
+                'draft_order_id',
+                'menu_item_id',
+                'item_name',
+            ])
+            ->with([
+                'menuItem' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'menu_id',
+                        'name',
+                    ])
+                    ->with([
+                        'menu' => fn ($menuQuery) => $menuQuery
+                            ->select([
+                                'id',
+                                'branch_id',
+                                'name',
+                                'status',
+                            ])
+                            ->with([
+                                'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
+                                'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
+                                    'id',
+                                    'menu_id',
+                                    'day_of_week',
+                                    'starts_at',
+                                    'ends_at',
+                                ]),
+                            ]),
+                    ]),
+            ])
+            ->where('draft_order_id', $draftOrder->id)
+            ->get();
+
+        foreach ($items as $item) {
+            if ($item->menu_item_id === null) {
+                continue;
+            }
+
+            $menu = $item->menuItem?->menu;
+
+            if (! $menu instanceof Menu) {
+                throw ValidationException::withMessages([
+                    'send_draft' => __('Позиция :name сейчас недоступна.', ['name' => $item->item_name]),
+                ]);
+            }
+
+            $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menu);
+
+            if (! $availability['is_available']) {
+                throw ValidationException::withMessages([
+                    'send_draft' => __(':label. :detail', [
+                        'label' => $availability['label'],
+                        'detail' => $availability['detail'],
+                    ]),
+                ]);
+            }
+        }
     }
 
     private function ensureBranchAcceptsOrders(int $branchId): void

@@ -2,11 +2,21 @@
 
 ## 2026-06-04
 
+### Prompt 102 - Branch Opening Hours
+
+- Added `branch_opening_hours` for weekly branch schedules with closed days and multiple opening intervals per day, using the branch timezone for current open/closed status.
+- Extended the branch settings Livewire page with a simple opening-hours editor and safe behavior when no schedule is configured.
+- Updated the public QR guest landing/table UI to show `Сейчас открыто` / `Сейчас закрыто` status while keeping QR pages and menu browsing available when the restaurant is closed.
+- Blocked guest draft item creation and send-to-waiter actions while a configured branch schedule says the restaurant is closed.
+- Touched modules/files: `BranchOpeningHour`, `Branch::openingHours()`, `GetBranchOpeningStatusAction`, `UpdateBranchOpeningHoursAction`, branch settings Livewire UI, public QR guest components, draft-order actions, docs, and `tests/Feature/BranchOpeningHoursTest.php`.
+- Limitations: no holidays/special dates, no external calendar/maps/booking APIs, no paid services, and no separate online ordering cutoff rules beyond branch open/closed status.
+- Manual check: configure a branch schedule with two intervals and one closed day, open `/q/{public_token}` during open and closed times, confirm menu viewing still works when closed, and confirm adding/sending guest draft items is blocked while closed.
+
 ### Docs - Daily Project Memory Update After Prompt 101
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 101 without adding product features.
 - Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local storage only.
-- Recorded Prompt 102 as the next recommended prompt: a small menu translation admin editor using existing translation tables and database cache invalidation.
+- Recorded Prompt 103 as the next recommended prompt after Prompt 102 completion: a small menu translation admin editor using existing translation tables and database cache invalidation.
 
 ### Prompt 101 - Restaurant Public Profile
 

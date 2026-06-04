@@ -35,6 +35,10 @@ class DraftTotals extends Component
 
     public int $pollingIntervalSeconds = 1;
 
+    public bool $branchCanAcceptOrders = true;
+
+    public string $branchOpeningStatusMessage = '';
+
     /**
      * @var list<array{guest_id: int, guest_name: string, total: string, draft_total: string, confirmed_total: string, has_draft_total: bool, has_confirmed_total: bool, is_current_guest: bool, is_ready: bool}>
      */
@@ -78,12 +82,16 @@ class DraftTotals extends Component
         string $currency = 'EUR',
         string $publicToken = '',
         int $pollingIntervalSeconds = 1,
+        bool $branchCanAcceptOrders = true,
+        string $branchOpeningStatusMessage = '',
     ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->currency = $currency;
         $this->publicToken = $publicToken;
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
+        $this->branchCanAcceptOrders = $branchCanAcceptOrders;
+        $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
 
         $this->refreshTotals();
     }
@@ -116,7 +124,7 @@ class DraftTotals extends Component
             if ($isCurrentGuest) {
                 $this->currentGuestReady = $isReady;
                 $this->canToggleReadyStatus = $this->publicToken !== '' && $this->canEditDraft;
-                $this->canSendDraftToWaiter = $this->publicToken !== '' && $this->canEditDraft;
+                $this->canSendDraftToWaiter = $this->publicToken !== '' && $this->canEditDraft && $this->branchCanAcceptOrders;
                 $this->canRequestBill = $this->publicToken !== ''
                     && $tableSession instanceof TableSession
                     && ! $this->billRequested

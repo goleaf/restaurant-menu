@@ -34,6 +34,13 @@
         </div>
     @else
         <div class="p-4">
+        @if (! $branchCanAcceptOrders)
+            <x-ui.alert tone="warning" class="mt-4" :heading="__('Сейчас закрыто')">
+                {{ $branchOpeningStatusMessage ?: __('Заказы принимаем в часы работы ресторана.') }}
+                <span class="mt-1 block">{{ __('Меню можно смотреть, но добавить позиции сейчас нельзя.') }}</span>
+            </x-ui.alert>
+        @endif
+
         @if ($feedbackMessage)
             <x-ui.alert tone="success" class="mt-4">
                 {{ $feedbackMessage }}
@@ -102,7 +109,7 @@
                                         </div>
 
                                         <div class="mt-3">
-                                            @if ($item['is_available'] && $guestCanAddItems)
+                                            @if ($item['is_available'] && $guestCanAddItems && $branchCanAcceptOrders)
                                                 <div class="grid gap-2">
                                                     <div>
                                                     <x-ui.status-badge tone="success">
@@ -121,6 +128,10 @@
                                                         {{ __('Добавить') }}
                                                     </x-ui.button>
                                                 </div>
+                                            @elseif ($item['is_available'] && ! $branchCanAcceptOrders)
+                                                <x-ui.status-badge tone="warning">
+                                                    {{ __('Сейчас закрыто') }}
+                                                </x-ui.status-badge>
                                             @elseif ($item['is_available'])
                                                 <x-ui.status-badge tone="muted">
                                                     {{ __('Недоступно') }}

@@ -105,6 +105,12 @@
         <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
     @enderror
 
+    @if (! $branchCanAcceptOrders)
+        <x-ui.alert tone="warning" class="mt-4" :heading="__('Сейчас закрыто')">
+            {{ $branchOpeningStatusMessage ?: __('Заказы принимаем в часы работы ресторана.') }}
+        </x-ui.alert>
+    @endif
+
     <div class="mt-4 space-y-4">
         <section class="space-y-3">
             <div class="flex items-center justify-between gap-3">

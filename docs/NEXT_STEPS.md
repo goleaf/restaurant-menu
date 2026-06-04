@@ -4,13 +4,13 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 101. The implemented public
-restaurant profile should be treated as current baseline for future guest UI and
-QR landing work.
+Last memory refresh: 2026-06-04 after Prompt 102. The implemented public
+restaurant profile and branch opening hours should be treated as current
+baseline for future guest UI and QR landing work.
 
 ## Current Recommended Prompt
 
-Prompt 102: add a simple menu translation admin editor.
+Prompt 103: add a simple menu translation admin editor.
 
 Scope:
 
@@ -42,6 +42,12 @@ Do not add:
 - New language list outside the existing supported locales.
 
 ## Recently Completed
+
+Prompt 102 added branch opening hours: weekly schedules with closed days,
+several intervals per day, branch-timezone status checks, admin settings UI, and
+guest open/closed messaging. QR pages and menu browsing still work while a
+configured branch is closed, but guest draft item creation and send-to-waiter
+actions are blocked.
 
 Prompt 101 added the branch public restaurant profile used by QR landing and
 guest UI: public venue name, short description, local logo/cover image,

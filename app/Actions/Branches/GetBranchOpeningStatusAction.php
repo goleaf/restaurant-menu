@@ -1,0 +1,202 @@
+<?php
+
+namespace App\Actions\Branches;
+
+use App\Models\Branch;
+use App\Models\BranchOpeningHour;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+
+class GetBranchOpeningStatusAction
+{
+    /**
+     * @return array{is_configured: bool, is_open: bool, can_accept_orders: bool, label: string, detail: string, tone: string, next_opens_at: string|null, closes_at: string|null, timezone: string}
+     */
+    public function handle(Branch $branch, ?CarbonInterface $now = null): array
+    {
+        $timezone = $this->timezoneFor($branch);
+        $currentTime = $now instanceof CarbonInterface
+            ? Carbon::instance($now->toDateTime())->setTimezone($timezone)
+            : now($timezone);
+        $openingHours = $this->openingHoursFor($branch);
+
+        if ($openingHours->isEmpty()) {
+            return [
+                'is_configured' => false,
+                'is_open' => false,
+                'can_accept_orders' => true,
+                'label' => __('Часы работы не указаны'),
+                'detail' => __('Можно смотреть меню. Заказ доступен по настройкам ресторана.'),
+                'tone' => 'muted',
+                'next_opens_at' => null,
+                'closes_at' => null,
+                'timezone' => $timezone,
+            ];
+        }
+
+        $openInterval = $this->currentOpenInterval($openingHours, $currentTime);
+
+        if ($openInterval !== null) {
+            return [
+                'is_configured' => true,
+                'is_open' => true,
+                'can_accept_orders' => true,
+                'label' => __('Сейчас открыто'),
+                'detail' => __('Открыто до :time', ['time' => $openInterval['closes_at']]),
+                'tone' => 'success',
+                'next_opens_at' => null,
+                'closes_at' => $openInterval['closes_at'],
+                'timezone' => $timezone,
+            ];
+        }
+
+        $nextOpening = $this->nextOpening($openingHours, $currentTime);
+
+        return [
+            'is_configured' => true,
+            'is_open' => false,
+            'can_accept_orders' => false,
+            'label' => __('Сейчас закрыто'),
+            'detail' => $nextOpening === null
+                ? __('Сегодня закрыто')
+                : __('Откроется в :time', ['time' => $nextOpening['label']]),
+            'tone' => 'warning',
+            'next_opens_at' => $nextOpening['time'] ?? null,
+            'closes_at' => null,
+            'timezone' => $timezone,
+        ];
+    }
+
+    public static function dayLabels(): array
+    {
+        return [
+            1 => __('Понедельник'),
+            2 => __('Вторник'),
+            3 => __('Среда'),
+            4 => __('Четверг'),
+            5 => __('Пятница'),
+            6 => __('Суббота'),
+            7 => __('Воскресенье'),
+        ];
+    }
+
+    /**
+     * @return Collection<int, BranchOpeningHour>
+     */
+    private function openingHoursFor(Branch $branch): Collection
+    {
+        return $branch->openingHours()
+            ->select([
+                'id',
+                'branch_id',
+                'day_of_week',
+                'is_closed',
+                'opens_at',
+                'closes_at',
+                'sort_order',
+            ])
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, BranchOpeningHour>  $openingHours
+     * @return array{closes_at: string}|null
+     */
+    private function currentOpenInterval(Collection $openingHours, CarbonInterface $now): ?array
+    {
+        foreach ([-1, 0] as $offset) {
+            $date = $now->copy()->startOfDay()->addDays($offset);
+            $dayOfWeek = (int) $date->isoWeekday();
+
+            foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
+                $start = $this->dateAtTime($date, (string) $openingHour->opens_at);
+                $end = $this->dateAtTime($date, (string) $openingHour->closes_at);
+
+                if ($end->lessThanOrEqualTo($start)) {
+                    $end = $end->addDay();
+                }
+
+                if ($now->greaterThanOrEqualTo($start) && $now->lessThan($end)) {
+                    return ['closes_at' => $end->format('H:i')];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, BranchOpeningHour>  $openingHours
+     * @return array{time: string, label: string}|null
+     */
+    private function nextOpening(Collection $openingHours, CarbonInterface $now): ?array
+    {
+        for ($offset = 0; $offset <= 7; $offset++) {
+            $date = $now->copy()->startOfDay()->addDays($offset);
+            $dayOfWeek = (int) $date->isoWeekday();
+
+            foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
+                $start = $this->dateAtTime($date, (string) $openingHour->opens_at);
+
+                if ($start->greaterThan($now)) {
+                    return [
+                        'time' => $start->toIso8601String(),
+                        'label' => $offset === 0
+                            ? $start->format('H:i')
+                            : $this->shortDayLabel($dayOfWeek).' '.$start->format('H:i'),
+                    ];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, BranchOpeningHour>  $openingHours
+     * @return Collection<int, BranchOpeningHour>
+     */
+    private function openIntervalsForDay(Collection $openingHours, int $dayOfWeek): Collection
+    {
+        return $openingHours
+            ->filter(fn (BranchOpeningHour $openingHour): bool => $openingHour->day_of_week === $dayOfWeek
+                && ! $openingHour->is_closed
+                && is_string($openingHour->opens_at)
+                && is_string($openingHour->closes_at))
+            ->sortBy([
+                ['sort_order', 'asc'],
+                ['opens_at', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+    }
+
+    private function dateAtTime(CarbonInterface $date, string $time): CarbonInterface
+    {
+        [$hours, $minutes] = array_pad(explode(':', substr($time, 0, 5)), 2, 0);
+
+        return $date->copy()->setTime((int) $hours, (int) $minutes);
+    }
+
+    private function timezoneFor(Branch $branch): string
+    {
+        $timezone = $branch->getAttribute('timezone');
+
+        return is_string($timezone) && $timezone !== '' ? $timezone : config('app.timezone', 'UTC');
+    }
+
+    private function shortDayLabel(int $dayOfWeek): string
+    {
+        return match ($dayOfWeek) {
+            1 => __('Пн'),
+            2 => __('Вт'),
+            3 => __('Ср'),
+            4 => __('Чт'),
+            5 => __('Пт'),
+            6 => __('Сб'),
+            7 => __('Вс'),
+            default => '',
+        };
+    }
+}

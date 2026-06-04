@@ -2,6 +2,34 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 102 - Branch Opening Hours
+
+Prompt 102 added branch weekly opening hours and guest-facing open/closed status.
+
+Implemented:
+
+- New `branch_opening_hours` table for local SQLite schedules.
+- New `App\Models\BranchOpeningHour` model and factory.
+- `Branch::openingHours()` relationship ordered by weekday, sort order, time, and id.
+- `App\Actions\Branches\UpdateBranchOpeningHoursAction` for replacing a branch weekly schedule from validated settings data.
+- `App\Actions\Branches\GetBranchOpeningStatusAction` for timezone-aware status checks, including current open interval and next opening time.
+- Existing branch settings page now edits opening hours with closed days and up to four intervals per day.
+- Public QR landing/table UI shows opening status and keeps QR/menu viewing available while the branch is closed.
+- Guest add-to-draft and send-to-waiter backend actions now block ordering when a configured branch schedule says the restaurant is closed.
+- Focused coverage lives in `tests/Feature/BranchOpeningHoursTest.php`.
+
+Rules:
+
+- A closed branch does not disable the QR URL.
+- Guests may still view the restaurant profile and menu when closed.
+- Guest ordering actions are blocked while closed when opening hours are configured.
+- If a branch has no opening-hours rows, ordering is not blocked by schedule.
+- Status checks use `branches.timezone`; no external calendar, map, booking, or paid service is used.
+
+Next recommended prompt:
+
+- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Daily Project Memory Update After Prompt 101 - 2026-06-04
 
 This is a documentation-only memory refresh after Prompt 101. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
@@ -18,13 +46,14 @@ Current stack remains:
 Current state:
 
 - Prompt 101 is complete: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102 is complete: branch opening hours power guest open/closed status and block ordering while closed.
 - Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
 - Guest-facing missing profile/contact data uses fallback text.
 - Local images remain in `storage/app/public/media/...`.
 
 Next recommended prompt:
 
-- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Prompt 101 - Restaurant Public Profile
 
@@ -49,7 +78,7 @@ Constraints kept:
 
 Next recommended prompt:
 
-- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update - 2026-06-04
 
@@ -71,6 +100,7 @@ Already implemented:
 - Organizations, one-plan local SaaS subscription status, organization users, brands, branches, branch users, branch settings, staff invitations, staff UI, and permission override UI.
 - Local media storage for organization, brand, branch logos, branch public profile cover images, and dish images.
 - Branch public restaurant profiles for guest QR landing and guest table context.
+- Branch opening hours for timezone-aware guest open/closed status and ordering guardrails.
 - Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
 - Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
 - Menu flow: menus, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
@@ -81,6 +111,7 @@ Current tables:
 - `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
 - `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
 - `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches` with public profile fields, `branch_users`, `branch_settings`, `invitations`.
+- `branch_opening_hours`.
 - `area_nodes`, `service_points`, `qr_codes`.
 - `menus`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
 - `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`.
@@ -116,6 +147,7 @@ Mandatory business rules:
 - Active guests see each other alphabetically and see the same shared draft/cart with per-guest and table totals.
 - New guests require approval by current active guests when active guests already exist.
 - Guests can edit only their own draft items and only while the draft is still `draft`.
+- If branch opening hours are configured and the branch is currently closed, guests can still open QR/menu pages but cannot add draft items or send a draft to the waiter.
 - Every draft, including repeat orders, must be sent to and confirmed by a waiter before becoming a real order.
 - Kitchen/bar sees only explicitly dispatched confirmed orders, never guest drafts or merely confirmed-but-not-dispatched orders.
 - Order items must keep immutable snapshots of guest/item/modifier/price data.
@@ -138,7 +170,7 @@ Do not use:
 
 Next recommended prompt:
 
-- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 103: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Current Stack
 
@@ -302,6 +334,8 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - `branches`
   - Soft delete through `deleted_at`.
   - Includes public restaurant profile fields: `public_name`, `public_description`, `cover_image_path`, `phone`, `email`, `website_url`, `instagram_url`, `facebook_url`, and `tiktok_url`.
+- `branch_opening_hours`
+  - Stores weekly branch schedules with closed days and multiple intervals per day.
 - `menus`
   - Soft delete through `deleted_at`.
 - `menu_categories`
@@ -368,6 +402,10 @@ Branch:
 - Has one settings record.
 - Stores the public restaurant profile used by guest QR screens: public venue name, short description, local logo, local cover image, address/city/country, phone, email, website, Instagram, Facebook, TikTok, default language, and default currency.
 - Public venue name falls back to `branches.name`; missing description/contact data is shown to guests with tidy fallback text.
+- Has many opening-hour rows through `branch_opening_hours`.
+- Opening hours use `branches.timezone` for open/closed status and may store multiple intervals per day or a closed day row.
+- If opening hours are configured and the branch is currently closed, public QR and guest menu viewing still work, but guest draft item creation and sending a draft to the waiter are blocked.
+- If no opening-hour rows exist for a branch, ordering is not blocked by schedule.
 - Has many menus.
 - Has many kitchen departments.
 - Has many modifier groups.
@@ -1028,7 +1066,7 @@ QR code:
 - Expired pending join requests are marked `expired` when restored or polled by the waiting guest.
 - Active guests see pending join requests in `App\Livewire\PublicQr\JoinRequests`, which refreshes with Livewire polling and does not require WebSockets.
 - The waiting guest status block in `App\Livewire\PublicQr\Show` polls only the join request status and turns approved requests into active guest state.
-- Restored active guests get `guestCanAddItems = true` for future order-position UI.
+- Restored active guests get `guestCanAddItems = true` only when the table/session/guest state allows ordering and the configured branch opening hours currently accept orders.
 - Restored guests from closed/cancelled sessions or with `rejected`, `removed`, `pending_approval`, or `left` status get `guestCanAddItems = false` and a public message.
 - Guest-created pending sessions can display the cached branch menu for active guests, show the shared grouped cart, and create/edit/delete own draft item rows, but they do not create final orders, payment records, kitchen tasks, or bar tasks.
 - If an active session exists, the public QR page shows a future-join message and does not create a pending session.
@@ -1702,6 +1740,7 @@ The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommen
 - Do not allow manual payment while the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`.
 - Do not allow opening a second table session for a service point while its current session is `payment_requested`.
 - Do not let closed table sessions accept guest draft items, guest invite joins, or any new guest ordering.
+- Do not let configured closed branch hours accept guest draft items or send-to-waiter actions; QR and menu viewing must still stay available.
 - Do not let inactive service points accept guest-created sessions, guest invite links, join requests, draft item changes, or send-to-waiter actions.
 - Do not replace random hidden QR, guest, or invite tokens with visible IDs, table numbers, names, or short codes.
 - Do not reissue, disable, revoke, or regenerate a permanent QR when closing a table session.

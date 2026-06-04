@@ -29,6 +29,10 @@ class GuestMenu extends Component
 
     public bool $guestCanAddItems = false;
 
+    public bool $branchCanAcceptOrders = true;
+
+    public string $branchOpeningStatusMessage = '';
+
     public string $currency = 'EUR';
 
     #[Url(as: 'lang')]
@@ -62,6 +66,8 @@ class GuestMenu extends Component
         int $currentGuestId = 0,
         string $publicToken = '',
         bool $guestCanAddItems = false,
+        bool $branchCanAcceptOrders = true,
+        string $branchOpeningStatusMessage = '',
         ?string $language = null,
     ): void {
         $this->branchId = $branchId;
@@ -70,6 +76,8 @@ class GuestMenu extends Component
         $this->currentGuestId = $currentGuestId;
         $this->publicToken = $publicToken;
         $this->guestCanAddItems = $guestCanAddItems;
+        $this->branchCanAcceptOrders = $branchCanAcceptOrders;
+        $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
         $this->currency = SupportedCurrency::normalize($currency);
         $this->languageOptions = GetGuestMenuForBranchAction::supportedLanguageLabels();
         $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $language ?? $this->language);
@@ -87,7 +95,7 @@ class GuestMenu extends Component
 
     public function openItem(int $itemId): void
     {
-        if (! $this->guestCanAddItems) {
+        if (! $this->guestCanAddItems || ! $this->branchCanAcceptOrders) {
             return;
         }
 
@@ -160,6 +168,12 @@ class GuestMenu extends Component
     {
         $this->resetValidation();
         $this->feedbackMessage = '';
+
+        if (! $this->branchCanAcceptOrders) {
+            $this->addError('guest', __('Сейчас закрыто. Заказы принимаем в часы работы ресторана.'));
+
+            return;
+        }
 
         $item = $this->selectedItem();
 

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
@@ -61,6 +62,8 @@ class Show extends Component
 
     public bool $guestCanAddItems = false;
 
+    public bool $guestCanViewTable = false;
+
     public ?string $currentInviteToken = null;
 
     #[Url(as: 'lang')]
@@ -84,7 +87,7 @@ class Show extends Component
     public bool $waiterCallPending = false;
 
     /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_address: string, branch_currency: string, default_language: string, default_language_label: string, default_currency: string, polling_interval_seconds: int, venue_name: string, public_description: string, logo_url: string|null, cover_image_url: string|null, phone: string|null, email: string|null, website_url: string|null, instagram_url: string|null, facebook_url: string|null, tiktok_url: string|null, has_contact_details: bool, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_address: string, branch_currency: string, default_language: string, default_language_label: string, default_currency: string, polling_interval_seconds: int, venue_name: string, public_description: string, logo_url: string|null, cover_image_url: string|null, phone: string|null, email: string|null, website_url: string|null, instagram_url: string|null, facebook_url: string|null, tiktok_url: string|null, has_contact_details: bool, opening_status_label: string, opening_status_detail: string, opening_status_tone: string, can_accept_orders: bool, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
@@ -111,6 +114,10 @@ class Show extends Component
         'facebook_url' => null,
         'tiktok_url' => null,
         'has_contact_details' => false,
+        'opening_status_label' => '',
+        'opening_status_detail' => '',
+        'opening_status_tone' => 'muted',
+        'can_accept_orders' => true,
         'service_point_name' => '',
         'service_point_display_number' => null,
         'service_point_type' => '',
@@ -195,6 +202,7 @@ class Show extends Component
         $this->applyGuestLocale();
 
         $branchSettings = $branch->settings;
+        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
         $defaultLanguage = SupportedLocale::normalize($branchSettings?->default_language);
         $defaultCurrency = SupportedCurrency::normalize($branchSettings?->default_currency ?? $branch->currency);
         $languageLabels = SupportedLocale::labels();
@@ -242,6 +250,10 @@ class Show extends Component
             'facebook_url' => $contactLinks['facebook_url'],
             'tiktok_url' => $contactLinks['tiktok_url'],
             'has_contact_details' => collect($contactLinks)->filter()->isNotEmpty(),
+            'opening_status_label' => $openingStatus['label'],
+            'opening_status_detail' => $openingStatus['detail'],
+            'opening_status_tone' => $openingStatus['tone'],
+            'can_accept_orders' => $openingStatus['can_accept_orders'],
             'service_point_name' => $servicePoint->name,
             'service_point_display_number' => $servicePoint->display_number,
             'service_point_type' => $servicePoint->type->label(),
@@ -335,6 +347,9 @@ class Show extends Component
         $this->guestCanAddItems = $guest instanceof TableSessionGuest
             && $tableSession instanceof TableSession
             && $this->canGuestAddItems($guest, $tableSession);
+        $this->guestCanViewTable = $guest instanceof TableSessionGuest
+            && $tableSession instanceof TableSession
+            && $this->canGuestViewTable($guest, $tableSession);
 
         if ($guest instanceof TableSessionGuest && $tableSession instanceof TableSession) {
             Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $guest->guest_token, 60 * 24 * 30);
@@ -429,6 +444,7 @@ class Show extends Component
             $this->entryState = 'join_request_blocked';
             $this->entryIssueCode = 'join_request_unavailable';
             $this->guestCanAddItems = false;
+            $this->guestCanViewTable = false;
 
             return;
         }
@@ -443,6 +459,7 @@ class Show extends Component
                 $this->entryState = 'join_request_blocked';
                 $this->entryIssueCode = 'join_request_unavailable';
                 $this->guestCanAddItems = false;
+                $this->guestCanViewTable = false;
 
                 return;
             }
@@ -455,7 +472,8 @@ class Show extends Component
             $this->currentGuestId = $guest->id;
             $this->currentJoinRequestId = null;
             $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
-            $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
+            $this->guestCanViewTable = $this->canGuestViewTable($guest, $tableSession);
+            $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
             $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
             $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
 
@@ -466,6 +484,7 @@ class Show extends Component
             $this->entryState = 'join_request_blocked';
             $this->entryIssueCode = $this->joinRequestAccessIssueCode($joinRequest);
             $this->guestCanAddItems = false;
+            $this->guestCanViewTable = false;
 
             return;
         }
@@ -473,6 +492,7 @@ class Show extends Component
         $this->entryState = 'join_request_restored';
         $this->entryIssueCode = '';
         $this->guestCanAddItems = false;
+        $this->guestCanViewTable = false;
     }
 
     public function render(): View
@@ -533,6 +553,7 @@ class Show extends Component
                                 'tiktok_url',
                                 'city',
                                 'country',
+                                'timezone',
                                 'currency',
                             ])
                             ->with([
@@ -595,7 +616,8 @@ class Show extends Component
         $this->currentGuestId = $guest->id;
         $this->currentTableSessionId = $tableSession->id;
         $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
-        $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
+        $this->guestCanViewTable = $this->canGuestViewTable($guest, $tableSession);
+        $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
         $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
         $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
 
@@ -622,6 +644,7 @@ class Show extends Component
         $this->currentTableSessionId = $tableSession->id;
         $this->currentJoinRequestId = $joinRequest->id;
         $this->guestCanAddItems = false;
+        $this->guestCanViewTable = false;
         $this->entryState = $joinRequest->status === TableSessionJoinRequestStatus::Pending
             ? 'join_request_restored'
             : 'join_request_blocked';
@@ -654,6 +677,7 @@ class Show extends Component
             $this->currentGuestId = null;
             $this->currentJoinRequestId = null;
             $this->guestCanAddItems = false;
+            $this->guestCanViewTable = false;
 
             return;
         }
@@ -661,6 +685,7 @@ class Show extends Component
         $this->currentTableSessionId = $tableSession->id;
         $this->currentGuestId = null;
         $this->guestCanAddItems = false;
+        $this->guestCanViewTable = false;
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             $this->entryState = 'guest_invite_closed';
@@ -997,6 +1022,16 @@ class Show extends Component
     }
 
     private function canGuestAddItems(TableSessionGuest $guest, TableSession $tableSession): bool
+    {
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            return false;
+        }
+
+        return $guest->status === TableSessionGuestStatus::Active
+            && (bool) ($this->landing['can_accept_orders'] ?? true);
+    }
+
+    private function canGuestViewTable(TableSessionGuest $guest, TableSession $tableSession): bool
     {
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             return false;

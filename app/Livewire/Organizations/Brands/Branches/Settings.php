@@ -3,6 +3,8 @@
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\EnsureBranchSettingsAction;
+use App\Actions\Branches\GetBranchOpeningStatusAction;
+use App\Actions\Branches\UpdateBranchOpeningHoursAction;
 use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Actions\Media\StoreLocalImageAction;
@@ -18,6 +20,7 @@ use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -83,6 +86,13 @@ class Settings extends Component
 
     public mixed $coverImage = null;
 
+    public bool $openingHoursConfigured = false;
+
+    /**
+     * @var list<array{day_of_week: int, label: string, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>
+     */
+    public array $openingHours = [];
+
     public bool $saved = false;
 
     /**
@@ -126,16 +136,22 @@ class Settings extends Component
 
         $this->fillFromSettings($ensureBranchSettings->handle($branch));
         $this->fillFromBranchProfile($this->branch);
+        $this->fillFromOpeningHours($this->branch);
     }
 
     public function save(
         UpdateBranchSettingsAction $updateBranchSettings,
         UpdateBranchPublicProfileAction $updateBranchPublicProfile,
+        UpdateBranchOpeningHoursAction $updateBranchOpeningHours,
         StoreLocalImageAction $storeLocalImage,
     ): void {
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
 
         $validated = $this->validate($this->rules());
+        $openingHoursConfigured = (bool) $validated['openingHoursConfigured'];
+        $openingHours = $openingHoursConfigured
+            ? $this->validatedOpeningHours($validated['openingHours'] ?? [])
+            : [];
 
         $settings = $updateBranchSettings->handle(
             $this->findSettings(),
@@ -182,9 +198,11 @@ class Settings extends Component
         }
 
         $branch = $updateBranchPublicProfile->handle($this->branch, $profilePayload);
+        $updateBranchOpeningHours->handle($branch, $openingHours, $openingHoursConfigured);
 
         $this->fillFromSettings($settings);
         $this->fillFromBranchProfile($branch);
+        $this->fillFromOpeningHours($branch);
         $this->reset('publicLogo', 'coverImage');
         $this->saved = true;
 
@@ -203,6 +221,40 @@ class Settings extends Component
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.settings');
+    }
+
+    public function addOpeningInterval(int $dayOfWeek): void
+    {
+        $this->openingHoursConfigured = true;
+
+        foreach ($this->openingHours as $index => $day) {
+            if ((int) $day['day_of_week'] !== $dayOfWeek) {
+                continue;
+            }
+
+            $this->openingHours[$index]['is_closed'] = false;
+            $this->openingHours[$index]['intervals'][] = [
+                'opens_at' => '10:00',
+                'closes_at' => '22:00',
+            ];
+
+            return;
+        }
+    }
+
+    public function removeOpeningInterval(int $dayOfWeek, int $intervalIndex): void
+    {
+        foreach ($this->openingHours as $index => $day) {
+            if ((int) $day['day_of_week'] !== $dayOfWeek) {
+                continue;
+            }
+
+            unset($this->openingHours[$index]['intervals'][$intervalIndex]);
+            $this->openingHours[$index]['intervals'] = array_values($this->openingHours[$index]['intervals']);
+            $this->openingHours[$index]['is_closed'] = $this->openingHours[$index]['intervals'] === [];
+
+            return;
+        }
     }
 
     /**
@@ -232,6 +284,14 @@ class Settings extends Component
             'tiktokUrl' => ['nullable', 'url', 'max:2048'],
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
+            'openingHoursConfigured' => ['boolean'],
+            'openingHours' => ['array', 'size:7'],
+            'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7'],
+            'openingHours.*.label' => ['required', 'string', 'max:40'],
+            'openingHours.*.is_closed' => ['boolean'],
+            'openingHours.*.intervals' => ['array', 'max:4'],
+            'openingHours.*.intervals.*.opens_at' => ['nullable', 'date_format:H:i'],
+            'openingHours.*.intervals.*.closes_at' => ['nullable', 'date_format:H:i'],
         ];
     }
 
@@ -265,6 +325,110 @@ class Settings extends Component
         $this->tiktokUrl = (string) ($this->branch->tiktok_url ?? '');
         $this->currentLogoUrl = $this->branch->logoUrl();
         $this->currentCoverImageUrl = $this->branch->coverImageUrl();
+    }
+
+    private function fillFromOpeningHours(Branch $branch): void
+    {
+        $openingHours = $branch->openingHours()
+            ->select([
+                'id',
+                'branch_id',
+                'day_of_week',
+                'is_closed',
+                'opens_at',
+                'closes_at',
+                'sort_order',
+            ])
+            ->get()
+            ->groupBy('day_of_week');
+
+        $this->openingHoursConfigured = $openingHours->isNotEmpty();
+        $this->openingHours = collect(GetBranchOpeningStatusAction::dayLabels())
+            ->map(function (string $label, int $dayOfWeek) use ($openingHours): array {
+                $dayRows = $openingHours->get($dayOfWeek, collect());
+                $intervals = $dayRows
+                    ->filter(fn ($openingHour): bool => ! $openingHour->is_closed)
+                    ->map(fn ($openingHour): array => [
+                        'opens_at' => substr((string) $openingHour->opens_at, 0, 5),
+                        'closes_at' => substr((string) $openingHour->closes_at, 0, 5),
+                    ])
+                    ->values()
+                    ->all();
+
+                return [
+                    'day_of_week' => $dayOfWeek,
+                    'label' => $label,
+                    'is_closed' => $this->openingHoursConfigured && $intervals === [],
+                    'intervals' => $intervals !== [] ? $intervals : [
+                        [
+                            'opens_at' => '10:00',
+                            'closes_at' => '22:00',
+                        ],
+                    ],
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $openingHours
+     * @return list<array{day_of_week: int, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>
+     */
+    private function validatedOpeningHours(array $openingHours): array
+    {
+        $errors = [];
+        $normalizedDays = [];
+
+        foreach ($openingHours as $dayIndex => $day) {
+            $dayOfWeek = (int) ($day['day_of_week'] ?? 0);
+            $isClosed = (bool) ($day['is_closed'] ?? false);
+            $intervals = [];
+
+            if ($dayOfWeek < 1 || $dayOfWeek > 7) {
+                continue;
+            }
+
+            if (! $isClosed) {
+                foreach (($day['intervals'] ?? []) as $intervalIndex => $interval) {
+                    $opensAt = substr((string) ($interval['opens_at'] ?? ''), 0, 5);
+                    $closesAt = substr((string) ($interval['closes_at'] ?? ''), 0, 5);
+
+                    if ($opensAt === '' || $closesAt === '') {
+                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.opens_at"] = __('Укажите начало и конец интервала.');
+
+                        continue;
+                    }
+
+                    if ($opensAt === $closesAt) {
+                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.closes_at"] = __('Время закрытия должно отличаться от времени открытия.');
+
+                        continue;
+                    }
+
+                    $intervals[] = [
+                        'opens_at' => $opensAt,
+                        'closes_at' => $closesAt,
+                    ];
+                }
+
+                if ($intervals === []) {
+                    $errors["openingHours.$dayIndex.intervals"] = __('Добавьте интервал или отметьте день выходным.');
+                }
+            }
+
+            $normalizedDays[] = [
+                'day_of_week' => $dayOfWeek,
+                'is_closed' => $isClosed,
+                'intervals' => $intervals,
+            ];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $normalizedDays;
     }
 
     /**

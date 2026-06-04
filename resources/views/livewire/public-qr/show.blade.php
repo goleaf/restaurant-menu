@@ -31,7 +31,7 @@
 
     <main class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">
         @if ($state === 'ready')
-            @if ($currentGuestId && $guestCanAddItems && $currentTableSessionId)
+            @if ($currentGuestId && $guestCanViewTable && $currentTableSessionId)
                 <section data-page="guest-table-shell" class="flex flex-col gap-4">
                     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                         <div class="border-b border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
@@ -86,6 +86,20 @@
                                 <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Заказ') }}</p>
                                 <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">{{ __('Черновик') }}</p>
                             </div>
+                        </div>
+
+                        <div class="mt-4 rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Часы работы') }}</p>
+                                <x-ui.status-badge :tone="$landing['opening_status_tone']">
+                                    {{ $landing['opening_status_label'] }}
+                                </x-ui.status-badge>
+                            </div>
+                            <p class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $landing['opening_status_detail'] }}</p>
+
+                            @if (! $landing['can_accept_orders'])
+                                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{{ __('Заказы принимаем в часы работы ресторана.') }}</p>
+                            @endif
                         </div>
 
                         @if ($preparedGuestName || $entryMessage)
@@ -269,6 +283,8 @@
                         :current-guest-id="$currentGuestId"
                         :public-token="$token"
                         :guest-can-add-items="$guestCanAddItems"
+                        :branch-can-accept-orders="$landing['can_accept_orders']"
+                        :branch-opening-status-message="$landing['opening_status_detail']"
                         :language="$language"
                         wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}-{{ $language }}"
                     />
@@ -279,6 +295,8 @@
                         :public-token="$token"
                         :currency="$landing['branch_currency']"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :branch-can-accept-orders="$landing['can_accept_orders']"
+                        :branch-opening-status-message="$landing['opening_status_detail']"
                         :show-controls="false"
                         :show-totals="false"
                         :show-statuses="false"
@@ -291,6 +309,8 @@
                         :public-token="$token"
                         :currency="$landing['branch_currency']"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :branch-can-accept-orders="$landing['can_accept_orders']"
+                        :branch-opening-status-message="$landing['opening_status_detail']"
                         wire:key="guest-draft-totals-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
                 </section>
@@ -364,7 +384,17 @@
                                     @endif
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-2">
+                                <div class="grid gap-2 sm:grid-cols-3">
+                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Часы работы') }}</dt>
+                                        <dd class="mt-1">
+                                            <x-ui.status-badge :tone="$landing['opening_status_tone']">
+                                                {{ $landing['opening_status_label'] }}
+                                            </x-ui.status-badge>
+                                        </dd>
+                                        <dd class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $landing['opening_status_detail'] }}</dd>
+                                    </div>
+
                                     <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                                         <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Language') }}</dt>
                                         <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_language_label'] }} ({{ $landing['default_language'] }})</dd>

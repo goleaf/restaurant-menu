@@ -2,6 +2,7 @@
 
 namespace App\Actions\DraftOrders;
 
+use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
@@ -9,6 +10,7 @@ use App\Enums\MenuStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
@@ -175,6 +177,8 @@ class AddGuestDraftOrderItemAction
                 'guest' => __('Только активный гость за этим столом может добавлять позиции.'),
             ]);
         }
+
+        $this->ensureBranchAcceptsOrders((int) $tableSession->branch_id, 'guest');
     }
 
     private function ensureMenuItemCanBeAdded(TableSession $tableSession, MenuItem $menuItem): void
@@ -217,6 +221,28 @@ class AddGuestDraftOrderItemAction
         }
 
         return $draftOrder;
+    }
+
+    private function ensureBranchAcceptsOrders(int $branchId, string $field): void
+    {
+        $branch = Branch::query()
+            ->select(['id', 'timezone'])
+            ->whereKey($branchId)
+            ->first();
+
+        if (! $branch instanceof Branch) {
+            return;
+        }
+
+        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
+
+        if ($openingStatus['can_accept_orders']) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $field => __('Сейчас закрыто. :detail', ['detail' => $openingStatus['detail']]),
+        ]);
     }
 
     private function snapshotName(?string $itemName, MenuItem $menuItem): string

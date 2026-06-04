@@ -23,6 +23,11 @@ branch settings should save public name, description, local logo/cover, contact
 links, default language, and default currency, and the QR landing should show
 those values or polished fallback text.
 
+After Prompt 102, include branch opening hours in setup and guest smoke checks:
+branch settings should save closed days and several intervals per day, the QR
+landing should show whether the restaurant is open or closed, and guest ordering
+should be blocked while a configured branch is closed.
+
 Use these focused checks after documentation-only maintenance:
 
 ```bash
@@ -40,6 +45,44 @@ npm run build
 
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
+
+## Prompt 102 Branch Opening Hours Results
+
+Programmatic coverage was added in `tests/Feature/BranchOpeningHoursTest.php`.
+The feature currently verifies:
+
+- `branch_opening_hours` stores weekly branch schedules;
+- one day can have several opening intervals;
+- a day can be marked closed;
+- branch settings can save the schedule;
+- status checks respect the branch timezone;
+- the public QR page still opens when the branch is closed;
+- guests can view the table/menu while closed;
+- guest draft item creation and send-to-waiter are blocked while a configured
+  branch schedule is closed.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/BranchOpeningHoursTest.php
+```
+
+Manual check:
+
+1. Open branch settings.
+2. Enable opening hours.
+3. Configure Monday with two intervals, for example `10:00-14:00` and
+   `18:00-22:00`.
+4. Mark one weekday as closed.
+5. Save settings.
+6. Open a QR URL for the branch.
+7. Confirm the QR landing/table UI shows `Сейчас открыто` during an open
+   interval.
+8. Confirm it shows `Сейчас закрыто` and `Откроется в ...` outside an open
+   interval.
+9. Confirm the menu remains visible while closed.
+10. Confirm adding a dish and sending a draft to the waiter are blocked while
+    closed.
 
 ## Prompt 101 Restaurant Public Profile Results
 
@@ -224,28 +267,33 @@ Use `demo.admin@example.com` or `demo.owner@example.com`.
    - guest invite links allowed;
    - new guests require approval;
    - polling interval is 1 second.
-9. Open branch zones.
-10. Create a zone.
+9. Configure branch opening hours or leave them disabled intentionally.
+   - If enabled, include at least one open day with two intervals and one closed
+     day.
+10. Open branch zones.
+11. Create a zone.
    - Example name: `Smoke Main Hall`.
-11. Open branch service points.
-12. Create a service point.
+12. Open branch service points.
+13. Create a service point.
     - Type: table.
     - Example name: `Smoke Table 1`.
     - Capacity: 4.
     - Assign it to `Smoke Main Hall`.
-13. Generate QR for the service point.
-14. Confirm the QR page shows:
+14. Generate QR for the service point.
+15. Confirm the QR page shows:
     - branch;
     - current zone;
     - current service point;
     - public URL;
     - QR image;
     - short code.
-15. Open the public QR URL.
-16. Confirm the URL is `/q/{public_token}` and does not expose organization,
+16. Open the public QR URL.
+17. Confirm the URL is `/q/{public_token}` and does not expose organization,
     branch, service point, table ID, table number, or area ID.
-17. Confirm the QR landing shows the public restaurant profile or tidy fallback
+18. Confirm the QR landing shows the public restaurant profile or tidy fallback
     text when optional profile details are empty.
+19. Confirm the QR landing shows current opening-hours status when a schedule
+    is configured.
 
 ## Menu Flow
 
@@ -280,6 +328,7 @@ Use two different browser sessions. For example:
    - venue name;
    - current zone;
    - current service point;
+   - current opening-hours status;
    - guest list;
    - menu;
    - shared draft/cart area;

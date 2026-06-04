@@ -158,6 +158,14 @@ Public profile editing lives on the existing branch settings page:
 
 Images are uploaded to the local public disk under `storage/app/public/media/...`. No maps, external APIs, social integrations, S3, paid services, React, Vue, or WebSockets are used. The public QR URL stays `/q/{public_token}` and does not expose branch or service point IDs.
 
+## Branch Opening Hours
+
+Each branch can store a weekly opening schedule from the branch settings page. The schedule supports closed days and multiple time intervals per day, and status checks use the branch timezone.
+
+When opening hours are configured and the branch is currently closed, the public QR page still opens and guests can still view the restaurant profile and menu. Guest ordering actions are blocked with clear text such as `Сейчас закрыто` and `Откроется в 10:00`. If a branch has no schedule configured, opening hours do not block ordering.
+
+The schedule is stored locally in SQLite in `branch_opening_hours`. No external calendar, map, booking, or paid service is used.
+
 ## Database Notifications
 
 Operational notifications are stored in Laravel's local `notifications` table and are delivered only through the `database` channel.
@@ -1135,12 +1143,13 @@ Not implemented yet:
 
 ## Project Memory
 
-After Prompt 101, the current working memory is:
+After Prompt 102, the current working memory is:
 
 - branch public restaurant profiles are implemented and used by QR landing / guest UI;
+- branch opening hours are implemented and block guest ordering while a configured branch is closed;
 - SQLite, database cache, database sessions, database queue, local storage, Blade, and Livewire remain the required stack;
 - Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
-- the next recommended prompt is Prompt 102: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
+- the next recommended prompt is Prompt 103: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
 
 Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
 

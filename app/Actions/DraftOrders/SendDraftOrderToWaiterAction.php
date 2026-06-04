@@ -2,6 +2,7 @@
 
 namespace App\Actions\DraftOrders;
 
+use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
@@ -10,6 +11,7 @@ use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -87,6 +89,7 @@ class SendDraftOrderToWaiterAction
                 'tableSession' => fn ($query) => $query
                     ->select([
                         'id',
+                        'branch_id',
                         'service_point_id',
                         'status',
                         'ended_at',
@@ -195,5 +198,29 @@ class SendDraftOrderToWaiterAction
                 'send_draft' => __('Добавьте хотя бы одну позицию перед отправкой официанту.'),
             ]);
         }
+
+        $this->ensureBranchAcceptsOrders((int) $tableSession->branch_id);
+    }
+
+    private function ensureBranchAcceptsOrders(int $branchId): void
+    {
+        $branch = Branch::query()
+            ->select(['id', 'timezone'])
+            ->whereKey($branchId)
+            ->first();
+
+        if (! $branch instanceof Branch) {
+            return;
+        }
+
+        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
+
+        if ($openingStatus['can_accept_orders']) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'send_draft' => __('Сейчас закрыто. :detail', ['detail' => $openingStatus['detail']]),
+        ]);
     }
 }

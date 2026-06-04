@@ -73,6 +73,18 @@ class Branch extends Model
         return $this->hasOne(BranchSetting::class);
     }
 
+    /**
+     * @return HasMany<BranchOpeningHour, $this>
+     */
+    public function openingHours(): HasMany
+    {
+        return $this->hasMany(BranchOpeningHour::class)
+            ->orderBy('day_of_week')
+            ->orderBy('sort_order')
+            ->orderBy('opens_at')
+            ->orderBy('id');
+    }
+
     public function publicDisplayName(): string
     {
         $publicName = $this->getAttribute('public_name');

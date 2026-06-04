@@ -50,6 +50,12 @@
         <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
     @enderror
 
+    @if (! $branchCanAcceptOrders)
+        <x-ui.alert tone="warning" class="mt-4" :heading="__('Сейчас закрыто')">
+            {{ $branchOpeningStatusMessage ?: __('Заказы принимаем в часы работы ресторана.') }}
+        </x-ui.alert>
+    @endif
+
     <div class="mt-4 space-y-3">
         <section class="space-y-2">
             <div class="flex items-center justify-between gap-3">

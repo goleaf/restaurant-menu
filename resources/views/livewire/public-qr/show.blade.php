@@ -118,6 +118,7 @@
                     <livewire:public-qr.table-guests
                         :table-session-id="$currentTableSessionId"
                         :current-guest-id="$currentGuestId"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
                         wire:key="guest-table-guests-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
@@ -125,6 +126,7 @@
                         :table-session-id="$currentTableSessionId"
                         :current-guest-id="$currentGuestId"
                         :public-token="$token"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
                         wire:key="guest-notifications-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
@@ -221,7 +223,14 @@
                         :table-session-id="$currentTableSessionId"
                         :guest-id="$currentGuestId"
                         :public-token="$token"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
                         wire:key="guest-join-requests-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
+                    />
+
+                    <livewire:public-qr.order-statuses
+                        :table-session-id="$currentTableSessionId"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        wire:key="guest-order-statuses-{{ $currentTableSessionId }}"
                     />
 
                     <livewire:public-qr.guest-menu
@@ -240,7 +249,20 @@
                         :current-guest-id="$currentGuestId"
                         :public-token="$token"
                         :currency="$landing['branch_currency']"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :show-controls="false"
+                        :show-totals="false"
+                        :show-statuses="false"
                         wire:key="guest-draft-order-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
+                    />
+
+                    <livewire:public-qr.draft-totals
+                        :table-session-id="$currentTableSessionId"
+                        :current-guest-id="$currentGuestId"
+                        :public-token="$token"
+                        :currency="$landing['branch_currency']"
+                        :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        wire:key="guest-draft-totals-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
                 </section>
             @else
@@ -323,7 +345,7 @@
                         @if ($entryMessage || $currentJoinRequestId)
                             <div
                                 class="mt-3"
-                                @if ($currentJoinRequestId) wire:poll.visible.1s="refreshJoinRequestStatus" @endif
+                                @if ($currentJoinRequestId) wire:poll.visible.{{ $landing['polling_interval_seconds'] }}s="refreshJoinRequestStatus" @endif
                             >
                                 @if ($entryMessage)
                                     <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">

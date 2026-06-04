@@ -69,7 +69,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
-- Draft order schema with repeat draft history per table session, latest/current draft access, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
+- Draft order schema with repeat draft history per table session, latest/current draft access, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and split isolated guest polling blocks for draft items, draft totals, and order statuses.
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
@@ -80,6 +80,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
 - Database notifications for new join requests, drafts sent to waiters, guest waiter calls, bill requests, waiter-confirmed draft orders, kitchen/bar item cooking/ready states, and rejected draft orders, plus authenticated and guest Livewire notification UI blocks that poll the local database.
 - SQLite performance guardrails for shared hosting: extra hot-path indexes, visible-only polling attributes, database-cache dashboard preservation, and cursor-paginated audit log history.
+- Livewire guest polling optimization: the active public QR table page now polls guests, notifications, join requests, order statuses, draft positions, and draft totals as separate visible isolated components using the branch settings polling interval.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -473,7 +474,7 @@ Database notification:
 - `UpdateDepartmentTicketItemStatusAction` sends `KitchenItemReadyNotification` to branch waiter recipients and the item owner when an item changes to `ready`.
 - `RejectDraftOrderByWaiterAction` sends `DraftOrderRejectedNotification` to active guests in the same table session.
 - `App\Livewire\Notifications\UnreadCount` shows authenticated users an unread notification count and event list for waiter-facing events; it updates through `wire:poll.1s` and can mark one or all current-user notifications read locally.
-- `App\Livewire\PublicQr\Notifications` shows active guests their unread join/order/kitchen notifications on the public QR table page; it validates the browser `guest_token`, updates through `wire:poll.1s`, and can mark one or all current-guest notifications read locally.
+- `App\Livewire\PublicQr\Notifications` shows active guests their unread join/order/kitchen notifications on the public QR table page; it validates the browser `guest_token`, uses the branch polling interval, and can mark one or all current-guest notifications read locally.
 - Guests are still not authenticated users; guest-facing notifications are attached to `table_session_guests`.
 - Do not add Push, WebSocket, Redis, SMS, Telegram API, mail delivery, or paid notification services for these operational events.
 
@@ -558,8 +559,8 @@ SQLite performance guardrails:
 - These indexes support unread notification polling, waiter/service-point lists, active session scans, join approval polling, latest/sent draft lookup, shared cart item ordering, restaurant dashboard order reads, department ticket polling, ready unserved ticket checks, and audit history browsing.
 - `App\Actions\Dashboard\BuildRestaurantDashboardAction` still uses `Cache::store('database')->remember(...)` and branch cache-key indexes; do not move it to Redis or un-cached per-refresh queries.
 - `App\Actions\AuditLogs\BuildAuditLogIndexAction` now returns a cursor-paginated history payload with prepared rows; it no longer loads a fixed latest 200-row list.
-- Staff notification UI polling is `wire:poll.visible.5s`; guest notification UI polling is `wire:poll.visible.2s`.
-- Waiter, kitchen/bar, guest cart, guest list, and join-request live blocks keep 1-second polling but now use the `visible` modifier and selected/bounded Eloquent queries.
+- Staff notification UI polling is `wire:poll.visible.5s`; guest notification UI polling uses `branch_settings.polling_interval_seconds`.
+- Waiter and kitchen/bar live blocks keep 1-second polling; guest table live blocks use `branch_settings.polling_interval_seconds` with the `visible` modifier and selected/bounded Eloquent queries.
 - Do not remove existing `select([...])`, `limit(...)`, eager loads, or cursor pagination from polling/dashboard/history paths without replacing them with an equal or lighter query shape.
 
 Draft order:
@@ -776,7 +777,7 @@ QR code:
 - The guest invite link opens the same `GET /q/{token}` route with an `invite` query token and still keeps internal IDs out of the URL.
 - When an invited person opens the link and enters a name, `App\Livewire\PublicQr\Show` creates a pending join request for the invited table session.
 - Active guests see the main guest table page shell instead of the entry form.
-- The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, cached active branch menu, and the shared draft basket.
+- The guest table shell shows venue name, current service point, saved entry state, invite action, guest list, cached active branch menu, order status, draft positions, and draft totals.
 - The guest table shell can add menu items to `draft_order_items`, shows a shared cart grouped by guests alphabetically, lets active guests edit/delete only their own draft positions, and lets any active guest send the shared draft to waiter review, but it does not create final orders, payments, kitchen tasks, or bar tasks.
 - On page refresh, `App\Livewire\PublicQr\Show` reads `guest_token_{hash}` and restores the matching guest only when the guest belongs to a table session for the current service point.
 - If no guest matches the cookie token, `App\Livewire\PublicQr\Show` can restore a matching join request for the current service point and show pending/rejected/expired messaging.
@@ -941,7 +942,7 @@ Local media storage:
 - `App\Livewire\PublicQr\Show` now includes guest language selection and branch-default language resolution.
 - `App\Livewire\PublicQr\GuestMenu` receives/applies the selected guest language.
 - `App\Livewire\Notifications\UnreadCount` shows authenticated unread database notification counts and event lists in the app layout and polls its visible block every 5 seconds.
-- `App\Livewire\PublicQr\Notifications` shows active guest unread notification counts and event lists on the public QR table page and polls its visible block every 2 seconds.
+- `App\Livewire\PublicQr\Notifications` shows active guest unread notification counts and event lists on the public QR table page and polls its visible block with `branch_settings.polling_interval_seconds`.
 - `App\Livewire\Organizations\Brands\Branches\Index` and `App\Livewire\Organizations\Brands\Branches\Settings` expose supported currency selectors.
 - `App\Livewire\PublicQr\GuestMenu` formats guest-facing menu prices with the current branch currency.
 - `App\Livewire\Onboarding\RestaurantSetup`
@@ -962,7 +963,9 @@ Local media storage:
 - `App\Livewire\PublicQr\JoinRequests` polls visible pending-join blocks with selected columns and bounded result sets.
 - `App\Livewire\PublicQr\TableGuests` polls visible guest-list blocks with selected columns and bounded result sets.
 - `App\Livewire\PublicQr\GuestMenu`
-- `App\Livewire\PublicQr\DraftOrder` polls the visible shared cart block and reads draft state from selected/bounded Eloquent queries.
+- `App\Livewire\PublicQr\OrderStatuses` polls only guest-facing draft/order/kitchen-ticket status state.
+- `App\Livewire\PublicQr\DraftOrder` polls the visible draft item block and can run without status/totals queries on the active guest page.
+- `App\Livewire\PublicQr\DraftTotals` polls guest readiness, per-guest totals, draft/table totals, send-to-waiter, and request-bill controls.
 - `App\Livewire\Departments\Dashboard` shared abstract department ticket screen with visible-only 1-second polling for kitchen/bar ticket cards.
 - `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
@@ -1017,13 +1020,18 @@ Local media storage:
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.
 - Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
-- Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with modifier selection, and the shared draft basket.
+- Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with modifier selection, order status, draft positions, and draft totals.
 - Active guests can press `Позвать официанта` from the shell; this calls `RequestWaiterForTableSessionAction`, creates or reuses a pending waiter call, and shows a local confirmation.
-- Active guests can press `Попросить счёт` from the shared basket; this calls `RequestBillForTableSessionAction`, changes the session/service point to `payment_requested`, and shows the table total plus per-guest totals.
-- The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
+- Active guests can press `Попросить счёт` from the draft totals block; this calls `RequestBillForTableSessionAction`, changes the session/service point to `payment_requested`, and shows the table total plus per-guest totals.
+- The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `branch_settings.polling_interval_seconds` so the whole page is not refreshed.
 - The guest list shows each guest's ready/not-ready state from `table_session_guests.ready_at`.
 - The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
-- The shared draft basket in the shell is rendered by isolated `App\Livewire\PublicQr\DraftOrder` and uses `wire:poll.1s="refreshDraft"` so only the basket block refreshes.
+- Join approvals are rendered by isolated `App\Livewire\PublicQr\JoinRequests` and use the same branch polling interval.
+- Guest notifications are rendered by isolated `App\Livewire\PublicQr\Notifications` and use the same branch polling interval.
+- Guest order state is rendered by isolated `App\Livewire\PublicQr\OrderStatuses`, which polls only draft/order/kitchen-ticket status fields.
+- Draft positions are rendered by isolated `App\Livewire\PublicQr\DraftOrder`, which polls only the draft item list on the active guest page.
+- Ready state, draft totals, confirmed-order totals, send-to-waiter, and request-bill controls are rendered by isolated `App\Livewire\PublicQr\DraftTotals`.
+- `App\Actions\Branches\GetBranchPollingIntervalAction` reads the branch interval from the SQLite-backed database cache and falls back to 1 second.
 - Public QR route restores a guest from that cookie after page refresh and shows closed/blocked status messages when needed.
 - Public QR route can also restore a join request from that cookie and show pending/rejected/expired request messages.
 - Active guests get a separate polled join-request block for accepting or rejecting waiting guests.
@@ -1031,9 +1039,9 @@ Local media storage:
 - Public QR route shows the active branch menu for active guests and allows item modifier/comment configuration that persists into `draft_order_items`.
 - Public QR route shows the shared table cart grouped by guests alphabetically.
 - Public QR route lets active guests edit or delete only their own draft positions from the basket before the draft is sent to waiter review.
-- Public QR route lets any active guest send the shared draft to waiter review from the basket.
+- Public QR route lets any active guest send the shared draft to waiter review from the draft totals block.
 - Public QR route lets active guests request waiter help, but rejected/removed/left/pending guests cannot request waiter help.
-- Public QR route lets active guests request the bill, but rejected/removed/left/pending guests cannot request the bill.
+- Public QR route lets active guests request the bill from the draft totals block, but rejected/removed/left/pending guests cannot request the bill.
 - Public QR route does not create final orders directly, create payment records, or send anything to kitchen/bar.
 
 ## Current Guest Menu Display
@@ -1066,37 +1074,36 @@ Local media storage:
 
 ## Current Guest Draft Basket
 
-- `App\Livewire\PublicQr\DraftOrder` renders the shared table cart block inside the active guest table shell.
-- The component is isolated and uses `wire:poll.1s="refreshDraft"`.
-- The component eager-loads draft items with their guest records before rendering; Blade does not query the database.
-- The basket groups guests alphabetically by `guest_name` in `guestSections`.
-- Each guest section shows that guest's ready/not-ready state, item count, positions, line prices, selected modifier names, optional comments, quantity, and guest total.
-- The basket shows per-guest totals sorted alphabetically by `guest_name`.
-- The basket shows the current draft total, the already confirmed non-cancelled orders total, and the table total when confirmed orders exist.
-- Converted drafts do not add their draft item total to the table total again; the confirmed order total already carries that amount.
-- All active guests see the same grouped cart information.
-- The basket shows ready guest count versus active guest count and whether all active guests are ready.
-- The current active guest can toggle readiness through `ToggleTableSessionGuestReadyAction`, which sets or clears `table_session_guests.ready_at`.
-- Any active guest can send the shared draft to waiter review through `SendDraftOrderToWaiterAction`.
-- If not all active guests have `ready_at` set, the basket shows inline confirmation before sending.
+- `App\Livewire\PublicQr\DraftOrder` renders the shared draft positions block inside the active guest table shell.
+- On the active guest page it is mounted with totals, controls, and status queries disabled; those concerns are handled by separate polling blocks.
+- The component is isolated and uses the branch polling interval for `refreshDraft`.
+- The component eager-loads only draft items with their guest records before rendering; Blade does not query the database.
+- The draft positions block groups guests alphabetically by `guest_name` in `guestSections`.
+- Each guest section shows that guest's ready/not-ready state, item count, positions, line prices, selected modifier names, optional comments, quantity, and current-draft guest total.
+- `App\Livewire\PublicQr\DraftTotals` renders per-guest totals, current draft total, already confirmed non-cancelled order totals, table total, ready counts, send-to-waiter, and request-bill controls.
+- `App\Livewire\PublicQr\OrderStatuses` renders waiter rejection, waiter confirmation, kitchen/bar accepted, cooking, ready, and served guest-facing status.
+- All active guests see the same grouped draft and totals information.
+- The current active guest can toggle readiness through `DraftTotals`, which calls `ToggleTableSessionGuestReadyAction` and sets or clears `table_session_guests.ready_at`.
+- Any active guest can send the shared draft to waiter review through `DraftTotals`, which calls `SendDraftOrderToWaiterAction`.
+- If not all active guests have `ready_at` set, `DraftTotals` shows inline confirmation before sending.
 - Sending clears active guests' `ready_at`, sets the draft to `sent_to_waiter`, stores sender/timestamp, and updates the service point to `has_new_order`.
-- The basket receives the public QR token so edit/delete actions can recheck the saved browser guest token.
-- Active guests can edit only their own positions from the basket.
+- Draft position and totals components receive the public QR token so actions can recheck the saved browser guest token.
+- Active guests can edit only their own positions from the draft positions block.
 - Editing own positions supports quantity, comment, and currently available modifier selections.
 - Active guests can delete only their own positions from the basket.
 - Other guests' positions are read-only.
-- If the draft status is no longer `draft`, the basket shows a blocked-editing message and does not expose edit/delete actions.
-- If the draft status is `rejected`, the basket shows the waiter rejection reason.
-- If the draft status is `converted_to_order`, the basket tells guests that the order was confirmed and editing is closed.
+- If the draft status is no longer `draft`, the draft positions block does not expose edit/delete actions.
+- If the draft status is `rejected`, `OrderStatuses` shows the waiter rejection reason.
+- If the draft status is `converted_to_order`, `OrderStatuses` tells guests that the order was confirmed and editing is closed.
 - After a converted draft, adding a new guest menu position creates a new latest draft for the same table session so guests can make a repeat order.
 - `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
-- Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
-- Guest basket per-person totals include confirmed non-cancelled `order_items` snapshots plus the current open draft items.
-- Guest basket table total includes confirmed non-cancelled `orders.total_price` plus the current open draft total and does not double-count converted drafts.
-- Active guests can request the bill from the basket; this sets the table session to `payment_requested` and notifies waiters through the database notification table.
-- After a draft is converted to an order, the cart shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
+- Draft item state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads and the rarely changed branch polling interval.
+- Guest totals include confirmed non-cancelled `order_items` snapshots plus the current open draft items.
+- Table total includes confirmed non-cancelled `orders.total_price` plus the current open draft total and does not double-count converted drafts.
+- Active guests can request the bill from `DraftTotals`; this sets the table session to `payment_requested` and notifies waiters through the database notification table.
+- After a draft is converted to an order, `OrderStatuses` shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
 - Guests only see the shared status. They cannot mark kitchen/bar ticket items ready or served.
-- The basket can submit the draft only to waiter review and does not create final orders or online payments directly.
+- The guest table can submit the draft only to waiter review and does not create final orders or online payments directly.
 
 ## Current Restaurant Dashboard
 
@@ -1356,7 +1363,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails and Prompt 084 split guest polling intact during future feature work.
 
 ## Do Not Break
 
@@ -1397,6 +1404,8 @@ The next expected product step may be expanding local UI translation coverage, P
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
+- Keep guest draft item polling, draft totals polling, join request polling, and order status polling in separate visible Livewire components.
+- Keep guest polling intervals sourced from `branch_settings.polling_interval_seconds`; do not hardcode a new interval in guest polling views.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
 - Do not add a separate stop-list table while `menu_items.is_available` is enough for temporary dish availability.
 - Do not let stop-listed / unavailable menu items be opened or added to guest draft orders.

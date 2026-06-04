@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\TableSessions\ApproveTableSessionJoinRequestAction;
 use App\Actions\TableSessions\RejectTableSessionJoinRequestAction;
 use App\Enums\TableSessionGuestStatus;
@@ -22,6 +23,8 @@ class JoinRequests extends Component
 
     public string $publicToken = '';
 
+    public int $pollingIntervalSeconds = 1;
+
     public bool $canModerate = false;
 
     public string $notice = '';
@@ -33,11 +36,12 @@ class JoinRequests extends Component
      */
     public array $pendingRequests = [];
 
-    public function mount(int $tableSessionId, int $guestId, string $publicToken): void
+    public function mount(int $tableSessionId, int $guestId, string $publicToken, int $pollingIntervalSeconds = 1): void
     {
         $this->tableSessionId = $tableSessionId;
         $this->guestId = $guestId;
         $this->publicToken = $publicToken;
+        $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
 
         $this->refreshJoinRequests();
     }

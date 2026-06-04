@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
@@ -79,7 +80,7 @@ class Show extends Component
     public bool $waiterCallPending = false;
 
     /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
+     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, polling_interval_seconds: int, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
     public array $landing = [
         'organization_name' => '',
@@ -90,6 +91,7 @@ class Show extends Component
         'branch_city' => '',
         'branch_country' => '',
         'branch_currency' => 'EUR',
+        'polling_interval_seconds' => 1,
         'venue_name' => '',
         'logo_url' => null,
         'service_point_name' => '',
@@ -179,6 +181,7 @@ class Show extends Component
             'branch_city' => $branch->city,
             'branch_country' => $branch->country,
             'branch_currency' => $branch->currency,
+            'polling_interval_seconds' => app(GetBranchPollingIntervalAction::class)->handle($branch->id),
             'venue_name' => $branch->name,
             'logo_url' => $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl(),
             'service_point_name' => $servicePoint->name,

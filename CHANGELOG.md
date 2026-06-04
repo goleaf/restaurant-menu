@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 084 - Optimize Livewire Polling
+
+- Split the public QR guest table into smaller isolated polling blocks for guests, notifications, join requests, order statuses, draft items, and draft totals.
+- Added `GetBranchPollingIntervalAction` so guest polling intervals come from `branch_settings.polling_interval_seconds` through the SQLite-backed database cache.
+- Updated the shared draft item block so the active guest page can poll draft rows without loading order status, kitchen ticket status, or confirmed-order totals.
+- Kept realtime on Livewire polling only; no WebSockets, Redis, S3, Docker, or external services were added.
+
 ### Prompt 083 - SQLite Performance Guardrails
 
 - Added focused SQLite indexes for hot polling, dashboard, notification, kitchen/bar ticket, draft order, and audit log paths.

@@ -638,9 +638,9 @@ The public QR page now shows a waiting state for the new guest. Active guests se
 
 Active guests also see a simple `Пригласить гостя` action. It creates or reuses the table session invite link, uses the browser native share API when available, and falls back to a `Скопировать ссылку` button when native sharing is not available. The project does not integrate directly with Telegram, WhatsApp, Viber, SMS, email, or any paid provider; the phone/browser decides which share targets are available.
 
-After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, and the shared draft basket.
+After an active guest is recognized, the public QR page opens the main guest table shell instead of the entry form. The shell shows the venue name, current service point, saved entry state, the invite action, a guest list, the cached active branch menu, order status, draft positions, and draft totals.
 
-The guest list and shared draft basket are rendered by separate isolated Livewire components and refresh with polling. This keeps those blocks current without refreshing the whole guest page.
+The guest table is split into isolated Livewire polling blocks for guests, notifications, join requests, order statuses, draft positions, and draft totals. Each block uses the branch `polling_interval_seconds` setting, which defaults to 1 second, so the whole guest page is not refreshed.
 
 ## Draft Orders
 
@@ -663,7 +663,9 @@ Each draft item belongs to one concrete `table_session_guest` and may reference 
 
 Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
 
-The shared basket is a separate Livewire polling block. It groups active guests alphabetically by `guest_name`, shows each guest's positions, line prices, selected modifiers, comments, item count, guest total, the current draft total, and the table total including already confirmed non-cancelled orders.
+The shared draft item list is a separate Livewire polling block. It groups active guests alphabetically by `guest_name` and shows each guest's positions, line prices, selected modifiers, comments, item count, and current-draft guest total.
+
+Draft totals and order statuses are separate Livewire polling blocks. Totals show per-guest totals, current draft total, already confirmed non-cancelled orders, table total, ready counts, `Я готов`, `Отправить официанту`, and `Попросить счёт`. Order statuses show waiter rejection, waiter confirmation, kitchen/bar accepted state, and guest-facing cooking/ready/served status.
 
 An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, and draft status. Guests cannot edit or delete another guest's position.
 
@@ -902,7 +904,7 @@ Branch settings currently include safe defaults:
 - Default language is `en`.
 - Default currency is `EUR`.
 
-Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page.
+Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page. The public guest page reads the polling interval through the SQLite-backed database cache and clears that cache when branch settings are saved.
 
 Not implemented yet:
 

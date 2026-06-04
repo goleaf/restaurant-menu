@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
 use Illuminate\View\View;
@@ -15,15 +16,18 @@ class TableGuests extends Component
 
     public int $currentGuestId = 0;
 
+    public int $pollingIntervalSeconds = 1;
+
     /**
      * @var list<array{id: int, guest_name: string, status: string, status_label: string, status_tone: string, is_ready: bool, ready_label: string, is_current: bool}>
      */
     public array $guests = [];
 
-    public function mount(int $tableSessionId, int $currentGuestId): void
+    public function mount(int $tableSessionId, int $currentGuestId, int $pollingIntervalSeconds = 1): void
     {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
+        $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
 
         $this->refreshGuests();
     }

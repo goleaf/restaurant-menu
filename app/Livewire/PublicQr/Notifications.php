@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
 use Illuminate\Notifications\DatabaseNotification;
@@ -18,6 +19,8 @@ class Notifications extends Component
 
     public string $publicToken = '';
 
+    public int $pollingIntervalSeconds = 1;
+
     public int $unreadCount = 0;
 
     public bool $canRead = false;
@@ -27,11 +30,12 @@ class Notifications extends Component
      */
     public array $notifications = [];
 
-    public function mount(int $tableSessionId, int $currentGuestId, string $publicToken): void
+    public function mount(int $tableSessionId, int $currentGuestId, string $publicToken, int $pollingIntervalSeconds = 1): void
     {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->publicToken = $publicToken;
+        $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
 
         $this->refreshNotifications();
     }

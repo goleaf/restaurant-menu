@@ -3,7 +3,11 @@
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
+use App\Livewire\PublicQr\DraftOrder;
+use App\Livewire\PublicQr\DraftTotals;
 use App\Livewire\PublicQr\JoinRequests;
+use App\Livewire\PublicQr\Notifications;
+use App\Livewire\PublicQr\OrderStatuses;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\PublicQr\TableGuests;
 use App\Models\Branch;
@@ -31,12 +35,67 @@ test('active guest sees the guest table page shell', function () {
         ->assertSeeText('Invite guest')
         ->assertSeeText('Menu')
         ->assertSeeText('Dish selection')
+        ->assertSee('data-component="guest-order-statuses"', false)
         ->assertSee('data-component="guest-draft-order"', false)
+        ->assertSee('data-component="guest-draft-totals"', false)
         ->assertSeeText('Общий заказ')
         ->assertSeeText('Корзина')
         ->assertSeeText('Общая сумма')
         ->assertSeeText('0.00 EUR')
         ->assertDontSee('id="guest-name"', false);
+});
+
+test('guest table polling blocks use branch settings interval', function () {
+    [$qrCode, $servicePoint, $tableSession, $activeGuest] = createGuestTablePageShellContext();
+
+    BranchSetting::query()
+        ->where('branch_id', $servicePoint->branch_id)
+        ->update(['polling_interval_seconds' => 3]);
+
+    Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
+        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->assertSet('landing.polling_interval_seconds', 3)
+        ->assertSee('wire:poll.visible.3s="refreshGuests"', false)
+        ->assertSee('wire:poll.visible.3s="refreshNotifications"', false)
+        ->assertSee('wire:poll.visible.3s="refreshJoinRequests"', false)
+        ->assertSee('wire:poll.visible.3s="refreshOrderStatuses"', false)
+        ->assertSee('wire:poll.visible.3s="refreshDraft"', false)
+        ->assertSee('wire:poll.visible.3s="refreshTotals"', false);
+
+    Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
+        ->test(DraftOrder::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'currency' => 'EUR',
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 3,
+            'showControls' => false,
+            'showTotals' => false,
+            'showStatuses' => false,
+        ])
+        ->assertSee('wire:poll.visible.3s="refreshDraft"', false)
+        ->assertDontSee('Статус заказа')
+        ->assertDontSee('Общая сумма');
+
+    Livewire::test(DraftTotals::class, [
+        'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $activeGuest->id,
+        'currency' => 'EUR',
+        'publicToken' => $qrCode->public_token,
+        'pollingIntervalSeconds' => 3,
+    ])->assertSee('wire:poll.visible.3s="refreshTotals"', false);
+
+    Livewire::test(OrderStatuses::class, [
+        'tableSessionId' => $tableSession->id,
+        'pollingIntervalSeconds' => 3,
+    ])->assertSee('wire:poll.visible.3s="refreshOrderStatuses"', false);
+
+    Livewire::test(Notifications::class, [
+        'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $activeGuest->id,
+        'publicToken' => $qrCode->public_token,
+        'pollingIntervalSeconds' => 3,
+    ])->assertSee('wire:poll.visible.3s="refreshNotifications"', false);
 });
 
 test('guest list is an isolated polling block with readable statuses', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
@@ -37,6 +38,14 @@ class DraftOrder extends Component
     public string $publicToken = '';
 
     public string $currency = 'EUR';
+
+    public int $pollingIntervalSeconds = 1;
+
+    public bool $showControls = true;
+
+    public bool $showTotals = true;
+
+    public bool $showStatuses = true;
 
     /**
      * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
@@ -129,12 +138,24 @@ class DraftOrder extends Component
      */
     public array $editingModifierGroups = [];
 
-    public function mount(int $tableSessionId, int $currentGuestId, string $currency = 'EUR', string $publicToken = ''): void
-    {
+    public function mount(
+        int $tableSessionId,
+        int $currentGuestId,
+        string $currency = 'EUR',
+        string $publicToken = '',
+        int $pollingIntervalSeconds = 1,
+        bool $showControls = true,
+        bool $showTotals = true,
+        bool $showStatuses = true,
+    ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->currency = $currency;
         $this->publicToken = $publicToken;
+        $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
+        $this->showControls = $showControls;
+        $this->showTotals = $showTotals;
+        $this->showStatuses = $showStatuses;
 
         $this->refreshDraft();
     }
@@ -142,31 +163,34 @@ class DraftOrder extends Component
     public function refreshDraft(): void
     {
         $guests = $this->activeGuests();
-        $draftOrder = $this->draftOrder();
+        $draftOrder = $this->draftOrder($this->showStatuses);
         $draftItems = $draftOrder?->items ?? collect();
-        $tableSession = $this->tableSessionForBillState();
+        $loadsTotals = $this->showTotals || $this->showControls;
+        $tableSession = $this->showControls || $this->showStatuses ? $this->tableSessionForBillState() : null;
         $guestSections = [];
         $totalCents = 0;
-        $confirmedOrdersTotalCents = $this->confirmedOrdersTotalCents();
-        $confirmedGuestTotals = $this->confirmedOrderItemGuestTotals();
+        $confirmedOrdersTotalCents = $loadsTotals ? $this->confirmedOrdersTotalCents() : 0;
+        $confirmedGuestTotals = $loadsTotals ? $this->confirmedOrderItemGuestTotals() : [];
 
         $this->tableSessionStatusValue = $tableSession?->status?->value;
         $this->tableSessionStatusLabel = $tableSession?->status?->label() ?? '';
-        $this->billRequested = $tableSession?->status === TableSessionStatus::PaymentRequested;
+        $this->billRequested = $this->showControls && $tableSession?->status === TableSessionStatus::PaymentRequested;
         $this->draftStatusValue = $draftOrder?->status?->value;
         $this->draftStatusLabel = $draftOrder?->status?->label() ?? '';
-        $orderStatus = $draftOrder?->order?->status instanceof OrderStatus
+        $orderStatus = $this->showStatuses && $draftOrder?->order?->status instanceof OrderStatus
             ? $draftOrder->order->status
             : null;
-        $ticketItems = $this->orderTicketItems($draftOrder);
-        $serviceStatus = $this->guestServiceStatus($draftOrder, $orderStatus, $ticketItems);
+        $ticketItems = $this->showStatuses ? $this->orderTicketItems($draftOrder) : collect();
+        $serviceStatus = $this->showStatuses
+            ? $this->guestServiceStatus($draftOrder, $orderStatus, $ticketItems)
+            : ['value' => '', 'label' => '', 'tone' => 'zinc'];
 
         $this->orderStatusValue = $orderStatus?->value;
         $this->orderStatusLabel = $orderStatus?->label() ?? '';
         $this->serviceStatusValue = $serviceStatus['value'];
         $this->serviceStatusLabel = $serviceStatus['label'];
         $this->serviceStatusTone = $serviceStatus['tone'];
-        $this->rejectionReason = $draftOrder?->rejection_reason;
+        $this->rejectionReason = $this->showStatuses ? $draftOrder?->rejection_reason : null;
         $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
         $this->activeGuestCount = $guests->count();
         $this->readyGuestCount = $guests->filter(fn (TableSessionGuest $guest): bool => $guest->ready_at !== null)->count();
@@ -182,9 +206,10 @@ class DraftOrder extends Component
 
             if ($isCurrentGuest) {
                 $this->currentGuestReady = $isReady;
-                $this->canToggleReadyStatus = $this->publicToken !== '' && $this->canEditDraft;
-                $this->canSendDraftToWaiter = $this->publicToken !== '' && $this->canEditDraft;
-                $this->canRequestBill = $this->publicToken !== ''
+                $this->canToggleReadyStatus = $this->showControls && $this->publicToken !== '' && $this->canEditDraft;
+                $this->canSendDraftToWaiter = $this->showControls && $this->publicToken !== '' && $this->canEditDraft;
+                $this->canRequestBill = $this->showControls
+                    && $this->publicToken !== ''
                     && $tableSession instanceof TableSession
                     && ! $this->billRequested
                     && ! in_array($tableSession->status, [
@@ -618,8 +643,52 @@ class DraftOrder extends Component
             ->get();
     }
 
-    private function draftOrder(): ?DraftOrderModel
+    private function draftOrder(bool $includeOrderStatus = true): ?DraftOrderModel
     {
+        $relations = [
+            'items' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'draft_order_id',
+                    'table_session_guest_id',
+                    'menu_item_id',
+                    'item_name',
+                    'quantity',
+                    'unit_price',
+                    'modifier_total',
+                    'total_price',
+                    'selected_modifiers',
+                    'comment',
+                    'created_at',
+                ])
+                ->with([
+                    'guest' => fn ($guestQuery) => $guestQuery->select([
+                        'id',
+                        'guest_name',
+                        'status',
+                    ]),
+                ])
+                ->orderBy('created_at')
+                ->orderBy('id'),
+        ];
+
+        if ($includeOrderStatus) {
+            $relations['order'] = fn ($query) => $query->select([
+                'id',
+                'draft_order_id',
+                'status',
+            ])
+                ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
+                    ->select(['id', 'order_id'])
+                    ->with(['items' => fn ($itemQuery) => $itemQuery
+                        ->select([
+                            'id',
+                            'kitchen_ticket_id',
+                            'status',
+                            'served_at',
+                        ])])]);
+        }
+
         return DraftOrderModel::query()
             ->select([
                 'id',
@@ -627,46 +696,7 @@ class DraftOrder extends Component
                 'status',
                 'rejection_reason',
             ])
-            ->with([
-                'order' => fn ($query) => $query->select([
-                    'id',
-                    'draft_order_id',
-                    'status',
-                ])
-                    ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
-                        ->select(['id', 'order_id'])
-                        ->with(['items' => fn ($itemQuery) => $itemQuery
-                            ->select([
-                                'id',
-                                'kitchen_ticket_id',
-                                'status',
-                                'served_at',
-                            ])])]),
-                'items' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'draft_order_id',
-                        'table_session_guest_id',
-                        'menu_item_id',
-                        'item_name',
-                        'quantity',
-                        'unit_price',
-                        'modifier_total',
-                        'total_price',
-                        'selected_modifiers',
-                        'comment',
-                        'created_at',
-                    ])
-                    ->with([
-                        'guest' => fn ($guestQuery) => $guestQuery->select([
-                            'id',
-                            'guest_name',
-                            'status',
-                        ]),
-                    ])
-                    ->orderBy('created_at')
-                    ->orderBy('id'),
-            ])
+            ->with($relations)
             ->where('table_session_id', $this->tableSessionId)
             ->latest('id')
             ->first();

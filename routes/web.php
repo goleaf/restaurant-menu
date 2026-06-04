@@ -3,6 +3,7 @@
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
+use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as OrganizationBrandBranchMenuIndex;
@@ -43,6 +44,13 @@ Route::middleware(['web'])
 Route::middleware(['auth'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+Route::middleware(['auth'])
+    ->prefix('onboarding')
+    ->name('onboarding.')
+    ->group(function () {
+        Route::livewire('restaurant', RestaurantOnboarding::class)->name('restaurant');
+    });
 
 Route::middleware(['auth'])
     ->prefix('organizations')

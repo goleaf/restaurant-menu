@@ -200,6 +200,27 @@ Menu cache is forgotten automatically when menus, categories, dishes, kitchen de
 
 The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
 
+## Restaurant Onboarding Wizard
+
+New restaurants can be created from:
+
+```text
+/onboarding/restaurant
+```
+
+The wizard uses Blade + Livewire + Flux and keeps labels simple for non-technical staff. It creates a starter setup through the existing architecture:
+
+1. create a company owner context;
+2. create the restaurant name;
+3. create the first branch;
+4. add the first zone;
+5. add the first tables;
+6. generate permanent QR codes for those tables;
+7. add the first active menu with one category and one dish;
+8. open a token-only public guest page at `/q/{public_token}`.
+
+Organization, brand, branch, area, service point, and QR creation reuse the existing backend Actions. The starter menu step uses a small onboarding Action that writes the existing `menus`, `menu_categories`, and `menu_items` tables; it does not add a separate onboarding schema and does not replace normal menu CRUD.
+
 ## Branch Setup UI
 
 The branch list includes a simple `Настроить ресторан` wizard for each branch. It guides a manager through the existing setup path:

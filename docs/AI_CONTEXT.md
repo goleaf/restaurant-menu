@@ -47,6 +47,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Restaurant onboarding wizard at `/onboarding/restaurant` for creating a starter organization, brand, branch, first zone, first service points, permanent QR codes, first active menu, and a test public guest page.
 - Simplified branch setup UI with the `Настроить ресторан` wizard for branch, zones, service points, QR generation, QR print, and guest-menu opening.
 - Local media storage for organization, brand, and branch logos.
 - Area nodes nested branch schema and CRUD UI.
@@ -162,6 +163,17 @@ Branch:
 - New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
 - The branch list UI includes a `Настроить ресторан` setup wizard. It prepares zone, service point, and active QR counts in `App\Livewire\Organizations\Brands\Branches\Index` using Eloquent counts/eager loading and links only to existing routes.
 - The setup wizard steps are `Создать филиал`, `Добавить зоны`, `Добавить столы`, `Сгенерировать QR`, `Напечатать QR`, and `Открыть гостевое меню`.
+
+Restaurant onboarding wizard:
+
+- Route is `GET /onboarding/restaurant`.
+- Component is `App\Livewire\Onboarding\RestaurantSetup`.
+- The wizard is an authenticated first-run helper for a new restaurant and uses simple labels instead of exposing organization/brand/service-point terminology wherever possible.
+- It creates organization, brand, branch, first area node, first service points, active QR codes, and a first active menu.
+- Organization, brand, branch, area node, service point, and QR creation reuse existing Actions.
+- Starter menu creation is isolated in `App\Actions\Onboarding\CreateStarterMenuAction` and writes the existing `menus`, `menu_categories`, and `menu_items` tables only.
+- The final test guest link uses the existing public QR route and remains `/q/{public_token}`.
+- The wizard does not replace ordinary CRUD screens.
 
 Menu:
 
@@ -795,6 +807,7 @@ Local media storage:
 - `GET /q/{token}` -> `public.qr.show`
 - `GET /guest` -> `guest.home`
 - `GET /dashboard` -> `dashboard`
+- `GET /onboarding/restaurant` -> `onboarding.restaurant`
 - `GET /organizations` -> `organizations.index`
 - `GET /organizations/{organization}/staff` -> `organizations.staff.index`
 - `GET /organizations/{organization}/staff/{staffMember}/permissions` -> `organizations.staff.permissions`
@@ -821,6 +834,7 @@ Local media storage:
 
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
 - `App\Livewire\AuditLogs\Index`
+- `App\Livewire\Onboarding\RestaurantSetup`
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
 - `App\Livewire\Organizations\Staff\Permissions`
@@ -1176,6 +1190,15 @@ Local media storage:
 - The wizard links to existing area, service point, bulk QR print, settings, and public QR guest routes.
 - Keep the wizard copy simple for non-technical restaurant staff and avoid exposing internal IDs or table/service-point identifiers in public URLs.
 
+## Current Restaurant Onboarding UI
+
+- New restaurant onboarding starts at `GET /onboarding/restaurant`.
+- The sidebar and main dashboard expose the entry as `Настроить ресторан`.
+- `App\Livewire\Onboarding\RestaurantSetup` stores only wizard step state and created record IDs during the Livewire session.
+- The flow is company -> restaurant -> first branch -> first zone -> first tables -> QR -> first menu -> guest-page check.
+- The final guest page link is generated from the first active QR code and uses only `/q/{public_token}`.
+- The wizard should stay a starter path over existing Actions and models; normal organization, brand, branch, area, service point, QR, and menu CRUD remain the canonical maintenance screens.
+
 ## Current Branch Area UI
 
 - Branch area route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas`.
@@ -1204,6 +1227,7 @@ The next expected product step may be manual payment reporting/refinement, ticke
 
 - Do not rewrite architecture.
 - Do not add unrelated future features.
+- Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.

@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 074 - Add Onboarding Wizard
+
+- Added an authenticated `/onboarding/restaurant` Livewire wizard for creating a new starter restaurant setup from one simple flow.
+- The wizard creates organization, brand, branch, first area, first service points, permanent QR codes, and a first active menu with one category and one dish.
+- Reused existing organization, brand, branch, area, service point, and QR Actions, and added a small `CreateStarterMenuAction` for the starter menu rows only.
+- Added sidebar and dashboard entry points labelled `Настроить ресторан` without changing existing organization/brand/branch CRUD.
+- Verified the generated guest URL stays token-only as `/q/{public_token}` and does not expose restaurant, branch, or table IDs.
+- Kept the shared-hosting stack unchanged: SQLite, database cache/session/queue, Blade + Livewire, no Redis, WebSockets, S3, Docker, or external services.
+
 ### Prompt 073 - Simplify Branch Setup UI
 
 - Added a `Настроить ресторан` wizard to each branch card with the existing setup path: create branch, add zones, add tables, generate QR, print QR, and open the guest menu.

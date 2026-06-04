@@ -20,6 +20,10 @@
                         {{ __('Organizations') }}
                     </flux:sidebar.item>
 
+                    <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="request()->routeIs('onboarding.*')" wire:navigate>
+                        {{ __('Настроить ресторан') }}
+                    </flux:sidebar.item>
+
                     <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="request()->routeIs('restaurant.dashboard')" wire:navigate>
                         {{ __('Restaurant') }}
                     </flux:sidebar.item>

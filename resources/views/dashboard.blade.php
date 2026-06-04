@@ -9,6 +9,12 @@
         </header>
 
         <div class="grid gap-4 md:grid-cols-2">
+            <a href="{{ route('onboarding.restaurant') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
+                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Quick start</p>
+                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Настроить ресторан</h2>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Пошагово создать ресторан, столы, QR и первое меню.</p>
+            </a>
+
             <a href="{{ route('restaurant.dashboard') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
                 <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Restaurant staff</p>
                 <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Restaurant dashboard</h2>

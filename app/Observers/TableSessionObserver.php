@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Actions\Analytics\BuildBasicAnalyticsDashboardAction;
+use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Models\TableSession;
 
 class TableSessionObserver
@@ -50,11 +51,13 @@ class TableSessionObserver
     private function forgetAnalytics(TableSession $tableSession): void
     {
         BuildBasicAnalyticsDashboardAction::forgetForBranch((int) $tableSession->branch_id);
+        BuildRestaurantDashboardAction::forgetForBranch((int) $tableSession->branch_id);
 
         $originalBranchId = (int) $tableSession->getOriginal('branch_id');
 
         if ($originalBranchId > 0 && $originalBranchId !== (int) $tableSession->branch_id) {
             BuildBasicAnalyticsDashboardAction::forgetForBranch($originalBranchId);
+            BuildRestaurantDashboardAction::forgetForBranch($originalBranchId);
         }
     }
 }

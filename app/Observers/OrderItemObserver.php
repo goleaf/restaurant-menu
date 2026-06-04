@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Actions\Analytics\BuildBasicAnalyticsDashboardAction;
+use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Models\Order;
 use App\Models\OrderItem;
 
@@ -72,6 +73,7 @@ class OrderItemObserver
 
         if (is_numeric($branchId)) {
             BuildBasicAnalyticsDashboardAction::forgetForBranch((int) $branchId);
+            BuildRestaurantDashboardAction::forgetForBranch((int) $branchId);
         }
     }
 }

@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Models\DraftOrder;
 use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
@@ -15,7 +18,10 @@ use App\Models\ModifierOption;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
+use App\Observers\DraftOrderObserver;
 use App\Observers\KitchenDepartmentObserver;
+use App\Observers\KitchenTicketItemObserver;
+use App\Observers\KitchenTicketObserver;
 use App\Observers\ManualPaymentObserver;
 use App\Observers\MenuCategoryObserver;
 use App\Observers\MenuCategoryTranslationObserver;
@@ -93,6 +99,9 @@ class AppServiceProvider extends ServiceProvider
         OrderItem::observe(OrderItemObserver::class);
         ManualPayment::observe(ManualPaymentObserver::class);
         TableSession::observe(TableSessionObserver::class);
+        DraftOrder::observe(DraftOrderObserver::class);
+        KitchenTicket::observe(KitchenTicketObserver::class);
+        KitchenTicketItem::observe(KitchenTicketItemObserver::class);
     }
 
     /**

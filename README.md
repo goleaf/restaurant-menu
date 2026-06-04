@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, basic cached analytics, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -327,6 +327,36 @@ When the remaining confirmed order balance reaches zero, the table session statu
 
 Users with the critical `close_table_sessions` permission can also close an unpaid active session manually from waiter table detail. Manual close blocks old guest tokens and invite links from adding positions, frees the service point for the next seating, keeps old orders and payment history intact, and does not reissue or modify the permanent QR code.
 
+## Restaurant Dashboard
+
+The restaurant dashboard is available at:
+
+```text
+/restaurant/dashboard
+```
+
+It is a simple branch-level workspace, not a heavy BI system. Dashboard data is prepared by `BuildRestaurantDashboardAction`, cached through Laravel's explicit `database` cache store, and rendered by Blade + Livewire without querying from the template.
+
+The dashboard shows:
+
+- active tables;
+- new guest drafts sent to waiter;
+- cooking orders;
+- ready positions waiting for waiter service;
+- today's order amount when the user has `view_reports`;
+- popular dishes when the user has `view_reports`.
+
+Quick actions are shown for the current user's permissions:
+
+- menu;
+- tables / service points;
+- QR print;
+- waiter screen;
+- kitchen screen;
+- reports.
+
+Unavailable actions are shown as disabled buttons instead of linking to pages the user cannot open. The dashboard does not use WebSockets, Redis, S3, Docker, external reporting services, or 1-second polling.
+
 ## Basic Analytics
 
 Basic analytics are shown on the restaurant dashboard for users with `view_reports` access in at least one branch context. Superadmins can see analytics across all branches.
@@ -341,9 +371,9 @@ The dashboard currently shows:
 - closed sessions;
 - cancelled orders.
 
-Analytics are built by `BuildBasicAnalyticsDashboardAction` and cached through Laravel's explicit `database` cache store for 300 seconds. Cache keys are grouped by accessible branch ids and current date, so the dashboard does not run the same aggregate reads on every page refresh.
+Analytics are built by `BuildBasicAnalyticsDashboardAction` and cached through Laravel's explicit `database` cache store for 300 seconds. Restaurant dashboard data is built by `BuildRestaurantDashboardAction` and cached separately for a shorter operational snapshot. Cache keys are grouped by accessible branch ids and current date, so the dashboard does not run the same aggregate reads on every page refresh.
 
-The analytics cache is invalidated by model observers when `orders`, `order_items`, `manual_payments`, or `table_sessions` change. This keeps order totals, popular dishes, payment-related dashboard state, and session counts fresh without Redis, cache tags, WebSockets, queues, or external services.
+The analytics and dashboard caches are invalidated by model observers when `orders`, `order_items`, `manual_payments`, or `table_sessions` change. The restaurant dashboard cache is also invalidated by `draft_orders`, `kitchen_tickets`, and `kitchen_ticket_items` changes. This keeps order totals, popular dishes, waiter handoff counts, kitchen progress, payment-related dashboard state, and session counts fresh without Redis, cache tags, WebSockets, queues, or external services.
 
 ## Table Session Guests
 
@@ -621,7 +651,7 @@ Implemented:
 - Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
 - Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
-- Basic restaurant dashboard analytics cached through the SQLite-backed database cache store.
+- Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

@@ -31,13 +31,13 @@
                     @endif
 
                     @if ($canAccessKitchenDashboard ?? false)
-                        <flux:sidebar.item icon="chef-hat" :href="route('restaurant.kitchen.dashboard')" :current="request()->routeIs('restaurant.kitchen.*')" wire:navigate>
+                        <flux:sidebar.item icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="request()->routeIs('restaurant.kitchen.*')" wire:navigate>
                             {{ __('Kitchen') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessBarDashboard ?? false)
-                        <flux:sidebar.item icon="glass-water" :href="route('restaurant.bar.dashboard')" :current="request()->routeIs('restaurant.bar.*')" wire:navigate>
+                        <flux:sidebar.item icon="beaker" :href="route('restaurant.bar.dashboard')" :current="request()->routeIs('restaurant.bar.*')" wire:navigate>
                             {{ __('Bar') }}
                         </flux:sidebar.item>
                     @endif

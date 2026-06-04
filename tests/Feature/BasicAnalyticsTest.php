@@ -54,8 +54,8 @@ test('reports viewer sees cached basic analytics for demo data', function () {
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertSee('data-layout="restaurant-dashboard"', false)
-        ->assertSeeText('Basic analytics')
-        ->assertSeeText('Orders today')
+        ->assertSeeText('Restaurant overview')
+        ->assertSeeText('Amount today')
         ->assertSeeText('30.00 EUR')
         ->assertSeeText('Pizza');
 });
@@ -67,7 +67,7 @@ test('restaurant dashboard hides analytics without view reports access', functio
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertDontSeeText('Orders today')
-        ->assertSeeText('Basic analytics are available to users with view_reports access.');
+        ->assertSeeText('Restaurant dashboard access appears when the user has branch-level operational or reporting access.');
 });
 
 test('empty analytics day uses branch currency for zero amounts', function () {

@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 070 - Restaurant Dashboard
+
+- Added `BuildRestaurantDashboardAction` for a branch/restaurant operational dashboard backed by the SQLite database cache store.
+- Extended `/restaurant/dashboard` with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
+- Kept report-sensitive amount and popular dish data behind `view_reports`, while operational users such as waiters can still see table/order/kitchen status cards.
+- Added quick transitions for menu, tables/service points, QR print, waiter screen, kitchen screen, and reports, with disabled states when the user lacks access.
+- Added restaurant dashboard cache invalidation for draft orders, kitchen tickets, and kitchen ticket items, and wired existing order/payment/session observers into the new dashboard cache.
+- Verified the dashboard with manager and waiter roles, plus cache invalidation for draft and kitchen item changes, without Redis, WebSockets, S3, Docker, or external BI/reporting services.
+
 ### Prompt 069 - Basic Analytics
 
 - Added `BuildBasicAnalyticsDashboardAction` for branch-scoped restaurant dashboard analytics guarded by `view_reports`.

@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Actions\Analytics\BuildBasicAnalyticsDashboardAction;
+use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Models\Order;
 
 class OrderObserver
@@ -50,11 +51,13 @@ class OrderObserver
     private function forgetAnalytics(Order $order): void
     {
         BuildBasicAnalyticsDashboardAction::forgetForBranch((int) $order->branch_id);
+        BuildRestaurantDashboardAction::forgetForBranch((int) $order->branch_id);
 
         $originalBranchId = (int) $order->getOriginal('branch_id');
 
         if ($originalBranchId > 0 && $originalBranchId !== (int) $order->branch_id) {
             BuildBasicAnalyticsDashboardAction::forgetForBranch($originalBranchId);
+            BuildRestaurantDashboardAction::forgetForBranch($originalBranchId);
         }
     }
 }

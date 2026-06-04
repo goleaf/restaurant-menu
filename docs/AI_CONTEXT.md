@@ -68,6 +68,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
+- Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -440,16 +441,21 @@ Basic analytics:
 
 - Stored as cached dashboard payloads in the existing database-backed `cache` table; no analytics tables were added in Prompt 069.
 - `App\Actions\Analytics\BuildBasicAnalyticsDashboardAction` builds the restaurant dashboard payload for users with `view_reports` branch access.
+- `App\Actions\Dashboard\BuildRestaurantDashboardAction` builds the Prompt 070 branch/restaurant dashboard payload for operational and reporting users.
 - Superadmins see analytics for all branches through the same branch resolver bypass used by waiter/report access.
 - The action currently computes today's order count, today's order amount, average check, popular dishes, active table count, closed sessions today, and cancelled orders today.
+- The restaurant dashboard action currently computes active tables, new `sent_to_waiter` drafts, cooking orders, ready unserved kitchen/bar positions, today amount, popular dishes, and quick-action availability.
+- Restaurant dashboard amount and popular dishes require `view_reports`; waiters and other operational users can still see the operational cards without seeing report-sensitive totals.
 - Orders today and amount exclude `orders.status = cancelled` and use `orders.confirmed_at` within the current application day.
 - Popular dishes are based on confirmed `order_items` snapshots from today's non-cancelled orders, so later menu name/price changes do not rewrite old analytics history.
 - Active tables include table sessions in `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
 - Closed sessions use `table_sessions.status = closed` with `ended_at` during the current application day.
 - Cancelled orders use `orders.status = cancelled` with `updated_at` during the current application day because there is no separate `cancelled_at` field yet.
 - Analytics cache keys are grouped by sorted branch ids and current date, for example `analytics:dashboard:branches:{sha1}:today:{date}`.
+- Restaurant dashboard cache keys are grouped by access-specific sorted branch id sets and current date, for example `restaurant-dashboard:{sha1}:today:{date}`.
 - Branch cache-key indexes are also stored in the database cache so changing one branch can forget dashboard snapshots that include that branch without Redis cache tags.
 - `OrderObserver`, `OrderItemObserver`, `ManualPaymentObserver`, and `TableSessionObserver` invalidate affected branch analytics cache.
+- `DraftOrderObserver`, `KitchenTicketObserver`, and `KitchenTicketItemObserver` invalidate affected branch restaurant dashboard cache.
 - Dashboard analytics must not be added to 1-second waiter/kitchen/bar polling loops; keep it on the restaurant dashboard or use explicit short-lived database cache.
 
 Draft order:
@@ -788,7 +794,7 @@ Local media storage:
 
 ## Livewire Components
 
-- `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached basic analytics block for users with `view_reports`.
+- `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
 - `App\Livewire\Organizations\Staff\Permissions`
@@ -921,12 +927,17 @@ Local media storage:
 
 - Restaurant dashboard route is `GET /restaurant/dashboard`.
 - The Livewire single-file component is `resources/views/pages/restaurant/dashboard.blade.php`.
-- Analytics data is prepared by `App\Actions\Analytics\BuildBasicAnalyticsDashboardAction`; Blade receives arrays and must not query the database.
-- Access requires at least one branch resolved through `view_reports`; superadmins see all branches.
-- The dashboard shows orders today, amount today, average check, popular dishes, active tables, closed sessions, and cancelled orders.
-- Dashboard analytics use Laravel's explicit `database` cache store for 300 seconds.
-- The analytics block has a manual refresh button but does not poll every second.
-- Cache is invalidated by observers on `orders`, `order_items`, `manual_payments`, and `table_sessions`.
+- Data is prepared by `App\Actions\Dashboard\BuildRestaurantDashboardAction`; Blade receives arrays and must not query the database.
+- Access requires at least one branch resolved through operational or reporting access: `view_orders`, `confirm_orders`, `view_reports`, `manage_menu`, `manage_service_points`, `generate_qr`, kitchen access, or bar access.
+- Superadmins keep platform-wide access through the existing branch/department resolvers.
+- The dashboard shows active tables, new drafts sent to waiter, cooking orders, ready unserved positions, today's amount, and popular dishes.
+- Today's amount and popular dishes are visible only when the user has `view_reports` for at least one branch.
+- Waiter/operational users without `view_reports` still see active tables, new waiter drafts, cooking orders, and ready positions.
+- Quick actions include menu, tables/service points, QR print, waiter screen, kitchen screen, and reports.
+- Quick actions link only when the user has matching access; unavailable actions are disabled instead of linking to forbidden routes.
+- Dashboard data uses Laravel's explicit `database` cache store for a short operational snapshot and has a manual refresh button.
+- The dashboard does not poll every second; keep 1-second polling isolated to waiter/kitchen/bar/guest blocks that need it.
+- Cache is invalidated by observers on `orders`, `order_items`, `manual_payments`, `table_sessions`, `draft_orders`, `kitchen_tickets`, and `kitchen_ticket_items`.
 - Keep this dashboard shared-hosting friendly: SQLite, database cache, no Redis, no cache tags, no WebSockets, no external BI service.
 
 ## Current Waiter Dashboard

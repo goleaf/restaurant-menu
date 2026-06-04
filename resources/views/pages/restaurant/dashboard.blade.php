@@ -1,39 +1,39 @@
 <?php
 
-use App\Actions\Analytics\BuildBasicAnalyticsDashboardAction;
+use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 new class extends Component
 {
-    public bool $canViewAnalytics = false;
+    public bool $canAccessRestaurantDashboard = false;
 
     /**
      * @var array<string, mixed>|null
      */
-    public ?array $analytics = null;
+    public ?array $dashboard = null;
 
     public function mount(): void
     {
-        $this->refreshAnalytics();
+        $this->refreshDashboard();
     }
 
-    public function refreshAnalytics(): void
+    public function refreshDashboard(): void
     {
         $user = Auth::user();
 
         if (! $user instanceof User) {
-            $this->canViewAnalytics = false;
-            $this->analytics = null;
+            $this->canAccessRestaurantDashboard = false;
+            $this->dashboard = null;
 
             return;
         }
 
-        $payload = app(BuildBasicAnalyticsDashboardAction::class)->handle($user);
+        $payload = app(BuildRestaurantDashboardAction::class)->handle($user);
 
-        $this->canViewAnalytics = (bool) $payload['has_access'];
-        $this->analytics = is_array($payload['analytics'] ?? null) ? $payload['analytics'] : null;
+        $this->canAccessRestaurantDashboard = (bool) $payload['has_access'];
+        $this->dashboard = is_array($payload['dashboard'] ?? null) ? $payload['dashboard'] : null;
     }
 };
 ?>
@@ -45,7 +45,7 @@ new class extends Component
             <div>
                 <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">Restaurant dashboard</h1>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
-                    Operational workspace for branch setup, service points, guest drafts, and staff workflows.
+                    Branch overview for tables, waiter handoff, kitchen progress, QR, menu, and reports.
                 </p>
             </div>
 
@@ -57,13 +57,13 @@ new class extends Component
                 @endif
 
                 @if ($canAccessKitchenDashboard ?? false)
-                    <flux:button icon="chef-hat" :href="route('restaurant.kitchen.dashboard')" wire:navigate>
+                    <flux:button icon="fire" :href="route('restaurant.kitchen.dashboard')" wire:navigate>
                         {{ __('Kitchen screen') }}
                     </flux:button>
                 @endif
 
                 @if ($canAccessBarDashboard ?? false)
-                    <flux:button icon="glass-water" :href="route('restaurant.bar.dashboard')" wire:navigate>
+                    <flux:button icon="beaker" :href="route('restaurant.bar.dashboard')" wire:navigate>
                         {{ __('Bar screen') }}
                     </flux:button>
                 @endif
@@ -71,75 +71,105 @@ new class extends Component
         </div>
     </header>
 
-    @if ($canViewAnalytics && $analytics !== null)
-        <section class="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+    @if ($canAccessRestaurantDashboard && $dashboard !== null)
+        <section id="reports" class="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Basic analytics') }}</p>
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant overview') }}</p>
                     <h2 class="mt-1 text-xl font-semibold text-zinc-950 dark:text-white">
-                        {{ __('Today') }} · {{ $analytics['period_label'] }}
+                        {{ __('Today') }} · {{ $dashboard['period_label'] }}
                     </h2>
                     <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                        {{ __('Branches') }}: {{ $analytics['branch_count'] }}
+                        {{ __('Branches') }}: {{ $dashboard['branch_count'] }}
                     </p>
                 </div>
 
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ __('Cached at') }} {{ $analytics['cached_at'] }}
+                        {{ __('Cached at') }} {{ $dashboard['cached_at'] }}
                     </p>
-                    <flux:button icon="arrow-path" size="sm" wire:click="refreshAnalytics">
+                    <flux:button icon="arrow-path" size="sm" wire:click="refreshDashboard">
                         {{ __('Refresh') }}
                     </flux:button>
                 </div>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Orders today') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['orders_today_count'] }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Active tables') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['active_tables_count'] }}</p>
+                </div>
+
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('New orders to waiter') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['new_orders_to_waiter_count'] }}</p>
+                </div>
+
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Cooking orders') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['cooking_orders_count'] }}</p>
+                </div>
+
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Ready positions') }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['ready_positions_count'] }}</p>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
                     <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Amount today') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['orders_today_total'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Average check') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['average_check'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Active tables') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['active_tables_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Closed sessions') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['closed_sessions_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Cancelled orders') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $analytics['cancelled_orders_count'] }}</p>
+                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">
+                        {{ $dashboard['metrics']['orders_today_total'] ?? '—' }}
+                    </p>
+                    @unless ($dashboard['can_view_reports'])
+                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Reports access required') }}</p>
+                    @endunless
                 </div>
             </div>
 
-            <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Popular dishes') }}</h3>
-                <div class="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
-                    @forelse ($analytics['popular_items'] as $item)
-                        <div wire:key="analytics-popular-item-{{ $loop->index }}" class="flex items-center justify-between gap-4 py-3">
-                            <div>
-                                <p class="font-medium text-zinc-950 dark:text-white">{{ $item['item_name'] }}</p>
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Quantity') }}: {{ $item['quantity'] }}</p>
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Popular dishes') }}</h3>
+                    <div class="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
+                        @if ($dashboard['can_view_reports'])
+                            @forelse ($dashboard['popular_items'] as $item)
+                                <div wire:key="dashboard-popular-item-{{ $loop->index }}" class="flex items-center justify-between gap-4 py-3">
+                                    <div>
+                                        <p class="font-medium text-zinc-950 dark:text-white">{{ $item['item_name'] }}</p>
+                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Quantity') }}: {{ $item['quantity'] }}</p>
+                                    </div>
+                                    <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ $item['total'] }}</p>
+                                </div>
+                            @empty
+                                <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No confirmed orders today yet.') }}</p>
+                            @endforelse
+                        @else
+                            <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Reports access is required to see popular dishes.') }}</p>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Quick actions') }}</h3>
+                    <div class="mt-3 grid gap-2">
+                        @foreach ($dashboard['quick_actions'] as $action)
+                            <div wire:key="dashboard-action-{{ $action['label'] }}" class="flex items-center justify-between gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                                <div class="min-w-0">
+                                    <p class="truncate text-sm font-medium text-zinc-950 dark:text-white">{{ __($action['label']) }}</p>
+                                    <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ __($action['description']) }}</p>
+                                </div>
+
+                                @if ($action['is_available'] && $action['href'] !== null)
+                                    <flux:button :icon="$action['icon']" size="sm" :href="$action['href']" wire:navigate>
+                                        {{ __('Open') }}
+                                    </flux:button>
+                                @else
+                                    <button type="button" disabled class="inline-flex h-8 items-center rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                                        {{ __('No access') }}
+                                    </button>
+                                @endif
                             </div>
-                            <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ $item['total'] }}</p>
-                        </div>
-                    @empty
-                        <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No confirmed orders today yet.') }}</p>
-                    @endforelse
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </section>
@@ -156,7 +186,7 @@ new class extends Component
         <section class="min-h-64 rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="text-base font-semibold text-zinc-950 dark:text-white">Current implementation area</h2>
             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                {{ __('Basic analytics are available to users with view_reports access. The waiter dashboard shows table flow, and the kitchen and bar screens show department tickets through Livewire polling.') }}
+                {{ __('Restaurant dashboard access appears when the user has branch-level operational or reporting access.') }}
             </p>
         </section>
     @endif

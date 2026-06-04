@@ -2,6 +2,94 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Daily Project Memory Update - 2026-06-04
+
+This is a documentation-only memory refresh. No product features, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Laravel Fortify, Laravel Boost, Laravel MCP.
+- Livewire 4.3 with Blade server-rendered UI and Flux UI Free 2.14.
+- SQLite only.
+- Database cache, database sessions, and database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite for assets; generated `public/build` remains uncommitted.
+- Pest 4 for tests; feature tests disable Vite asset resolution through `Tests\TestCase::withoutVite()`.
+
+Already implemented:
+
+- Auth, profile/security settings, fixed roles, flexible permissions, role permissions, user overrides, and superadmin access.
+- Organizations, one-plan local SaaS subscription status, organization users, brands, branches, branch users, branch settings, staff invitations, staff UI, and permission override UI.
+- Local media storage for organization, brand, branch logos, and dish images.
+- Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
+- Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
+- Menu flow: menus, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
+- Order flow: shared `draft_orders`, guest-owned draft items, waiter dashboard, waiter table detail, waiter draft editing/confirm/reject, real `orders` and snapshot `order_items`, order status logs, explicit kitchen/bar dispatch, department tickets, kitchen/bar screens, ready/served handoff, repeat orders, manual payments, table-session close, analytics, restaurant dashboard, audit logs, database notifications, CSV exports, demo seed, smoke checklist, shared-hosting deployment notes, and current-version docs.
+
+Current tables:
+
+- `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
+- `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings`, `invitations`.
+- `area_nodes`, `service_points`, `qr_codes`.
+- `menus`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
+- `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`.
+- `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`, `migrations`.
+
+Current application routes:
+
+- Public/auth base: `home`, `guest.home`, `public.qr.show`, `dashboard`, Fortify `login`, `register`, password reset, logout, and password confirmation routes.
+- Settings: `profile.edit`, `appearance.edit`, `security.edit`.
+- Onboarding: `onboarding.restaurant`.
+- Organization admin: `organizations.index`, `organizations.staff.index`, `organizations.staff.permissions`, `organizations.brands.index`, `organizations.brands.branches.index`.
+- Branch admin: `organizations.brands.branches.areas.index`, `organizations.brands.branches.menu.index`, `organizations.brands.branches.qr.print`, `organizations.brands.branches.service-points.index`, `organizations.brands.branches.service-points.qr.show`, `organizations.brands.branches.service-points.qr.print`, `organizations.brands.branches.staff.index`, `organizations.brands.branches.settings.index`.
+- Restaurant operations: `restaurant.dashboard`, `restaurant.audit-log.index`, `restaurant.exports.index`, `restaurant.exports.download`, `restaurant.kitchen.dashboard`, `restaurant.bar.dashboard`, `restaurant.waiter.dashboard`, `restaurant.waiter.tables.show`.
+- Superadmin: `superadmin.dashboard`, `superadmin.backups.sqlite.download`.
+
+Current Livewire components:
+
+- `App\Livewire\Actions\Logout`.
+- `App\Livewire\AuditLogs\Index`, `App\Livewire\Exports\Index`, `App\Livewire\Notifications\UnreadCount`.
+- `App\Livewire\Onboarding\RestaurantSetup`.
+- `App\Livewire\Organizations\Index`, `App\Livewire\Organizations\Staff\Index`, `App\Livewire\Organizations\Staff\Permissions`, `App\Livewire\Organizations\Brands\Index`, `App\Livewire\Organizations\Brands\Branches\Index`, `App\Livewire\Organizations\Brands\Branches\Areas`, `App\Livewire\Organizations\Brands\Branches\Menu\Index`, `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint`, `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`, `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show`, `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate`, `App\Livewire\Organizations\Brands\Branches\Staff\Index`, `App\Livewire\Organizations\Brands\Branches\Settings`.
+- `App\Livewire\PublicQr\Show`, `App\Livewire\PublicQr\TableGuests`, `App\Livewire\PublicQr\JoinRequests`, `App\Livewire\PublicQr\Notifications`, `App\Livewire\PublicQr\GuestMenu`, `App\Livewire\PublicQr\DraftOrder`, `App\Livewire\PublicQr\DraftTotals`, `App\Livewire\PublicQr\OrderStatuses`.
+- `App\Livewire\Waiter\Dashboard`, `App\Livewire\Waiter\TableDetail`.
+- `App\Livewire\Departments\Dashboard`, `App\Livewire\Kitchen\Dashboard`, `App\Livewire\Bar\Dashboard`.
+- `App\Livewire\Superadmin\Dashboard`.
+- `App\Livewire\Settings\Profile`, `App\Livewire\Settings\Appearance`, `App\Livewire\Settings\Security`, `App\Livewire\Settings\DeleteUserForm`, `App\Livewire\Settings\TwoFactor\RecoveryCodes`.
+
+Mandatory business rules:
+
+- One physical service point has one active permanent QR. QR URL is `/q/{public_token}` and must not expose organization, branch, service point, table, area, number, or name IDs/data.
+- QR identity must not change on service point rename, move, session close, or ordinary edits. Manual reissue is the only intentional QR identity change.
+- Guests are not user accounts. Guest access uses unguessable guest tokens stored in browser cookie/session flow.
+- Active guests see each other alphabetically and see the same shared draft/cart with per-guest and table totals.
+- New guests require approval by current active guests when active guests already exist.
+- Guests can edit only their own draft items and only while the draft is still `draft`.
+- Every draft, including repeat orders, must be sent to and confirmed by a waiter before becoming a real order.
+- Kitchen/bar sees only explicitly dispatched confirmed orders, never guest drafts or merely confirmed-but-not-dispatched orders.
+- Order items must keep immutable snapshots of guest/item/modifier/price data.
+- Payments are manual/offline only. Closing a table frees the service point, blocks old guest ordering, preserves old history, and keeps the QR unchanged.
+
+Shared-hosting constraints:
+
+- Web root must be `public`; SQLite file, `.env`, storage, and app code stay outside public web root.
+- SQLite database file lives in the project, normally `database/database.sqlite`, and must not be committed.
+- Writable paths include `database`, `storage/app/public`, `storage/framework/*`, `storage/logs`, and `bootstrap/cache`.
+- Use `CACHE_STORE=database`, `SESSION_DRIVER=database`, `QUEUE_CONNECTION=database`, `FILESYSTEM_DISK=public`, and `BROADCAST_CONNECTION=log`.
+- Media stays local on the public disk. `public/storage` should link or map to `storage/app/public`.
+- Realtime remains Livewire polling with isolated visible polling blocks and branch polling interval from `branch_settings`.
+- Dashboard/analytics/menu cache remains database-backed with explicit invalidation.
+
+Do not use:
+
+- Redis, WebSockets, Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage services, Push/SMS/Telegram API, Stripe, PayPal, online acquiring, AI translation, paid APIs, paid PDF/export libraries, React, Vue, Inertia, or a separate SPA.
+- Raw SQL strings, committed `.env`, SQLite databases, backups, `vendor`, `node_modules`, `public/build`, `public/storage`, local uploads, or generated exports.
+
+Next recommended prompt:
+
+- Prompt 101: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Current Stack
 
 - Laravel 13.13
@@ -1521,7 +1609,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, and Prompt 100 current-version snapshot intact during future feature work.
+The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the existing branch menu UI, limited to `ru`, `en`, and `lt`, with branch cache invalidation through `ForgetBranchCacheAction`. Only implement it when a future prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, and the daily project memory update intact during future feature work.
 
 ## Do Not Break
 

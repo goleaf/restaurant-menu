@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Docs - Daily Project Memory Update
+
+- Refreshed project memory docs for the current Laravel + Livewire + SQLite shared-hosting baseline without adding features.
+- Added `docs/NEXT_STEPS.md` with scoped recommended future prompts and guardrails.
+- Updated README, AI context, and smoke checklist links/checkpoints so future coding-agent sessions can restore stack, tables, routes, Livewire components, business rules, forbidden services, and next prompt direction from files.
+
 ### Bugfix - Restore Project After Previous Prompt
 
 - Fixed feature-test crashes caused by Laravel Vite font manifest resolution when ignored `public/build` assets are missing or stale locally.

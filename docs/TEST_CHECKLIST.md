@@ -13,6 +13,29 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Daily Memory Update - 2026-06-04
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`.
+
+Use these focused checks after documentation-only maintenance:
+
+```bash
+php artisan migrate --no-interaction
+php artisan route:list
+php artisan test --compact tests/Feature/ProjectCleanupConsistencyTest.php tests/Feature/VerticalSliceFlowTest.php
+```
+
+Use the full checks before larger code changes or before handing off a release:
+
+```bash
+php artisan test --compact
+npm run build
+```
+
+The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
+implement it until the user explicitly requests it.
+
 ## Prompt 096 Access Control Results
 
 Programmatic audit coverage was added in `tests/Feature/AccessControlAuditTest.php`.

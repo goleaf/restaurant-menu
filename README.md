@@ -35,6 +35,18 @@ A short developer/coding-agent overview of the current domain model, QR/session 
 docs/CURRENT_VERSION.md
 ```
 
+## Project Memory
+
+Daily project memory for future coding-agent sessions is maintained in:
+
+```text
+docs/AI_CONTEXT.md
+docs/TEST_CHECKLIST.md
+docs/NEXT_STEPS.md
+```
+
+Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
+
 ## Project Cleanup Consistency
 
 Prompt 098 cleaned remaining starter-kit and temporary surfaces without adding new product features.

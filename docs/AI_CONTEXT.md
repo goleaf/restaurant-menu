@@ -28,6 +28,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - New guests must require approval by default.
 - Branch realtime behavior must use Livewire polling, not WebSockets.
 - Active guest waiter calls must use local database state and database notifications only.
+- Active guest bill requests must use `table_sessions.status = payment_requested`, local service point status, database notifications, and Livewire polling only.
 
 ## What Is Already Done
 
@@ -61,13 +62,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
+- Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, payment, analytics, or advanced kitchen production history has been implemented yet.
+No menu translation admin editor, QR PDF generation, online payment, analytics, or advanced kitchen production history has been implemented yet.
 
 ## Tables
 
@@ -332,15 +334,15 @@ Table session:
 - Default source is `guest_created`.
 - Stores `started_at`, `ended_at`, and optional JSON `metadata`.
 - Has indexes for branch/status, service point/status, branch/service point/status, source/status, `opened_by_guest_id`, and `started_at`.
-- `TableSession` sets `active_service_point_id` automatically while saving active sessions and clears it for non-active statuses.
+- `TableSession` sets `active_service_point_id` automatically while saving active or `payment_requested` sessions and clears it for other non-active statuses.
 - `TableSession` sets `pending_service_point_id` automatically while saving pending sessions and clears it for non-pending statuses.
-- `ServicePoint::activeTableSession()` returns the current active table session for UI display.
+- `ServicePoint::activeTableSession()` returns the current active or bill-requested table session for UI display.
 - `TableSession::draftOrder()` returns the latest/current draft order for the session.
 - `TableSession::draftOrders()` returns repeat-order draft history for the session.
 - `TableSession::waiterCalls()` returns guest waiter-call history for the session.
-- `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active session exists.
-- If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
-- Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
+- `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active or bill-requested session exists.
+- If an active or bill-requested session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
+- Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`; returning a bill-requested session keeps the service point at `payment_requested`.
 - `CreateGuestPendingTableSessionAction` creates a pending guest-created session when there is no active or pending session and `branch_settings.allow_guest_created_sessions` is true.
 - If an active or pending session already exists and has active guests, guest QR entry creates a pending table session join request instead of a guest.
 - If an active or pending session already exists without active guests, guest QR entry returns the existing-session message without creating a join request.
@@ -349,7 +351,7 @@ Table session:
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
-- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Payment logic does not exist yet.
+- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, request-bill status flow, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Online payment logic does not exist yet.
 
 Table session guest:
 
@@ -390,6 +392,18 @@ Waiter call:
 - `ResolveWaiterNotificationRecipientsAction` respects superadmin access, active organization memberships, permission overrides, role permissions, and active branch assignments.
 - `WaiterCalledNotification` uses only the `database` channel; no mail, SMS, push, Telegram API, WebSocket, Redis, or external service is used.
 - `MarkWaiterCallHandledAction` requires branch-level `view_orders`, moves the call to `handled`, fills `handled_at` and `handled_by_user_id`, marks matching unread database notifications read, and restores the previous service point status only if the service point is still `waiting_waiter`.
+
+Bill request:
+
+- No separate payment table exists yet.
+- `RequestBillForTableSessionAction` requires an active table session guest and refuses paid, closed, cancelled, or inactive service point cases.
+- The action sets `table_sessions.status` to `payment_requested`.
+- The action stores `metadata.bill_requested_at` and `metadata.bill_requested_by_guest_id` on the table session.
+- The action sets the related service point status to `payment_requested`.
+- Repeating the request while the session is already `payment_requested` is idempotent and does not send duplicate database notifications.
+- `BillRequestedNotification` uses only the `database` channel; no mail, SMS, push, Telegram API, WebSocket, Redis, online payment provider, or external service is used.
+- Waiter notification recipients are resolved through the same `ResolveWaiterNotificationRecipientsAction` and branch-level `view_orders` access as guest waiter calls.
+- Waiters can see the bill request in the waiter dashboard polling payload, but manual payment close is not implemented yet.
 
 Draft order:
 
@@ -776,6 +790,7 @@ Local media storage:
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
 - Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with modifier selection, and the shared draft basket.
 - Active guests can press `Позвать официанта` from the shell; this calls `RequestWaiterForTableSessionAction`, creates or reuses a pending waiter call, and shows a local confirmation.
+- Active guests can press `Попросить счёт` from the shared basket; this calls `RequestBillForTableSessionAction`, changes the session/service point to `payment_requested`, and shows the table total plus per-guest totals.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
 - The guest list shows each guest's ready/not-ready state from `table_session_guests.ready_at`.
 - The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
@@ -789,6 +804,7 @@ Local media storage:
 - Public QR route lets active guests edit or delete only their own draft positions from the basket before the draft is sent to waiter review.
 - Public QR route lets any active guest send the shared draft to waiter review from the basket.
 - Public QR route lets active guests request waiter help, but rejected/removed/left/pending guests cannot request waiter help.
+- Public QR route lets active guests request the bill, but rejected/removed/left/pending guests cannot request the bill.
 - Public QR route does not create final orders directly, create payment records, or send anything to kitchen/bar.
 
 ## Current Guest Menu Display
@@ -846,9 +862,12 @@ Local media storage:
 - After a converted draft, adding a new guest menu position creates a new latest draft for the same table session so guests can make a repeat order.
 - `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
 - Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
+- Guest basket per-person totals include confirmed non-cancelled `order_items` snapshots plus the current open draft items.
+- Guest basket table total includes confirmed non-cancelled `orders.total_price` plus the current open draft total and does not double-count converted drafts.
+- Active guests can request the bill from the basket; this sets the table session to `payment_requested` and notifies waiters through the database notification table.
 - After a draft is converted to an order, the cart shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
 - Guests only see the shared status. They cannot mark kitchen/bar ticket items ready or served.
-- The basket can submit the draft only to waiter review and does not create final orders directly.
+- The basket can submit the draft only to waiter review and does not create final orders or online payments directly.
 
 ## Current Waiter Dashboard
 
@@ -867,13 +886,14 @@ Local media storage:
 - If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
 - The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status` of `sent_to_waiter` or `waiter_review`.
 - The dashboard also shows pending guest waiter calls from `waiter_calls`, branch call counts, service point `Waiter called` badges, guest name, zone, requested time, and a `Processed` action.
+- The dashboard also shows bill-requested table sessions, branch bill counts, service point `Bill requested` badges, guest count, started time, and links to table detail.
 - Open sessions and sent drafts link to the waiter table detail page.
 - Open sessions currently include `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
 - Service points with sent or waiter-review drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
 - Service points with pending guest waiter calls usually show `waiting_waiter` until a waiter marks the call processed.
 - The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
 - The table detail page uses `wire:poll.1s="refreshTable"` and does not use WebSockets.
-- A browser-local audio notice can play when polling sees the number of sent drafts or guest waiter calls increase; no external service is used.
+- A browser-local audio notice can play when polling sees the number of sent drafts, guest waiter calls, or bill requests increase; no external service is used.
 - `App\Livewire\Waiter\Dashboard::markWaiterCallHandled()` calls `MarkWaiterCallHandledAction` and refreshes the polling payload after handling.
 - The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, latest draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's current draft positions, selected modifiers, guest comments, per-guest draft totals, confirmed orders total, current draft total, and the table total.
 - Waiter table total includes already confirmed non-cancelled orders plus the current open draft, but does not double-count a latest draft that is already `converted_to_order`.
@@ -1031,7 +1051,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be payment request flow, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be manual payment closure after a bill request, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1040,6 +1060,9 @@ The next expected product step may be payment request flow, ticket/service statu
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not send waiter calls through SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
 - Do not create more than one pending waiter call for the same service point.
+- Do not send bill requests through online payments, SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
+- Do not create payment records from the guest `Попросить счёт` button; it is only a `payment_requested` status and database notification flow.
+- Do not allow opening a second table session for a service point while its current session is `payment_requested`.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

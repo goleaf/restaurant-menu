@@ -34,7 +34,10 @@ class TableSession extends Model
                 ? $tableSession->status
                 : TableSessionStatus::from($tableSession->status ?? TableSessionStatus::Pending->value);
 
-            $tableSession->active_service_point_id = $status === TableSessionStatus::Active
+            $tableSession->active_service_point_id = in_array($status, [
+                TableSessionStatus::Active,
+                TableSessionStatus::PaymentRequested,
+            ], true)
                 ? $tableSession->service_point_id
                 : null;
 

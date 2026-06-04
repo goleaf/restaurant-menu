@@ -38,7 +38,10 @@ class OpenTableSessionForServicePointAction
                     'created_at',
                     'updated_at',
                 ])
-                ->where('status', TableSessionStatus::Active->value)
+                ->whereIn('status', [
+                    TableSessionStatus::Active->value,
+                    TableSessionStatus::PaymentRequested->value,
+                ])
                 ->orderBy('started_at')
                 ->orderBy('id')
                 ->first();
@@ -54,7 +57,12 @@ class OpenTableSessionForServicePointAction
                 ]);
             }
 
-            $this->updateServicePointStatus->handle($servicePoint, ServicePointStatus::Occupied);
+            $this->updateServicePointStatus->handle(
+                $servicePoint,
+                $activeTableSession->status === TableSessionStatus::PaymentRequested
+                    ? ServicePointStatus::PaymentRequested
+                    : ServicePointStatus::Occupied,
+            );
 
             return $activeTableSession->refresh();
         });

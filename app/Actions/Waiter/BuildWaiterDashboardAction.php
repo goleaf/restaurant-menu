@@ -29,7 +29,8 @@ class BuildWaiterDashboardAction
      *     service_point_count: int,
      *     active_session_count: int,
      *     new_draft_count: int,
-     *     waiter_call_count: int
+     *     waiter_call_count: int,
+     *     bill_request_count: int
      * }
      */
     public function handle(User $user): array
@@ -44,6 +45,7 @@ class BuildWaiterDashboardAction
                 'active_session_count' => 0,
                 'new_draft_count' => 0,
                 'waiter_call_count' => 0,
+                'bill_request_count' => 0,
             ];
         }
 
@@ -92,6 +94,8 @@ class BuildWaiterDashboardAction
         $sessionsByBranchId = $sessions->groupBy('branch_id');
         $draftsByBranchId = $this->draftsByBranchId($draftOrders, $sessions);
         $waiterCallsByBranchId = $waiterCalls->groupBy('branch_id');
+        $billRequestsByBranchId = $this->billRequestsByBranchId($sessions);
+        $billRequestCount = $billRequestsByBranchId->sum(fn (Collection $branchBillRequests): int => count($branchBillRequests));
 
         return [
             'has_access' => true,
@@ -102,6 +106,7 @@ class BuildWaiterDashboardAction
                     sessions: $sessionsByBranchId->get($branch->id, new Collection),
                     drafts: $draftsByBranchId->get($branch->id, new Collection),
                     waiterCalls: $waiterCallsByBranchId->get($branch->id, new Collection),
+                    billRequests: $billRequestsByBranchId->get($branch->id, new Collection),
                     sessionsByServicePointId: $sessionsByServicePointId,
                     draftsBySessionId: $draftsBySessionId,
                     waiterCallsByServicePointId: $waiterCallsByServicePointId,
@@ -112,6 +117,7 @@ class BuildWaiterDashboardAction
             'active_session_count' => $sessions->count(),
             'new_draft_count' => $draftOrders->count(),
             'waiter_call_count' => $waiterCalls->count(),
+            'bill_request_count' => $billRequestCount,
         ];
     }
 
@@ -203,6 +209,7 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, TableSession>  $sessions
      * @param  Collection<int, DraftOrder>  $drafts
      * @param  Collection<int, WaiterCall>  $waiterCalls
+     * @param  Collection<int, TableSession>  $billRequests
      * @param  Collection<int, Collection<int, TableSession>>  $sessionsByServicePointId
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
      * @param  Collection<int, Collection<int, WaiterCall>>  $waiterCallsByServicePointId
@@ -214,10 +221,13 @@ class BuildWaiterDashboardAction
         Collection $sessions,
         Collection $drafts,
         Collection $waiterCalls,
+        Collection $billRequests,
         Collection $sessionsByServicePointId,
         Collection $draftsBySessionId,
         Collection $waiterCallsByServicePointId,
     ): array {
+        $servicePointsById = $servicePoints->keyBy('id');
+
         return [
             'id' => $branch->id,
             'name' => $branch->name,
@@ -230,6 +240,7 @@ class BuildWaiterDashboardAction
             'active_session_count' => count($sessions),
             'new_draft_count' => count($drafts),
             'waiter_call_count' => count($waiterCalls),
+            'bill_request_count' => count($billRequests),
             'service_points' => $servicePoints
                 ->map(fn (ServicePoint $servicePoint): array => $this->servicePointPayload(
                     servicePoint: $servicePoint,
@@ -246,6 +257,13 @@ class BuildWaiterDashboardAction
                 ->all(),
             'waiter_calls' => $waiterCalls
                 ->map(fn (WaiterCall $waiterCall): array => $this->waiterCallPayload($waiterCall))
+                ->values()
+                ->all(),
+            'bill_requests' => $billRequests
+                ->map(fn (TableSession $tableSession): array => $this->billRequestPayload(
+                    tableSession: $tableSession,
+                    servicePoint: $servicePointsById->get($tableSession->service_point_id),
+                ))
                 ->values()
                 ->all(),
         ];
@@ -274,6 +292,9 @@ class BuildWaiterDashboardAction
             'capacity' => $servicePoint->capacity,
             'is_active' => $servicePoint->is_active,
             'waiter_call_count' => count($waiterCalls),
+            'bill_request_count' => $sessions
+                ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
+                ->count(),
             'sessions' => $sessions
                 ->map(fn (TableSession $tableSession): array => $this->sessionPayload(
                     tableSession: $tableSession,
@@ -282,6 +303,23 @@ class BuildWaiterDashboardAction
                 ))
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function billRequestPayload(TableSession $tableSession, ?ServicePoint $servicePoint): array
+    {
+        return [
+            'id' => $tableSession->id,
+            'detail_url' => route('restaurant.waiter.tables.show', $tableSession),
+            'service_point_name' => $servicePoint?->name,
+            'service_point_display_number' => $servicePoint?->display_number,
+            'area_name' => $servicePoint?->areaNode?->name,
+            'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
+            'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
+            'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
         ];
     }
 
@@ -362,6 +400,17 @@ class BuildWaiterDashboardAction
         return $draftOrders->groupBy(
             fn (DraftOrder $draftOrder): int => (int) $sessionBranchIds->get($draftOrder->table_session_id),
         );
+    }
+
+    /**
+     * @param  EloquentCollection<int, TableSession>  $sessions
+     * @return Collection<int, Collection<int, TableSession>>
+     */
+    private function billRequestsByBranchId(EloquentCollection $sessions): Collection
+    {
+        return $sessions
+            ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
+            ->groupBy('branch_id');
     }
 
     private function decimalToCents(string|int|float|null $amount): int

@@ -28,9 +28,13 @@ class Dashboard extends Component
 
     public int $waiterCallCount = 0;
 
+    public int $billRequestCount = 0;
+
     public ?int $previousNewDraftCount = null;
 
     public ?int $previousWaiterCallCount = null;
+
+    public ?int $previousBillRequestCount = null;
 
     public string $waiterCallMessage = '';
 
@@ -41,6 +45,7 @@ class Dashboard extends Component
         $this->refreshDashboard();
         $this->previousNewDraftCount = $this->newDraftCount;
         $this->previousWaiterCallCount = $this->waiterCallCount;
+        $this->previousBillRequestCount = $this->billRequestCount;
     }
 
     public function refreshDashboard(): void
@@ -53,12 +58,14 @@ class Dashboard extends Component
 
         $previousNewDraftCount = $this->previousNewDraftCount;
         $previousWaiterCallCount = $this->previousWaiterCallCount;
+        $previousBillRequestCount = $this->previousBillRequestCount;
 
         $this->branches = $payload['branches'];
         $this->servicePointCount = $payload['service_point_count'];
         $this->activeSessionCount = $payload['active_session_count'];
         $this->newDraftCount = $payload['new_draft_count'];
         $this->waiterCallCount = $payload['waiter_call_count'];
+        $this->billRequestCount = $payload['bill_request_count'];
         $this->refreshedAt = now()->format('H:i:s');
 
         if ($previousNewDraftCount !== null && $this->newDraftCount > $previousNewDraftCount) {
@@ -69,8 +76,13 @@ class Dashboard extends Component
             $this->dispatch('waiter-called');
         }
 
+        if ($previousBillRequestCount !== null && $this->billRequestCount > $previousBillRequestCount) {
+            $this->dispatch('waiter-bill-requested');
+        }
+
         $this->previousNewDraftCount = $this->newDraftCount;
         $this->previousWaiterCallCount = $this->waiterCallCount;
+        $this->previousBillRequestCount = $this->billRequestCount;
     }
 
     public function markWaiterCallHandled(int $waiterCallId, MarkWaiterCallHandledAction $markHandled): void

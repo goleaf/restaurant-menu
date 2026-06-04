@@ -31,6 +31,7 @@
     }"
     x-on:waiter-new-draft.window="playNotice()"
     x-on:waiter-called.window="playNotice()"
+    x-on:waiter-bill-requested.window="playNotice()"
     class="flex h-full w-full flex-1 flex-col gap-6"
 >
     <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -53,7 +54,7 @@
         </p>
     @endif
 
-    <section class="grid gap-3 md:grid-cols-4">
+    <section class="grid gap-3 md:grid-cols-5">
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Service points') }}</p>
             <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $servicePointCount }}</p>
@@ -72,6 +73,11 @@
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Guest calls') }}</p>
             <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $waiterCallCount }}</p>
+        </div>
+
+        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Bill requests') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $billRequestCount }}</p>
         </div>
     </section>
 
@@ -92,6 +98,7 @@
                         <flux:badge color="blue">{{ __('Sessions') }}: {{ $branch['active_session_count'] }}</flux:badge>
                         <flux:badge :color="$branch['new_draft_count'] > 0 ? 'rose' : 'zinc'">{{ __('New') }}: {{ $branch['new_draft_count'] }}</flux:badge>
                         <flux:badge :color="$branch['waiter_call_count'] > 0 ? 'orange' : 'zinc'">{{ __('Calls') }}: {{ $branch['waiter_call_count'] }}</flux:badge>
+                        <flux:badge :color="$branch['bill_request_count'] > 0 ? 'blue' : 'zinc'">{{ __('Bills') }}: {{ $branch['bill_request_count'] }}</flux:badge>
                     </div>
                 </div>
 
@@ -106,6 +113,10 @@
 
                                         @if ($servicePoint['waiter_call_count'] > 0)
                                             <flux:badge color="orange">{{ __('Waiter called') }}</flux:badge>
+                                        @endif
+
+                                        @if ($servicePoint['bill_request_count'] > 0)
+                                            <flux:badge color="blue">{{ __('Bill requested') }}</flux:badge>
                                         @endif
 
                                         @if (! $servicePoint['is_active'])
@@ -148,6 +159,12 @@
                                                         @if ($session['draft'])
                                                             <span class="font-medium text-rose-700 dark:text-rose-300">
                                                                 {{ __('Waiting review') }} · {{ $session['draft']['items_count'] }} · {{ $session['draft']['total'] }}
+                                                            </span>
+                                                        @endif
+
+                                                        @if ($session['status'] === 'payment_requested')
+                                                            <span class="font-medium text-sky-700 dark:text-sky-300">
+                                                                {{ __('Bill requested') }}
                                                             </span>
                                                         @endif
 
@@ -209,6 +226,46 @@
                             @empty
                                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
                                     {{ __('No guest calls.') }}
+                                </div>
+                            @endforelse
+                        </div>
+
+                        <div class="border-y border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                            <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Bill requests') }}</h3>
+                        </div>
+
+                        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+                            @forelse ($branch['bill_requests'] as $billRequest)
+                                <div wire:key="waiter-bill-request-{{ $billRequest['id'] }}" class="px-4 py-3 text-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <p class="font-medium text-zinc-950 dark:text-white">
+                                                {{ $billRequest['service_point_name'] ?? __('Service point') }}
+                                            </p>
+                                            <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                                {{ __('Zone') }}: {{ $billRequest['area_name'] ?? __('No zone') }}
+                                            </p>
+                                        </div>
+
+                                        <flux:badge color="blue">{{ __('Bill requested') }}</flux:badge>
+                                    </div>
+
+                                    <p class="mt-2 text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Opened') }}: {{ $billRequest['started_at'] ?? __('time not set') }}
+                                    </p>
+                                    <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Guests') }}: {{ $billRequest['active_guest_count'] }}
+                                    </p>
+
+                                    <div class="mt-3">
+                                        <flux:button size="sm" icon="eye" :href="$billRequest['detail_url']" wire:navigate>
+                                            {{ __('Details') }}
+                                        </flux:button>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No bill requests.') }}
                                 </div>
                             @endforelse
                         </div>

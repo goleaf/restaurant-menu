@@ -101,6 +101,10 @@
         <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
     @enderror
 
+    @error('bill_request')
+        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+    @enderror
+
     <div class="mt-4 space-y-4">
         <section class="space-y-3">
             <div class="flex items-center justify-between gap-3">
@@ -145,6 +149,15 @@
                         <div class="shrink-0 text-right">
                             <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestSection['total'] }} {{ $currency }}</p>
                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Сумма гостя') }}</p>
+
+                            @if ($guestSection['has_confirmed_total'])
+                                <p class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                                    {{ __('Принято') }}: {{ $guestSection['confirmed_total'] }} {{ $currency }}
+                                    @if ($guestSection['has_draft_total'])
+                                        <span class="block">{{ __('Сейчас') }}: {{ $guestSection['draft_total'] }} {{ $currency }}</span>
+                                    @endif
+                                </p>
+                            @endif
                         </div>
                     </div>
 
@@ -241,6 +254,26 @@
                 </div>
             </div>
         @endif
+
+        <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            @if ($billRequested)
+                <div class="rounded-lg bg-sky-50 px-3 py-3 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                    {{ __('Счёт запрошен. Официант скоро подойдёт.') }}
+                    <span class="mt-1 block font-normal">{{ __('Итого за стол') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
+                </div>
+            @elseif ($canRequestBill)
+                <button
+                    type="button"
+                    wire:click="requestBill"
+                    wire:loading.attr="disabled"
+                    wire:target="requestBill"
+                    class="flex min-h-12 w-full items-center justify-center rounded-lg bg-sky-700 px-4 text-base font-semibold text-white transition hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                >
+                    <span wire:loading.remove wire:target="requestBill">{{ __('Попросить счёт') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
+                    <span wire:loading wire:target="requestBill">{{ __('Отправляем') }}</span>
+                </button>
+            @endif
+        </div>
 
         @if ($canSendDraftToWaiter)
             <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">

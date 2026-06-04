@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -194,7 +194,7 @@ Menu cache uses the SQLite-backed `cache` table and a short database lock from `
 
 Menu cache is forgotten automatically when menus, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, department assignment changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
 
-The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Active guests can send the shared draft to the waiter for review. This does not start kitchen/bar flow or create payment logic.
+The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
 
 ## Area Nodes
 
@@ -244,9 +244,11 @@ The service point UI is guarded by the `manage_service_points` permission in the
 
 Service point status can be changed manually by a user with `manage_service_points` or by a user with the fixed `waiter` role in the organization. The status update is handled through a backend action so later table sessions and orders can reuse the same status-change path.
 
-Users with `view_orders` or `confirm_orders` can open a table from the service point page. Opening a table creates or returns the current active table session for that service point and moves the service point status to `occupied`.
+Users with `view_orders` or `confirm_orders` can open a table from the service point page. Opening a table creates or returns the current active or bill-requested table session for that service point and moves the service point status to `occupied` or keeps it at `payment_requested`.
 
 Active guests can press `Позвать официанта` from the public QR table page. The request creates or reuses one pending `waiter_calls` row for the service point, moves the service point status to `waiting_waiter`, and writes database notifications for waiters who can view orders in that branch. No SMS, push, Telegram API, WebSockets, Redis, or external service is used.
+
+Active guests can press `Попросить счёт` from the same shared basket. The action changes the current `table_sessions.status` to `payment_requested`, moves the service point status to `payment_requested`, keeps per-guest and table totals visible to guests, and writes a database notification for eligible waiters. This is a request/status flow only; no online payments are implemented.
 
 Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
 
@@ -291,11 +293,11 @@ Supported sources are:
 
 `opened_by_user_id` is for waiter-created sessions. `opened_by_guest_id` stores the first session guest id when the first guest creates a pending session.
 
-SQLite enforces one active table session per service point through internal nullable `active_service_point_id`. Closed, cancelled, or other non-active session history can remain for the same service point.
+SQLite enforces one active or bill-requested table session per service point through internal nullable `active_service_point_id`. Closed, cancelled, paid, or other non-active session history can remain for the same service point.
 
 SQLite also enforces one pending table session per service point through internal nullable `pending_service_point_id`. This protects the public QR flow from creating duplicate pending sessions on repeat submit.
 
-`OpenTableSessionForServicePointAction` creates an active waiter-opened session only when the service point does not already have one. If an active session already exists, the action returns it and does not create a second active session automatically.
+`OpenTableSessionForServicePointAction` creates an active waiter-opened session only when the service point does not already have an active or bill-requested session. If such a session already exists, the action returns it and does not create a duplicate session automatically.
 
 `CreateGuestPendingTableSessionAction` creates a pending guest-created session only when the service point has no active or pending session and branch settings allow guest-created sessions. The first guest is stored as an active guest inside that pending session.
 
@@ -490,8 +492,9 @@ The dashboard uses Livewire polling every 1 second and does not use WebSockets. 
 - service point statuses;
 - open table sessions;
 - pending guest waiter calls;
+- guest bill requests;
 - shared drafts with `sent_to_waiter` or `waiter_review` status;
-- a small browser audio notice when a new sent draft or guest waiter call appears during polling.
+- a small browser audio notice when a new sent draft, guest waiter call, or bill request appears during polling.
 
 Each open session links to a waiter table detail page:
 
@@ -583,6 +586,7 @@ Implemented:
 - First guest pending session creation from the public QR landing.
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Guest waiter-call requests stored in `waiter_calls` with Laravel database notifications for the waiter dashboard.
+- Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
@@ -612,7 +616,7 @@ Not implemented yet:
 - Menu translation admin editor.
 - QR PDF generation.
 - Advanced kitchen/bar production history.
-- Payments and analytics.
+- Online payments and analytics.
 - Staff invitation acceptance flow and email/SMS delivery.
 
 ## Local Verification

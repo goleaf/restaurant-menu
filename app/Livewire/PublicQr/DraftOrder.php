@@ -6,16 +6,20 @@ use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
+use App\Actions\TableSessions\RequestBillForTableSessionAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -40,7 +44,7 @@ class DraftOrder extends Component
     public array $items = [];
 
     /**
-     * @var list<array{guest_id: int, guest_name: string, total: string, is_current_guest: bool, is_ready: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
+     * @var list<array{guest_id: int, guest_name: string, total: string, draft_total: string, confirmed_total: string, has_draft_total: bool, has_confirmed_total: bool, is_current_guest: bool, is_ready: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
      */
     public array $guestSections = [];
 
@@ -65,7 +69,15 @@ class DraftOrder extends Component
 
     public bool $canSendDraftToWaiter = false;
 
+    public bool $canRequestBill = false;
+
+    public bool $billRequested = false;
+
     public bool $sendNeedsReadyConfirmation = false;
+
+    public ?string $tableSessionStatusValue = null;
+
+    public string $tableSessionStatusLabel = '';
 
     public ?string $draftStatusValue = null;
 
@@ -132,10 +144,15 @@ class DraftOrder extends Component
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder();
         $draftItems = $draftOrder?->items ?? collect();
+        $tableSession = $this->tableSessionForBillState();
         $guestSections = [];
         $totalCents = 0;
         $confirmedOrdersTotalCents = $this->confirmedOrdersTotalCents();
+        $confirmedGuestTotals = $this->confirmedOrderItemGuestTotals();
 
+        $this->tableSessionStatusValue = $tableSession?->status?->value;
+        $this->tableSessionStatusLabel = $tableSession?->status?->label() ?? '';
+        $this->billRequested = $tableSession?->status === TableSessionStatus::PaymentRequested;
         $this->draftStatusValue = $draftOrder?->status?->value;
         $this->draftStatusLabel = $draftOrder?->status?->label() ?? '';
         $orderStatus = $draftOrder?->order?->status instanceof OrderStatus
@@ -157,8 +174,9 @@ class DraftOrder extends Component
         $this->currentGuestReady = false;
         $this->canToggleReadyStatus = false;
         $this->canSendDraftToWaiter = false;
+        $this->canRequestBill = false;
 
-        $guests->each(function (TableSessionGuest $guest) use (&$guestSections): void {
+        $guests->each(function (TableSessionGuest $guest) use (&$guestSections, $tableSession): void {
             $isCurrentGuest = $guest->id === $this->currentGuestId;
             $isReady = $guest->ready_at !== null;
 
@@ -166,17 +184,49 @@ class DraftOrder extends Component
                 $this->currentGuestReady = $isReady;
                 $this->canToggleReadyStatus = $this->publicToken !== '' && $this->canEditDraft;
                 $this->canSendDraftToWaiter = $this->publicToken !== '' && $this->canEditDraft;
+                $this->canRequestBill = $this->publicToken !== ''
+                    && $tableSession instanceof TableSession
+                    && ! $this->billRequested
+                    && ! in_array($tableSession->status, [
+                        TableSessionStatus::Paid,
+                        TableSessionStatus::Closed,
+                        TableSessionStatus::Cancelled,
+                    ], true);
             }
 
             $guestSections[$guest->id] = [
                 'guest_id' => $guest->id,
                 'guest_name' => $guest->guest_name,
+                'draft_total_cents' => 0,
+                'confirmed_total_cents' => 0,
                 'total_cents' => 0,
                 'is_current_guest' => $isCurrentGuest,
                 'is_ready' => $isReady,
                 'items' => [],
             ];
         });
+
+        foreach ($confirmedGuestTotals as $index => $confirmedGuestTotal) {
+            $guestId = (int) $confirmedGuestTotal['guest_id'];
+            $guestKey = $guestId > 0 ? $guestId : 'confirmed-'.$index;
+            $confirmedTotalCents = (int) $confirmedGuestTotal['total_cents'];
+
+            if (! isset($guestSections[$guestKey])) {
+                $guestSections[$guestKey] = [
+                    'guest_id' => $guestId > 0 ? $guestId : -($index + 1),
+                    'guest_name' => $confirmedGuestTotal['guest_name'],
+                    'draft_total_cents' => 0,
+                    'confirmed_total_cents' => 0,
+                    'total_cents' => 0,
+                    'is_current_guest' => $guestId === $this->currentGuestId,
+                    'is_ready' => false,
+                    'items' => [],
+                ];
+            }
+
+            $guestSections[$guestKey]['confirmed_total_cents'] += $confirmedTotalCents;
+            $guestSections[$guestKey]['total_cents'] += $confirmedTotalCents;
+        }
 
         $items = $draftItems
             ->map(function (DraftOrderItem $item) use (&$guestSections, &$totalCents): array {
@@ -190,6 +240,8 @@ class DraftOrder extends Component
                     $guestSections[$guestId] = [
                         'guest_id' => $guestId,
                         'guest_name' => $guestName,
+                        'draft_total_cents' => 0,
+                        'confirmed_total_cents' => 0,
                         'total_cents' => 0,
                         'is_current_guest' => $guestId === $this->currentGuestId,
                         'is_ready' => false,
@@ -197,6 +249,7 @@ class DraftOrder extends Component
                     ];
                 }
 
+                $guestSections[$guestId]['draft_total_cents'] += $itemTotalCents;
                 $guestSections[$guestId]['total_cents'] += $itemTotalCents;
 
                 $isCurrentGuest = $item->table_session_guest_id === $this->currentGuestId;
@@ -229,6 +282,10 @@ class DraftOrder extends Component
                 'guest_id' => $guestSection['guest_id'],
                 'guest_name' => $guestSection['guest_name'],
                 'total' => self::centsToDecimal($guestSection['total_cents']),
+                'draft_total' => self::centsToDecimal($guestSection['draft_total_cents']),
+                'confirmed_total' => self::centsToDecimal($guestSection['confirmed_total_cents']),
+                'has_draft_total' => $guestSection['draft_total_cents'] > 0,
+                'has_confirmed_total' => $guestSection['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestSection['is_current_guest'],
                 'is_ready' => $guestSection['is_ready'],
                 'items' => $guestSection['items'],
@@ -281,6 +338,44 @@ class DraftOrder extends Component
             ? __('Готовность снята.')
             : __('Вы отметили готовность.');
 
+        $this->refreshDraft();
+    }
+
+    public function requestBill(RequestBillForTableSessionAction $requestBill): void
+    {
+        $this->resetValidation();
+        $this->feedbackMessage = '';
+
+        $guest = $this->currentActiveGuest();
+
+        if (! $guest instanceof TableSessionGuest) {
+            $this->addError('bill_request', __('Только активный гость за этим столом может попросить счёт.'));
+
+            return;
+        }
+
+        $tableSession = TableSession::query()
+            ->select(['id'])
+            ->whereKey($this->tableSessionId)
+            ->first();
+
+        if (! $tableSession instanceof TableSession) {
+            $this->addError('bill_request', __('Сессия стола не найдена.'));
+
+            return;
+        }
+
+        try {
+            $requestBill->handle($tableSession, $guest);
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->closeEditItem();
+        $this->sendNeedsReadyConfirmation = false;
+        $this->feedbackMessage = __('Официант получил просьбу принести счёт.');
         $this->refreshDraft();
     }
 
@@ -585,6 +680,59 @@ class DraftOrder extends Component
             ->whereNotIn('status', [OrderStatus::Cancelled->value])
             ->get()
             ->sum(fn (Order $order): int => self::decimalToCents($order->total_price));
+    }
+
+    private function tableSessionForBillState(): ?TableSession
+    {
+        return TableSession::query()
+            ->select([
+                'id',
+                'status',
+            ])
+            ->whereKey($this->tableSessionId)
+            ->first();
+    }
+
+    /**
+     * @return list<array{guest_id: int, guest_name: string, total_cents: int}>
+     */
+    private function confirmedOrderItemGuestTotals(): array
+    {
+        return OrderItem::query()
+            ->select([
+                'id',
+                'order_id',
+                'table_session_guest_id',
+                'guest_name',
+                'total_price',
+            ])
+            ->with(['guest' => fn ($query) => $query->select(['id', 'guest_name'])])
+            ->whereHas('order', function ($query): void {
+                $query
+                    ->where('table_session_id', $this->tableSessionId)
+                    ->whereNotIn('status', [OrderStatus::Cancelled->value]);
+            })
+            ->orderBy('id')
+            ->get()
+            ->groupBy(function (OrderItem $item): string {
+                if ((int) $item->table_session_guest_id > 0) {
+                    return 'guest-'.$item->table_session_guest_id;
+                }
+
+                return 'snapshot-'.$item->guest_name;
+            })
+            ->map(function (Collection $items): array {
+                /** @var OrderItem $firstItem */
+                $firstItem = $items->first();
+
+                return [
+                    'guest_id' => (int) $firstItem->table_session_guest_id,
+                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->guest_name ?? __('Гость'),
+                    'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function openDraftTotalCents(?DraftOrderModel $draftOrder, int $draftTotalCents): int

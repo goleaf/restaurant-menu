@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 066 - Request Bill Button
+
+- Added `RequestBillForTableSessionAction` so an active guest can press `Попросить счёт` from the shared guest basket.
+- Requesting the bill changes `table_sessions.status` and the related service point status to `payment_requested` while preserving visible per-guest totals and the table total.
+- Added database-only `BillRequestedNotification` for waiters with branch-level `view_orders` access; no online payments or external notification services were added.
+- Extended the waiter dashboard polling payload with bill-request counts, branch bill-request lists, service point badges, and a browser-local audio notice.
+- Kept bill-requested sessions guarded as current sessions so opening a table does not create a second session for the same service point before manual payment closure exists.
+- Verified the request bill flow, duplicate-click idempotency, waiter dashboard visibility, and neighboring waiter/open-table/repeat-order behavior without Redis, WebSockets, S3, Docker, or online payments.
+
 ### Prompt 065 - Request Waiter Button
 
 - Added local `notifications` and `waiter_calls` tables for database-only guest waiter-call requests.

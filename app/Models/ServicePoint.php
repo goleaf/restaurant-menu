@@ -123,7 +123,10 @@ class ServicePoint extends Model
     public function activeTableSession(): HasOne
     {
         return $this->hasOne(TableSession::class)
-            ->where('status', TableSessionStatus::Active->value)
+            ->whereIn('status', [
+                TableSessionStatus::Active->value,
+                TableSessionStatus::PaymentRequested->value,
+            ])
             ->oldest('started_at')
             ->oldest('id');
     }

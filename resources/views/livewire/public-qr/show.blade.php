@@ -342,7 +342,15 @@
                             </p>
                         @endif
 
-                        @if ($entryMessage || $currentJoinRequestId)
+                        @if ($entryIssueCard['visible'])
+                            <x-guest-error-panel
+                                class="mt-3"
+                                :card="$entryIssueCard"
+                                :logo-url="$landing['logo_url']"
+                                :venue-name="$landing['venue_name']"
+                                :brand-initial="$landing['brand_initial']"
+                            />
+                        @elseif ($entryMessage || $currentJoinRequestId)
                             <div
                                 class="mt-3"
                                 @if ($currentJoinRequestId) wire:poll.visible.{{ $landing['polling_interval_seconds'] }}s="refreshJoinRequestStatus" @endif
@@ -366,18 +374,12 @@
                 </section>
             @endif
         @else
-            <section class="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex flex-col gap-3">
-                    <span class="flex size-10 items-center justify-center rounded-lg bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-200">
-                        !
-                    </span>
-
-                    <div class="space-y-2">
-                        <h1 class="text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $title }}</h1>
-                        <p class="text-sm leading-6 text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
-                    </div>
-                </div>
-            </section>
+            <x-guest-error-panel
+                :card="$pageErrorCard"
+                :logo-url="$landing['logo_url']"
+                :venue-name="$landing['venue_name']"
+                :brand-initial="$landing['brand_initial']"
+            />
         @endif
     </main>
 </div>

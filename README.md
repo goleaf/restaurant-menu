@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -59,6 +59,22 @@ lang/lt.json
 ```
 
 No AI translation, external translate API, or paid localization service is used.
+
+## Guest Error Pages
+
+Public QR and guest-session errors use a dedicated mobile-first Blade component at `resources/views/components/guest-error-panel.blade.php`.
+
+Covered guest-facing states:
+
+- QR token not found;
+- QR code disabled or revoked;
+- inactive service point;
+- restaurant temporarily unavailable through an inactive organization subscription;
+- closed table session;
+- rejected, removed, or left guest entry;
+- stale or closed invite link.
+
+The error UI shows clear human text, keeps technical IDs hidden, and gives a safe action such as returning to the QR page or start page when that is possible. These pages do not add ordering behavior and do not use Redis, WebSockets, S3, Docker, or external services.
 
 ## Currency Settings
 

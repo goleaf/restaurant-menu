@@ -9,6 +9,7 @@ use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
 use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
 use App\Enums\GuestTableEntryState;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
@@ -48,6 +49,8 @@ class Show extends Component
     public string $entryState = '';
 
     public string $entryMessage = '';
+
+    public string $entryIssueCode = '';
 
     public ?int $currentTableSessionId = null;
 
@@ -161,6 +164,16 @@ class Show extends Component
         $brand = $branch->brand;
         $organization = $branch->organization;
 
+        if ($organization->subscription?->status === OrganizationSubscriptionStatus::Inactive) {
+            $this->showError(
+                state: 'restaurant_unavailable',
+                title: __('Restaurant is temporarily unavailable'),
+                message: __('Please ask the staff when service will resume.'),
+            );
+
+            return;
+        }
+
         $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch(
             $branch->id,
             $hasRequestedLanguage ? $this->language : null,
@@ -270,6 +283,7 @@ class Show extends Component
 
         $this->entryState = $entryState->value;
         $this->entryMessage = $this->messageForEntryState($entryState);
+        $this->entryIssueCode = $this->issueCodeForEntryState($entryState);
         $this->currentTableSessionId = $tableSession instanceof TableSession ? $tableSession->id : null;
         $this->currentGuestId = $guest instanceof TableSessionGuest ? $guest->id : null;
         $this->currentJoinRequestId = $joinRequest instanceof TableSessionJoinRequest ? $joinRequest->id : null;
@@ -368,6 +382,7 @@ class Show extends Component
 
         if (! $joinRequest instanceof TableSessionJoinRequest || ! $joinRequest->tableSession instanceof TableSession) {
             $this->entryState = 'join_request_blocked';
+            $this->entryIssueCode = 'join_request_unavailable';
             $this->guestCanAddItems = false;
 
             return;
@@ -381,6 +396,7 @@ class Show extends Component
 
             if (! $guest instanceof TableSessionGuest || ! $guest->tableSession instanceof TableSession) {
                 $this->entryState = 'join_request_blocked';
+                $this->entryIssueCode = 'join_request_unavailable';
                 $this->guestCanAddItems = false;
 
                 return;
@@ -396,18 +412,21 @@ class Show extends Component
             $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
             $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
             $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
+            $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
 
             return;
         }
 
         if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending || $this->joinRequestIsExpired($joinRequest)) {
             $this->entryState = 'join_request_blocked';
+            $this->entryIssueCode = $this->joinRequestAccessIssueCode($joinRequest);
             $this->guestCanAddItems = false;
 
             return;
         }
 
         $this->entryState = 'join_request_restored';
+        $this->entryIssueCode = '';
         $this->guestCanAddItems = false;
     }
 
@@ -415,7 +434,10 @@ class Show extends Component
     {
         $this->applyGuestLocale();
 
-        return view('livewire.public-qr.show');
+        return view('livewire.public-qr.show', [
+            'entryIssueCard' => $this->entryIssueCard(),
+            'pageErrorCard' => $this->pageErrorCard(),
+        ]);
     }
 
     private function findQrCode(string $token): ?QrCode
@@ -469,6 +491,12 @@ class Show extends Component
                                     'id',
                                     'name',
                                     'logo_path',
+                                ])->with([
+                                    'subscription' => fn ($query) => $query->select([
+                                        'id',
+                                        'organization_id',
+                                        'status',
+                                    ]),
                                 ]),
                             ]),
                     ]),
@@ -508,6 +536,7 @@ class Show extends Component
         $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
         $this->entryState = $this->guestCanAddItems ? 'guest_restored' : 'guest_blocked';
         $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
+        $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
 
         session()->put('guest_entries.'.$qrCode->public_token, [
             'table_session_id' => $tableSession->id,
@@ -536,6 +565,7 @@ class Show extends Component
             ? 'join_request_restored'
             : 'join_request_blocked';
         $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
+        $this->entryIssueCode = $this->joinRequestAccessIssueCode($joinRequest);
 
         session()->put('guest_entries.'.$this->token, [
             'table_session_id' => $tableSession->id,
@@ -557,6 +587,7 @@ class Show extends Component
 
         if (! $tableSession instanceof TableSession) {
             $this->entryState = 'guest_invite_invalid';
+            $this->entryIssueCode = 'invite_expired';
             $this->entryMessage = __('Ссылка приглашения больше не активна. Пожалуйста, попросите гостей отправить новую ссылку или отсканируйте QR-код на месте.');
             $this->currentTableSessionId = null;
             $this->currentGuestId = null;
@@ -572,6 +603,7 @@ class Show extends Component
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             $this->entryState = 'guest_invite_closed';
+            $this->entryIssueCode = 'invite_closed';
             $this->entryMessage = __('Эта сессия стола уже закрыта. Пожалуйста, попросите гостей отправить новую ссылку.');
             $this->currentJoinRequestId = null;
 
@@ -582,6 +614,7 @@ class Show extends Component
 
         if (! $joinRequest instanceof TableSessionJoinRequest) {
             $this->entryState = 'guest_invite_unavailable';
+            $this->entryIssueCode = 'invite_unavailable';
             $this->entryMessage = __('Сейчас за столом нет активных гостей для подтверждения входа.');
             $this->currentJoinRequestId = null;
 
@@ -590,6 +623,7 @@ class Show extends Component
 
         $this->entryState = GuestTableEntryState::JoinRequestCreated->value;
         $this->entryMessage = $this->messageForEntryState(GuestTableEntryState::JoinRequestCreated);
+        $this->entryIssueCode = '';
         $this->currentJoinRequestId = $joinRequest->id;
 
         Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $joinRequest->guest_token, 60 * 24 * 30);
@@ -829,6 +863,7 @@ class Show extends Component
         $this->state = $state;
         $this->title = $title;
         $this->message = $message;
+        $this->entryIssueCode = '';
     }
 
     private function inviteTokenFromRequest(): ?string
@@ -935,6 +970,21 @@ class Show extends Component
         };
     }
 
+    private function guestAccessIssueCode(TableSessionGuest $guest, TableSession $tableSession): string
+    {
+        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            return 'session_closed';
+        }
+
+        return match ($guest->status) {
+            TableSessionGuestStatus::Active,
+            TableSessionGuestStatus::PendingApproval => '',
+            TableSessionGuestStatus::Rejected => 'guest_rejected',
+            TableSessionGuestStatus::Removed => 'guest_removed',
+            TableSessionGuestStatus::Left => 'guest_left',
+        };
+    }
+
     private function messageForJoinRequestAccess(TableSessionJoinRequest $joinRequest): string
     {
         if ($joinRequest->status === TableSessionJoinRequestStatus::Pending
@@ -951,6 +1001,20 @@ class Show extends Component
         };
     }
 
+    private function joinRequestAccessIssueCode(TableSessionJoinRequest $joinRequest): string
+    {
+        if ($joinRequest->status === TableSessionJoinRequestStatus::Pending && ! $this->joinRequestIsExpired($joinRequest)) {
+            return '';
+        }
+
+        return match ($joinRequest->status) {
+            TableSessionJoinRequestStatus::Pending,
+            TableSessionJoinRequestStatus::Expired => 'invite_expired',
+            TableSessionJoinRequestStatus::Rejected => 'guest_rejected',
+            TableSessionJoinRequestStatus::Approved => '',
+        };
+    }
+
     private function messageForEntryState(GuestTableEntryState $state): string
     {
         return match ($state) {
@@ -961,6 +1025,196 @@ class Show extends Component
             GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
             GuestTableEntryState::ServicePointUnavailable => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
         };
+    }
+
+    private function issueCodeForEntryState(GuestTableEntryState $state): string
+    {
+        return match ($state) {
+            GuestTableEntryState::GuestCreatedSessionsDisabled => 'guest_created_sessions_disabled',
+            GuestTableEntryState::ServicePointUnavailable => 'service_point_unavailable',
+            default => '',
+        };
+    }
+
+    /**
+     * @return array{visible: bool, state: string, tone: string, kicker: string, title: string, message: string, support_text: string, primary_label: string|null, primary_url: string|null, secondary_label: string|null, secondary_url: string|null}
+     */
+    private function pageErrorCard(): array
+    {
+        if ($this->state === 'ready') {
+            return $this->emptyErrorCard();
+        }
+
+        $state = $this->state !== '' ? $this->state : 'not_found';
+
+        return [
+            'visible' => true,
+            'state' => $state,
+            'tone' => $this->toneForErrorState($state),
+            'kicker' => $this->kickerForPageErrorState($state),
+            'title' => $this->title,
+            'message' => $this->message,
+            'support_text' => $this->supportTextForPageErrorState($state),
+            'primary_label' => $state === 'not_found' ? __('Open start page') : __('Try again'),
+            'primary_url' => $state === 'not_found' ? route('guest.home') : $this->currentPublicQrUrl(),
+            'secondary_label' => null,
+            'secondary_url' => null,
+        ];
+    }
+
+    /**
+     * @return array{visible: bool, state: string, tone: string, kicker: string, title: string, message: string, support_text: string, primary_label: string|null, primary_url: string|null, secondary_label: string|null, secondary_url: string|null}
+     */
+    private function entryIssueCard(): array
+    {
+        if ($this->state !== 'ready' || $this->entryIssueCode === '') {
+            return $this->emptyErrorCard();
+        }
+
+        return [
+            'visible' => true,
+            'state' => $this->entryIssueCode,
+            'tone' => $this->toneForErrorState($this->entryIssueCode),
+            'kicker' => $this->kickerForEntryIssueCode($this->entryIssueCode),
+            'title' => $this->titleForEntryIssueCode($this->entryIssueCode),
+            'message' => $this->entryMessage,
+            'support_text' => $this->supportTextForEntryIssueCode($this->entryIssueCode),
+            'primary_label' => __('Return to QR page'),
+            'primary_url' => $this->currentPublicQrUrl(withoutInvite: true),
+            'secondary_label' => null,
+            'secondary_url' => null,
+        ];
+    }
+
+    /**
+     * @return array{visible: bool, state: string, tone: string, kicker: string, title: string, message: string, support_text: string, primary_label: string|null, primary_url: string|null, secondary_label: string|null, secondary_url: string|null}
+     */
+    private function emptyErrorCard(): array
+    {
+        return [
+            'visible' => false,
+            'state' => '',
+            'tone' => 'zinc',
+            'kicker' => '',
+            'title' => '',
+            'message' => '',
+            'support_text' => '',
+            'primary_label' => null,
+            'primary_url' => null,
+            'secondary_label' => null,
+            'secondary_url' => null,
+        ];
+    }
+
+    private function toneForErrorState(string $state): string
+    {
+        return match ($state) {
+            'disabled',
+            'inactive_service_point',
+            'restaurant_unavailable',
+            'service_point_unavailable',
+            'guest_created_sessions_disabled',
+            'invite_unavailable' => 'amber',
+            'not_found',
+            'revoked',
+            'guest_rejected',
+            'guest_removed',
+            'guest_left',
+            'session_closed',
+            'invite_expired',
+            'invite_closed',
+            'join_request_unavailable' => 'rose',
+            default => 'zinc',
+        };
+    }
+
+    private function kickerForPageErrorState(string $state): string
+    {
+        return match ($state) {
+            'not_found' => __('QR access'),
+            'disabled',
+            'revoked' => __('QR access paused'),
+            'inactive_service_point' => __('Place unavailable'),
+            'restaurant_unavailable' => __('Restaurant unavailable'),
+            default => __('Guest access'),
+        };
+    }
+
+    private function supportTextForPageErrorState(string $state): string
+    {
+        return match ($state) {
+            'not_found',
+            'revoked' => __('Show this screen to the staff so they can give you the correct QR.'),
+            'disabled',
+            'inactive_service_point',
+            'restaurant_unavailable' => __('Show this screen to the staff. They can reopen access when the place is ready.'),
+            default => __('Show this screen to the staff if you need help.'),
+        };
+    }
+
+    private function kickerForEntryIssueCode(string $issueCode): string
+    {
+        return match ($issueCode) {
+            'session_closed',
+            'invite_closed' => __('Table closed'),
+            'guest_rejected',
+            'guest_removed',
+            'guest_left' => __('Guest access'),
+            'invite_expired',
+            'join_request_unavailable' => __('Invite link'),
+            'service_point_unavailable' => __('Place unavailable'),
+            'guest_created_sessions_disabled',
+            'invite_unavailable' => __('Ask the staff'),
+            default => __('Guest access'),
+        };
+    }
+
+    private function titleForEntryIssueCode(string $issueCode): string
+    {
+        return match ($issueCode) {
+            'session_closed',
+            'invite_closed' => __('This table session is closed'),
+            'guest_rejected' => __('Guest access was not approved'),
+            'guest_removed' => __('Guest access was removed'),
+            'guest_left' => __('You have left this table'),
+            'invite_expired',
+            'join_request_unavailable' => __('Invite link has expired'),
+            'service_point_unavailable' => __('This place is temporarily unavailable'),
+            'guest_created_sessions_disabled' => __('Please ask a waiter to open this table'),
+            'invite_unavailable' => __('No active guests can approve this invite'),
+            default => __('Guest access is unavailable'),
+        };
+    }
+
+    private function supportTextForEntryIssueCode(string $issueCode): string
+    {
+        return match ($issueCode) {
+            'session_closed',
+            'invite_closed' => __('A closed table keeps its old orders, but it cannot accept new guest actions.'),
+            'guest_rejected',
+            'guest_removed',
+            'guest_left' => __('You cannot add items from this guest entry. Please ask the table or staff for help.'),
+            'invite_expired',
+            'join_request_unavailable' => __('Ask an active guest to share a new invite link, or scan the QR code at the table.'),
+            'service_point_unavailable' => __('Ordering from this place is paused until staff reopens it.'),
+            'guest_created_sessions_disabled',
+            'invite_unavailable' => __('A staff member can help you continue from this table.'),
+            default => __('Please ask the staff for help.'),
+        };
+    }
+
+    private function currentPublicQrUrl(bool $withoutInvite = false): string
+    {
+        $parameters = [
+            'token' => $this->token,
+            'lang' => $this->language,
+        ];
+
+        if (! $withoutInvite && $this->currentInviteToken !== null) {
+            $parameters['invite'] = $this->currentInviteToken;
+        }
+
+        return route('public.qr.show', $parameters);
     }
 
     private function applyGuestLocale(): void

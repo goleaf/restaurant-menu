@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 086 - Guest Error Pages
+
+- Added a dedicated mobile-first guest error panel for public QR and guest-session problems.
+- Covered QR not found, disabled/revoked QR, inactive service point, closed session, rejected guest, stale invite link, and inactive restaurant subscription states.
+- Kept guest error rendering in Blade/Livewire with prepared component state and no technical IDs exposed to guests.
+- Added focused regression tests for every requested error case while keeping SQLite, database drivers, Livewire polling, and no Redis/WebSockets/S3/Docker.
+
 ### Prompt 085 - Harden QR and Guest Session Security
 
 - Added backend checks so inactive service points cannot create guest sessions, guest invite links, join requests, draft item changes, or send a draft to waiter review.

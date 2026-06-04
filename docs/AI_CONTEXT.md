@@ -28,6 +28,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
 - QR `public_token`, guest `guest_token`, and table-session guest invite tokens must stay random, hidden, and unguessable.
 - Closed/cancelled table sessions, rejected/removed guests, expired join requests, and inactive service points must not accept guest ordering actions.
+- Public QR/session error pages must stay guest-friendly, mobile-first, and must not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or internal tokens.
 - Orders must require waiter confirmation by default.
 - Each repeat order in the same table session must create a new draft, require waiter confirmation, and preserve previous confirmed orders.
 - New guests must require approval by default.
@@ -84,6 +85,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - SQLite performance guardrails for shared hosting: extra hot-path indexes, visible-only polling attributes, database-cache dashboard preservation, and cursor-paginated audit log history.
 - Livewire guest polling optimization: the active public QR table page now polls guests, notifications, join requests, order statuses, draft positions, and draft totals as separate visible isolated components using the branch settings polling interval.
 - QR and guest session security hardening: inactive service points are rejected by guest entry, invite, join-request, draft item, and send-to-waiter backend paths; expired join requests are marked expired during guest restore/polling; disabled QR codes keep a public error state.
+- Guest error pages for public QR/session problems: QR not found, QR disabled/revoked, inactive service point, closed table session, rejected/removed/left guest entry, stale/closed invite links, and inactive restaurant subscription are shown through a mobile-first Blade component with clear text and safe return actions.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -944,6 +946,7 @@ Local media storage:
 ## Livewire Components
 
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
+- `resources/views/components/guest-error-panel.blade.php` renders mobile-first public guest error panels from prepared Livewire state only.
 - `App\Livewire\AuditLogs\Index`
 - `App\Livewire\Exports\Index`
 - `App\Livewire\Settings\Profile` now includes admin interface language selection.
@@ -1023,6 +1026,9 @@ Local media storage:
 - Blade displays prepared state only and must not query the database.
 - Active QR plus active service point shows a mobile-first guest landing page with venue, logo, current area, current service point, guest name field, and `Войти за стол`.
 - Disabled QR, revoked QR, inactive service point, and unknown token show public error states.
+- Public QR error states now use `resources/views/components/guest-error-panel.blade.php`, with `data-component="guest-error-page"` and a `data-error-state` value for regression coverage.
+- If the QR resolves to an organization with an explicitly inactive subscription, the public guest page shows the `restaurant_unavailable` error instead of opening guest ordering.
+- Restored guest/session problems such as closed sessions, rejected guests, removed/left guests, and stale invite links use the same guest error component while keeping the existing backend blocking rules intact.
 - Public QR route accepts a guest name and can create a pending guest-created table session plus the first active table session guest.
 - Public QR route queues a browser cookie with the guest token after creating that first guest.
 - Public QR route creates a pending join request instead of a guest when the current table session already has active guests.

@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Bugfix - Restore Project After Previous Prompt
+
+- Fixed feature-test crashes caused by Laravel Vite font manifest resolution when ignored `public/build` assets are missing or stale locally.
+- Disabled Vite asset resolution in the base test case with Laravel's `withoutVite()` helper so HTTP/Livewire tests do not depend on generated build files.
+- Kept runtime deployment rules unchanged: production/shared hosting should still run `npm run build`, and `public/build` remains uncommitted.
+
 ### Prompt 100 - Document Current Version
 
 - Added `docs/CURRENT_VERSION.md` as a short current-version snapshot for the next developer or coding agent.

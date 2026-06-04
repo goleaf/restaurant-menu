@@ -58,6 +58,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Database-backed cache, sessions, and queues.
 - Shared-hosting deployment notes in `docs/DEPLOY_SHARED_HOSTING.md`.
 - Current-version developer snapshot in `docs/CURRENT_VERSION.md`, covering the domain terms, permanent QR rule, table-session/guest/draft/order flow, shared-hosting mode, limits, and next-step guardrails.
+- Bugfix after Prompt 100: `Tests\TestCase` disables Vite asset resolution with Laravel's `withoutVite()` helper so feature tests do not crash when ignored `public/build` font assets are missing or stale.
 - Prompt 099 first vertical-slice regression: `tests/Feature/VerticalSliceFlowTest.php` covers registration, organization/brand/branch/zone/service point setup, permanent QR, public QR guest entry, invite approval for the second guest, shared draft items, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, table-session close, and permanent QR stability.
 - Prompt 098 project cleanup: removed starter placeholder pages/copy, removed default `test@example.com` seeding, removed unused starter header/icon overrides, removed `laravel/sail`, and added focused cleanup regression coverage.
 - Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
@@ -131,6 +132,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - No dedicated policy classes currently exist; access control is enforced through middleware, Actions, `User` access helpers, and the permission system. Do not add a policy layer unless a future prompt asks for it or a focused refactor needs it.
 - `tests/Feature/VerticalSliceFlowTest.php` covers the first end-to-end restaurant flow and must stay green when editing guest entry, invite approval, shared draft, waiter review, kitchen/bar tickets, manual payments, table-session close, or permanent QR behavior.
 - `tests/Feature/ProjectCleanupConsistencyTest.php` covers the cleanup guardrails.
+- Feature tests should not require generated Vite assets. `Tests\TestCase::setUp()` calls `withoutVite()` because `public/build` is ignored and may be absent or stale before `npm run build`.
 
 ## Tables
 

@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 081 - Database Notifications
+
+- Added database-only notifications for new guest join requests, new drafts sent to waiters, kitchen/bar ready items, and rejected draft orders.
+- Kept existing guest waiter-call and bill-request notifications on the same Laravel `database` notification channel.
+- Made `table_session_guests` notifiable so guest-facing events can be stored without creating user accounts.
+- Added a compact Livewire unread notification counter to the authenticated layout with polling and a local mark-read action.
+- Verified notification creation on SQLite and kept the stack unchanged: no Push, WebSockets, Redis, SMS, Telegram API, S3, Docker, or paid notification services.
+
 ### Prompt 080 - Expand Superadmin Organization Controls
 
 - Expanded the platform dashboard top stats with service point and order counts.

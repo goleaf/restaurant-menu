@@ -68,6 +68,10 @@
 
             <flux:spacer />
 
+            <div class="px-3 pb-3">
+                <livewire:notifications.unread-count />
+            </div>
+
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('guest.home')" wire:navigate>
                     {{ __('Guest area') }}
@@ -86,6 +90,8 @@
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
+
+            <livewire:notifications.unread-count :compact="true" />
 
             <flux:dropdown position="top" align="end">
                 <flux:profile

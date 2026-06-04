@@ -4,14 +4,18 @@ namespace App\Actions\DraftOrders;
 
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
+use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Notifications\DraftOrderSentToWaiterNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class SendDraftOrderToWaiterAction
@@ -19,11 +23,12 @@ class SendDraftOrderToWaiterAction
     public function __construct(
         private UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
     ) {}
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
     {
-        return DB::transaction(function () use ($draftOrder, $sentByGuest): DraftOrder {
+        $draftOrder = DB::transaction(function () use ($draftOrder, $sentByGuest): DraftOrder {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
             $sentByGuest = $this->reloadGuest($sentByGuest);
 
@@ -60,6 +65,10 @@ class SendDraftOrderToWaiterAction
 
             return $draftOrder->refresh();
         });
+
+        $this->notifyWaiterRecipients($draftOrder);
+
+        return $draftOrder->refresh();
     }
 
     private function reloadDraftOrder(DraftOrder $draftOrder): DraftOrder
@@ -90,6 +99,54 @@ class SendDraftOrderToWaiterAction
             ])
             ->whereKey($draftOrder->id)
             ->firstOrFail();
+    }
+
+    private function reloadDraftOrderForNotification(DraftOrder $draftOrder): DraftOrder
+    {
+        return DraftOrder::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'status',
+                'sent_to_waiter_at',
+                'sent_by_guest_id',
+            ])
+            ->withCount('items')
+            ->with([
+                'sentByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
+                'tableSession' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                    ])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
+            ])
+            ->whereKey($draftOrder->id)
+            ->firstOrFail();
+    }
+
+    private function notifyWaiterRecipients(DraftOrder $draftOrder): void
+    {
+        $draftOrder = $this->reloadDraftOrderForNotification($draftOrder);
+        $tableSession = $draftOrder->tableSession;
+
+        if (! $tableSession instanceof TableSession || $tableSession->branch === null) {
+            return;
+        }
+
+        $recipients = $this->resolveRecipients->handle($tableSession->branch);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, new DraftOrderSentToWaiterNotification($draftOrder));
     }
 
     private function reloadGuest(TableSessionGuest $guest): TableSessionGuest

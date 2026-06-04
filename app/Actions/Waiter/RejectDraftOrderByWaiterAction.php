@@ -8,10 +8,14 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
+use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
+use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Notifications\DraftOrderRejectedNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class RejectDraftOrderByWaiterAction
@@ -26,7 +30,7 @@ class RejectDraftOrderByWaiterAction
     {
         $reason = trim($reason);
 
-        return DB::transaction(function () use ($draftOrder, $rejectedBy, $reason): DraftOrder {
+        $draftOrder = DB::transaction(function () use ($draftOrder, $rejectedBy, $reason): DraftOrder {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
 
             $this->ensureCanReject($draftOrder, $rejectedBy, $reason);
@@ -59,6 +63,10 @@ class RejectDraftOrderByWaiterAction
 
             return $draftOrder->refresh();
         });
+
+        $this->notifyActiveGuests($draftOrder);
+
+        return $draftOrder->refresh();
     }
 
     private function reloadDraftOrder(DraftOrder $draftOrder): DraftOrder
@@ -86,6 +94,60 @@ class RejectDraftOrderByWaiterAction
             ])
             ->whereKey($draftOrder->id)
             ->firstOrFail();
+    }
+
+    private function reloadDraftOrderForNotification(DraftOrder $draftOrder): DraftOrder
+    {
+        return DraftOrder::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'status',
+                'rejected_at',
+                'rejected_by_user_id',
+                'rejection_reason',
+            ])
+            ->with([
+                'rejectedByUser' => fn ($query) => $query->select(['id', 'name']),
+                'tableSession' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'service_point_id'])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
+            ])
+            ->whereKey($draftOrder->id)
+            ->firstOrFail();
+    }
+
+    private function notifyActiveGuests(DraftOrder $draftOrder): void
+    {
+        $draftOrder = $this->reloadDraftOrderForNotification($draftOrder);
+
+        $recipients = TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->where('table_session_id', $draftOrder->table_session_id)
+            ->where('status', TableSessionGuestStatus::Active->value)
+            ->orderBy('guest_name')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, new DraftOrderRejectedNotification($draftOrder));
     }
 
     private function ensureCanReject(DraftOrder $draftOrder, User $user, string $reason): void

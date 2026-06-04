@@ -3,6 +3,7 @@
 namespace App\Actions\Departments;
 
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
+use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
@@ -10,6 +11,8 @@ use App\Enums\SystemRole;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\KitchenItemReadyNotification;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class UpdateDepartmentTicketItemStatusAction
@@ -17,6 +20,7 @@ class UpdateDepartmentTicketItemStatusAction
     public function __construct(
         private readonly ResolveAccessibleDepartmentIdsAction $resolveAccessibleDepartmentIds,
         private readonly SyncOrderStatusFromTicketItemsAction $syncOrderStatus,
+        private readonly ResolveWaiterNotificationRecipientsAction $resolveWaiterRecipients,
     ) {}
 
     /**
@@ -70,12 +74,77 @@ class UpdateDepartmentTicketItemStatusAction
             ]);
         }
 
+        $previousStatus = $item->status;
+
         $item->forceFill(['status' => $status])->save();
 
         if ($item->kitchenTicket?->order instanceof Order) {
             $this->syncOrderStatus->handle($item->kitchenTicket->order, $user);
         }
 
+        $item = $item->refresh();
+        $this->notifyWaiterRecipientsForReadyItem($item, $previousStatus, $status);
+
         return $item->refresh();
+    }
+
+    private function notifyWaiterRecipientsForReadyItem(
+        KitchenTicketItem $item,
+        KitchenTicketItemStatus $previousStatus,
+        KitchenTicketItemStatus $newStatus,
+    ): void {
+        if ($newStatus !== KitchenTicketItemStatus::Ready || $previousStatus === KitchenTicketItemStatus::Ready) {
+            return;
+        }
+
+        $item = KitchenTicketItem::query()
+            ->select([
+                'id',
+                'kitchen_ticket_id',
+                'order_item_id',
+                'table_session_guest_id',
+                'menu_item_id',
+                'guest_name',
+                'item_name',
+                'quantity',
+                'status',
+                'selected_modifiers',
+                'comment',
+                'updated_at',
+            ])
+            ->with([
+                'kitchenTicket' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'order_id',
+                        'branch_id',
+                        'service_point_id',
+                        'table_session_id',
+                        'kitchen_department_id',
+                        'department_type',
+                        'department_name',
+                    ])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
+            ])
+            ->whereKey($item->id)
+            ->firstOrFail();
+        $branch = $item->kitchenTicket?->branch;
+
+        if ($branch === null) {
+            return;
+        }
+
+        $recipients = $this->resolveWaiterRecipients->handle($branch);
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, new KitchenItemReadyNotification($item));
     }
 }

@@ -73,6 +73,12 @@ new class extends Component
                         {{ __('Audit log') }}
                     </flux:button>
                 @endif
+
+                @if ($canAccessDataExports ?? false)
+                    <flux:button icon="arrow-down-tray" :href="route('restaurant.exports.index')" wire:navigate>
+                        {{ __('Exports') }}
+                    </flux:button>
+                @endif
             </div>
         </div>
     </header>

@@ -52,6 +52,12 @@
                         </flux:sidebar.item>
                     @endif
 
+                    @if ($canAccessDataExports ?? false)
+                        <flux:sidebar.item icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="request()->routeIs('restaurant.exports.*')" wire:navigate>
+                            {{ __('Exports') }}
+                        </flux:sidebar.item>
+                    @endif
+
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
                             {{ __('Platform') }}

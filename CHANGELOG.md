@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 076 - CSV Data Exports
+
+- Added a restaurant data exports page at `/restaurant/exports` guarded by the flexible `export_data` permission.
+- Added streamed CSV downloads for branch orders, manual payments, menu items, and tables/service points without writing export files to local storage.
+- Reused branch access rules so organization access and active branch assignments prevent users from exporting another branch's data.
+- Added sidebar and restaurant dashboard entry points only for users with export access, while PDF export remains a later step.
+- Kept the shared-hosting stack unchanged: SQLite, Blade + Livewire, no paid libraries, Redis, WebSockets, S3, Docker, or external export services.
+
 ### Prompt 075 - Local SQLite Backup Action
 
 - Added a superadmin-only `/superadmin/backups/sqlite` download route for the configured SQLite database file.

@@ -125,6 +125,25 @@ No backup file is created on the server during this action. If you manually stor
 
 Do not commit downloaded or manually created backup files. The repository already ignores SQLite database files under `database/`, and `storage/app/` is reserved for local generated files. Future media ZIP export should read from `storage/app/public` and must stay local, without S3 or paid backup services.
 
+## Data Exports
+
+Restaurant CSV exports are available at:
+
+```text
+/restaurant/exports
+```
+
+Access requires the flexible `export_data` permission in the current organization context. Active branch assignments are respected, so a user with access to only one branch can export only that branch. Superadmins can export all branches.
+
+Current CSV downloads:
+
+- orders;
+- payments;
+- menu;
+- tables / service points.
+
+The export routes stream CSV responses directly and do not create export files on the server. PDF export is planned for a later step. Exports can contain guest names, staff names, order history, and payment data, so downloaded files should be stored carefully and kept out of git.
+
 ## Local Media Storage
 
 Media files are stored locally on Laravel's `public` disk. The disk root is:
@@ -742,6 +761,7 @@ Implemented:
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
 - Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
+- CSV data exports for branch orders, payments, menu, and tables guarded by `export_data`.
 - Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.

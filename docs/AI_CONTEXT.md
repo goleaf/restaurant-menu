@@ -33,6 +33,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic analytics must stay lightweight, branch-scoped, and cached through the database cache store; no Redis, external BI service, or heavy refresh query loop.
 - Audit logs must stay local in SQLite and be visible only through `view_audit_log` access.
 - Local backups must stay shared-hosting friendly: superadmin-only SQLite download, no S3, no paid backup services, no Docker, and no committed backup files.
+- Data exports must stay branch-scoped, CSV-first, protected by `export_data`, and must not leak another branch's orders, payments, menu, or service points.
 
 ## What Is Already Done
 
@@ -74,6 +75,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
 - General audit logs with a `view_audit_log`-guarded viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
+- CSV data exports for branch orders, manual payments, menu items, and service points through streamed responses guarded by `export_data`.
 - Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -81,7 +83,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, online payment provider, or advanced kitchen production history has been implemented yet.
+No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online payment provider, or advanced kitchen production history has been implemented yet.
 
 ## Tables
 
@@ -825,6 +827,8 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
 - `GET /restaurant/audit-log` -> `restaurant.audit-log.index`
+- `GET /restaurant/exports` -> `restaurant.exports.index`
+- `GET /restaurant/exports/branches/{branch}/{export}` -> `restaurant.exports.download`
 - `GET /restaurant/bar/dashboard` -> `restaurant.bar.dashboard`
 - `GET /restaurant/kitchen/dashboard` -> `restaurant.kitchen.dashboard`
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
@@ -837,6 +841,7 @@ Local media storage:
 
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
 - `App\Livewire\AuditLogs\Index`
+- `App\Livewire\Exports\Index`
 - `App\Livewire\Onboarding\RestaurantSetup`
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
@@ -878,6 +883,21 @@ Local media storage:
 - The platform dashboard shows a sensitive-data warning and a download button only inside the superadmin area.
 - The action does not create backup files on the server. If manual backup copies are created later, keep them outside `public/` and out of git.
 - Media ZIP export is not implemented yet; future work should read local files from `storage/app/public` and stay local-only.
+
+## Current Data Export UI
+
+- Data export route is `GET /restaurant/exports` and is named `restaurant.exports.index`.
+- CSV download route is `GET /restaurant/exports/branches/{branch}/{export}` and is named `restaurant.exports.download`.
+- Allowed export values are `orders`, `payments`, `menu`, and `service-points`.
+- Livewire component is `App\Livewire\Exports\Index`.
+- Data is prepared by `App\Actions\Exports\BuildDataExportsIndexAction`; Blade receives arrays and must not query the database.
+- Branch access is resolved by `App\Actions\Exports\ResolveExportAccessibleBranchIdsAction`, which reuses the existing branch resolver with `SystemPermission::ExportData`.
+- Active `branch_users` assignments still narrow export access inside organizations.
+- Superadmins can export all branches through the existing superadmin permission bypass.
+- `App\Http\Controllers\Restaurant\DownloadBranchCsvExportController` streams CSV downloads through `App\Actions\Exports\StreamBranchCsvExportAction`.
+- CSV is generated with `response()->streamDownload()` and `fputcsv`; no export files are written to local storage.
+- Current CSV exports cover confirmed order snapshots, manual payments, branch menu items, and service points/tables.
+- PDF export is not implemented yet.
 
 ## Current Public QR Route
 
@@ -1234,7 +1254,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1257,6 +1277,10 @@ The next expected product step may be local media ZIP export, manual payment rep
 - Do not delete or overwrite old orders, order items, manual payments, or order status logs when closing a table session.
 - Do not delete or overwrite `audit_logs`; they are the local control journal.
 - Do not show audit log rows to users without `view_audit_log` or superadmin access.
+- Do not show or allow CSV exports to users without `export_data` or superadmin access.
+- Do not export orders, payments, menu, or service points from branches outside the user's resolved export branch set.
+- Do not write generated CSV exports to storage unless a future prompt explicitly asks for stored exports.
+- Do not add paid CSV/PDF libraries for exports.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

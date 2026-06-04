@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\DataExportType;
+use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
 use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
+use App\Livewire\Exports\Index as DataExportsIndex;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
@@ -119,6 +122,15 @@ Route::middleware(['auth'])
     ->group(function () {
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
+
+        Route::prefix('exports')
+            ->name('exports.')
+            ->group(function () {
+                Route::livewire('/', DataExportsIndex::class)->name('index');
+                Route::get('branches/{branch}/{export}', DownloadBranchCsvExportController::class)
+                    ->whereIn('export', DataExportType::values())
+                    ->name('download');
+            });
 
         Route::prefix('kitchen')
             ->name('kitchen.')

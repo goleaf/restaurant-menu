@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\AuditLogs\BuildAuditLogIndexAction;
 use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
+use App\Actions\Exports\BuildDataExportsIndexAction;
 use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Models\User;
@@ -53,6 +54,11 @@ class ViewServiceProvider extends ServiceProvider
             $view->with(
                 'canAccessAuditLog',
                 $user instanceof User && app(BuildAuditLogIndexAction::class)->userHasAccess($user),
+            );
+
+            $view->with(
+                'canAccessDataExports',
+                $user instanceof User && app(BuildDataExportsIndexAction::class)->userHasAccess($user),
             );
         });
     }

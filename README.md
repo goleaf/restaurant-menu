@@ -27,6 +27,24 @@ docs/DEPLOY_SHARED_HOSTING.md
 
 The guide covers SQLite, writable directories, `storage:link` and shared-hosting alternatives, migrations, database cache, database sessions, database queue, optional scheduler cron, local storage boundaries, and files that must never be committed.
 
+## Project Cleanup Consistency
+
+Prompt 098 cleaned remaining starter-kit and temporary surfaces without adding new product features.
+
+- Composer metadata now identifies this repository as `goleaf/restaurant-menu`.
+- `laravel/sail` was removed from dev dependencies; Docker remains unnecessary.
+- Runtime filesystem config exposes only local `local` and `public` disks; no S3 disk is available.
+- Default seeding creates only system data, optional first superadmin, and standard kitchen departments. It no longer creates `test@example.com`.
+- Public entry and guest fallback pages no longer contain placeholder or "not implemented yet" copy.
+- Unused starter-kit header layout and its repository/documentation icon overrides were removed.
+- Routes, migrations, model naming, seeders, and policy usage were checked; no new business tables or routes were added. The project currently keeps authorization in actions, middleware, and user permission helpers rather than dedicated policy classes.
+
+Focused cleanup regression command:
+
+```bash
+php artisan test --compact tests/Feature/ProjectCleanupConsistencyTest.php
+```
+
 ## Access Control
 
 Access is organization-scoped first and branch-scoped when a user has active `branch_users` assignments. Regular users see only active organizations where they have an active membership. If a staff member is assigned to specific branches, branch lists, branch admin pages, QR print/display pages, waiter/payment resolvers, kitchen/bar screens, and exports must stay limited to those branches.

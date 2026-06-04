@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 098 - Cleanup Project Consistency
+
+- Removed remaining starter-kit cleanup leftovers: default `test@example.com` seeding, public placeholder copy, unused app header layout, and unused starter repository/documentation icon overrides.
+- Removed the Docker-oriented `laravel/sail` dev dependency and updated package metadata for the restaurant-menu project.
+- Tightened shared-hosting filesystem configuration so resolved disks are local-only (`local` and `public`) with no S3 disk.
+- Added focused cleanup regression coverage for local-only infrastructure, clean default seeding, and non-placeholder public entry pages.
+- Updated README, AI context, and the smoke checklist with cleanup results while keeping SQLite, database drivers, Livewire polling, and no Redis/WebSockets/S3/Docker.
+
 ### Prompt 097 - Shared Hosting Deployment Notes
 
 - Added `docs/DEPLOY_SHARED_HOSTING.md` with a shared-hosting deployment checklist for SQLite, local public storage, writable directories, migrations, database cache, database sessions, database queue, optional scheduler cron, and production cache commands.

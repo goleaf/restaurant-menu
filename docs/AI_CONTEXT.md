@@ -14,6 +14,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Database sessions
 - Database queue
 - Local public storage in `storage/app/public`
+- Filesystem config resolves to local disks only (`local` and `public`); no S3 disk is exposed.
 - Fixed interface locales: `ru`, `en`, `lt`
 - Fixed branch currencies through `App\Enums\SupportedCurrency`
 - Small Blade design-system primitives in `resources/views/components/ui`
@@ -56,6 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - SQLite-only database configuration.
 - Database-backed cache, sessions, and queues.
 - Shared-hosting deployment notes in `docs/DEPLOY_SHARED_HOSTING.md`.
+- Prompt 098 project cleanup: removed starter placeholder pages/copy, removed default `test@example.com` seeding, removed unused starter header/icon overrides, removed `laravel/sail`, and added focused cleanup regression coverage.
 - Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
 - Fortify-backed authentication.
 - Fixed system roles.
@@ -115,6 +117,17 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Staff permission override UI.
 
 No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online payment provider, or advanced kitchen production history has been implemented yet.
+
+## Current Cleanup Guardrails
+
+- Default package metadata is `goleaf/restaurant-menu`, not the original Livewire starter-kit package name.
+- `laravel/sail` is not installed; Docker must remain optional and unnecessary for development, deployment, or verification.
+- Runtime filesystem disks are forced to local-only `local` and `public`; do not expose an S3 disk.
+- `DatabaseSeeder` seeds system permissions, first superadmin when configured, and kitchen departments only. It must not create starter/demo users such as `test@example.com`.
+- Demo restaurant data remains opt-in through `Database\Seeders\DemoRestaurantSeeder`.
+- Public fallback pages (`/` and `/guest`) are real entry/fallback screens and must not reintroduce "placeholder" or "not implemented yet" copy.
+- No dedicated policy classes currently exist; access control is enforced through middleware, Actions, `User` access helpers, and the permission system. Do not add a policy layer unless a future prompt asks for it or a focused refactor needs it.
+- `tests/Feature/ProjectCleanupConsistencyTest.php` covers the cleanup guardrails.
 
 ## Tables
 
@@ -1503,7 +1516,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, and Prompt 097 shared-hosting deployment notes intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, and Prompt 098 project cleanup guardrails intact during future feature work.
 
 ## Do Not Break
 
@@ -1515,10 +1528,12 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not physically delete organizations, brands, branches, area nodes, service points, menus, menu categories, or menu items through ordinary UI actions; these important entities use soft deletes.
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not call `DemoRestaurantSeeder` from `DatabaseSeeder` unless a future prompt explicitly changes the seeding strategy; demo restaurant data must stay opt-in.
+- Do not reintroduce starter-kit test users in `DatabaseSeeder`; `test@example.com` must stay out of default production seed data.
 - Do not make the demo seed change global role-permission defaults for real users; keep demo access scoped to demo users and memberships.
 - Do not replace the manual smoke checklist with a heavy browser/E2E dependency unless a future prompt explicitly asks for that testing layer.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
+- Do not reintroduce `laravel/sail`, Docker compose files, an S3 filesystem disk, starter-kit repository/documentation links, or placeholder public pages during cleanup.
 - Do not replace the small Blade design-system primitives with a heavy UI framework or a client-side SPA.
 - Do not send operational notifications through Push, WebSockets, Redis, SMS, Telegram API, mail delivery, or paid notification providers; keep them in Laravel database notifications.
 - Do not replace notification UI polling with full-page refreshes or WebSockets; keep updates scoped to Livewire notification blocks.

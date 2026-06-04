@@ -5,11 +5,12 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemRolesSeeder;
 
-test('guest interface placeholder is public and mobile first', function () {
+test('guest interface start page is public and mobile first', function () {
     $this->get(route('guest.home'))
         ->assertOk()
         ->assertSee('data-layout="guest"', false)
         ->assertSee('Guest interface')
+        ->assertSee('Scan a table QR code')
         ->assertSee('min-h-svh');
 });
 
@@ -25,7 +26,7 @@ test('restaurant dashboard requires authentication', function () {
         ->assertRedirect(route('login'));
 });
 
-test('restaurant dashboard placeholder is available to authenticated users', function () {
+test('restaurant dashboard is available to authenticated users', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)

@@ -151,6 +151,11 @@ class AppServiceProvider extends ServiceProvider
                 'null' => ['driver' => 'null'],
             ],
             'session.driver' => in_array($sessionDriver, $allowedSessionDrivers, true) ? $sessionDriver : 'database',
+            'filesystems.default' => 'public',
+            'filesystems.disks' => [
+                'local' => config('filesystems.disks.local'),
+                'public' => config('filesystems.disks.public'),
+            ],
             'mail.mailers' => [
                 'smtp' => config('mail.mailers.smtp'),
                 'sendmail' => config('mail.mailers.sendmail'),

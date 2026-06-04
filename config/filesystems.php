@@ -7,9 +7,8 @@ return [
     | Default Filesystem Disk
     |--------------------------------------------------------------------------
     |
-    | Here you may specify the default filesystem disk that should be used
-    | by the framework. The "local" disk, as well as a variety of cloud
-    | based disks are available to your application for file storage.
+    | Here you may specify the default filesystem disk that should be used by
+    | the framework. This project stores files locally for shared hosting.
     |
     */
 
@@ -20,11 +19,10 @@ return [
     | Filesystem Disks
     |--------------------------------------------------------------------------
     |
-    | Below you may configure as many filesystem disks as necessary, and you
-    | may even configure multiple disks for the same driver. Examples for
-    | most supported storage drivers are configured here for reference.
+    | The application intentionally exposes only local disks. Uploaded logos
+    | and future menu images use the public disk at storage/app/public.
     |
-    | Supported drivers: "local", "ftp", "sftp", "s3"
+    | Supported in this project: local filesystem disks only.
     |
     */
 

@@ -32,6 +32,23 @@ Focused command:
 php artisan test --compact tests/Feature/AccessControlAuditTest.php
 ```
 
+## Prompt 098 Cleanup Results
+
+Programmatic cleanup coverage was added in `tests/Feature/ProjectCleanupConsistencyTest.php`.
+The cleanup currently verifies:
+
+- resolved infrastructure stays shared-hosting friendly: SQLite, local public storage, no Redis, no S3 disk, no Pusher/Reverb WebSocket driver;
+- Composer and Node dependencies do not include Docker/Sail, Redis, Pusher, WebSocket, or S3 client packages;
+- default `php artisan db:seed` does not create the starter `test@example.com` user;
+- public entry pages do not show starter placeholder or "not implemented yet" copy.
+- routes, migrations, model naming, seeders, and current policy usage were reviewed without adding new business routes or tables.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ProjectCleanupConsistencyTest.php
+```
+
 ## Prepare
 
 1. Run migrations:
@@ -46,6 +63,9 @@ php artisan migrate
 php artisan db:seed
 php artisan db:seed --class=DemoRestaurantSeeder
 ```
+
+The default seeder creates system data only. Demo users are created only by
+`DemoRestaurantSeeder`.
 
 3. Confirm the expected drivers:
 

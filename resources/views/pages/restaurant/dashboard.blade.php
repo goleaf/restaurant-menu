@@ -31,6 +31,12 @@ new class extends Component
                         {{ __('Kitchen screen') }}
                     </flux:button>
                 @endif
+
+                @if ($canAccessBarDashboard ?? false)
+                    <flux:button icon="glass-water" :href="route('restaurant.bar.dashboard')" wire:navigate>
+                        {{ __('Bar screen') }}
+                    </flux:button>
+                @endif
             </div>
         </div>
     </header>
@@ -47,7 +53,7 @@ new class extends Component
     <section class="min-h-64 rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 class="text-base font-semibold text-zinc-950 dark:text-white">Current implementation area</h2>
         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-            The waiter dashboard shows table flow, and the kitchen screen shows department tickets through Livewire polling.
+            The waiter dashboard shows table flow, and the kitchen and bar screens show department tickets through Livewire polling.
         </p>
     </section>
 </div>

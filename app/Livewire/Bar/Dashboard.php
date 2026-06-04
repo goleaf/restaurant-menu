@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Kitchen;
+namespace App\Livewire\Bar;
 
 use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemPermission;
@@ -8,7 +8,7 @@ use App\Enums\SystemRole;
 use App\Livewire\Departments\Dashboard as DepartmentDashboard;
 use Livewire\Attributes\Title;
 
-#[Title('Kitchen screen')]
+#[Title('Bar screen')]
 class Dashboard extends DepartmentDashboard
 {
     /**
@@ -16,7 +16,7 @@ class Dashboard extends DepartmentDashboard
      */
     protected function departmentTypes(): array
     {
-        return [];
+        return [KitchenDepartmentType::Bar];
     }
 
     /**
@@ -24,7 +24,7 @@ class Dashboard extends DepartmentDashboard
      */
     protected function roleCodes(): array
     {
-        return [SystemRole::HeadChef, SystemRole::Cook];
+        return [SystemRole::Bartender, SystemRole::HeadChef];
     }
 
     /**
@@ -32,31 +32,31 @@ class Dashboard extends DepartmentDashboard
      */
     protected function permissionCodes(): array
     {
-        return [SystemPermission::ViewKitchen];
+        return [SystemPermission::ViewOrders, SystemPermission::SendToKitchen];
     }
 
     protected function screenTitle(): string
     {
-        return __('Kitchen screen');
+        return __('Bar screen');
     }
 
     protected function screenSubtitle(): string
     {
-        return __('Department tickets ready for work.');
+        return __('Bar drinks ready for service.');
     }
 
     protected function screenDataPage(): string
     {
-        return 'kitchen-dashboard';
+        return 'bar-dashboard';
     }
 
     protected function screenEmptyMessage(): string
     {
-        return __('No tickets for this department.');
+        return __('No drinks for this department.');
     }
 
     protected function screenItemCountLabel(): string
     {
-        return __('Items');
+        return __('Drinks');
     }
 }

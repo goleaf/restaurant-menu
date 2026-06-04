@@ -36,6 +36,12 @@
                         </flux:sidebar.item>
                     @endif
 
+                    @if ($canAccessBarDashboard ?? false)
+                        <flux:sidebar.item icon="glass-water" :href="route('restaurant.bar.dashboard')" :current="request()->routeIs('restaurant.bar.*')" wire:navigate>
+                            {{ __('Bar') }}
+                        </flux:sidebar.item>
+                    @endif
+
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
                             {{ __('Platform') }}

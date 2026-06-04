@@ -56,7 +56,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
-- Basic kitchen screen for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
+- Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -683,6 +683,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
+- `GET /restaurant/bar/dashboard` -> `restaurant.bar.dashboard`
 - `GET /restaurant/kitchen/dashboard` -> `restaurant.kitchen.dashboard`
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
 - `GET /restaurant/waiter/tables/{tableSession}` -> `restaurant.waiter.tables.show`
@@ -709,6 +710,8 @@ Local media storage:
 - `App\Livewire\PublicQr\TableGuests`
 - `App\Livewire\PublicQr\GuestMenu`
 - `App\Livewire\PublicQr\DraftOrder`
+- `App\Livewire\Departments\Dashboard` shared abstract department ticket screen
+- `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Waiter\Dashboard`
@@ -842,18 +845,37 @@ Local media storage:
 
 - Kitchen screen route is `GET /restaurant/kitchen/dashboard`.
 - Livewire component is `App\Livewire\Kitchen\Dashboard`.
-- Data is prepared by `App\Actions\Kitchen\BuildKitchenDashboardAction`; Blade receives arrays and must not query the database.
+- `App\Livewire\Kitchen\Dashboard` extends the shared `App\Livewire\Departments\Dashboard` base component.
+- Data is prepared by shared `App\Actions\Departments\BuildDepartmentDashboardAction`; Blade receives arrays and must not query the database. `App\Actions\Kitchen\BuildKitchenDashboardAction` remains a thin kitchen-specific wrapper for backend reuse.
 - Access is resolved by `App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction`.
 - Access is allowed for superadmins, fixed `head_chef` and `cook` organization roles, or users with the flexible `view_kitchen` permission.
 - Active `branch_users` assignments limit kitchen access to assigned branches.
 - The component shows one selected active kitchen department at a time.
 - The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
-- The screen shows service point display/name, zone, ticket creation time, item name, quantity, guest name, modifiers, comments, and item status.
+- The screen shows service point display/name, zone, ticket creation time, timer, item name, quantity, guest name, modifiers, comments, and item status.
 - `App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
 - Ticket-level work status is computed from item statuses for display only.
-- The screen uses `wire:poll.1s="refreshKitchen"` and does not use WebSockets.
+- The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
 - The restaurant sidebar and restaurant dashboard show a kitchen link only when the current user can access at least one active department.
 - The screen does not expose unconfirmed drafts or merely confirmed orders; it reads only tickets created by explicit waiter dispatch.
+
+## Current Bar Screen
+
+- Bar screen route is `GET /restaurant/bar/dashboard`.
+- Livewire component is `App\Livewire\Bar\Dashboard`.
+- `App\Livewire\Bar\Dashboard` extends the shared `App\Livewire\Departments\Dashboard` base component.
+- Data is prepared by shared `App\Actions\Departments\BuildDepartmentDashboardAction`; Blade receives arrays and must not query the database. `App\Actions\Bar\BuildBarDashboardAction` remains a thin bar-specific wrapper for backend reuse.
+- Access is resolved by `App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction`.
+- Access is allowed for superadmins, fixed `bartender` and `head_chef` organization roles, or users with flexible `view_orders` or `send_to_kitchen` permissions.
+- Active `branch_users` assignments limit bar access to assigned branches.
+- The component filters departments to active `KitchenDepartmentType::Bar` only.
+- The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
+- The screen shows service point display/name, zone, ticket creation time, timer, drink item name, quantity, guest name, modifiers, comments, and item status.
+- `App\Actions\Bar\UpdateBarTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
+- Ticket-level work status is computed from item statuses for display only.
+- The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
+- The restaurant sidebar and restaurant dashboard show a bar link only when the current user can access at least one active bar department.
+- The screen does not expose unconfirmed drafts, merely confirmed orders, or non-bar department tickets; it reads only bar tickets created by explicit waiter dispatch.
 
 ## Current Branch Menu UI
 
@@ -978,8 +1000,10 @@ The next expected product step may be kitchen ticket status history, a bar-speci
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Do not create real orders from the guest UI; waiter confirmation must come first.
 - Do not auto-dispatch confirmed orders during waiter confirmation; kitchen/bar tickets must be created only by explicit `SendOrderToKitchenBarAction`.
-- Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; the kitchen screen must read only dispatched tickets.
-- Do not switch the kitchen screen away from Livewire polling or add WebSockets.
+- Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; these screens must read only dispatched tickets.
+- Do not show non-bar department tickets on the bar screen.
+- Do not duplicate the full kitchen/bar ticket UI; keep shared department screen logic where practical.
+- Do not switch kitchen or bar screens away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.

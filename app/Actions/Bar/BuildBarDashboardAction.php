@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Actions\Kitchen;
+namespace App\Actions\Bar;
 
 use App\Actions\Departments\BuildDepartmentDashboardAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\User;
 
-class BuildKitchenDashboardAction
+class BuildBarDashboardAction
 {
     public function __construct(
         private readonly BuildDepartmentDashboardAction $buildDepartmentDashboard,
@@ -31,9 +32,9 @@ class BuildKitchenDashboardAction
         return $this->buildDepartmentDashboard->handle(
             user: $user,
             selectedDepartmentId: $selectedDepartmentId,
-            departmentTypes: [],
-            roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
-            permissionCodes: [SystemPermission::ViewKitchen],
+            departmentTypes: [KitchenDepartmentType::Bar],
+            roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
+            permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );
     }
 
@@ -41,9 +42,9 @@ class BuildKitchenDashboardAction
     {
         return $this->buildDepartmentDashboard->userHasAccess(
             user: $user,
-            departmentTypes: [],
-            roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
-            permissionCodes: [SystemPermission::ViewKitchen],
+            departmentTypes: [KitchenDepartmentType::Bar],
+            roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
+            permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );
     }
 }

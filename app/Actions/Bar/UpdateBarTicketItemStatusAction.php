@@ -1,15 +1,16 @@
 <?php
 
-namespace App\Actions\Kitchen;
+namespace App\Actions\Bar;
 
 use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\KitchenTicketItem;
 use App\Models\User;
 
-class UpdateKitchenTicketItemStatusAction
+class UpdateBarTicketItemStatusAction
 {
     public function __construct(
         private readonly UpdateDepartmentTicketItemStatusAction $updateDepartmentTicketItemStatus,
@@ -21,9 +22,9 @@ class UpdateKitchenTicketItemStatusAction
             item: $item,
             status: $status,
             user: $user,
-            departmentTypes: [],
-            roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
-            permissionCodes: [SystemPermission::ViewKitchen],
+            departmentTypes: [KitchenDepartmentType::Bar],
+            roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
+            permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );
     }
 }

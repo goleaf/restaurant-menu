@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 062 - Bar Department Screen
+
+- Added a bar dashboard at `/restaurant/bar/dashboard` with Livewire polling every 1 second and no WebSockets.
+- Extracted shared department screen actions, Livewire base component, and Blade view so kitchen and bar screens do not duplicate the full ticket UI.
+- Filtered the bar dashboard to active `bar` departments only, showing service point, zone, drinks, modifiers, comments, item status, and a live timer.
+- Allowed access for superadmins, fixed `bartender` and `head_chef` roles, or users with `view_orders` or `send_to_kitchen`, while preserving branch assignment limits.
+- Added restaurant dashboard and sidebar navigation that appears only when the current user can access at least one bar department.
+- Verified bar access, department filtering, item status changes, forbidden staff access, and neighboring kitchen screen behavior.
+
 ### Prompt 061 - Kitchen Screen
 
 - Added a kitchen dashboard at `/restaurant/kitchen/dashboard` with Livewire polling every 1 second and no WebSockets.

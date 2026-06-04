@@ -13,13 +13,13 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
-## Daily Memory Update - 2026-06-04 After Prompt 106
+## Daily Memory Update - 2026-06-04 After Prompt 107
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 106. Branch service
-modes are now part of branch settings. Prompt 107 has added bulk service point
-creation, and Prompt 108 is the next recommended small prompt. Do not implement
-it until explicitly requested.
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 107. Branch service
+modes and bulk service point creation are now part of branch setup. Prompt 108
+is the next recommended small prompt. Do not implement it until explicitly
+requested.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is

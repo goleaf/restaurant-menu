@@ -219,6 +219,100 @@ test('guest entering active session with active guests creates pending join requ
     expect($queuedGuestCookie)->not->toBeNull();
 });
 
+test('guest sees duplicate name warning before join request is created', function () {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    TableSessionGuest::factory()
+        ->for($activeTableSession)
+        ->create([
+            'guest_name' => 'Анна',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', '  Анна  ')
+        ->call('enterTable')
+        ->assertHasNoErrors()
+        ->assertSet('hasGuestNameConflict', true)
+        ->assertSet('guestNameConflictExistingName', 'Анна')
+        ->assertSet('guestNameSuggestions', ['Анна 2', 'Анна К.'])
+        ->assertSet('currentJoinRequestId', null)
+        ->assertSeeText('За столом уже есть гость с именем Анна.')
+        ->assertSeeText('Анна 2')
+        ->assertSeeText('Анна К.')
+        ->assertSeeText('Войти как Анна');
+
+    expect(TableSessionJoinRequest::query()->exists())->toBeFalse();
+    expect(TableSessionGuest::query()->count())->toBe(1);
+});
+
+test('guest can choose suggested display name for duplicate table name', function () {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    TableSessionGuest::factory()
+        ->for($activeTableSession)
+        ->create([
+            'guest_name' => 'Анна',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', 'Анна')
+        ->call('enterTable')
+        ->assertSet('hasGuestNameConflict', true)
+        ->call('chooseGuestNameSuggestion', 0)
+        ->assertSet('guestName', 'Анна 2')
+        ->assertSet('hasGuestNameConflict', false)
+        ->call('enterTable')
+        ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
+        ->assertSet('currentTableSessionId', $activeTableSession->id)
+        ->assertSet('currentGuestId', null)
+        ->assertSet('hasGuestNameConflict', false);
+
+    $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
+
+    expect($joinRequest->table_session_id)->toBe($activeTableSession->id);
+    expect($joinRequest->guest_name)->toBe('Анна 2');
+});
+
+test('guest can continue with duplicate display name when it is intentional', function () {
+    [$qrCode, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    TableSessionGuest::factory()
+        ->for($activeTableSession)
+        ->create([
+            'guest_name' => 'Анна',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('guestName', 'Анна')
+        ->call('enterTable')
+        ->assertSet('hasGuestNameConflict', true)
+        ->call('continueWithDuplicateGuestName')
+        ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
+        ->assertSet('currentTableSessionId', $activeTableSession->id)
+        ->assertSet('currentGuestId', null)
+        ->assertSet('hasGuestNameConflict', false);
+
+    $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
+
+    expect($joinRequest->table_session_id)->toBe($activeTableSession->id);
+    expect($joinRequest->guest_name)->toBe('Анна');
+});
+
 test('guest entering again does not create duplicate pending session or guest', function () {
     [$qrCode] = createGuestPendingQrContext();
 

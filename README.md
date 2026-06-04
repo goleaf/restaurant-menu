@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, waiter manual order entry, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest name conflict handling, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, waiter manual order entry, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,9 +47,25 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 113 manual waiter order entry. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, and waiter manual order entry are now part of the baseline branch setup and order-review context.
+Latest memory refresh: 2026-06-04 after Prompt 114 guest name conflict handling. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, and guest duplicate-name handling are now part of the baseline branch setup, guest entry, and order-review context.
 
-The memory refresh after Prompt 113 records the current manual waiter order entry status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. A post-feature daily memory update was completed after the Prompt 113 feature commit without adding product behavior.
+The memory refresh after Prompt 114 records the current duplicate guest-name status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. A post-feature daily memory update should not add product behavior.
+
+## Guest Name Conflict Handling
+
+Prompt 114 keeps guest identity account-free while making duplicate display names clearer on QR entry.
+
+- If an active table already has a guest named `Анна` and another guest enters `Анна`, the QR landing form shows a warning before creating a join request.
+- The guest can choose a suggested display name such as `Анна 2` or `Анна К.`, type another name, or intentionally continue with the same display name.
+- The internal identity remains the unique `table_session_guests.id` / `guest_token`; display-name conflicts do not create user accounts.
+- Guest lists continue sorting by the stored display name (`guest_name`) and stable `id`.
+- The flow works for normal QR entry and invite links; no new table, route, registration, external service, Redis, WebSocket, S3, Docker, or paid provider was added.
+
+Focused Prompt 114 command:
+
+```bash
+php artisan test --compact tests/Feature/GuestCreatedPendingSessionTest.php
+```
 
 ## Manual Waiter Order Entry
 

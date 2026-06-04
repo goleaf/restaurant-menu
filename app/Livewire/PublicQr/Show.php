@@ -48,6 +48,17 @@ class Show extends Component
 
     public ?string $preparedGuestName = null;
 
+    public bool $hasGuestNameConflict = false;
+
+    public ?string $guestNameConflictExistingName = null;
+
+    /**
+     * @var list<string>
+     */
+    public array $guestNameSuggestions = [];
+
+    public bool $allowDuplicateGuestName = false;
+
     public string $entryState = '';
 
     public string $entryMessage = '';
@@ -275,6 +286,37 @@ class Show extends Component
         $this->refreshLandingMessage();
     }
 
+    public function updatedGuestName(): void
+    {
+        $this->clearGuestNameConflict();
+    }
+
+    public function chooseGuestNameSuggestion(int $suggestionIndex): void
+    {
+        if (! array_key_exists($suggestionIndex, $this->guestNameSuggestions)) {
+            return;
+        }
+
+        $suggestion = $this->guestNameSuggestions[$suggestionIndex];
+
+        $this->guestName = $suggestion;
+        $this->preparedGuestName = $suggestion;
+        $this->clearGuestNameConflict();
+    }
+
+    public function continueWithDuplicateGuestName(
+        CreateGuestPendingTableSessionAction $createGuestPendingTableSession,
+        CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+    ): void {
+        if (! $this->hasGuestNameConflict) {
+            return;
+        }
+
+        $this->allowDuplicateGuestName = true;
+
+        $this->enterTable($createGuestPendingTableSession, $createTableSessionJoinRequest);
+    }
+
     public function enterTable(
         CreateGuestPendingTableSessionAction $createGuestPendingTableSession,
         CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
@@ -332,7 +374,15 @@ class Show extends Component
             return;
         }
 
+        $conflictTableSession = $this->findTableSessionForGuestNameConflict($servicePoint);
+
+        if ($conflictTableSession instanceof TableSession
+            && $this->pauseForGuestNameConflict($conflictTableSession, $this->preparedGuestName)) {
+            return;
+        }
+
         $result = $createGuestPendingTableSession->handle($servicePoint, $this->preparedGuestName);
+        $this->clearGuestNameConflict();
         $entryState = $result['state'];
         $tableSession = $result['table_session'];
         $guest = $result['guest'];
@@ -699,7 +749,12 @@ class Show extends Component
             return;
         }
 
+        if ($this->pauseForGuestNameConflict($tableSession, $this->preparedGuestName)) {
+            return;
+        }
+
         $joinRequest = $createTableSessionJoinRequest->handle($tableSession, $this->preparedGuestName);
+        $this->clearGuestNameConflict();
 
         if (! $joinRequest instanceof TableSessionJoinRequest) {
             $this->entryState = 'guest_invite_unavailable';
@@ -802,6 +857,36 @@ class Show extends Component
             ->where('branch_id', $servicePoint->branch_id)
             ->where('service_point_id', $servicePoint->id)
             ->where('guest_invite_token', $inviteToken)
+            ->first();
+    }
+
+    private function findTableSessionForGuestNameConflict(ServicePoint $servicePoint): ?TableSession
+    {
+        return $this->findTableSessionForGuestNameConflictByStatus($servicePoint, TableSessionStatus::Active)
+            ?? $this->findTableSessionForGuestNameConflictByStatus($servicePoint, TableSessionStatus::Pending);
+    }
+
+    private function findTableSessionForGuestNameConflictByStatus(
+        ServicePoint $servicePoint,
+        TableSessionStatus $status,
+    ): ?TableSession {
+        return TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'opened_by_guest_id',
+                'status',
+                'source',
+                'started_at',
+                'ended_at',
+            ])
+            ->where('branch_id', $servicePoint->branch_id)
+            ->where('service_point_id', $servicePoint->id)
+            ->where('status', $status->value)
+            ->whereHas('activeGuests')
+            ->orderBy('started_at')
+            ->orderBy('id')
             ->first();
     }
 
@@ -1022,6 +1107,154 @@ class Show extends Component
         $messages = collect($exception->errors())->flatten();
 
         return (string) ($messages->first() ?? __('Не удалось создать ссылку приглашения.'));
+    }
+
+    private function pauseForGuestNameConflict(TableSession $tableSession, string $guestName): bool
+    {
+        if ($this->allowDuplicateGuestName) {
+            $this->clearGuestNameConflict(resetAllowDuplicate: false);
+
+            return false;
+        }
+
+        $conflict = $this->guestNameConflictForTableSession($tableSession, $guestName);
+
+        if ($conflict === null) {
+            $this->clearGuestNameConflict();
+
+            return false;
+        }
+
+        $this->hasGuestNameConflict = true;
+        $this->guestNameConflictExistingName = $conflict['existing_name'];
+        $this->guestNameSuggestions = $this->guestNameSuggestions($guestName, $conflict['active_names']);
+        $this->entryState = '';
+        $this->entryMessage = '';
+        $this->entryIssueCode = '';
+        $this->currentTableSessionId = $tableSession->id;
+        $this->currentGuestId = null;
+        $this->currentJoinRequestId = null;
+        $this->guestCanAddItems = false;
+        $this->guestCanViewTable = false;
+
+        return true;
+    }
+
+    /**
+     * @return array{existing_name: string, active_names: list<string>}|null
+     */
+    private function guestNameConflictForTableSession(TableSession $tableSession, string $guestName): ?array
+    {
+        $activeNames = TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'status',
+            ])
+            ->where('table_session_id', $tableSession->id)
+            ->where('status', TableSessionGuestStatus::Active->value)
+            ->orderBy('guest_name')
+            ->orderBy('id')
+            ->limit(100)
+            ->pluck('guest_name')
+            ->all();
+
+        $normalizedGuestName = $this->normalizeGuestNameForComparison($guestName);
+
+        foreach ($activeNames as $activeName) {
+            if ($this->normalizeGuestNameForComparison((string) $activeName) === $normalizedGuestName) {
+                return [
+                    'existing_name' => (string) $activeName,
+                    'active_names' => array_values(array_map('strval', $activeNames)),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<string>  $activeNames
+     * @return list<string>
+     */
+    private function guestNameSuggestions(string $guestName, array $activeNames): array
+    {
+        $existingNameKeys = array_map(
+            fn (string $activeName): string => $this->normalizeGuestNameForComparison($activeName),
+            $activeNames,
+        );
+
+        $candidates = [
+            $this->uniqueGuestNameSuggestion($guestName.' 2', $existingNameKeys),
+            $this->uniqueGuestNameSuggestion($this->initialGuestNameSuggestion($guestName), $existingNameKeys),
+        ];
+
+        $suggestions = [];
+        $suggestionKeys = [];
+        $guestNameKey = $this->normalizeGuestNameForComparison($guestName);
+
+        foreach ($candidates as $candidate) {
+            $candidate = str($candidate)->squish()->toString();
+            $candidateKey = $this->normalizeGuestNameForComparison($candidate);
+
+            if ($candidate === '' || $candidateKey === $guestNameKey || in_array($candidateKey, $suggestionKeys, true)) {
+                continue;
+            }
+
+            $suggestions[] = $candidate;
+            $suggestionKeys[] = $candidateKey;
+        }
+
+        return array_slice($suggestions, 0, 2);
+    }
+
+    /**
+     * @param  list<string>  $existingNameKeys
+     */
+    private function uniqueGuestNameSuggestion(string $candidate, array $existingNameKeys): string
+    {
+        $baseCandidate = str($candidate)->squish()->toString();
+        $uniqueCandidate = $baseCandidate;
+        $counter = 2;
+
+        while (in_array($this->normalizeGuestNameForComparison($uniqueCandidate), $existingNameKeys, true) && $counter <= 99) {
+            $uniqueCandidate = $baseCandidate.' '.$counter;
+            $counter++;
+        }
+
+        return $uniqueCandidate;
+    }
+
+    private function initialGuestNameSuggestion(string $guestName): string
+    {
+        $parts = preg_split('/\s+/u', str($guestName)->squish()->toString()) ?: [];
+        $firstName = (string) ($parts[0] ?? $guestName);
+        $initialSource = (string) ($parts[1] ?? ($this->guestNameLooksCyrillic($firstName) ? 'К' : 'K'));
+        $initial = str(mb_substr($initialSource, 0, 1))->upper()->toString();
+
+        return trim($firstName.' '.$initial.'.');
+    }
+
+    private function guestNameLooksCyrillic(string $guestName): bool
+    {
+        return preg_match('/\p{Cyrillic}/u', $guestName) === 1;
+    }
+
+    private function normalizeGuestNameForComparison(string $guestName): string
+    {
+        return str($guestName)->squish()->lower()->toString();
+    }
+
+    private function clearGuestNameConflict(bool $resetAllowDuplicate = true): void
+    {
+        $this->hasGuestNameConflict = false;
+        $this->guestNameConflictExistingName = null;
+        $this->guestNameSuggestions = [];
+
+        if ($resetAllowDuplicate) {
+            $this->allowDuplicateGuestName = false;
+        }
     }
 
     private function canGuestAddItems(TableSessionGuest $guest, TableSession $tableSession): bool

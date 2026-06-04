@@ -13,6 +13,47 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 114 Guest Name Conflict Handling Results
+
+Programmatic coverage was added in `tests/Feature/GuestCreatedPendingSessionTest.php`.
+The feature currently verifies:
+
+- a duplicate guest display name shows a warning before a join request is
+  created;
+- suggested names include `Анна 2` and `Анна К.` for an existing active guest
+  named `Анна`;
+- choosing a suggestion creates a pending join request with the selected display
+  name;
+- intentionally continuing with the same display name still creates a pending
+  join request;
+- duplicate display names do not create user accounts and do not change QR,
+  invite, table-session, waiter-confirmation, or kitchen/bar rules.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/GuestCreatedPendingSessionTest.php
+```
+
+Related guest-flow command:
+
+```bash
+php artisan test --compact tests/Feature/GuestCreatedPendingSessionTest.php tests/Feature/GuestInviteShareLinkTest.php tests/Feature/GuestJoinApprovalUiTest.php tests/Feature/PublicQrRouteTest.php
+```
+
+Manual check:
+
+1. Open a table with an active guest named `Анна`.
+2. Open the same `/q/{public_token}` or invite link in a fresh browser/session.
+3. Enter `Анна`.
+4. Confirm the warning appears before a join request is created.
+5. Confirm `Анна 2`, `Анна К.`, and `Войти как Анна` are visible.
+6. Choose `Анна 2` and confirm active guests receive the normal join request.
+7. Repeat the flow and choose `Войти как Анна`; confirm identical display names
+   are allowed intentionally.
+8. Confirm the guest list remains sorted by display name and no public URL
+   exposes branch, service point, table, or guest IDs.
+
 ## Prompt 113 Manual Waiter Order Entry Results
 
 Programmatic coverage was added in `tests/Feature/WaiterDraftEditingTest.php`.

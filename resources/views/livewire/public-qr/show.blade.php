@@ -462,7 +462,53 @@
                             >
                         </x-ui.form-field>
 
-                        @if ($preparedGuestName)
+                        @if ($hasGuestNameConflict)
+                            <div class="mt-3 space-y-3">
+                                <x-ui.alert tone="warning" :heading="__('Похожее имя уже есть')">
+                                    <p>
+                                        {{ __('За столом уже есть гость с именем :name.', ['name' => $guestNameConflictExistingName]) }}
+                                    </p>
+                                    <p class="mt-1">
+                                        {{ __('Чтобы гости не путались в общем заказе, выберите понятное имя или введите другое.') }}
+                                    </p>
+                                </x-ui.alert>
+
+                                @if ($guestNameSuggestions !== [])
+                                    <div class="grid gap-2">
+                                        @foreach ($guestNameSuggestions as $suggestionIndex => $suggestion)
+                                            <x-ui.button
+                                                type="button"
+                                                wire:key="guest-name-suggestion-{{ $suggestionIndex }}"
+                                                wire:click="chooseGuestNameSuggestion({{ $suggestionIndex }})"
+                                                variant="secondary"
+                                                full-width
+                                            >
+                                                {{ $suggestion }}
+                                            </x-ui.button>
+                                        @endforeach
+                                    </div>
+                                @endif
+
+                                <div class="grid gap-2">
+                                    <x-ui.button
+                                        type="button"
+                                        wire:click="continueWithDuplicateGuestName"
+                                        wire:loading.attr="disabled"
+                                        wire:target="continueWithDuplicateGuestName"
+                                        variant="warning"
+                                        full-width
+                                    >
+                                        {{ __('Войти как :name', ['name' => $preparedGuestName ?? $guestName]) }}
+                                    </x-ui.button>
+
+                                    <p class="text-center text-sm text-zinc-600 dark:text-zinc-300">
+                                        {{ __('Или просто введите другое имя в поле выше.') }}
+                                    </p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($preparedGuestName && ! $hasGuestNameConflict)
                             <x-ui.alert tone="success" class="mt-3">
                                 {{ __('Добро пожаловать, :name.', ['name' => $preparedGuestName]) }}
                             </x-ui.alert>

@@ -4,20 +4,20 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 113 manual waiter order entry.
+Last memory refresh: 2026-06-04 after Prompt 114 guest name conflict handling.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
-board, waiter zone assignments, waiter manual order entry, and waiter-side schedule checks should be
-treated as current baseline for future guest UI, QR landing, ordering work,
-staff review, and branch setup.
+board, waiter zone assignments, waiter manual order entry, waiter-side schedule
+checks, and guest duplicate-name handling should be treated as current baseline
+for future guest UI, QR landing, ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt
 
 Wait for the next explicit user prompt. Do not continue feature work
-automatically. The post-feature daily memory update after Prompt 113 is
-complete; manual waiter entry is now baseline behavior, not a pending prompt.
+automatically. Prompt 114 is complete; duplicate guest-name handling is now
+baseline behavior, not a pending prompt.
 
 Alternative queued prompt:
 
@@ -70,6 +70,9 @@ Risky places:
 - Manual waiter order entry creates or reuses a waiter-review draft for an
   active table and still requires normal waiter confirmation before kitchen/bar
   dispatch. Do not bypass confirmation in future waiter shortcuts.
+- Guest duplicate-name handling is a UI clarity layer only. Do not treat
+  `guest_name` as a unique key, and do not add guest registration to solve
+  display-name collisions.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -138,6 +141,10 @@ Prompt 113 added manual waiter order entry: on an active table, authorized
 waiter staff can choose an active guest or type a new guest name, add dishes to
 a waiter-review draft, preserve snapshots, and then confirm through the normal
 order flow before any kitchen/bar dispatch.
+
+Prompt 114 added guest duplicate-name handling: QR and invite entry now warn
+when an active table already has the same display name, suggest names such as
+`Анна 2` and `Анна К.`, and still allow intentionally identical display names.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

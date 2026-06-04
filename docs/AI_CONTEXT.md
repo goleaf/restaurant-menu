@@ -2,6 +2,88 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 114 Guest Name Conflict Handling - 2026-06-04
+
+Prompt 114 added duplicate guest-name handling to the existing QR / invite entry flow. It did not add routes, migrations, tables, guest accounts, roles, permissions, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block guest ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search and filter service points and paginate results without loading every service point at once.
+- Prompt 111: the same page has a simple visual board that groups the currently loaded service point page by zone.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or show `All zones`.
+- Prompt 113: a waiter can manually add positions to an active table, choose an active guest or create a manual guest name, create/reuse a waiter-review draft, and confirm it through the normal order snapshot flow.
+- Prompt 114: a guest entering a duplicate display name sees a warning and suggestions before a join request is created, while still being allowed to continue with the same display name intentionally.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- No new table or column was added in Prompt 114.
+- Existing affected tables: `table_sessions`, `table_session_guests`, `table_session_join_requests`, and `qr_codes`.
+- Duplicate-name handling uses `table_session_guests.guest_name` as the display name. Internal identity remains unique through `table_session_guests.id` and `guest_token`.
+- Full inventory still includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 114.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, or guest IDs.
+- Invite links still use the existing `/q/{token}?invite={token}` route.
+
+Current Livewire components and actions:
+
+- `App\Livewire\PublicQr\Show` now tracks `hasGuestNameConflict`, `guestNameConflictExistingName`, `guestNameSuggestions`, and `allowDuplicateGuestName`.
+- The same component exposes `chooseGuestNameSuggestion()` and `continueWithDuplicateGuestName()` for the QR landing form.
+- The public QR Blade view now shows a warning block with suggested display names before a duplicate join request is created.
+- `App\Livewire\PublicQr\TableGuests` still sorts guests by `guest_name` and `id`.
+- `CreateGuestPendingTableSessionAction` and `CreateTableSessionJoinRequestAction` remain the backend creation points.
+
+Mandatory business rules:
+
+- A guest is not a registered `user`.
+- Guests keep unique internal identity through `table_session_guests.id` and non-guessable `guest_token`.
+- Duplicate display names are not fully forbidden.
+- When an active guest already has the same display name, the next guest should see a warning before creating a join request.
+- Suggested names must be understandable, for example `Анна 2` and `Анна К.`.
+- Guests must continue sorting by display name and stable `id`.
+- Active guests still approve new guests through the existing join-request flow.
+- QR identity, invite-token identity, table-session close rules, draft order rules, waiter confirmation, and kitchen/bar dispatch rules are unchanged.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep duplicate-name lookup bounded to the current table session's active guests.
+- Do not query from Blade and do not load unrelated guest/session history.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 114 notes:
+
+- Focused coverage: `tests/Feature/GuestCreatedPendingSessionTest.php`.
+- Verification run included duplicate-name tests, full guest-created session tests, guest invite share link tests, guest join approval tests, public QR route tests, SQLite migration status, route list, database driver config checks, and HTTP smoke for `/`, `/login`, and waiter dashboard redirect.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 113 Manual Waiter Order Entry - 2026-06-04
 
 Prompt 113 added manual waiter order entry on the existing waiter table detail screen. It did not add routes, migrations, roles, permissions, guest accounts, direct kitchen/bar dispatch, WebSockets, Redis, S3, Docker, paid services, or external APIs.

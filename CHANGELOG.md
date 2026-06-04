@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 114 - Guest Name Conflict Handling
+
+- Added duplicate guest-name handling on the public QR / invite entry flow.
+- If an active table already has the same display name, the guest sees a warning before a join request is created.
+- The guest can choose a suggested display name such as `Анна 2` or `Анна К.`, type another name, or intentionally continue with the same name.
+- Internal guest identity remains unique through `table_session_guests.id` and non-guessable `guest_token`; no guest registration or user account is required.
+- Guest sorting continues to use the stored display name (`guest_name`) and stable `id`.
+- Touched modules/files: `App\Livewire\PublicQr\Show`, `resources/views/livewire/public-qr/show.blade.php`, `tests/Feature/GuestCreatedPendingSessionTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no new schema, no new routes, no hard ban on identical names, no Redis/WebSockets/S3/Docker, no external auth, no SMS/email/push, and no paid services.
+- Manual check: open a table with active guest `Анна`, scan the same QR or invite link as a new browser, enter `Анна`, confirm the warning and suggestions appear, choose `Анна 2`, then repeat and confirm `Войти как Анна` still creates a pending join request.
+
 ### Prompt 113 - Manual Waiter Order Entry
 
 - Added manual waiter order entry to the existing waiter table detail screen.

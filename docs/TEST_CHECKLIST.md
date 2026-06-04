@@ -16,7 +16,7 @@ SQLite setup.
 ## Daily Memory Update - 2026-06-04 After Prompt 104
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`. Prompt 105 is the next
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 104. Prompt 105 is the next
 recommended small prompt and should not be implemented until explicitly
 requested.
 

@@ -1,52 +1,48 @@
 <section
     data-component="guest-draft-order"
     wire:poll.visible.{{ $pollingIntervalSeconds }}s="refreshDraft"
-    class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+    class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
+    <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Общий заказ') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Корзина') }}</h2>
+            <h2 class="mt-1 text-xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Корзина') }}</h2>
         </div>
 
         <div class="flex shrink-0 flex-col items-end gap-2">
-            <span class="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+            <x-ui.status-badge tone="muted" size="lg">
                 {{ trans_choice(':count позиция|:count позиции|:count позиций', $itemCount, ['count' => $itemCount]) }}
-            </span>
+            </x-ui.status-badge>
 
             @if ($showControls && $canToggleReadyStatus)
-                <button
+                <x-ui.button
                     type="button"
                     wire:click="toggleReadyStatus"
                     wire:loading.attr="disabled"
                     wire:target="toggleReadyStatus"
-                    @class([
-                        'inline-flex min-h-10 items-center justify-center rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                        'bg-emerald-700 text-white hover:bg-emerald-800' => ! $currentGuestReady,
-                        'border border-emerald-200 bg-white text-emerald-800 hover:bg-emerald-50 dark:border-emerald-900/70 dark:bg-zinc-900 dark:text-emerald-200 dark:hover:bg-emerald-950/30' => $currentGuestReady,
-                    ])
+                    :variant="$currentGuestReady ? 'secondary' : 'primary'"
+                    size="sm"
                 >
                     <span wire:loading.remove wire:target="toggleReadyStatus">
                         {{ $currentGuestReady ? __('Снять готовность') : __('Я готов') }}
                     </span>
                     <span wire:loading wire:target="toggleReadyStatus">{{ __('Сохраняем') }}</span>
-                </button>
+                </x-ui.button>
             @endif
         </div>
     </div>
+    </div>
 
+    <div class="p-4">
     @if ($showControls)
         <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-950/60">
             <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">
                 {{ __('Готовы') }}: {{ $readyGuestCount }}/{{ $activeGuestCount }}
             </span>
-            <span @class([
-                'rounded-md px-2 py-0.5 text-xs font-semibold',
-                'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100' => $allGuestsReady,
-                'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-100' => ! $allGuestsReady,
-            ])>
+            <x-ui.status-badge :tone="$allGuestsReady ? 'success' : 'warning'">
                 {{ $allGuestsReady ? __('Все готовы') : __('Не все готовы') }}
-            </span>
+            </x-ui.status-badge>
         </div>
     @endif
 
@@ -120,34 +116,36 @@
                 <article
                     wire:key="draft-order-guest-section-{{ $guestSection['guest_id'] }}"
                     @class([
-                        'rounded-lg border p-3',
+                        'rounded-lg border p-3 shadow-sm',
                         'border-emerald-100 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20' => $guestSection['is_current_guest'],
                         'border-zinc-100 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/60' => ! $guestSection['is_current_guest'],
                     ])
                 >
                     <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white text-base font-semibold text-emerald-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-emerald-100 dark:ring-zinc-800">
+                                {{ str($guestSection['guest_name'])->substr(0, 1)->upper() }}
+                            </div>
+
+                            <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h4 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $guestSection['guest_name'] }}</h4>
 
                                 @if ($guestSection['is_current_guest'])
-                                    <span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100">
+                                    <x-ui.status-badge tone="success">
                                         {{ __('Вы') }}
-                                    </span>
+                                    </x-ui.status-badge>
                                 @endif
 
-                                <span @class([
-                                    'rounded-md px-2 py-0.5 text-xs font-semibold',
-                                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100' => $guestSection['is_ready'],
-                                    'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' => ! $guestSection['is_ready'],
-                                ])>
+                                <x-ui.status-badge :tone="$guestSection['is_ready'] ? 'success' : 'muted'">
                                     {{ $guestSection['is_ready'] ? __('Готов') : __('Не готов') }}
-                                </span>
+                                </x-ui.status-badge>
                             </div>
 
                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                 {{ trans_choice(':count позиция|:count позиции|:count позиций', count($guestSection['items']), ['count' => count($guestSection['items'])]) }}
                             </p>
+                            </div>
                         </div>
 
                         <div class="shrink-0 text-right">
@@ -167,7 +165,7 @@
 
                     <div class="mt-3 space-y-2">
                         @forelse ($guestSection['items'] as $item)
-                            <div wire:key="draft-order-item-{{ $item['id'] }}" class="rounded-lg border border-white/70 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                            <div wire:key="draft-order-item-{{ $item['id'] }}" class="rounded-lg border border-white/70 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <h5 class="text-sm font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['item_name'] }}</h5>
@@ -202,23 +200,25 @@
 
                                 @if ($item['can_edit'])
                                     <div class="mt-3 flex flex-wrap gap-2">
-                                        <button
+                                        <x-ui.button
                                             type="button"
                                             wire:click="editItem({{ $item['id'] }})"
-                                            class="inline-flex min-h-9 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                                            variant="secondary"
+                                            size="sm"
                                         >
                                             {{ __('Изменить') }}
-                                        </button>
+                                        </x-ui.button>
 
-                                        <button
+                                        <x-ui.button
                                             type="button"
                                             wire:click="deleteItem({{ $item['id'] }})"
                                             wire:loading.attr="disabled"
                                             wire:target="deleteItem({{ $item['id'] }})"
-                                            class="inline-flex min-h-9 items-center justify-center rounded-lg border border-red-200 bg-white px-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-hidden focus:ring-2 focus:ring-red-500/30 dark:border-red-900/70 dark:bg-zinc-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                                            variant="danger"
+                                            size="sm"
                                         >
                                             {{ __('Удалить') }}
-                                        </button>
+                                        </x-ui.button>
                                     </div>
                                 @endif
                             </div>
@@ -330,6 +330,7 @@
             @endif
         @endif
     </div>
+    </div>
 
     @if ($editingItemId !== null)
         <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
@@ -344,10 +345,10 @@
                     <button
                         type="button"
                         wire:click="closeEditItem"
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
                         aria-label="{{ __('Закрыть') }}"
                     >
-                        ×
+                        <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
                 </div>
 
@@ -431,28 +432,31 @@
                     </label>
                 </div>
 
-                <div class="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-zinc-200 bg-white px-4 pt-3 dark:border-zinc-800 dark:bg-zinc-950">
-                    <button
+                <x-ui.mobile-bottom-actions class="mt-5" :summary="$editingItemTotal.' '.$currency">
+                    <x-ui.button
                         type="button"
                         wire:click="updateItem"
                         wire:loading.attr="disabled"
                         wire:target="updateItem"
-                        class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
+                        variant="primary"
+                        size="lg"
+                        full-width
                     >
                         <span wire:loading.remove wire:target="updateItem">{{ __('Сохранить') }} · {{ $editingItemTotal }} {{ $currency }}</span>
                         <span wire:loading wire:target="updateItem">{{ __('Сохраняем') }}</span>
-                    </button>
+                    </x-ui.button>
 
-                    <button
+                    <x-ui.button
                         type="button"
                         wire:click="deleteItem({{ $editingItemId }})"
                         wire:loading.attr="disabled"
                         wire:target="deleteItem({{ $editingItemId }})"
-                        class="flex min-h-11 w-full items-center justify-center rounded-lg border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50 focus:outline-hidden focus:ring-2 focus:ring-red-500/30 dark:border-red-900/70 dark:bg-zinc-950 dark:text-red-300 dark:hover:bg-red-950/30"
+                        variant="danger"
+                        full-width
                     >
                         {{ __('Удалить позицию') }}
-                    </button>
-                </div>
+                    </x-ui.button>
+                </x-ui.mobile-bottom-actions>
             </div>
         </div>
     @endif

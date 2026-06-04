@@ -17,6 +17,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Fixed interface locales: `ru`, `en`, `lt`
 - Fixed branch currencies through `App\Enums\SupportedCurrency`
 - Small Blade design-system primitives in `resources/views/components/ui`
+- Polished mobile-first guest QR/table/menu UI layered on existing Livewire components
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -97,6 +98,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Basic localization foundation with `SupportedLocale`, `users.locale`, `SetInterfaceLocale` web middleware, profile language selection, guest QR language selection, and local JSON strings in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
 - Basic currency settings with `SupportedCurrency`, `MoneyFormatter`, branch/settings currency selectors, settings-to-branch currency sync, and formatted guest/menu price display.
 - Simple reusable Blade design system for lightweight buttons, cards, status badges, form fields, empty states, alerts/warnings, mobile guest bottom action bars, and clear zone/service-point icons. The first applied screens are public QR guest table/menu actions, branch area management, and branch service point management.
+- Prompt 090 guest mobile UI polish: improved the public QR name-entry screen, active guest table context, waiter-call action, guest list, mobile dish cards, item edit/configuration bottom sheets, shared cart grouping, per-guest totals, and sticky table action bar without changing backend business logic.
 - Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -1029,13 +1031,21 @@ Local media storage:
 - The system uses Tailwind utility classes and the existing Flux icon components only.
 - No package, route, database table, business action, or Livewire class was added for Prompt 089.
 - `x-ui.button` keeps Livewire-friendly attribute forwarding, so `wire:click`, `wire:loading`, `href`, `type`, and `disabled` continue to work from the calling view.
-- `x-ui.mobile-bottom-actions` is for guest mobile screens where primary actions should stay easy to reach.
+- `x-ui.mobile-bottom-actions` is for guest mobile screens where primary actions should stay easy to reach; Prompt 090 uses it on guest entry, dish configuration, own-item editing, and draft totals.
 - `x-ui.area-icon` and `x-ui.service-point-icon` map type values like `hall`, `terrace`, `vip_room`, `table`, `bar_seat`, and `pickup_window` to existing Flux icons.
 - First applied screens:
   - public QR guest landing/table/menu views;
   - public QR draft totals bottom actions;
   - branch area CRUD;
   - branch service point CRUD.
+- Prompt 090 refined guest-facing views only:
+  - `resources/views/layouts/guest.blade.php`;
+  - `resources/views/livewire/public-qr/show.blade.php`;
+  - `resources/views/livewire/public-qr/guest-menu.blade.php`;
+  - `resources/views/livewire/public-qr/table-guests.blade.php`;
+  - `resources/views/livewire/public-qr/draft-order.blade.php`;
+  - `resources/views/livewire/public-qr/draft-totals.blade.php`;
+  - `resources/views/components/ui/mobile-bottom-actions.blade.php`.
 - The design system must stay lightweight and shared-hosting friendly. Do not add React, Vue, Inertia, a SPA frontend, heavy UI libraries, WebSockets, Redis, S3, Docker, or external services for UI polish.
 - Keep Blade display-only: data must still be prepared by Livewire components/actions, not queried from Blade templates.
 
@@ -1120,9 +1130,9 @@ Local media storage:
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable / stop-listed dishes are visually dimmed and marked `Нет в наличии`; they cannot be opened or added to the draft.
-- Dish cards show local dish photos when `menu_items.image` is present, otherwise a small photo placeholder.
-- Available dishes show a `Добавить` action for active guests.
+- Dish cards are mobile-first cards with a stable image/photo-placeholder area, visible price, availability badge, and large `Добавить` action for active guests.
 - Tapping `Добавить` opens a mobile-first bottom sheet inside `App\Livewire\PublicQr\GuestMenu`.
+- The item bottom sheet shows the selected dish preview, description when available, modifier groups, comment field, computed item total, and sticky add action.
 - The bottom sheet shows assigned modifier groups and only available modifier options.
 - Required modifier groups validate `min_select` before the guest can complete the local configuration.
 - `price_delta` values from selected options affect the displayed local item total.
@@ -1144,6 +1154,7 @@ Local media storage:
 - The draft positions block groups guests alphabetically by `guest_name` in `guestSections`.
 - Each guest section shows that guest's ready/not-ready state, item count, positions, line prices, selected modifier names, optional comments, quantity, and current-draft guest total.
 - `App\Livewire\PublicQr\DraftTotals` renders per-guest totals, current draft total, already confirmed non-cancelled order totals, table total, ready counts, send-to-waiter, and request-bill controls.
+- Prompt 090 keeps the primary guest actions in the shared `x-ui.mobile-bottom-actions` bar: `Я готов`, `Отправить официанту`, and `Попросить счёт` remain easy to reach on mobile screens.
 - `App\Livewire\PublicQr\OrderStatuses` renders waiter rejection, waiter confirmation, kitchen/bar accepted, cooking, ready, and served guest-facing status.
 - All active guests see the same grouped draft and totals information.
 - The current active guest can toggle readiness through `DraftTotals`, which calls `ToggleTableSessionGuestReadyAction` and sets or clears `table_session_guests.ready_at`.
@@ -1426,7 +1437,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, and Prompt 089 lightweight Blade design-system primitives intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, and Prompt 090 polished guest mobile UI intact during future feature work.
 
 ## Do Not Break
 

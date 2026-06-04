@@ -40,6 +40,23 @@ The design system is intentionally small: Tailwind CSS, Blade components, Livewi
 
 The first applied screens are guest QR/table/menu actions, branch area management, and branch service point management.
 
+## Guest Mobile UI
+
+The public QR guest flow is mobile-first and stays inside Blade + Livewire. The guest entry screen shows the venue logo/name, current zone/place, QR short code, a large name field, and one primary `Войти за стол` action.
+
+Active guests see a polished table page with:
+
+- an active table header with current service point data;
+- a clear `Позвать официанта` action;
+- an alphabetically sorted guest list with ready/status badges;
+- mobile dish cards with photos, prices, availability, and a large add button;
+- bottom sheets for item modifiers and editing own draft positions;
+- a shared table cart grouped by guest;
+- per-guest totals and the table total;
+- a sticky bottom action bar for `Я готов`, `Отправить официанту`, and `Попросить счёт`.
+
+This UI polish does not change guest business rules: guests are still not user accounts, the menu still uses database cache, draft reads still come from SQLite, and realtime behavior still uses isolated Livewire polling blocks rather than WebSockets.
+
 ## Database Notifications
 
 Operational notifications are stored in Laravel's local `notifications` table and are delivered only through the `database` channel.

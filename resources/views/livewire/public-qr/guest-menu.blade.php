@@ -1,4 +1,5 @@
-<section data-component="guest-menu" class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+<section data-component="guest-menu" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Меню') }}</p>
@@ -22,14 +23,17 @@
             </select>
         </div>
     </div>
+    </div>
 
     @if ($guestMenu['menu'] === null)
-        <x-ui.empty-state
-            class="mt-4"
-            icon="book-open"
-            :heading="__('Меню пока недоступно')"
-        />
+        <div class="p-4">
+            <x-ui.empty-state
+                icon="book-open"
+                :heading="__('Меню пока недоступно')"
+            />
+        </div>
     @else
+        <div class="p-4">
         @if ($feedbackMessage)
             <x-ui.alert tone="success" class="mt-4">
                 {{ $feedbackMessage }}
@@ -43,9 +47,9 @@
         <div class="mt-4 space-y-5">
             @forelse ($guestMenu['categories'] as $category)
                 <section wire:key="guest-menu-category-{{ $category['id'] }}" class="space-y-3">
-                    <div class="flex items-start gap-2">
+                    <div class="flex items-start gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $category['name'] }}</h3>
+                            <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $category['name'] }}</h3>
 
                             @if ($category['description'])
                                 <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $category['description'] }}</p>
@@ -58,23 +62,23 @@
                             <article
                                 wire:key="guest-menu-item-{{ $item['id'] }}"
                                 @class([
-                                    'grid gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60',
+                                    'overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60',
                                     'opacity-65' => ! $item['is_available'],
                                 ])
                             >
-                                <div class="flex items-start gap-3">
-                                    <div class="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                                <div class="grid grid-cols-[5.5rem_1fr] gap-3 p-3">
+                                    <div class="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                                         @if ($item['image_url'])
                                             <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" class="size-full object-cover">
                                         @else
-                                            <span class="px-2 text-center text-xs font-medium text-zinc-400">{{ __('Фото') }}</span>
+                                            <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('Фото') }}</span>
                                         @endif
                                     </div>
 
                                     <div class="min-w-0 flex-1">
-                                        <div class="grid gap-1">
-                                            <h4 class="min-w-0 text-sm font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['name'] }}</h4>
-                                            <span class="text-sm font-semibold text-zinc-950 dark:text-white">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <h4 class="min-w-0 text-base font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['name'] }}</h4>
+                                            <span class="shrink-0 rounded-md bg-zinc-100 px-2 py-1 text-sm font-semibold text-zinc-950 dark:bg-zinc-900 dark:text-white">
                                                 {{ $item['formatted_price'] }}
                                             </span>
                                         </div>
@@ -99,16 +103,20 @@
 
                                         <div class="mt-3">
                                             @if ($item['is_available'] && $guestCanAddItems)
-                                                <div class="flex flex-wrap items-center gap-2">
+                                                <div class="grid gap-2">
+                                                    <div>
                                                     <x-ui.status-badge tone="success">
                                                         {{ __('Доступно') }}
                                                     </x-ui.status-badge>
+                                                    </div>
 
                                                     <x-ui.button
                                                         type="button"
                                                         wire:click="openItem({{ $item['id'] }})"
                                                         variant="dark"
-                                                        size="sm"
+                                                        size="lg"
+                                                        full-width
+                                                        icon="plus"
                                                     >
                                                         {{ __('Добавить') }}
                                                     </x-ui.button>
@@ -160,16 +168,31 @@
                 />
             @endforelse
         </div>
+        </div>
     @endif
 
     @if ($selectedItem !== null)
         <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
             <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
                 <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Ваш выбор') }}</p>
-                        <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $selectedItem['name'] }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
+                    <div class="flex min-w-0 items-start gap-3">
+                        <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+                            @if ($selectedItem['image_url'])
+                                <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" class="size-full object-cover">
+                            @else
+                                <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('Фото') }}</span>
+                            @endif
+                        </div>
+
+                        <div class="min-w-0">
+                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Ваш выбор') }}</p>
+                            <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $selectedItem['name'] }}</h3>
+                            <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
+
+                            @if ($selectedItem['description'])
+                                <p class="mt-1 line-clamp-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $selectedItem['description'] }}</p>
+                            @endif
+                        </div>
                     </div>
 
                     <button
@@ -250,7 +273,7 @@
                     </label>
                 </div>
 
-                <x-ui.mobile-bottom-actions class="mt-5">
+                <x-ui.mobile-bottom-actions class="mt-5" :summary="$selectedItemTotal">
                     <x-ui.button
                         type="button"
                         wire:click="saveConfiguredItem"

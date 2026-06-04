@@ -1,6 +1,6 @@
 <div class="min-h-svh">
-    <header class="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
-        <div class="mx-auto flex w-full max-w-md items-center justify-between gap-3">
+    <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+        <div class="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
             <a href="{{ route('guest.home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
                 <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
                 <span>{{ config('app.name', 'Laravel') }}</span>
@@ -29,11 +29,24 @@
         </div>
     </header>
 
-    <main class="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-5 sm:py-8">
+    <main class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">
         @if ($state === 'ready')
             @if ($currentGuestId && $guestCanAddItems && $currentTableSessionId)
                 <section data-page="guest-table-shell" class="flex flex-col gap-4">
-                    <div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                        <div class="border-b border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+                            <div class="flex items-center justify-between gap-3">
+                                <x-ui.status-badge tone="success" dot>
+                                    {{ __('Вход сохранён') }}
+                                </x-ui.status-badge>
+
+                                <x-ui.status-badge tone="muted">
+                                    {{ $landing['short_code'] }}
+                                </x-ui.status-badge>
+                            </div>
+                        </div>
+
+                        <div class="p-4">
                         <div class="flex items-start gap-3">
                             @if ($landing['logo_url'])
                                 <img
@@ -64,8 +77,8 @@
 
                         <div class="mt-4 grid grid-cols-2 gap-3">
                             <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Статус') }}</p>
-                                <p class="mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">{{ __('Вход сохранён') }}</p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Место') }}</p>
+                                <p class="mt-1 truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</p>
                             </div>
 
                             <div class="rounded-lg bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950/60">
@@ -87,13 +100,20 @@
                                 @endif
                             </div>
                         @endif
+                        </div>
                     </div>
 
                     <x-ui.card data-component="guest-request-waiter" tone="warning">
                         <div class="flex flex-col gap-3">
-                            <div class="min-w-0">
-                                <p class="text-xs font-medium uppercase text-amber-700 dark:text-amber-300">{{ __('Помощь') }}</p>
-                                <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Позвать официанта') }}</h2>
+                            <div class="flex items-start gap-3">
+                                <div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/80 text-amber-800 shadow-sm ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-900/70">
+                                    <flux:icon name="bell" variant="mini" class="size-5" />
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p class="text-xs font-medium uppercase text-amber-700 dark:text-amber-300">{{ __('Помощь') }}</p>
+                                    <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Позвать официанта') }}</h2>
+                                </div>
                             </div>
 
                             @if ($waiterCallMessage)
@@ -109,6 +129,7 @@
                                 wire:target="requestWaiter"
                                 variant="warning"
                                 full-width
+                                icon="bell"
                             >
                                 <span wire:loading.remove wire:target="requestWaiter">{{ __('Позвать официанта') }}</span>
                                 <span wire:loading wire:target="requestWaiter">{{ __('Отправляем вызов') }}</span>
@@ -273,37 +294,36 @@
                     />
                 </section>
             @else
-                <section data-page="guest-qr-landing" class="flex flex-col gap-5">
+                <section data-page="guest-qr-landing" class="flex min-h-[calc(100svh-5rem)] flex-col justify-between gap-5 pb-3">
                     <div class="space-y-4">
-                        <div class="flex items-center gap-3">
+                        <div class="rounded-lg border border-zinc-200 bg-white p-5 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            <div class="flex flex-col items-center">
                             @if ($landing['logo_url'])
                                 <img
                                     src="{{ $landing['logo_url'] }}"
                                     alt="{{ $landing['venue_name'] }}"
-                                    class="size-16 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-900"
+                                    class="size-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
                                 >
                             @else
-                                <div class="flex size-16 items-center justify-center rounded-lg border border-zinc-200 bg-white text-xl font-semibold text-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white">
+                                <div class="flex size-20 items-center justify-center rounded-lg border border-zinc-200 bg-white text-2xl font-semibold text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
                                     {{ $landing['brand_initial'] }}
                                 </div>
                             @endif
 
-                            <div class="min-w-0">
-                                <p class="truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
-                                <h1 class="text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
+                                <p class="mt-4 max-w-full truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
+                                <h1 class="mt-1 text-3xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
+                                <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
                             </div>
-                        </div>
 
-                        <x-ui.card>
-                            <dl class="grid gap-4">
-                                <div>
+                            <dl class="mt-5 grid gap-2 text-left">
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Зона') }}</dt>
                                     <dd class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">
                                         {{ $landing['area_name'] ?? __('Зона не назначена') }}
                                     </dd>
                                 </div>
 
-                                <div>
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Место') }}</dt>
                                     <dd class="mt-1 text-lg font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</dd>
                                     <dd class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
@@ -315,12 +335,18 @@
                                     </dd>
                                 </div>
 
-                                <div>
-                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Филиал') }}</dt>
-                                    <dd class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</dd>
+                                <div class="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <div>
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Филиал') }}</dt>
+                                        <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</dd>
+                                    </div>
+
+                                    <x-ui.status-badge tone="success">
+                                        {{ $landing['short_code'] }}
+                                    </x-ui.status-badge>
                                 </div>
                             </dl>
-                        </x-ui.card>
+                        </div>
                     </div>
 
                     <form wire:submit="enterTable" class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -339,7 +365,8 @@
                                 minlength="2"
                                 maxlength="80"
                                 autocomplete="name"
-                                class="block h-12 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 outline-hidden transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
+                                placeholder="{{ __('Например, Анна') }}"
+                                class="block h-14 w-full rounded-lg border border-zinc-300 bg-white px-4 text-lg font-semibold text-zinc-950 outline-hidden transition placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
                             >
                         </x-ui.form-field>
 
@@ -370,16 +397,18 @@
                             </div>
                         @endif
 
-                        <x-ui.button
-                            type="submit"
-                            :disabled="$currentGuestId || $currentJoinRequestId"
-                            variant="primary"
-                            size="lg"
-                            full-width
-                            class="mt-4"
-                        >
-                            {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('Запрос закрыт') : __('Запрос отправлен')) : ($currentGuestId ? __('Вход сохранён') : __('Войти за стол')) }}
-                        </x-ui.button>
+                        <x-ui.mobile-bottom-actions class="mt-5">
+                            <x-ui.button
+                                type="submit"
+                                :disabled="$currentGuestId || $currentJoinRequestId"
+                                variant="primary"
+                                size="lg"
+                                full-width
+                                icon-trailing="arrow-right"
+                            >
+                                {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('Запрос закрыт') : __('Запрос отправлен')) : ($currentGuestId ? __('Вход сохранён') : __('Войти за стол')) }}
+                            </x-ui.button>
+                        </x-ui.mobile-bottom-actions>
                     </form>
                 </section>
             @endif

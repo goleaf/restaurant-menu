@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 090 - Polish Guest Mobile UI
+
+- Polished the public QR guest entry screen with a stronger mobile welcome card, venue/logo context, current zone/place details, QR short code, large name input, and reachable bottom action.
+- Updated active guest table UI with clearer table context, waiter-call action, alphabetic guest list badges, mobile dish cards, item bottom sheets, shared cart grouping, per-guest totals, and sticky table actions.
+- Kept the work UI-only: no new tables, routes, backend actions, business rules, packages, Redis, WebSockets, S3, Docker, React, Vue, or external services.
+- Verified the existing guest table/menu/call/bill and design-system tests still pass after the polish.
+
 ### Prompt 089 - Add Simple Design System
 
 - Added small reusable Blade design-system primitives under `resources/views/components/ui` for buttons, cards, status badges, form fields, empty states, alerts, mobile guest bottom actions, and zone/service-point icons.

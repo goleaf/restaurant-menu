@@ -7,6 +7,7 @@ use App\Models\Permission;
 use App\Models\PermissionRole;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class SystemPermissionsSeeder extends Seeder
 {
@@ -17,15 +18,26 @@ class SystemPermissionsSeeder extends Seeder
     {
         $this->call(SystemRolesSeeder::class);
 
-        foreach (SystemPermission::seedRows() as $permission) {
-            Permission::query()->updateOrCreate(
-                ['code' => $permission['code']],
-                [
-                    'name' => $permission['name'],
-                    'sort_order' => $permission['sort_order'],
-                ],
-            );
-        }
+        DB::transaction(function (): void {
+            Permission::query()
+                ->select(['id', 'sort_order'])
+                ->orderBy('id')
+                ->each(function (Permission $permission): void {
+                    $permission->forceFill([
+                        'sort_order' => 50000 + (int) $permission->id,
+                    ])->save();
+                });
+
+            foreach (SystemPermission::seedRows() as $permission) {
+                Permission::query()->updateOrCreate(
+                    ['code' => $permission['code']],
+                    [
+                        'name' => $permission['name'],
+                        'sort_order' => $permission['sort_order'],
+                    ],
+                );
+            }
+        });
 
         $roleIds = Role::query()
             ->orderBy('id')

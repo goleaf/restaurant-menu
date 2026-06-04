@@ -19,11 +19,19 @@ new class extends Component
                 </p>
             </div>
 
-            @if ($canAccessWaiterDashboard ?? false)
-                <flux:button icon="clipboard-document-list" variant="primary" :href="route('restaurant.waiter.dashboard')" wire:navigate>
-                    {{ __('Waiter dashboard') }}
-                </flux:button>
-            @endif
+            <div class="flex flex-wrap gap-2">
+                @if ($canAccessWaiterDashboard ?? false)
+                    <flux:button icon="clipboard-document-list" variant="primary" :href="route('restaurant.waiter.dashboard')" wire:navigate>
+                        {{ __('Waiter dashboard') }}
+                    </flux:button>
+                @endif
+
+                @if ($canAccessKitchenDashboard ?? false)
+                    <flux:button icon="chef-hat" :href="route('restaurant.kitchen.dashboard')" wire:navigate>
+                        {{ __('Kitchen screen') }}
+                    </flux:button>
+                @endif
+            </div>
         </div>
     </header>
 
@@ -39,7 +47,7 @@ new class extends Component
     <section class="min-h-64 rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
         <h2 class="text-base font-semibold text-zinc-950 dark:text-white">Current implementation area</h2>
         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-            The waiter dashboard shows available branches, service point statuses, open sessions, and guest drafts waiting for review.
+            The waiter dashboard shows table flow, and the kitchen screen shows department tickets through Livewire polling.
         </p>
     </section>
 </div>

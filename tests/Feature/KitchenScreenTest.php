@@ -1,0 +1,311 @@
+<?php
+
+use App\Actions\Orders\SendOrderToKitchenBarAction;
+use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
+use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
+use App\Enums\MenuStatus;
+use App\Enums\OrganizationUserStatus;
+use App\Enums\ServicePointStatus;
+use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
+use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionStatus;
+use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
+use App\Models\AreaNode;
+use App\Models\Branch;
+use App\Models\BranchUser;
+use App\Models\Brand;
+use App\Models\DraftOrder;
+use App\Models\DraftOrderItem;
+use App\Models\KitchenDepartment;
+use App\Models\KitchenTicketItem;
+use App\Models\Menu;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
+use App\Models\Organization;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
+use App\Models\TableSessionGuest;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
+
+beforeEach(function () {
+    $this->seed(SystemPermissionsSeeder::class);
+});
+
+test('kitchen ticket items have kitchen work statuses', function () {
+    expect(Schema::hasColumn('kitchen_ticket_items', 'status'))->toBeTrue()
+        ->and(KitchenTicketItemStatus::values())->toBe([
+            'new',
+            'in_progress',
+            'ready',
+        ])
+        ->and(SystemPermission::ViewKitchen->value)->toBe('view_kitchen');
+});
+
+test('head chef sees only selected department tickets and updates item status', function () {
+    [$organization, $kitchen, $bar, $kitchenItem, $barItem] = createPrompt61KitchenScenario();
+    $headChef = User::factory()->create(['name' => 'Prompt 61 Head Chef']);
+
+    attachPrompt61Staff($headChef, $organization, SystemRole::HeadChef);
+
+    Livewire::actingAs($headChef)
+        ->test(KitchenDashboard::class)
+        ->assertSet('selectedDepartmentId', (string) $kitchen->id)
+        ->assertSee('Prompt 61 Pizza')
+        ->assertSee('Crispy crust')
+        ->assertSee('Size: Large')
+        ->assertDontSee('Prompt 61 Coffee')
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::InProgress->value)
+        ->assertHasNoErrors()
+        ->assertSee('In progress')
+        ->set('selectedDepartmentId', (string) $bar->id)
+        ->assertSee('Prompt 61 Coffee')
+        ->assertDontSee('Prompt 61 Pizza')
+        ->call('setItemStatus', $barItem->id, KitchenTicketItemStatus::Ready->value)
+        ->assertHasNoErrors()
+        ->assertSee('Ready');
+
+    expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::InProgress)
+        ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::Ready);
+});
+
+test('view kitchen permission can open kitchen screen without chef role', function () {
+    [$organization] = createPrompt61KitchenScenario();
+    $staff = User::factory()->create(['name' => 'Prompt 61 Kitchen Viewer']);
+
+    attachPrompt61Staff($staff, $organization, SystemRole::Waiter, [
+        SystemPermission::ViewKitchen,
+    ]);
+
+    $this->actingAs($staff)
+        ->get(route('restaurant.kitchen.dashboard'))
+        ->assertSuccessful()
+        ->assertSee('Kitchen screen');
+});
+
+test('staff without kitchen role or permission cannot open kitchen screen', function () {
+    [$organization] = createPrompt61KitchenScenario();
+    $staff = User::factory()->create(['name' => 'Prompt 61 No Kitchen']);
+
+    attachPrompt61Staff($staff, $organization, SystemRole::Waiter, [
+        SystemPermission::ViewOrders,
+    ]);
+
+    $this->actingAs($staff)
+        ->get(route('restaurant.kitchen.dashboard'))
+        ->assertForbidden();
+});
+
+test('active branch assignment limits kitchen departments', function () {
+    [$organization, $kitchen] = createPrompt61KitchenScenario();
+    $secondBrand = Brand::factory()->for($organization)->create(['name' => 'Prompt 61 Other Brand']);
+    $secondBranch = Branch::factory()
+        ->for($organization)
+        ->for($secondBrand)
+        ->create(['name' => 'Prompt 61 Other Branch']);
+    $otherDepartment = KitchenDepartment::factory()
+        ->for($secondBranch)
+        ->create([
+            'type' => KitchenDepartmentType::Kitchen,
+            'name' => 'Prompt 61 Other Kitchen',
+        ]);
+    $cook = User::factory()->create(['name' => 'Prompt 61 Cook']);
+    $role = attachPrompt61Staff($cook, $organization, SystemRole::Cook);
+
+    BranchUser::query()->create([
+        'organization_id' => $organization->id,
+        'branch_id' => $kitchen->branch_id,
+        'user_id' => $cook->id,
+        'role_id' => $role->id,
+        'status' => OrganizationUserStatus::Active->value,
+        'assigned_at' => now(),
+        'assigned_by_user_id' => null,
+    ]);
+
+    $component = Livewire::actingAs($cook)
+        ->test(KitchenDashboard::class)
+        ->assertSet('selectedDepartmentId', (string) $kitchen->id)
+        ->assertDontSee('Prompt 61 Other Kitchen');
+
+    expect(collect($component->get('departments'))->pluck('id')->all())
+        ->not->toContain($otherDepartment->id);
+});
+
+function createPrompt61KitchenScenario(): array
+{
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Prompt 61 Group']);
+    $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 61 Brand']);
+    $branch = Branch::factory()
+        ->for($organization)
+        ->for($brand)
+        ->create([
+            'name' => 'Prompt 61 Branch',
+            'currency' => 'EUR',
+        ]);
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Prompt 61 Hall']);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->for($areaNode)
+        ->create([
+            'name' => 'Prompt 61 Table',
+            'display_number' => 'T-61',
+            'status' => ServicePointStatus::HasNewOrder,
+        ]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create(['status' => TableSessionStatus::Active]);
+    $ana = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Ana',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+    $kitchen = KitchenDepartment::factory()
+        ->for($branch)
+        ->create([
+            'type' => KitchenDepartmentType::Kitchen,
+            'name' => 'Prompt 61 Kitchen',
+            'sort_order' => 10,
+        ]);
+    $bar = KitchenDepartment::factory()
+        ->for($branch)
+        ->create([
+            'type' => KitchenDepartmentType::Bar,
+            'name' => 'Prompt 61 Bar',
+            'sort_order' => 20,
+        ]);
+    $menu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Prompt 61 Menu',
+            'status' => MenuStatus::Active,
+        ]);
+    $category = MenuCategory::factory()
+        ->for($menu)
+        ->create(['name' => 'Main']);
+    $pizza = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->for($kitchen, 'kitchenDepartment')
+        ->create([
+            'name' => 'Prompt 61 Pizza',
+            'price' => '11.00',
+        ]);
+    $coffee = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->for($bar, 'kitchenDepartment')
+        ->create([
+            'name' => 'Prompt 61 Coffee',
+            'price' => '3.00',
+        ]);
+    $draftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create([
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now(),
+            'sent_by_guest_id' => $ana->id,
+        ]);
+
+    DraftOrderItem::factory()
+        ->for($draftOrder, 'draftOrder')
+        ->for($zara, 'guest')
+        ->for($pizza, 'menuItem')
+        ->create([
+            'item_name' => 'Prompt 61 Pizza',
+            'quantity' => 1,
+            'unit_price' => '11.00',
+            'modifier_total' => '2.00',
+            'total_price' => '13.00',
+            'selected_modifiers' => [
+                [
+                    'group_name' => 'Size',
+                    'option_name' => 'Large',
+                    'price_delta' => '2.00',
+                ],
+            ],
+            'comment' => 'Crispy crust',
+        ]);
+
+    DraftOrderItem::factory()
+        ->for($draftOrder, 'draftOrder')
+        ->for($ana, 'guest')
+        ->for($coffee, 'menuItem')
+        ->create([
+            'item_name' => 'Prompt 61 Coffee',
+            'quantity' => 2,
+            'unit_price' => '3.00',
+            'modifier_total' => '0.00',
+            'total_price' => '6.00',
+            'selected_modifiers' => [],
+        ]);
+
+    $dispatcher = User::factory()->create(['name' => 'Prompt 61 Dispatcher']);
+
+    attachPrompt61Staff($dispatcher, $organization, SystemRole::Waiter, [
+        SystemPermission::ViewOrders,
+        SystemPermission::ConfirmOrders,
+        SystemPermission::SendToKitchen,
+    ]);
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $dispatcher);
+    app(SendOrderToKitchenBarAction::class)->handle($order, $dispatcher);
+
+    $kitchenItem = KitchenTicketItem::query()
+        ->whereHas('kitchenTicket', function ($query) use ($kitchen): void {
+            $query->where('kitchen_department_id', $kitchen->id);
+        })
+        ->firstOrFail();
+    $barItem = KitchenTicketItem::query()
+        ->whereHas('kitchenTicket', function ($query) use ($bar): void {
+            $query->where('kitchen_department_id', $bar->id);
+        })
+        ->firstOrFail();
+
+    return [$organization, $kitchen, $bar, $kitchenItem, $barItem];
+}
+
+/**
+ * @param  list<SystemPermission>  $permissions
+ */
+function attachPrompt61Staff(User $user, Organization $organization, SystemRole $roleCode, array $permissions = []): Role
+{
+    $role = Role::query()
+        ->where('code', $roleCode->value)
+        ->firstOrFail();
+
+    foreach ($permissions as $permission) {
+        $permissionModel = Permission::query()
+            ->where('code', $permission->value)
+            ->firstOrFail();
+
+        $role->permissions()->updateExistingPivot($permissionModel->id, ['enabled' => true]);
+    }
+
+    $organization->users()->syncWithoutDetachingOrFail([
+        $user->id => [
+            'role_id' => $role->id,
+            'status' => OrganizationUserStatus::Active->value,
+            'joined_at' => now(),
+            'invited_by_user_id' => null,
+        ],
+    ]);
+
+    return $role;
+}

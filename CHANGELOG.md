@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 061 - Kitchen Screen
+
+- Added a kitchen dashboard at `/restaurant/kitchen/dashboard` with Livewire polling every 1 second and no WebSockets.
+- Added `KitchenTicketItemStatus` and `kitchen_ticket_items.status` with `new`, `in_progress`, and `ready` item states.
+- Added kitchen access resolution for fixed `head_chef` and `cook` organization roles, superadmins, or users with the new flexible `view_kitchen` permission.
+- Added backend actions to build department-scoped kitchen payloads and update ticket item status without querying from Blade.
+- Added navigation from the restaurant workspace/sidebar only for users who can access at least one kitchen department.
+- Hardened `SystemPermissionsSeeder` so adding new fixed permissions does not collide with the unique `permissions.sort_order` index on existing SQLite databases.
+- Verified department filtering, item status changes, branch assignment restrictions, permission access, and neighboring dispatch/permission tests.
+
 ### Prompt 060 - Send Orders To Kitchen Bar
 
 - Added `kitchen_tickets` and `kitchen_ticket_items` for department-split dispatch of confirmed waiter orders.

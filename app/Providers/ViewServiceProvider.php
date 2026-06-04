@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,11 @@ class ViewServiceProvider extends ServiceProvider
             $view->with(
                 'canAccessWaiterDashboard',
                 $user instanceof User && app(BuildWaiterDashboardAction::class)->userHasAccess($user),
+            );
+
+            $view->with(
+                'canAccessKitchenDashboard',
+                $user instanceof User && app(ResolveKitchenAccessibleDepartmentIdsAction::class)->userHasAccess($user),
             );
         });
     }

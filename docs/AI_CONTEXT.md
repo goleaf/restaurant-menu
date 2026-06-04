@@ -56,13 +56,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
+- Basic kitchen screen for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, kitchen/bar work screen, payment, or analytics has been implemented yet.
+No menu translation admin editor, QR PDF generation, payment, analytics, or advanced kitchen production history has been implemented yet.
 
 ## Tables
 
@@ -462,7 +463,9 @@ Kitchen ticket item:
 - Belongs to one kitchen ticket through `kitchen_ticket_id`.
 - References one confirmed order item through unique `order_item_id`.
 - Optionally references the original table session guest and menu item.
-- Stores guest name, item name, quantity, selected modifiers, and optional comment snapshots for the department ticket.
+- Stores guest name, item name, quantity, item work status, selected modifiers, and optional comment snapshots for the department ticket.
+- Status is cast to `KitchenTicketItemStatus`.
+- Status values are `new`, `in_progress`, and `ready`.
 
 Order status log:
 
@@ -680,6 +683,7 @@ Local media storage:
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff` -> `organizations.brands.branches.staff.index`
 - `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings` -> `organizations.brands.branches.settings.index`
 - `GET /restaurant/dashboard` -> `restaurant.dashboard`
+- `GET /restaurant/kitchen/dashboard` -> `restaurant.kitchen.dashboard`
 - `GET /restaurant/waiter/dashboard` -> `restaurant.waiter.dashboard`
 - `GET /restaurant/waiter/tables/{tableSession}` -> `restaurant.waiter.tables.show`
 - `GET /superadmin/dashboard` -> `superadmin.dashboard` guarded by `auth` + `superadmin`
@@ -705,6 +709,7 @@ Local media storage:
 - `App\Livewire\PublicQr\TableGuests`
 - `App\Livewire\PublicQr\GuestMenu`
 - `App\Livewire\PublicQr\DraftOrder`
+- `App\Livewire\Kitchen\Dashboard`
 - `App\Livewire\Superadmin\Dashboard`
 - `App\Livewire\Waiter\Dashboard`
 - `App\Livewire\Waiter\TableDetail`
@@ -833,6 +838,23 @@ Local media storage:
 - The table detail page can return a rejected draft to `draft` for guest edits.
 - Waiter detail edit/review actions do not send anything to kitchen/bar until the explicit `Send to kitchen/bar` action is clicked, and they do not create payments.
 
+## Current Kitchen Screen
+
+- Kitchen screen route is `GET /restaurant/kitchen/dashboard`.
+- Livewire component is `App\Livewire\Kitchen\Dashboard`.
+- Data is prepared by `App\Actions\Kitchen\BuildKitchenDashboardAction`; Blade receives arrays and must not query the database.
+- Access is resolved by `App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction`.
+- Access is allowed for superadmins, fixed `head_chef` and `cook` organization roles, or users with the flexible `view_kitchen` permission.
+- Active `branch_users` assignments limit kitchen access to assigned branches.
+- The component shows one selected active kitchen department at a time.
+- The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
+- The screen shows service point display/name, zone, ticket creation time, item name, quantity, guest name, modifiers, comments, and item status.
+- `App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
+- Ticket-level work status is computed from item statuses for display only.
+- The screen uses `wire:poll.1s="refreshKitchen"` and does not use WebSockets.
+- The restaurant sidebar and restaurant dashboard show a kitchen link only when the current user can access at least one active department.
+- The screen does not expose unconfirmed drafts or merely confirmed orders; it reads only tickets created by explicit waiter dispatch.
+
 ## Current Branch Menu UI
 
 - Branch menu route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/menu`.
@@ -935,7 +957,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be a kitchen/bar work screen for `kitchen_tickets`, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be kitchen ticket status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -947,7 +969,7 @@ The next expected product step may be a kitchen/bar work screen for `kitchen_tic
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add AI translations, a complex translation editor, kitchen/bar work screens, or payment logic unless a prompt explicitly asks for that exact step.
+- Do not add AI translations, a complex translation editor, advanced kitchen/bar production history, or payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
 - Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.
@@ -956,7 +978,8 @@ The next expected product step may be a kitchen/bar work screen for `kitchen_tic
 - Do not allow guest draft edits after the draft status leaves `draft`.
 - Do not create real orders from the guest UI; waiter confirmation must come first.
 - Do not auto-dispatch confirmed orders during waiter confirmation; kitchen/bar tickets must be created only by explicit `SendOrderToKitchenBarAction`.
-- Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; kitchen/bar should read only dispatched tickets when those screens are added later.
+- Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; the kitchen screen must read only dispatched tickets.
+- Do not switch the kitchen screen away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.

@@ -18,6 +18,7 @@ enum SystemPermission: string
     case EditPendingOrders = 'edit_pending_orders';
     case CancelOrders = 'cancel_orders';
     case SendToKitchen = 'send_to_kitchen';
+    case ViewKitchen = 'view_kitchen';
     case ViewReports = 'view_reports';
     case ManageStaff = 'manage_staff';
     case ManageSubscription = 'manage_subscription';
@@ -43,6 +44,7 @@ enum SystemPermission: string
             self::EditPendingOrders => 'Edit pending orders',
             self::CancelOrders => 'Cancel orders',
             self::SendToKitchen => 'Send to kitchen',
+            self::ViewKitchen => 'View kitchen screen',
             self::ViewReports => 'View reports',
             self::ManageStaff => 'Manage staff',
             self::ManageSubscription => 'Manage subscription',

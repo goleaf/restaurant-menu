@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\KitchenTicketItemStatus;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\OrderItem;
@@ -38,6 +39,7 @@ class KitchenTicketItemFactory extends Factory
             'guest_name' => $orderItem->guest_name,
             'item_name' => $orderItem->item_name,
             'quantity' => $orderItem->quantity,
+            'status' => KitchenTicketItemStatus::New,
             'selected_modifiers' => $orderItem->selected_modifiers ?? [],
             'comment' => $orderItem->comment,
         ];

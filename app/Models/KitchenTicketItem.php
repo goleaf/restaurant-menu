@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\KitchenTicketItemStatus;
 use Database\Factories\KitchenTicketItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'selected_modifiers', 'comment'])]
+#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'status', 'selected_modifiers', 'comment'])]
 class KitchenTicketItem extends Model
 {
     /** @use HasFactory<KitchenTicketItemFactory> */
@@ -19,6 +20,7 @@ class KitchenTicketItem extends Model
      */
     protected $attributes = [
         'quantity' => 1,
+        'status' => 'new',
         'selected_modifiers' => '[]',
     ];
 
@@ -29,6 +31,7 @@ class KitchenTicketItem extends Model
     {
         return [
             'quantity' => 'integer',
+            'status' => KitchenTicketItemStatus::class,
             'selected_modifiers' => 'array',
         ];
     }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as OrganizationBrandBranchMenuIndex;
@@ -106,6 +107,12 @@ Route::middleware(['auth'])
     ->name('restaurant.')
     ->group(function () {
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
+
+        Route::prefix('kitchen')
+            ->name('kitchen.')
+            ->group(function () {
+                Route::livewire('dashboard', KitchenDashboard::class)->name('dashboard');
+            });
 
         Route::prefix('waiter')
             ->name('waiter.')

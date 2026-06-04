@@ -30,6 +30,12 @@
                         </flux:sidebar.item>
                     @endif
 
+                    @if ($canAccessKitchenDashboard ?? false)
+                        <flux:sidebar.item icon="chef-hat" :href="route('restaurant.kitchen.dashboard')" :current="request()->routeIs('restaurant.kitchen.*')" wire:navigate>
+                            {{ __('Kitchen') }}
+                        </flux:sidebar.item>
+                    @endif
+
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
                             {{ __('Platform') }}

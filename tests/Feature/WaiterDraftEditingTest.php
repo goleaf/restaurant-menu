@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
@@ -18,6 +19,7 @@ use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\Menu;
+use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
@@ -31,10 +33,16 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
 });
 
 test('waiter with confirm orders can update quantity comment and modifiers before confirming', function () {
@@ -153,6 +161,46 @@ test('waiter can add and delete draft positions before confirmation', function (
         ->assertSet('totalAmount', '12.00')
         ->assertSee('Still Water')
         ->assertDontSee('Pizza Margherita');
+});
+
+test('waiter cannot add draft item from menu outside current schedule', function () {
+    Carbon::setTestNow(Carbon::parse('2026-06-01 15:30:00', 'Europe/Vilnius'));
+
+    [
+        'organization' => $organization,
+        'tableSession' => $tableSession,
+        'draftOrder' => $draftOrder,
+        'zara' => $zara,
+        'waterItem' => $waterItem,
+    ] = createPrompt55SentDraftScenario();
+    $waiter = User::factory()->create();
+    attachPrompt55Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
+
+    MenuAvailabilitySchedule::factory()
+        ->for($waterItem->menu)
+        ->create([
+            'day_of_week' => 1,
+            'starts_at' => '08:00',
+            'ends_at' => '12:00',
+        ]);
+
+    Livewire::actingAs($waiter)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->assertSet('addableMenuItems', []);
+
+    expect(fn () => app(AddDraftOrderItemByWaiterAction::class)->handle(
+        draftOrder: $draftOrder,
+        guest: $zara,
+        menuItem: $waterItem,
+        editedBy: $waiter,
+        quantity: 1,
+        selectedModifierOptions: [],
+    ))->toThrow(ValidationException::class, 'Будет доступно с Пн 08:00');
+
+    expect(DraftOrderItem::query()
+        ->where('draft_order_id', $draftOrder->id)
+        ->where('menu_item_id', $waterItem->id)
+        ->exists())->toBeFalse();
 });
 
 test('edit pending orders permission can edit sent draft without confirming it', function () {

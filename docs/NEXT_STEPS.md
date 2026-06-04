@@ -4,14 +4,32 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 107 and the follow-up daily project memory
-update. The implemented public restaurant profile, branch opening hours,
-temporary branch closed mode, menu schedules, multiple active branch menus, and
-branch service modes should be treated as current baseline for future guest UI,
-QR landing, ordering work, and branch setup. Bulk service point creation is now
-available on the branch service point page.
+Last memory refresh: 2026-06-04 after Prompt 280 functional consistency pass.
+The implemented public restaurant profile, branch opening hours, temporary
+branch closed mode, menu schedules, multiple active branch menus, branch service
+modes, bulk service point creation, and waiter-side schedule checks should be
+treated as current baseline for future guest UI, QR landing, ordering work,
+staff review, and branch setup.
 
 ## Current Recommended Prompt
+
+Prompt 281: decide whether to add dedicated menu tags/allergens and shared
+payment allocation foundations, or continue with the previously queued menu
+translation admin editor.
+
+Prompt 281 scope, if requested:
+
+- Keep it schema-first and small.
+- Treat dedicated tags/allergens as new menu metadata, not as a consistency
+  bugfix.
+- Treat shared payment allocations as a new payment/cart rule, not as a hidden
+  extension of manual payments.
+- Preserve existing modifier groups/options as the current variant-like
+  mechanism unless a separate variant model is explicitly requested.
+- Keep guest ordering, waiter confirmation, kitchen/bar dispatch, and manual
+  payment flows green.
+
+Alternative queued prompt:
 
 Prompt 108: add a simple menu translation admin editor.
 
@@ -62,6 +80,11 @@ Prompt 107 added bulk service point creation: managers can preview generated
 labels such as `T1..T20`, skip duplicate branch `internal_code` values, create
 only missing service points, and then use the existing bulk QR print flow when
 they are ready to generate QR.
+
+Prompt 280 checked functional consistency across menu, guest, staff,
+departments, payments, and access control. It fixed waiter-side adding of draft
+items so menu schedules are respected in both the add-item UI and backend Action.
+No dedicated variants/tags/allergens/shared-allocation schema was added.
 
 Prompt 102 added branch opening hours: weekly schedules with closed days,
 several intervals per day, branch-timezone status checks, admin settings UI, and

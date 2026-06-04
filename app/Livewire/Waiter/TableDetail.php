@@ -3,6 +3,7 @@
 namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
@@ -676,7 +677,17 @@ class TableDetail extends Component
         return MenuItem::query()
             ->select(['id', 'menu_id', 'category_id', 'name', 'price', 'is_available', 'sort_order'])
             ->with([
-                'menu' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'name']),
+                'menu' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'name'])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
+                        'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
+                            'id',
+                            'menu_id',
+                            'day_of_week',
+                            'starts_at',
+                            'ends_at',
+                        ]),
+                    ]),
                 'category' => fn ($query) => $query->select(['id', 'menu_id', 'name', 'is_active']),
             ])
             ->whereHas('menu', function ($query) use ($branchId): void {
@@ -693,6 +704,13 @@ class TableDetail extends Component
             ->orderBy('id')
             ->limit(200)
             ->get()
+            ->filter(function (MenuItem $menuItem): bool {
+                if ($menuItem->menu === null) {
+                    return false;
+                }
+
+                return app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu)['is_available'];
+            })
             ->map(fn (MenuItem $menuItem): array => [
                 'value' => (string) $menuItem->id,
                 'label' => trim(($menuItem->category?->name ? $menuItem->category->name.' · ' : '').$menuItem->name),

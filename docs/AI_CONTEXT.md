@@ -2,6 +2,90 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 280 Functional Consistency Pass - 2026-06-04
+
+Prompt 280 checked menu, guest, staff, department, access-control, payment, and table-close consistency without adding new product features, routes, tables, packages, services, or infrastructure.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 280: waiter-side draft item adding now also respects menu availability schedules; unavailable scheduled menu items are filtered from the waiter add-item list and blocked server-side.
+- Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
+- Local images remain in `storage/app/public/media/...`.
+
+Current tables:
+
+- `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
+- `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings` including `service_modes`, `invitations`, `branch_opening_hours`.
+- `area_nodes`, `service_points`, `qr_codes`.
+- `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
+- `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`.
+
+Current routes:
+
+- Public/auth: `home`, `guest.home`, `public.qr.show`, `dashboard`, Fortify auth/password routes.
+- Settings: `profile.edit`, `appearance.edit`, `security.edit`.
+- Onboarding and admin: `onboarding.restaurant`, organization/staff/brand/branch routes, branch areas/menu/QR/service-points/staff/settings.
+- Operations: `restaurant.dashboard`, audit log, CSV exports, waiter dashboard/table detail, kitchen dashboard, bar dashboard.
+- Superadmin: `superadmin.dashboard`, `superadmin.backups.sqlite.download`.
+
+Current Livewire components:
+
+- Auth/settings/notifications: logout, profile, appearance, security, two-factor recovery codes, unread notification panel.
+- Organization/branch admin: organizations, staff permissions, brands, branches, areas, menu, QR bulk print, service points with single and bulk creation, QR display/print, branch staff, branch settings with public profile, opening hours, temporary closure, currency, and service modes.
+- Guest QR: `PublicQr\Show`, `TableGuests`, `JoinRequests`, `Notifications`, `GuestMenu`, `DraftOrder`, `DraftTotals`, `OrderStatuses`.
+- Operations: waiter dashboard/table detail, shared department dashboard, kitchen dashboard, bar dashboard, audit log, exports, onboarding, superadmin dashboard.
+
+Mandatory business rules:
+
+- One physical service point has one active permanent QR; `/q/{public_token}` must not expose organization, branch, service point, table, or area IDs.
+- QR identity does not change on rename, move, session close, ordinary edits, or bulk-created service point review.
+- Guests are not user accounts; guest access uses unguessable guest tokens.
+- New guests require active guest approval when active guests already exist.
+- Guests see one shared draft/cart, guests are sorted alphabetically, and each guest edits only their own draft items while the draft is still editable.
+- Branch opening hours, temporary closure, menu schedules, and future service-mode rules may block ordering while still allowing QR/menu viewing.
+- Menu schedule rules apply to guest ordering and waiter-side adding of new items to a pending draft.
+- Branch service modes are fixed values on branch settings; they prepare dine-in, pickup, delivery, hotel room service, bar-only, and custom operation without delivery/payment infrastructure.
+- Bulk service point creation must preview generated codes before writing, skip duplicate `internal_code` values, and never create QR automatically.
+- Multiple active menus can be visible together only when they are currently available by schedule; inactive/draft/archived menus are hidden from guests.
+- Every guest draft must be confirmed by a waiter before becoming an order and explicitly dispatched before kitchen/bar can see it.
+- Order items keep immutable snapshots; manual payments and table close preserve history and never reissue QR.
+
+Shared-hosting constraints:
+
+- SQLite file stays in the project, normally `database/database.sqlite`, outside `public`, and is never committed.
+- Keep `CACHE_STORE=database`, `SESSION_DRIVER=database`, `QUEUE_CONNECTION=database`, `FILESYSTEM_DISK=public`, and `BROADCAST_CONNECTION=log`.
+- Media is local in `storage/app/public`; realtime is Livewire polling only.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, maps/courier/payment integrations for service modes, AI translation, React/Vue/Inertia SPA, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 280 notes:
+
+- Dedicated menu variants, tags, allergens, and shared payment allocations are not implemented as separate product features yet. Variant-like choices currently use modifier groups/options.
+- Do not add those schemas opportunistically during bugfix or consistency prompts; use a separate explicit prompt if the product needs them.
+
+Next recommended prompt:
+
+- Prompt 281: decide whether to add dedicated menu tags/allergens and shared payment allocation foundations. Keep it schema-first and small if requested; otherwise continue with the previously queued menu translation admin editor.
+
 ## Daily Project Memory Update After Prompt 107 - 2026-06-04
 
 This is a documentation-only memory refresh after Prompt 107. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.

@@ -3,6 +3,7 @@
 namespace App\Actions\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
@@ -134,6 +135,15 @@ class AddDraftOrderItemByWaiterAction
                     'id',
                     'branch_id',
                     'status',
+                ])->with([
+                    'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
+                    'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
+                        'id',
+                        'menu_id',
+                        'day_of_week',
+                        'starts_at',
+                        'ends_at',
+                    ]),
                 ]),
                 'category' => fn ($query) => $query->select([
                     'id',
@@ -165,6 +175,17 @@ class AddDraftOrderItemByWaiterAction
             || ! $menuItem->is_available) {
             throw ValidationException::withMessages([
                 'addingMenuItemId' => __('Это блюдо сейчас недоступно для этого филиала.'),
+            ]);
+        }
+
+        $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu);
+
+        if (! $availability['is_available']) {
+            throw ValidationException::withMessages([
+                'addingMenuItemId' => __(':label. :detail', [
+                    'label' => $availability['label'],
+                    'detail' => $availability['detail'],
+                ]),
             ]);
         }
     }

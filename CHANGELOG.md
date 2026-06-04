@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 280 - Functional Consistency Pass For Menu And Staff
+
+- Checked menu, guest, waiter, kitchen/bar department, access-control, payment, and table-close flows without adding new product features.
+- Fixed a consistency gap where waiter-side pending draft item additions could still list/add items from an active menu that was outside its current availability schedule.
+- Waiter add-item backend validation now reuses the existing menu availability schedule rule, and the waiter table detail add-item list filters out currently unavailable scheduled menus.
+- Added focused regression coverage proving a waiter cannot add a draft item from a menu outside the current schedule.
+- Touched modules/files: `App\Actions\Waiter\AddDraftOrderItemByWaiterAction`, `App\Livewire\Waiter\TableDetail`, `tests/Feature/WaiterDraftEditingTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no new variants/tags/allergens/shared-allocation schema was added; the current variant-like behavior remains modifier groups/options, and shared payment allocation remains a future scoped prompt.
+- Manual check: set a breakfast menu schedule to `08:00-12:00`, open a waiter table detail after the interval, confirm that breakfast items are not offered in the waiter add-item list, and confirm guests still see only currently available menus.
+
 ### Docs - Daily Project Memory Update After Prompt 107
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 107 without adding product features.

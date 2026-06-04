@@ -13,6 +13,46 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 280 Functional Consistency Results
+
+Programmatic coverage was re-run for menu, guest, staff, departments, payments,
+access control, and the vertical slice. A small waiter-side consistency fix was
+added so items from an active but currently unavailable scheduled menu are not
+offered in the waiter add-item list and cannot be added through the backend
+Action.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/MenuScheduleTest.php tests/Feature/GuestMenuDisplayTest.php tests/Feature/MenuCrudTest.php tests/Feature/BranchCacheInvalidationTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/VerticalSliceFlowTest.php tests/Feature/WaiterDraftReviewTest.php tests/Feature/WaiterDraftEditingTest.php tests/Feature/KitchenTicketDispatchTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/AccessControlAuditTest.php
+```
+
+Manual check:
+
+1. Create or choose an active breakfast menu with an `08:00-12:00` schedule.
+2. Open a guest QR page outside that interval and confirm breakfast dishes are
+   not orderable.
+3. Open waiter table detail for a sent draft outside that interval and confirm
+   breakfast dishes are not offered in `Add item`.
+4. Confirm modifier-required dishes still require a selected option before
+   adding.
+5. Confirm the guest cart groups current draft items by guest and shows
+   confirmed order totals separately.
+6. Confirm kitchen and bar screens show only tickets for their accessible
+   departments.
+7. Confirm cashier/payment staff can record whole-table and guest payments, then
+   close the table session manually.
+
+Current known future-product gaps from the Prompt 280 checklist:
+
+- dedicated menu variants are not separate records yet; modifier groups/options
+  are the current variant-like mechanism;
+- dedicated menu tags/allergens are not implemented yet;
+- shared payment allocations are not implemented yet.
+
+Do not add those during consistency/bugfix prompts without a separate explicit
+scope.
+
 ## Daily Memory Update - 2026-06-04 After Prompt 107
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,

@@ -47,9 +47,28 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 107 and the follow-up daily memory update. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, and bulk service point creation are now part of the baseline branch setup context.
+Latest memory refresh: 2026-06-04 after Prompt 280 functional consistency pass. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, and waiter-side schedule checks are now part of the baseline branch setup and order-review context.
 
-The daily memory refresh after Prompt 107 is documentation-only and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
+The memory refresh after Prompt 280 records the current consistency status and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
+
+## Functional Consistency Pass
+
+Prompt 280 checked the current menu, guest, staff, department, and payment flows without adding new product features.
+
+- Active and scheduled menus are shown to guests through the database-cached guest menu payload.
+- Unavailable dishes and unavailable modifier options are blocked for guests.
+- Required modifier groups are validated both in the guest add flow and the backend draft item snapshot builder.
+- Waiter-side draft item adding now also respects menu availability schedules, so an active menu outside its current schedule cannot be added during review.
+- Draft cart totals stay grouped by guest and keep confirmed order totals separate from the current editable draft.
+- Waiter review/edit/confirm, kitchen/bar department scoping, cashier payment visibility, whole-table payment, guest payment, and manual table close remain covered by focused regression tests.
+
+Current limitations from the Prompt 280 checklist: dedicated menu variants, tags, allergens, and shared payment allocations are not separate product features yet. The current variant-like behavior is implemented through modifier groups and options.
+
+Focused Prompt 280 regression command:
+
+```bash
+php artisan test --compact tests/Feature/MenuScheduleTest.php tests/Feature/GuestMenuDisplayTest.php tests/Feature/MenuCrudTest.php tests/Feature/BranchCacheInvalidationTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/VerticalSliceFlowTest.php tests/Feature/WaiterDraftReviewTest.php tests/Feature/WaiterDraftEditingTest.php tests/Feature/KitchenTicketDispatchTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/AccessControlAuditTest.php
+```
 
 ## Project Cleanup Consistency
 

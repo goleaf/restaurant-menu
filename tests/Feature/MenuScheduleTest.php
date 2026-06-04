@@ -127,6 +127,77 @@ test('guest menu only returns menus available now and clears database cache on s
         ->assertDontSeeText('Burger');
 });
 
+test('guest menu returns multiple active available menus grouped and sorted', function () {
+    Carbon::setTestNow(Carbon::parse('2026-06-01 09:30:00', 'Europe/Vilnius'));
+
+    [$mainMenu, $branch] = createPrompt104MenuContext(menuName: 'Main menu');
+    $mainMenu->update(['sort_order' => 30]);
+    [, , $mainItem] = createPrompt104MenuRows($mainMenu, 'Margherita');
+
+    $breakfastMenu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Breakfast menu',
+            'status' => MenuStatus::Active,
+            'sort_order' => 10,
+        ]);
+    [, , $breakfastItem] = createPrompt104MenuRows($breakfastMenu, 'Omelette');
+
+    $lunchMenu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Business lunch',
+            'status' => MenuStatus::Active,
+            'sort_order' => 20,
+        ]);
+    [, , $lunchItem] = createPrompt104MenuRows($lunchMenu, 'Soup');
+
+    $draftMenu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Wine card',
+            'status' => MenuStatus::Draft,
+            'sort_order' => 5,
+        ]);
+    createPrompt104MenuRows($draftMenu, 'Draft wine');
+
+    MenuAvailabilitySchedule::factory()
+        ->for($breakfastMenu)
+        ->create(['day_of_week' => 1, 'starts_at' => '08:00', 'ends_at' => '12:00']);
+    MenuAvailabilitySchedule::factory()
+        ->for($lunchMenu)
+        ->create(['day_of_week' => 1, 'starts_at' => '12:00', 'ends_at' => '16:00']);
+
+    $payload = app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    expect($payload['menus'])->toHaveCount(2)
+        ->and(collect($payload['menus'])->pluck('name')->all())->toBe([
+            'Breakfast menu',
+            'Main menu',
+        ])
+        ->and($payload['menu']['name'])->toBe('Breakfast menu')
+        ->and($payload['categories'][0]['items'][0]['id'])->toBe($breakfastItem->id)
+        ->and(collect($payload['menus'])->flatMap(fn (array $menu): array => collect($menu['categories'])->flatMap(fn (array $category): array => $category['items'])->all())->pluck('id')->all())->toBe([
+            $breakfastItem->id,
+            $mainItem->id,
+        ])
+        ->and(collect($payload['unavailable_menus'])->pluck('name')->all())->toBe(['Business lunch'])
+        ->and(collect($payload['unavailable_menus'])->pluck('availability.detail')->all())->toBe(['Будет доступно с 12:00'])
+        ->and(collect($payload['menus'])->pluck('name')->contains('Wine card'))->toBeFalse()
+        ->and(collect($payload['menus'])->flatMap(fn (array $menu): array => collect($menu['categories'])->flatMap(fn (array $category): array => $category['items'])->all())->pluck('id')->contains($lunchItem->id))->toBeFalse();
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSeeTextInOrder(['Breakfast menu', 'Omelette', 'Main menu', 'Margherita'])
+        ->assertSeeText('Business lunch')
+        ->assertSeeText('Будет доступно с 12:00')
+        ->assertDontSeeText('Soup')
+        ->assertDontSeeText('Wine card')
+        ->assertDontSeeText('Draft wine');
+});
+
 test('manager can add and delete menu schedule from menu admin', function () {
     [$menu, $branch, $organization, $brand, $manager] = createPrompt104MenuContext(withManager: true);
     grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);

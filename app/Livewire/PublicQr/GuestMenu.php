@@ -272,7 +272,17 @@ class GuestMenu extends Component
      */
     private function findItemInGuestMenu(int $itemId): ?array
     {
-        foreach ($this->guestMenu['categories'] as $category) {
+        foreach ($this->guestMenu['menus'] ?? [] as $menu) {
+            foreach ($menu['categories'] ?? [] as $category) {
+                foreach ($category['items'] ?? [] as $item) {
+                    if ((int) $item['id'] === $itemId) {
+                        return $item;
+                    }
+                }
+            }
+        }
+
+        foreach ($this->guestMenu['categories'] ?? [] as $category) {
             foreach ($category['items'] as $item) {
                 if ((int) $item['id'] === $itemId) {
                     return $item;
@@ -424,9 +434,41 @@ class GuestMenu extends Component
     private function displayGuestMenu(): array
     {
         $guestMenu = $this->guestMenu;
-        $guestMenu['categories'] = collect($guestMenu['categories'])
+        $menus = collect($guestMenu['menus'] ?? []);
+
+        if ($menus->isEmpty() && ($guestMenu['menu'] ?? null) !== null) {
+            $menus = collect([
+                [
+                    'id' => $guestMenu['menu']['id'],
+                    'name' => $guestMenu['menu']['name'],
+                    'availability' => $guestMenu['availability'] ?? [],
+                    'categories' => $guestMenu['categories'] ?? [],
+                ],
+            ]);
+        }
+
+        $guestMenu['menus'] = $menus
+            ->map(function (array $menu): array {
+                $menu['categories'] = $this->displayCategories($menu['categories'] ?? []);
+
+                return $menu;
+            })
+            ->values()
+            ->all();
+        $guestMenu['categories'] = $this->displayCategories($guestMenu['categories'] ?? []);
+
+        return $guestMenu;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $categories
+     * @return list<array<string, mixed>>
+     */
+    private function displayCategories(array $categories): array
+    {
+        return collect($categories)
             ->map(function (array $category): array {
-                $category['items'] = collect($category['items'])
+                $category['items'] = collect($category['items'] ?? [])
                     ->map(fn (array $item): array => $this->displayItem($item))
                     ->values()
                     ->all();
@@ -435,8 +477,6 @@ class GuestMenu extends Component
             })
             ->values()
             ->all();
-
-        return $guestMenu;
     }
 
     /**

@@ -11,7 +11,7 @@ baseline for future guest UI, QR landing, and ordering work.
 
 ## Current Recommended Prompt
 
-Prompt 105: add a simple menu translation admin editor.
+Prompt 106: add a simple menu translation admin editor.
 
 Scope:
 
@@ -43,6 +43,12 @@ Do not add:
 - New language list outside the existing supported locales.
 
 ## Recently Completed
+
+Prompt 105 improved multiple menus per branch: guest menu payloads now return
+all active menus available right now, group dishes by menu, keep menu sorting,
+hide draft/archived menus, respect menu schedules in the branch timezone, and
+show later active menus only as next-availability hints without exposing their
+dishes for ordering.
 
 Prompt 102 added branch opening hours: weekly schedules with closed days,
 several intervals per day, branch-timezone status checks, admin settings UI, and

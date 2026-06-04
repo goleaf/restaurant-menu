@@ -28,6 +28,32 @@ Next recommended prompt:
 
 - Prompt 105: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
+## Prompt 105 - Multiple Menus Per Branch
+
+Prompt 105 improved guest support for several active menus in one branch without changing the existing menu schema or CRUD.
+
+Implemented:
+
+- `App\Actions\Menus\GetGuestMenuForBranchAction` now returns a `menus` list with every active menu available right now, sorted by `sort_order`, `name`, and `id`.
+- The payload keeps legacy `menu` and `categories` keys mapped to the first available menu so existing guest add-item and menu tests remain compatible.
+- Active menus outside their current `menu_availability_schedules` window are returned in `unavailable_menus` with next-availability text; their dishes are not exposed for ordering.
+- Draft, archived, inactive, or soft-deleted menus are not shown to guests.
+- `App\Livewire\PublicQr\GuestMenu` can find/add items from any available menu section and formats all menu groups for display.
+- `resources/views/livewire/public-qr/guest-menu.blade.php` now groups dishes by menu when several menus are available and shows a small `Будет доступно позже` block for active menus scheduled later.
+- Focused coverage lives in `tests/Feature/MenuScheduleTest.php`.
+
+Rules:
+
+- No new menu-type table was added; menu types such as main menu, breakfast, business lunch, bar menu, wine card, kids menu, seasonal menu, and special menu are represented by menu names, status, sort order, and optional schedules.
+- Menu schedules still use `branches.timezone`.
+- Menus with no schedule rows remain available all day for backward compatibility.
+- Guest ordering remains blocked server-side for menus outside their active schedule.
+- Branch cache invalidation still runs through `ForgetBranchCacheAction`; no Redis cache tags are used.
+
+Next recommended prompt:
+
+- Prompt 106: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Prompt 104 - Menu Schedules
 
 Prompt 104 added branch-timezone menu availability schedules.

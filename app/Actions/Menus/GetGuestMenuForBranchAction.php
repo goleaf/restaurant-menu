@@ -15,6 +15,7 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Cache;
 
 class GetGuestMenuForBranchAction
@@ -28,7 +29,7 @@ class GetGuestMenuForBranchAction
     private const LOCK_WAIT_SECONDS = 3;
 
     /**
-     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
      */
     public function handle(int $branchId, ?string $languageCode = null): array
     {
@@ -129,7 +130,7 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
      */
     private function rememberFreshPayload(CacheRepository $cache, int $branchId, string $languageCode, string $defaultLanguage): array
     {
@@ -148,23 +149,33 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
+     * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
      */
     private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage): array
     {
-        [$availableMenu, $availability] = $this->availableMenuForBranch($branchId);
+        $availabilityResult = $this->availableMenusForBranch($branchId);
+        /** @var EloquentCollection<int, Menu> $availableMenus */
+        $availableMenus = $availabilityResult['available_menus'];
+        /** @var array<int, array<string, mixed>> $availableMenuStatuses */
+        $availableMenuStatuses = $availabilityResult['available_statuses'];
+        /** @var list<array<string, mixed>> $unavailableMenus */
+        $unavailableMenus = $availabilityResult['unavailable_menus'];
+        /** @var array<string, mixed> $availability */
+        $availability = $availabilityResult['availability'];
 
-        if (! $availableMenu instanceof Menu) {
+        if ($availableMenus->isEmpty()) {
             return [
                 'language' => $languageCode,
                 'default_language' => $defaultLanguage,
                 'availability' => $availability,
                 'menu' => null,
+                'menus' => [],
+                'unavailable_menus' => $unavailableMenus,
                 'categories' => [],
             ];
         }
 
-        $menu = Menu::query()
+        $menus = Menu::query()
             ->select([
                 'id',
                 'branch_id',
@@ -184,6 +195,7 @@ class GetGuestMenuForBranchAction
                         'sort_order',
                         'is_active',
                     ])
+                    ->whereIn('menu_id', $availableMenus->pluck('id')->all())
                     ->where('is_active', true)
                     ->with([
                         'translations' => fn ($translationQuery) => $translationQuery->select([
@@ -246,40 +258,54 @@ class GetGuestMenuForBranchAction
                     ->orderBy('name')
                     ->orderBy('id'),
             ])
-            ->whereKey($availableMenu->id)
-            ->first();
+            ->whereKey($availableMenus->pluck('id')->all())
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
 
-        if (! $menu instanceof Menu) {
+        if ($menus->isEmpty()) {
             return [
                 'language' => $languageCode,
                 'default_language' => $defaultLanguage,
                 'availability' => $this->emptyAvailabilityStatus(),
                 'menu' => null,
+                'menus' => [],
+                'unavailable_menus' => $unavailableMenus,
                 'categories' => [],
             ];
         }
+
+        $menuPayloads = $menus
+            ->map(fn (Menu $menu): array => $this->menuPayload($menu, $availableMenuStatuses[$menu->id] ?? $this->emptyAvailabilityStatus()))
+            ->values()
+            ->all();
+        $firstMenuPayload = $menuPayloads[0] ?? null;
 
         return [
             'language' => $languageCode,
             'default_language' => $defaultLanguage,
             'availability' => $availability,
-            'menu' => [
-                'id' => $menu->id,
-                'name' => $menu->name,
+            'menu' => $firstMenuPayload === null ? null : [
+                'id' => $firstMenuPayload['id'],
+                'name' => $firstMenuPayload['name'],
             ],
-            'categories' => $menu->categories
-                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category))
-                ->values()
-                ->all(),
+            'menus' => $menuPayloads,
+            'unavailable_menus' => $unavailableMenus,
+            'categories' => $firstMenuPayload['categories'] ?? [],
         ];
     }
 
     /**
-     * @return array{0: Menu|null, 1: array<string, mixed>}
+     * @return array{available_menus: EloquentCollection<int, Menu>, available_statuses: array<int, array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, availability: array<string, mixed>}
      */
-    private function availableMenuForBranch(int $branchId): array
+    private function availableMenusForBranch(int $branchId): array
     {
         $availabilityAction = app(GetMenuAvailabilityStatusAction::class);
+        $availableMenus = new EloquentCollection;
+        $availableStatuses = [];
+        $unavailableMenus = [];
+        $firstAvailableStatus = null;
         $nextUnavailableStatus = null;
         $menus = Menu::query()
             ->select([
@@ -310,15 +336,61 @@ class GetGuestMenuForBranchAction
             $availability = $availabilityAction->handle($menu);
 
             if ($availability['is_available']) {
-                return [$menu, $availability];
+                $availableMenus->push($menu);
+                $availableStatuses[$menu->id] = $availability;
+                $firstAvailableStatus ??= $availability;
+
+                continue;
             }
+
+            $unavailableMenus[] = [
+                'id' => $menu->id,
+                'name' => $menu->name,
+                'availability' => $availability,
+            ];
 
             if ($this->statusIsSooner($availability, $nextUnavailableStatus)) {
                 $nextUnavailableStatus = $availability;
             }
         }
 
-        return [null, $nextUnavailableStatus ?? $this->emptyAvailabilityStatus()];
+        return [
+            'available_menus' => $availableMenus,
+            'available_statuses' => $availableStatuses,
+            'unavailable_menus' => $unavailableMenus,
+            'availability' => $this->aggregateAvailabilityStatus(
+                availableMenuCount: $availableMenus->count(),
+                firstAvailableStatus: $firstAvailableStatus,
+                nextUnavailableStatus: $nextUnavailableStatus,
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $firstAvailableStatus
+     * @param  array<string, mixed>|null  $nextUnavailableStatus
+     * @return array<string, mixed>
+     */
+    private function aggregateAvailabilityStatus(int $availableMenuCount, ?array $firstAvailableStatus, ?array $nextUnavailableStatus): array
+    {
+        if ($availableMenuCount < 1) {
+            return $nextUnavailableStatus ?? $this->emptyAvailabilityStatus();
+        }
+
+        if ($availableMenuCount === 1 && $firstAvailableStatus !== null) {
+            return $firstAvailableStatus;
+        }
+
+        return [
+            'is_configured' => (bool) ($firstAvailableStatus['is_configured'] ?? false),
+            'is_available' => true,
+            'label' => __('Доступно сейчас'),
+            'detail' => __('Доступно меню: :count', ['count' => $availableMenuCount]),
+            'tone' => 'success',
+            'next_available_at' => null,
+            'available_until' => $firstAvailableStatus['available_until'] ?? null,
+            'timezone' => (string) ($firstAvailableStatus['timezone'] ?? config('app.timezone', 'UTC')),
+        ];
     }
 
     /**
@@ -374,6 +446,22 @@ class GetGuestMenuForBranchAction
             ->value('default_language');
 
         return self::normalizeLanguageCode(is_string($languageCode) ? $languageCode : null);
+    }
+
+    /**
+     * @return array{id: int, name: string, availability: array<string, mixed>, categories: list<array<string, mixed>>}
+     */
+    private function menuPayload(Menu $menu, array $availability): array
+    {
+        return [
+            'id' => $menu->id,
+            'name' => $menu->name,
+            'availability' => $availability,
+            'categories' => $menu->categories
+                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category))
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

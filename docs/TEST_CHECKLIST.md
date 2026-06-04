@@ -63,6 +63,40 @@ npm run build
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
 
+## Prompt 105 Multiple Menus Results
+
+Programmatic coverage was added to `tests/Feature/MenuScheduleTest.php`.
+The feature currently verifies:
+
+- a branch can expose several active menus to the guest UI at the same time;
+- available menus are sorted by `sort_order`, `name`, and `id`;
+- guest menu data is grouped by menu while keeping the old first-menu
+  `menu`/`categories` payload for compatibility;
+- draft or inactive menus are hidden from guests;
+- active menus outside their schedule do not expose dishes but can show a next
+  availability hint;
+- cached guest menu data still uses the database cache store.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/MenuScheduleTest.php tests/Feature/GuestMenuDisplayTest.php
+```
+
+Manual check:
+
+1. Open a branch menu page.
+2. Create several active menus such as Main, Breakfast, Business lunch, Bar,
+   Wine card, Kids, Seasonal, and Special.
+3. Give them different sort orders.
+4. Add a schedule to Breakfast and Business lunch.
+5. Open a QR guest page during the breakfast interval.
+6. Confirm Breakfast and unscheduled active menus are visible and grouped by
+   menu.
+7. Confirm Business lunch shows only `Будет доступно позже` before lunch.
+8. Confirm draft or archived menus are hidden from guests.
+9. Confirm dishes from a scheduled-later menu cannot be added from stale tabs.
+
 ## Prompt 104 Menu Schedules Results
 
 Programmatic coverage was added in `tests/Feature/MenuScheduleTest.php`.

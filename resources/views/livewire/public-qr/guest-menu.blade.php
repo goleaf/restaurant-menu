@@ -1,11 +1,22 @@
 <section data-component="guest-menu" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    @php
+        $availableMenus = $guestMenu['menus'] ?? [];
+        $unavailableMenus = $guestMenu['unavailable_menus'] ?? [];
+        $availableMenuCount = count($availableMenus);
+    @endphp
+
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Меню') }}</p>
             <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">
-                {{ $guestMenu['menu']['name'] ?? __('Выбор блюд') }}
+                {{ $availableMenuCount > 1 ? __('Выбор меню') : ($guestMenu['menu']['name'] ?? __('Выбор блюд')) }}
             </h2>
+            @if ($availableMenuCount > 1)
+                <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">
+                    {{ __('Доступно меню: :count', ['count' => $availableMenuCount]) }}
+                </p>
+            @endif
         </div>
 
         <div class="shrink-0">
@@ -25,13 +36,28 @@
     </div>
     </div>
 
-    @if ($guestMenu['menu'] === null)
+    @if ($availableMenuCount === 0)
         <div class="p-4">
             <x-ui.empty-state
                 icon="book-open"
                 :heading="$guestMenu['availability']['label'] ?? __('Меню пока недоступно')"
                 :description="$guestMenu['availability']['detail'] ?? null"
             />
+
+            @if ($unavailableMenus !== [])
+                <div class="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
+                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('Будет доступно позже') }}</p>
+
+                    <div class="mt-3 grid gap-2">
+                        @foreach ($unavailableMenus as $unavailableMenu)
+                            <div wire:key="guest-menu-unavailable-empty-{{ $unavailableMenu['id'] }}" class="flex flex-col gap-1 text-sm text-amber-950 dark:text-amber-100">
+                                <span class="font-medium">{{ $unavailableMenu['name'] }}</span>
+                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('Расписание уточняется') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
     @else
         <div class="p-4">
@@ -52,9 +78,27 @@
             <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
         @enderror
 
-        <div class="mt-4 space-y-5">
-            @forelse ($guestMenu['categories'] as $category)
-                <section wire:key="guest-menu-category-{{ $category['id'] }}" class="space-y-3">
+        <div class="mt-4 space-y-7">
+            @forelse ($availableMenus as $menu)
+                <section wire:key="guest-menu-menu-{{ $menu['id'] }}" class="space-y-4">
+                    @if ($availableMenuCount > 1)
+                        <div class="border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $menu['name'] }}</h3>
+                                <x-ui.status-badge tone="success">
+                                    {{ $menu['availability']['label'] ?? __('Доступно сейчас') }}
+                                </x-ui.status-badge>
+                            </div>
+
+                            @if ($menu['availability']['detail'] ?? null)
+                                <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $menu['availability']['detail'] }}</p>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="space-y-5">
+                    @forelse ($menu['categories'] as $category)
+                <section wire:key="guest-menu-menu-{{ $menu['id'] }}-category-{{ $category['id'] }}" class="space-y-3">
                     <div class="flex items-start gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $category['name'] }}</h3>
@@ -179,6 +223,29 @@
                     :heading="__('Категории меню пока не настроены')"
                 />
             @endforelse
+                    </div>
+                </section>
+            @empty
+                <x-ui.empty-state
+                    icon="book-open"
+                    :heading="__('Меню пока недоступно')"
+                />
+            @endforelse
+
+            @if ($unavailableMenus !== [])
+                <div class="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
+                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('Будет доступно позже') }}</p>
+
+                    <div class="mt-3 grid gap-2">
+                        @foreach ($unavailableMenus as $unavailableMenu)
+                            <div wire:key="guest-menu-unavailable-{{ $unavailableMenu['id'] }}" class="flex flex-col gap-1 text-sm text-amber-950 dark:text-amber-100">
+                                <span class="font-medium">{{ $unavailableMenu['name'] }}</span>
+                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('Расписание уточняется') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
         </div>
     @endif

@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 105 - Multiple Menus Per Branch
+
+- Improved the guest menu payload so one branch can expose several active menus at the same time while preserving the legacy `menu` and `categories` keys for existing Livewire flows.
+- Guest UI now groups dishes by available menu, keeps menus sorted by `sort_order`, `name`, and `id`, hides draft/archived menus, and respects menu availability schedules in the branch timezone.
+- Active menus that are scheduled for later are shown as a small `Будет доступно позже` hint without exposing their dishes for ordering.
+- Touched modules/files: `App\Actions\Menus\GetGuestMenuForBranchAction`, `App\Livewire\PublicQr\GuestMenu`, `resources/views/livewire/public-qr/guest-menu.blade.php`, `tests/Feature/MenuScheduleTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no new menu type enum/table, no holiday calendar, no AI translation, no external APIs, no Redis/WebSockets/S3/Docker, and no ordering from menus outside their active schedule.
+- Manual check: create active menus such as Main, Breakfast, Business lunch, Bar, and Wine card, set different sort orders and schedules, open `/q/{public_token}`, confirm currently available menus are grouped and sorted, confirm inactive menus are hidden, and confirm later menus show only a next-availability hint.
+
 ### Docs - Daily Project Memory Update After Prompt 104
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 104 without adding product features.

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -175,6 +175,23 @@ The schedule is stored locally in SQLite in `branch_opening_hours`. No external 
 Each branch can be temporarily closed from the existing branch settings page without disabling its permanent QR codes. The mode stores a required human reason, an optional `closed until` date/time in the branch timezone, and keeps QR/menu browsing available for guests.
 
 While temporary closed mode is active, the guest QR page shows a clear message such as `Ресторан временно закрыт`, includes the closure reason, and blocks new draft item creation or sending a draft to the waiter. The waiter dashboard also shows the branch warning and lets staff with order access reopen ordering with one action. No external APIs, maps, paid services, Redis, WebSockets, S3, or Docker are used.
+
+## Multiple Branch Menus
+
+A branch can have several active menus at the same time, for example:
+
+- main menu;
+- breakfast;
+- business lunch;
+- bar menu;
+- wine card;
+- kids menu;
+- seasonal menu;
+- special menu.
+
+These are stored in the existing `menus` table through the menu name, `status`, and `sort_order`; no new menu-type table or external service is required. The guest QR menu now groups available dishes by menu, keeps menus sorted by `sort_order`, `name`, and `id`, hides inactive/draft/archived menus from guests, and respects `menu_availability_schedules` in the branch timezone. Active menus that are scheduled for later can be shown as `Будет доступно позже` without exposing their dishes for ordering.
+
+The guest menu still uses SQLite-backed database cache through `GetGuestMenuForBranchAction`. Existing menu, category, item, modifier, translation, availability, and schedule changes continue to clear branch cache through the centralized cache invalidation flow.
 
 ## Database Notifications
 

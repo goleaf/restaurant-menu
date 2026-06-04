@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 107 - Bulk Service Point Creation
+
+- Added bulk creation for branch service points from the existing `Столы и места` page.
+- Managers with `manage_service_points` can choose zone, type, prefix, from/to range, and capacity, then preview generated codes before confirming.
+- Duplicate `internal_code` values are detected per branch, including soft-deleted records, and skipped instead of creating duplicates.
+- Created rows use the generated code as `name`, `display_number`, and stable `internal_code`; QR codes are not created automatically.
+- After creation, the UI suggests generating QR later through the existing bulk QR print flow.
+- Touched modules/files: `App\Actions\ServicePoints\BulkCreateServicePointsAction`, branch service point Livewire component and Blade view, README, AI context, smoke checklist, next-step notes, and `tests/Feature/ServicePointCrudTest.php`.
+- Limitations: no automatic QR generation, no delivery/pickup workflow, no maps, no couriers, no payments, no new routes, no new tables, no Redis/WebSockets/S3/Docker, and no external services.
+- Manual check: open branch service points, choose a zone/type/prefix/range/capacity, preview `T1..T20`, confirm duplicates are shown as skipped, create the missing places, and then use the existing bulk QR print page to create QR only when ready.
+
 ### Docs - Daily Project Memory Update After Prompt 106
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 106 without adding product features.

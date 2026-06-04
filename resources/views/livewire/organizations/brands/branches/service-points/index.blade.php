@@ -69,6 +69,111 @@
                     </flux:button>
                 </div>
             </form>
+
+            <section class="mt-6 grid gap-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+                <div class="flex flex-col gap-1">
+                    <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Добавить сразу несколько') }}</h2>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                        {{ __('Сначала покажем preview. QR не создаются автоматически, чтобы не запутать печать наклеек.') }}
+                    </p>
+                </div>
+
+                <form wire:submit="previewBulkCreate" class="grid gap-4 md:grid-cols-3">
+                    <flux:select wire:model.live="bulkAreaNodeId" :label="__('Зона')">
+                        @foreach ($this->areaOptions as $option)
+                            <flux:select.option wire:key="bulk-service-point-area-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
+                                {{ $option['label'] }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select wire:model.live="bulkType" :label="__('Тип места')">
+                        @foreach ($this->servicePointTypeOptions as $value => $label)
+                            <flux:select.option wire:key="bulk-service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:input wire:model.live="bulkPrefix" :label="__('Prefix')" type="text" required maxlength="20" placeholder="T" />
+                    <flux:input wire:model.live="bulkFrom" :label="__('From')" type="number" required min="1" max="9999" />
+                    <flux:input wire:model.live="bulkTo" :label="__('To')" type="number" required min="1" max="9999" />
+                    <flux:input wire:model.live="bulkCapacity" :label="__('Сколько гостей')" type="number" required min="1" max="999" />
+
+                    <div class="flex flex-wrap items-end gap-2 md:col-span-3">
+                        <flux:button icon="eye" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="previewBulkCreate">
+                            {{ __('Показать preview') }}
+                        </flux:button>
+                    </div>
+                </form>
+
+                @if ($bulkPreviewRows !== [])
+                    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+                        <div class="border-b border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+                            {{ __('Будет создано') }}: {{ $this->bulkCreatableCount }} / {{ __('Already exists') }}: {{ $this->bulkDuplicateCount }}
+                        </div>
+
+                        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+                            @foreach ($bulkPreviewRows as $row)
+                                <div wire:key="bulk-service-point-preview-{{ $row['code'] }}" class="grid gap-2 px-3 py-2 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+                                    <div class="font-medium text-zinc-950 dark:text-white">{{ $row['code'] }}</div>
+
+                                    @if ($row['will_create'])
+                                        <x-ui.status-badge tone="success">{{ __('Will be created') }}</x-ui.status-badge>
+                                    @else
+                                        <x-ui.status-badge tone="muted">{{ __('Already exists') }}</x-ui.status-badge>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    @if ($bulkPreviewReady)
+                        <div class="flex flex-wrap items-center gap-2">
+                            <flux:button
+                                icon="plus"
+                                variant="primary"
+                                type="button"
+                                wire:click="confirmBulkCreate"
+                                wire:loading.attr="disabled"
+                                wire:target="confirmBulkCreate"
+                                :disabled="$this->bulkCreatableCount === 0"
+                            >
+                                {{ __('Создать места') }}
+                            </flux:button>
+
+                            @if ($this->bulkCreatableCount === 0)
+                                <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Нет новых мест для создания.') }}</span>
+                            @endif
+                        </div>
+                    @endif
+                @endif
+
+                @if ($bulkCreatedCount > 0)
+                    <x-ui.alert tone="success" :heading="__('Created :count service points.', ['count' => $bulkCreatedCount])">
+                        <div class="grid gap-3">
+                            <p>
+                                {{ __('Skipped existing codes') }}: {{ $bulkSkippedCount }}.
+                                {{ __('Generate QR later') }}.
+                            </p>
+
+                            @if ($canGenerateQr)
+                                <div>
+                                    <flux:button
+                                        icon="qr-code"
+                                        :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])"
+                                        wire:navigate
+                                    >
+                                        {{ __('Перейти к массовой печати QR') }}
+                                    </flux:button>
+                                </div>
+                            @else
+                                <p class="text-sm">
+                                    {{ __('Пользователь с правом generate_qr сможет создать QR позже на странице QR-печати.') }}
+                                </p>
+                            @endif
+                        </div>
+                    </x-ui.alert>
+                @endif
+            </section>
         </x-ui.card>
     @endif
 

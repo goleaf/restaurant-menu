@@ -23,6 +23,7 @@ What is already implemented:
 - Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
 - Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
 - Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: service point managers can bulk-create numbered service points with preview and duplicate `internal_code` skips.
 - Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
 - Local images remain in `storage/app/public/media/...`.
 
@@ -59,6 +60,7 @@ Mandatory business rules:
 - Guests see one shared draft/cart, guests are sorted alphabetically, and each guest edits only their own draft items while the draft is still editable.
 - Branch opening hours, temporary closure, menu schedules, and future service-mode rules may block ordering while still allowing QR/menu viewing.
 - Branch service modes are fixed values on branch settings; they prepare dine-in, pickup, delivery, hotel room service, bar-only, and custom operation without delivery/payment infrastructure.
+- Bulk service point creation must preview generated codes before writing, skip duplicate `internal_code` values, and never create QR automatically.
 - Multiple active menus can be visible together only when they are currently available by schedule; inactive/draft/archived menus are hidden from guests.
 - Every guest draft must be confirmed by a waiter before becoming an order and explicitly dispatched before kitchen/bar can see it.
 - Order items keep immutable snapshots; manual payments and table close preserve history and never reissue QR.
@@ -75,7 +77,31 @@ Forbidden:
 
 Next recommended prompt:
 
-- Prompt 107: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 108: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
+## Prompt 107 - Bulk Service Point Creation
+
+Prompt 107 added bulk service point creation to the existing branch service point page.
+
+Implemented:
+
+- New `App\Actions\ServicePoints\BulkCreateServicePointsAction` for previewing generated codes and creating only missing service points.
+- Existing `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index` now has bulk form state, preview and confirm actions, duplicate counts, and a small shared-hosting-safe range limit of 200 records per run.
+- Existing service point Blade UI now includes a `Добавить сразу несколько` section with zone, type, prefix, from/to, capacity, preview rows, skipped duplicates, and QR-next-step copy.
+- Focused coverage lives in `tests/Feature/ServicePointCrudTest.php`.
+
+Rules:
+
+- Bulk create requires `manage_service_points`.
+- Generated values such as `T1` are stored as `name`, `display_number`, and stable `internal_code`.
+- Duplicate `internal_code` values are skipped per branch and checked with soft-deleted service points included.
+- QR codes are not generated automatically after bulk creation.
+- The UI only suggests using the existing bulk QR print page after staff review the created service points.
+- No new routes, tables, maps, couriers, delivery workflow, payments, Redis, WebSockets, S3, Docker, or external services were added.
+
+Next recommended prompt:
+
+- Prompt 108: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update After Prompt 105 - 2026-06-04
 
@@ -2028,6 +2054,8 @@ Local media storage:
 - Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
 - Access requires branch-level access and is split between `manage_service_points`, status-changing waiter access, table-opening access, and `generate_qr` access.
 - The visible UI copy is simplified: `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons, and plain QR/table actions.
+- The same page has a bulk creation section where managers choose zone, type, prefix, number range, and capacity, then preview generated labels before confirming.
+- Bulk creation writes generated labels such as `T1` as `name`, `display_number`, and `internal_code`, skips duplicate branch `internal_code` values, and does not create QR automatically.
 - Service point editing still must not change `internal_code` or reissue QR codes when a place is renamed or moved.
 - The UI does not show technical IDs to users.
 

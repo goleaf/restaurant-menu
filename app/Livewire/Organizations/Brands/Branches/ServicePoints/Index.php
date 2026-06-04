@@ -3,6 +3,7 @@
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
+use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
@@ -22,7 +23,9 @@ use App\Models\User;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
@@ -77,6 +80,34 @@ class Index extends Component
     public bool $canGenerateQr = false;
 
     public ?int $shownQrServicePointId = null;
+
+    public string $bulkAreaNodeId = '';
+
+    public string $bulkType = 'table';
+
+    public string $bulkPrefix = 'T';
+
+    public int $bulkFrom = 1;
+
+    public int $bulkTo = 20;
+
+    public int $bulkCapacity = 4;
+
+    public bool $bulkPreviewReady = false;
+
+    public int $bulkCreatedCount = 0;
+
+    public int $bulkSkippedCount = 0;
+
+    /**
+     * @var list<int>
+     */
+    public array $bulkCreatedServicePointIds = [];
+
+    /**
+     * @var list<array{code: string, name: string, display_number: string, exists: bool, will_create: bool}>
+     */
+    public array $bulkPreviewRows = [];
 
     /**
      * @var array<int, string>
@@ -152,6 +183,87 @@ class Index extends Component
         unset($this->servicePoints);
 
         Flux::toast(variant: 'success', text: __('Service point added.'));
+    }
+
+    public function previewBulkCreate(BulkCreateServicePointsAction $bulkCreateServicePoints): void
+    {
+        $this->authorizeServicePointManagement();
+        $this->normalizeBulkFields();
+
+        $validated = $this->validate($this->bulkServicePointRules());
+        $this->ensureBulkRangeIsSmallEnough($validated);
+
+        try {
+            $this->bulkPreviewRows = $bulkCreateServicePoints->preview(
+                $this->branch,
+                $this->bulkServicePointPayload($validated),
+            );
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('bulkAreaNodeId', __($exception->getMessage()));
+
+            return;
+        }
+
+        $this->bulkCreatedCount = 0;
+        $this->bulkSkippedCount = 0;
+        $this->bulkCreatedServicePointIds = [];
+        $this->bulkPreviewReady = true;
+    }
+
+    public function confirmBulkCreate(BulkCreateServicePointsAction $bulkCreateServicePoints): void
+    {
+        $this->authorizeServicePointManagement();
+
+        if (! $this->bulkPreviewReady) {
+            $this->addError('bulkPrefix', __('Preview the list before creating service points.'));
+
+            return;
+        }
+
+        $this->normalizeBulkFields();
+
+        $validated = $this->validate($this->bulkServicePointRules());
+        $this->ensureBulkRangeIsSmallEnough($validated);
+
+        try {
+            $result = $bulkCreateServicePoints->handle(
+                $this->branch,
+                $this->bulkServicePointPayload($validated),
+            );
+        } catch (InvalidArgumentException $exception) {
+            $this->addError('bulkAreaNodeId', __($exception->getMessage()));
+
+            return;
+        }
+
+        $this->bulkPreviewRows = $result['preview'];
+        $this->bulkCreatedCount = $result['created_count'];
+        $this->bulkSkippedCount = $result['skipped_count'];
+        $this->bulkCreatedServicePointIds = $result['created_ids'];
+        $this->bulkPreviewReady = false;
+
+        unset($this->servicePoints);
+
+        Flux::toast(variant: 'success', text: __('Service points created.'));
+    }
+
+    public function updated(string $property): void
+    {
+        if (! Str::startsWith($property, 'bulk')) {
+            return;
+        }
+
+        if (in_array($property, [
+            'bulkPreviewRows',
+            'bulkPreviewReady',
+            'bulkCreatedCount',
+            'bulkSkippedCount',
+            'bulkCreatedServicePointIds',
+        ], true)) {
+            return;
+        }
+
+        $this->resetBulkPreview();
     }
 
     public function startEditing(int $servicePointId): void
@@ -434,6 +546,22 @@ class Index extends Component
         ];
     }
 
+    #[Computed]
+    public function bulkCreatableCount(): int
+    {
+        return collect($this->bulkPreviewRows)
+            ->filter(fn (array $row): bool => (bool) $row['will_create'])
+            ->count();
+    }
+
+    #[Computed]
+    public function bulkDuplicateCount(): int
+    {
+        return collect($this->bulkPreviewRows)
+            ->filter(fn (array $row): bool => (bool) $row['exists'])
+            ->count();
+    }
+
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.service-points.index');
@@ -465,6 +593,28 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function bulkServicePointRules(): array
+    {
+        $areaNodeRules = ['nullable'];
+
+        if ($this->bulkAreaNodeId !== '') {
+            $areaNodeRules[] = 'integer';
+            $areaNodeRules[] = $this->areaNodeRule();
+        }
+
+        return [
+            'bulkAreaNodeId' => $areaNodeRules,
+            'bulkType' => ['required', 'string', Rule::in(ServicePointType::values())],
+            'bulkPrefix' => ['required', 'string', 'max:20', 'regex:/\A[A-Za-z0-9_-]+\z/'],
+            'bulkFrom' => ['required', 'integer', 'min:1', 'max:9999'],
+            'bulkTo' => ['required', 'integer', 'min:1', 'max:9999', 'gte:bulkFrom'],
+            'bulkCapacity' => ['required', 'integer', 'min:1', 'max:999'],
+        ];
+    }
+
     private function areaNodeRule(): mixed
     {
         return Rule::exists((new AreaNode)->getTable(), 'id')
@@ -493,6 +643,45 @@ class Index extends Component
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{area_node_id: int|null, type: string, prefix: string, from: int, to: int, capacity: int, icon: string|null, is_active: bool}
+     */
+    private function bulkServicePointPayload(array $validated): array
+    {
+        $areaNodeValue = $validated['bulkAreaNodeId'] ?? null;
+        $type = ServicePointType::from($validated['bulkType']);
+
+        return [
+            'area_node_id' => $areaNodeValue === null || $areaNodeValue === '' ? null : (int) $areaNodeValue,
+            'type' => $type->value,
+            'prefix' => $validated['bulkPrefix'],
+            'from' => (int) $validated['bulkFrom'],
+            'to' => (int) $validated['bulkTo'],
+            'capacity' => (int) $validated['bulkCapacity'],
+            'icon' => $this->defaultIconForType($type),
+            'is_active' => true,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function ensureBulkRangeIsSmallEnough(array $validated): void
+    {
+        $rangeSize = (int) $validated['bulkTo'] - (int) $validated['bulkFrom'] + 1;
+
+        if ($rangeSize <= BulkCreateServicePointsAction::MAX_RANGE_SIZE) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'bulkTo' => __('Create up to :count service points at once.', [
+                'count' => BulkCreateServicePointsAction::MAX_RANGE_SIZE,
+            ]),
+        ]);
+    }
+
     private function resetCreateForm(): void
     {
         $this->reset('areaNodeId', 'name', 'displayNumber');
@@ -500,6 +689,20 @@ class Index extends Component
         $this->icon = $this->defaultIconForType(ServicePointType::Table);
         $this->capacity = $this->defaultCapacityForType(ServicePointType::Table);
         $this->isActive = true;
+    }
+
+    private function resetBulkPreview(): void
+    {
+        $this->bulkPreviewReady = false;
+        $this->bulkCreatedCount = 0;
+        $this->bulkSkippedCount = 0;
+        $this->bulkCreatedServicePointIds = [];
+        $this->bulkPreviewRows = [];
+    }
+
+    private function normalizeBulkFields(): void
+    {
+        $this->bulkPrefix = trim($this->bulkPrefix);
     }
 
     /**

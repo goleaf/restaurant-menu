@@ -17,8 +17,9 @@ SQLite setup.
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 106. Branch service
-modes are now part of branch settings, and Prompt 107 is the next recommended
-small prompt. Do not implement it until explicitly requested.
+modes are now part of branch settings. Prompt 107 has added bulk service point
+creation, and Prompt 108 is the next recommended small prompt. Do not implement
+it until explicitly requested.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is
@@ -54,6 +55,10 @@ After Prompt 106, include service modes in branch settings smoke checks:
 confirm `dine_in` is enabled by default, enable several service modes, save,
 reload the page, and confirm selections persist without changing QR/table
 behavior.
+
+After Prompt 107, include bulk service point creation in setup smoke checks:
+preview a range such as `T1..T20`, confirm duplicates are skipped, create the
+missing service points, and confirm QR codes are not generated automatically.
 
 Use these focused checks after documentation-only maintenance:
 
@@ -100,6 +105,39 @@ Manual check:
 5. Reload the settings page and confirm selections persist.
 6. Open an existing QR guest page and confirm normal dine-in table behavior is
    unchanged.
+
+## Prompt 107 Bulk Service Point Creation Results
+
+Programmatic coverage was added in `tests/Feature/ServicePointCrudTest.php`.
+The feature currently verifies:
+
+- a manager with `manage_service_points` can preview generated service point
+  codes before creating them;
+- duplicate branch `internal_code` values are shown as already existing and are
+  skipped;
+- created service points store the generated code as `name`, `display_number`,
+  and `internal_code`;
+- created service points do not get QR codes automatically;
+- a waiter without `manage_service_points` cannot run bulk creation.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ServicePointCrudTest.php
+```
+
+Manual check:
+
+1. Open branch service points.
+2. Choose a zone.
+3. Choose `table`.
+4. Enter prefix `T`, from `1`, to `20`, and capacity `4`.
+5. Click preview and confirm `T1..T20` are shown.
+6. Create one duplicate manually and confirm the preview marks it as already
+   existing.
+7. Confirm creation creates only missing service points.
+8. Confirm no QR is created automatically.
+9. Open the existing bulk QR print page when ready to generate QR.
 
 ## Prompt 105 Multiple Menus Results
 

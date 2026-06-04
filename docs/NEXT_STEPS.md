@@ -12,7 +12,7 @@ QR landing, and ordering work.
 
 ## Current Recommended Prompt
 
-Prompt 107: add a simple menu translation admin editor.
+Prompt 108: add a simple menu translation admin editor.
 
 Scope:
 
@@ -56,6 +56,11 @@ Prompt 106 added branch service modes: `dine_in`, `pickup`, `delivery`,
 settings and are stored in `branch_settings.service_modes` with safe default
 `dine_in`. This is foundation only; no delivery workflow, maps, couriers, or
 online payments were added.
+
+Prompt 107 added bulk service point creation: managers can preview generated
+labels such as `T1..T20`, skip duplicate branch `internal_code` values, create
+only missing service points, and then use the existing bulk QR print flow when
+they are ready to generate QR.
 
 Prompt 102 added branch opening hours: weekly schedules with closed days,
 several intervals per day, branch-timezone status checks, admin settings UI, and

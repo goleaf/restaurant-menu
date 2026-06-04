@@ -110,6 +110,73 @@ test('manager can create service points inside a branch area', function () {
     expect($servicePoint->status)->toBe(ServicePointStatus::Free);
 });
 
+test('manager can preview and bulk create service points without creating qr automatically', function () {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    $hall = AreaNode::factory()
+        ->for($branch)
+        ->create([
+            'type' => AreaNodeType::Hall,
+            'name' => 'Main hall',
+        ]);
+    ServicePoint::factory()
+        ->for($branch)
+        ->for($hall)
+        ->create([
+            'name' => 'Existing T2',
+            'display_number' => 'T2',
+            'internal_code' => 'T2',
+        ]);
+
+    Livewire::actingAs($manager)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('bulkAreaNodeId', (string) $hall->id)
+        ->set('bulkType', ServicePointType::Table->value)
+        ->set('bulkPrefix', 'T')
+        ->set('bulkFrom', 1)
+        ->set('bulkTo', 3)
+        ->set('bulkCapacity', 4)
+        ->call('previewBulkCreate')
+        ->assertHasNoErrors()
+        ->assertSee('T1')
+        ->assertSee('T2')
+        ->assertSee('Already exists')
+        ->assertSee('T3')
+        ->call('confirmBulkCreate')
+        ->assertHasNoErrors()
+        ->assertSee('Created 2 service points.')
+        ->assertSee('Generate QR later');
+
+    $servicePoints = ServicePoint::query()
+        ->where('branch_id', $branch->id)
+        ->orderBy('internal_code')
+        ->get();
+
+    expect($servicePoints)->toHaveCount(3);
+    expect($servicePoints->pluck('internal_code')->all())->toBe(['T1', 'T2', 'T3']);
+    expect($servicePoints->where('internal_code', 'T1')->first()->area_node_id)->toBe($hall->id);
+    expect($servicePoints->where('internal_code', 'T1')->first()->name)->toBe('T1');
+    expect($servicePoints->where('internal_code', 'T1')->first()->display_number)->toBe('T1');
+    expect($servicePoints->where('internal_code', 'T1')->first()->capacity)->toBe(4);
+    expect($servicePoints->where('internal_code', 'T1')->first()->type)->toBe(ServicePointType::Table);
+    expect($servicePoints->where('internal_code', 'T1')->first()->activeQrCode()->exists())->toBeFalse();
+    expect($servicePoints->where('internal_code', 'T3')->first()->activeQrCode()->exists())->toBeFalse();
+});
+
+test('waiter cannot bulk create service points', function () {
+    [$organization, $brand, $branch] = createServicePointCrudBranch();
+    $waiter = User::factory()->create();
+    attachServicePointCrudWaiter($waiter, $organization);
+
+    Livewire::actingAs($waiter)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('bulkPrefix', 'W')
+        ->set('bulkFrom', 1)
+        ->set('bulkTo', 2)
+        ->call('previewBulkCreate')
+        ->assertForbidden();
+});
+
 test('manager can rename move and disable service points without changing identity', function () {
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
     grantServicePointCrudPermission($manager, $organization);

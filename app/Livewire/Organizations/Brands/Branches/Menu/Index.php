@@ -228,7 +228,7 @@ class Index extends Component
         $this->canChangePrices = $user->hasPermission(SystemPermission::ChangePrices, $organization);
         $this->canChangeAvailability = $user->hasPermission(SystemPermission::ChangeAvailability, $organization);
 
-        if (! $this->canManageMenu) {
+        if (! $this->canManageMenu && ! $this->canChangeAvailability) {
             abort(403);
         }
 
@@ -580,7 +580,12 @@ class Index extends Component
 
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Availability updated.'));
+        Flux::toast(
+            variant: 'success',
+            text: $isAvailable
+                ? __('Dish returned to the menu.')
+                : __('Dish added to the stop-list.'),
+        );
     }
 
     public function saveItemImage(int $itemId, StoreLocalImageAction $storeLocalImage): void
@@ -1033,6 +1038,24 @@ class Index extends Component
             ])
             ->withCount('menuItems')
             ->get();
+    }
+
+    /**
+     * @return list<array{id: int, name: string, menu_name: string, category_name: string, department_name: string, price: string, updated_at: string|null}>
+     */
+    #[Computed]
+    public function stopListItems(): array
+    {
+        return $this->availabilityItems(isAvailable: false);
+    }
+
+    /**
+     * @return list<array{id: int, name: string, menu_name: string, category_name: string, department_name: string, price: string, updated_at: string|null}>
+     */
+    #[Computed]
+    public function availableItems(): array
+    {
+        return $this->availabilityItems(isAvailable: true);
     }
 
     /**
@@ -1802,8 +1825,6 @@ class Index extends Component
 
     private function authorizeAvailabilityChange(): void
     {
-        $this->authorizeMenuManagement();
-
         if (! $this->currentUser()->hasPermission(SystemPermission::ChangeAvailability, $this->organization)) {
             abort(403);
         }
@@ -1825,6 +1846,8 @@ class Index extends Component
         unset($this->menus);
         unset($this->kitchenDepartments);
         unset($this->modifierGroups);
+        unset($this->stopListItems);
+        unset($this->availableItems);
     }
 
     private function forgetBranchMenuCache(): void
@@ -1848,5 +1871,30 @@ class Index extends Component
         }
 
         return (int) $value;
+    }
+
+    /**
+     * @return list<array{id: int, name: string, menu_name: string, category_name: string, department_name: string, price: string, updated_at: string|null}>
+     */
+    private function availabilityItems(bool $isAvailable): array
+    {
+        return $this->menus
+            ->flatMap(function (Menu $menu) use ($isAvailable): array {
+                return $menu->items
+                    ->filter(fn (MenuItem $item): bool => $item->is_available === $isAvailable)
+                    ->map(fn (MenuItem $item): array => [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'menu_name' => $menu->name,
+                        'category_name' => $item->category?->name ?? __('No category'),
+                        'department_name' => $item->kitchenDepartment?->name ?? __('Default kitchen'),
+                        'price' => $item->price,
+                        'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
+                    ])
+                    ->values()
+                    ->all();
+            })
+            ->values()
+            ->all();
     }
 }

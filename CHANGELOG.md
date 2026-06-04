@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 072 - Menu Stop-list
+
+- Added a dedicated branch menu stop-list section backed by the existing `menu_items.is_available` field, without adding a new business table.
+- Allowed users with `change_availability` to access the branch menu page for availability-only work while keeping full menu CRUD behind `manage_menu`.
+- Added branch-list navigation for availability-only users, showing the page as `Stop-list` when they do not have menu CRUD access.
+- Kept unavailable dishes visible in admin and guest menu, now shown to guests as `Нет в наличии`, while backend Livewire actions still block adding them to draft orders.
+- Verified stop-list availability changes clear the SQLite database cache and create `menu_availability_changed` audit log rows.
+- Kept the shared-hosting stack unchanged: SQLite, database cache/session/queue, Blade + Livewire, no Redis, WebSockets, S3, Docker, or external services.
+
 ### Prompt 071 - Audit Logs
 
 - Added `audit_logs` as a general control journal with actor user, optional guest/guest token, action, entity, old/new JSON values, and creation timestamp.

@@ -116,7 +116,7 @@
                                                 </span>
                                             @else
                                                 <span class="inline-flex rounded-md bg-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                                    {{ __('Недоступно') }}
+                                                    {{ __('Нет в наличии') }}
                                                 </span>
                                             @endif
                                         </div>

@@ -78,6 +78,8 @@ class Index extends Component
 
     public bool $canManageMenu = false;
 
+    public bool $canChangeAvailability = false;
+
     public bool $canChangeServicePointStatus = false;
 
     public bool $canOpenTable = false;
@@ -103,6 +105,7 @@ class Index extends Component
         $this->canManageZones = $this->currentUser()->hasPermission(SystemPermission::ManageZones, $organization);
         $this->canManageServicePoints = $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $organization);
         $this->canManageMenu = $this->currentUser()->hasPermission(SystemPermission::ManageMenu, $organization);
+        $this->canChangeAvailability = $this->currentUser()->hasPermission(SystemPermission::ChangeAvailability, $organization);
         $this->canChangeServicePointStatus = $this->canManageServicePoints
             || $this->currentUser()->hasOrganizationRole($organization, SystemRole::Waiter);
         $this->canOpenTable = $this->currentUser()->hasPermission(SystemPermission::ViewOrders, $organization)

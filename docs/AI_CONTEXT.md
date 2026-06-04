@@ -51,7 +51,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
 - Service point operational statuses and manual status changes.
-- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level kitchen departments, menu-item department assignment with default kitchen fallback, branch-level menu modifiers, and permission-gated price/availability changes.
+- Branch menu CRUD with branch menus, nested menu categories, menu items, local dish photos, menu category/item translation tables, branch-level kitchen departments, menu-item department assignment with default kitchen fallback, branch-level menu modifiers, permission-gated price/availability changes, and a `change_availability` stop-list workflow backed by `menu_items.is_available`.
 - Table sessions schema for branch/service point lifecycle tracking.
 - Waiter/admin open-table action and service point UI for creating active table sessions.
 - Guest-created pending table sessions from the public QR landing.
@@ -200,11 +200,14 @@ Menu item:
 - Stores `name`, optional `description`, `price`, optional `image`, optional `weight`, optional `volume`, optional `calories`, `is_available`, and `sort_order`.
 - `price`, `weight`, and `volume` are decimal casts; `is_available` is a boolean cast.
 - Managed from the branch menu page guarded by `manage_menu`.
+- Temporary stop-list state uses `is_available = false`; no separate stop-list table exists.
+- Users with `change_availability` can access the branch menu page for the stop-list even without `manage_menu`; full menu CRUD still requires `manage_menu`.
 - Dish photo upload/removal is implemented with local public storage only.
 - Dish photos are stored under `media/organizations/{organization}/brands/{brand}/branches/{branch}/menu-items/{item}/images`.
 - Creating or editing dish price requires `change_prices`; without it, price edits are preserved as the current value.
 - Creating or editing dish availability requires `change_availability`; without it, availability edits are preserved as the current value.
-- Guest menu display shows item price, photo when present, and unavailable state.
+- Guest menu display shows item price, photo when present, and unavailable state as `Нет в наличии`.
+- Unavailable dishes remain visible to guests by default but cannot be opened or added to `draft_order_items`.
 - Has many translations through `menu_item_translations`.
 - Has many reusable modifier groups through `menu_item_modifier_groups`.
 - Has many draft order items through `draft_order_items`.
@@ -891,7 +894,7 @@ Local media storage:
 - Updating a dish price, department assignment, kitchen department, modifier, or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
-- Unavailable dishes are visually dimmed and marked `Недоступно`; they cannot be added to the draft.
+- Unavailable / stop-listed dishes are visually dimmed and marked `Нет в наличии`; they cannot be opened or added to the draft.
 - Dish cards show local dish photos when `menu_items.image` is present, otherwise a small photo placeholder.
 - Available dishes show a `Добавить` action for active guests.
 - Tapping `Добавить` opens a mobile-first bottom sheet inside `App\Livewire\PublicQr\GuestMenu`.
@@ -1067,7 +1070,10 @@ Local media storage:
 
 - Branch menu route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/menu`.
 - Route model nesting is checked in the Livewire component: brand must belong to organization, and branch must belong to the route brand and organization.
-- Access requires `manage_menu` in the current organization context; superadmin bypass still works through computed permissions.
+- Access requires either `manage_menu` or `change_availability` in the current organization context; superadmin bypass still works through computed permissions.
+- Full menu CRUD still requires `manage_menu`.
+- The stop-list section is visible to users with `change_availability` and lets them temporarily mark dishes out of stock or return them to the menu without exposing menu CRUD.
+- Availability-only users can reach this same route from the branch list as `Stop-list`.
 - The UI uses Blade + Livewire + Flux components and does not use React, Vue, WebSockets, Redis, S3, Docker, or external media services.
 - The page can create, edit, manually sort, and delete menus.
 - The page can create, edit, manually sort, activate/deactivate, and delete categories.
@@ -1079,7 +1085,7 @@ Local media storage:
 - Deleting dishes, categories, or menus removes related local dish photos.
 - Dish price changes, dish availability changes, and dish deletion create `audit_logs` rows through `MenuItemObserver`.
 - Menu/category/item/translation/modifier model observers forget guest menu cache after menu changes.
-- The branch list shows a `Menu` action only to users with `manage_menu`.
+- The branch list shows a `Menu` action to users with `manage_menu` and a `Stop-list` action to users with `change_availability` only.
 - This UI now updates the data shown by the public QR guest menu through cache invalidation.
 - The page can create, edit, manually sort, and delete modifier groups.
 - The page can create, edit, manually sort, and delete modifier options.
@@ -1194,6 +1200,9 @@ The next expected product step may be manual payment reporting/refinement, ticke
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
+- Do not add a separate stop-list table while `menu_items.is_available` is enough for temporary dish availability.
+- Do not let stop-listed / unavailable menu items be opened or added to guest draft orders.
+- Do not change dish availability without clearing guest menu database cache and writing `menu_availability_changed` audit logs.
 - Do not add AI translations, a complex translation editor, advanced kitchen/bar production history, or online payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.

@@ -47,11 +47,36 @@ test('active guest sees active branch menu on guest table page', function () {
         ->assertSeeText($availableItem->name)
         ->assertSeeText($unavailableItem->name)
         ->assertSeeText('14.50 EUR')
-        ->assertSeeText('Недоступно')
+        ->assertSeeText('Нет в наличии')
         ->assertSee(Storage::disk('public')->url((string) $availableItem->image), false)
         ->assertDontSeeText('Draft only dish')
         ->assertDontSeeText('Other branch dish')
         ->assertSeeText('Добавить');
+});
+
+test('guest menu shows stop listed item but blocks adding it', function () {
+    [$qrCode, $branch, , $tableSession, $activeGuest] = createGuestMenuDisplayContext();
+    [, , , $unavailableItem] = createGuestMenuRows($branch);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestMenu::class, [
+            'branchId' => $branch->id,
+            'currency' => 'EUR',
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'guestCanAddItems' => true,
+        ])
+        ->assertSeeText($unavailableItem->name)
+        ->assertSeeText('Нет в наличии')
+        ->call('openItem', $unavailableItem->id)
+        ->assertSet('selectedItemId', null)
+        ->set('selectedItemId', $unavailableItem->id)
+        ->call('saveConfiguredItem')
+        ->assertSet('selectedItemId', null);
+
+    expect(DraftOrderModel::query()->exists())->toBeFalse()
+        ->and(DraftOrderItem::query()->exists())->toBeFalse();
 });
 
 test('guest menu component uses cached active menu payload', function () {

@@ -178,7 +178,11 @@ Branch menu management is available at:
 /organizations/{organization}/brands/{brand}/branches/{branch}/menu
 ```
 
-Access requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, kitchen departments, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`. Changing a dish department assignment clears the guest menu database cache.
+Access to the full menu CRUD requires `manage_menu` in the current organization context. Users can create, edit, sort, and delete menus, categories, dishes, kitchen departments, modifier groups, modifier options, and dish modifier assignments. Dish photos are uploaded locally to Laravel's `public` disk. Changing prices or modifier price deltas requires `change_prices`; changing dish or modifier option availability requires `change_availability`. Changing a dish department assignment clears the guest menu database cache.
+
+The same branch menu page also contains a simple stop-list for users with `change_availability`. The stop-list uses the existing `menu_items.is_available` field instead of a separate table: staff can temporarily mark a dish out of stock or return it to the menu, while users without `manage_menu` do not see menu CRUD forms. A fixed `head_chef` role can be granted `change_availability` through the normal role-permission toggle system.
+
+Stop-listed dishes remain visible in the admin UI and in the guest menu as `Нет в наличии`, but guests cannot add them to the shared draft order. Availability changes clear the branch guest-menu database cache and create `menu_availability_changed` audit log rows.
 
 Active guests on the public QR table page see the current branch's first active menu. The guest menu shows active categories, dishes, prices, local dish photos when present, unavailable dish state, and available modifier options for dishes that have modifier groups.
 

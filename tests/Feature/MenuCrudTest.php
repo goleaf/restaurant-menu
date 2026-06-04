@@ -2,11 +2,14 @@
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\AuditLogAction;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -17,6 +20,7 @@ use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
@@ -58,11 +62,19 @@ test('branch list shows menu link to users with manage menu permission', functio
         ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
         ->assertDontSee($menuRoute, false);
 
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ChangeAvailability]);
+
+    Livewire::actingAs($manager->fresh())
+        ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
+        ->assertSee($menuRoute, false)
+        ->assertSee('Stop-list');
+
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
 
     Livewire::actingAs($manager)
         ->test(BranchesIndex::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee($menuRoute, false);
+        ->assertSee($menuRoute, false)
+        ->assertSee('Menu');
 });
 
 test('manager can create menu categories dishes and upload local dish photo', function () {
@@ -302,6 +314,97 @@ test('price and availability changes require dedicated permissions', function ()
 
     expect($item->price)->toBe('9.50')
         ->and($item->is_available)->toBeFalse();
+});
+
+test('head chef can manage stop list without menu crud access', function () {
+    [$organization, $brand, $branch, $headChef] = createMenuCrudBranch();
+    $headChefRole = Role::query()
+        ->where('code', SystemRole::HeadChef->value)
+        ->firstOrFail();
+
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $headChef->id)
+        ->update(['role_id' => $headChefRole->id]);
+
+    grantMenuCrudPermissions($headChef, $organization, [SystemPermission::ChangeAvailability]);
+
+    $menu = Menu::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Chef Menu',
+            'status' => MenuStatus::Active,
+        ]);
+    $category = MenuCategory::factory()
+        ->for($menu)
+        ->create(['name' => 'Mains']);
+    $availableItem = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create([
+            'name' => 'Grilled fish',
+            'price' => '17.00',
+            'is_available' => true,
+        ]);
+    $stopListItem = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create([
+            'name' => 'Sold out steak',
+            'price' => '22.00',
+            'is_available' => false,
+        ]);
+    $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
+
+    app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+
+    expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeTrue();
+
+    $this->actingAs($headChef->fresh())
+        ->get(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]))
+        ->assertOk()
+        ->assertSeeText('Stop-list')
+        ->assertSeeText('Currently out of stock')
+        ->assertSeeText('Available dishes')
+        ->assertSeeText('Sold out steak')
+        ->assertSeeText('Grilled fish')
+        ->assertDontSeeText('New dish');
+
+    Livewire::actingAs($headChef->fresh())
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSet('canManageMenu', false)
+        ->assertSet('canChangeAvailability', true)
+        ->assertSee('data-section="menu-stop-list"', false)
+        ->assertSee('Add to stop-list')
+        ->assertSee('Return to menu')
+        ->assertDontSee('New dish')
+        ->call('setItemAvailability', $availableItem->id, false)
+        ->assertHasNoErrors();
+
+    $availableItem->refresh();
+
+    expect($availableItem->is_available)->toBeFalse()
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
+        ->and(AuditLog::query()
+            ->where('action', AuditLogAction::MenuAvailabilityChanged->value)
+            ->where('entity_type', 'menu_item')
+            ->where('entity_id', $availableItem->id)
+            ->exists())->toBeTrue();
+
+    $payload = app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+    $guestItemPayload = collect($payload['categories'])
+        ->flatMap(fn (array $category): array => $category['items'])
+        ->firstWhere('id', $availableItem->id);
+
+    expect($guestItemPayload['is_available'])->toBeFalse();
+
+    Livewire::actingAs($headChef->fresh())
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('setItemAvailability', $availableItem->id, true)
+        ->assertHasNoErrors();
+
+    expect($availableItem->refresh()->is_available)->toBeTrue()
+        ->and($stopListItem->refresh()->is_available)->toBeFalse();
 });
 
 test('manager can delete dishes categories and menus while cleaning local dish photos', function () {

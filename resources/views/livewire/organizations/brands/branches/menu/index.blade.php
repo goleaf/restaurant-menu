@@ -10,6 +10,102 @@
         </div>
     </header>
 
+    @if ($canChangeAvailability)
+        <div data-section="menu-stop-list" class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                <div class="flex flex-col gap-1">
+                    <flux:heading size="lg">{{ __('Stop-list') }}</flux:heading>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Temporarily unavailable dishes stay visible to staff and appear as out of stock for guests.') }}</p>
+                </div>
+            </div>
+
+            <div class="grid gap-4 p-4 lg:grid-cols-2">
+                <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Currently out of stock') }}</p>
+                        <flux:badge color="zinc">{{ count($this->stopListItems) }}</flux:badge>
+                    </div>
+
+                    <div class="mt-3 space-y-3">
+                        @forelse ($this->stopListItems as $stopListItem)
+                            <div wire:key="stop-list-item-{{ $stopListItem['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $stopListItem['name'] }}</h2>
+                                            <flux:badge color="zinc">{{ __('Out of stock') }}</flux:badge>
+                                            <flux:badge>{{ $stopListItem['price'] }} {{ $branch->currency }}</flux:badge>
+                                        </div>
+
+                                        <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $stopListItem['menu_name'] }}
+                                            /
+                                            {{ $stopListItem['category_name'] }}
+                                            /
+                                            {{ $stopListItem['department_name'] }}
+                                        </p>
+
+                                        @if ($stopListItem['updated_at'])
+                                            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Updated') }} {{ $stopListItem['updated_at'] }}</p>
+                                        @endif
+                                    </div>
+
+                                    <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $stopListItem['id'] }}, true)" wire:loading.attr="disabled" wire:target="setItemAvailability({{ $stopListItem['id'] }}, true)">
+                                        {{ __('Return to menu') }}
+                                    </flux:button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                {{ __('No dishes are in the stop-list now.') }}
+                            </p>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Available dishes') }}</p>
+                        <flux:badge color="green">{{ count($this->availableItems) }}</flux:badge>
+                    </div>
+
+                    <div class="mt-3 space-y-3">
+                        @forelse ($this->availableItems as $availableItem)
+                            <div wire:key="available-stop-list-item-{{ $availableItem['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div class="min-w-0">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $availableItem['name'] }}</h2>
+                                            <flux:badge color="green">{{ __('Available') }}</flux:badge>
+                                            <flux:badge>{{ $availableItem['price'] }} {{ $branch->currency }}</flux:badge>
+                                        </div>
+
+                                        <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ $availableItem['menu_name'] }}
+                                            /
+                                            {{ $availableItem['category_name'] }}
+                                            /
+                                            {{ $availableItem['department_name'] }}
+                                        </p>
+                                    </div>
+
+                                    <flux:button icon="eye-slash" type="button" wire:click="setItemAvailability({{ $availableItem['id'] }}, false)" wire:loading.attr="disabled" wire:target="setItemAvailability({{ $availableItem['id'] }}, false)">
+                                        {{ __('Add to stop-list') }}
+                                    </flux:button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                {{ __('No available dishes yet.') }}
+                            </p>
+                        @endforelse
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($canManageMenu)
     <div class="grid gap-4 xl:grid-cols-5">
         <form wire:submit="createMenu" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex items-center justify-between gap-3">
@@ -766,4 +862,5 @@
             @endforelse
         </div>
     </div>
+    @endif
 </section>

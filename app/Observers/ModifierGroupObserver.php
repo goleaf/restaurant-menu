@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Models\ModifierGroup;
 
 class ModifierGroupObserver
@@ -49,12 +49,12 @@ class ModifierGroupObserver
 
     private function forgetGuestMenu(ModifierGroup $modifierGroup): void
     {
-        GetGuestMenuForBranchAction::forgetForBranch($modifierGroup->branch_id);
+        app(ForgetBranchCacheAction::class)->handle((int) $modifierGroup->branch_id);
 
         $originalBranchId = $modifierGroup->getOriginal('branch_id');
 
         if (is_numeric($originalBranchId) && (int) $originalBranchId !== $modifierGroup->branch_id) {
-            GetGuestMenuForBranchAction::forgetForBranch((int) $originalBranchId);
+            app(ForgetBranchCacheAction::class)->handle((int) $originalBranchId);
         }
     }
 }

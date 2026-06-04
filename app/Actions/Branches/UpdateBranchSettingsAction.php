@@ -35,7 +35,7 @@ class UpdateBranchSettingsAction
                 ->select(['id', 'currency'])
                 ->update(['currency' => $data['default_currency']]);
 
-            GetBranchPollingIntervalAction::forgetForBranch((int) $settings->branch_id);
+            app(ForgetBranchCacheAction::class)->handle((int) $settings->branch_id);
 
             return $settings->refresh();
         });

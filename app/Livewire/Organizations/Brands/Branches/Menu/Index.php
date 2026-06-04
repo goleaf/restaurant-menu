@@ -2,10 +2,10 @@
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
-use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
 use App\Enums\SystemPermission;
@@ -1853,7 +1853,7 @@ class Index extends Component
 
     private function forgetBranchMenuCache(): void
     {
-        GetGuestMenuForBranchAction::forgetForBranch($this->branch->id);
+        app(ForgetBranchCacheAction::class)->handle((int) $this->branch->id);
     }
 
     private function emptyStringToNull(mixed $value): ?string

@@ -3,7 +3,7 @@
 namespace App\Observers;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
-use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Enums\AuditLogAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -77,7 +77,7 @@ class MenuItemObserver
             ->value('branch_id');
 
         if (is_numeric($branchId)) {
-            GetGuestMenuForBranchAction::forgetForBranch((int) $branchId);
+            app(ForgetBranchCacheAction::class)->handle((int) $branchId);
         }
     }
 

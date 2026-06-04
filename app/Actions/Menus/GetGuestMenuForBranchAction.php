@@ -2,6 +2,7 @@
 
 namespace App\Actions\Menus;
 
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Enums\MenuStatus;
 use App\Enums\SupportedLocale;
 use App\Models\BranchSetting;
@@ -65,18 +66,30 @@ class GetGuestMenuForBranchAction
 
     public static function forgetForBranch(int $branchId): void
     {
-        $cache = self::cache();
-
-        foreach (self::supportedLanguageCodes() as $languageCode) {
-            $cache->forget(self::cacheKey($branchId, $languageCode));
-        }
-
-        $cache->forget(self::legacyCacheKey($branchId));
+        app(ForgetBranchCacheAction::class)->handle($branchId);
     }
 
     public static function cacheStore(): string
     {
         return self::CACHE_STORE;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function cacheKeysForBranch(int $branchId): array
+    {
+        if ($branchId < 1) {
+            return [];
+        }
+
+        return [
+            ...array_map(
+                fn (string $languageCode): string => self::cacheKey($branchId, $languageCode),
+                self::supportedLanguageCodes(),
+            ),
+            self::legacyCacheKey($branchId),
+        ];
     }
 
     /**

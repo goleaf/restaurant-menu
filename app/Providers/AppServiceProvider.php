@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Models\Branch;
+use App\Models\BranchSetting;
+use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
@@ -17,7 +20,11 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Organization;
 use App\Models\TableSession;
+use App\Observers\BranchObserver;
+use App\Observers\BranchSettingObserver;
+use App\Observers\BrandObserver;
 use App\Observers\DraftOrderObserver;
 use App\Observers\KitchenDepartmentObserver;
 use App\Observers\KitchenTicketItemObserver;
@@ -32,6 +39,7 @@ use App\Observers\ModifierGroupObserver;
 use App\Observers\ModifierOptionObserver;
 use App\Observers\OrderItemObserver;
 use App\Observers\OrderObserver;
+use App\Observers\OrganizationObserver;
 use App\Observers\TableSessionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -87,6 +95,10 @@ class AppServiceProvider extends ServiceProvider
 
     protected function registerModelObservers(): void
     {
+        Organization::observe(OrganizationObserver::class);
+        Brand::observe(BrandObserver::class);
+        Branch::observe(BranchObserver::class);
+        BranchSetting::observe(BranchSettingObserver::class);
         Menu::observe(MenuObserver::class);
         MenuCategory::observe(MenuCategoryObserver::class);
         MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);

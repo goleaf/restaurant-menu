@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Models\Menu;
 
 class MenuObserver
@@ -50,7 +50,7 @@ class MenuObserver
 
     private function forgetGuestMenu(Menu $menu): void
     {
-        GetGuestMenuForBranchAction::forgetForBranch((int) $menu->branch_id);
+        app(ForgetBranchCacheAction::class)->handle((int) $menu->branch_id);
     }
 
     private function softDeleteCategories(Menu $menu): void

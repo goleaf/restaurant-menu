@@ -2,7 +2,7 @@
 
 namespace App\Observers;
 
-use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Models\KitchenDepartment;
 
 class KitchenDepartmentObserver
@@ -49,6 +49,6 @@ class KitchenDepartmentObserver
 
     private function forgetGuestMenu(KitchenDepartment $kitchenDepartment): void
     {
-        GetGuestMenuForBranchAction::forgetForBranch($kitchenDepartment->branch_id);
+        app(ForgetBranchCacheAction::class)->handle((int) $kitchenDepartment->branch_id);
     }
 }

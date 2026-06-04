@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 093 - Centralize Branch Cache Invalidation
+
+- Added `ForgetBranchCacheAction` as the central branch cache invalidation point for SQLite-backed database cache keys.
+- Centralized clearing of guest menu language keys, the legacy guest menu key, and branch polling interval cache without Redis or cache tags.
+- Routed menu/category/dish/modifier/translation changes, branch settings saves, menu-item modifier assignments, and organization/brand/branch logo changes through the central branch cache action.
+- Added focused coverage proving menu changes, branch settings changes, logo changes, and direct central invalidation clear the expected database cache keys.
+
 ### Prompt 092 - Polish Kitchen Bar UX
 
 - Reworked the shared kitchen/bar department screen into large production cards with service point number/name, zone, live timer, positions, modifiers, comments, and clearer item status badges.

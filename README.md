@@ -407,7 +407,9 @@ guest-menu:branch:{branch_id}:language:{language_code}
 
 Menu cache uses the SQLite-backed `cache` table and a short database lock from `cache_locks` while rebuilding the branch payload. It does not use Redis, cache tags, WebSockets, S3, or any external service.
 
-Menu cache is forgotten automatically when menus, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, department assignment changes, modifier changes, and translation changes clear the branch menu cache, so the next guest read rebuilds the payload and shows the current content.
+Branch cache invalidation is centralized in `App\Actions\Branches\ForgetBranchCacheAction`. The action clears branch-scoped database cache keys for guest menu payloads across supported languages, the legacy guest-menu key, and the cached guest polling interval. It is used by menu, category, dish, modifier, translation, branch settings, and local logo change paths.
+
+Menu cache is forgotten automatically when menus, categories, dishes, kitchen departments, modifier groups, modifier options, dish modifier assignments, or translations are created, updated, or deleted. Price changes, availability changes, department assignment changes, modifier changes, translation changes, branch settings changes, and organization/brand/branch logo changes clear the centralized branch cache, so the next guest read rebuilds the payload and shows the current content.
 
 The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
 
@@ -972,7 +974,7 @@ Branch settings currently include safe defaults:
 - Default language is `en`.
 - Default currency is `EUR`.
 
-Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page. The public guest page reads the polling interval through the SQLite-backed database cache and clears that cache when branch settings are saved.
+Branch settings store order flow, guest session behavior, invite-link behavior, service charge and tips toggles, language/currency defaults, and Livewire polling interval. They are kept in the `branch_settings` table and are managed from the branch settings Livewire page. The public guest page reads the polling interval through the SQLite-backed database cache; saving settings clears centralized branch cache through `ForgetBranchCacheAction`.
 
 Not implemented yet:
 

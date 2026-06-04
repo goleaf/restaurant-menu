@@ -64,6 +64,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Centralized branch cache invalidation through `App\Actions\Branches\ForgetBranchCacheAction` for database-cache guest menu, legacy menu, and polling interval keys.
 - Restaurant onboarding wizard at `/onboarding/restaurant` for creating a starter organization, brand, branch, first zone, first service points, permanent QR codes, first active menu, and a test public guest page.
 - Simplified branch setup UI with the `Настроить ресторан` wizard for branch, zones, service points, QR generation, QR print, and guest-menu opening.
 - Local media storage for organization, brand, and branch logos.
@@ -242,7 +243,9 @@ Menu:
 - Guest menu payloads are cached through the explicit `database` cache store with the key `guest-menu:branch:{branch_id}:language:{language_code}`.
 - `GetGuestMenuForBranchAction` builds and caches the guest menu payload for five minutes.
 - Guest menu cache rebuilds use the database-backed lock key `guest-menu:branch:{branch_id}:language:{language_code}:lock`.
-- Guest menu cache invalidation must use the database cache store and must not use Redis or cache tags.
+- Branch cache invalidation is centralized in `App\Actions\Branches\ForgetBranchCacheAction`.
+- `ForgetBranchCacheAction` clears guest menu payload keys for every supported language, the legacy `guest-menu:branch:{branch_id}` key, and the cached branch polling interval key.
+- Guest menu and branch cache invalidation must use the database cache store and must not use Redis or cache tags.
 - Supported guest menu languages are `ru`, `en`, and `lt`.
 - If no guest language is selected, `branch_settings.default_language` is used.
 - If a selected category or item translation is missing, the guest menu falls back to the base category/item `name` and `description`.
@@ -364,6 +367,7 @@ Localization:
 - `App\Http\Middleware\SetInterfaceLocale` is appended to the `web` middleware group and applies authenticated user locale first, then supported `lang` query/session locale, then app fallback.
 - Profile settings expose a simple language selector for the authenticated user's admin interface language.
 - Branch settings expose `branch_settings.default_language` as a fixed ru/en/lt selector.
+- Branch settings create/update/delete events clear centralized branch cache through `BranchSettingObserver`.
 - Public QR page exposes a guest language selector and defaults to the branch language when no `lang` query is present.
 - Guest invite links include the current `lang` query so invited guests keep the selected language.
 - Guest menu receives the selected language and still falls back to base menu/category/item text if translations are missing.
@@ -938,6 +942,7 @@ Local media storage:
 - `StoreLocalImageAction` stores images on the public disk and deletes the previous file when replacing a logo.
 - `DeleteLocalMediaFileAction` removes old local files when a logo is removed.
 - `HasLocalLogo` exposes `logoUrl()` for local public logo URLs.
+- Updating a branch logo clears that branch cache; updating a brand or organization logo clears cache for the related branches.
 - Current upload validation allows only images with `jpg`, `jpeg`, `png`, or `webp` extensions and a maximum size of 2 MB.
 - Category image path columns exist, but category upload UI is not implemented yet.
 
@@ -1142,8 +1147,9 @@ Local media storage:
 - Guest menu payloads are cached in Laravel's explicit `database` cache store for 300 seconds, even if the default cache store is changed in a test or environment.
 - Cache key format is `guest-menu:branch:{branch_id}:language:{language_code}`.
 - Rebuild lock key format is `guest-menu:branch:{branch_id}:language:{language_code}:lock` and uses the SQLite-backed `cache_locks` table.
-- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, `MenuItemTranslationObserver`, `KitchenDepartmentObserver`, `ModifierGroupObserver`, and `ModifierOptionObserver` forget the branch guest-menu cache on create, update, delete, restore, and force delete events.
-- Updating a dish price, department assignment, kitchen department, modifier, or translation clears the branch guest-menu cache, so the next guest read rebuilds the payload with the current content.
+- `ForgetBranchCacheAction` is the central invalidation point for branch-scoped database cache keys.
+- `MenuObserver`, `MenuCategoryObserver`, `MenuItemObserver`, `MenuCategoryTranslationObserver`, `MenuItemTranslationObserver`, `KitchenDepartmentObserver`, `ModifierGroupObserver`, `ModifierOptionObserver`, `BranchSettingObserver`, `BranchObserver`, `BrandObserver`, and `OrganizationObserver` route relevant changes through the central branch cache action.
+- Updating a dish price, availability, department assignment, kitchen department, modifier, translation, branch setting, or local logo clears branch cache, so the next guest read rebuilds the payload with the current content.
 - Guest menu display shows only active categories.
 - Guest menu display shows both available and unavailable dishes.
 - Unavailable / stop-listed dishes are visually dimmed and marked `Нет в наличии`; they cannot be opened or added to the draft.
@@ -1458,7 +1464,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, and Prompt 092 polished shared kitchen/bar UX intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, and Prompt 093 centralized branch cache invalidation intact during future feature work.
 
 ## Do Not Break
 
@@ -1510,6 +1516,9 @@ The next expected product step may be expanding local UI translation coverage, P
 - Keep guest draft item polling, draft totals polling, join request polling, and order status polling in separate visible Livewire components.
 - Keep guest polling intervals sourced from `branch_settings.polling_interval_seconds`; do not hardcode a new interval in guest polling views.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
+- Do not add new branch-scoped public cache keys without adding them to `ForgetBranchCacheAction`.
+- Do not reintroduce direct scattered guest-menu/polling cache clearing in new code; route branch cache invalidation through `ForgetBranchCacheAction`.
+- Do not use Redis cache tags for branch cache invalidation; this project uses explicit database-cache keys.
 - Do not add a separate stop-list table while `menu_items.is_available` is enough for temporary dish availability.
 - Do not let stop-listed / unavailable menu items be opened or added to guest draft orders.
 - Do not change dish availability without clearing guest menu database cache and writing `menu_availability_changed` audit logs.

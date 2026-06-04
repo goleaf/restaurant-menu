@@ -6,11 +6,26 @@
                 <span>{{ config('app.name', 'Laravel') }}</span>
             </a>
 
-            @if ($state === 'ready')
-                <span class="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
-                    {{ $landing['short_code'] }}
-                </span>
-            @endif
+            <div class="flex items-center gap-2">
+                @if ($state === 'ready')
+                    <label for="guest-page-language" class="sr-only">{{ __('Interface language') }}</label>
+                    <select
+                        id="guest-page-language"
+                        wire:model.live="language"
+                        class="h-9 rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-800 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    >
+                        @foreach ($languageOptions as $languageCode => $languageLabel)
+                            <option wire:key="guest-page-language-{{ $languageCode }}" value="{{ $languageCode }}">
+                                {{ $languageLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+
+                    <span class="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">
+                        {{ $landing['short_code'] }}
+                    </span>
+                @endif
+            </div>
         </div>
     </header>
 
@@ -209,7 +224,8 @@
                         :current-guest-id="$currentGuestId"
                         :public-token="$token"
                         :guest-can-add-items="$guestCanAddItems"
-                        wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
+                        :language="$language"
+                        wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}-{{ $language }}"
                     />
 
                     <livewire:public-qr.draft-order

@@ -4,9 +4,11 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,9 +21,9 @@ use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'locale'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable implements PasskeyUser
+class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
@@ -205,6 +207,11 @@ class User extends Authenticatable implements PasskeyUser
     public function isSuperadmin(): bool
     {
         return $this->hasSystemRole(SystemRole::Superadmin);
+    }
+
+    public function preferredLocale(): string
+    {
+        return SupportedLocale::normalize($this->locale);
     }
 
     public function hasOrganizationRole(Organization|int $organization, SystemRole|string $role): bool

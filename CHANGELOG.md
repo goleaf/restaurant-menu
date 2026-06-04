@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 077 - Basic Localization
+
+- Added fixed supported interface locales `ru`, `en`, and `lt` through a shared `SupportedLocale` enum.
+- Added `users.locale`, profile language selection, and a web middleware that applies the authenticated user's interface language.
+- Added guest QR language selection that defaults to the branch language and passes the selected language into the guest menu.
+- Added baseline JSON translation files for the most important admin/profile/guest/menu interface strings without AI translation or external services.
+- Kept menu translation fallback intact: missing category or dish translations still fall back to the branch default/base menu text.
+
 ### Prompt 076 - CSV Data Exports
 
 - Added a restaurant data exports page at `/restaurant/exports` guarded by the flexible `export_data` permission.

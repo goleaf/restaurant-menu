@@ -2,12 +2,14 @@
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
 use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
@@ -17,11 +19,13 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.guest')]
@@ -53,6 +57,14 @@ class Show extends Component
     public bool $guestCanAddItems = false;
 
     public ?string $currentInviteToken = null;
+
+    #[Url(as: 'lang')]
+    public string $language = '';
+
+    /**
+     * @var array<string, string>
+     */
+    public array $languageOptions = [];
 
     public string $guestInviteUrl = '';
 
@@ -91,6 +103,13 @@ class Show extends Component
     {
         $this->token = $token;
         $this->currentInviteToken = $this->inviteTokenFromRequest();
+        $this->languageOptions = SupportedLocale::labels();
+        $requestedLanguage = request()->query('lang');
+        $hasRequestedLanguage = is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage);
+        $this->language = $hasRequestedLanguage
+            ? SupportedLocale::normalize($requestedLanguage)
+            : SupportedLocale::normalize(null, App::currentLocale());
+        $this->applyGuestLocale();
 
         $qrCode = $this->findQrCode($token);
 
@@ -140,6 +159,12 @@ class Show extends Component
         $brand = $branch->brand;
         $organization = $branch->organization;
 
+        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch(
+            $branch->id,
+            $hasRequestedLanguage ? $this->language : null,
+        );
+        $this->applyGuestLocale();
+
         $this->state = 'ready';
         $this->title = $branch->name;
         $this->message = $this->currentInviteToken === null
@@ -164,6 +189,17 @@ class Show extends Component
         ];
 
         $this->restoreGuestFromCookie($qrCode);
+    }
+
+    public function updatedLanguage(): void
+    {
+        $branchId = (int) ($this->landing['branch_id'] ?? 0);
+        $this->language = $branchId > 0
+            ? app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $this->language)
+            : SupportedLocale::normalize($this->language);
+
+        $this->applyGuestLocale();
+        $this->refreshLandingMessage();
     }
 
     public function enterTable(
@@ -370,6 +406,8 @@ class Show extends Component
 
     public function render(): View
     {
+        $this->applyGuestLocale();
+
         return view('livewire.public-qr.show');
     }
 
@@ -807,6 +845,7 @@ class Show extends Component
         $this->guestInviteUrl = route('public.qr.show', [
             'token' => $this->token,
             'invite' => $tableSession->guest_invite_token,
+            'lang' => $this->language,
         ]);
         $this->guestInviteTitle = __('Приглашение за стол');
         $this->guestInviteText = __('Присоединяйтесь к столу в :venue. Откройте ссылку и введите имя, чтобы текущие гости подтвердили вход.', [
@@ -900,5 +939,24 @@ class Show extends Component
             GuestTableEntryState::JoinRequestCreated => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
             GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
         };
+    }
+
+    private function applyGuestLocale(): void
+    {
+        $this->language = SupportedLocale::normalize($this->language, App::currentLocale());
+
+        App::setLocale($this->language);
+        session()->put('interface_locale', $this->language);
+    }
+
+    private function refreshLandingMessage(): void
+    {
+        if ($this->state !== 'ready') {
+            return;
+        }
+
+        $this->message = $this->currentInviteToken === null
+            ? __('Enter your name to continue.')
+            : __('Введите имя, чтобы попроситься к этому столу.');
     }
 }

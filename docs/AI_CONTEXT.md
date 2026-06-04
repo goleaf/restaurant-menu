@@ -14,6 +14,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Database sessions
 - Database queue
 - Local public storage in `storage/app/public`
+- Fixed interface locales: `ru`, `en`, `lt`
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -34,6 +35,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Audit logs must stay local in SQLite and be visible only through `view_audit_log` access.
 - Local backups must stay shared-hosting friendly: superadmin-only SQLite download, no S3, no paid backup services, no Docker, and no committed backup files.
 - Data exports must stay branch-scoped, CSV-first, protected by `export_data`, and must not leak another branch's orders, payments, menu, or service points.
+- Localization must stay local and fixed to `ru`, `en`, and `lt`; do not add AI translation, paid translation APIs, or external localization services.
 
 ## What Is Already Done
 
@@ -76,6 +78,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions.
 - General audit logs with a `view_audit_log`-guarded viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - CSV data exports for branch orders, manual payments, menu items, and service points through streamed responses guarded by `export_data`.
+- Basic localization foundation with `SupportedLocale`, `users.locale`, `SetInterfaceLocale` web middleware, profile language selection, guest QR language selection, and local JSON strings in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
 - Superadmin-only local SQLite backup download from the platform dashboard, with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
@@ -88,6 +91,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 ## Tables
 
 - `users`
+  - Includes `locale` for authenticated admin interface language.
 - `password_reset_tokens`
 - `sessions`
 - `cache`
@@ -197,6 +201,7 @@ Menu:
 - Supported guest menu languages are `ru`, `en`, and `lt`.
 - If no guest language is selected, `branch_settings.default_language` is used.
 - If a selected category or item translation is missing, the guest menu falls back to the base category/item `name` and `description`.
+- Supported language codes come from `App\Enums\SupportedLocale`; do not hardcode a separate language list in UI-only code.
 
 Menu category:
 
@@ -301,6 +306,19 @@ Menu item modifier assignment:
 - Guest menu payloads expose available modifier groups/options for local guest configuration.
 - Modifier `price_delta` affects the local displayed item total in the guest UI.
 - Draft order item schema stores selected modifiers as a JSON snapshot when an active guest adds a configured item to the shared draft.
+
+Localization:
+
+- Supported interface languages are fixed in `App\Enums\SupportedLocale`: `ru`, `en`, and `lt`.
+- Admin interface language is stored on `users.locale`.
+- `App\Http\Middleware\SetInterfaceLocale` is appended to the `web` middleware group and applies authenticated user locale first, then supported `lang` query/session locale, then app fallback.
+- Profile settings expose a simple language selector for the authenticated user's admin interface language.
+- Branch settings expose `branch_settings.default_language` as a fixed ru/en/lt selector.
+- Public QR page exposes a guest language selector and defaults to the branch language when no `lang` query is present.
+- Guest invite links include the current `lang` query so invited guests keep the selected language.
+- Guest menu receives the selected language and still falls back to base menu/category/item text if translations are missing.
+- Baseline UI strings live in `lang/en.json`, `lang/ru.json`, and `lang/lt.json`.
+- This is not a complete translation pass for every historical UI string; future prompts may expand the local JSON files.
 
 Area node:
 
@@ -842,6 +860,9 @@ Local media storage:
 - `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached branch/restaurant overview for operational and reporting users.
 - `App\Livewire\AuditLogs\Index`
 - `App\Livewire\Exports\Index`
+- `App\Livewire\Settings\Profile` now includes admin interface language selection.
+- `App\Livewire\PublicQr\Show` now includes guest language selection and branch-default language resolution.
+- `App\Livewire\PublicQr\GuestMenu` receives/applies the selected guest language.
 - `App\Livewire\Onboarding\RestaurantSetup`
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
@@ -1254,7 +1275,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1281,6 +1302,8 @@ The next expected product step may be PDF export, local media ZIP export, manual
 - Do not export orders, payments, menu, or service points from branches outside the user's resolved export branch set.
 - Do not write generated CSV exports to storage unless a future prompt explicitly asks for stored exports.
 - Do not add paid CSV/PDF libraries for exports.
+- Do not add AI translation, external translate APIs, or paid localization services.
+- Do not add unsupported interface languages outside `ru`, `en`, and `lt` without an explicit prompt.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

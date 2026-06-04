@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\SupportedLocale;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -13,12 +14,18 @@ trait ProfileValidationRules
      *
      * @return array<string, array<int, ValidationRule|array<mixed>|string>>
      */
-    protected function profileRules(?int $userId = null): array
+    protected function profileRules(?int $userId = null, bool $includeLocale = false): array
     {
-        return [
+        $rules = [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
         ];
+
+        if ($includeLocale) {
+            $rules['locale'] = $this->localeRules();
+        }
+
+        return $rules;
     }
 
     /**
@@ -47,5 +54,13 @@ trait ProfileValidationRules
                 ? Rule::unique(User::class)
                 : Rule::unique(User::class)->ignore($userId),
         ];
+    }
+
+    /**
+     * @return array<int, ValidationRule|array<mixed>|string>
+     */
+    protected function localeRules(): array
+    {
+        return ['required', 'string', Rule::in(SupportedLocale::values())];
     }
 }

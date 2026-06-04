@@ -57,8 +57,8 @@ test('public qr route opens guest landing for active qr code', function () {
         ->assertSeeText('42')
         ->assertSeeText('Main Hall')
         ->assertSeeText('QR-ACTIVE')
-        ->assertSeeText('Ваше имя')
-        ->assertSeeText('Войти за стол')
+        ->assertSeeText('Your name')
+        ->assertSeeText('Join table')
         ->assertDontSeeText('Guest session and menu will appear here in the next steps.');
 });
 
@@ -118,7 +118,7 @@ test('guest can enter name on qr landing without registration', function () {
         ->call('enterTable')
         ->assertHasNoErrors()
         ->assertSet('preparedGuestName', 'Ana Maria')
-        ->assertSeeText('Добро пожаловать, Ana Maria.');
+        ->assertSeeText('Welcome, Ana Maria.');
 
     expect(QrCode::query()->count())->toBe(1);
     expect(ServicePoint::query()->count())->toBe(1);

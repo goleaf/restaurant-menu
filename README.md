@@ -17,6 +17,28 @@ This project is not only a QR menu. The current codebase is a clean shared-hosti
 
 The project intentionally does not use Redis, WebSockets, Docker as a requirement, S3, paid external services, React, Vue, or a separate SPA frontend.
 
+## Basic Localization
+
+The interface has a lightweight localization foundation for:
+
+- `ru`
+- `en`
+- `lt`
+
+Supported languages are fixed in `App\Enums\SupportedLocale`. Authenticated users store their admin interface language in `users.locale` and can change it from the profile settings page. The web middleware applies the authenticated user's locale on each request.
+
+Guest QR pages use the branch default language from `branch_settings.default_language` unless the guest chooses another supported language. The selected guest language is carried through the `lang` query parameter and is passed to the guest menu. Menu category and dish translations still use `menu_category_translations` and `menu_item_translations`; if a translation is missing, the guest menu falls back to the base/default menu text.
+
+Baseline UI strings live in local JSON translation files:
+
+```text
+lang/en.json
+lang/ru.json
+lang/lt.json
+```
+
+No AI translation, external translate API, or paid localization service is used.
+
 ## Superadmin Access
 
 `superadmin` is a platform-level role for SaaS administration. Superadmins can access the platform dashboard at:
@@ -762,6 +784,7 @@ Implemented:
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
 - Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.
 - CSV data exports for branch orders, payments, menu, and tables guarded by `export_data`.
+- Basic ru/en/lt localization foundation for admin profile language, branch-default guest language, guest language switching, and key UI strings.
 - Superadmin-only local SQLite backup download with a sensitive-data warning and a reserved media ZIP follow-up.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.

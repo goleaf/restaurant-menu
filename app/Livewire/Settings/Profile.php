@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
+use App\Enums\SupportedLocale;
 use Flux\Flux;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,13 @@ class Profile extends Component
 
     public string $email = '';
 
+    public string $locale = 'en';
+
+    /**
+     * @var array<string, string>
+     */
+    public array $localeOptions = [];
+
     /**
      * Mount the component.
      */
@@ -26,6 +34,8 @@ class Profile extends Component
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->locale = SupportedLocale::normalize(Auth::user()->locale);
+        $this->localeOptions = SupportedLocale::labels();
     }
 
     /**
@@ -35,7 +45,7 @@ class Profile extends Component
     {
         $user = Auth::user();
 
-        $validated = $this->validate($this->profileRules($user->id));
+        $validated = $this->validate($this->profileRules($user->id, includeLocale: true));
 
         $user->fill($validated);
 

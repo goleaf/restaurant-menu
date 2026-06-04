@@ -24,6 +24,18 @@
                 @endif
             </div>
 
+            <flux:field>
+                <flux:label>{{ __('Interface language') }}</flux:label>
+                <flux:select wire:model="locale">
+                    @foreach ($localeOptions as $localeCode => $localeLabel)
+                        <flux:select.option wire:key="profile-locale-{{ $localeCode }}" value="{{ $localeCode }}">
+                            {{ $localeLabel }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:error name="locale" />
+            </flux:field>
+
             <div class="flex items-center gap-4">
                 <flux:button variant="primary" type="submit">{{ __('Save') }}</flux:button>
             </div>

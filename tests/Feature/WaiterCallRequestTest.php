@@ -62,7 +62,7 @@ test('active guest can request waiter and waiter handles the database notificati
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $activeGuest->id)
-        ->assertSeeText('Позвать официанта')
+        ->assertSeeText('Call waiter')
         ->call('requestWaiter')
         ->assertSet('waiterCallPending', true)
         ->assertSeeText('Официант получил вызов.');

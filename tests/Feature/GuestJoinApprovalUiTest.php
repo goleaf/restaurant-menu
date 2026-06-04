@@ -79,7 +79,7 @@ test('waiting guest becomes active after approval status polling', function () {
         ->assertSet('currentJoinRequestId', null)
         ->assertSet('guestCanAddItems', true)
         ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
-        ->assertSeeText('Вход сохранён');
+        ->assertSeeText('Entry saved');
 });
 
 test('waiting guest sees rejection after a current guest rejects from the join requests block', function () {
@@ -111,7 +111,7 @@ test('waiting guest sees rejection after a current guest rejects from the join r
         ->assertSet('guestCanAddItems', false)
         ->assertSet('entryState', 'join_request_blocked')
         ->assertSeeText('Ваш запрос на присоединение отклонён.')
-        ->assertSeeText('Запрос закрыт');
+        ->assertSeeText('Request closed');
 
     expect($joinRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Rejected);
     expect(

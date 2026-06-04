@@ -47,11 +47,11 @@ test('active guest sees active branch menu on guest table page', function () {
         ->assertSeeText($availableItem->name)
         ->assertSeeText($unavailableItem->name)
         ->assertSeeText('14.50 EUR')
-        ->assertSeeText('Нет в наличии')
+        ->assertSeeText('Out of stock')
         ->assertSee(Storage::disk('public')->url((string) $availableItem->image), false)
         ->assertDontSeeText('Draft only dish')
         ->assertDontSeeText('Other branch dish')
-        ->assertSeeText('Добавить');
+        ->assertSeeText('Add');
 });
 
 test('guest menu shows stop listed item but blocks adding it', function () {
@@ -68,7 +68,7 @@ test('guest menu shows stop listed item but blocks adding it', function () {
             'guestCanAddItems' => true,
         ])
         ->assertSeeText($unavailableItem->name)
-        ->assertSeeText('Нет в наличии')
+        ->assertSeeText('Out of stock')
         ->call('openItem', $unavailableItem->id)
         ->assertSet('selectedItemId', null)
         ->set('selectedItemId', $unavailableItem->id)
@@ -244,7 +244,7 @@ test('guest menu lets active guest add configured item to the shared draft', fun
             'publicToken' => $qrCode->public_token,
             'guestCanAddItems' => true,
         ])
-        ->assertSeeText('Добавить')
+        ->assertSeeText('Add')
         ->call('openItem', $availableItem->id)
         ->assertSet('selectedItemId', $availableItem->id)
         ->assertSeeText('Pizza size')
@@ -262,11 +262,11 @@ test('guest menu lets active guest add configured item to the shared draft', fun
         ->call('saveConfiguredItem')
         ->assertHasNoErrors()
         ->assertSet('selectedItemId', null)
-        ->assertSeeText('Добавлено')
+        ->assertSeeText('Added')
         ->assertSeeText('Large')
         ->assertSeeText('Extra cheese')
         ->assertSeeText('No garlic please')
-        ->assertSeeText('Позиция добавлена в общий заказ.')
+        ->assertSeeText('Item added to the shared order.')
         ->assertSeeText('19.25 EUR');
 
     $draftOrder = DraftOrderModel::query()
@@ -360,7 +360,7 @@ test('draft order component shows shared items and guest totals through polling 
             'currency' => 'EUR',
         ])
         ->assertSee('data-component="guest-draft-order"', false)
-        ->assertSeeText('Гости')
+        ->assertSeeText('Guests')
         ->assertSeeText('По алфавиту')
         ->assertSeeText('Margherita')
         ->assertSeeText('Water')

@@ -4,9 +4,11 @@ namespace App\Livewire\PublicQr;
 
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Enums\SupportedLocale;
 use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -58,6 +60,7 @@ class GuestMenu extends Component
         int $currentGuestId = 0,
         string $publicToken = '',
         bool $guestCanAddItems = false,
+        ?string $language = null,
     ): void {
         $this->branchId = $branchId;
         $this->currency = $currency;
@@ -66,12 +69,14 @@ class GuestMenu extends Component
         $this->publicToken = $publicToken;
         $this->guestCanAddItems = $guestCanAddItems;
         $this->languageOptions = GetGuestMenuForBranchAction::supportedLanguageLabels();
-        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $this->language);
+        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $language ?? $this->language);
+        $this->applyLocale();
     }
 
     public function updatedLanguage(): void
     {
         $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($this->branchId, $this->language);
+        $this->applyLocale();
         unset($this->guestMenu);
         $this->configuredItems = [];
         $this->closeItemSheet();
@@ -214,6 +219,8 @@ class GuestMenu extends Component
 
     public function render(): View
     {
+        $this->applyLocale();
+
         $selectedItem = $this->selectedItem();
 
         return view('livewire.public-qr.guest-menu', [
@@ -233,6 +240,14 @@ class GuestMenu extends Component
         }
 
         return $this->findItemInGuestMenu($this->selectedItemId);
+    }
+
+    private function applyLocale(): void
+    {
+        $this->language = SupportedLocale::normalize($this->language);
+
+        App::setLocale($this->language);
+        session()->put('interface_locale', $this->language);
     }
 
     /**

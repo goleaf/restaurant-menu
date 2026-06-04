@@ -3,6 +3,7 @@
 namespace App\Actions\Menus;
 
 use App\Enums\MenuStatus;
+use App\Enums\SupportedLocale;
 use App\Models\BranchSetting;
 use App\Models\Menu;
 use App\Models\MenuCategory;
@@ -24,15 +25,6 @@ class GetGuestMenuForBranchAction
     private const LOCK_SECONDS = 10;
 
     private const LOCK_WAIT_SECONDS = 3;
-
-    /**
-     * @var array<string, string>
-     */
-    private const SUPPORTED_LANGUAGE_LABELS = [
-        'ru' => 'RU',
-        'en' => 'EN',
-        'lt' => 'LT',
-    ];
 
     /**
      * @return array{language: string, default_language: string, menu: array{id: int, name: string}|null, categories: list<array<string, mixed>>}
@@ -92,7 +84,7 @@ class GetGuestMenuForBranchAction
      */
     public static function supportedLanguageLabels(): array
     {
-        return self::SUPPORTED_LANGUAGE_LABELS;
+        return SupportedLocale::labels();
     }
 
     /**
@@ -100,20 +92,12 @@ class GetGuestMenuForBranchAction
      */
     public static function supportedLanguageCodes(): array
     {
-        return array_keys(self::SUPPORTED_LANGUAGE_LABELS);
+        return SupportedLocale::values();
     }
 
     public static function normalizeLanguageCode(?string $languageCode, string $fallback = 'en'): string
     {
-        $normalized = strtolower(trim((string) $languageCode));
-
-        if (array_key_exists($normalized, self::SUPPORTED_LANGUAGE_LABELS)) {
-            return $normalized;
-        }
-
-        $fallback = strtolower(trim($fallback));
-
-        return array_key_exists($fallback, self::SUPPORTED_LANGUAGE_LABELS) ? $fallback : 'en';
+        return SupportedLocale::normalize($languageCode, $fallback);
     }
 
     public function resolveLanguageForBranch(int $branchId, ?string $languageCode = null): string

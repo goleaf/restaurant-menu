@@ -32,10 +32,10 @@ test('active guest can create an invite share link for current table session', f
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $activeGuest->id)
-        ->assertSeeText('Пригласить гостя')
+        ->assertSeeText('Invite guest')
         ->call('createGuestInviteLink')
         ->assertSeeText('Ссылка приглашения готова.')
-        ->assertSeeText('Скопировать ссылку')
+        ->assertSeeText('Copy link')
         ->assertSee('navigator.share', false);
 
     $inviteUrl = $component->get('guestInviteUrl');
@@ -63,7 +63,7 @@ test('guest invite link opens landing and creates a pending join request', funct
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('currentInviteToken', $inviteToken)
-        ->assertSeeText('Введите имя, чтобы попроситься к этому столу.')
+        ->assertSeeText('Enter your name to request access to this table.')
         ->set('guestName', '  Jonas  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -72,7 +72,7 @@ test('guest invite link opens landing and creates a pending join request', funct
         ->assertSet('currentGuestId', null)
         ->assertSet('guestCanAddItems', false)
         ->assertSeeText('Запрос на присоединение отправлен.')
-        ->assertSeeText('Запрос отправлен');
+        ->assertSeeText('Request sent');
 
     $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
 

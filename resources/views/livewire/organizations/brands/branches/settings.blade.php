@@ -30,7 +30,17 @@
 
             <div class="grid gap-4 md:grid-cols-2">
                 <flux:input wire:model="pollingIntervalSeconds" :label="__('Polling interval, seconds')" type="number" required min="1" max="60" />
-                <flux:input wire:model="defaultLanguage" :label="__('Default language')" type="text" required maxlength="10" />
+                <flux:field>
+                    <flux:label>{{ __('Default language') }}</flux:label>
+                    <flux:select wire:model="defaultLanguage">
+                        @foreach ($languageOptions as $languageCode => $languageLabel)
+                            <flux:select.option wire:key="branch-default-language-{{ $languageCode }}" value="{{ $languageCode }}">
+                                {{ $languageLabel }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                    <flux:error name="defaultLanguage" />
+                </flux:field>
                 <flux:input wire:model="defaultCurrency" :label="__('Default currency')" type="text" required maxlength="3" />
 
                 <label class="grid gap-2 text-sm">

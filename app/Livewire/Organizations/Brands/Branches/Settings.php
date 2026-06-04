@@ -5,6 +5,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Actions\Branches\EnsureBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Enums\BranchOrderFlowMode;
+use App\Enums\SupportedLocale;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -53,6 +54,11 @@ class Settings extends Component
 
     public bool $saved = false;
 
+    /**
+     * @var array<string, string>
+     */
+    public array $languageOptions = [];
+
     public function mount(
         Organization $organization,
         Brand $brand,
@@ -62,6 +68,7 @@ class Settings extends Component
         $this->organization = $organization;
         $this->brand = $brand;
         $this->branch = $branch;
+        $this->languageOptions = SupportedLocale::labels();
 
         if (
             $brand->organization_id !== $organization->id
@@ -96,7 +103,7 @@ class Settings extends Component
                 'allow_guest_invite_links' => (bool) $validated['allowGuestInviteLinks'],
                 'guest_join_requires_approval' => (bool) $validated['guestJoinRequiresApproval'],
                 'polling_interval_seconds' => (int) $validated['pollingIntervalSeconds'],
-                'default_language' => strtolower($validated['defaultLanguage']),
+                'default_language' => SupportedLocale::normalize($validated['defaultLanguage']),
                 'default_currency' => strtoupper($validated['defaultCurrency']),
                 'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
                 'tips_enabled' => (bool) $validated['tipsEnabled'],
@@ -136,7 +143,7 @@ class Settings extends Component
             'allowGuestInviteLinks' => ['boolean'],
             'guestJoinRequiresApproval' => ['boolean'],
             'pollingIntervalSeconds' => ['required', 'integer', 'min:1', 'max:60'],
-            'defaultLanguage' => ['required', 'string', 'max:10'],
+            'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
             'defaultCurrency' => ['required', 'string', 'size:3'],
             'serviceChargeEnabled' => ['boolean'],
             'tipsEnabled' => ['boolean'],

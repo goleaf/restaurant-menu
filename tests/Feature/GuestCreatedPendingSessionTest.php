@@ -30,7 +30,7 @@ test('first guest creates pending table session and active session guest from qr
         ->assertHasNoErrors()
         ->assertSet('preparedGuestName', 'Ana Maria')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value)
-        ->assertSeeText('Добро пожаловать, Ana Maria.')
+        ->assertSeeText('Welcome, Ana Maria.')
         ->assertSeeText('Стол ожидает подтверждения официанта.');
 
     $tableSession = TableSession::query()->firstOrFail();
@@ -80,14 +80,14 @@ test('guest token cookie restores table session after page refresh', function ()
         ->assertSet('guestCanAddItems', true)
         ->assertSet('entryState', 'guest_restored')
         ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
-        ->assertSeeText('Вход сохранён');
+        ->assertSeeText('Entry saved');
 
     $this
         ->withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
         ->get(route('public.qr.show', ['token' => $qrCode->public_token], false))
         ->assertOk()
         ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
-        ->assertSeeText('Вход сохранён');
+        ->assertSeeText('Entry saved');
 });
 
 test('guest token restore shows message when table session is closed', function () {
@@ -199,7 +199,7 @@ test('guest entering active session with active guests creates pending join requ
         ->assertSet('currentTableSessionId', $activeTableSession->id)
         ->assertSet('currentGuestId', null)
         ->assertSeeText('Запрос на присоединение отправлен.')
-        ->assertSeeText('Запрос отправлен');
+        ->assertSeeText('Request sent');
 
     $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
 

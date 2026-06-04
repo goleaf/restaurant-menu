@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Prompt 095 - Add Smoke Test Checklist
+
+- Added `docs/TEST_CHECKLIST.md` as a lightweight manual smoke checklist for the main restaurant flow.
+- Covered branch, zone, service point, QR, public `/q/{token}`, guest session, second guest approval, shared draft, waiter confirmation, kitchen/bar ready, waiter served handoff, bill request, manual payment, and table-session close.
+- Linked the checklist from README and documented that it avoids heavy browser/E2E dependencies while keeping SQLite, database drivers, shared-hosting compatibility, and no Redis/WebSockets/S3/Docker.
+
 ### Prompt 094 - Add Demo Restaurant Seed
 
 - Added an explicit `DemoRestaurantSeeder` for a runnable demo restaurant without wiring it into the default production seed path.

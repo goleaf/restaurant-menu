@@ -213,6 +213,16 @@ demo.cashier@example.com
 
 The default password for demo users is `password`. Change or remove these accounts before using real production data. Re-running the demo seeder updates the same demo records and should not create duplicate demo restaurants, service points, menus, or active QR codes.
 
+## Smoke Test Checklist
+
+The main manual flow checklist lives in:
+
+```text
+docs/TEST_CHECKLIST.md
+```
+
+It covers branch, zone, service point, QR, guest join approval, shared draft, waiter confirmation, kitchen/bar ready, served handoff, bill request, manual payment, and table-session close. It is intentionally a lightweight manual checklist and does not add a heavy browser test dependency.
+
 ## SaaS Subscription
 
 Organizations have one local SaaS subscription record in `organization_subscriptions`. There is only one plan for everyone, and the system does not enforce tariff limits.
@@ -956,6 +966,7 @@ Implemented:
 - Fixed system roles seeded from enums.
 - Flexible permissions with role permissions and user overrides.
 - Explicit demo restaurant seed for local QA and first-run testing.
+- Manual smoke test checklist for the main guest/waiter/kitchen/payment flow.
 - Organizations with owner membership.
 - Simple one-plan SaaS subscription status stored in `organization_subscriptions` with superadmin manual activation/suspension.
 - Organization users with role, status, joined date, and inviter fields.

@@ -67,6 +67,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Centralized branch cache invalidation through `App\Actions\Branches\ForgetBranchCacheAction` for database-cache guest menu, legacy menu, and polling interval keys.
 - Restaurant onboarding wizard at `/onboarding/restaurant` for creating a starter organization, brand, branch, first zone, first service points, permanent QR codes, first active menu, and a test public guest page.
 - Explicit demo restaurant seed through `Database\Seeders\DemoRestaurantSeeder` for local QA and first-run testing.
+- Manual main-flow smoke checklist in `docs/TEST_CHECKLIST.md`.
 - Simplified branch setup UI with the `Настроить ресторан` wizard for branch, zones, service points, QR generation, QR print, and guest-menu opening.
 - Local media storage for organization, brand, and branch logos.
 - Area nodes nested branch schema and CRUD UI.
@@ -240,6 +241,13 @@ Demo restaurant seed:
 - It creates demo users `demo.owner@example.com`, `demo.admin@example.com`, `demo.waiter@example.com`, `demo.chef@example.com`, `demo.bartender@example.com`, and `demo.cashier@example.com` with default password `password`.
 - Demo access uses organization/branch memberships plus user-level permission overrides, not global role-permission changes.
 - Re-running the seeder should update the same demo rows and must not duplicate the demo organization, brand, branch, service points, menu, menu items, or active QR codes.
+
+Smoke test checklist:
+
+- Manual checklist path is `docs/TEST_CHECKLIST.md`.
+- It covers the main branch setup, QR, guest session, invite/approval, shared draft, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, and table close flow.
+- It is intentionally documentation-only and does not add a browser E2E framework or heavy test dependency.
+- Optional command checks are limited to existing Pest commands such as `php artisan test --compact --filter=DemoRestaurantSeederTest`.
 
 Menu:
 
@@ -1478,7 +1486,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, and Prompt 094 explicit idempotent demo seed intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, and Prompt 095 manual smoke checklist intact during future feature work.
 
 ## Do Not Break
 
@@ -1490,6 +1498,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not turn the `/onboarding/restaurant` wizard into a separate onboarding database schema or duplicate CRUD engine; it must remain a simple starter flow over existing Actions, models, and routes.
 - Do not call `DemoRestaurantSeeder` from `DatabaseSeeder` unless a future prompt explicitly changes the seeding strategy; demo restaurant data must stay opt-in.
 - Do not make the demo seed change global role-permission defaults for real users; keep demo access scoped to demo users and memberships.
+- Do not replace the manual smoke checklist with a heavy browser/E2E dependency unless a future prompt explicitly asks for that testing layer.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not replace the small Blade design-system primitives with a heavy UI framework or a client-side SPA.

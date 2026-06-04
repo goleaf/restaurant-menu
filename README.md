@@ -49,6 +49,8 @@ Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, imp
 
 Latest memory refresh: 2026-06-04 after Prompt 103. Branch public profiles, branch opening hours, and temporary branch closed mode are now part of the baseline guest QR context.
 
+The daily memory refresh after Prompt 103 is documentation-only and confirms Prompt 104 as the next recommended small step.
+
 ## Project Cleanup Consistency
 
 Prompt 098 cleaned remaining starter-kit and temporary surfaces without adding new product features.

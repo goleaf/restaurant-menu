@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 099 - Review Vertical Slice
+
+- Added `tests/Feature/VerticalSliceFlowTest.php` as a focused first vertical-slice regression from registration through restaurant setup, permanent QR, guest entry, invite approval, shared draft, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, and table-session close.
+- Verified the slice keeps the QR URL as `/q/{public_token}` without exposing organization, branch, service point, table, or area IDs, and keeps the permanent QR unchanged after the session closes.
+- Exercised existing Actions and Livewire components instead of adding new business features or changing architecture.
+- Ran the affected-flow regression suite on SQLite/database drivers with no Redis, WebSockets, S3, Docker, online payments, or paid services.
+
 ### Prompt 098 - Cleanup Project Consistency
 
 - Removed remaining starter-kit cleanup leftovers: default `test@example.com` seeding, public placeholder copy, unused app header layout, and unused starter repository/documentation icon overrides.

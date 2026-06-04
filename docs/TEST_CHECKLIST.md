@@ -49,6 +49,39 @@ Focused command:
 php artisan test --compact tests/Feature/ProjectCleanupConsistencyTest.php
 ```
 
+## Prompt 099 Vertical Slice Results
+
+Programmatic first-slice coverage was added in `tests/Feature/VerticalSliceFlowTest.php`.
+The regression currently verifies:
+
+- real user registration through Fortify;
+- organization, brand, branch, zone, service point, and permanent QR setup;
+- public QR URL shaped as `/q/{public_token}` without technical IDs;
+- guest name entry and guest-created pending table session;
+- second guest invite link, waiting state, and first-guest approval;
+- guest menu item selection and shared draft totals by guest;
+- sending the shared draft to the waiter;
+- waiter confirmation and explicit kitchen/bar dispatch;
+- kitchen and bar ready states;
+- waiter served handoff;
+- guest bill request;
+- manual table payment;
+- table-session close;
+- service point returns to `free`;
+- permanent QR token and active status stay unchanged after close.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/VerticalSliceFlowTest.php
+```
+
+Affected-flow command used for Prompt 099:
+
+```bash
+php artisan test --compact tests/Feature/VerticalSliceFlowTest.php tests/Feature/OnboardingRestaurantWizardTest.php tests/Feature/GuestCreatedPendingSessionTest.php tests/Feature/GuestInviteShareLinkTest.php tests/Feature/GuestJoinApprovalUiTest.php tests/Feature/GuestMenuDisplayTest.php tests/Feature/WaiterDraftReviewTest.php tests/Feature/KitchenTicketDispatchTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/BillRequestTest.php tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php
+```
+
 ## Prepare
 
 1. Run migrations:
@@ -313,5 +346,6 @@ These are optional command-line checks and do not replace the manual flow:
 ```bash
 php artisan test --compact tests/Feature/AccessControlAuditTest.php
 php artisan test --compact --filter=DemoRestaurantSeederTest
+php artisan test --compact tests/Feature/VerticalSliceFlowTest.php
 php artisan test --compact
 ```

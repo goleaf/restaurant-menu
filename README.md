@@ -45,6 +45,24 @@ Focused cleanup regression command:
 php artisan test --compact tests/Feature/ProjectCleanupConsistencyTest.php
 ```
 
+## Vertical Slice Review
+
+Prompt 099 added a first end-to-end vertical-slice regression test for the main restaurant flow. The test starts with real Fortify registration, creates the organization/brand/branch/zone/service point setup, generates one permanent QR, opens the public QR guest page, runs the two-guest invite and approval flow, adds guest draft items, sends the shared draft to the waiter, confirms and dispatches the order to kitchen/bar, marks kitchen/bar items ready, marks them served, requests the bill, records manual payment, closes the table session, and verifies the permanent QR remains unchanged.
+
+Focused vertical-slice command:
+
+```bash
+php artisan test --compact tests/Feature/VerticalSliceFlowTest.php
+```
+
+Affected-flow regression command:
+
+```bash
+php artisan test --compact tests/Feature/VerticalSliceFlowTest.php tests/Feature/OnboardingRestaurantWizardTest.php tests/Feature/GuestCreatedPendingSessionTest.php tests/Feature/GuestInviteShareLinkTest.php tests/Feature/GuestJoinApprovalUiTest.php tests/Feature/GuestMenuDisplayTest.php tests/Feature/WaiterDraftReviewTest.php tests/Feature/KitchenTicketDispatchTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/BillRequestTest.php tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php
+```
+
+No Redis, WebSockets, S3, Docker, external queue, online payment, or paid service is used by this vertical slice.
+
 ## Access Control
 
 Access is organization-scoped first and branch-scoped when a user has active `branch_users` assignments. Regular users see only active organizations where they have an active membership. If a staff member is assigned to specific branches, branch lists, branch admin pages, QR print/display pages, waiter/payment resolvers, kitchen/bar screens, and exports must stay limited to those branches.

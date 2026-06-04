@@ -57,6 +57,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - SQLite-only database configuration.
 - Database-backed cache, sessions, and queues.
 - Shared-hosting deployment notes in `docs/DEPLOY_SHARED_HOSTING.md`.
+- Prompt 099 first vertical-slice regression: `tests/Feature/VerticalSliceFlowTest.php` covers registration, organization/brand/branch/zone/service point setup, permanent QR, public QR guest entry, invite approval for the second guest, shared draft items, waiter confirmation, kitchen/bar dispatch, ready/served handoff, bill request, manual payment, table-session close, and permanent QR stability.
 - Prompt 098 project cleanup: removed starter placeholder pages/copy, removed default `test@example.com` seeding, removed unused starter header/icon overrides, removed `laravel/sail`, and added focused cleanup regression coverage.
 - Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
 - Fortify-backed authentication.
@@ -127,6 +128,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - Demo restaurant data remains opt-in through `Database\Seeders\DemoRestaurantSeeder`.
 - Public fallback pages (`/` and `/guest`) are real entry/fallback screens and must not reintroduce "placeholder" or "not implemented yet" copy.
 - No dedicated policy classes currently exist; access control is enforced through middleware, Actions, `User` access helpers, and the permission system. Do not add a policy layer unless a future prompt asks for it or a focused refactor needs it.
+- `tests/Feature/VerticalSliceFlowTest.php` covers the first end-to-end restaurant flow and must stay green when editing guest entry, invite approval, shared draft, waiter review, kitchen/bar tickets, manual payments, table-session close, or permanent QR behavior.
 - `tests/Feature/ProjectCleanupConsistencyTest.php` covers the cleanup guardrails.
 
 ## Tables
@@ -1516,7 +1518,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, and Prompt 098 project cleanup guardrails intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, and Prompt 099 vertical-slice regression intact during future feature work.
 
 ## Do Not Break
 
@@ -1531,6 +1533,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not reintroduce starter-kit test users in `DatabaseSeeder`; `test@example.com` must stay out of default production seed data.
 - Do not make the demo seed change global role-permission defaults for real users; keep demo access scoped to demo users and memberships.
 - Do not replace the manual smoke checklist with a heavy browser/E2E dependency unless a future prompt explicitly asks for that testing layer.
+- Do not remove or weaken the Prompt 099 vertical-slice regression when editing the main guest/waiter/kitchen/payment/session flow; update it only when a future prompt intentionally changes the flow.
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not reintroduce `laravel/sail`, Docker compose files, an S3 filesystem disk, starter-kit repository/documentation links, or placeholder public pages during cleanup.

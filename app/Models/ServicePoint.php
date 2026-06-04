@@ -80,6 +80,16 @@ class ServicePoint extends Model
     }
 
     /**
+     * @return HasMany<WaiterCall, $this>
+     */
+    public function waiterCalls(): HasMany
+    {
+        return $this->hasMany(WaiterCall::class)
+            ->orderBy('requested_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<Order, $this>
      */
     public function orders(): HasMany

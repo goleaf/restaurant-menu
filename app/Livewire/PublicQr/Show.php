@@ -5,11 +5,13 @@ namespace App\Livewire\PublicQr;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
+use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
+use App\Enums\WaiterCallStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -59,6 +61,10 @@ class Show extends Component
     public string $guestInviteText = '';
 
     public string $guestInviteMessage = '';
+
+    public string $waiterCallMessage = '';
+
+    public bool $waiterCallPending = false;
 
     /**
      * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_currency: string, venue_name: string, logo_url: string|null, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
@@ -277,6 +283,35 @@ class Show extends Component
         }
 
         $this->fillGuestInviteShareState($tableSession);
+    }
+
+    public function requestWaiter(RequestWaiterForTableSessionAction $requestWaiter): void
+    {
+        if ($this->state !== 'ready' || $this->currentTableSessionId === null || $this->currentGuestId === null) {
+            return;
+        }
+
+        $tableSession = $this->findCurrentTableSessionForInvite();
+        $guest = $this->findCurrentActiveGuestForInvite();
+
+        if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest) {
+            $this->waiterCallMessage = __('Только активный гость за этим столом может позвать официанта.');
+            $this->waiterCallPending = false;
+
+            return;
+        }
+
+        try {
+            $waiterCall = $requestWaiter->handle($tableSession, $guest);
+        } catch (ValidationException $exception) {
+            $this->waiterCallMessage = $this->firstValidationMessage($exception);
+            $this->waiterCallPending = false;
+
+            return;
+        }
+
+        $this->waiterCallPending = $waiterCall->status === WaiterCallStatus::Pending;
+        $this->waiterCallMessage = __('Официант получил вызов. Пожалуйста, подождите.');
     }
 
     public function refreshJoinRequestStatus(): void

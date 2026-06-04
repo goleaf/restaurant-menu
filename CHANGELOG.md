@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 065 - Request Waiter Button
+
+- Added local `notifications` and `waiter_calls` tables for database-only guest waiter-call requests.
+- Added `RequestWaiterForTableSessionAction` so an active guest can press `Позвать официанта`, create or reuse one pending call for the service point, and move the service point status to `waiting_waiter`.
+- Added database notifications for waiters with branch-level `view_orders` access while respecting active branch assignments and superadmin access.
+- Extended the waiter dashboard polling payload with guest-call counts, branch call lists, service point badges, a browser-local audio notice, and a `Processed` action.
+- Added `MarkWaiterCallHandledAction` so a waiter can mark a call handled, mark related database notifications read, and restore the previous service point status when it is still safe to do so.
+- Verified the guest call -> waiter notification -> handled flow without Redis, WebSockets, S3, Docker, SMS, push, Telegram API, or paid services.
+
 ### Prompt 064 - Repeat Orders
 
 - Removed the one-draft-per-table-session database limit so a table session can keep repeat draft history.

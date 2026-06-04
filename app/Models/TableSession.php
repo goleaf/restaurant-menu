@@ -139,6 +139,16 @@ class TableSession extends Model
     }
 
     /**
+     * @return HasMany<WaiterCall, $this>
+     */
+    public function waiterCalls(): HasMany
+    {
+        return $this->hasMany(WaiterCall::class)
+            ->orderBy('requested_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasOne<DraftOrder, $this>
      */
     public function draftOrder(): HasOne

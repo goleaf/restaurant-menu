@@ -62,6 +62,16 @@ class TableSessionGuest extends Model
     }
 
     /**
+     * @return HasMany<WaiterCall, $this>
+     */
+    public function waiterCalls(): HasMany
+    {
+        return $this->hasMany(WaiterCall::class, 'requested_by_guest_id')
+            ->orderBy('requested_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasMany<DraftOrderItem, $this>
      */
     public function draftOrderItems(): HasMany

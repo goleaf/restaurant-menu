@@ -74,6 +74,32 @@
                         @endif
                     </div>
 
+                    <section data-component="guest-request-waiter" class="rounded-lg border border-orange-200 bg-orange-50 p-4 shadow-sm dark:border-orange-900 dark:bg-orange-950/30">
+                        <div class="flex flex-col gap-3">
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium uppercase text-orange-700 dark:text-orange-300">{{ __('Помощь') }}</p>
+                                <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Позвать официанта') }}</h2>
+                            </div>
+
+                            @if ($waiterCallMessage)
+                                <p class="rounded-lg bg-white/80 px-3 py-2 text-sm font-medium text-orange-900 dark:bg-zinc-950/50 dark:text-orange-100">
+                                    {{ $waiterCallMessage }}
+                                </p>
+                            @endif
+
+                            <button
+                                type="button"
+                                wire:click="requestWaiter"
+                                wire:loading.attr="disabled"
+                                wire:target="requestWaiter"
+                                class="flex h-11 w-full items-center justify-center rounded-lg bg-orange-600 px-4 text-sm font-semibold text-white transition hover:bg-orange-700 focus:outline-hidden focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-orange-300 dark:focus:ring-offset-zinc-900"
+                            >
+                                <span wire:loading.remove wire:target="requestWaiter">{{ __('Позвать официанта') }}</span>
+                                <span wire:loading wire:target="requestWaiter">{{ __('Отправляем вызов') }}</span>
+                            </button>
+                        </div>
+                    </section>
+
                     <livewire:public-qr.table-guests
                         :table-session-id="$currentTableSessionId"
                         :current-guest-id="$currentGuestId"

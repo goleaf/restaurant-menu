@@ -27,6 +27,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Each repeat order in the same table session must create a new draft, require waiter confirmation, and preserve previous confirmed orders.
 - New guests must require approval by default.
 - Branch realtime behavior must use Livewire polling, not WebSockets.
+- Active guest waiter calls must use local database state and database notifications only.
 
 ## What Is Already Done
 
@@ -59,6 +60,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
 - Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
+- Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
@@ -77,6 +79,7 @@ No menu translation admin editor, QR PDF generation, payment, analytics, or adva
 - `jobs`
 - `job_batches`
 - `failed_jobs`
+- `notifications`
 - `passkeys`
 - `roles`
 - `permissions`
@@ -101,6 +104,7 @@ No menu translation admin editor, QR PDF generation, payment, analytics, or adva
 - `table_sessions`
 - `table_session_guests`
 - `table_session_join_requests`
+- `waiter_calls`
 - `draft_orders`
 - `draft_order_items`
 - `orders`
@@ -298,6 +302,8 @@ Service point:
 - Manual status changes are allowed for users with `manage_service_points` and users with the fixed `waiter` role in the organization.
 - Users with `view_orders` or `confirm_orders` can open a table from the service point page.
 - Opening a table creates or returns the service point's current active table session and sets service point status to `occupied`.
+- Active guest waiter-call requests move the service point status to `waiting_waiter` through `RequestWaiterForTableSessionAction`.
+- `MarkWaiterCallHandledAction` restores the previous service point status only when the service point is still `waiting_waiter`.
 - Users with `generate_qr` can access the service point page to create or show permanent QR details.
 - `UpdateServicePointStatusAction` updates only `service_points.status` and is the future reuse point for table sessions and orders.
 - `CreateServicePointAction` creates a stable `internal_code` once.
@@ -331,6 +337,7 @@ Table session:
 - `ServicePoint::activeTableSession()` returns the current active table session for UI display.
 - `TableSession::draftOrder()` returns the latest/current draft order for the session.
 - `TableSession::draftOrders()` returns repeat-order draft history for the session.
+- `TableSession::waiterCalls()` returns guest waiter-call history for the session.
 - `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active session exists.
 - If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
 - Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
@@ -361,11 +368,28 @@ Table session guest:
 - `TableSession::guests()` returns all session guests ordered by `guest_name` and id.
 - `TableSession::activeGuests()` returns active guests ordered by `guest_name` and id.
 - `TableSessionGuest::approvedJoinRequests()` and `TableSessionGuest::rejectedJoinRequests()` expose join request moderation history.
+- `TableSessionGuest::waiterCalls()` exposes waiter calls requested by that guest.
 - `TableSessionGuest::draftOrderItems()` exposes draft items owned by the guest.
 - `ready_at` marks that an active guest is ready; `null` means not ready.
 - Active guests can approve or reject new guest join requests from the public QR UI.
 - `App\Livewire\PublicQr\TableGuests` renders the guest list for active guests and polls only that block.
 - The guest list shows guest names alphabetically, human-readable guest statuses, and ready/not-ready labels.
+
+Waiter call:
+
+- Stored in `waiter_calls`.
+- Belongs to one branch, service point, table session, and optionally the guest who requested it.
+- Uses internal nullable `active_service_point_id` to enforce one pending waiter call per service point on SQLite.
+- Status is cast to `WaiterCallStatus`.
+- Status values are `pending` and `handled`.
+- Stores `requested_at`, nullable `handled_at`, nullable `handled_by_user_id`, and optional JSON `metadata`.
+- `metadata.previous_service_point_status` stores the service point status before the call so the handled action can restore it when safe.
+- `RequestWaiterForTableSessionAction` requires an active table session guest and refuses closed/cancelled sessions or inactive service points.
+- If a pending call already exists for the service point, `RequestWaiterForTableSessionAction` reuses it and does not create a duplicate or send another notification.
+- New calls move the service point to `waiting_waiter` and create Laravel database notifications for users who can access the branch through `view_orders`.
+- `ResolveWaiterNotificationRecipientsAction` respects superadmin access, active organization memberships, permission overrides, role permissions, and active branch assignments.
+- `WaiterCalledNotification` uses only the `database` channel; no mail, SMS, push, Telegram API, WebSocket, Redis, or external service is used.
+- `MarkWaiterCallHandledAction` requires branch-level `view_orders`, moves the call to `handled`, fills `handled_at` and `handled_by_user_id`, marks matching unread database notifications read, and restores the previous service point status only if the service point is still `waiting_waiter`.
 
 Draft order:
 
@@ -751,6 +775,7 @@ Local media storage:
 - Public QR route creates a pending join request for a specific table session when opened with a valid guest invite token.
 - Active guests can create the invite link from the public QR page, share through native browser sharing, or copy the link manually.
 - Active guests see a guest table page shell with the venue, current service point, guests, invite action, cached active branch menu with modifier selection, and the shared draft basket.
+- Active guests can press `Позвать официанта` from the shell; this calls `RequestWaiterForTableSessionAction`, creates or reuses a pending waiter call, and shows a local confirmation.
 - The guest list in the shell is rendered by isolated `App\Livewire\PublicQr\TableGuests` and uses `wire:poll.1s="refreshGuests"` so the whole page is not refreshed.
 - The guest list shows each guest's ready/not-ready state from `table_session_guests.ready_at`.
 - The menu in the shell is rendered by `App\Livewire\PublicQr\GuestMenu` and reads active branch menu data through the explicit database cache store.
@@ -763,6 +788,7 @@ Local media storage:
 - Public QR route shows the shared table cart grouped by guests alphabetically.
 - Public QR route lets active guests edit or delete only their own draft positions from the basket before the draft is sent to waiter review.
 - Public QR route lets any active guest send the shared draft to waiter review from the basket.
+- Public QR route lets active guests request waiter help, but rejected/removed/left/pending guests cannot request waiter help.
 - Public QR route does not create final orders directly, create payment records, or send anything to kitchen/bar.
 
 ## Current Guest Menu Display
@@ -840,12 +866,15 @@ Local media storage:
 - If the user has active `branch_users` assignments inside organizations where they can view orders, the dashboard shows only those assigned branches.
 - If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
 - The dashboard shows available branches, service points, service point statuses, open table sessions, active guest counts, and drafts with `draft_orders.status` of `sent_to_waiter` or `waiter_review`.
+- The dashboard also shows pending guest waiter calls from `waiter_calls`, branch call counts, service point `Waiter called` badges, guest name, zone, requested time, and a `Processed` action.
 - Open sessions and sent drafts link to the waiter table detail page.
 - Open sessions currently include `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
 - Service points with sent or waiter-review drafts show the current service point status, usually `has_new_order` after `SendDraftOrderToWaiterAction`.
+- Service points with pending guest waiter calls usually show `waiting_waiter` until a waiter marks the call processed.
 - The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
 - The table detail page uses `wire:poll.1s="refreshTable"` and does not use WebSockets.
-- A browser-local audio notice can play when polling sees the number of sent drafts increase; no external service is used.
+- A browser-local audio notice can play when polling sees the number of sent drafts or guest waiter calls increase; no external service is used.
+- `App\Livewire\Waiter\Dashboard::markWaiterCallHandled()` calls `MarkWaiterCallHandledAction` and refreshes the polling payload after handling.
 - The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, latest draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's current draft positions, selected modifiers, guest comments, per-guest draft totals, confirmed orders total, current draft total, and the table total.
 - Waiter table total includes already confirmed non-cancelled orders plus the current open draft, but does not double-count a latest draft that is already `converted_to_order`.
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
@@ -1002,13 +1031,15 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be payment request flow, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
 - Do not rewrite architecture.
 - Do not add unrelated future features.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
+- Do not send waiter calls through SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
+- Do not create more than one pending waiter call for the same service point.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.

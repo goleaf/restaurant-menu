@@ -30,6 +30,7 @@
         },
     }"
     x-on:waiter-new-draft.window="playNotice()"
+    x-on:waiter-called.window="playNotice()"
     class="flex h-full w-full flex-1 flex-col gap-6"
 >
     <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -46,7 +47,13 @@
         </div>
     </header>
 
-    <section class="grid gap-3 md:grid-cols-3">
+    @if ($waiterCallMessage)
+        <p class="rounded-lg bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+            {{ $waiterCallMessage }}
+        </p>
+    @endif
+
+    <section class="grid gap-3 md:grid-cols-4">
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Service points') }}</p>
             <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $servicePointCount }}</p>
@@ -60,6 +67,11 @@
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('New guest drafts') }}</p>
             <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $newDraftCount }}</p>
+        </div>
+
+        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Guest calls') }}</p>
+            <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $waiterCallCount }}</p>
         </div>
     </section>
 
@@ -79,6 +91,7 @@
                         <flux:badge>{{ __('Places') }}: {{ $branch['service_point_count'] }}</flux:badge>
                         <flux:badge color="blue">{{ __('Sessions') }}: {{ $branch['active_session_count'] }}</flux:badge>
                         <flux:badge :color="$branch['new_draft_count'] > 0 ? 'rose' : 'zinc'">{{ __('New') }}: {{ $branch['new_draft_count'] }}</flux:badge>
+                        <flux:badge :color="$branch['waiter_call_count'] > 0 ? 'orange' : 'zinc'">{{ __('Calls') }}: {{ $branch['waiter_call_count'] }}</flux:badge>
                     </div>
                 </div>
 
@@ -90,6 +103,10 @@
                                     <div class="flex flex-wrap items-center gap-2">
                                         <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</h3>
                                         <flux:badge :color="$servicePoint['status_color']">{{ __($servicePoint['status_label']) }}</flux:badge>
+
+                                        @if ($servicePoint['waiter_call_count'] > 0)
+                                            <flux:badge color="orange">{{ __('Waiter called') }}</flux:badge>
+                                        @endif
 
                                         @if (! $servicePoint['is_active'])
                                             <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
@@ -153,6 +170,50 @@
 
                     <aside class="border-t border-zinc-200 dark:border-zinc-800 lg:border-s lg:border-t-0">
                         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                            <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Guest calls') }}</h3>
+                        </div>
+
+                        <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+                            @forelse ($branch['waiter_calls'] as $waiterCall)
+                                <div wire:key="waiter-call-{{ $waiterCall['id'] }}" class="px-4 py-3 text-sm">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <p class="font-medium text-zinc-950 dark:text-white">
+                                                {{ $waiterCall['service_point_name'] ?? __('Service point') }}
+                                            </p>
+                                            <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                                {{ __('Zone') }}: {{ $waiterCall['area_name'] ?? __('No zone') }}
+                                            </p>
+                                        </div>
+
+                                        <flux:badge :color="$waiterCall['status_color']">{{ __($waiterCall['status_label']) }}</flux:badge>
+                                    </div>
+
+                                    <p class="mt-2 text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Guest') }}: {{ $waiterCall['guest_name'] ?? __('Guest') }}
+                                    </p>
+                                    <p class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Requested at') }}: {{ $waiterCall['requested_at'] ?? __('time not set') }}
+                                    </p>
+
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        <flux:button size="sm" icon="check" wire:click="markWaiterCallHandled({{ $waiterCall['id'] }})" wire:loading.attr="disabled" wire:target="markWaiterCallHandled({{ $waiterCall['id'] }})">
+                                            {{ __('Processed') }}
+                                        </flux:button>
+
+                                        <flux:button size="sm" icon="eye" :href="$waiterCall['detail_url']" wire:navigate>
+                                            {{ __('Details') }}
+                                        </flux:button>
+                                    </div>
+                                </div>
+                            @empty
+                                <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No guest calls.') }}
+                                </div>
+                            @endforelse
+                        </div>
+
+                        <div class="border-y border-zinc-200 px-4 py-3 dark:border-zinc-800">
                             <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('New guest drafts') }}</h3>
                         </div>
 

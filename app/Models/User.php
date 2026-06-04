@@ -109,6 +109,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * @return HasMany<WaiterCall, $this>
+     */
+    public function handledWaiterCalls(): HasMany
+    {
+        return $this->hasMany(WaiterCall::class, 'handled_by_user_id')
+            ->orderBy('handled_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany

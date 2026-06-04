@@ -5,12 +5,14 @@ namespace App\Actions\Waiter;
 use App\Enums\DraftOrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
+use App\Enums\WaiterCallStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Models\WaiterCall;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -26,7 +28,8 @@ class BuildWaiterDashboardAction
      *     branches: list<array<string, mixed>>,
      *     service_point_count: int,
      *     active_session_count: int,
-     *     new_draft_count: int
+     *     new_draft_count: int,
+     *     waiter_call_count: int
      * }
      */
     public function handle(User $user): array
@@ -40,6 +43,7 @@ class BuildWaiterDashboardAction
                 'service_point_count' => 0,
                 'active_session_count' => 0,
                 'new_draft_count' => 0,
+                'waiter_call_count' => 0,
             ];
         }
 
@@ -80,11 +84,14 @@ class BuildWaiterDashboardAction
             ->get();
 
         $draftOrders = $this->sentDraftOrders($sessions->pluck('id'));
+        $waiterCalls = $this->pendingWaiterCalls($branchIds);
         $draftsBySessionId = $draftOrders->keyBy('table_session_id');
         $sessionsByServicePointId = $sessions->groupBy('service_point_id');
+        $waiterCallsByServicePointId = $waiterCalls->groupBy('service_point_id');
         $servicePointsByBranchId = $servicePoints->groupBy('branch_id');
         $sessionsByBranchId = $sessions->groupBy('branch_id');
         $draftsByBranchId = $this->draftsByBranchId($draftOrders, $sessions);
+        $waiterCallsByBranchId = $waiterCalls->groupBy('branch_id');
 
         return [
             'has_access' => true,
@@ -94,14 +101,17 @@ class BuildWaiterDashboardAction
                     servicePoints: $servicePointsByBranchId->get($branch->id, new Collection),
                     sessions: $sessionsByBranchId->get($branch->id, new Collection),
                     drafts: $draftsByBranchId->get($branch->id, new Collection),
+                    waiterCalls: $waiterCallsByBranchId->get($branch->id, new Collection),
                     sessionsByServicePointId: $sessionsByServicePointId,
                     draftsBySessionId: $draftsBySessionId,
+                    waiterCallsByServicePointId: $waiterCallsByServicePointId,
                 ))
                 ->values()
                 ->all(),
             'service_point_count' => $servicePoints->count(),
             'active_session_count' => $sessions->count(),
             'new_draft_count' => $draftOrders->count(),
+            'waiter_call_count' => $waiterCalls->count(),
         ];
     }
 
@@ -143,6 +153,39 @@ class BuildWaiterDashboardAction
     }
 
     /**
+     * @param  Collection<int, int>  $branchIds
+     * @return EloquentCollection<int, WaiterCall>
+     */
+    private function pendingWaiterCalls(Collection $branchIds): EloquentCollection
+    {
+        if ($branchIds->isEmpty()) {
+            return new EloquentCollection;
+        }
+
+        return WaiterCall::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'table_session_id',
+                'requested_by_guest_id',
+                'status',
+                'requested_at',
+            ])
+            ->with([
+                'servicePoint' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                    ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                'requestedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
+            ])
+            ->whereIn('branch_id', $branchIds)
+            ->where('status', WaiterCallStatus::Pending->value)
+            ->orderBy('requested_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * @return list<string>
      */
     private function openSessionStatuses(): array
@@ -159,8 +202,10 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, ServicePoint>  $servicePoints
      * @param  Collection<int, TableSession>  $sessions
      * @param  Collection<int, DraftOrder>  $drafts
+     * @param  Collection<int, WaiterCall>  $waiterCalls
      * @param  Collection<int, Collection<int, TableSession>>  $sessionsByServicePointId
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
+     * @param  Collection<int, Collection<int, WaiterCall>>  $waiterCallsByServicePointId
      * @return array<string, mixed>
      */
     private function branchPayload(
@@ -168,8 +213,10 @@ class BuildWaiterDashboardAction
         Collection $servicePoints,
         Collection $sessions,
         Collection $drafts,
+        Collection $waiterCalls,
         Collection $sessionsByServicePointId,
         Collection $draftsBySessionId,
+        Collection $waiterCallsByServicePointId,
     ): array {
         return [
             'id' => $branch->id,
@@ -182,11 +229,13 @@ class BuildWaiterDashboardAction
             'service_point_count' => count($servicePoints),
             'active_session_count' => count($sessions),
             'new_draft_count' => count($drafts),
+            'waiter_call_count' => count($waiterCalls),
             'service_points' => $servicePoints
                 ->map(fn (ServicePoint $servicePoint): array => $this->servicePointPayload(
                     servicePoint: $servicePoint,
                     sessions: $sessionsByServicePointId->get($servicePoint->id, new Collection),
                     draftsBySessionId: $draftsBySessionId,
+                    waiterCalls: $waiterCallsByServicePointId->get($servicePoint->id, new Collection),
                     currency: $branch->currency,
                 ))
                 ->values()
@@ -195,15 +244,20 @@ class BuildWaiterDashboardAction
                 ->map(fn (DraftOrder $draftOrder): array => $this->draftPayload($draftOrder, $branch->currency))
                 ->values()
                 ->all(),
+            'waiter_calls' => $waiterCalls
+                ->map(fn (WaiterCall $waiterCall): array => $this->waiterCallPayload($waiterCall))
+                ->values()
+                ->all(),
         ];
     }
 
     /**
      * @param  Collection<int, TableSession>  $sessions
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
+     * @param  Collection<int, WaiterCall>  $waiterCalls
      * @return array<string, mixed>
      */
-    private function servicePointPayload(ServicePoint $servicePoint, Collection $sessions, Collection $draftsBySessionId, string $currency): array
+    private function servicePointPayload(ServicePoint $servicePoint, Collection $sessions, Collection $draftsBySessionId, Collection $waiterCalls, string $currency): array
     {
         $status = $servicePoint->status instanceof ServicePointStatus
             ? $servicePoint->status
@@ -219,6 +273,7 @@ class BuildWaiterDashboardAction
             'status_color' => $status->badgeColor(),
             'capacity' => $servicePoint->capacity,
             'is_active' => $servicePoint->is_active,
+            'waiter_call_count' => count($waiterCalls),
             'sessions' => $sessions
                 ->map(fn (TableSession $tableSession): array => $this->sessionPayload(
                     tableSession: $tableSession,
@@ -269,6 +324,29 @@ class BuildWaiterDashboardAction
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
             'items_count' => (int) ($draftOrder->items_count ?? 0),
             'total' => $this->formatCents($totalCents).' '.$currency,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function waiterCallPayload(WaiterCall $waiterCall): array
+    {
+        $status = $waiterCall->status instanceof WaiterCallStatus
+            ? $waiterCall->status
+            : WaiterCallStatus::from((string) $waiterCall->status);
+
+        return [
+            'id' => $waiterCall->id,
+            'table_session_id' => $waiterCall->table_session_id,
+            'detail_url' => route('restaurant.waiter.tables.show', $waiterCall->table_session_id),
+            'service_point_name' => $waiterCall->servicePoint?->name,
+            'service_point_display_number' => $waiterCall->servicePoint?->display_number,
+            'area_name' => $waiterCall->servicePoint?->areaNode?->name,
+            'guest_name' => $waiterCall->requestedByGuest?->guest_name,
+            'status_label' => $status->label(),
+            'status_color' => $status->badgeColor(),
+            'requested_at' => $waiterCall->requested_at?->format('Y-m-d H:i'),
         ];
     }
 

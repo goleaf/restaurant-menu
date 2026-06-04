@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -246,6 +246,8 @@ Service point status can be changed manually by a user with `manage_service_poin
 
 Users with `view_orders` or `confirm_orders` can open a table from the service point page. Opening a table creates or returns the current active table session for that service point and moves the service point status to `occupied`.
 
+Active guests can press `Позвать официанта` from the public QR table page. The request creates or reuses one pending `waiter_calls` row for the service point, moves the service point status to `waiting_waiter`, and writes database notifications for waiters who can view orders in that branch. No SMS, push, Telegram API, WebSockets, Redis, or external service is used.
+
 Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
 
 Users with `generate_qr` can open the service point page, create a missing active QR, and show the existing QR details. Users without `generate_qr` cannot generate or show QR details from this UI.
@@ -328,6 +330,8 @@ Supported guest statuses are:
 - `removed`
 
 The first guest created from the public QR landing is saved as `active`. Guest lists are ordered alphabetically by `guest_name` and show whether each guest is ready.
+
+Active guests can request waiter help from the guest table shell. Waiter-call state is stored in `waiter_calls`, and Laravel's `notifications` table stores per-user database notifications for eligible waiters. When a waiter marks the call as processed, the call moves to `handled`, related unread database notifications are marked read, and the service point returns to the previous status if it is still `waiting_waiter`.
 
 ## Table Session Join Requests
 
@@ -485,8 +489,9 @@ The dashboard uses Livewire polling every 1 second and does not use WebSockets. 
 - service points in those branches;
 - service point statuses;
 - open table sessions;
+- pending guest waiter calls;
 - shared drafts with `sent_to_waiter` or `waiter_review` status;
-- a small browser audio notice when a new sent draft appears during polling.
+- a small browser audio notice when a new sent draft or guest waiter call appears during polling.
 
 Each open session links to a waiter table detail page:
 
@@ -577,6 +582,7 @@ Implemented:
 - Shared draft order schema and guest-owned draft item creation/editing stored in `draft_orders` and `draft_order_items`.
 - First guest pending session creation from the public QR landing.
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
+- Guest waiter-call requests stored in `waiter_calls` with Laravel database notifications for the waiter dashboard.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

@@ -143,7 +143,16 @@ class TableSession extends Model
      */
     public function draftOrder(): HasOne
     {
-        return $this->hasOne(DraftOrder::class);
+        return $this->hasOne(DraftOrder::class)->latestOfMany();
+    }
+
+    /**
+     * @return HasMany<DraftOrder, $this>
+     */
+    public function draftOrders(): HasMany
+    {
+        return $this->hasMany(DraftOrder::class)
+            ->latest('id');
     }
 
     /**

@@ -14,6 +14,7 @@ use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
+use App\Models\Order;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -74,18 +75,18 @@ class BuildWaiterTableDetailAction
                 ]),
                 'draftOrder' => fn ($query) => $query
                     ->select([
-                        'id',
-                        'table_session_id',
-                        'status',
-                        'sent_to_waiter_at',
-                        'sent_by_guest_id',
-                        'rejected_at',
-                        'rejected_by_user_id',
-                        'rejection_reason',
-                        'converted_to_order_at',
-                        'converted_by_user_id',
-                        'created_at',
-                        'updated_at',
+                        'draft_orders.id',
+                        'draft_orders.table_session_id',
+                        'draft_orders.status',
+                        'draft_orders.sent_to_waiter_at',
+                        'draft_orders.sent_by_guest_id',
+                        'draft_orders.rejected_at',
+                        'draft_orders.rejected_by_user_id',
+                        'draft_orders.rejection_reason',
+                        'draft_orders.converted_to_order_at',
+                        'draft_orders.converted_by_user_id',
+                        'draft_orders.created_at',
+                        'draft_orders.updated_at',
                     ])
                     ->with([
                         'sentByGuest' => fn ($guestQuery) => $guestQuery->select(['id', 'guest_name']),
@@ -140,6 +141,16 @@ class BuildWaiterTableDetailAction
                             ])
                             ->with(['guest' => fn ($guestQuery) => $guestQuery->select(['id', 'table_session_id', 'guest_name', 'status'])]),
                     ]),
+                'orders' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'table_session_id',
+                        'status',
+                        'total_price',
+                    ])
+                    ->whereNotIn('status', [OrderStatus::Cancelled->value])
+                    ->orderBy('created_at')
+                    ->orderBy('id'),
             ])
             ->whereKey($tableSession->id)
             ->firstOrFail();
@@ -188,7 +199,10 @@ class BuildWaiterTableDetailAction
             currency: $currency,
         );
 
-        $totalCents = collect($guestSections)->sum(fn (array $guestSection): int => (int) $guestSection['total_cents']);
+        $draftTotalCents = collect($guestSections)->sum(fn (array $guestSection): int => (int) $guestSection['total_cents']);
+        $confirmedOrdersTotalCents = $this->confirmedOrdersTotalCents($tableSession->orders);
+        $openDraftTotalCents = $this->openDraftTotalCents($draftOrder, $draftTotalCents);
+        $tableTotalCents = $confirmedOrdersTotalCents + $openDraftTotalCents;
 
         return [
             'id' => $tableSession->id,
@@ -222,16 +236,41 @@ class BuildWaiterTableDetailAction
             'draft' => $this->draftPayload(
                 draftOrder: $draftOrder,
                 currency: $currency,
-                totalCents: $totalCents,
+                totalCents: $draftTotalCents,
                 canReviewDraft: $canReviewDraft,
                 canEditPendingDraft: $canEditPendingDraft,
                 canSendToKitchen: $canSendToKitchen,
             ),
             'guest_sections' => $guestSections,
-            'total' => $this->formatCents($totalCents).' '.$currency,
+            'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
+            'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
+            'confirmed_order_count' => $tableSession->orders->count(),
+            'table_total' => $this->formatCents($tableTotalCents).' '.$currency,
+            'total' => $this->formatCents($tableTotalCents).' '.$currency,
             'guest_count' => count($guestSections),
             'item_count' => collect($guestSections)->sum(fn (array $guestSection): int => count($guestSection['items'])),
         ];
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     */
+    private function confirmedOrdersTotalCents(Collection $orders): int
+    {
+        return $orders->sum(fn (Order $order): int => $this->decimalToCents($order->total_price));
+    }
+
+    private function openDraftTotalCents(?DraftOrder $draftOrder, int $draftTotalCents): int
+    {
+        if (! $draftOrder instanceof DraftOrder) {
+            return 0;
+        }
+
+        $status = $draftOrder->status instanceof DraftOrderStatus
+            ? $draftOrder->status
+            : DraftOrderStatus::from((string) $draftOrder->status);
+
+        return $status === DraftOrderStatus::ConvertedToOrder ? 0 : $draftTotalCents;
     }
 
     /**

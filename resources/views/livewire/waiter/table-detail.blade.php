@@ -190,6 +190,20 @@
                     <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'session.opened_by') ?? __('Not set') }}</dd>
                 </div>
 
+                @if (data_get($table, 'confirmed_order_count', 0) > 0)
+                    <div>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Confirmed orders') }}</dt>
+                        <dd class="mt-1 font-medium text-zinc-950 dark:text-white">
+                            {{ data_get($table, 'confirmed_order_count') }} · {{ data_get($table, 'confirmed_orders_total') }}
+                        </dd>
+                    </div>
+
+                    <div>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Current draft total') }}</dt>
+                        <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'current_draft_total') }}</dd>
+                    </div>
+                @endif
+
                 @if (data_get($table, 'draft.sent_by_guest_name'))
                     <div>
                         <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Sent by') }}</dt>

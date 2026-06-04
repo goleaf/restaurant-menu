@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 064 - Repeat Orders
+
+- Removed the one-draft-per-table-session database limit so a table session can keep repeat draft history.
+- Kept `TableSession::draftOrder()` as the latest current draft and added `TableSession::draftOrders()` for history.
+- Updated guest draft item creation so adding positions after a confirmed order creates a new draft in the same table session.
+- Updated guest and waiter totals so the table total includes already confirmed non-cancelled orders plus the current open draft without double-counting converted drafts.
+- Verified the second-order flow in the same session: guest draft -> waiter confirmation -> explicit kitchen/bar dispatch, while old order snapshots remain unchanged.
+- Preserved the shared-hosting stack: SQLite, database drivers, Livewire polling, and no Redis, WebSockets, S3, Docker, or paid services.
+
 ### Prompt 063 - Ready Items To Waiter
 
 - Added waiter served tracking on `kitchen_ticket_items` through `served_at` and `served_by_user_id`.

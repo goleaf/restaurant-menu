@@ -24,6 +24,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - One physical table / place / service point should have one active permanent QR code.
 - QR links must not expose restaurant IDs, branch IDs, table IDs, or table numbers.
 - Orders must require waiter confirmation by default.
+- Each repeat order in the same table session must create a new draft, require waiter confirmation, and preserve previous confirmed orders.
 - New guests must require approval by default.
 - Branch realtime behavior must use Livewire polling, not WebSockets.
 
@@ -51,7 +52,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest-created pending table sessions from the public QR landing.
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
-- Draft order schema with one shared draft per table session, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
+- Draft order schema with repeat draft history per table session, latest/current draft access, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and an isolated shared table cart polling block grouped by guest.
 - Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
@@ -328,7 +329,8 @@ Table session:
 - `TableSession` sets `active_service_point_id` automatically while saving active sessions and clears it for non-active statuses.
 - `TableSession` sets `pending_service_point_id` automatically while saving pending sessions and clears it for non-pending statuses.
 - `ServicePoint::activeTableSession()` returns the current active table session for UI display.
-- `TableSession::draftOrder()` returns the one shared draft order for the session.
+- `TableSession::draftOrder()` returns the latest/current draft order for the session.
+- `TableSession::draftOrders()` returns repeat-order draft history for the session.
 - `OpenTableSessionForServicePointAction` creates an active waiter-opened session with `started_at` when no active session exists.
 - If an active session already exists for the service point, `OpenTableSessionForServicePointAction` returns it instead of creating a duplicate.
 - Opening a table updates the service point status to `occupied` through `UpdateServicePointStatusAction`.
@@ -369,7 +371,9 @@ Draft order:
 
 - Stored in `draft_orders`.
 - Belongs to one table session through `table_session_id`.
-- Each table session can have one shared draft order, enforced by a unique `table_session_id`.
+- Each table session can have multiple draft orders over time for repeat orders in the same open table session.
+- `TableSession::draftOrder()` returns the latest/current draft order by id.
+- `TableSession::draftOrders()` returns draft history, latest first by default.
 - Status is cast to `DraftOrderStatus`.
 - Status values are `draft`, `sent_to_waiter`, `waiter_review`, `rejected`, and `converted_to_order`.
 - Stores nullable `sent_to_waiter_at` and nullable `sent_by_guest_id` for the guest submission path.
@@ -380,12 +384,13 @@ Draft order:
 - `DraftOrder::order()` returns the real order created after waiter confirmation.
 - `DraftOrder::totalAmount()` calculates the whole table draft total from draft item `total_price` snapshots.
 - `DraftOrder::guestTotals()` groups draft item totals by guest and returns guests sorted alphabetically by `guest_name`.
-- `AddGuestDraftOrderItemAction` creates the shared draft on first add and stores guest item snapshots.
+- `AddGuestDraftOrderItemAction` creates the shared draft on first add and stores guest item snapshots. If the latest open draft has already been converted to an order, the action creates a new `draft_orders` row in the same table session for the repeat order.
 - `UpdateGuestDraftOrderItemAction` lets an active guest update only their own draft item quantity, comment, and selected modifiers while the draft is still `draft`.
 - `DeleteGuestDraftOrderItemAction` lets an active guest delete only their own draft item while the draft is still `draft`.
 - `SendDraftOrderToWaiterAction` lets any active guest in the same open table session send the shared draft to waiter review.
 - Sending sets the draft status to `sent_to_waiter`, stores `sent_to_waiter_at` and `sent_by_guest_id`, clears active guest `ready_at`, and moves the related service point to `has_new_order`.
 - `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items` snapshots, including kitchen department id/type/name when the source menu item has a department.
+- Every repeat draft must pass through `SendDraftOrderToWaiterAction`, `ConfirmDraftOrderByWaiterAction`, and explicit `SendOrderToKitchenBarAction`; old orders are not overwritten.
 - `RejectDraftOrderByWaiterAction` requires `confirm_orders`, sets a sent draft to `rejected`, and stores a required rejection reason for guests to see.
 - `ReturnRejectedDraftOrderToDraftAction` requires `confirm_orders` and returns a rejected draft to `draft` so guests can edit and send the same shared draft again.
 - `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, and `DeleteDraftOrderItemByWaiterAction` allow staff with `confirm_orders` or `edit_pending_orders` to edit a `sent_to_waiter` or `waiter_review` draft before confirmation.
@@ -423,6 +428,7 @@ Order:
 - Created only by `ConfirmDraftOrderByWaiterAction` after waiter confirmation.
 - Belongs to branch, service point, table session, and draft order.
 - Has one unique `draft_order_id`, so the same draft cannot create two real orders.
+- A table session can have many orders over time through repeat drafts, and their snapshots form the table order history.
 - Status is cast to `OrderStatus`.
 - Status values are `confirmed_by_waiter`, `sent_to_kitchen_bar`, `in_progress`, `ready`, `served`, `payment_requested`, `paid`, `closed`, and `cancelled`.
 - New confirmed orders start as `confirmed_by_waiter`.
@@ -757,7 +763,7 @@ Local media storage:
 - Public QR route shows the shared table cart grouped by guests alphabetically.
 - Public QR route lets active guests edit or delete only their own draft positions from the basket before the draft is sent to waiter review.
 - Public QR route lets any active guest send the shared draft to waiter review from the basket.
-- Public QR route does not create final orders, payment records, or send anything to kitchen/bar yet.
+- Public QR route does not create final orders directly, create payment records, or send anything to kitchen/bar.
 
 ## Current Guest Menu Display
 
@@ -795,7 +801,8 @@ Local media storage:
 - The basket groups guests alphabetically by `guest_name` in `guestSections`.
 - Each guest section shows that guest's ready/not-ready state, item count, positions, line prices, selected modifier names, optional comments, quantity, and guest total.
 - The basket shows per-guest totals sorted alphabetically by `guest_name`.
-- The basket shows the total amount for the table.
+- The basket shows the current draft total, the already confirmed non-cancelled orders total, and the table total when confirmed orders exist.
+- Converted drafts do not add their draft item total to the table total again; the confirmed order total already carries that amount.
 - All active guests see the same grouped cart information.
 - The basket shows ready guest count versus active guest count and whether all active guests are ready.
 - The current active guest can toggle readiness through `ToggleTableSessionGuestReadyAction`, which sets or clears `table_session_guests.ready_at`.
@@ -810,6 +817,7 @@ Local media storage:
 - If the draft status is no longer `draft`, the basket shows a blocked-editing message and does not expose edit/delete actions.
 - If the draft status is `rejected`, the basket shows the waiter rejection reason.
 - If the draft status is `converted_to_order`, the basket tells guests that the order was confirmed and editing is closed.
+- After a converted draft, adding a new guest menu position creates a new latest draft for the same table session so guests can make a repeat order.
 - `UpdateGuestDraftOrderItemAction`, `DeleteGuestDraftOrderItemAction`, and `SendDraftOrderToWaiterAction` enforce the same active guest and draft status checks on the backend.
 - Draft cart state is read fresh from SQLite on polling refresh and is not cached; database cache is used for menu payloads only.
 - After a draft is converted to an order, the cart shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
@@ -838,9 +846,11 @@ Local media storage:
 - The dashboard uses `wire:poll.1s="refreshDashboard"` and does not use WebSockets.
 - The table detail page uses `wire:poll.1s="refreshTable"` and does not use WebSockets.
 - A browser-local audio notice can play when polling sees the number of sent drafts increase; no external service is used.
-- The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's draft positions, selected modifiers, guest comments, per-guest totals, and the table total.
+- The table detail page shows branch, organization, brand, current zone, current service point, service point status, session status, latest draft status, sent timestamp, sent-by guest, guests sorted alphabetically, each guest's current draft positions, selected modifiers, guest comments, per-guest draft totals, confirmed orders total, current draft total, and the table total.
+- Waiter table total includes already confirmed non-cancelled orders plus the current open draft, but does not double-count a latest draft that is already `converted_to_order`.
 - The table detail page can edit a pending sent draft for users with `confirm_orders` or `edit_pending_orders`: change quantity, add an available active-menu dish for an active guest, delete a position, change comments, and update currently available modifier selections.
 - The table detail page can confirm a `sent_to_waiter` or `waiter_review` draft, which creates an `orders` row and `order_items` snapshots with `orders.status = confirmed_by_waiter`.
+- The table detail page uses the latest draft for review/confirm/send-to-kitchen actions, while older converted drafts remain available through order history.
 - The table detail page can send a confirmed order to kitchen/bar for users with `send_to_kitchen`. This creates `kitchen_tickets` grouped by department, changes the order to `sent_to_kitchen_bar`, and moves the service point status to `cooking`.
 - The table detail page shows dispatched kitchen/bar ticket items, ready count, served count, department names, modifiers, comments, and item status once an order has been sent to kitchen/bar.
 - The table detail page lets a waiter with `view_orders` mark ready ticket items as served. This fills `kitchen_ticket_items.served_at` and `served_by_user_id`, updates the order status when all items are served, and refreshes through polling.
@@ -1011,7 +1021,8 @@ The next expected product step may be ticket/service status history, a bar-speci
 - Do not bypass `AddDraftOrderItemByWaiterAction`, `UpdateDraftOrderItemByWaiterAction`, or `DeleteDraftOrderItemByWaiterAction` when staff edit a sent draft before confirmation.
 - Do not allow a guest to edit or delete another guest's draft item.
 - Do not allow guest draft edits after the draft status leaves `draft`.
-- Do not create real orders from the guest UI; waiter confirmation must come first.
+- Do not create real orders from the guest UI; waiter confirmation must come first for every draft, including repeat orders.
+- Do not overwrite old orders or old order items when guests make a repeat order in the same table session.
 - Do not auto-dispatch confirmed orders during waiter confirmation; kitchen/bar tickets must be created only by explicit `SendOrderToKitchenBarAction`.
 - Do not expose unconfirmed drafts or merely confirmed orders to kitchen/bar screens; these screens must read only dispatched tickets.
 - Do not show non-bar department tickets on the bar screen.

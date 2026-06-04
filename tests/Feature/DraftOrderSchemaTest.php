@@ -6,7 +6,6 @@ use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 
 test('draft order tables expose the required shared draft columns', function () {
@@ -133,17 +132,22 @@ test('table session has one common draft order with guest item totals sorted alp
         ->and($draftOrder->totalAmount())->toBe('22.50');
 });
 
-test('table session cannot receive a second common draft order', function () {
+test('table session can keep repeat draft history and expose the latest draft order', function () {
     $tableSession = TableSession::factory()->active()->create();
 
-    DraftOrder::factory()
+    $firstDraftOrder = DraftOrder::factory()
         ->for($tableSession)
-        ->create();
+        ->create([
+            'status' => DraftOrderStatus::ConvertedToOrder,
+            'converted_to_order_at' => now(),
+        ]);
+    $secondDraftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create(['status' => DraftOrderStatus::Draft]);
 
-    expect(fn () => DraftOrder::factory()
-        ->for($tableSession)
-        ->create()
-    )->toThrow(QueryException::class);
+    expect(DraftOrder::query()->where('table_session_id', $tableSession->id)->orderBy('id')->get())->toHaveCount(2)
+        ->and($tableSession->fresh()->draftOrder->is($secondDraftOrder))->toBeTrue()
+        ->and($tableSession->fresh()->draftOrders()->reorder()->oldest('id')->first()?->is($firstDraftOrder))->toBeTrue();
 });
 
 test('draft order tracks the guest who sent the shared draft to waiter review', function () {

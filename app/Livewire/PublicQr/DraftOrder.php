@@ -15,6 +15,7 @@ use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -49,6 +50,12 @@ class DraftOrder extends Component
     public array $guestTotals = [];
 
     public string $totalAmount = '0.00';
+
+    public string $confirmedOrdersTotalAmount = '0.00';
+
+    public string $tableTotalAmount = '0.00';
+
+    public bool $hasConfirmedOrders = false;
 
     public int $itemCount = 0;
 
@@ -127,6 +134,7 @@ class DraftOrder extends Component
         $draftItems = $draftOrder?->items ?? collect();
         $guestSections = [];
         $totalCents = 0;
+        $confirmedOrdersTotalCents = $this->confirmedOrdersTotalCents();
 
         $this->draftStatusValue = $draftOrder?->status?->value;
         $this->draftStatusLabel = $draftOrder?->status?->label() ?? '';
@@ -237,6 +245,9 @@ class DraftOrder extends Component
             ->all();
 
         $this->totalAmount = self::centsToDecimal($totalCents);
+        $this->confirmedOrdersTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents);
+        $this->tableTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents));
+        $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = count($this->items);
         $this->canSendDraftToWaiter = $this->canSendDraftToWaiter && $this->itemCount > 0;
 
@@ -562,7 +573,27 @@ class DraftOrder extends Component
                     ->orderBy('id'),
             ])
             ->where('table_session_id', $this->tableSessionId)
+            ->latest('id')
             ->first();
+    }
+
+    private function confirmedOrdersTotalCents(): int
+    {
+        return Order::query()
+            ->select(['id', 'table_session_id', 'status', 'total_price'])
+            ->where('table_session_id', $this->tableSessionId)
+            ->whereNotIn('status', [OrderStatus::Cancelled->value])
+            ->get()
+            ->sum(fn (Order $order): int => self::decimalToCents($order->total_price));
+    }
+
+    private function openDraftTotalCents(?DraftOrderModel $draftOrder, int $draftTotalCents): int
+    {
+        if (! $draftOrder instanceof DraftOrderModel) {
+            return 0;
+        }
+
+        return $draftOrder->status === DraftOrderStatus::ConvertedToOrder ? 0 : $draftTotalCents;
     }
 
     /**
@@ -634,6 +665,8 @@ class DraftOrder extends Component
                 'status',
             ])
             ->where('table_session_id', $this->tableSessionId)
+            ->where('status', DraftOrderStatus::Draft->value)
+            ->latest('id')
             ->first();
     }
 

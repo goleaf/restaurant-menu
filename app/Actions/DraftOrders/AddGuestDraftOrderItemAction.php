@@ -176,10 +176,24 @@ class AddGuestDraftOrderItemAction
 
     private function draftOrderFor(TableSession $tableSession): DraftOrder
     {
-        $draftOrder = DraftOrder::query()->firstOrCreate(
-            ['table_session_id' => $tableSession->id],
-            ['status' => DraftOrderStatus::Draft],
-        );
+        $draftOrder = DraftOrder::query()
+            ->select(['id', 'table_session_id', 'status'])
+            ->where('table_session_id', $tableSession->id)
+            ->whereIn('status', [
+                DraftOrderStatus::Draft->value,
+                DraftOrderStatus::SentToWaiter->value,
+                DraftOrderStatus::WaiterReview->value,
+                DraftOrderStatus::Rejected->value,
+            ])
+            ->latest('id')
+            ->first();
+
+        if (! $draftOrder instanceof DraftOrder) {
+            return DraftOrder::query()->create([
+                'table_session_id' => $tableSession->id,
+                'status' => DraftOrderStatus::Draft,
+            ]);
+        }
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
             throw ValidationException::withMessages([

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -359,7 +359,7 @@ Draft orders are the shared table draft before waiter confirmation. They are sto
 - `draft_orders`
 - `draft_order_items`
 
-Each `table_session` can have one common `draft_order`, enforced by a unique `table_session_id`.
+Each `table_session` can keep multiple `draft_orders` over time. `TableSession::draftOrder()` exposes the latest current draft, while `TableSession::draftOrders()` keeps the full draft history for repeat orders in the same open table session.
 
 Draft order statuses are:
 
@@ -373,7 +373,7 @@ Each draft item belongs to one concrete `table_session_guest` and may reference 
 
 Active guests can add available menu items to the shared draft from the public QR guest menu. The backend rechecks the guest token, guest status, table session status, menu item availability, and modifier availability before creating a draft item. Rejected, removed, pending, or left guests cannot add positions.
 
-The shared basket is a separate Livewire polling block. It groups active guests alphabetically by `guest_name`, shows each guest's positions, line prices, selected modifiers, comments, item count, guest total, and the total amount for the table.
+The shared basket is a separate Livewire polling block. It groups active guests alphabetically by `guest_name`, shows each guest's positions, line prices, selected modifiers, comments, item count, guest total, the current draft total, and the table total including already confirmed non-cancelled orders.
 
 An active guest can edit only their own draft positions. They can change quantity, comment, and currently available modifier selections, or delete their own position. The backend rechecks the browser guest token, active guest status, item ownership, table session, and draft status. Guests cannot edit or delete another guest's position.
 
@@ -386,6 +386,8 @@ Any active guest can press `Отправить официанту` for the share
 This guest action is only a waiter-review handoff. The draft does not become a real order until the waiter confirms it, and it still does not go to kitchen or bar until the waiter explicitly sends the confirmed order to kitchen/bar.
 
 When a draft is no longer in `draft` status, for example after it is sent to waiter review, guest editing and deletion are blocked for the existing draft.
+
+After a draft is confirmed into a real order, guests can add more positions in the same table session. The next guest add creates a new `draft_order` for the same `table_session`; that new draft must again be sent to the waiter, confirmed by the waiter, and explicitly dispatched to kitchen/bar. Old confirmed orders are not overwritten.
 
 The waiter can confirm a sent draft from the waiter table detail page. Confirmation changes the draft to `converted_to_order`, creates one real `orders` row with status `confirmed_by_waiter`, and copies draft positions into `order_items` as snapshots. If a source menu item has a kitchen department, the order item also stores `kitchen_department_id`, `kitchen_department_type`, and `kitchen_department_name`. Confirmation alone does not send anything to kitchen or bar.
 
@@ -461,7 +463,7 @@ Current log events are:
 
 Logs are written by backend actions for guest draft creation/editing, guest send-to-waiter, waiter draft edits, waiter confirmation/rejection/return-to-draft, explicit kitchen/bar dispatch, and manual confirmed-order status changes. Links to users, guests, drafts, and orders use nullable `nullOnDelete` references, while actor/status snapshots stay in the log row so restaurant control history remains readable.
 
-The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. New draft versioning is not implemented yet.
+The waiter can also reject a sent draft with a required reason. Rejection changes the draft to `rejected`; guests see the reason in the shared cart polling block. A rejected draft can be returned to `draft` from the waiter detail page so guests can edit and send it again. Repeat orders create a new draft only after the previous draft has become a confirmed order.
 
 Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, writes an `order_status_logs` row, and guests see the updated shared cart through Livewire polling.
 
@@ -492,7 +494,7 @@ Each open session links to a waiter table detail page:
 /restaurant/waiter/tables/{table_session}
 ```
 
-The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, draft status, guests sorted alphabetically, each guest's positions, comments, selected modifiers, per-guest totals, and the total amount for the table.
+The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, latest draft status, guests sorted alphabetically, each guest's current draft positions, comments, selected modifiers, per-guest draft totals, confirmed orders total, current draft total, and the total amount for the table.
 
 The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Users with `send_to_kitchen` can send a confirmed order to kitchen/bar, which creates department tickets and moves the service point to `cooking`. Once kitchen or bar marks positions ready, the waiter table detail shows the ready/served counts and lets the waiter mark ready positions as served.
 

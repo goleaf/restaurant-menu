@@ -220,11 +220,27 @@
         </section>
 
         <div class="flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ __('Общая сумма') }}</span>
+            <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                {{ $hasConfirmedOrders ? __('Текущий черновик') : __('Общая сумма') }}
+            </span>
             <span class="text-xl font-semibold text-zinc-950 dark:text-white">
                 {{ $totalAmount }} {{ $currency }}
             </span>
         </div>
+
+        @if ($hasConfirmedOrders)
+            <div class="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-sm dark:bg-emerald-950/30">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('Уже подтверждено') }}</span>
+                    <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalAmount }} {{ $currency }}</span>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 border-t border-emerald-100 pt-2 dark:border-emerald-900/60">
+                    <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('Итого за стол') }}</span>
+                    <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalAmount }} {{ $currency }}</span>
+                </div>
+            </div>
+        @endif
 
         @if ($canSendDraftToWaiter)
             <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">

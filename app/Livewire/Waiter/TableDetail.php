@@ -465,7 +465,7 @@ class TableDetail extends Component
     {
         $tableSession = TableSession::query()
             ->select(['id'])
-            ->with(['draftOrder' => fn ($query) => $query->select(['id', 'table_session_id', 'status'])])
+            ->with(['draftOrder' => fn ($query) => $query->select(['draft_orders.id', 'draft_orders.table_session_id', 'draft_orders.status'])])
             ->whereKey($this->tableSessionId)
             ->firstOrFail();
 
@@ -478,7 +478,7 @@ class TableDetail extends Component
             ->select(['id'])
             ->with([
                 'draftOrder' => fn ($query) => $query
-                    ->select(['id', 'table_session_id'])
+                    ->select(['draft_orders.id', 'draft_orders.table_session_id'])
                     ->with(['order' => fn ($orderQuery) => $orderQuery->select(['id', 'draft_order_id', 'status'])]),
             ])
             ->whereKey($this->tableSessionId)

@@ -2,6 +2,8 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Payments\BuildManualPaymentSummaryAction;
+use App\Actions\Payments\ResolvePaymentAccessibleBranchIdsAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
@@ -24,6 +26,8 @@ class BuildWaiterTableDetailAction
 {
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
+        private readonly BuildManualPaymentSummaryAction $buildPaymentSummary,
     ) {}
 
     /**
@@ -32,8 +36,10 @@ class BuildWaiterTableDetailAction
     public function handle(User $user, TableSession $tableSession): array
     {
         $accessibleBranchIds = $this->resolveAccessibleBranchIds->handle($user);
+        $paymentViewableBranchIds = $this->resolvePaymentAccess->viewableBranchIds($user);
 
-        if (! $accessibleBranchIds->contains((int) $tableSession->branch_id)) {
+        if (! $accessibleBranchIds->contains((int) $tableSession->branch_id)
+            && ! $paymentViewableBranchIds->contains((int) $tableSession->branch_id)) {
             return [
                 'has_access' => false,
                 'table' => null,
@@ -192,6 +198,10 @@ class BuildWaiterTableDetailAction
         $sendToKitchenBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::SendToKitchen);
         $canSendToKitchen = $sendToKitchenBranchIds->contains((int) $tableSession->branch_id);
+        $paymentViewableBranchIds = $this->resolvePaymentAccess->viewableBranchIds($user);
+        $paymentManageableBranchIds = $this->resolvePaymentAccess->manageableBranchIds($user);
+        $canViewPayments = $paymentViewableBranchIds->contains((int) $tableSession->branch_id);
+        $canManagePayments = $paymentManageableBranchIds->contains((int) $tableSession->branch_id);
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -203,6 +213,9 @@ class BuildWaiterTableDetailAction
         $confirmedOrdersTotalCents = $this->confirmedOrdersTotalCents($tableSession->orders);
         $openDraftTotalCents = $this->openDraftTotalCents($draftOrder, $draftTotalCents);
         $tableTotalCents = $confirmedOrdersTotalCents + $openDraftTotalCents;
+        $paymentSummary = $canViewPayments
+            ? $this->buildPaymentSummary->handle($tableSession)
+            : [];
 
         return [
             'id' => $tableSession->id,
@@ -241,6 +254,12 @@ class BuildWaiterTableDetailAction
                 canEditPendingDraft: $canEditPendingDraft,
                 canSendToKitchen: $canSendToKitchen,
             ),
+            'payment' => $this->paymentPayload(
+                summary: $paymentSummary,
+                sessionStatus: $sessionStatus,
+                canViewPayments: $canViewPayments,
+                canManagePayments: $canManagePayments,
+            ),
             'guest_sections' => $guestSections,
             'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
             'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
@@ -249,6 +268,68 @@ class BuildWaiterTableDetailAction
             'total' => $this->formatCents($tableTotalCents).' '.$currency,
             'guest_count' => count($guestSections),
             'item_count' => collect($guestSections)->sum(fn (array $guestSection): int => count($guestSection['items'])),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $summary
+     * @return array<string, mixed>
+     */
+    private function paymentPayload(
+        array $summary,
+        TableSessionStatus $sessionStatus,
+        bool $canViewPayments,
+        bool $canManagePayments,
+    ): array {
+        if (! $canViewPayments) {
+            return [
+                'can_view' => false,
+                'can_manage' => false,
+                'can_record_table_payment' => false,
+                'can_close_session' => false,
+                'payment_methods' => [],
+                'guest_balances' => [],
+                'payments' => [],
+            ];
+        }
+
+        $canRecord = $canManagePayments
+            && (bool) ($summary['has_payable_total'] ?? false)
+            && ! (bool) ($summary['has_open_draft'] ?? false)
+            && (int) ($summary['remaining_total_cents'] ?? 0) > 0
+            && ! in_array($sessionStatus, [
+                TableSessionStatus::Paid,
+                TableSessionStatus::Closed,
+                TableSessionStatus::Cancelled,
+            ], true);
+
+        $guestBalances = collect($summary['guest_balances'] ?? [])
+            ->map(function (array $guestBalance) use ($canRecord): array {
+                $guestBalance['can_record_payment'] = $canRecord && (int) ($guestBalance['remaining_cents'] ?? 0) > 0;
+
+                return $guestBalance;
+            })
+            ->values()
+            ->all();
+
+        return [
+            'can_view' => true,
+            'can_manage' => $canManagePayments,
+            'can_record_table_payment' => $canRecord,
+            'can_close_session' => $canManagePayments && $sessionStatus === TableSessionStatus::Paid,
+            'payment_methods' => $summary['payment_methods'] ?? [],
+            'currency' => $summary['currency'] ?? 'EUR',
+            'confirmed_total_cents' => (int) ($summary['confirmed_total_cents'] ?? 0),
+            'paid_total_cents' => (int) ($summary['paid_total_cents'] ?? 0),
+            'remaining_total_cents' => (int) ($summary['remaining_total_cents'] ?? 0),
+            'confirmed_total' => $summary['confirmed_total'] ?? '0.00 EUR',
+            'paid_total' => $summary['paid_total'] ?? '0.00 EUR',
+            'remaining_total' => $summary['remaining_total'] ?? '0.00 EUR',
+            'has_payable_total' => (bool) ($summary['has_payable_total'] ?? false),
+            'has_open_draft' => (bool) ($summary['has_open_draft'] ?? false),
+            'is_fully_paid' => (bool) ($summary['is_fully_paid'] ?? false),
+            'guest_balances' => $guestBalances,
+            'payments' => $summary['payments'] ?? [],
         ];
     }
 

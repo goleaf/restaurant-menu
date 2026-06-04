@@ -29,6 +29,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Branch realtime behavior must use Livewire polling, not WebSockets.
 - Active guest waiter calls must use local database state and database notifications only.
 - Active guest bill requests must use `table_sessions.status = payment_requested`, local service point status, database notifications, and Livewire polling only.
+- Manual payments must be offline staff-entered records only; no Stripe, PayPal, online acquiring, or external payment service is connected.
 
 ## What Is Already Done
 
@@ -63,13 +64,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
+- Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and close-paid-session action.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, online payment, analytics, or advanced kitchen production history has been implemented yet.
+No menu translation admin editor, QR PDF generation, online payment provider, analytics, or advanced kitchen production history has been implemented yet.
 
 ## Tables
 
@@ -107,6 +109,7 @@ No menu translation admin editor, QR PDF generation, online payment, analytics, 
 - `table_session_guests`
 - `table_session_join_requests`
 - `waiter_calls`
+- `manual_payments`
 - `draft_orders`
 - `draft_order_items`
 - `orders`
@@ -351,7 +354,7 @@ Table session:
 - Guest invite links respect `branch_settings.allow_guest_invite_links`.
 - Guest invite URLs use `/q/{public_token}?invite={guest_invite_token}` and must not expose table session IDs, service point IDs, branch IDs, table numbers, or area names.
 - Opening a guest invite link asks the invited person for a name and creates a pending join request for the invited table session.
-- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, request-bill status flow, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Online payment logic does not exist yet.
+- Draft order schema, guest add-to-draft UI, send-to-waiter handoff, waiter dashboard visibility, waiter draft editing, waiter confirm/reject actions, request-bill status flow, manual offline payment flow, and explicit kitchen/bar dispatch exist. Confirmed orders are stored in `orders` and `order_items`; dispatch creates `kitchen_tickets` and `kitchen_ticket_items`. Online payment provider logic does not exist yet.
 
 Table session guest:
 
@@ -395,7 +398,6 @@ Waiter call:
 
 Bill request:
 
-- No separate payment table exists yet.
 - `RequestBillForTableSessionAction` requires an active table session guest and refuses paid, closed, cancelled, or inactive service point cases.
 - The action sets `table_sessions.status` to `payment_requested`.
 - The action stores `metadata.bill_requested_at` and `metadata.bill_requested_by_guest_id` on the table session.
@@ -403,7 +405,30 @@ Bill request:
 - Repeating the request while the session is already `payment_requested` is idempotent and does not send duplicate database notifications.
 - `BillRequestedNotification` uses only the `database` channel; no mail, SMS, push, Telegram API, WebSocket, Redis, online payment provider, or external service is used.
 - Waiter notification recipients are resolved through the same `ResolveWaiterNotificationRecipientsAction` and branch-level `view_orders` access as guest waiter calls.
-- Waiters can see the bill request in the waiter dashboard polling payload, but manual payment close is not implemented yet.
+- Waiters can see the bill request in the waiter dashboard polling payload.
+- The guest `Попросить счёт` button does not create `manual_payments`; only staff can record payment later.
+
+Manual payment:
+
+- Stored in `manual_payments`.
+- Belongs to one branch, service point, and table session.
+- Optionally belongs to one table session guest through `table_session_guest_id`.
+- Stores `recorded_by_user_id`, `scope`, `payment_method`, `amount`, `currency`, optional `guest_name` snapshot, optional `note`, `paid_at`, optional JSON `metadata`, and timestamps.
+- Scope values are `table` and `guest`.
+- Payment method values are `cash`, `card_terminal`, and `other`.
+- `ManualPayment` casts scope to `ManualPaymentScope`, method to `ManualPaymentMethod`, amount to decimal, `paid_at` to datetime, and metadata to array.
+- `TableSession::manualPayments()`, `TableSessionGuest::manualPayments()`, `ServicePoint::manualPayments()`, and `User::manualPayments()` expose payment history.
+- `SystemPermission::ManagePayments` exists as `manage_payments` and is marked critical.
+- Users with `view_payments` can view the payment summary.
+- Users with `manage_payments` or the fixed `cashier` organization role can record manual payments.
+- `ResolvePaymentAccessibleBranchIdsAction` resolves view/manage branch access through permissions, superadmin bypass, cashier organization role, and active branch assignments.
+- `BuildManualPaymentSummaryAction` computes confirmed non-cancelled order totals, manual paid totals, remaining balance, per-guest balances, and payment history from SQLite.
+- Payment balance is based on confirmed `orders` / `order_items`; open unconfirmed drafts are not payable.
+- `RecordManualPaymentAction` records either whole-table or guest-scoped payment and refuses payment while the latest draft is `draft`, `sent_to_waiter`, or `waiter_review`.
+- If the remaining confirmed order balance reaches zero, `RecordManualPaymentAction` sets `table_sessions.status` to `paid`, stores `metadata.paid_at` and `metadata.paid_by_user_id`, and moves the service point to `paid`.
+- Partial guest payment keeps or moves the session to `payment_requested` and the service point to `payment_requested`.
+- `ClosePaidTableSessionAction` closes only `paid` sessions, fills `closed_by_user_id` and `ended_at`, sets status to `closed`, and moves the service point to `free`.
+- Manual payments do not change kitchen tickets, do not dispatch orders, and do not connect Stripe, PayPal, online acquiring, or other external services.
 
 Draft order:
 
@@ -878,9 +903,11 @@ Local media storage:
 - Data is prepared by `App\Actions\Waiter\BuildWaiterDashboardAction`; Blade receives arrays and must not query the database.
 - Table detail data is prepared by `App\Actions\Waiter\BuildWaiterTableDetailAction`; Blade receives arrays and must not query the database.
 - Waiter branch access is shared through `App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction`.
-- Access requires auth and `view_orders` in the organization context.
+- Waiter dashboard access requires auth and `view_orders` in the organization context.
+- Waiter table detail access requires `view_orders`, `view_payments`, `manage_payments`, or fixed `cashier` access for the table session branch.
 - Edit actions require `confirm_orders` or `edit_pending_orders` in the organization context and respect active `branch_users` assignments.
 - Confirm/reject/return-to-draft actions require `confirm_orders` in the organization context and respect active `branch_users` assignments.
+- Manual payment actions require `manage_payments` or the fixed `cashier` organization role and respect active `branch_users` assignments.
 - Superadmin access still works through the existing computed permission bypass.
 - If the user has active `branch_users` assignments inside organizations where they can view orders, the dashboard shows only those assigned branches.
 - If the user has no active branch assignments, the dashboard shows branches from organizations where the user has `view_orders`.
@@ -903,11 +930,15 @@ Local media storage:
 - The table detail page can send a confirmed order to kitchen/bar for users with `send_to_kitchen`. This creates `kitchen_tickets` grouped by department, changes the order to `sent_to_kitchen_bar`, and moves the service point status to `cooking`.
 - The table detail page shows dispatched kitchen/bar ticket items, ready count, served count, department names, modifiers, comments, and item status once an order has been sent to kitchen/bar.
 - The table detail page lets a waiter with `view_orders` mark ready ticket items as served. This fills `kitchen_ticket_items.served_at` and `served_by_user_id`, updates the order status when all items are served, and refreshes through polling.
+- The table detail page shows a manual payment summary for users with `view_payments`, `manage_payments`, or fixed `cashier` access.
+- The table detail page can record whole-table or per-guest manual payment for users with `manage_payments` or fixed `cashier` access.
+- The table detail page can close a fully paid session, moving the table session to `closed` and the service point to `free`.
 - Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
 - The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
 - The table detail page can return a rejected draft to `draft` for guest edits.
-- Waiter detail edit/review actions do not send anything to kitchen/bar until the explicit `Send to kitchen/bar` action is clicked, and they do not create payments.
+- Waiter detail edit/review actions do not send anything to kitchen/bar until the explicit `Send to kitchen/bar` action is clicked.
+- Manual payment actions do not create, confirm, or dispatch orders; they only record offline staff-entered payments for already confirmed non-cancelled orders.
 
 ## Current Kitchen Screen
 
@@ -1051,7 +1082,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be manual payment closure after a bill request, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1062,13 +1093,15 @@ The next expected product step may be manual payment closure after a bill reques
 - Do not create more than one pending waiter call for the same service point.
 - Do not send bill requests through online payments, SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
 - Do not create payment records from the guest `Попросить счёт` button; it is only a `payment_requested` status and database notification flow.
+- Do not add Stripe, PayPal, online acquiring, or paid payment providers to the manual payment flow.
+- Do not allow manual payment while the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`.
 - Do not allow opening a second table session for a service point while its current session is `payment_requested`.
 - Do not expose internal IDs in future QR/public guest URLs.
 - Keep public QR URLs token-only as `/q/{public_token}`.
 - Do not expose table session IDs in guest invite links.
 - Keep guest list polling isolated to the guest list block; do not make the whole guest table page poll.
 - Do not make the guest menu block poll; menu freshness should come from database cache invalidation.
-- Do not add AI translations, a complex translation editor, advanced kitchen/bar production history, or payment logic unless a prompt explicitly asks for that exact step.
+- Do not add AI translations, a complex translation editor, advanced kitchen/bar production history, or online payment logic unless a prompt explicitly asks for that exact step.
 - Do not bypass `AddGuestDraftOrderItemAction` when adding guest draft rows.
 - Do not bypass `UpdateGuestDraftOrderItemAction` or `DeleteGuestDraftOrderItemAction` when changing guest-owned draft rows.
 - Do not bypass `SendDraftOrderToWaiterAction` when sending the shared draft to waiter review.

@@ -219,6 +219,184 @@
                 @endif
             </dl>
 
+            @if (data_get($table, 'payment.can_view'))
+                <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Payments') }}</h3>
+
+                    @if ($paymentFeedbackMessage)
+                        <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                            {{ $paymentFeedbackMessage }}
+                        </p>
+                    @endif
+
+                    @error('manual_payment')
+                        <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                    @enderror
+
+                    <dl class="mt-4 grid gap-3 text-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Confirmed orders') }}</dt>
+                            <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.confirmed_total') }}</dd>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Paid') }}</dt>
+                            <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.paid_total') }}</dd>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Remaining') }}</dt>
+                            <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.remaining_total') }}</dd>
+                        </div>
+                    </dl>
+
+                    @if (data_get($table, 'payment.has_open_draft'))
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                            {{ __('Finish the current draft before marking payment.') }}
+                        </p>
+                    @elseif (! data_get($table, 'payment.has_payable_total'))
+                        <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            {{ __('No confirmed orders to pay yet.') }}
+                        </p>
+                    @endif
+
+                    @if (data_get($table, 'payment.can_manage'))
+                        <div class="mt-4 space-y-3">
+                            <flux:select wire:model="paymentMethod" :label="__('Payment method')">
+                                @foreach (data_get($table, 'payment.payment_methods', []) as $paymentMethodOption)
+                                    <flux:select.option wire:key="payment-method-{{ $paymentMethodOption['value'] }}" value="{{ $paymentMethodOption['value'] }}">
+                                        {{ __($paymentMethodOption['label']) }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <label class="grid gap-1 text-sm">
+                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Note') }}</span>
+                                <textarea
+                                    wire:model="paymentNote"
+                                    rows="2"
+                                    maxlength="500"
+                                    class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                                ></textarea>
+                            </label>
+
+                            @if (data_get($table, 'payment.can_record_table_payment'))
+                                <flux:button
+                                    icon="banknotes"
+                                    variant="primary"
+                                    type="button"
+                                    class="w-full"
+                                    wire:click="recordTablePayment"
+                                    wire:loading.attr="disabled"
+                                    wire:target="recordTablePayment"
+                                >
+                                    <span wire:loading.remove wire:target="recordTablePayment">{{ __('Mark whole table paid') }} · {{ data_get($table, 'payment.remaining_total') }}</span>
+                                    <span wire:loading wire:target="recordTablePayment">{{ __('Saving') }}</span>
+                                </flux:button>
+                            @endif
+
+                            @if (data_get($table, 'payment.can_close_session'))
+                                <flux:button
+                                    icon="check"
+                                    type="button"
+                                    class="w-full"
+                                    wire:click="closePaidSession"
+                                    wire:loading.attr="disabled"
+                                    wire:target="closePaidSession"
+                                >
+                                    <span wire:loading.remove wire:target="closePaidSession">{{ __('Close table') }}</span>
+                                    <span wire:loading wire:target="closePaidSession">{{ __('Closing') }}</span>
+                                </flux:button>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="mt-4 space-y-2">
+                        <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Guests') }}</p>
+
+                        @forelse (data_get($table, 'payment.guest_balances', []) as $guestBalance)
+                            <article wire:key="payment-guest-{{ $guestBalance['guest_id'] }}" class="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="font-medium text-zinc-950 dark:text-white">{{ $guestBalance['guest_name'] }}</p>
+                                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            {{ __('Due') }}: {{ $guestBalance['due'] }}
+                                            · {{ __('Paid') }}: {{ $guestBalance['paid'] }}
+                                        </p>
+                                    </div>
+
+                                    <flux:badge :color="$guestBalance['is_paid'] ? 'lime' : 'zinc'">
+                                        {{ $guestBalance['is_paid'] ? __('Paid') : $guestBalance['remaining'] }}
+                                    </flux:badge>
+                                </div>
+
+                                @if ($guestBalance['covered_by_table_payment'])
+                                    <p class="mt-2 text-xs text-lime-700 dark:text-lime-300">
+                                        {{ __('Covered by whole-table payment.') }}
+                                    </p>
+                                @endif
+
+                                @if ($guestBalance['can_record_payment'])
+                                    <flux:button
+                                        size="sm"
+                                        icon="banknotes"
+                                        type="button"
+                                        class="mt-3 w-full"
+                                        wire:click="recordGuestPayment({{ $guestBalance['guest_id'] }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})"
+                                    >
+                                        <span wire:loading.remove wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})">{{ __('Mark guest paid') }} · {{ $guestBalance['remaining'] }}</span>
+                                        <span wire:loading wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})">{{ __('Saving') }}</span>
+                                    </flux:button>
+                                @endif
+                            </article>
+                        @empty
+                            <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                                {{ __('No guests with confirmed totals yet.') }}
+                            </p>
+                        @endforelse
+                    </div>
+
+                    @if (data_get($table, 'payment.payments'))
+                        <div class="mt-4 space-y-2">
+                            <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Payment history') }}</p>
+
+                            @foreach (data_get($table, 'payment.payments', []) as $payment)
+                                <div wire:key="manual-payment-{{ $payment['id'] }}" class="rounded-md bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-800">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p class="font-medium text-zinc-950 dark:text-white">
+                                                {{ $payment['amount'] }} · {{ __($payment['method_label']) }}
+                                            </p>
+                                            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                {{ __($payment['scope_label']) }}
+                                                @if ($payment['guest_name'])
+                                                    · {{ $payment['guest_name'] }}
+                                                @endif
+                                            </p>
+                                        </div>
+
+                                        <p class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $payment['paid_at'] }}</p>
+                                    </div>
+
+                                    @if ($payment['recorded_by_name'] || $payment['note'])
+                                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                            @if ($payment['recorded_by_name'])
+                                                {{ __('By') }}: {{ $payment['recorded_by_name'] }}
+                                            @endif
+                                            @if ($payment['note'])
+                                                · {{ $payment['note'] }}
+                                            @endif
+                                        </p>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endif
+
             <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                 <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Waiter review') }}</h3>
 

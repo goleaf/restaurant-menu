@@ -4,6 +4,8 @@ namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
+use App\Actions\Payments\ClosePaidTableSessionAction;
+use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -12,6 +14,7 @@ use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Waiter\ReturnRejectedDraftOrderToDraftAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
+use App\Enums\ManualPaymentMethod;
 use App\Enums\MenuStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -42,6 +45,12 @@ class TableDetail extends Component
     public string $rejectionReason = '';
 
     public string $reviewFeedbackMessage = '';
+
+    public string $paymentFeedbackMessage = '';
+
+    public string $paymentMethod = 'cash';
+
+    public string $paymentNote = '';
 
     /**
      * @var list<array{value: string, label: string, price: string}>
@@ -445,6 +454,78 @@ class TableDetail extends Component
         $this->refreshTable();
     }
 
+    public function recordTablePayment(RecordManualPaymentAction $recordManualPayment): void
+    {
+        $this->resetValidation();
+        $this->paymentFeedbackMessage = '';
+
+        try {
+            $recordManualPayment->recordTable(
+                tableSession: $this->currentTableSession(),
+                recordedBy: $this->currentUser(),
+                paymentMethod: $this->currentPaymentMethod(),
+                note: $this->paymentNote,
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->paymentNote = '';
+        $this->paymentFeedbackMessage = __('Оплата всего стола отмечена.');
+        $this->refreshTable();
+    }
+
+    public function recordGuestPayment(int $guestId, RecordManualPaymentAction $recordManualPayment): void
+    {
+        $this->resetValidation();
+        $this->paymentFeedbackMessage = '';
+
+        $guest = $this->paymentGuestForCurrentTable($guestId);
+
+        if (! $guest instanceof TableSessionGuest) {
+            $this->addError('manual_payment', __('Гость не найден в этой сессии.'));
+
+            return;
+        }
+
+        try {
+            $recordManualPayment->recordGuest(
+                tableSession: $this->currentTableSession(),
+                guest: $guest,
+                recordedBy: $this->currentUser(),
+                paymentMethod: $this->currentPaymentMethod(),
+                note: $this->paymentNote,
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->paymentNote = '';
+        $this->paymentFeedbackMessage = __('Оплата гостя отмечена.');
+        $this->refreshTable();
+    }
+
+    public function closePaidSession(ClosePaidTableSessionAction $closePaidTableSession): void
+    {
+        $this->resetValidation();
+        $this->paymentFeedbackMessage = '';
+
+        try {
+            $closePaidTableSession->handle($this->currentTableSession(), $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->paymentFeedbackMessage = __('Стол закрыт. Место свободно для следующих гостей.');
+        $this->refreshTable();
+    }
+
     public function render(): View
     {
         return view('livewire.waiter.table-detail');
@@ -485,6 +566,32 @@ class TableDetail extends Component
             ->firstOrFail();
 
         return $tableSession->draftOrder?->order;
+    }
+
+    private function currentTableSession(): TableSession
+    {
+        return TableSession::query()
+            ->select(['id'])
+            ->whereKey($this->tableSessionId)
+            ->firstOrFail();
+    }
+
+    private function currentPaymentMethod(): ManualPaymentMethod
+    {
+        return ManualPaymentMethod::tryFrom($this->paymentMethod) ?? ManualPaymentMethod::Cash;
+    }
+
+    private function paymentGuestForCurrentTable(int $guestId): ?TableSessionGuest
+    {
+        if ($guestId < 1) {
+            return null;
+        }
+
+        return TableSessionGuest::query()
+            ->select(['id', 'table_session_id', 'guest_name'])
+            ->where('table_session_id', $this->tableSessionId)
+            ->whereKey($guestId)
+            ->first();
     }
 
     private function selectedAddingGuest(): ?TableSessionGuest

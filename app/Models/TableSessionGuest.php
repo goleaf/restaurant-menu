@@ -96,4 +96,14 @@ class TableSessionGuest extends Model
             ->orderBy('occurred_at')
             ->orderBy('id');
     }
+
+    /**
+     * @return HasMany<ManualPayment, $this>
+     */
+    public function manualPayments(): HasMany
+    {
+        return $this->hasMany(ManualPayment::class, 'table_session_guest_id')
+            ->orderBy('paid_at')
+            ->orderBy('id');
+    }
 }

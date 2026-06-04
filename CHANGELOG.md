@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 067 - Manual Payments
+
+- Added local `manual_payments` records for staff-entered cash, card-terminal, and other offline payments.
+- Added the flexible `manage_payments` permission while keeping the fixed `cashier` role able to manage payments without online acquiring.
+- Extended waiter table detail with a payment summary, whole-table payment action, per-guest payment actions, manual payment history, and a close-paid-session action through Livewire polling.
+- Full manual payment now moves the table session to `paid` and the service point to `paid`; closing the paid session moves it to `closed` and frees the service point.
+- Guarded manual payment against unpaid/open drafts so unconfirmed guest selections cannot be paid as confirmed orders.
+- Verified whole-table payment, per-guest cashier payment, view-only payment access, and open-draft blocking on SQLite without Redis, WebSockets, S3, Docker, Stripe, PayPal, or external payment services.
+
 ### Prompt 066 - Request Bill Button
 
 - Added `RequestBillForTableSessionAction` so an active guest can press `Попросить счёт` from the shared guest basket.

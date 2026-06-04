@@ -118,6 +118,16 @@ class ServicePoint extends Model
     }
 
     /**
+     * @return HasMany<ManualPayment, $this>
+     */
+    public function manualPayments(): HasMany
+    {
+        return $this->hasMany(ManualPayment::class)
+            ->orderBy('paid_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return HasOne<TableSession, $this>
      */
     public function activeTableSession(): HasOne

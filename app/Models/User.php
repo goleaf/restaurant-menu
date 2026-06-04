@@ -119,6 +119,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * @return HasMany<ManualPayment, $this>
+     */
+    public function manualPayments(): HasMany
+    {
+        return $this->hasMany(ManualPayment::class, 'recorded_by_user_id')
+            ->orderBy('paid_at')
+            ->orderBy('id');
+    }
+
+    /**
      * @return BelongsToMany<Role, $this>
      */
     public function roles(): BelongsToMany

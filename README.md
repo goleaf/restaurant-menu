@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -248,7 +248,7 @@ Users with `view_orders` or `confirm_orders` can open a table from the service p
 
 Active guests can press `Позвать официанта` from the public QR table page. The request creates or reuses one pending `waiter_calls` row for the service point, moves the service point status to `waiting_waiter`, and writes database notifications for waiters who can view orders in that branch. No SMS, push, Telegram API, WebSockets, Redis, or external service is used.
 
-Active guests can press `Попросить счёт` from the same shared basket. The action changes the current `table_sessions.status` to `payment_requested`, moves the service point status to `payment_requested`, keeps per-guest and table totals visible to guests, and writes a database notification for eligible waiters. This is a request/status flow only; no online payments are implemented.
+Active guests can press `Попросить счёт` from the same shared basket. The action changes the current `table_sessions.status` to `payment_requested`, moves the service point status to `payment_requested`, keeps per-guest and table totals visible to guests, and writes a database notification for eligible waiters. This is a request/status flow only; it does not create payment records and does not start online payment logic.
 
 Permanent QR codes are attached to the stable service point record. The CRUD action creates an internal service point code once, and editing does not change it. Renaming a service point or moving it to another area must not change the QR identity.
 
@@ -312,6 +312,18 @@ An active guest can create an invite link for the current table session from the
 The link does not expose organization IDs, branch IDs, service point IDs, table session IDs, table numbers, or area names. When the invited person opens the link and enters a name, the system creates a pending join request for the current table session. Current active guests approve or reject it through the same Livewire polling approval UI.
 
 Guest-created sessions can display the cached branch menu for active guests and write active guest selections to `draft_order_items`, but they do not create final orders, start kitchen/bar workflows, or create payment flows. Guest-created sessions do not send anything to the kitchen or bar.
+
+## Manual Payments
+
+Manual payments are stored in the `manual_payments` table. They are staff-entered offline records for cash, card-terminal, or other local payment methods. Stripe, PayPal, online acquiring, paid payment providers, WebSockets, Redis, and external services are not used.
+
+Each manual payment belongs to a branch, service point, and table session. A payment can cover the whole table or a specific table session guest. Guest-scoped payments store the guest id and a `guest_name` snapshot so the payment history remains readable later.
+
+The waiter table detail page shows payment totals for confirmed non-cancelled orders, already recorded manual payments, remaining table balance, per-guest balances, and manual payment history. Payment actions are available to users with `manage_payments` in the branch context or the fixed `cashier` organization role. Users with `view_payments` can see the payment summary but cannot record payment.
+
+Manual payment never pays an open draft. If the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`, staff must finish that draft first. This protects the rule that every order must be confirmed by a waiter before it becomes payable confirmed order history.
+
+When the remaining confirmed order balance reaches zero, the table session status becomes `paid` and the service point status becomes `paid`. Staff can then close the paid session from the same page; closing sets the table session status to `closed`, fills `closed_by_user_id` / `ended_at`, and moves the service point back to `free`.
 
 ## Table Session Guests
 
@@ -502,9 +514,9 @@ Each open session links to a waiter table detail page:
 /restaurant/waiter/tables/{table_session}
 ```
 
-The detail page is also protected by `view_orders` and the same branch visibility rules. It shows branch, current zone, current service point, session status, latest draft status, guests sorted alphabetically, each guest's current draft positions, comments, selected modifiers, per-guest draft totals, confirmed orders total, current draft total, and the total amount for the table.
+The detail page is protected by branch-level order or payment access. Users with `view_orders` see the waiter order view. Users with `view_payments`, `manage_payments`, or the fixed `cashier` role can access the same page for payment handling. It shows branch, current zone, current service point, session status, latest draft status, guests sorted alphabetically, each guest's current draft positions, comments, selected modifiers, per-guest draft totals, confirmed orders total, current draft total, payment summary, and the total amount for the table.
 
-The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Users with `send_to_kitchen` can send a confirmed order to kitchen/bar, which creates department tickets and moves the service point to `cooking`. Once kitchen or bar marks positions ready, the waiter table detail shows the ready/served counts and lets the waiter mark ready positions as served.
+The detail page refreshes through Livewire polling every 1 second. Users with `confirm_orders` or `edit_pending_orders` can edit a pending sent draft before confirmation. Users with `confirm_orders` can confirm a sent draft into a real order or reject it with a reason. Users with `send_to_kitchen` can send a confirmed order to kitchen/bar, which creates department tickets and moves the service point to `cooking`. Users with `manage_payments` or the fixed `cashier` role can record whole-table or per-guest manual payments. Once kitchen or bar marks positions ready, the waiter table detail shows the ready/served counts and lets the waiter mark ready positions as served.
 
 ## Permanent QR Codes
 
@@ -587,6 +599,7 @@ Implemented:
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Guest waiter-call requests stored in `waiter_calls` with Laravel database notifications for the waiter dashboard.
 - Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
+- Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.

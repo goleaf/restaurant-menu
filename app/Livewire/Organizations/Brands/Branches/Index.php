@@ -7,11 +7,14 @@ use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
+use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
+use App\Models\QrCode;
+use App\Models\ServicePoint;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -278,9 +281,71 @@ class Index extends Component
                 'created_at',
                 'updated_at',
             ])
+            ->withCount([
+                'areaNodes as setup_active_area_nodes_count' => fn ($query) => $query->where('is_active', true),
+                'servicePoints as setup_active_service_points_count' => fn ($query) => $query->where('is_active', true),
+                'servicePoints as setup_active_qr_codes_count' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->whereHas('activeQrCode'),
+            ])
+            ->with([
+                'servicePoints' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'name',
+                        'is_active',
+                    ])
+                    ->where('is_active', true)
+                    ->with([
+                        'activeQrCode' => fn ($query) => $query
+                            ->select([
+                                'id',
+                                'service_point_id',
+                                'public_token',
+                                'short_code',
+                                'status',
+                            ])
+                            ->where('status', QrCodeStatus::Active->value),
+                    ])
+                    ->orderBy('id'),
+            ])
             ->orderBy('name')
             ->orderBy('id')
             ->get();
+    }
+
+    /**
+     * @return list<array{
+     *     branch: Branch,
+     *     counts: array{areas: int, service_points: int, qr_codes: int},
+     *     steps: list<array{
+     *         number: int,
+     *         label: string,
+     *         description: string,
+     *         icon: string,
+     *         href: string|null,
+     *         button_label: string|null,
+     *         is_done: bool,
+     *         is_available: bool
+     *     }>
+     * }>
+     */
+    #[Computed]
+    public function branchSetupGuides(): array
+    {
+        return $this->branches
+            ->map(fn (Branch $branch): array => [
+                'branch' => $branch,
+                'counts' => [
+                    'areas' => (int) ($branch->setup_active_area_nodes_count ?? 0),
+                    'service_points' => (int) ($branch->setup_active_service_points_count ?? 0),
+                    'qr_codes' => (int) ($branch->setup_active_qr_codes_count ?? 0),
+                ],
+                'steps' => $this->branchSetupSteps($branch),
+            ])
+            ->values()
+            ->all();
     }
 
     public function render(): View
@@ -337,6 +402,121 @@ class Index extends Component
         $this->timezone = 'Europe/Vilnius';
         $this->currency = 'EUR';
         $this->isActive = true;
+    }
+
+    /**
+     * @return list<array{
+     *     number: int,
+     *     label: string,
+     *     description: string,
+     *     icon: string,
+     *     href: string|null,
+     *     button_label: string|null,
+     *     is_done: bool,
+     *     is_available: bool
+     * }>
+     */
+    private function branchSetupSteps(Branch $branch): array
+    {
+        $areaCount = (int) ($branch->setup_active_area_nodes_count ?? 0);
+        $servicePointCount = (int) ($branch->setup_active_service_points_count ?? 0);
+        $qrCount = (int) ($branch->setup_active_qr_codes_count ?? 0);
+        $firstActiveQrCode = $this->firstActiveQrCode($branch);
+
+        return [
+            [
+                'number' => 1,
+                'label' => __('Создать филиал'),
+                'description' => $branch->is_active
+                    ? __('Филиал создан и готов к настройке.')
+                    : __('Филиал создан, но пока выключен.'),
+                'icon' => 'building-office',
+                'href' => $this->canManageBranches
+                    ? route('organizations.brands.branches.settings.index', [$this->organization, $this->brand, $branch])
+                    : null,
+                'button_label' => $this->canManageBranches ? __('Настройки') : null,
+                'is_done' => true,
+                'is_available' => $this->canManageBranches,
+            ],
+            [
+                'number' => 2,
+                'label' => __('Добавить зоны'),
+                'description' => $areaCount > 0
+                    ? trans_choice('{1} :count зона уже добавлена|[2,*] :count зоны уже добавлены', $areaCount, ['count' => $areaCount])
+                    : __('Создайте зал, террасу или VIP-зону.'),
+                'icon' => 'rectangle-group',
+                'href' => $this->canManageZones
+                    ? route('organizations.brands.branches.areas.index', [$this->organization, $this->brand, $branch])
+                    : null,
+                'button_label' => __('Зоны'),
+                'is_done' => $areaCount > 0,
+                'is_available' => $this->canManageZones,
+            ],
+            [
+                'number' => 3,
+                'label' => __('Добавить столы'),
+                'description' => $servicePointCount > 0
+                    ? trans_choice('{1} :count стол или место добавлено|[2,*] :count столов или мест добавлено', $servicePointCount, ['count' => $servicePointCount])
+                    : __('Добавьте столы, барные места или комнаты.'),
+                'icon' => 'squares-2x2',
+                'href' => $this->canManageServicePoints
+                    ? route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $branch])
+                    : null,
+                'button_label' => __('Столы'),
+                'is_done' => $servicePointCount > 0,
+                'is_available' => $this->canManageServicePoints,
+            ],
+            [
+                'number' => 4,
+                'label' => __('Сгенерировать QR'),
+                'description' => $qrCount > 0
+                    ? trans_choice('{1} :count QR уже готов|[2,*] :count QR уже готовы', $qrCount, ['count' => $qrCount])
+                    : __('Создайте постоянный QR для каждого стола.'),
+                'icon' => 'qr-code',
+                'href' => $this->canGenerateQr && $servicePointCount > 0
+                    ? route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $branch])
+                    : null,
+                'button_label' => __('QR'),
+                'is_done' => $qrCount > 0,
+                'is_available' => $this->canGenerateQr && $servicePointCount > 0,
+            ],
+            [
+                'number' => 5,
+                'label' => __('Напечатать QR'),
+                'description' => $qrCount > 0
+                    ? __('Откройте страницу печати наклеек.')
+                    : __('Печать появится после создания QR.'),
+                'icon' => 'printer',
+                'href' => $this->canGenerateQr && $qrCount > 0
+                    ? route('organizations.brands.branches.qr.print', [$this->organization, $this->brand, $branch])
+                    : null,
+                'button_label' => __('Печать'),
+                'is_done' => $qrCount > 0,
+                'is_available' => $this->canGenerateQr && $qrCount > 0,
+            ],
+            [
+                'number' => 6,
+                'label' => __('Открыть гостевое меню'),
+                'description' => $firstActiveQrCode instanceof QrCode
+                    ? __('Проверьте экран, который увидит гость.')
+                    : __('Гостевой экран откроется после QR.'),
+                'icon' => 'book-open',
+                'href' => $firstActiveQrCode instanceof QrCode
+                    ? route('public.qr.show', ['token' => $firstActiveQrCode->public_token])
+                    : null,
+                'button_label' => __('Открыть'),
+                'is_done' => $firstActiveQrCode instanceof QrCode,
+                'is_available' => $firstActiveQrCode instanceof QrCode,
+            ],
+        ];
+    }
+
+    private function firstActiveQrCode(Branch $branch): ?QrCode
+    {
+        return $branch
+            ->servicePoints
+            ->first(fn (ServicePoint $servicePoint): bool => $servicePoint->activeQrCode instanceof QrCode)
+            ?->activeQrCode;
     }
 
     private function currentUser(): User

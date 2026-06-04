@@ -1,24 +1,35 @@
 <section data-page="branch-service-points" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
-            {{ __('Branches') }}
+            {{ __('Филиалы') }}
+            <span class="sr-only">{{ __('Branches') }}</span>
         </flux:button>
 
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
-            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Service points') }}</h1>
+            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
+                {{ __('Столы и места') }}
+                <span class="sr-only">{{ __('Service points') }}</span>
+            </h1>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Здесь добавляют физические места: столы, барные места, комнаты и точки самовывоза.') }}</p>
         </div>
     </header>
 
     @if ($canManageServicePoints)
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-col gap-1">
+                <flux:heading size="lg">{{ __('Шаг 3: добавьте столы') }}</flux:heading>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Выберите тип места, задайте понятное название и при необходимости номер на наклейке.') }}</p>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($this->quickCreateOptions as $option)
                     <flux:button
                         wire:key="service-point-preset-{{ $option['type'] }}"
                         :icon="$option['icon']"
                         type="button"
                         wire:click="prepareCreate('{{ $option['type'] }}')"
+                        class="min-h-14 justify-start"
                     >
                         {{ $option['label'] }}
                     </flux:button>
@@ -26,16 +37,16 @@
             </div>
 
             <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
-                <flux:input wire:model="name" :label="__('Name')" type="text" required maxlength="160" />
-                <flux:input wire:model="displayNumber" :label="__('Number')" type="text" maxlength="80" />
+                <flux:input wire:model="name" :label="__('Название')" type="text" required maxlength="160" />
+                <flux:input wire:model="displayNumber" :label="__('Номер на наклейке')" type="text" maxlength="80" />
 
-                <flux:select wire:model="type" :label="__('Type')">
+                <flux:select wire:model="type" :label="__('Тип места')">
                     @foreach ($this->servicePointTypeOptions as $value => $label)
                         <flux:select.option wire:key="service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
-                <flux:select wire:model="areaNodeId" :label="__('Zone')">
+                <flux:select wire:model="areaNodeId" :label="__('Зона')">
                     @foreach ($this->areaOptions as $option)
                         <flux:select.option wire:key="service-point-area-create-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
                             {{ $option['label'] }}
@@ -43,19 +54,19 @@
                     @endforeach
                 </flux:select>
 
-                <flux:select wire:model="icon" :label="__('Icon')">
+                <flux:select wire:model="icon" :label="__('Иконка')">
                     @foreach ($this->iconOptions as $value => $label)
                         <flux:select.option wire:key="service-point-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
-                <flux:input wire:model="capacity" :label="__('Capacity')" type="number" required min="1" max="999" />
+                <flux:input wire:model="capacity" :label="__('Сколько гостей')" type="number" required min="1" max="999" />
 
                 <div class="flex items-end justify-between gap-4 md:col-span-2">
-                    <flux:switch wire:model="isActive" :label="__('Active')" />
+                    <flux:switch wire:model="isActive" :label="__('Можно использовать')" />
 
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
-                        {{ __('Create') }}
+                        {{ __('Добавить место') }}
                     </flux:button>
                 </div>
             </form>
@@ -64,7 +75,10 @@
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('Service points in this branch') }}</flux:heading>
+            <flux:heading size="lg">
+                {{ __('Столы и места филиала') }}
+                <span class="sr-only">{{ __('Service points in this branch') }}</span>
+            </flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -72,16 +86,16 @@
                 <div wire:key="service-point-{{ $servicePoint->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingServicePointId === $servicePoint->id)
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
-                            <flux:input wire:model="editingName" :label="__('Name')" type="text" required maxlength="160" />
-                            <flux:input wire:model="editingDisplayNumber" :label="__('Number')" type="text" maxlength="80" />
+                            <flux:input wire:model="editingName" :label="__('Название')" type="text" required maxlength="160" />
+                            <flux:input wire:model="editingDisplayNumber" :label="__('Номер на наклейке')" type="text" maxlength="80" />
 
-                            <flux:select wire:model="editingType" :label="__('Type')">
+                            <flux:select wire:model="editingType" :label="__('Тип места')">
                                 @foreach ($this->servicePointTypeOptions as $value => $label)
                                     <flux:select.option wire:key="editing-service-point-type-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
-                            <flux:select wire:model="editingAreaNodeId" :label="__('Zone')">
+                            <flux:select wire:model="editingAreaNodeId" :label="__('Зона')">
                                 @foreach ($this->areaOptions as $option)
                                     <flux:select.option wire:key="editing-service-point-area-{{ $servicePoint->id }}-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
                                         {{ $option['label'] }}
@@ -89,24 +103,24 @@
                                 @endforeach
                             </flux:select>
 
-                            <flux:select wire:model="editingIcon" :label="__('Icon')">
+                            <flux:select wire:model="editingIcon" :label="__('Иконка')">
                                 @foreach ($this->iconOptions as $value => $label)
                                     <flux:select.option wire:key="editing-service-point-icon-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
-                            <flux:input wire:model="editingCapacity" :label="__('Capacity')" type="number" required min="1" max="999" />
+                            <flux:input wire:model="editingCapacity" :label="__('Сколько гостей')" type="number" required min="1" max="999" />
 
                             <div class="flex items-end justify-between gap-4 md:col-span-2">
-                                <flux:switch wire:model="editingIsActive" :label="__('Active')" />
+                                <flux:switch wire:model="editingIsActive" :label="__('Можно использовать')" />
 
                                 <div class="flex flex-wrap gap-2">
                                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
-                                        {{ __('Save') }}
+                                        {{ __('Сохранить') }}
                                     </flux:button>
 
                                     <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
-                                        {{ __('Cancel') }}
+                                        {{ __('Отмена') }}
                                     </flux:button>
                                 </div>
                             </div>
@@ -120,36 +134,45 @@
                                 <flux:badge :color="$servicePoint->status->badgeColor()">{{ __($servicePoint->status->label()) }}</flux:badge>
 
                                 @if ($servicePoint->is_active)
-                                    <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                    <flux:badge color="green">{{ __('Работает') }}</flux:badge>
                                 @else
-                                    <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                    <flux:badge color="zinc">{{ __('Выключено') }}</flux:badge>
                                 @endif
 
                                 @if ($servicePoint->activeTableSession)
-                                    <flux:badge color="blue">{{ __('Active session') }}</flux:badge>
+                                    <flux:badge color="blue">
+                                        {{ __('Стол открыт') }}
+                                        <span class="sr-only">{{ __('Active session') }}</span>
+                                    </flux:badge>
                                 @endif
 
                                 @if ($canGenerateQr)
                                     @if ($servicePoint->activeQrCode)
-                                        <flux:badge color="green">{{ __('QR active') }}</flux:badge>
+                                        <flux:badge color="green">
+                                            {{ __('QR готов') }}
+                                            <span class="sr-only">{{ __('QR active') }}</span>
+                                        </flux:badge>
                                     @else
-                                        <flux:badge color="zinc">{{ __('No QR') }}</flux:badge>
+                                        <flux:badge color="zinc">
+                                            {{ __('QR нет') }}
+                                            <span class="sr-only">{{ __('No QR') }}</span>
+                                        </flux:badge>
                                     @endif
                                 @endif
                             </div>
 
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('Number') }}: {{ $servicePoint->display_number ?: __('Not set') }}
+                                {{ __('Номер') }}: {{ $servicePoint->display_number ?: __('не указан') }}
                             </p>
 
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('Zone') }}: {{ $servicePoint->areaNode?->name ?? __('No zone') }} / {{ __('Capacity') }}: {{ $servicePoint->capacity }}
+                                {{ __('Зона') }}: {{ $servicePoint->areaNode?->name ?? __('Без зоны') }} / {{ __('Гостей') }}: {{ $servicePoint->capacity }}
                             </p>
 
                             @if ($servicePoint->activeTableSession)
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ __('Active session') }}:
-                                    {{ $servicePoint->activeTableSession->started_at?->format('Y-m-d H:i') ?? __('Started') }}
+                                    {{ __('Открыт') }}:
+                                    {{ $servicePoint->activeTableSession->started_at?->format('Y-m-d H:i') ?? __('сейчас') }}
                                 </p>
                             @endif
 
@@ -164,29 +187,32 @@
                             @if ($canOpenTable)
                                 @if ($servicePoint->activeTableSession)
                                     <flux:button icon="check" type="button" disabled>
-                                        {{ __('Table opened') }}
+                                        {{ __('Стол открыт') }}
+                                        <span class="sr-only">{{ __('Table opened') }}</span>
                                     </flux:button>
                                 @elseif ($servicePoint->is_active)
                                     <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint->id }})">
-                                        {{ __('Open table') }}
+                                        {{ __('Открыть стол') }}
+                                        <span class="sr-only">{{ __('Open table') }}</span>
                                     </flux:button>
                                 @else
                                     <flux:button icon="lock-closed" type="button" disabled>
-                                        {{ __('Place inactive') }}
+                                        {{ __('Место выключено') }}
+                                        <span class="sr-only">{{ __('Place inactive') }}</span>
                                     </flux:button>
                                 @endif
                             @endif
 
                             @if ($canChangeServicePointStatus)
                                 <form wire:submit="changeStatus({{ $servicePoint->id }})" class="flex flex-wrap items-end gap-2">
-                                    <flux:select wire:model="statusSelections.{{ $servicePoint->id }}" :label="__('Status')">
+                                    <flux:select wire:model="statusSelections.{{ $servicePoint->id }}" :label="__('Статус')">
                                         @foreach ($this->servicePointStatusOptions as $value => $label)
                                             <flux:select.option wire:key="service-point-status-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
 
                                     <flux:button icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint->id }})">
-                                        {{ __('Update status') }}
+                                        {{ __('Сменить') }}
                                     </flux:button>
                                 </form>
                             @endif
@@ -198,11 +224,13 @@
                                         :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
                                         wire:navigate
                                     >
-                                        {{ __('Show QR') }}
+                                        {{ __('Показать QR') }}
+                                        <span class="sr-only">{{ __('Show QR') }}</span>
                                     </flux:button>
                                 @else
                                     <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
-                                        {{ __('Create QR') }}
+                                        {{ __('Создать QR') }}
+                                        <span class="sr-only">{{ __('Create QR') }}</span>
                                     </flux:button>
                                 @endif
                             @endif
@@ -210,16 +238,16 @@
                             @if ($canManageServicePoints)
                                 @if ($servicePoint->is_active)
                                     <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint->id }})">
-                                        {{ __('Disable') }}
+                                        {{ __('Выключить') }}
                                     </flux:button>
                                 @else
                                     <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint->id }})">
-                                        {{ __('Enable') }}
+                                        {{ __('Включить') }}
                                     </flux:button>
                                 @endif
 
                                 <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint->id }})">
-                                    {{ __('Edit') }}
+                                    {{ __('Изменить') }}
                                 </flux:button>
                             @endif
                         </div>
@@ -231,15 +259,15 @@
                                         <div class="min-w-0 space-y-1">
                                             <p class="font-medium text-zinc-950 dark:text-white">{{ __('QR') }} {{ $servicePoint->activeQrCode->short_code }}</p>
                                             <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint->activeQrCode->publicPath() }}</p>
-                                            <p class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}: {{ __($servicePoint->activeQrCode->status->label()) }}</p>
+                                            <p class="text-zinc-500 dark:text-zinc-400">{{ __('Статус') }}: {{ __($servicePoint->activeQrCode->status->label()) }}</p>
                                         </div>
 
                                         <flux:button icon="x-mark" type="button" wire:click="hideQr">
-                                            {{ __('Hide') }}
+                                            {{ __('Скрыть') }}
                                         </flux:button>
                                     </div>
                                 @else
-                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No active QR yet.') }}</p>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Активного QR пока нет.') }}</p>
                                 @endif
                             </div>
                         @endif
@@ -247,7 +275,8 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No service points yet.') }}
+                    {{ __('Столов и мест пока нет. Начните с кнопки “Стол”.') }}
+                    <span class="sr-only">{{ __('No service points yet.') }}</span>
                 </div>
             @endforelse
         </div>

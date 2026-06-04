@@ -66,6 +66,25 @@ test('active organization member can see branches inside brand', function () {
         ->assertDontSee('Sushi Master Kaunas Center');
 });
 
+test('branch page shows simple restaurant setup wizard', function () {
+    [$organization, $brand, $owner] = createOrganizationBrand();
+
+    Branch::factory()
+        ->for($organization)
+        ->for($brand)
+        ->create(['name' => 'Bella Setup Branch']);
+
+    Livewire::actingAs($owner)
+        ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
+        ->assertSee('Настроить ресторан')
+        ->assertSee('Создать филиал')
+        ->assertSee('Добавить зоны')
+        ->assertSee('Добавить столы')
+        ->assertSee('Сгенерировать QR')
+        ->assertSee('Напечатать QR')
+        ->assertSee('Открыть гостевое меню');
+});
+
 test('owner can create update and delete branch', function () {
     [$organization, $brand, $owner] = createOrganizationBrand();
 

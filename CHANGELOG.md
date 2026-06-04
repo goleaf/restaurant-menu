@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 073 - Simplify Branch Setup UI
+
+- Added a `Настроить ресторан` wizard to each branch card with the existing setup path: create branch, add zones, add tables, generate QR, print QR, and open the guest menu.
+- Prepared branch setup counts in the Livewire component with Eloquent counts/eager loading so Blade stays display-only.
+- Simplified visible branch, area, and service point copy for non-technical restaurant staff while keeping existing routes, permissions, CRUD actions, and QR architecture unchanged.
+- Enlarged preset buttons for area nodes and service points and kept the current `manage_zones`, `manage_service_points`, and `generate_qr` permission boundaries.
+- Added feature coverage for the setup wizard and simplified zone/service point headings.
+- Kept the shared-hosting stack unchanged: SQLite, database cache/session/queue, Blade + Livewire, no Redis, WebSockets, S3, Docker, or external services.
+
 ### Prompt 072 - Menu Stop-list
 
 - Added a dedicated branch menu stop-list section backed by the existing `menu_items.is_available` field, without adding a new business table.

@@ -47,6 +47,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Brands.
 - Branches.
 - Branch settings.
+- Simplified branch setup UI with the `Настроить ресторан` wizard for branch, zones, service points, QR generation, QR print, and guest-menu opening.
 - Local media storage for organization, brand, and branch logos.
 - Area nodes nested branch schema and CRUD UI.
 - Service points schema and CRUD UI.
@@ -159,6 +160,8 @@ Branch:
 - Has many branch staff assignments through `branch_users`.
 - Stores optional `logo_path` for a locally stored logo.
 - New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
+- The branch list UI includes a `Настроить ресторан` setup wizard. It prepares zone, service point, and active QR counts in `App\Livewire\Organizations\Brands\Branches\Index` using Eloquent counts/eager loading and links only to existing routes.
+- The setup wizard steps are `Создать филиал`, `Добавить зоны`, `Добавить столы`, `Сгенерировать QR`, `Напечатать QR`, and `Открыть гостевое меню`.
 
 Menu:
 
@@ -295,6 +298,7 @@ Area node:
 - Supports soft delete through `deleted_at`.
 - Managed from the branch area page guarded by `manage_zones`.
 - Area CRUD can create common presets, choose icons, rename, move inside another area, disable/enable, and soft delete.
+- The area UI uses simplified visible labels for non-technical staff, including `Зоны ресторана`, `Шаг 2: добавьте зоны`, large preset buttons, and `Список зон`.
 - Soft deleting an area moves its direct children to the deleted area's parent before hiding the deleted area.
 - QR codes are not attached to area nodes; areas are only used to organize and filter service points.
 
@@ -314,6 +318,7 @@ Service point:
 - Supports soft delete through `deleted_at`.
 - Managed from the branch service point page guarded by `manage_service_points`.
 - Service point CRUD can add common presets, choose a zone, choose type/icon, set name, number, and capacity, rename, move to another zone, disable, and enable.
+- The service point UI uses simplified visible labels for non-technical staff, including `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons for table/bar seat/room/other place, and plain actions for QR and opening tables.
 - Manual status changes are allowed for users with `manage_service_points` and users with the fixed `waiter` role in the organization.
 - Users with `view_orders` or `confirm_orders` can open a table from the service point page.
 - Opening a table creates or returns the service point's current active table session and sets service point status to `occupied`.
@@ -1162,15 +1167,34 @@ Local media storage:
 - `print_table_number` is available on the bulk page too and shows the same stale-label warning when enabled.
 - PDF export is still not implemented.
 
+## Current Branch Setup UI
+
+- Branch setup starts at `GET /organizations/{organization}/brands/{brand}/branches`.
+- `App\Livewire\Organizations\Brands\Branches\Index` renders the branch list and the `Настроить ресторан` wizard.
+- The wizard is a UI guide only; it does not create new models, routes, tables, or background jobs.
+- Wizard progress uses existing `area_nodes`, `service_points`, and active `qr_codes` through Eloquent counts/eager loading.
+- The wizard links to existing area, service point, bulk QR print, settings, and public QR guest routes.
+- Keep the wizard copy simple for non-technical restaurant staff and avoid exposing internal IDs or table/service-point identifiers in public URLs.
+
 ## Current Branch Area UI
 
 - Branch area route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/areas`.
 - Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
 - Access requires `manage_zones` in the current organization context; superadmin bypass still works through computed permissions.
 - The UI uses Blade + Livewire + Flux components.
+- The visible UI copy is simplified: `Зоны ресторана`, `Шаг 2: добавьте зоны`, large preset buttons, and `Список зон`.
 - The tree is built in the Livewire component from one eager collection; Blade does not query the database.
 - The UI does not show technical IDs to users.
 - QR is intentionally not part of this step.
+
+## Current Branch Service Point UI
+
+- Branch service point route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
+- Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
+- Access is split between `manage_service_points`, status-changing waiter access, table-opening access, and `generate_qr` access.
+- The visible UI copy is simplified: `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons, and plain QR/table actions.
+- Service point editing still must not change `internal_code` or reissue QR codes when a place is renamed or moved.
+- The UI does not show technical IDs to users.
 
 ## Next Step
 
@@ -1180,6 +1204,7 @@ The next expected product step may be manual payment reporting/refinement, ticke
 
 - Do not rewrite architecture.
 - Do not add unrelated future features.
+- Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.
 - Do not use Redis cache tags for analytics invalidation; use explicit database-cache keys and model observers.

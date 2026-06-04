@@ -200,6 +200,19 @@ Menu cache is forgotten automatically when menus, categories, dishes, kitchen de
 
 The current guest menu UI writes configured items to `draft_order_items`, and the guest basket lets active guests edit or delete their own draft positions before the draft is sent to a waiter. The basket is grouped by guests alphabetically and shows the same shared cart information to everyone at the table. Guest totals include already confirmed order snapshots plus the current open draft, and the table total uses the same rule. Active guests can send the shared draft to the waiter for review and can request the bill for the current table session. This does not start online payment logic.
 
+## Branch Setup UI
+
+The branch list includes a simple `Настроить ресторан` wizard for each branch. It guides a manager through the existing setup path:
+
+1. `Создать филиал`
+2. `Добавить зоны`
+3. `Добавить столы`
+4. `Сгенерировать QR`
+5. `Напечатать QR`
+6. `Открыть гостевое меню`
+
+The wizard is UI-only. It uses existing branch, area node, service point, QR, print, and public QR routes, and it does not add new tables or change the QR/order architecture. Counts for zones, service points, and active QR codes are prepared in the Livewire component through Eloquent eager loading and counts, not in Blade loops.
+
 ## Area Nodes
 
 Area nodes are the nested zone structure inside a branch. They are stored in the `area_nodes` table and belong to one branch.
@@ -213,6 +226,8 @@ Branch areas are managed at:
 ```
 
 The area UI is guarded by the `manage_zones` permission in the current organization context. It can add common zone presets, choose an icon, rename, move a zone inside another zone, disable/enable zones, and soft delete zones while keeping child zones visible.
+
+The current zone UI is intentionally simple for non-technical staff: it shows large preset buttons for group, floor, hall, terrace, VIP room, and custom area, and uses visible labels such as `Зоны ресторана`, `Шаг 2: добавьте зоны`, and `Список зон`.
 
 Area management does not create QR codes.
 
@@ -245,6 +260,8 @@ Service points are managed at:
 ```
 
 The service point UI is guarded by the `manage_service_points` permission in the current organization context for CRUD actions. It can add common service point presets, choose a zone, choose a type and icon, set a name, number, and capacity, rename, move between zones, and disable/enable service points.
+
+The current service point UI avoids the technical term as much as possible in visible copy. Staff see `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons for table, bar seat, room, and other place, and simple actions such as `Создать QR`, `Показать QR`, `Открыть стол`, and `Выключить`.
 
 Service point status can be changed manually by a user with `manage_service_points` or by a user with the fixed `waiter` role in the organization. The status update is handled through a backend action so later table sessions and orders can reuse the same status-change path.
 

@@ -38,7 +38,9 @@ test('area node page requires manage zones permission', function () {
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee('Areas');
+        ->assertSee('Areas')
+        ->assertSee('Зоны ресторана')
+        ->assertSee('Шаг 2: добавьте зоны');
 });
 
 test('manager can create nested area nodes inside branch', function () {

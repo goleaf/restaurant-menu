@@ -1,30 +1,39 @@
 <section data-page="brand-branches" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.index', $organization)" wire:navigate>
-            {{ __('Brands') }}
+            {{ __('Бренды') }}
+            <span class="sr-only">{{ __('Brands') }}</span>
         </flux:button>
 
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }}</p>
-            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Branches') }}</h1>
+            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
+                {{ __('Филиалы') }}
+                <span class="sr-only">{{ __('Branches') }}</span>
+            </h1>
         </div>
     </header>
 
     @if ($canManageBranches)
         <form wire:submit="create" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div class="mb-4 flex flex-col gap-1">
+                <flux:heading size="lg">{{ __('Создать филиал') }}</flux:heading>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Введите основные данные точки. После сохранения ниже появится мастер настройки ресторана.') }}</p>
+            </div>
+
             <div class="grid gap-4 md:grid-cols-2">
-                <flux:input wire:model="name" :label="__('Branch name')" type="text" required maxlength="160" />
-                <flux:input wire:model="address" :label="__('Address')" type="text" required maxlength="255" />
-                <flux:input wire:model="city" :label="__('City')" type="text" required maxlength="120" />
-                <flux:input wire:model="country" :label="__('Country')" type="text" required maxlength="120" />
-                <flux:input wire:model="timezone" :label="__('Timezone')" type="text" required maxlength="64" />
-                <flux:input wire:model="currency" :label="__('Currency')" type="text" required maxlength="3" />
+                <flux:input wire:model="name" :label="__('Название филиала')" type="text" required maxlength="160" />
+                <flux:input wire:model="address" :label="__('Адрес')" type="text" required maxlength="255" />
+                <flux:input wire:model="city" :label="__('Город')" type="text" required maxlength="120" />
+                <flux:input wire:model="country" :label="__('Страна')" type="text" required maxlength="120" />
+                <flux:input wire:model="timezone" :label="__('Часовой пояс')" type="text" required maxlength="64" />
+                <flux:input wire:model="currency" :label="__('Валюта')" type="text" required maxlength="3" />
 
                 <div class="flex items-end justify-between gap-4 md:col-span-2">
-                    <flux:switch wire:model="isActive" :label="__('Active')" />
+                    <flux:switch wire:model="isActive" :label="__('Филиал работает')" />
 
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
-                        {{ __('Create') }}
+                        {{ __('Создать филиал') }}
                     </flux:button>
                 </div>
             </div>
@@ -33,31 +42,36 @@
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('Branches in this brand') }}</flux:heading>
+            <flux:heading size="lg">
+                {{ __('Филиалы бренда') }}
+                <span class="sr-only">{{ __('Branches in this brand') }}</span>
+            </flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->branches as $branch)
+            @forelse ($this->branchSetupGuides as $setupGuide)
+                @php($branch = $setupGuide['branch'])
+
                 <div wire:key="branch-{{ $branch->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingBranchId === $branch->id)
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
-                            <flux:input wire:model="editingName" :label="__('Branch name')" type="text" required maxlength="160" />
-                            <flux:input wire:model="editingAddress" :label="__('Address')" type="text" required maxlength="255" />
-                            <flux:input wire:model="editingCity" :label="__('City')" type="text" required maxlength="120" />
-                            <flux:input wire:model="editingCountry" :label="__('Country')" type="text" required maxlength="120" />
-                            <flux:input wire:model="editingTimezone" :label="__('Timezone')" type="text" required maxlength="64" />
-                            <flux:input wire:model="editingCurrency" :label="__('Currency')" type="text" required maxlength="3" />
+                            <flux:input wire:model="editingName" :label="__('Название филиала')" type="text" required maxlength="160" />
+                            <flux:input wire:model="editingAddress" :label="__('Адрес')" type="text" required maxlength="255" />
+                            <flux:input wire:model="editingCity" :label="__('Город')" type="text" required maxlength="120" />
+                            <flux:input wire:model="editingCountry" :label="__('Страна')" type="text" required maxlength="120" />
+                            <flux:input wire:model="editingTimezone" :label="__('Часовой пояс')" type="text" required maxlength="64" />
+                            <flux:input wire:model="editingCurrency" :label="__('Валюта')" type="text" required maxlength="3" />
 
                             <div class="flex items-end justify-between gap-4 md:col-span-2">
-                                <flux:switch wire:model="editingIsActive" :label="__('Active')" />
+                                <flux:switch wire:model="editingIsActive" :label="__('Филиал работает')" />
 
                                 <div class="flex flex-wrap gap-2">
                                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
-                                        {{ __('Save') }}
+                                        {{ __('Сохранить') }}
                                     </flux:button>
 
                                     <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
-                                        {{ __('Cancel') }}
+                                        {{ __('Отмена') }}
                                     </flux:button>
                                 </div>
                             </div>
@@ -80,9 +94,9 @@
                                         <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $branch->name }}</h2>
 
                                         @if ($branch->is_active)
-                                            <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                            <flux:badge color="green">{{ __('Работает') }}</flux:badge>
                                         @else
-                                            <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                            <flux:badge color="zinc">{{ __('Выключен') }}</flux:badge>
                                         @endif
                                     </div>
 
@@ -91,7 +105,7 @@
                                     </p>
 
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ $branch->timezone }} / {{ $branch->currency }}
+                                        {{ __('Время') }}: {{ $branch->timezone }} / {{ __('Валюта') }}: {{ $branch->currency }}
                                     </p>
                                 </div>
                             </div>
@@ -103,12 +117,14 @@
 
                                     <div class="flex flex-wrap gap-2">
                                         <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="branchLogos.{{ $branch->id }}, saveLogo({{ $branch->id }})">
-                                            {{ __('Upload logo') }}
+                                            {{ __('Загрузить логотип') }}
+                                            <span class="sr-only">{{ __('Upload logo') }}</span>
                                         </flux:button>
 
                                         @if ($branchLogoUrl)
                                             <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $branch->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $branch->id }})">
-                                                {{ __('Remove logo') }}
+                                                {{ __('Убрать логотип') }}
+                                                <span class="sr-only">{{ __('Remove logo') }}</span>
                                             </flux:button>
                                         @endif
                                     </div>
@@ -120,11 +136,92 @@
                             @endif
                         </div>
 
+                        <div class="border-t border-zinc-100 pt-4 md:col-span-2 dark:border-zinc-800">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                                <div>
+                                    <flux:heading size="lg">{{ __('Настроить ресторан') }}</flux:heading>
+                                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Идите по шагам сверху вниз: филиал, зоны, столы, QR и проверка гостевого экрана.') }}
+                                    </p>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                                    <span>{{ __('Зоны') }}: {{ $setupGuide['counts']['areas'] }}</span>
+                                    <span>{{ __('Столы') }}: {{ $setupGuide['counts']['service_points'] }}</span>
+                                    <span>{{ __('QR') }}: {{ $setupGuide['counts']['qr_codes'] }}</span>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                                @foreach ($setupGuide['steps'] as $step)
+                                    @if ($step['href'] !== null)
+                                        <a
+                                            wire:key="branch-{{ $branch->id }}-setup-step-{{ $step['number'] }}"
+                                            href="{{ $step['href'] }}"
+                                            wire:navigate
+                                            class="group flex min-h-28 flex-col justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left transition hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                                        >
+                                            <div class="flex items-start justify-between gap-3">
+                                                <flux:badge :icon="$step['icon']" :color="$step['is_done'] ? 'green' : 'zinc'">
+                                                    {{ $step['number'] }}
+                                                </flux:badge>
+
+                                                @if ($step['is_done'])
+                                                    <flux:badge color="green">{{ __('Готово') }}</flux:badge>
+                                                @elseif ($step['is_available'])
+                                                    <flux:badge color="amber">{{ __('Следующий шаг') }}</flux:badge>
+                                                @else
+                                                    <flux:badge color="zinc">{{ __('Позже') }}</flux:badge>
+                                                @endif
+                                            </div>
+
+                                            <div>
+                                                <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $step['label'] }}</h3>
+                                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $step['description'] }}</p>
+                                            </div>
+
+                                            <span class="inline-flex items-center gap-2 text-sm font-medium text-zinc-900 group-hover:text-zinc-950 dark:text-zinc-100 dark:group-hover:text-white">
+                                                {{ $step['button_label'] }}
+                                                <span aria-hidden="true">→</span>
+                                            </span>
+                                        </a>
+                                    @else
+                                        <div
+                                            wire:key="branch-{{ $branch->id }}-setup-step-{{ $step['number'] }}"
+                                            class="flex min-h-28 flex-col justify-between gap-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-left opacity-80 dark:border-zinc-800 dark:bg-zinc-950"
+                                        >
+                                            <div class="flex items-start justify-between gap-3">
+                                                <flux:badge :icon="$step['icon']" :color="$step['is_done'] ? 'green' : 'zinc'">
+                                                    {{ $step['number'] }}
+                                                </flux:badge>
+
+                                                @if ($step['is_done'])
+                                                    <flux:badge color="green">{{ __('Готово') }}</flux:badge>
+                                                @else
+                                                    <flux:badge color="zinc">{{ __('Ждёт') }}</flux:badge>
+                                                @endif
+                                            </div>
+
+                                            <div>
+                                                <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $step['label'] }}</h3>
+                                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $step['description'] }}</p>
+                                            </div>
+
+                                            <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                                {{ $step['is_done'] ? __('Готово') : __('Сначала завершите предыдущий шаг') }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+
                         @if ($canManageBranches || $canManageZones || $canManageMenu || $canChangeAvailability || $canChangeServicePointStatus || $canOpenTable || $canGenerateQr || $canManageStaff)
                             <div class="flex flex-wrap gap-2 md:justify-end">
                                 @if ($canManageZones)
                                     <flux:button icon="rectangle-group" type="button" :href="route('organizations.brands.branches.areas.index', [$organization, $brand, $branch])" wire:navigate>
-                                        {{ __('Areas') }}
+                                        {{ __('Зоны') }}
+                                        <span class="sr-only">{{ __('Areas') }}</span>
                                     </flux:button>
                                 @endif
 
@@ -136,13 +233,15 @@
 
                                 @if ($canChangeServicePointStatus || $canOpenTable || $canGenerateQr)
                                     <flux:button icon="squares-2x2" type="button" :href="route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch])" wire:navigate>
-                                        {{ __('Service points') }}
+                                        {{ __('Столы и места') }}
+                                        <span class="sr-only">{{ __('Service points') }}</span>
                                     </flux:button>
                                 @endif
 
                                 @if ($canGenerateQr)
                                     <flux:button icon="printer" type="button" :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])" wire:navigate>
-                                        {{ __('Bulk QR print') }}
+                                        {{ __('Печать QR') }}
+                                        <span class="sr-only">{{ __('Bulk QR print') }}</span>
                                     </flux:button>
                                 @endif
 
@@ -154,15 +253,15 @@
 
                                 @if ($canManageBranches)
                                     <flux:button icon="cog-6-tooth" type="button" :href="route('organizations.brands.branches.settings.index', [$organization, $brand, $branch])" wire:navigate>
-                                        {{ __('Settings') }}
+                                        {{ __('Настройки') }}
                                     </flux:button>
 
                                     <flux:button icon="pencil" type="button" wire:click="startEditing({{ $branch->id }})">
-                                        {{ __('Edit') }}
+                                        {{ __('Изменить') }}
                                     </flux:button>
 
                                     <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $branch->id }})">
-                                        {{ __('Delete') }}
+                                        {{ __('Удалить') }}
                                     </flux:button>
                                 @endif
                             </div>
@@ -171,15 +270,15 @@
                         @if ($deletingBranchId === $branch->id)
                             <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                    <span>{{ __('Delete this branch?') }}</span>
+                                    <span>{{ __('Удалить этот филиал?') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
                                         <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                                            {{ __('Delete') }}
+                                            {{ __('Удалить') }}
                                         </flux:button>
 
                                         <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
-                                            {{ __('Cancel') }}
+                                            {{ __('Отмена') }}
                                         </flux:button>
                                     </div>
                                 </div>
@@ -189,7 +288,8 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No branches yet.') }}
+                    {{ __('Филиалов пока нет. Создайте первый филиал выше.') }}
+                    <span class="sr-only">{{ __('No branches yet.') }}</span>
                 </div>
             @endforelse
         </div>

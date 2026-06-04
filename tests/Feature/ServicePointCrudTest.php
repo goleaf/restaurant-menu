@@ -44,7 +44,9 @@ test('service point page requires manage service points permission', function ()
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee('Service points');
+        ->assertSee('Service points')
+        ->assertSee('Столы и места')
+        ->assertSee('Шаг 3: добавьте столы');
 });
 
 test('branch list shows service point link to users with permission or waiter role', function () {

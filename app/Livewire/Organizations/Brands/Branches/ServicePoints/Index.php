@@ -427,10 +427,10 @@ class Index extends Component
     public function quickCreateOptions(): array
     {
         return [
-            ['type' => ServicePointType::Table->value, 'label' => __('Add table'), 'icon' => 'squares-2x2'],
-            ['type' => ServicePointType::BarSeat->value, 'label' => __('Add bar seat'), 'icon' => 'beaker'],
-            ['type' => ServicePointType::Room->value, 'label' => __('Add room'), 'icon' => 'home'],
-            ['type' => ServicePointType::Other->value, 'label' => __('Add other place'), 'icon' => 'bookmark'],
+            ['type' => ServicePointType::Table->value, 'label' => __('Стол'), 'icon' => 'squares-2x2'],
+            ['type' => ServicePointType::BarSeat->value, 'label' => __('Место у бара'), 'icon' => 'beaker'],
+            ['type' => ServicePointType::Room->value, 'label' => __('Комната'), 'icon' => 'home'],
+            ['type' => ServicePointType::Other->value, 'label' => __('Другое место'), 'icon' => 'bookmark'],
         ];
     }
 

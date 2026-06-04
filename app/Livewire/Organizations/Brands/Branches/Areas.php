@@ -282,12 +282,12 @@ class Areas extends Component
     public function quickCreateOptions(): array
     {
         return [
-            ['type' => AreaNodeType::Group->value, 'label' => __('Add group'), 'icon' => 'folder'],
-            ['type' => AreaNodeType::Floor->value, 'label' => __('Add floor'), 'icon' => 'building-office'],
-            ['type' => AreaNodeType::Hall->value, 'label' => __('Add hall'), 'icon' => 'squares-2x2'],
-            ['type' => AreaNodeType::Terrace->value, 'label' => __('Add terrace'), 'icon' => 'sun'],
-            ['type' => AreaNodeType::VipRoom->value, 'label' => __('Add VIP room'), 'icon' => 'sparkles'],
-            ['type' => AreaNodeType::Custom->value, 'label' => __('Add custom area'), 'icon' => 'bookmark'],
+            ['type' => AreaNodeType::Group->value, 'label' => __('Группа зон'), 'icon' => 'folder'],
+            ['type' => AreaNodeType::Floor->value, 'label' => __('Этаж'), 'icon' => 'building-office'],
+            ['type' => AreaNodeType::Hall->value, 'label' => __('Зал'), 'icon' => 'squares-2x2'],
+            ['type' => AreaNodeType::Terrace->value, 'label' => __('Терраса'), 'icon' => 'sun'],
+            ['type' => AreaNodeType::VipRoom->value, 'label' => __('VIP-зал'), 'icon' => 'sparkles'],
+            ['type' => AreaNodeType::Custom->value, 'label' => __('Своя зона'), 'icon' => 'bookmark'],
         ];
     }
 

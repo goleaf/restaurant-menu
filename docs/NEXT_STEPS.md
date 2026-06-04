@@ -4,13 +4,14 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 111 simple visual floor board.
+Last memory refresh: 2026-06-04 after Prompt 112 waiter zone assignments.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
-board, and waiter-side schedule checks should be treated as current baseline for
-future guest UI, QR landing, ordering work, staff review, and branch setup.
+board, waiter zone assignments, and waiter-side schedule checks should be
+treated as current baseline for future guest UI, QR landing, ordering work,
+staff review, and branch setup.
 
 ## Current Recommended Prompt
 
@@ -60,6 +61,11 @@ Risky places:
 - The simple visual floor board uses the current paginated service point page;
   do not turn it into a canvas, drag-and-drop editor, or all-rows floor plan
   without a separate prompt and a SQLite performance review.
+- Waiter zone assignments live in `area_node_waiters` and should only narrow
+  waiter dashboard visibility inside already accessible branches. Do not use
+  them as a replacement for organization/branch access checks.
+- If a waiter has no assigned zones, the current behavior is to show all
+  accessible branch places with a hint.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -119,6 +125,10 @@ page. It groups the currently loaded service point page by zone, shows cards
 with type icons, status/QR/session badges, and reuses existing quick actions for
 opening a table, QR, and editing. It does not add a canvas editor, drag-and-drop
 logic, routes, schema, or heavy JavaScript.
+
+Prompt 112 added waiter zone assignments: managers with `manage_staff` can
+assign fixed branch waiters to active `area_nodes` from the branch staff page,
+and the waiter dashboard can switch between `My zones` and `All zones`.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

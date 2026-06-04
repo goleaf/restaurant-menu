@@ -2,6 +2,86 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 112 Waiter Zone Assignments - 2026-06-04
+
+Prompt 112 added branch area-node assignments for waiters. It did not add routes, roles, permissions, QR changes, maps, canvas floor plans, WebSockets, Redis, S3, Docker, or paid services.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search by service point name, display number, stable internal code, or active QR short code, filter by current branch, zone, type, status, active state, and active QR presence, and paginate results without loading every service point at once.
+- Prompt 111: the same page has a simple visual board that groups the currently loaded service point page by zone, shows service point cards with type icons/status/QR/session badges, and exposes existing quick actions for opening a table, QR, and edit.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or show `All zones`.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- New table: `area_node_waiters` with `organization_id`, `branch_id`, `area_node_id`, `user_id`, `assigned_by_user_id`, `assigned_at`, timestamps, unique `area_node_id/user_id`, and SQLite-friendly indexes for organization/user and branch/user lookups.
+- Existing affected tables: `branch_users`, `area_nodes`, `service_points`, `table_sessions`, `waiter_calls`, `draft_orders`, `kitchen_ticket_items`.
+- Full inventory still includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `invitations`, `branch_opening_hours`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_session_guests`, `table_session_join_requests`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 112.
+- Branch staff route remains `GET /organizations/{organization}/brands/{brand}/branches/{branch}/staff`.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}`.
+
+Current Livewire components:
+
+- `App\Livewire\Organizations\Brands\Branches\Staff\Index` now loads active branch `areaNodes`, keeps `areaAssignments`, and saves waiter-zone assignments through `saveAreaAssignments()`.
+- `App\Livewire\Waiter\Dashboard` now keeps `zoneScope` and can switch between `My zones` and `All zones`.
+- `App\Actions\Waiter\BuildWaiterDashboardAction` now applies zone assignment filtering before payload creation so service points, sessions, sent drafts, waiter calls, bill requests, and ready items stay consistent.
+- `App\Livewire\Waiter\TableDetail` is unchanged; review, edit, confirm, payment, served, and close actions stay there.
+
+Mandatory business rules:
+
+- Only users with `manage_staff` in the organization context can change branch waiter-zone assignments.
+- Assignments are only for fixed `waiter` staff members on the branch staff page.
+- Superadmin bypass remains platform-wide and does not get narrowed by waiter-zone assignments.
+- Active `branch_users` assignments still narrow branch-level access first; `area_node_waiters` only narrows the waiter dashboard view inside accessible branches.
+- If a waiter has no assigned zones for a branch, the dashboard can show all accessible places with a hint.
+- `My zones` must filter urgent work too, not only the service point cards.
+- QR identity and table-session rules are unchanged.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep waiter dashboard polling bounded by selected/eager-loaded Eloquent queries; do not query from Blade.
+- Use the new indexes on `area_node_waiters`; do not add Redis, WebSockets, search services, maps, or heavy UI libraries.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 112 notes:
+
+- Pivot/model: `App\Models\AreaNodeWaiter`.
+- UI labels: `Waiter zones`, `My zones`, `All zones`.
+- Focused coverage: `tests/Feature/WaiterZoneAssignmentsTest.php`, plus existing `StaffManagementUiTest` and `WaiterDashboardTest`.
+- Verification run included SQLite migration, config checks for database drivers, full route list, HTTP smoke for `/`, `/login`, and protected waiter dashboard redirect.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 111 Simple Visual Floor Board - 2026-06-04
 
 Prompt 111 added a simple visual floor board to the existing branch `Столы и места` service point page. No database schema, routes, packages, canvas editor, drag-and-drop editor, or heavy JavaScript were added.

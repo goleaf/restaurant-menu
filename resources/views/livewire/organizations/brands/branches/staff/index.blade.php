@@ -118,6 +118,54 @@
                             </flux:button>
                         @endif
                     </div>
+
+                    @if ($this->memberIsWaiter($member))
+                        <form
+                            wire:key="branch-staff-zones-{{ $member->user_id }}"
+                            wire:submit="saveAreaAssignments({{ $member->user_id }})"
+                            class="md:col-span-2"
+                        >
+                            <div class="rounded-md bg-zinc-50 p-3 ring-1 ring-zinc-200 dark:bg-zinc-950/40 dark:ring-zinc-800">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Waiter zones') }}</p>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                                        {{ __('Choose the branch zones this waiter should see first on the waiter dashboard.') }}
+                                    </p>
+                                </div>
+
+                                <div class="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                                    @forelse ($this->areaNodes as $areaNode)
+                                        <label wire:key="branch-staff-zone-option-{{ $member->user_id }}-{{ $areaNode->id }}" class="flex items-center gap-2 rounded-md bg-white px-3 py-2 text-sm text-zinc-700 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-zinc-800">
+                                            <input
+                                                type="checkbox"
+                                                class="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700"
+                                                wire:model="areaAssignments.{{ $member->user_id }}"
+                                                value="{{ $areaNode->id }}"
+                                            >
+                                            <span>{{ $areaNode->name }}</span>
+                                        </label>
+                                    @empty
+                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No active zones yet.') }}</p>
+                                    @endforelse
+                                </div>
+
+                                @error('areaAssignments.'.$member->user_id)
+                                    <p class="mt-3 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+
+                                <div class="mt-3 flex justify-end">
+                                    <flux:button
+                                        icon="map-pin"
+                                        type="submit"
+                                        wire:loading.attr="disabled"
+                                        wire:target="saveAreaAssignments({{ $member->user_id }})"
+                                    >
+                                        {{ __('Save zones') }}
+                                    </flux:button>
+                                </div>
+                            </div>
+                        </form>
+                    @endif
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

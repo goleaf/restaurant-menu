@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 112 - Waiter Zone Assignment
+
+- Added `area_node_waiters` as the branch-zone assignment table for waiters.
+- Added `AreaNodeWaiter`, factory, and model relationships on users, branches, and area nodes.
+- Extended the existing branch staff page so managers with `manage_staff` can assign fixed `waiter` staff members to one or more active branch zones.
+- Added a waiter dashboard `My zones` / `All zones` filter. The `My zones` view filters service points, open sessions, sent drafts, waiter calls, bill requests, and ready items to assigned zones when assignments exist.
+- If a waiter has no assigned zones, the dashboard falls back to all accessible branch places and shows a clear hint; superadmin users still see all zones.
+- Touched modules/files: new migration/model/factory for `area_node_waiters`, `User`, `Branch`, `AreaNode`, branch staff Livewire component and Blade view, waiter dashboard Livewire component, `BuildWaiterDashboardAction`, waiter dashboard Blade view, README, AI context, smoke checklist, next-step notes, and `tests/Feature/WaiterZoneAssignmentsTest.php`.
+- Limitations: no new roles, no custom permissions, no new routes, no map/floor-plan editor, no WebSockets, no Redis, no S3, no Docker, no paid service, and no change to QR identity or table-session rules.
+- Manual check: assign a waiter to one zone from branch staff, open the waiter dashboard as that waiter, confirm `My zones` shows only assigned-zone tables and urgent work, switch to `All zones`, then remove all zone assignments and confirm the dashboard falls back to all accessible branch places with a hint.
+
 ### Prompt 111 - Simple Visual Floor Board
 
 - Added a simple visual floor board to the existing branch `Столы и места` Livewire page.

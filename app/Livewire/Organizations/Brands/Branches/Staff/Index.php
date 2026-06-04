@@ -7,6 +7,8 @@ use App\Actions\Staff\AddBranchStaffMemberAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Models\AreaNode;
+use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
@@ -50,6 +52,11 @@ class Index extends Component
 
     public bool $canManageStaff = false;
 
+    /**
+     * @var array<int, list<string>>
+     */
+    public array $areaAssignments = [];
+
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
         $this->organization = $organization;
@@ -72,6 +79,7 @@ class Index extends Component
 
         $this->manualRoleId = $this->defaultRoleId();
         $this->inviteRoleId = $this->manualRoleId;
+        $this->loadAreaAssignments();
     }
 
     public function addManualStaffMember(AddBranchStaffMemberAction $addStaffMember): void
@@ -139,6 +147,64 @@ class Index extends Component
         unset($this->members);
     }
 
+    public function saveAreaAssignments(int $userId): void
+    {
+        $this->authorizeStaffManagement();
+
+        $branchUser = $this->findBranchUserByUser($userId);
+
+        if (! $this->memberIsWaiter($branchUser)) {
+            abort(403);
+        }
+
+        $selectedAreaIds = collect($this->areaAssignments[$userId] ?? [])
+            ->map(fn (mixed $areaNodeId): int => (int) $areaNodeId)
+            ->filter(fn (int $areaNodeId): bool => $areaNodeId > 0)
+            ->unique()
+            ->values();
+        $validAreaIds = $this->areaNodes->pluck('id')->map(fn (int $areaNodeId): int => $areaNodeId)->values();
+
+        if ($selectedAreaIds->diff($validAreaIds)->isNotEmpty()) {
+            $this->addError('areaAssignments.'.$userId, __('Selected zone is not available for this branch.'));
+
+            return;
+        }
+
+        $existingAssignments = AreaNodeWaiter::query()
+            ->where('branch_id', $this->branch->id)
+            ->where('user_id', $userId);
+
+        if ($selectedAreaIds->isEmpty()) {
+            $existingAssignments->delete();
+        } else {
+            $existingAssignments
+                ->whereNotIn('area_node_id', $selectedAreaIds)
+                ->delete();
+        }
+
+        foreach ($selectedAreaIds as $areaNodeId) {
+            AreaNodeWaiter::query()->updateOrCreate(
+                [
+                    'area_node_id' => $areaNodeId,
+                    'user_id' => $userId,
+                ],
+                [
+                    'organization_id' => $this->organization->id,
+                    'branch_id' => $this->branch->id,
+                    'assigned_by_user_id' => $this->currentUser()->id,
+                    'assigned_at' => now(),
+                ],
+            );
+        }
+
+        $this->areaAssignments[$userId] = $selectedAreaIds
+            ->map(fn (int $areaNodeId): string => (string) $areaNodeId)
+            ->values()
+            ->all();
+
+        Flux::toast(variant: 'success', text: __('Waiter zones updated.'));
+    }
+
     /**
      * @return EloquentCollection<int, BranchUser>
      */
@@ -183,6 +249,27 @@ class Index extends Component
             ->where('code', '!=', SystemRole::Superadmin->value)
             ->orderBy('sort_order')
             ->get();
+    }
+
+    /**
+     * @return EloquentCollection<int, AreaNode>
+     */
+    #[Computed]
+    public function areaNodes(): EloquentCollection
+    {
+        return AreaNode::query()
+            ->select(['id', 'branch_id', 'name', 'sort_order', 'is_active'])
+            ->where('branch_id', $this->branch->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function memberIsWaiter(BranchUser $member): bool
+    {
+        return $member->role?->code === SystemRole::Waiter;
     }
 
     public function render(): View
@@ -265,6 +352,33 @@ class Index extends Component
             ->where('branch_id', $this->branch->id)
             ->whereKey($branchUserId)
             ->firstOrFail();
+    }
+
+    private function findBranchUserByUser(int $userId): BranchUser
+    {
+        return BranchUser::query()
+            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
+            ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
+            ->where('branch_id', $this->branch->id)
+            ->where('user_id', $userId)
+            ->firstOrFail();
+    }
+
+    private function loadAreaAssignments(): void
+    {
+        $this->areaAssignments = AreaNodeWaiter::query()
+            ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
+            ->where('branch_id', $this->branch->id)
+            ->orderBy('user_id')
+            ->orderBy('area_node_id')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn (EloquentCollection $assignments): array => $assignments
+                ->pluck('area_node_id')
+                ->map(fn (int $areaNodeId): string => (string) $areaNodeId)
+                ->values()
+                ->all())
+            ->all();
     }
 
     private function authorizeStaffManagement(): void

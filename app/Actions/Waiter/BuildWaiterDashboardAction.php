@@ -8,6 +8,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
+use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -37,8 +38,9 @@ class BuildWaiterDashboardAction
      *     ready_item_count: int
      * }
      */
-    public function handle(User $user): array
+    public function handle(User $user, string $zoneScope = 'mine'): array
     {
+        $zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
         $branchIds = $this->accessibleBranchIds($user);
         $openTableBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewOrders)
@@ -85,33 +87,27 @@ class BuildWaiterDashboardAction
             ->get();
 
         $branchIds = $branches->pluck('id');
+        $assignedAreaNodeIdsByBranch = $this->assignedAreaNodeIdsByBranch($user, $branchIds);
+        $hasAssignedAreaNodes = $assignedAreaNodeIdsByBranch->isNotEmpty();
 
         $servicePoints = ServicePoint::query()
             ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'capacity', 'icon', 'status', 'is_active'])
             ->with(['areaNode' => fn ($query) => $query->select(['id', 'branch_id', 'name'])])
             ->whereIn('branch_id', $branchIds)
+            ->when($zoneScope === 'mine' && $hasAssignedAreaNodes, function ($query) use ($branchIds, $assignedAreaNodeIdsByBranch): void {
+                $this->applyAssignedAreaNodeFilter($query, $branchIds, $assignedAreaNodeIdsByBranch);
+            })
             ->orderBy('branch_id')
             ->orderBy('name')
             ->orderBy('id')
             ->get();
 
-        $sessions = TableSession::query()
-            ->select(['id', 'branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'created_at'])
-            ->withCount(['activeGuests'])
-            ->with([
-                'openedByUser' => fn ($query) => $query->select(['id', 'name']),
-                'openedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
-            ])
-            ->whereIn('branch_id', $branchIds)
-            ->whereIn('status', $this->openSessionStatuses())
-            ->orderBy('branch_id')
-            ->orderByDesc('started_at')
-            ->orderByDesc('id')
-            ->get();
+        $servicePointIds = $servicePoints->pluck('id')->values();
+        $sessions = $this->openTableSessions($branchIds, $servicePointIds);
 
         $draftOrders = $this->sentDraftOrders($sessions->pluck('id'));
-        $waiterCalls = $this->pendingWaiterCalls($branchIds);
-        $readyItems = $this->readyTicketItems($branchIds);
+        $waiterCalls = $this->pendingWaiterCalls($branchIds, $servicePointIds);
+        $readyItems = $this->readyTicketItems($branchIds, $servicePointIds);
         $draftsBySessionId = $draftOrders->keyBy('table_session_id');
         $sessionsByServicePointId = $sessions->groupBy('service_point_id');
         $waiterCallsByServicePointId = $waiterCalls->groupBy('service_point_id');
@@ -145,6 +141,8 @@ class BuildWaiterDashboardAction
                     readyItemsByServicePointId: $readyItemsByServicePointId,
                     canOpenTable: $openTableBranchIds->contains((int) $branch->id),
                     canCloseTable: $closeTableBranchIds->contains((int) $branch->id),
+                    assignedAreaNodeIds: $assignedAreaNodeIdsByBranch->get($branch->id, collect()),
+                    zoneScope: $zoneScope,
                 ))
                 ->values()
                 ->all(),
@@ -168,6 +166,90 @@ class BuildWaiterDashboardAction
     private function accessibleBranchIds(User $user): Collection
     {
         return $this->resolveAccessibleBranchIds->handle($user);
+    }
+
+    /**
+     * @param  Collection<int, int>  $branchIds
+     * @return Collection<int, Collection<int, int>>
+     */
+    private function assignedAreaNodeIdsByBranch(User $user, Collection $branchIds): Collection
+    {
+        if ($user->isSuperadmin() || $branchIds->isEmpty()) {
+            return collect();
+        }
+
+        return AreaNodeWaiter::query()
+            ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
+            ->where('user_id', $user->id)
+            ->whereIn('branch_id', $branchIds)
+            ->orderBy('branch_id')
+            ->orderBy('area_node_id')
+            ->get()
+            ->groupBy('branch_id')
+            ->map(fn (EloquentCollection $assignments): Collection => $assignments
+                ->pluck('area_node_id')
+                ->map(fn (int $areaNodeId): int => $areaNodeId)
+                ->unique()
+                ->values());
+    }
+
+    /**
+     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, Collection<int, int>>  $assignedAreaNodeIdsByBranch
+     */
+    private function applyAssignedAreaNodeFilter(mixed $query, Collection $branchIds, Collection $assignedAreaNodeIdsByBranch): void
+    {
+        $branchesWithoutAssignments = $branchIds
+            ->reject(fn (int $branchId): bool => $assignedAreaNodeIdsByBranch->has($branchId))
+            ->values();
+
+        $query->where(function ($areaNodeQuery) use ($assignedAreaNodeIdsByBranch, $branchesWithoutAssignments): void {
+            $hasPreviousCondition = false;
+
+            if ($branchesWithoutAssignments->isNotEmpty()) {
+                $areaNodeQuery->whereIn('branch_id', $branchesWithoutAssignments);
+                $hasPreviousCondition = true;
+            }
+
+            foreach ($assignedAreaNodeIdsByBranch as $branchId => $areaNodeIds) {
+                $method = $hasPreviousCondition ? 'orWhere' : 'where';
+
+                $areaNodeQuery->{$method}(function ($branchQuery) use ($areaNodeIds, $branchId): void {
+                    $branchQuery
+                        ->where('branch_id', (int) $branchId)
+                        ->whereIn('area_node_id', $areaNodeIds);
+                });
+
+                $hasPreviousCondition = true;
+            }
+        });
+    }
+
+    /**
+     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, int>  $servicePointIds
+     * @return EloquentCollection<int, TableSession>
+     */
+    private function openTableSessions(Collection $branchIds, Collection $servicePointIds): EloquentCollection
+    {
+        if ($branchIds->isEmpty() || $servicePointIds->isEmpty()) {
+            return new EloquentCollection;
+        }
+
+        return TableSession::query()
+            ->select(['id', 'branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'created_at'])
+            ->withCount(['activeGuests'])
+            ->with([
+                'openedByUser' => fn ($query) => $query->select(['id', 'name']),
+                'openedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
+            ])
+            ->whereIn('branch_id', $branchIds)
+            ->whereIn('service_point_id', $servicePointIds)
+            ->whereIn('status', $this->openSessionStatuses())
+            ->orderBy('branch_id')
+            ->orderByDesc('started_at')
+            ->orderByDesc('id')
+            ->get();
     }
 
     /**
@@ -196,11 +278,12 @@ class BuildWaiterDashboardAction
 
     /**
      * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, int>  $servicePointIds
      * @return EloquentCollection<int, WaiterCall>
      */
-    private function pendingWaiterCalls(Collection $branchIds): EloquentCollection
+    private function pendingWaiterCalls(Collection $branchIds, Collection $servicePointIds): EloquentCollection
     {
-        if ($branchIds->isEmpty()) {
+        if ($branchIds->isEmpty() || $servicePointIds->isEmpty()) {
             return new EloquentCollection;
         }
 
@@ -221,6 +304,7 @@ class BuildWaiterDashboardAction
                 'requestedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
             ])
             ->whereIn('branch_id', $branchIds)
+            ->whereIn('service_point_id', $servicePointIds)
             ->where('status', WaiterCallStatus::Pending->value)
             ->orderBy('requested_at')
             ->orderBy('id')
@@ -229,11 +313,12 @@ class BuildWaiterDashboardAction
 
     /**
      * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, int>  $servicePointIds
      * @return EloquentCollection<int, KitchenTicketItem>
      */
-    private function readyTicketItems(Collection $branchIds): EloquentCollection
+    private function readyTicketItems(Collection $branchIds, Collection $servicePointIds): EloquentCollection
     {
-        if ($branchIds->isEmpty()) {
+        if ($branchIds->isEmpty() || $servicePointIds->isEmpty()) {
             return new EloquentCollection;
         }
 
@@ -263,8 +348,10 @@ class BuildWaiterDashboardAction
             ])
             ->where('status', KitchenTicketItemStatus::Ready->value)
             ->whereNull('served_at')
-            ->whereHas('kitchenTicket', function ($query) use ($branchIds): void {
-                $query->whereIn('branch_id', $branchIds);
+            ->whereHas('kitchenTicket', function ($query) use ($branchIds, $servicePointIds): void {
+                $query
+                    ->whereIn('branch_id', $branchIds)
+                    ->whereIn('service_point_id', $servicePointIds);
             })
             ->orderBy('updated_at')
             ->orderBy('id')
@@ -296,6 +383,7 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
      * @param  Collection<int, Collection<int, WaiterCall>>  $waiterCallsByServicePointId
      * @param  Collection<int, Collection<int, KitchenTicketItem>>  $readyItemsByServicePointId
+     * @param  Collection<int, int>  $assignedAreaNodeIds
      * @return array<string, mixed>
      */
     private function branchPayload(
@@ -312,6 +400,8 @@ class BuildWaiterDashboardAction
         Collection $readyItemsByServicePointId,
         bool $canOpenTable,
         bool $canCloseTable,
+        Collection $assignedAreaNodeIds,
+        string $zoneScope,
     ): array {
         $servicePointsById = $servicePoints->keyBy('id');
         $servicePointPayloads = $servicePoints
@@ -326,6 +416,8 @@ class BuildWaiterDashboardAction
                 canCloseTable: $canCloseTable,
             ))
             ->values();
+        $assignedAreaNodeCount = $assignedAreaNodeIds->count();
+        $showingAssignedZonesOnly = $zoneScope === 'mine' && $assignedAreaNodeCount > 0;
 
         return [
             'id' => $branch->id,
@@ -338,6 +430,9 @@ class BuildWaiterDashboardAction
             'temporary_closure_active' => $this->temporaryClosureIsActive($branch),
             'temporary_closed_reason' => $branch->temporary_closed_reason,
             'temporary_closed_until_label' => $this->temporaryClosedUntilLabel($branch),
+            'zone_scope' => $zoneScope,
+            'assigned_area_node_count' => $assignedAreaNodeCount,
+            'showing_assigned_zones_only' => $showingAssignedZonesOnly,
             'service_point_count' => count($servicePoints),
             'active_session_count' => count($sessions),
             'new_draft_count' => count($drafts),
@@ -345,7 +440,7 @@ class BuildWaiterDashboardAction
             'bill_request_count' => count($billRequests),
             'ready_item_count' => count($readyItems),
             'service_points' => $servicePointPayloads->all(),
-            'service_point_zones' => $this->servicePointZonePayloads($servicePointPayloads),
+            'service_point_zones' => $this->servicePointZonePayloads($servicePointPayloads, $assignedAreaNodeIds),
             'drafts' => $drafts
                 ->map(fn (DraftOrder $draftOrder): array => $this->draftPayload($draftOrder, $branch->currency))
                 ->values()
@@ -435,9 +530,10 @@ class BuildWaiterDashboardAction
 
     /**
      * @param  Collection<int, array<string, mixed>>  $servicePointPayloads
+     * @param  Collection<int, int>  $assignedAreaNodeIds
      * @return list<array<string, mixed>>
      */
-    private function servicePointZonePayloads(Collection $servicePointPayloads): array
+    private function servicePointZonePayloads(Collection $servicePointPayloads, Collection $assignedAreaNodeIds): array
     {
         return $servicePointPayloads
             ->groupBy(fn (array $servicePoint): string => (string) ($servicePoint['area_id'] ?? 'no-zone'))
@@ -448,8 +544,10 @@ class BuildWaiterDashboardAction
                         .str_pad((string) $servicePoint['id'], 8, '0', STR_PAD_LEFT))
                     ->values();
 
+                $areaId = $sortedServicePoints->first()['area_id'] ?? null;
+
                 return [
-                    'area_id' => $sortedServicePoints->first()['area_id'] ?? null,
+                    'area_id' => $areaId,
                     'name' => $sortedServicePoints->first()['area_name'] ?? null,
                     'service_point_count' => $sortedServicePoints->count(),
                     'priority_count' => $sortedServicePoints
@@ -458,7 +556,13 @@ class BuildWaiterDashboardAction
                     'service_points' => $sortedServicePoints->all(),
                 ];
             })
-            ->sortBy(fn (array $zone): string => ($zone['name'] === null ? 'zzzz' : mb_strtolower((string) $zone['name'])))
+            ->map(function (array $zone) use ($assignedAreaNodeIds): array {
+                $zone['is_assigned'] = $zone['area_id'] !== null && $assignedAreaNodeIds->contains((int) $zone['area_id']);
+
+                return $zone;
+            })
+            ->sortBy(fn (array $zone): string => ($zone['is_assigned'] ? '0' : '1')
+                .($zone['name'] === null ? 'zzzz' : mb_strtolower((string) $zone['name'])))
             ->values()
             ->all();
     }

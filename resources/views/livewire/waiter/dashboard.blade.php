@@ -41,8 +41,36 @@
             <h1 class="mt-1 text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Waiter dashboard') }}</h1>
         </div>
 
-        <div class="rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
-            {{ __('Updated') }}: {{ $refreshedAt }}
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="flex overflow-hidden rounded-lg border border-zinc-200 bg-white text-sm font-medium shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+                <button
+                    type="button"
+                    wire:click="setZoneScope('mine')"
+                    @class([
+                        'px-3 py-2',
+                        'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950' => $zoneScope === 'mine',
+                        'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800' => $zoneScope !== 'mine',
+                    ])
+                >
+                    {{ __('My zones') }}
+                </button>
+
+                <button
+                    type="button"
+                    wire:click="setZoneScope('all')"
+                    @class([
+                        'border-s border-zinc-200 px-3 py-2 dark:border-zinc-800',
+                        'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950' => $zoneScope === 'all',
+                        'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800' => $zoneScope !== 'all',
+                    ])
+                >
+                    {{ __('All zones') }}
+                </button>
+            </div>
+
+            <div class="rounded-md bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
+                {{ __('Updated') }}: {{ $refreshedAt }}
+            </div>
         </div>
     </header>
 
@@ -141,6 +169,21 @@
                                 <span wire:loading wire:target="disableTemporaryClosure({{ $branch['id'] }})">{{ __('Открываем') }}</span>
                             </flux:button>
                         </div>
+                    </div>
+                @endif
+
+                @if ($branch['showing_assigned_zones_only'])
+                    <div class="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-100">
+                        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <p>{{ __("Showing only this waiter's assigned zones.") }}</p>
+                            <button type="button" class="text-start font-semibold underline-offset-4 hover:underline md:text-end" wire:click="setZoneScope('all')">
+                                {{ __('Show all zones') }}
+                            </button>
+                        </div>
+                    </div>
+                @elseif ($branch['zone_scope'] === 'mine' && $branch['assigned_area_node_count'] === 0)
+                    <div class="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+                        {{ __('No waiter zones are assigned yet. Showing all available places for this branch.') }}
                     </div>
                 @endif
 
@@ -288,6 +331,10 @@
 
                                 @if ($zone['priority_count'] > 0)
                                     <flux:badge color="rose">{{ __('Attention') }}</flux:badge>
+                                @endif
+
+                                @if ($zone['is_assigned'])
+                                    <flux:badge color="blue">{{ __('Assigned') }}</flux:badge>
                                 @endif
                             </div>
 

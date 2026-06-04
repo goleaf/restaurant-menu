@@ -13,6 +13,41 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 112 Waiter Zone Assignment Results
+
+Programmatic coverage was added in `tests/Feature/WaiterZoneAssignmentsTest.php`
+and related staff/waiter tests were re-run. The feature currently verifies:
+
+- branch staff managers with `manage_staff` can assign a fixed waiter to active
+  branch zones;
+- assignments are saved in `area_node_waiters`;
+- the waiter dashboard defaults to `My zones`;
+- `My zones` hides unassigned-zone service points and related urgent work when
+  assignments exist;
+- `All zones` shows all accessible branch zones again;
+- existing branch staff management and waiter dashboard flows still pass.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/WaiterZoneAssignmentsTest.php tests/Feature/StaffManagementUiTest.php tests/Feature/WaiterDashboardTest.php
+```
+
+Manual check:
+
+1. Open branch staff at
+   `/organizations/{organization}/brands/{brand}/branches/{branch}/staff` as a
+   manager with `manage_staff`.
+2. Confirm only fixed `waiter` staff rows show the `Waiter zones` block.
+3. Assign the waiter to one zone, save, and reload the page.
+4. Log in as that waiter and open `/restaurant/waiter/dashboard`.
+5. Confirm `My zones` shows only the assigned zone's service points, sessions,
+   sent drafts, waiter calls, bill requests, and ready items.
+6. Switch to `All zones` and confirm the other accessible branch zones appear.
+7. Remove all zone assignments and confirm `My zones` falls back to all
+   accessible branch places with a hint.
+8. Confirm superadmin still sees all zones.
+
 ## Prompt 111 Simple Visual Floor Board Results
 
 Programmatic coverage was added in `tests/Feature/ServicePointCrudTest.php`.

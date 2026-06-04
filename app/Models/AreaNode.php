@@ -72,4 +72,12 @@ class AreaNode extends Model
     {
         return $this->hasMany(ServicePoint::class);
     }
+
+    /**
+     * @return HasMany<AreaNodeWaiter, $this>
+     */
+    public function waiterAssignments(): HasMany
+    {
+        return $this->hasMany(AreaNodeWaiter::class);
+    }
 }

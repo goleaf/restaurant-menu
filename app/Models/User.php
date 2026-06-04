@@ -79,6 +79,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
+     * @return HasMany<AreaNodeWaiter, $this>
+     */
+    public function areaNodeAssignments(): HasMany
+    {
+        return $this->hasMany(AreaNodeWaiter::class);
+    }
+
+    /**
      * @return HasMany<Invitation, $this>
      */
     public function sentInvitations(): HasMany

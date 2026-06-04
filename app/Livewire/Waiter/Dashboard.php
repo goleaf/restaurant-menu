@@ -52,6 +52,8 @@ class Dashboard extends Component
 
     public string $refreshedAt = '';
 
+    public string $zoneScope = 'mine';
+
     public function mount(): void
     {
         $this->refreshDashboard();
@@ -63,7 +65,7 @@ class Dashboard extends Component
 
     public function refreshDashboard(): void
     {
-        $payload = app(BuildWaiterDashboardAction::class)->handle($this->currentUser());
+        $payload = app(BuildWaiterDashboardAction::class)->handle($this->currentUser(), $this->normalizedZoneScope());
 
         if (! $payload['has_access']) {
             abort(403);
@@ -103,6 +105,12 @@ class Dashboard extends Component
         $this->previousWaiterCallCount = $this->waiterCallCount;
         $this->previousBillRequestCount = $this->billRequestCount;
         $this->previousReadyItemCount = $this->readyItemCount;
+    }
+
+    public function setZoneScope(string $zoneScope): void
+    {
+        $this->zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
+        $this->refreshDashboard();
     }
 
     public function openTable(
@@ -200,5 +208,14 @@ class Dashboard extends Component
         $messages = collect($exception->errors())->flatten();
 
         return (string) ($messages->first() ?? __('Не удалось обработать вызов официанта.'));
+    }
+
+    private function normalizedZoneScope(): string
+    {
+        if ($this->zoneScope !== 'all') {
+            $this->zoneScope = 'mine';
+        }
+
+        return $this->zoneScope;
     }
 }

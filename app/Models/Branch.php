@@ -145,6 +145,14 @@ class Branch extends Model
     }
 
     /**
+     * @return HasMany<AreaNodeWaiter, $this>
+     */
+    public function waiterAreaAssignments(): HasMany
+    {
+        return $this->hasMany(AreaNodeWaiter::class);
+    }
+
+    /**
      * @return HasMany<AreaNode, $this>
      */
     public function areaNodes(): HasMany

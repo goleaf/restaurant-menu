@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,9 +47,9 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 111 simple visual floor board. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, and waiter-side schedule checks are now part of the baseline branch setup and order-review context.
+Latest memory refresh: 2026-06-04 after Prompt 112 waiter zone assignments. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, and waiter-side schedule checks are now part of the baseline branch setup and order-review context.
 
-The memory refresh after Prompt 111 records the current service point visual board status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`.
+The memory refresh after Prompt 112 records the current waiter zone assignment status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`.
 
 ## Functional Consistency Pass
 
@@ -432,9 +432,12 @@ The UI can:
 - list branch staff;
 - add a staff member manually;
 - assign a fixed system role;
+- assign branch waiter zones;
 - create an invite link;
 - create an invite code;
 - activate or deactivate staff members.
+
+Branch waiter zone assignments are stored in `area_node_waiters`. Managers with `manage_staff` can assign a fixed `waiter` staff member to one or more active branch zones from the existing branch staff page. This does not create new roles or custom permissions. If a waiter has no assigned zones, the waiter dashboard keeps showing all accessible branch places with a clear hint.
 
 Staff permission overrides are managed at:
 
@@ -1059,6 +1062,8 @@ The waiter dashboard shell is available at:
 ```
 
 Access requires authentication and the `view_orders` permission in the organization context. Superadmins keep the normal platform-level permission bypass. If a user has active `branch_users` assignments, the dashboard shows only those assigned branches; otherwise it shows the branches from organizations where the user can view orders.
+
+Waiters can now use a `My zones` / `All zones` filter. In `My zones`, branches with `area_node_waiters` assignments show only that waiter's assigned zones and related urgent work; branches without zone assignments fall back to all accessible places with a hint. Superadmin users still see everything.
 
 The dashboard uses Livewire polling every 1 second and does not use WebSockets. The screen is optimized for restaurant work: new orders stay at the top, urgent work is color-coded, and service points are grouped by their current zones.
 

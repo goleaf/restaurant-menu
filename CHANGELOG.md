@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 106 - Service Modes
+
+- Added branch service modes stored on `branch_settings.service_modes` with safe default `dine_in`.
+- Added fixed mode values for `dine_in`, `pickup`, `delivery`, `hotel_room_service`, `bar_only`, and `custom`, plus normalization so unknown values cannot be saved.
+- Extended the branch settings Livewire page with simple enable/disable checkboxes for service modes.
+- Touched modules/files: `App\Enums\BranchServiceMode`, `branch_settings` migration, `App\Models\BranchSetting`, `App\Actions\Branches\UpdateBranchSettingsAction`, branch settings Livewire component and Blade view, README, AI context, smoke checklist, next-step notes, and `tests/Feature/BranchSettingsTest.php`.
+- Limitations: foundation only; no maps, couriers, delivery workflow, pickup workflow, online payments, external APIs, Redis, WebSockets, S3, Docker, React, Vue, or paid services were added.
+- Manual check: open branch settings, confirm `Dine-in` is enabled by default, enable pickup/delivery/bar/custom modes, save, reload the page, and confirm the selected modes persist while existing QR/table behavior still works.
+
 ### Docs - Daily Project Memory Update After Prompt 105
 
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 105 without adding product features.

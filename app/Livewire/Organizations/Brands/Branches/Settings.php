@@ -10,6 +10,7 @@ use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\BranchOrderFlowMode;
+use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\Branch;
@@ -62,6 +63,11 @@ class Settings extends Component
     public bool $tipsEnabled = false;
 
     public string $orderFlowMode = 'waiter_confirmation';
+
+    /**
+     * @var list<string>
+     */
+    public array $serviceModes = [];
 
     public string $publicName = '';
 
@@ -176,6 +182,7 @@ class Settings extends Component
                 'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
                 'tips_enabled' => (bool) $validated['tipsEnabled'],
                 'order_flow_mode' => $validated['orderFlowMode'],
+                'service_modes' => $validated['serviceModes'],
             ],
         );
 
@@ -234,6 +241,15 @@ class Settings extends Component
         return BranchOrderFlowMode::options();
     }
 
+    /**
+     * @return array<int, array{value: string, label: string, description: string}>
+     */
+    #[Computed]
+    public function serviceModeOptions(): array
+    {
+        return BranchServiceMode::options();
+    }
+
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.settings');
@@ -290,6 +306,8 @@ class Settings extends Component
             'serviceChargeEnabled' => ['boolean'],
             'tipsEnabled' => ['boolean'],
             'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
+            'serviceModes' => ['required', 'array', 'min:1'],
+            'serviceModes.*' => ['required', 'string', Rule::in(BranchServiceMode::values())],
             'publicName' => ['nullable', 'string', 'max:160'],
             'publicDescription' => ['nullable', 'string', 'max:1200'],
             'phone' => ['nullable', 'string', 'max:80'],
@@ -336,6 +354,7 @@ class Settings extends Component
         $this->serviceChargeEnabled = $settings->service_charge_enabled;
         $this->tipsEnabled = $settings->tips_enabled;
         $this->orderFlowMode = $settings->order_flow_mode->value;
+        $this->serviceModes = BranchServiceMode::normalizeList($settings->service_modes);
         $this->branch->refresh();
     }
 
@@ -499,6 +518,7 @@ class Settings extends Component
                 'service_charge_enabled',
                 'tips_enabled',
                 'order_flow_mode',
+                'service_modes',
                 'created_at',
                 'updated_at',
             ])

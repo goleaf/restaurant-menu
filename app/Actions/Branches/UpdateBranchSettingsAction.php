@@ -2,6 +2,7 @@
 
 namespace App\Actions\Branches;
 
+use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use App\Models\BranchSetting;
 use Illuminate\Support\Facades\DB;
@@ -20,13 +21,15 @@ class UpdateBranchSettingsAction
      *     default_currency: string,
      *     service_charge_enabled: bool,
      *     tips_enabled: bool,
-     *     order_flow_mode: string
+     *     order_flow_mode: string,
+     *     service_modes?: list<string>
      * }  $data
      */
     public function handle(BranchSetting $settings, array $data): BranchSetting
     {
         return DB::transaction(function () use ($settings, $data): BranchSetting {
             $data['default_currency'] = SupportedCurrency::normalize($data['default_currency'] ?? null);
+            $data['service_modes'] = BranchServiceMode::normalizeList($data['service_modes'] ?? null);
 
             $settings->fill($data);
             $settings->save();

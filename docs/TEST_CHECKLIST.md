@@ -16,9 +16,9 @@ SQLite setup.
 ## Daily Memory Update - 2026-06-04 After Prompt 105
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 105. Prompt 106 is the next
-recommended small prompt and should not be implemented until explicitly
-requested.
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 105. Prompt 106 has
+now added branch service modes; Prompt 107 is the next recommended small prompt
+and should not be implemented until explicitly requested.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is
@@ -50,6 +50,11 @@ create several active menus, confirm the guest UI groups currently available
 menus by menu name and sort order, confirm inactive menus are hidden, and
 confirm menus scheduled for later show only a next-availability hint.
 
+After Prompt 106, include service modes in branch settings smoke checks:
+confirm `dine_in` is enabled by default, enable several service modes, save,
+reload the page, and confirm selections persist without changing QR/table
+behavior.
+
 Use these focused checks after documentation-only maintenance:
 
 ```bash
@@ -67,6 +72,34 @@ npm run build
 
 The next recommended prompt is documented in `docs/NEXT_STEPS.md`. Do not
 implement it until the user explicitly requests it.
+
+## Prompt 106 Service Modes Results
+
+Programmatic coverage was added in `tests/Feature/BranchSettingsTest.php`.
+The feature currently verifies:
+
+- `branch_settings` has a `service_modes` column;
+- new branches default to `['dine_in']`;
+- branch settings UI shows service modes;
+- branch owners can save pickup, delivery, hotel room service, bar-only, and
+  custom modes;
+- unknown service mode values are rejected by validation.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/BranchSettingsTest.php
+```
+
+Manual check:
+
+1. Open branch settings.
+2. Confirm `Dine-in` is selected by default.
+3. Enable pickup, delivery, hotel room service, bar only, or custom modes.
+4. Save settings.
+5. Reload the settings page and confirm selections persist.
+6. Open an existing QR guest page and confirm normal dine-in table behavior is
+   unchanged.
 
 ## Prompt 105 Multiple Menus Results
 

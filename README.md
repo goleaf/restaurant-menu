@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,7 +47,7 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 105 and the follow-up daily memory update. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, and multiple active branch menus are now part of the baseline guest QR context.
+Latest memory refresh: 2026-06-04 after Prompt 105 and the follow-up daily memory update. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, and branch service modes are now part of the baseline guest QR context.
 
 The daily memory refresh after Prompt 105 is documentation-only and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
 
@@ -192,6 +192,21 @@ A branch can have several active menus at the same time, for example:
 These are stored in the existing `menus` table through the menu name, `status`, and `sort_order`; no new menu-type table or external service is required. The guest QR menu now groups available dishes by menu, keeps menus sorted by `sort_order`, `name`, and `id`, hides inactive/draft/archived menus from guests, and respects `menu_availability_schedules` in the branch timezone. Active menus that are scheduled for later can be shown as `Будет доступно позже` without exposing their dishes for ordering.
 
 The guest menu still uses SQLite-backed database cache through `GetGuestMenuForBranchAction`. Existing menu, category, item, modifier, translation, availability, and schedule changes continue to clear branch cache through the centralized cache invalidation flow.
+
+## Branch Service Modes
+
+Each branch can enable one or more service modes from the existing branch settings page:
+
+- dine-in;
+- pickup;
+- delivery;
+- hotel room service;
+- bar only;
+- custom.
+
+The selected modes are stored in `branch_settings.service_modes` as a local SQLite JSON list. The safe default is `dine_in`, which keeps existing QR/table behavior unchanged.
+
+This is foundation only: `dine_in` stays the current QR table mode, `pickup` can later be paired with existing pickup-style service points, and `delivery` is only future-ready. No maps, couriers, online payments, external APIs, Redis, WebSockets, S3, Docker, React, Vue, or paid services are added.
 
 ## Database Notifications
 

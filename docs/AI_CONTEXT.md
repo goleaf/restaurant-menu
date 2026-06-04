@@ -4,7 +4,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 
 ## Daily Project Memory Update After Prompt 105 - 2026-06-04
 
-This is a documentation-only memory refresh after Prompt 105. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
+This section was last refreshed before Prompt 106. Prompt 106 now adds branch service modes; see the dedicated Prompt 106 section below.
 
 Current stack remains:
 
@@ -22,6 +22,7 @@ Current state:
 - Prompt 103 is complete: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
 - Prompt 104 is complete: menu schedules restrict guest ordering to active branch-timezone menu windows.
 - Prompt 105 is complete: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106 is complete: branch settings can enable fixed service modes for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
 - Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
 - Local images remain in `storage/app/public/media/...`.
 
@@ -29,7 +30,7 @@ Current tables:
 
 - `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
 - `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
-- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings`, `invitations`, `branch_opening_hours`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings` including `service_modes`, `invitations`, `branch_opening_hours`.
 - `area_nodes`, `service_points`, `qr_codes`.
 - `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
 - `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`.
@@ -58,6 +59,7 @@ Mandatory business rules:
 - Guests see one shared draft/cart, guests are sorted alphabetically, and each guest edits only their own draft items while the draft is still editable.
 - Branch opening hours, temporary closure, and menu schedules can block ordering while still allowing QR/menu viewing.
 - Multiple active menus can be visible together only when they are currently available by schedule; inactive/draft/archived menus are hidden from guests.
+- Branch service modes are fixed values stored per branch; they prepare dine-in, pickup, delivery, hotel room service, bar-only, and custom operation without adding delivery/payment infrastructure.
 - Every guest draft must be confirmed by a waiter before becoming an order and explicitly dispatched before kitchen/bar can see it.
 - Order items keep immutable snapshots; manual payments and table close preserve history and never reissue QR.
 
@@ -70,7 +72,32 @@ Shared-hosting constraints and forbidden infrastructure:
 
 Next recommended prompt:
 
-- Prompt 106: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 107: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
+## Prompt 106 - Service Modes
+
+Prompt 106 added branch-level service modes as a small foundation setting.
+
+Implemented:
+
+- New `branch_settings.service_modes` JSON column for enabled branch service modes.
+- New `App\Enums\BranchServiceMode` with fixed values: `dine_in`, `pickup`, `delivery`, `hotel_room_service`, `bar_only`, and `custom`.
+- `BranchSetting::defaults()` now returns `service_modes => ['dine_in']`.
+- `App\Actions\Branches\UpdateBranchSettingsAction` normalizes mode lists before saving and keeps branch cache invalidation unchanged through the existing branch settings observer/action flow.
+- Existing branch settings Livewire page now shows service mode checkboxes.
+- Focused coverage lives in `tests/Feature/BranchSettingsTest.php`.
+
+Rules:
+
+- `dine_in` is the safe default and preserves current QR/service-point behavior.
+- `pickup`, `delivery`, `hotel_room_service`, `bar_only`, and `custom` are foundation flags only.
+- Delivery does not add maps, couriers, payments, external APIs, or routing logic.
+- Pickup does not add a separate pickup workflow yet; existing pickup-style service points can be used later.
+- No Redis, WebSockets, S3, Docker, paid services, React, Vue, or new frontend SPA were added.
+
+Next recommended prompt:
+
+- Prompt 107: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update After Prompt 104 - 2026-06-04
 

@@ -179,6 +179,33 @@
                 @endif
             </section>
 
+            <section class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+                <div class="flex flex-col gap-1">
+                    <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Service modes') }}</p>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Choose how this branch can serve guests. Delivery stays foundation-only here: no maps, couriers, or payments are added.') }}</p>
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-2">
+                    @foreach ($this->serviceModeOptions as $mode)
+                        <label wire:key="branch-service-mode-{{ $mode['value'] }}" class="flex gap-3 rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            <input type="checkbox" wire:model="serviceModes" value="{{ $mode['value'] }}" class="mt-1 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+                            <span class="grid gap-1">
+                                <span class="font-medium text-zinc-950 dark:text-white">{{ __($mode['label']) }}</span>
+                                <span class="text-zinc-600 dark:text-zinc-300">{{ __($mode['description']) }}</span>
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+
+                @error('serviceModes')
+                    <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
+                @enderror
+
+                @error('serviceModes.*')
+                    <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
+                @enderror
+            </section>
+
             <div class="grid gap-4 md:grid-cols-2">
                 <flux:switch wire:model="requireWaiterConfirmationForOrders" :label="__('Require waiter confirmation for orders')" />
                 <flux:switch wire:model="guestJoinRequiresApproval" :label="__('Guest join requires approval')" />

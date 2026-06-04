@@ -33,6 +33,7 @@ test('branch settings table has safe operational fields', function () {
         'service_charge_enabled',
         'tips_enabled',
         'order_flow_mode',
+        'service_modes',
     ]))->toBeTrue();
 });
 
@@ -62,6 +63,7 @@ test('creating branch creates settings with safe defaults', function () {
     expect($settings->service_charge_enabled)->toBeFalse();
     expect($settings->tips_enabled)->toBeFalse();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::WaiterConfirmation);
+    expect($settings->service_modes)->toBe(['dine_in']);
 });
 
 test('branch settings page requires authentication', function () {
@@ -82,6 +84,8 @@ test('owner can update branch settings', function () {
         ->assertSet('allowGuestInviteLinks', true)
         ->assertSet('guestJoinRequiresApproval', true)
         ->assertSet('pollingIntervalSeconds', 1)
+        ->assertSet('serviceModes', ['dine_in'])
+        ->assertSeeText('Service modes')
         ->set('allowGuestCreatedSessions', true)
         ->set('allowWaiterOpenedSessions', true)
         ->set('allowGuestInviteLinks', true)
@@ -92,6 +96,7 @@ test('owner can update branch settings', function () {
         ->set('serviceChargeEnabled', true)
         ->set('tipsEnabled', true)
         ->set('orderFlowMode', BranchOrderFlowMode::StaffManaged->value)
+        ->set('serviceModes', ['pickup', 'delivery', 'hotel_room_service', 'bar_only', 'custom'])
         ->call('save')
         ->assertHasNoErrors()
         ->assertSee('Settings saved.');
@@ -108,6 +113,13 @@ test('owner can update branch settings', function () {
     expect($settings->service_charge_enabled)->toBeTrue();
     expect($settings->tips_enabled)->toBeTrue();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::StaffManaged);
+    expect($settings->service_modes)->toBe([
+        'pickup',
+        'delivery',
+        'hotel_room_service',
+        'bar_only',
+        'custom',
+    ]);
 });
 
 test('settings page creates missing settings for existing branch', function () {
@@ -165,11 +177,13 @@ test('settings validation keeps polling and order flow safe', function () {
         ->set('pollingIntervalSeconds', 0)
         ->set('defaultCurrency', 'EURO')
         ->set('orderFlowMode', 'guest_direct')
+        ->set('serviceModes', ['maps_and_couriers'])
         ->call('save')
         ->assertHasErrors([
             'pollingIntervalSeconds' => ['min'],
             'defaultCurrency' => ['size', 'in'],
             'orderFlowMode' => ['in'],
+            'serviceModes.0' => ['in'],
         ]);
 });
 

@@ -12,7 +12,7 @@ ordering work.
 
 ## Current Recommended Prompt
 
-Prompt 106: add a simple menu translation admin editor.
+Prompt 107: add a simple menu translation admin editor.
 
 Scope:
 
@@ -50,6 +50,12 @@ all active menus available right now, group dishes by menu, keep menu sorting,
 hide draft/archived menus, respect menu schedules in the branch timezone, and
 show later active menus only as next-availability hints without exposing their
 dishes for ordering.
+
+Prompt 106 added branch service modes: `dine_in`, `pickup`, `delivery`,
+`hotel_room_service`, `bar_only`, and `custom` can be enabled from branch
+settings and are stored in `branch_settings.service_modes` with safe default
+`dine_in`. This is foundation only; no delivery workflow, maps, couriers, or
+online payments were added.
 
 Prompt 102 added branch opening hours: weekly schedules with closed days,
 several intervals per day, branch-timezone status checks, admin settings UI, and

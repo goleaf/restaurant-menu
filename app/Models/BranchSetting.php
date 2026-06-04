@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BranchOrderFlowMode;
+use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use Database\Factories\BranchSettingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'service_charge_enabled',
     'tips_enabled',
     'order_flow_mode',
+    'service_modes',
 ])]
 class BranchSetting extends Model
 {
@@ -44,6 +46,7 @@ class BranchSetting extends Model
         'service_charge_enabled' => false,
         'tips_enabled' => false,
         'order_flow_mode' => 'waiter_confirmation',
+        'service_modes' => '["dine_in"]',
     ];
 
     /**
@@ -61,6 +64,7 @@ class BranchSetting extends Model
             'service_charge_enabled' => 'boolean',
             'tips_enabled' => 'boolean',
             'order_flow_mode' => BranchOrderFlowMode::class,
+            'service_modes' => 'array',
         ];
     }
 
@@ -84,7 +88,8 @@ class BranchSetting extends Model
      *     default_currency: string,
      *     service_charge_enabled: bool,
      *     tips_enabled: bool,
-     *     order_flow_mode: string
+     *     order_flow_mode: string,
+     *     service_modes: list<string>
      * }
      */
     public static function defaults(?Branch $branch = null): array
@@ -101,6 +106,7 @@ class BranchSetting extends Model
             'service_charge_enabled' => false,
             'tips_enabled' => false,
             'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,
+            'service_modes' => BranchServiceMode::defaultValues(),
         ];
     }
 }

@@ -47,9 +47,9 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 104 and the follow-up daily memory update. Branch public profiles, branch opening hours, temporary branch closed mode, and menu availability schedules are now part of the baseline guest QR context.
+Latest memory refresh: 2026-06-04 after Prompt 105 and the follow-up daily memory update. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, and multiple active branch menus are now part of the baseline guest QR context.
 
-The daily memory refresh after Prompt 104 is documentation-only and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
+The daily memory refresh after Prompt 105 is documentation-only and keeps the next recommended small step in `docs/NEXT_STEPS.md`.
 
 ## Project Cleanup Consistency
 
@@ -1175,15 +1175,16 @@ Not implemented yet:
 
 ## Project Memory
 
-After Prompt 104, the current working memory is:
+After Prompt 105, the current working memory is:
 
 - branch public restaurant profiles are implemented and used by QR landing / guest UI;
 - branch opening hours are implemented and block guest ordering while a configured branch is closed;
 - temporary branch closed mode is implemented and blocks new guest ordering while preserving QR and menu viewing;
 - menu availability schedules are implemented and block guest ordering when the active menu is outside its configured branch-timezone interval;
+- multiple active branch menus are supported in guest UI, grouped and sorted, while inactive menus stay hidden;
 - SQLite, database cache, database sessions, database queue, local storage, Blade, and Livewire remain the required stack;
 - Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
-- the next recommended prompt is Prompt 105: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
+- the next recommended prompt is Prompt 106: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
 
 Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
 

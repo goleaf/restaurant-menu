@@ -13,10 +13,10 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
-## Daily Memory Update - 2026-06-04 After Prompt 104
+## Daily Memory Update - 2026-06-04 After Prompt 105
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 104. Prompt 105 is the next
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 105. Prompt 106 is the next
 recommended small prompt and should not be implemented until explicitly
 requested.
 
@@ -44,6 +44,11 @@ After Prompt 104, include menu schedules in menu and guest smoke checks:
 branch menu admin should save weekday intervals per menu, the guest menu should
 show only menus available in the branch timezone, and adding/sending draft items
 should be blocked when the selected menu is outside its schedule.
+
+After Prompt 105, include multiple branch menus in menu and guest smoke checks:
+create several active menus, confirm the guest UI groups currently available
+menus by menu name and sort order, confirm inactive menus are hidden, and
+confirm menus scheduled for later show only a next-availability hint.
 
 Use these focused checks after documentation-only maintenance:
 

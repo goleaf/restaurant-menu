@@ -2,6 +2,76 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Daily Project Memory Update After Prompt 105 - 2026-06-04
+
+This is a documentation-only memory refresh after Prompt 105. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
+
+Current stack remains:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+Current state:
+
+- Prompt 101 is complete: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102 is complete: branch opening hours power guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103 is complete: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104 is complete: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105 is complete: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
+- Local images remain in `storage/app/public/media/...`.
+
+Current tables:
+
+- `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
+- `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings`, `invitations`, `branch_opening_hours`.
+- `area_nodes`, `service_points`, `qr_codes`.
+- `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
+- `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`.
+
+Current routes:
+
+- Public/auth: `home`, `guest.home`, `public.qr.show`, `dashboard`, Fortify auth/password routes.
+- Settings: `profile.edit`, `appearance.edit`, `security.edit`.
+- Onboarding and admin: `onboarding.restaurant`, organization/staff/brand/branch routes, branch areas/menu/QR/service-points/staff/settings.
+- Operations: `restaurant.dashboard`, audit log, CSV exports, waiter dashboard/table detail, kitchen dashboard, bar dashboard.
+- Superadmin: `superadmin.dashboard`, `superadmin.backups.sqlite.download`.
+
+Current Livewire components:
+
+- Auth/settings/notifications: logout, profile, appearance, security, two-factor recovery codes, unread notification panel.
+- Organization/branch admin: organizations, staff permissions, brands, branches, areas, menu, QR bulk print, service points, QR display/print, branch staff, branch settings.
+- Guest QR: `PublicQr\Show`, `TableGuests`, `JoinRequests`, `Notifications`, `GuestMenu`, `DraftOrder`, `DraftTotals`, `OrderStatuses`.
+- Operations: waiter dashboard/table detail, shared department dashboard, kitchen dashboard, bar dashboard, audit log, exports, onboarding, superadmin dashboard.
+
+Mandatory business rules:
+
+- One physical service point has one active permanent QR; `/q/{public_token}` must not expose internal IDs.
+- QR identity does not change on rename, move, session close, or ordinary edits.
+- Guests are not user accounts; guest access uses unguessable guest tokens.
+- New guests require active guest approval when active guests already exist.
+- Guests see one shared draft/cart, guests are sorted alphabetically, and each guest edits only their own draft items while the draft is still editable.
+- Branch opening hours, temporary closure, and menu schedules can block ordering while still allowing QR/menu viewing.
+- Multiple active menus can be visible together only when they are currently available by schedule; inactive/draft/archived menus are hidden from guests.
+- Every guest draft must be confirmed by a waiter before becoming an order and explicitly dispatched before kitchen/bar can see it.
+- Order items keep immutable snapshots; manual payments and table close preserve history and never reissue QR.
+
+Shared-hosting constraints and forbidden infrastructure:
+
+- SQLite file stays in the project, normally `database/database.sqlite`, outside `public`, and is never committed.
+- Keep `CACHE_STORE=database`, `SESSION_DRIVER=database`, `QUEUE_CONNECTION=database`, `FILESYSTEM_DISK=public`, and `BROADCAST_CONNECTION=log`.
+- Media is local in `storage/app/public`; realtime is Livewire polling only.
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, AI translation, React/Vue/Inertia SPA, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Next recommended prompt:
+
+- Prompt 106: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Daily Project Memory Update After Prompt 104 - 2026-06-04
 
 This is a documentation-only memory refresh after Prompt 104. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
@@ -26,7 +96,7 @@ Current state:
 
 Next recommended prompt:
 
-- Prompt 105: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 106: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Prompt 105 - Multiple Menus Per Branch
 
@@ -79,7 +149,7 @@ Rules:
 
 Next recommended prompt:
 
-- Prompt 105: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 106: add a small menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Daily Project Memory Update After Prompt 103 - 2026-06-04
 
@@ -261,7 +331,7 @@ Already implemented:
 - Temporary branch closed mode for operational closures that keep QR/menu viewing available while blocking new guest ordering.
 - Nested `area_nodes`, `service_points`, service point statuses, permanent QR schema/generation/admin display/print/bulk print, and public `/q/{public_token}` guest route.
 - Guest table flow: QR entry by name, guest token persistence, guest-created pending sessions, table session guests, join requests, invite links, guest approval UI, isolated polling blocks, guest notifications, guest menu, shared cart, ready status, waiter call, bill request, and guest error pages.
-- Menu flow: menus, menu availability schedules, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
+- Menu flow: multiple active branch menus, menu availability schedules, categories, items, local images, database-cached guest menu, ru/en/lt translations for display, modifiers, kitchen departments, department assignment, stop-list, currency display, and centralized branch cache invalidation.
 - Order flow: shared `draft_orders`, guest-owned draft items, waiter dashboard, waiter table detail, waiter draft editing/confirm/reject, real `orders` and snapshot `order_items`, order status logs, explicit kitchen/bar dispatch, department tickets, kitchen/bar screens, ready/served handoff, repeat orders, manual payments, table-session close, analytics, restaurant dashboard, audit logs, database notifications, CSV exports, demo seed, smoke checklist, shared-hosting deployment notes, and current-version docs.
 
 Current tables:
@@ -330,7 +400,7 @@ Do not use:
 
 Next recommended prompt:
 
-- Prompt 105: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+- Prompt 106: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
 
 ## Current Stack
 

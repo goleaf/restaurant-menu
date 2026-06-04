@@ -69,6 +69,7 @@ class BuildManualPaymentSummaryAction
                         'order_id',
                         'table_session_guest_id',
                         'guest_name',
+                        'guest_name_snapshot',
                         'total_price',
                     ])])
                     ->orderBy('created_at')

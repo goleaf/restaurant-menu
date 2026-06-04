@@ -73,7 +73,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Table session guests with guest names, random browser guest tokens, cookie restore, statuses, and alphabetical ordering.
 - Table session join requests with backend create / approve / reject logic, guest approval UI, guest invite share links, guest table page shell, and database-cached guest menu display with modifier selection.
 - Draft order schema with repeat draft history per table session, latest/current draft access, guest-owned draft items with price snapshots, guest add/edit/delete UI for own positions, guest ready status, send-to-waiter handoff, waiter edit/confirm/reject actions, and split isolated guest polling blocks for draft items, draft totals, and order statuses.
-- Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with the prepared order lifecycle status enum and kitchen department snapshots.
+- Real order snapshot schema in `orders` and `order_items`, created only after waiter confirmation, with explicit order item snapshots for source menu item id, guest name, item name/description, unit price, selected modifiers, future tax/service payloads, and kitchen department snapshots.
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Waiter dashboard shell and waiter table detail with branch/service-point/session status, sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
@@ -157,6 +157,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - `draft_order_items`
 - `orders`
 - `order_items`
+  - Includes explicit Prompt 088 snapshot columns for original menu item id, guest/item text, unit price, modifiers, and future tax/service payloads.
 - `kitchen_tickets`
 - `kitchen_ticket_items`
 - `order_status_logs`
@@ -567,7 +568,7 @@ Basic analytics:
 - The restaurant dashboard action currently computes active tables, new `sent_to_waiter` drafts, cooking orders, ready unserved kitchen/bar positions, today amount, popular dishes, and quick-action availability.
 - Restaurant dashboard amount and popular dishes require `view_reports`; waiters and other operational users can still see the operational cards without seeing report-sensitive totals.
 - Orders today and amount exclude `orders.status = cancelled` and use `orders.confirmed_at` within the current application day.
-- Popular dishes are based on confirmed `order_items` snapshots from today's non-cancelled orders, so later menu name/price changes do not rewrite old analytics history.
+- Popular dishes are based on confirmed `order_items` snapshots from today's non-cancelled orders, so later menu name/description/price/modifier changes do not rewrite old analytics history.
 - Active tables include table sessions in `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
 - Closed sessions use `table_sessions.status = closed` with `ended_at` during the current application day.
 - Cancelled orders use `orders.status = cancelled` with `updated_at` during the current application day because there is no separate `cancelled_at` field yet.
@@ -611,7 +612,7 @@ Draft order:
 - `DeleteGuestDraftOrderItemAction` lets an active guest delete only their own draft item while the draft is still `draft`.
 - `SendDraftOrderToWaiterAction` lets any active guest in the same open table session send the shared draft to waiter review.
 - Sending sets the draft status to `sent_to_waiter`, stores `sent_to_waiter_at` and `sent_by_guest_id`, clears active guest `ready_at`, and moves the related service point to `has_new_order`.
-- `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items` snapshots, including kitchen department id/type/name when the source menu item has a department.
+- `ConfirmDraftOrderByWaiterAction` requires `confirm_orders`, converts a `sent_to_waiter` or `waiter_review` draft to `converted_to_order`, creates one `orders` row with status `confirmed_by_waiter`, and copies draft items into `order_items` snapshots, including original menu item id, guest name, item name/description, unit price, selected modifiers, future tax/service JSON placeholders, and kitchen department id/type/name when the source menu item has a department.
 - Every repeat draft must pass through `SendDraftOrderToWaiterAction`, `ConfirmDraftOrderByWaiterAction`, and explicit `SendOrderToKitchenBarAction`; old orders are not overwritten.
 - `RejectDraftOrderByWaiterAction` requires `confirm_orders`, sets a sent draft to `rejected`, and stores a required rejection reason for guests to see.
 - `ReturnRejectedDraftOrderToDraftAction` requires `confirm_orders` and returns a rejected draft to `draft` so guests can edit and send the same shared draft again.
@@ -670,8 +671,12 @@ Order item:
 - Stored in `order_items`.
 - Belongs to one real order through `order_id`.
 - Optionally references the original table session guest, menu item, and kitchen department.
-- Stores guest/item/department/price snapshots copied from `draft_order_items` and the source menu item: `guest_name`, `item_name`, `kitchen_department_type`, `kitchen_department_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers, and optional comment.
-- Snapshot fields must remain unchanged if the source menu item name, menu item price, modifier options, or kitchen department name/type change later.
+- Stores legacy snapshot/display fields copied from `draft_order_items` and the source menu item: `guest_name`, `item_name`, `kitchen_department_type`, `kitchen_department_name`, `quantity`, `unit_price`, `modifier_total`, `total_price`, selected modifiers, and optional comment.
+- Stores explicit immutable snapshot fields from Prompt 088: `original_menu_item_id`, `guest_name_snapshot`, `item_name_snapshot`, `item_description_snapshot`, `unit_price_snapshot`, `modifiers_snapshot`, `tax_snapshot`, and `service_snapshot`.
+- `tax_snapshot` and `service_snapshot` currently default to empty arrays and reserve the future tax/service payload without adding tax, service-charge, or payment logic in Prompt 088.
+- `OrderItem::historicalGuestName()`, `OrderItem::historicalItemName()`, and `OrderItem::historicalModifiers()` are the snapshot-first helpers for reads that need the original order content.
+- Snapshot fields must remain unchanged if the source menu item name, description, price, modifier options, guest name, or kitchen department name/type change later.
+- CSV order export, dashboard/analytics popular item summaries, and kitchen/bar dispatch should prefer explicit `order_items` snapshots through the `historical*` helpers.
 - Table session guests, menu items, and kitchen departments expose `orderItems()` relationships for confirmed order history.
 - These rows prepare kitchen/bar dispatch without exposing unconfirmed drafts to kitchen/bar.
 
@@ -1212,7 +1217,7 @@ Local media storage:
 - Closing a table session creates a `table_session_closed` audit row.
 - Manual order cancellation through `ChangeOrderStatusAction` creates an `order_cancelled` audit row.
 - Closed sessions keep old order history but old guest cookies/invite links cannot add positions because guest draft actions refuse `closed` sessions.
-- Confirmed order snapshots keep the original dish names, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
+- Confirmed order snapshots keep the original dish names, descriptions, prices, selected modifiers, comments, guest name, and totals even if menu data changes later.
 - The table detail page actions write `order_status_logs` for waiter draft edits, confirmation, rejection, return-to-draft, and kitchen/bar dispatch.
 - The table detail page can reject a sent draft with a required reason; guests see the reason in the shared cart.
 - The table detail page can return a rejected draft to `draft` for guest edits.
@@ -1395,7 +1400,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, and Prompt 087 important-entity soft deletes intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, and Prompt 088 explicit order item snapshots intact during future feature work.
 
 ## Do Not Break
 
@@ -1462,6 +1467,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not duplicate the full kitchen/bar ticket UI; keep shared department screen logic where practical.
 - Do not switch kitchen or bar screens away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
+- Do not read live `menu_items.name`, `menu_items.description`, `menu_items.price`, or live modifier names/prices when showing old confirmed order content; prefer `OrderItem` explicit snapshots or `historical*` helpers.
 - Do not require a live, non-deleted menu item for old confirmed orders to display; deleted dishes must remain visible in old orders through `order_items` snapshots.
 - Do not overwrite old `order_items.kitchen_department_type` or `order_items.kitchen_department_name` when a department is renamed, disabled, deleted, or retyped.
 - Do not cascade-delete `order_status_logs`; history rows must survive with actor/status snapshots.

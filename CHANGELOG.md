@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 088 - Improve Order Snapshots
+
+- Added explicit `order_items` snapshot columns for original menu item id, guest name, item name/description, unit price, selected modifiers, and future tax/service payloads.
+- Backfilled new snapshot columns from existing order item snapshot fields without raw SQL and kept the legacy columns for current UI/export compatibility.
+- Updated waiter confirmation, kitchen/bar dispatch, CSV order export, and popular-item dashboard reads to prefer stored order snapshots over live menu data.
+- Added regression coverage proving old confirmed order snapshots survive later dish, guest, and modifier changes on SQLite.
+
 ### Prompt 087 - Add Soft Deletes
 
 - Added soft-delete columns and indexes for organizations, brands, branches, menus, menu categories, and menu items, while preserving existing soft-delete support on area nodes and service points.

@@ -406,6 +406,7 @@ class DraftTotals extends Component
                 'order_id',
                 'table_session_guest_id',
                 'guest_name',
+                'guest_name_snapshot',
                 'total_price',
             ])
             ->with(['guest' => fn ($query) => $query->select(['id', 'guest_name'])])
@@ -421,7 +422,7 @@ class DraftTotals extends Component
                     return 'guest-'.$item->table_session_guest_id;
                 }
 
-                return 'snapshot-'.$item->guest_name;
+                return 'snapshot-'.$item->historicalGuestName();
             })
             ->map(function (Collection $items): array {
                 /** @var OrderItem $firstItem */
@@ -429,7 +430,7 @@ class DraftTotals extends Component
 
                 return [
                     'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->guest_name ?? __('Гость'),
+                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('Гость'),
                     'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
                 ];
             })

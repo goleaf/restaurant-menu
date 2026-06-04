@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'item_name', 'quantity', 'unit_price', 'modifier_total', 'total_price', 'selected_modifiers', 'comment'])]
+#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'original_menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'guest_name_snapshot', 'item_name', 'item_name_snapshot', 'item_description_snapshot', 'quantity', 'unit_price', 'unit_price_snapshot', 'modifier_total', 'total_price', 'selected_modifiers', 'modifiers_snapshot', 'tax_snapshot', 'service_snapshot', 'comment'])]
 class OrderItem extends Model
 {
     /** @use HasFactory<OrderItemFactory> */
@@ -24,6 +24,9 @@ class OrderItem extends Model
         'modifier_total' => '0.00',
         'total_price' => '0.00',
         'selected_modifiers' => '[]',
+        'modifiers_snapshot' => '[]',
+        'tax_snapshot' => '[]',
+        'service_snapshot' => '[]',
     ];
 
     /**
@@ -34,9 +37,13 @@ class OrderItem extends Model
         return [
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
+            'unit_price_snapshot' => 'decimal:2',
             'modifier_total' => 'decimal:2',
             'total_price' => 'decimal:2',
             'selected_modifiers' => 'array',
+            'modifiers_snapshot' => 'array',
+            'tax_snapshot' => 'array',
+            'service_snapshot' => 'array',
         ];
     }
 
@@ -78,5 +85,33 @@ class OrderItem extends Model
     public function kitchenTicketItem(): HasOne
     {
         return $this->hasOne(KitchenTicketItem::class);
+    }
+
+    public function historicalGuestName(): ?string
+    {
+        $guestName = $this->guest_name_snapshot ?? $this->guest_name;
+
+        return is_string($guestName) && filled($guestName) ? $guestName : null;
+    }
+
+    public function historicalItemName(): string
+    {
+        $itemName = $this->item_name_snapshot ?? $this->item_name;
+
+        if (is_string($itemName) && filled($itemName)) {
+            return $itemName;
+        }
+
+        return is_string($this->item_name) ? $this->item_name : '';
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function historicalModifiers(): array
+    {
+        $modifiers = $this->modifiers_snapshot ?? $this->selected_modifiers ?? [];
+
+        return is_array($modifiers) ? $modifiers : [];
     }
 }

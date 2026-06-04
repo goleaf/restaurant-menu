@@ -71,20 +71,30 @@ class ConfirmDraftOrderByWaiterAction
 
             $draftOrder->items->each(function (DraftOrderItem $item) use ($order): void {
                 $kitchenDepartment = $item->menuItem?->kitchenDepartment;
+                $guestNameSnapshot = $item->guest?->guest_name;
+                $modifiersSnapshot = $item->selected_modifiers ?? [];
 
                 $order->items()->create([
                     'table_session_guest_id' => $item->table_session_guest_id,
                     'menu_item_id' => $item->menu_item_id,
+                    'original_menu_item_id' => $item->menu_item_id,
                     'kitchen_department_id' => $kitchenDepartment?->id,
                     'kitchen_department_type' => $kitchenDepartment?->type?->value,
                     'kitchen_department_name' => $kitchenDepartment?->name,
-                    'guest_name' => $item->guest?->guest_name,
+                    'guest_name' => $guestNameSnapshot,
+                    'guest_name_snapshot' => $guestNameSnapshot,
                     'item_name' => $item->item_name,
+                    'item_name_snapshot' => $item->item_name,
+                    'item_description_snapshot' => $item->menuItem?->description,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
+                    'unit_price_snapshot' => $item->unit_price,
                     'modifier_total' => $item->modifier_total,
                     'total_price' => $item->total_price,
-                    'selected_modifiers' => $item->selected_modifiers ?? [],
+                    'selected_modifiers' => $modifiersSnapshot,
+                    'modifiers_snapshot' => $modifiersSnapshot,
+                    'tax_snapshot' => [],
+                    'service_snapshot' => [],
                     'comment' => $item->comment,
                 ]);
             });
@@ -188,7 +198,7 @@ class ConfirmDraftOrderByWaiterAction
                     ->with([
                         'guest:id,guest_name',
                         'menuItem' => fn ($query) => $query
-                            ->select(['id', 'kitchen_department_id'])
+                            ->select(['id', 'description', 'kitchen_department_id'])
                             ->with([
                                 'kitchenDepartment:id,branch_id,type,name',
                             ]),

@@ -87,7 +87,7 @@ class StreamBranchCsvExportAction
             ->with([
                 'servicePoint:id,name,display_number,internal_code',
                 'confirmedByUser:id,name,email',
-                'items:id,order_id,guest_name,item_name,quantity,total_price',
+                'items:id,order_id,guest_name,guest_name_snapshot,item_name,item_name_snapshot,quantity,total_price',
             ])
             ->where('branch_id', $branch->id)
             ->chunkById(200, function (Collection $orders) use ($handle, $branch): void {
@@ -342,9 +342,10 @@ class StreamBranchCsvExportAction
     {
         return $items
             ->map(function (OrderItem $item): string {
-                $guest = filled($item->guest_name) ? $item->guest_name.': ' : '';
+                $guestName = $item->historicalGuestName();
+                $guest = filled($guestName) ? $guestName.': ' : '';
 
-                return $guest.$item->item_name.' x'.$item->quantity.' = '.$item->total_price;
+                return $guest.$item->historicalItemName().' x'.$item->quantity.' = '.$item->total_price;
             })
             ->implode('; ');
     }

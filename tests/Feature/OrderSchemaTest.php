@@ -54,16 +54,24 @@ test('order schema stores real order links and item snapshots', function () {
             'order_id',
             'table_session_guest_id',
             'menu_item_id',
+            'original_menu_item_id',
             'kitchen_department_id',
             'kitchen_department_type',
             'kitchen_department_name',
             'guest_name',
+            'guest_name_snapshot',
             'item_name',
+            'item_name_snapshot',
+            'item_description_snapshot',
             'quantity',
             'unit_price',
+            'unit_price_snapshot',
             'modifier_total',
             'total_price',
             'selected_modifiers',
+            'modifiers_snapshot',
+            'tax_snapshot',
+            'service_snapshot',
             'comment',
         ]))->toBeTrue();
 });
@@ -84,7 +92,7 @@ test('order status enum contains the prepared order lifecycle', function () {
 });
 
 test('confirming draft creates immutable order item snapshots', function () {
-    [$organization, $servicePoint, $draftOrder, $menuItem, $modifierOption] = createPrompt56SentDraftScenario();
+    [$organization, $servicePoint, $draftOrder, $menuItem, $modifierGroup, $modifierOption, $guest] = createPrompt56SentDraftScenario();
     $waiter = User::factory()->create();
 
     attachPrompt56Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
@@ -102,10 +110,15 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($order->draft_order_id)->toBe($draftOrder->id)
         ->and($order->total_price)->toBe('17.00')
         ->and($order->currency)->toBe('EUR')
+        ->and($orderItem->original_menu_item_id)->toBe($menuItem->id)
         ->and($orderItem->guest_name)->toBe('Ana')
+        ->and($orderItem->guest_name_snapshot)->toBe('Ana')
         ->and($orderItem->item_name)->toBe('Original Steak')
+        ->and($orderItem->item_name_snapshot)->toBe('Original Steak')
+        ->and($orderItem->item_description_snapshot)->toBe('Original menu description')
         ->and($orderItem->quantity)->toBe(2)
         ->and($orderItem->unit_price)->toBe('7.50')
+        ->and($orderItem->unit_price_snapshot)->toBe('7.50')
         ->and($orderItem->modifier_total)->toBe('1.00')
         ->and($orderItem->total_price)->toBe('17.00')
         ->and($orderItem->selected_modifiers)->toBe([
@@ -115,6 +128,15 @@ test('confirming draft creates immutable order item snapshots', function () {
                 'price_delta' => '1.00',
             ],
         ])
+        ->and($orderItem->modifiers_snapshot)->toBe([
+            [
+                'group_name' => 'Sauce',
+                'option_name' => 'Pepper sauce',
+                'price_delta' => '1.00',
+            ],
+        ])
+        ->and($orderItem->tax_snapshot)->toBe([])
+        ->and($orderItem->service_snapshot)->toBe([])
         ->and($orderItem->comment)->toBe('Medium rare')
         ->and($orderItem->guest?->guest_name)->toBe('Ana')
         ->and($orderItem->menuItem?->name)->toBe('Original Steak')
@@ -123,8 +145,11 @@ test('confirming draft creates immutable order item snapshots', function () {
 
     $menuItem->update([
         'name' => 'Renamed Steak',
+        'description' => 'Renamed menu description',
         'price' => '99.00',
     ]);
+    $guest->update(['guest_name' => 'Renamed Ana']);
+    $modifierGroup->update(['name' => 'Premium sauce']);
     $modifierOption->update([
         'name' => 'Truffle sauce',
         'price_delta' => '8.00',
@@ -133,10 +158,30 @@ test('confirming draft creates immutable order item snapshots', function () {
     $orderItem = $orderItem->fresh();
 
     expect($orderItem->item_name)->toBe('Original Steak')
+        ->and($orderItem->item_name_snapshot)->toBe('Original Steak')
+        ->and($orderItem->item_description_snapshot)->toBe('Original menu description')
+        ->and($orderItem->guest_name_snapshot)->toBe('Ana')
         ->and($orderItem->unit_price)->toBe('7.50')
+        ->and($orderItem->unit_price_snapshot)->toBe('7.50')
         ->and($orderItem->modifier_total)->toBe('1.00')
         ->and($orderItem->total_price)->toBe('17.00')
         ->and($orderItem->selected_modifiers)->toBe([
+            [
+                'group_name' => 'Sauce',
+                'option_name' => 'Pepper sauce',
+                'price_delta' => '1.00',
+            ],
+        ])
+        ->and($orderItem->modifiers_snapshot)->toBe([
+            [
+                'group_name' => 'Sauce',
+                'option_name' => 'Pepper sauce',
+                'price_delta' => '1.00',
+            ],
+        ])
+        ->and($orderItem->historicalGuestName())->toBe('Ana')
+        ->and($orderItem->historicalItemName())->toBe('Original Steak')
+        ->and($orderItem->historicalModifiers())->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
@@ -190,6 +235,7 @@ function createPrompt56SentDraftScenario(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Original Steak',
+            'description' => 'Original menu description',
             'price' => '7.50',
         ]);
     $modifierGroup = ModifierGroup::factory()
@@ -232,7 +278,7 @@ function createPrompt56SentDraftScenario(): array
             'comment' => 'Medium rare',
         ]);
 
-    return [$organization, $servicePoint, $draftOrder, $menuItem, $modifierOption];
+    return [$organization, $servicePoint, $draftOrder, $menuItem, $modifierGroup, $modifierOption, $guest];
 }
 
 /**

@@ -114,9 +114,12 @@ class SendOrderToKitchenBarAction
                         'kitchen_department_type',
                         'kitchen_department_name',
                         'guest_name',
+                        'guest_name_snapshot',
                         'item_name',
+                        'item_name_snapshot',
                         'quantity',
                         'selected_modifiers',
+                        'modifiers_snapshot',
                         'comment',
                         'created_at',
                     ])
@@ -202,10 +205,10 @@ class SendOrderToKitchenBarAction
                     'order_item_id' => $item->id,
                     'table_session_guest_id' => $item->table_session_guest_id,
                     'menu_item_id' => $item->menu_item_id,
-                    'guest_name' => $item->guest_name,
-                    'item_name' => $item->item_name,
+                    'guest_name' => $item->historicalGuestName(),
+                    'item_name' => $item->historicalItemName(),
                     'quantity' => $item->quantity,
-                    'selected_modifiers' => $item->selected_modifiers ?? [],
+                    'selected_modifiers' => $item->historicalModifiers(),
                     'comment' => $item->comment,
                 ]);
             });

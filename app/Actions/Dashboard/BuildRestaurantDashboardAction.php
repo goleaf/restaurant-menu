@@ -399,18 +399,18 @@ class BuildRestaurantDashboardAction
         }
 
         return OrderItem::query()
-            ->select(['id', 'order_id', 'item_name', 'quantity', 'total_price'])
+            ->select(['id', 'order_id', 'item_name', 'item_name_snapshot', 'quantity', 'total_price'])
             ->whereIn('order_id', $orderIds)
             ->orderBy('item_name')
             ->orderBy('id')
             ->get()
-            ->groupBy(fn (OrderItem $item): string => mb_strtolower($item->item_name))
+            ->groupBy(fn (OrderItem $item): string => mb_strtolower($item->historicalItemName()))
             ->map(function (Collection $items): array {
                 $firstItem = $items->first();
                 $totalCents = $items->sum(fn (OrderItem $item): int => $this->decimalToCents($item->total_price));
 
                 return [
-                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->item_name : __('Dish'),
+                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('Dish'),
                     'quantity' => $items->sum(fn (OrderItem $item): int => (int) $item->quantity),
                     'total_cents' => $totalCents,
                 ];

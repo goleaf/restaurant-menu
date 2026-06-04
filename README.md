@@ -725,7 +725,9 @@ Current order lifecycle statuses are:
 - `closed`
 - `cancelled`
 
-Order items can keep optional links to the original guest, menu item, and kitchen department, but they also store immutable snapshots of guest name, dish name, kitchen department type/name, unit price, modifier total, line total, selected modifiers, and comment. If the menu item name, price, modifier options, or kitchen department name/type change later, old confirmed orders keep the original order snapshot.
+Order items keep optional live links to the original guest, menu item, and kitchen department, plus explicit immutable snapshot columns: `original_menu_item_id`, `guest_name_snapshot`, `item_name_snapshot`, `item_description_snapshot`, `unit_price_snapshot`, `modifiers_snapshot`, `tax_snapshot`, and `service_snapshot`. Legacy display columns such as `guest_name`, `item_name`, `unit_price`, `selected_modifiers`, and totals remain for compatibility.
+
+If the menu item name, description, price, modifier group/option, guest name, or kitchen department changes later, old confirmed orders, CSV exports, dashboard popular-item summaries, and kitchen/bar ticket dispatch keep using the stored order item snapshot.
 
 Kitchen tickets are created only when a confirmed order is explicitly sent to kitchen/bar. Each ticket belongs to one order, branch, service point, table session, and department snapshot. Ticket items reference the original `order_items`, so each department receives only its own positions. Repeating the send action does not create duplicate active tickets for the same confirmed order.
 
@@ -909,6 +911,7 @@ Implemented:
 - Staff permission override UI with default / allow / deny states.
 - Waiter dashboard shell, table detail, draft edit actions, and draft confirm/reject actions for branches, service points, open sessions, guests, draft positions, and drafts sent to waiter review.
 - Real order snapshot tables stored in `orders` and `order_items` after waiter confirmation.
+- Explicit order item snapshot columns for original menu item id, guest name, item name/description, unit price, modifiers, and future tax/service data.
 - Kitchen/bar dispatch tickets stored in `kitchen_tickets` and `kitchen_ticket_items` after explicit waiter dispatch.
 - Basic kitchen and bar screens for dispatched department tickets with item statuses and Livewire polling.
 - Ready/served handoff where kitchen/bar marks positions ready, the waiter sees ready items and marks them served, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.

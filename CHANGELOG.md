@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Docs - Daily Project Memory Update After Prompt 106
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 106 without adding product features.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local public storage only.
+- Recorded Prompt 107 as the next recommended prompt: a small menu translation admin editor using the existing translation tables and centralized database cache invalidation.
+
 ### Prompt 106 - Service Modes
 
 - Added branch service modes stored on `branch_settings.service_modes` with safe default `dine_in`.

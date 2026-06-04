@@ -4,11 +4,11 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 105 and the follow-up daily project memory
+Last memory refresh: 2026-06-04 after Prompt 106 and the follow-up daily project memory
 update. The implemented public restaurant profile, branch opening hours,
-temporary branch closed mode, menu schedules, and multiple active branch menus
-should be treated as current baseline for future guest UI, QR landing, and
-ordering work.
+temporary branch closed mode, menu schedules, multiple active branch menus, and
+branch service modes should be treated as current baseline for future guest UI,
+QR landing, and ordering work.
 
 ## Current Recommended Prompt
 

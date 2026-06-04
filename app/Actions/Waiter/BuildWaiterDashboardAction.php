@@ -2,6 +2,7 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\TableSessions\BuildTableSessionInactivityStateAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\ServicePointStatus;
@@ -10,6 +11,7 @@ use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
 use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
@@ -24,6 +26,7 @@ class BuildWaiterDashboardAction
 {
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        private readonly BuildTableSessionInactivityStateAction $buildInactivityState,
     ) {}
 
     /**
@@ -80,6 +83,12 @@ class BuildWaiterDashboardAction
             ->with([
                 'organization' => fn ($query) => $query->select(['id', 'name']),
                 'brand' => fn ($query) => $query->select(['id', 'organization_id', 'name']),
+                'settings' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'inactivity_warning_minutes',
+                    'pending_session_expire_minutes',
+                ]),
             ])
             ->whereIn('id', $branchIds)
             ->orderBy('name')
@@ -237,7 +246,7 @@ class BuildWaiterDashboardAction
         }
 
         return TableSession::query()
-            ->select(['id', 'branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'created_at'])
+            ->select(['id', 'branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'status', 'source', 'started_at', 'created_at', 'updated_at'])
             ->withCount(['activeGuests'])
             ->with([
                 'openedByUser' => fn ($query) => $query->select(['id', 'name']),
@@ -414,6 +423,7 @@ class BuildWaiterDashboardAction
                 currency: $branch->currency,
                 canOpenTable: $canOpenTable,
                 canCloseTable: $canCloseTable,
+                inactivitySettings: $branch->settings,
             ))
             ->values();
         $assignedAreaNodeCount = $assignedAreaNodeIds->count();
@@ -482,6 +492,7 @@ class BuildWaiterDashboardAction
         string $currency,
         bool $canOpenTable,
         bool $canCloseTable,
+        ?BranchSetting $inactivitySettings,
     ): array {
         $status = $servicePoint->status instanceof ServicePointStatus
             ? $servicePoint->status
@@ -492,6 +503,7 @@ class BuildWaiterDashboardAction
                 draftOrder: $draftsBySessionId->get($tableSession->id),
                 currency: $currency,
                 canCloseTable: $canCloseTable,
+                inactivitySettings: $inactivitySettings,
             ))
             ->values();
         $newDraftCount = $sessionPayloads
@@ -501,6 +513,9 @@ class BuildWaiterDashboardAction
             ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
             ->count();
         $readyItemCount = count($readyItems);
+        $inactiveSessionWarningCount = $sessionPayloads
+            ->filter(fn (array $session): bool => (bool) data_get($session, 'inactivity.should_warn'))
+            ->count();
 
         return [
             'id' => $servicePoint->id,
@@ -516,10 +531,11 @@ class BuildWaiterDashboardAction
             'waiter_call_count' => count($waiterCalls),
             'bill_request_count' => $billRequestCount,
             'ready_item_count' => $readyItemCount,
+            'inactive_session_warning_count' => $inactiveSessionWarningCount,
             'new_draft_count' => $newDraftCount,
             'has_open_session' => $sessionPayloads->isNotEmpty(),
-            'has_priority' => $newDraftCount > 0 || count($waiterCalls) > 0 || $billRequestCount > 0 || $readyItemCount > 0,
-            'priority_rank' => $this->servicePointPriorityRank($newDraftCount, count($waiterCalls), $billRequestCount, $readyItemCount, $status),
+            'has_priority' => $newDraftCount > 0 || count($waiterCalls) > 0 || $billRequestCount > 0 || $readyItemCount > 0 || $inactiveSessionWarningCount > 0,
+            'priority_rank' => $this->servicePointPriorityRank($newDraftCount, count($waiterCalls), $billRequestCount, $readyItemCount, $inactiveSessionWarningCount, $status),
             'can_open_table' => $canOpenTable
                 && (bool) $servicePoint->is_active
                 && $sessionPayloads->isEmpty()
@@ -572,6 +588,7 @@ class BuildWaiterDashboardAction
         int $waiterCallCount,
         int $billRequestCount,
         int $readyItemCount,
+        int $inactiveSessionWarningCount,
         ServicePointStatus $status,
     ): int {
         if ($newDraftCount > 0) {
@@ -588,6 +605,10 @@ class BuildWaiterDashboardAction
 
         if ($readyItemCount > 0 || $status === ServicePointStatus::ReadyToServe) {
             return 40;
+        }
+
+        if ($inactiveSessionWarningCount > 0) {
+            return 45;
         }
 
         if ($status === ServicePointStatus::Cooking) {
@@ -626,6 +647,7 @@ class BuildWaiterDashboardAction
         ?DraftOrder $draftOrder,
         string $currency,
         bool $canCloseTable,
+        ?BranchSetting $inactivitySettings,
     ): array {
         $status = $tableSession->status instanceof TableSessionStatus
             ? $tableSession->status
@@ -641,6 +663,7 @@ class BuildWaiterDashboardAction
             'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
             'can_close' => $canCloseTable,
+            'inactivity' => $this->buildInactivityState->handle($tableSession, $inactivitySettings),
             'draft' => $draftOrder instanceof DraftOrder ? $this->draftPayload($draftOrder, $currency) : null,
         ];
     }

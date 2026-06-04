@@ -206,6 +206,38 @@
                 @enderror
             </section>
 
+            <section class="grid gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
+                <div class="flex flex-col gap-1">
+                    <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Session inactivity cleanup') }}</p>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('Pending sessions can be cancelled after a quiet period. Active tables only show a warning to staff and are not closed automatically.') }}</p>
+                </div>
+
+                @if ($cleanupMessage)
+                    <x-ui.alert tone="success" :heading="__('Cleanup finished')">
+                        {{ $cleanupMessage }}
+                    </x-ui.alert>
+                @endif
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <flux:input wire:model="inactivityWarningMinutes" :label="__('Warn waiter after inactivity, minutes')" type="number" required min="1" max="1440" />
+                    <flux:input wire:model="pendingSessionExpireMinutes" :label="__('Cancel empty pending session after, minutes')" type="number" required min="1" max="1440" />
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                    <p>{{ __('Use cron with Laravel scheduler when possible. If cron is not available, run cleanup manually here.') }}</p>
+                    <flux:button
+                        type="button"
+                        icon="arrow-path"
+                        wire:click="runSessionInactivityCleanup"
+                        wire:loading.attr="disabled"
+                        wire:target="runSessionInactivityCleanup"
+                    >
+                        <span wire:loading.remove wire:target="runSessionInactivityCleanup">{{ __('Run cleanup now') }}</span>
+                        <span wire:loading wire:target="runSessionInactivityCleanup">{{ __('Running') }}</span>
+                    </flux:button>
+                </div>
+            </section>
+
             <div class="grid gap-4 md:grid-cols-2">
                 <flux:switch wire:model="requireWaiterConfirmationForOrders" :label="__('Require waiter confirmation for orders')" />
                 <flux:switch wire:model="guestJoinRequiresApproval" :label="__('Guest join requires approval')" />

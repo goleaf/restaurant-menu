@@ -380,6 +380,10 @@
                                                 <flux:badge color="emerald">{{ __('Ready') }}: {{ $servicePoint['ready_item_count'] }}</flux:badge>
                                             @endif
 
+                                            @if ($servicePoint['inactive_session_warning_count'] > 0)
+                                                <flux:badge color="amber">{{ __('No activity') }}</flux:badge>
+                                            @endif
+
                                             @if (! $servicePoint['is_active'])
                                                 <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
                                             @endif
@@ -412,6 +416,12 @@
                                                     @if ($session['status'] === 'payment_requested')
                                                         <p class="mt-2 font-semibold text-sky-700 dark:text-sky-300">
                                                             {{ __('Bill requested') }}
+                                                        </p>
+                                                    @endif
+
+                                                    @if (data_get($session, 'inactivity.should_warn'))
+                                                        <p class="mt-2 rounded-md bg-amber-50 px-2 py-1 font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                                                            {{ __('No activity for :minutes minutes. Please check the table.', ['minutes' => data_get($session, 'inactivity.minutes_inactive')]) }}
                                                         </p>
                                                     @endif
 

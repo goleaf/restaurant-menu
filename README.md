@@ -47,9 +47,26 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 114 guest name conflict handling. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, and guest duplicate-name handling are now part of the baseline branch setup, guest entry, and order-review context.
+Latest memory refresh: 2026-06-04 after Prompt 116 session inactivity cleanup. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, and safe table-session inactivity cleanup are now part of the baseline branch setup, guest entry, and order-review context.
 
-The memory refresh after Prompt 114 records the current duplicate guest-name status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. A post-feature daily memory update should not add product behavior.
+The memory refresh after Prompt 116 records the current inactivity-cleanup status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. A post-feature daily memory update should not add product behavior.
+
+## Session Inactivity Cleanup
+
+Prompt 116 adds cautious cleanup for quiet table sessions without changing the main order flow.
+
+- Branch settings store `inactivity_warning_minutes` and `pending_session_expire_minutes`.
+- Stale `pending` sessions without drafts or orders can be marked `cancelled` with cleanup metadata.
+- `active` sessions are not closed automatically; the waiter dashboard shows a `No activity` warning instead.
+- Sessions with unpaid orders are skipped by cleanup.
+- Shared-hosting cron can run `php artisan schedule:run`; the scheduler calls `table-sessions:cleanup-inactive` every 15 minutes with database cache locks.
+- If cron is unavailable, branch admins can run cleanup from branch settings, and superadmin can run it globally from the platform dashboard.
+
+Focused Prompt 116 command:
+
+```bash
+php artisan test --compact tests/Feature/SessionInactivityCleanupTest.php
+```
 
 ## Guest Name Conflict Handling
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Superadmin;
 
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
+use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -23,6 +24,8 @@ use Livewire\WithPagination;
 class Dashboard extends Component
 {
     use WithPagination;
+
+    public string $cleanupMessage = '';
 
     /**
      * @return array{organizations: int, brands: int, branches: int, service_points: int, orders: int, users: int}
@@ -99,6 +102,16 @@ class Dashboard extends Component
         Flux::toast(variant: 'success', text: __('Organization suspended.'));
     }
 
+    public function runSessionInactivityCleanup(CleanupInactiveTableSessionsAction $cleanupInactiveTableSessions): void
+    {
+        $this->authorizeSuperadmin();
+
+        $result = $cleanupInactiveTableSessions->handle();
+        $this->cleanupMessage = $this->cleanupSummary($result);
+
+        Flux::toast(variant: 'success', text: __('Session cleanup finished.'));
+    }
+
     /**
      * @return CursorPaginator<int, Brand>
      */
@@ -161,5 +174,28 @@ class Dashboard extends Component
         if (! $user instanceof User || ! $user->isSuperadmin()) {
             abort(403);
         }
+    }
+
+    /**
+     * @param  array{
+     *     checked: int,
+     *     pending_cancelled: int,
+     *     active_warnings: int,
+     *     skipped_unpaid_orders: int,
+     *     skipped_existing_orders: int,
+     *     skipped_existing_drafts: int
+     * }  $result
+     */
+    private function cleanupSummary(array $result): string
+    {
+        return __(
+            'Cleanup checked :checked sessions. Cancelled :cancelled stale pending sessions. Active warnings: :warnings. Skipped with unpaid orders: :unpaid.',
+            [
+                'checked' => $result['checked'],
+                'cancelled' => $result['pending_cancelled'],
+                'warnings' => $result['active_warnings'],
+                'unpaid' => $result['skipped_unpaid_orders'],
+            ],
+        );
     }
 }

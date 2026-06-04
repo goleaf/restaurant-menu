@@ -37,6 +37,34 @@
         </div>
     </section>
 
+    <section class="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-800/70 dark:bg-sky-950/30">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <flux:heading size="lg">{{ __('Session cleanup') }}</flux:heading>
+                <p class="mt-2 max-w-3xl text-sm text-sky-900 dark:text-sky-100">
+                    {{ __('Scheduler can run this cleanup through cron. If cron is unavailable on shared hosting, superadmin can run it manually here.') }}
+                </p>
+
+                @if ($cleanupMessage)
+                    <p class="mt-3 rounded-lg bg-white/80 px-3 py-2 text-sm font-medium text-sky-900 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-100 dark:ring-sky-800">
+                        {{ $cleanupMessage }}
+                    </p>
+                @endif
+            </div>
+
+            <flux:button
+                icon="arrow-path"
+                type="button"
+                wire:click="runSessionInactivityCleanup"
+                wire:loading.attr="disabled"
+                wire:target="runSessionInactivityCleanup"
+            >
+                <span wire:loading.remove wire:target="runSessionInactivityCleanup">{{ __('Run cleanup now') }}</span>
+                <span wire:loading wire:target="runSessionInactivityCleanup">{{ __('Running') }}</span>
+            </flux:button>
+        </div>
+    </section>
+
     <section class="grid gap-6 xl:grid-cols-2">
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">

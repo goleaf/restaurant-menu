@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 116 - Session Inactivity Cleanup
+
+- Added branch-level inactivity settings: `inactivity_warning_minutes` and `pending_session_expire_minutes`.
+- Added safe cleanup logic that cancels stale empty `pending` table sessions, skips sessions with unpaid orders, and never auto-closes `active` sessions.
+- Added waiter dashboard inactivity warnings for active sessions with long quiet periods.
+- Added `table-sessions:cleanup-inactive` and scheduled it every 15 minutes through Laravel scheduler for shared-hosting cron setups.
+- Added manual cleanup buttons on branch settings and superadmin dashboard for hosting without cron.
+- Touched modules/files: `branch_settings` migration/model/settings UI, `App\Actions\TableSessions\BuildTableSessionInactivityStateAction`, `App\Actions\TableSessions\CleanupInactiveTableSessionsAction`, `App\Console\Commands\CleanupInactiveTableSessionsCommand`, `routes/console.php`, waiter dashboard payload/view, superadmin dashboard, README, AI context, smoke checklist, and next-step notes.
+- Limitations: active sessions only warn staff; they are not automatically closed. Cleanup uses existing `cancelled` table-session status with metadata instead of adding a new status. Cron still requires shared-hosting setup for `php artisan schedule:run`; manual buttons are available if cron is missing.
+- Manual check: run `php artisan table-sessions:cleanup-inactive`, run cleanup from branch settings, run cleanup from superadmin dashboard, confirm stale empty pending sessions are cancelled, confirm active sessions only show waiter warnings, and confirm sessions with unpaid orders are skipped.
+
 ### Prompt 114 - Guest Name Conflict Handling
 
 - Added duplicate guest-name handling on the public QR / invite entry flow.

@@ -2,6 +2,96 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 116 Session Inactivity Cleanup - 2026-06-04
+
+Prompt 116 added safe inactivity cleanup for table sessions. It did not add new routes, guest accounts, roles, permissions, online payments, Redis, WebSockets, S3, Docker, paid services, external APIs, or automatic active-table closing.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block guest ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search and filter service points and paginate results without loading every service point at once.
+- Prompt 111: the same page has a simple visual board that groups the currently loaded service point page by zone.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or show `All zones`.
+- Prompt 113: a waiter can manually add positions to an active table, choose an active guest or create a manual guest name, create/reuse a waiter-review draft, and confirm it through the normal order snapshot flow.
+- Prompt 114: a guest entering a duplicate display name sees a warning and suggestions before a join request is created, while still being allowed to continue with the same display name intentionally.
+- Prompt 116: stale empty pending sessions can be cancelled safely, active sessions show waiter warnings after inactivity, and cleanup can run by scheduler or manual admin/superadmin action.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- New columns on `branch_settings`: `inactivity_warning_minutes` and `pending_session_expire_minutes`.
+- New SQLite hot-path index on `table_sessions`: `table_sessions_branch_status_updated_idx` for branch/status/updated cleanup scans.
+- Cleanup reuses existing `table_sessions.status = cancelled` and stores metadata under `table_sessions.metadata.cleanup`.
+- Existing affected tables: `branch_settings`, `table_sessions`, `draft_orders`, `orders`, and `service_points`.
+- Full inventory still includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new HTTP routes were added in Prompt 116.
+- New Artisan command: `php artisan table-sessions:cleanup-inactive {--branch=}`.
+- Scheduler entry in `routes/console.php`: `table-sessions:cleanup-inactive` every 15 minutes with `withoutOverlapping(10)`.
+- Existing waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Existing branch settings route remains `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings`.
+- Existing superadmin dashboard route remains protected by superadmin access.
+
+Current Livewire components and actions:
+
+- `App\Actions\TableSessions\BuildTableSessionInactivityStateAction` computes minutes inactive, active-session warning state, and pending-session expiry state from branch settings.
+- `App\Actions\TableSessions\CleanupInactiveTableSessionsAction` checks open pending/active sessions, cancels stale empty pending sessions, skips unpaid orders/drafts, and counts active warnings.
+- `App\Console\Commands\CleanupInactiveTableSessionsCommand` exposes manual/cron CLI cleanup.
+- `App\Livewire\Organizations\Brands\Branches\Settings` now edits inactivity thresholds and can run cleanup for one branch.
+- `App\Livewire\Superadmin\Dashboard` can run cleanup globally.
+- `App\Actions\Waiter\BuildWaiterDashboardAction` includes inactivity state in session payloads.
+- `resources/views/livewire/waiter/dashboard.blade.php` shows `No activity` warnings on active table cards.
+
+Mandatory business rules:
+
+- Do not automatically close active table sessions.
+- Do not cancel/close any session that has unpaid orders.
+- Pending cleanup is allowed only for stale empty pending sessions with no draft orders and no orders.
+- Cleanup must preserve permanent QR identity; closing/cancelling a session must not reissue QR.
+- Guests remain account-free and guest tokens remain independent of user auth.
+- Orders still require waiter confirmation before kitchen/bar dispatch.
+- Live waiter updates remain polling-based.
+
+Shared-hosting constraints:
+
+- Use Laravel scheduler only through optional shared-hosting cron running `php artisan schedule:run`.
+- If cron is unavailable, use branch settings or superadmin manual cleanup buttons.
+- Keep cleanup bounded and indexed for SQLite; do not scan public URLs or guest tokens.
+- Keep database cache locks for scheduler overlap prevention; do not introduce Redis.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 116 notes:
+
+- Focused coverage: `tests/Feature/SessionInactivityCleanupTest.php`.
+- Verification run included focused inactivity cleanup tests, SQLite migration status, route list, database driver config checks, and HTTP smoke checks.
+- Manual follow-up: on shared hosting, add a cron entry for `php artisan schedule:run` if available; otherwise run cleanup from branch settings or superadmin dashboard.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 114 Guest Name Conflict Handling - 2026-06-04
 
 Prompt 114 added duplicate guest-name handling to the existing QR / invite entry flow. It did not add routes, migrations, tables, guest accounts, roles, permissions, Redis, WebSockets, S3, Docker, paid services, or external APIs.

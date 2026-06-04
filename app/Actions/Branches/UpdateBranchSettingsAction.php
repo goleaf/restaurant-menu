@@ -17,6 +17,8 @@ class UpdateBranchSettingsAction
      *     allow_guest_invite_links: bool,
      *     guest_join_requires_approval: bool,
      *     polling_interval_seconds: int,
+     *     inactivity_warning_minutes: int,
+     *     pending_session_expire_minutes: int,
      *     default_language: string,
      *     default_currency: string,
      *     service_charge_enabled: bool,

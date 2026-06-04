@@ -13,6 +13,39 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 116 Session Inactivity Cleanup Results
+
+Programmatic coverage was added in `tests/Feature/SessionInactivityCleanupTest.php`.
+The feature currently verifies:
+
+- a stale empty `pending` table session is marked `cancelled`;
+- cleanup metadata is stored under `table_sessions.metadata.cleanup`;
+- a pending session with an unpaid order is skipped;
+- an inactive `active` session returns a waiter warning but is not closed;
+- the manual shared-hosting command `table-sessions:cleanup-inactive` runs successfully.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/SessionInactivityCleanupTest.php
+```
+
+Manual check:
+
+1. Open branch settings as a manager who can manage branch settings.
+2. Set `Warn waiter after inactivity` and `Cancel empty pending session after`
+   to short test values, save, and confirm validation accepts the values.
+3. Create or locate an old empty `pending` session and press `Run cleanup now`.
+4. Confirm that session becomes `cancelled` and its permanent QR still opens the
+   current service point.
+5. Create or locate an active table with no recent activity and confirm the
+   waiter dashboard shows a `No activity` warning.
+6. Confirm the active table is not closed automatically.
+7. Create or locate a session with unpaid orders and confirm cleanup skips it.
+8. As superadmin, run global cleanup from the platform dashboard.
+9. On shared hosting with cron, confirm cron runs `php artisan schedule:run`;
+   without cron, use the manual buttons or `php artisan table-sessions:cleanup-inactive`.
+
 ## Prompt 114 Guest Name Conflict Handling Results
 
 Programmatic coverage was added in `tests/Feature/GuestCreatedPendingSessionTest.php`.

@@ -4,7 +4,29 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 114 guest name conflict handling.
+Last memory refresh: 2026-06-04 after Prompt 116 session inactivity cleanup.
+
+## Next Recommended Prompt
+
+Wait for the next explicit user prompt. Prompt 116 is complete; do not continue
+with new product behavior automatically.
+
+If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
+or orders, first verify:
+
+- `tests/Feature/SessionInactivityCleanupTest.php`;
+- `tests/Feature/TableSessionCloseTest.php`;
+- `tests/Feature/WaiterDashboardTest.php`;
+- `tests/Feature/ManualPaymentTest.php`;
+- `tests/Feature/VerticalSliceFlowTest.php` for broader flow changes.
+
+Risky areas:
+
+- Do not auto-close active sessions from cleanup.
+- Do not cancel sessions with unpaid orders.
+- Do not reissue permanent QR when a session is cancelled or closed.
+- Do not add Redis/WebSockets/S3/Docker/paid services for scheduling or realtime.
+- Keep scheduler support optional for shared hosting; manual cleanup must remain available.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code

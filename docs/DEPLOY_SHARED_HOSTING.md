@@ -194,8 +194,14 @@ If cron is available, add Laravel's scheduler:
 * * * * * php /absolute/server/path/to/project/artisan schedule:run >> /dev/null 2>&1
 ```
 
-The scheduler is optional for the current baseline but should be configured when
-future scheduled cleanup, reporting, or maintenance tasks are added.
+The scheduler currently runs safe table-session inactivity cleanup through
+`php artisan table-sessions:cleanup-inactive` every 15 minutes. If cron is not
+available, run cleanup manually from branch settings, from the superadmin
+dashboard, or with:
+
+```bash
+php /absolute/server/path/to/project/artisan table-sessions:cleanup-inactive
+```
 
 ## Build Assets
 

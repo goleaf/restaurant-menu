@@ -9,6 +9,7 @@ use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
 use App\Actions\Media\StoreLocalImageAction;
+use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
@@ -53,6 +54,10 @@ class Settings extends Component
     public bool $guestJoinRequiresApproval = true;
 
     public int $pollingIntervalSeconds = 1;
+
+    public int $inactivityWarningMinutes = 45;
+
+    public int $pendingSessionExpireMinutes = 30;
 
     public string $defaultLanguage = 'en';
 
@@ -107,6 +112,8 @@ class Settings extends Component
     public array $openingHours = [];
 
     public bool $saved = false;
+
+    public string $cleanupMessage = '';
 
     /**
      * @var array<string, string>
@@ -177,6 +184,8 @@ class Settings extends Component
                 'allow_guest_invite_links' => (bool) $validated['allowGuestInviteLinks'],
                 'guest_join_requires_approval' => (bool) $validated['guestJoinRequiresApproval'],
                 'polling_interval_seconds' => (int) $validated['pollingIntervalSeconds'],
+                'inactivity_warning_minutes' => (int) $validated['inactivityWarningMinutes'],
+                'pending_session_expire_minutes' => (int) $validated['pendingSessionExpireMinutes'],
                 'default_language' => SupportedLocale::normalize($validated['defaultLanguage']),
                 'default_currency' => SupportedCurrency::normalize($validated['defaultCurrency']),
                 'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
@@ -230,6 +239,23 @@ class Settings extends Component
         $this->saved = true;
 
         Flux::toast(variant: 'success', text: __('Settings saved.'));
+    }
+
+    public function runSessionInactivityCleanup(CleanupInactiveTableSessionsAction $cleanupInactiveTableSessions): void
+    {
+        $user = $this->currentUser();
+
+        if (
+            ! $user->canAccessBranch($this->branch, $this->organization)
+            || ! $user->canManageOrganizationBranches($this->organization)
+        ) {
+            abort(403);
+        }
+
+        $result = $cleanupInactiveTableSessions->handle($this->branch->id);
+        $this->cleanupMessage = $this->cleanupSummary($result);
+
+        Flux::toast(variant: 'success', text: __('Session cleanup finished.'));
     }
 
     /**
@@ -301,6 +327,8 @@ class Settings extends Component
             'allowGuestInviteLinks' => ['boolean'],
             'guestJoinRequiresApproval' => ['boolean'],
             'pollingIntervalSeconds' => ['required', 'integer', 'min:1', 'max:60'],
+            'inactivityWarningMinutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            'pendingSessionExpireMinutes' => ['required', 'integer', 'min:1', 'max:1440'],
             'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
             'defaultCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             'serviceChargeEnabled' => ['boolean'],
@@ -349,6 +377,8 @@ class Settings extends Component
         $this->allowGuestInviteLinks = $settings->allow_guest_invite_links;
         $this->guestJoinRequiresApproval = $settings->guest_join_requires_approval;
         $this->pollingIntervalSeconds = $settings->polling_interval_seconds;
+        $this->inactivityWarningMinutes = $settings->inactivity_warning_minutes;
+        $this->pendingSessionExpireMinutes = $settings->pending_session_expire_minutes;
         $this->defaultLanguage = $settings->default_language;
         $this->defaultCurrency = SupportedCurrency::normalize($settings->default_currency);
         $this->serviceChargeEnabled = $settings->service_charge_enabled;
@@ -513,6 +543,8 @@ class Settings extends Component
                 'allow_guest_invite_links',
                 'guest_join_requires_approval',
                 'polling_interval_seconds',
+                'inactivity_warning_minutes',
+                'pending_session_expire_minutes',
                 'default_language',
                 'default_currency',
                 'service_charge_enabled',
@@ -525,6 +557,29 @@ class Settings extends Component
             ->whereKey($this->settingsId)
             ->where('branch_id', $this->branch->id)
             ->firstOrFail();
+    }
+
+    /**
+     * @param  array{
+     *     checked: int,
+     *     pending_cancelled: int,
+     *     active_warnings: int,
+     *     skipped_unpaid_orders: int,
+     *     skipped_existing_orders: int,
+     *     skipped_existing_drafts: int
+     * }  $result
+     */
+    private function cleanupSummary(array $result): string
+    {
+        return __(
+            'Cleanup checked :checked sessions. Cancelled :cancelled stale pending sessions. Active warnings: :warnings. Skipped with unpaid orders: :unpaid.',
+            [
+                'checked' => $result['checked'],
+                'cancelled' => $result['pending_cancelled'],
+                'warnings' => $result['active_warnings'],
+                'unpaid' => $result['skipped_unpaid_orders'],
+            ],
+        );
     }
 
     private function branchTimezone(): string

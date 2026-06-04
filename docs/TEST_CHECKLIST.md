@@ -13,6 +13,35 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 110 Service Point Search Filters Results
+
+Programmatic coverage was added in `tests/Feature/ServicePointCrudTest.php`.
+The feature currently verifies:
+
+- branch service point search works by active QR `short_code`;
+- filters work for zone, type, status, active/inactive state, and active QR
+  presence;
+- the list stays on the current branch route;
+- pagination limits the initial result set and can move to the next page.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ServicePointCrudTest.php
+```
+
+Manual check:
+
+1. Open a branch service point page.
+2. Confirm the visible branch filter matches the current route branch.
+3. Search by service point name, display number, internal code, and printed QR
+   `short_code`.
+4. Filter by zone, type, status, active/inactive state, and has QR / no QR.
+5. Confirm only matching rows are shown and no technical IDs appear in the UI.
+6. Confirm pagination next/previous links work without loading all rows.
+7. Confirm create, edit, status change, open table, show QR, and create QR
+   actions still work after filters are reset.
+
 ## Prompt 109 QR Short Code Lookup Results
 
 Programmatic coverage was added in `tests/Feature/QrShortCodeLookupTest.php`.
@@ -121,13 +150,14 @@ Current known future-product gaps from the Prompt 280 checklist:
 Do not add those during consistency/bugfix prompts without a separate explicit
 scope.
 
-## Daily Memory Update - 2026-06-04 After Prompt 109
+## Daily Memory Update - 2026-06-04 After Prompt 110
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 109. Branch service
-modes, bulk service point creation, QR label design presets, and QR short-code
-lookup are now part of branch setup and QR administration. Prompt 110 is the
-next recommended small prompt only if explicitly requested.
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 110. Branch service
+modes, bulk service point creation, QR label design presets, QR short-code
+lookup, and branch service point search/filter pagination are now part of branch
+setup and QR administration. The next step should come from the next explicit
+user prompt.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is

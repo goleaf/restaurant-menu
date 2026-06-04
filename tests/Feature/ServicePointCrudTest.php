@@ -15,6 +15,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
@@ -161,6 +162,110 @@ test('manager can preview and bulk create service points without creating qr aut
     expect($servicePoints->where('internal_code', 'T1')->first()->type)->toBe(ServicePointType::Table);
     expect($servicePoints->where('internal_code', 'T1')->first()->activeQrCode()->exists())->toBeFalse();
     expect($servicePoints->where('internal_code', 'T3')->first()->activeQrCode()->exists())->toBeFalse();
+});
+
+test('manager can search and filter service points inside current branch', function () {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    $hall = AreaNode::factory()->for($branch)->create(['name' => 'Filter Hall']);
+    $terrace = AreaNode::factory()->for($branch)->create(['name' => 'Filter Terrace']);
+    $target = ServicePoint::factory()
+        ->for($branch)
+        ->for($hall)
+        ->create([
+            'type' => ServicePointType::Table,
+            'name' => 'Alpha Window Table',
+            'display_number' => 'A1',
+            'internal_code' => 'ALPHA-001',
+            'status' => ServicePointStatus::Free,
+            'is_active' => true,
+        ]);
+    ServicePoint::factory()
+        ->for($branch)
+        ->for($terrace)
+        ->create([
+            'type' => ServicePointType::BarSeat,
+            'name' => 'Beta Patio Seat',
+            'display_number' => 'B2',
+            'internal_code' => 'BETA-002',
+            'status' => ServicePointStatus::Occupied,
+            'is_active' => false,
+        ]);
+    ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'type' => ServicePointType::PickupWindow,
+            'name' => 'Gamma Pickup Window',
+            'display_number' => 'G3',
+            'internal_code' => 'GAMMA-003',
+            'status' => ServicePointStatus::Reserved,
+            'is_active' => true,
+        ]);
+    QrCode::factory()
+        ->for($target)
+        ->create([
+            'short_code' => 'QR-FIND110',
+            'created_by_user_id' => $manager->id,
+        ]);
+
+    Livewire::actingAs($manager)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSee($branch->name)
+        ->assertSee('Alpha Window Table')
+        ->assertSee('Beta Patio Seat')
+        ->assertSee('Gamma Pickup Window')
+        ->set('servicePointSearch', 'find110')
+        ->assertSee('Alpha Window Table')
+        ->assertDontSee('Beta Patio Seat')
+        ->assertDontSee('Gamma Pickup Window')
+        ->call('resetServicePointFilters')
+        ->set('filterAreaNodeId', (string) $terrace->id)
+        ->assertSee('Beta Patio Seat')
+        ->assertDontSee('Alpha Window Table')
+        ->call('resetServicePointFilters')
+        ->set('filterType', ServicePointType::PickupWindow->value)
+        ->assertSee('Gamma Pickup Window')
+        ->assertDontSee('Alpha Window Table')
+        ->call('resetServicePointFilters')
+        ->set('filterStatus', ServicePointStatus::Occupied->value)
+        ->assertSee('Beta Patio Seat')
+        ->assertDontSee('Alpha Window Table')
+        ->call('resetServicePointFilters')
+        ->set('filterActive', 'inactive')
+        ->assertSee('Beta Patio Seat')
+        ->assertDontSee('Gamma Pickup Window')
+        ->call('resetServicePointFilters')
+        ->set('filterQr', 'with')
+        ->assertSee('Alpha Window Table')
+        ->assertDontSee('Beta Patio Seat')
+        ->call('resetServicePointFilters')
+        ->set('filterQr', 'without')
+        ->assertSee('Beta Patio Seat')
+        ->assertSee('Gamma Pickup Window')
+        ->assertDontSee('Alpha Window Table');
+});
+
+test('service point list is paginated instead of loading every row', function () {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+
+    foreach (range(1, 12) as $number) {
+        ServicePoint::factory()
+            ->for($branch)
+            ->create([
+                'name' => sprintf('Paged Table %02d', $number),
+                'display_number' => sprintf('%02d', $number),
+                'internal_code' => sprintf('PAGED-%02d', $number),
+            ]);
+    }
+
+    Livewire::actingAs($manager)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSee('Paged Table 01')
+        ->assertDontSee('Paged Table 11')
+        ->call('nextPage')
+        ->assertSee('Paged Table 11')
+        ->assertDontSee('Paged Table 01');
 });
 
 test('waiter cannot bulk create service points', function () {

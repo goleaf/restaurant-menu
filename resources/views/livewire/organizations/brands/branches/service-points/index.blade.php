@@ -179,14 +179,75 @@
 
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">
-                {{ __('Столы и места филиала') }}
-                <span class="sr-only">{{ __('Service points in this branch') }}</span>
-            </flux:heading>
+            <div class="grid gap-4">
+                <flux:heading size="lg">
+                    {{ __('Столы и места филиала') }}
+                    <span class="sr-only">{{ __('Service points in this branch') }}</span>
+                </flux:heading>
+
+                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <flux:input :label="__('Филиал')" type="text" :value="$branch->name" disabled />
+
+                    <flux:input
+                        wire:model.live.debounce.300ms="servicePointSearch"
+                        :label="__('Поиск')"
+                        type="search"
+                        maxlength="160"
+                        :placeholder="__('Название, номер, код или QR')"
+                    />
+
+                    <flux:select wire:model.live="filterAreaNodeId" :label="__('Зона')">
+                        @foreach ($this->filterAreaOptions as $option)
+                            <flux:select.option wire:key="service-point-filter-area-{{ $option['value'] }}" value="{{ $option['value'] }}">
+                                {{ $option['label'] }}
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select wire:model.live="filterType" :label="__('Тип')">
+                        <flux:select.option value="all">{{ __('All types') }}</flux:select.option>
+                        @foreach ($this->servicePointTypeOptions as $value => $label)
+                            <flux:select.option wire:key="service-point-filter-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select wire:model.live="filterStatus" :label="__('Статус')">
+                        <flux:select.option value="all">{{ __('All statuses') }}</flux:select.option>
+                        @foreach ($this->servicePointStatusOptions as $value => $label)
+                            <flux:select.option wire:key="service-point-filter-status-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select wire:model.live="filterActive" :label="__('Активность')">
+                        @foreach ($this->activeFilterOptions as $value => $label)
+                            <flux:select.option wire:key="service-point-filter-active-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select wire:model.live="filterQr" :label="__('QR')">
+                        @foreach ($this->qrFilterOptions as $value => $label)
+                            <flux:select.option wire:key="service-point-filter-qr-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+
+                    <div class="flex items-end">
+                        <flux:button
+                            icon="x-mark"
+                            type="button"
+                            wire:click="resetServicePointFilters"
+                            :disabled="! $this->servicePointFiltersAreActive"
+                        >
+                            {{ __('Сбросить') }}
+                        </flux:button>
+                    </div>
+                </div>
+            </div>
         </div>
 
+        @php($servicePoints = $this->servicePoints)
+
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->servicePoints as $servicePoint)
+            @forelse ($servicePoints as $servicePoint)
                 <div wire:key="service-point-{{ $servicePoint->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingServicePointId === $servicePoint->id)
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
@@ -384,11 +445,19 @@
                     <x-ui.empty-state
                         icon="squares-2x2"
                         :heading="__('Столов и мест пока нет')"
-                        :description="__('Начните с кнопки “Стол”. QR позже привяжется к месту и не изменится при переименовании или переносе.')"
+                        :description="$this->servicePointFiltersAreActive
+                            ? __('Измените поиск или сбросьте фильтры.')
+                            : __('Начните с кнопки “Стол”. QR позже привяжется к месту и не изменится при переименовании или переносе.')"
                     />
                     <span class="sr-only">{{ __('No service points yet.') }}</span>
                 </div>
             @endforelse
         </div>
+
+        @if ($servicePoints->hasPages())
+            <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                {{ $servicePoints->links() }}
+            </div>
+        @endif
     </x-ui.card>
 </section>

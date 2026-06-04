@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 110 - Service Point Search Filters
+
+- Added server-side search and filters to the branch `Столы и места` admin page.
+- The list can search by service point `name`, `display_number`, stable `internal_code`, and active QR `short_code`.
+- Filters now cover the current route branch, zone, type, status, active/inactive state, and active QR presence.
+- The list now uses Livewire pagination with query-string-backed filters instead of loading every service point in the branch at once.
+- Touched modules/files: `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`, branch service point Blade view, `tests/Feature/ServicePointCrudTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no global cross-branch service point route was added; the branch filter is the current nested branch route. No new database schema, no Redis/WebSockets/S3/Docker, no external search service, and no QR identity changes.
+- Manual check: open a branch service point page, search by place name/number/internal code and by a printed QR short code, filter by zone/type/status/active state/QR presence, confirm only matching rows appear, use next/previous pagination, and confirm create/edit/status/QR actions still work on filtered pages.
+
 ### Prompt 109 - QR Short Code Lookup
 
 - Added an authenticated restaurant-admin QR lookup page at `/restaurant/qr-lookup`.

@@ -2,6 +2,81 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 110 Service Point Search Filters - 2026-06-04
+
+Prompt 110 added branch admin search, filters, and pagination for `service_points`. No database schema, packages, external search services, QR changes, or infrastructure were added.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search by service point name, display number, stable internal code, or active QR short code, filter by current branch, zone, type, status, active state, and active QR presence, and paginate results without loading every service point at once.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- No new tables or columns were added in Prompt 110.
+- The affected tables are existing `service_points`, `area_nodes`, `qr_codes`, and `table_sessions`.
+- Existing hot-path SQLite indexes cover branch-scoped service point filtering (`branch_id` with area/status/type/display/internal/name variants) and `qr_codes.short_code` remains unique for short-code search.
+- The full current table inventory remains unchanged from the Prompt 109 section below.
+
+Current routes:
+
+- No new route was added in Prompt 110.
+- Branch service point admin route remains `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
+- The branch filter is the current route branch, because create/edit/status/QR actions on this page are branch-scoped.
+
+Current Livewire components:
+
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index` now uses `WithPagination`, URL-backed search/filter state, server-side Eloquent filtering, and eager-loaded `areaNode`, `activeQrCode`, and `activeTableSession` relationships for the current page only.
+- The component still owns service point single creation, bulk creation preview/confirm, status change, table opening, QR generation, and inline QR preview.
+- `App\Livewire\QrCodes\ShortCodeLookup` remains the separate global QR lookup page for users with `generate_qr`.
+
+Mandatory business rules:
+
+- A service point search/filter must stay scoped to the route branch and organization access; do not show service points from another branch on this page.
+- Search by QR `short_code` is staff/admin convenience only. It must not expose or derive public QR `public_token` beyond already authorized UI behavior.
+- QR identity remains stable during search, filtering, pagination, service point rename, service point move, and ordinary edits.
+- The service point list must not show technical IDs in the UI.
+- CRUD still requires `manage_service_points`; manual status changes still require `manage_service_points` or the fixed `waiter` role; QR actions still require `generate_qr`; table opening still requires `view_orders` or `confirm_orders`.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Use Eloquent relationships and indexes; do not add external search services or infrastructure for this small admin list.
+- Keep pagination enabled so large branches do not load all service points in one request.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 110 notes:
+
+- Search fields: `service_points.name`, `service_points.display_number`, `service_points.internal_code`, and active `qr_codes.short_code`.
+- Filters: current branch route, area/zone, type, status, active/inactive, has active QR / no active QR.
+- Pagination uses simple Livewire pagination with 10 rows per page.
+- Focused coverage: `tests/Feature/ServicePointCrudTest.php`.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 109 QR Short Code Lookup - 2026-06-04
 
 Prompt 109 added a restaurant-admin QR lookup page for printed sticker short codes. No database schema, packages, external QR/PDF services, or infrastructure were added.
@@ -92,7 +167,7 @@ Prompt 109 notes:
 
 Next recommended prompt:
 
-- Prompt 110: if explicitly requested, add simple QR label size presets for browser print. Keep it CSS/Livewire-only, do not add PDF generation, and do not change QR identity. Otherwise continue only with the next user-specified prompt.
+- Superseded by the current Prompt 110 service point search/filter section at the top of this file. Continue only with the next explicit user prompt.
 
 ## Prompt 108 QR Label Design Presets - 2026-06-04
 
@@ -181,7 +256,7 @@ Prompt 108 notes:
 
 Next recommended prompt:
 
-- Prompt 110: if explicitly requested, add simple QR label size presets for browser print. Keep it CSS/Livewire-only, do not add PDF generation, and do not change QR identity. Otherwise continue only with the next user-specified prompt.
+- Superseded by the current Prompt 110 service point search/filter section at the top of this file. Continue only with the next explicit user prompt.
 
 ## Prompt 280 Functional Consistency Pass - 2026-06-04
 
@@ -2402,12 +2477,13 @@ Local media storage:
 - The visible UI copy is simplified: `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons, and plain QR/table actions.
 - The same page has a bulk creation section where managers choose zone, type, prefix, number range, and capacity, then preview generated labels before confirming.
 - Bulk creation writes generated labels such as `T1` as `name`, `display_number`, and `internal_code`, skips duplicate branch `internal_code` values, and does not create QR automatically.
+- The list has server-side search/filter state backed by the URL query string. It searches `name`, `display_number`, `internal_code`, and active QR `short_code`; filters by current route branch, zone, type, status, active/inactive, and active QR presence; and uses pagination rather than loading all branch service points.
 - Service point editing still must not change `internal_code` or reissue QR codes when a place is renamed or moved.
 - The UI does not show technical IDs to users.
 
 ## Next Step
 
-The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: Prompt 110, add simple QR label size presets for browser print only if the user explicitly requests it. Keep it CSS/Livewire-only and do not change QR identity. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, Prompt 108 QR label presets, Prompt 109 QR short-code lookup, and the daily project memory update intact during future feature work.
+The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: wait for the next explicit user prompt and do not continue feature work automatically. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, Prompt 108 QR label presets, Prompt 109 QR short-code lookup, Prompt 110 service point search filters, and the daily project memory update intact during future feature work.
 
 ## Do Not Break
 

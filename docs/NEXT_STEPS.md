@@ -4,26 +4,18 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 109 QR short-code lookup.
+Last memory refresh: 2026-06-04 after Prompt 110 service point search filters.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
-lookup, and waiter-side schedule checks should be treated as current baseline
-for future guest UI, QR landing, ordering work, staff review, and branch setup.
+lookup, branch service point search/filter pagination, and waiter-side schedule
+checks should be treated as current baseline for future guest UI, QR landing,
+ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt
 
-Prompt 110: add simple QR label size presets for browser print, only if the user explicitly requests it.
-
-Prompt 110 scope, if requested:
-
-- Keep it CSS/Livewire-only unless a later prompt explicitly asks for persisted branch defaults.
-- Reuse `App\Enums\QrLabelPreset` patterns if a new fixed size enum is useful.
-- Do not add PDF generation, paid PDF services, browser plugins, external QR services, or heavy libraries.
-- Do not create, reissue, disable, revoke, or otherwise alter QR records.
-- Keep single and bulk QR print behavior aligned.
-- Keep QR short-code lookup read-only unless the user explicitly clicks disable
-  or reissue.
+Wait for the next explicit user prompt. Do not continue feature work
+automatically.
 
 Alternative queued prompt:
 
@@ -62,6 +54,9 @@ Risky places:
 - Permanent QR identity must never depend on print preset, print size, service point name, service point number, or area.
 - QR short-code lookup must stay scoped to `generate_qr` and accessible branch
   ids; a printed `short_code` is not a public guest token.
+- Branch service point search/filter UI is branch-scoped by the nested route;
+  do not turn it into a cross-branch editing screen without a separate prompt.
+- Keep service point lists paginated on SQLite.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -109,6 +104,12 @@ Prompt 109 added QR short-code lookup: users with `generate_qr` can open
 `/restaurant/qr-lookup`, search a printed code such as `QR-8F92`, and see only
 accessible branch QR details with branch, zone, service point, status, public
 URL, and explicit open/disable/reissue actions.
+
+Prompt 110 added service point search filters: the branch `Столы и места` page
+can search by service point name, display number, stable internal code, and
+active QR `short_code`, filter by the current route branch, zone, type, status,
+active/inactive state, and active QR presence, and paginate results without
+loading every service point at once.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

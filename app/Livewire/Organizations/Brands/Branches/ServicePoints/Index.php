@@ -21,7 +21,10 @@ use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Flux\Flux;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -30,16 +33,40 @@ use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Title('Service points')]
 class Index extends Component
 {
+    use WithPagination;
+
+    private const SERVICE_POINTS_PER_PAGE = 10;
+
     public Organization $organization;
 
     public Brand $brand;
 
     public Branch $branch;
+
+    #[Url(as: 'q', except: '')]
+    public string $servicePointSearch = '';
+
+    #[Url(as: 'zone', except: 'all')]
+    public string $filterAreaNodeId = 'all';
+
+    #[Url(as: 'type', except: 'all')]
+    public string $filterType = 'all';
+
+    #[Url(as: 'status', except: 'all')]
+    public string $filterStatus = 'all';
+
+    #[Url(as: 'active', except: 'all')]
+    public string $filterActive = 'all';
+
+    #[Url(as: 'qr', except: 'all')]
+    public string $filterQr = 'all';
 
     public string $areaNodeId = '';
 
@@ -249,6 +276,13 @@ class Index extends Component
 
     public function updated(string $property): void
     {
+        if ($this->isServicePointFilterProperty($property)) {
+            $this->resetPage();
+            unset($this->servicePoints);
+
+            return;
+        }
+
         if (! Str::startsWith($property, 'bulk')) {
             return;
         }
@@ -264,6 +298,21 @@ class Index extends Component
         }
 
         $this->resetBulkPreview();
+    }
+
+    public function resetServicePointFilters(): void
+    {
+        $this->reset(
+            'servicePointSearch',
+            'filterAreaNodeId',
+            'filterType',
+            'filterStatus',
+            'filterActive',
+            'filterQr',
+        );
+
+        $this->resetPage();
+        unset($this->servicePoints);
     }
 
     public function startEditing(int $servicePointId): void
@@ -404,10 +453,10 @@ class Index extends Component
     }
 
     /**
-     * @return EloquentCollection<int, ServicePoint>
+     * @return Paginator<int, ServicePoint>
      */
     #[Computed]
-    public function servicePoints(): EloquentCollection
+    public function servicePoints(): Paginator
     {
         $servicePoints = $this->branch
             ->servicePoints()
@@ -455,14 +504,18 @@ class Index extends Component
                     'started_at',
                     'created_at',
                 ])->where('status', TableSessionStatus::Active->value),
-            ])
+            ]);
+
+        $this->applyServicePointFilters($servicePoints);
+
+        $servicePoints = $servicePoints
             ->orderBy('area_node_id')
             ->orderBy('display_number')
             ->orderBy('name')
             ->orderBy('id')
-            ->get();
+            ->simplePaginate(self::SERVICE_POINTS_PER_PAGE);
 
-        $servicePoints->each(function (ServicePoint $servicePoint): void {
+        $servicePoints->getCollection()->each(function (ServicePoint $servicePoint): void {
             $this->statusSelections[$servicePoint->id] ??= $servicePoint->status->value;
         });
 
@@ -506,6 +559,21 @@ class Index extends Component
     }
 
     /**
+     * @return list<array{value: string, label: string}>
+     */
+    #[Computed]
+    public function filterAreaOptions(): array
+    {
+        return array_merge(
+            [
+                ['value' => 'all', 'label' => __('All zones')],
+                ['value' => 'none', 'label' => __('No zone')],
+            ],
+            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
+        );
+    }
+
+    /**
      * @return array<string, string>
      */
     #[Computed]
@@ -521,6 +589,43 @@ class Index extends Component
     public function servicePointStatusOptions(): array
     {
         return ServicePointStatus::options();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function activeFilterOptions(): array
+    {
+        return [
+            'all' => __('All places'),
+            'active' => __('Active only'),
+            'inactive' => __('Inactive only'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function qrFilterOptions(): array
+    {
+        return [
+            'all' => __('All QR statuses'),
+            'with' => __('Has QR'),
+            'without' => __('No QR'),
+        ];
+    }
+
+    #[Computed]
+    public function servicePointFiltersAreActive(): bool
+    {
+        return trim($this->servicePointSearch) !== ''
+            || $this->filterAreaNodeId !== 'all'
+            || $this->filterType !== 'all'
+            || $this->filterStatus !== 'all'
+            || $this->filterActive !== 'all'
+            || $this->filterQr !== 'all';
     }
 
     /**
@@ -698,6 +803,62 @@ class Index extends Component
         $this->bulkSkippedCount = 0;
         $this->bulkCreatedServicePointIds = [];
         $this->bulkPreviewRows = [];
+    }
+
+    private function applyServicePointFilters(HasMany $query): void
+    {
+        $search = trim($this->servicePointSearch);
+
+        if ($search !== '') {
+            $like = '%'.$search.'%';
+
+            $query->where(function (Builder $query) use ($like): void {
+                $query
+                    ->where('name', 'like', $like)
+                    ->orWhere('display_number', 'like', $like)
+                    ->orWhere('internal_code', 'like', $like)
+                    ->orWhereHas('activeQrCode', fn (Builder $qrCodeQuery): Builder => $qrCodeQuery
+                        ->where('short_code', 'like', $like));
+            });
+        }
+
+        if ($this->filterAreaNodeId === 'none') {
+            $query->whereNull('area_node_id');
+        } elseif (ctype_digit($this->filterAreaNodeId)) {
+            $query->where('area_node_id', (int) $this->filterAreaNodeId);
+        }
+
+        if (in_array($this->filterType, ServicePointType::values(), true)) {
+            $query->where('type', $this->filterType);
+        }
+
+        if (in_array($this->filterStatus, ServicePointStatus::values(), true)) {
+            $query->where('status', $this->filterStatus);
+        }
+
+        if ($this->filterActive === 'active') {
+            $query->where('is_active', true);
+        } elseif ($this->filterActive === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        if ($this->filterQr === 'with') {
+            $query->whereHas('activeQrCode');
+        } elseif ($this->filterQr === 'without') {
+            $query->whereDoesntHave('activeQrCode');
+        }
+    }
+
+    private function isServicePointFilterProperty(string $property): bool
+    {
+        return in_array($property, [
+            'servicePointSearch',
+            'filterAreaNodeId',
+            'filterType',
+            'filterStatus',
+            'filterActive',
+            'filterQr',
+        ], true);
     }
 
     private function normalizeBulkFields(): void

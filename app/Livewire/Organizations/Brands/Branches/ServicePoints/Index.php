@@ -207,7 +207,7 @@ class Index extends Component
         }
 
         $this->resetCreateForm();
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(variant: 'success', text: __('Service point added.'));
     }
@@ -269,7 +269,7 @@ class Index extends Component
         $this->bulkCreatedServicePointIds = $result['created_ids'];
         $this->bulkPreviewReady = false;
 
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(variant: 'success', text: __('Service points created.'));
     }
@@ -321,14 +321,27 @@ class Index extends Component
 
         $servicePoint = $this->findBranchServicePoint($servicePointId);
 
-        $this->editingServicePointId = $servicePoint->id;
-        $this->editingAreaNodeId = $servicePoint->area_node_id === null ? '' : (string) $servicePoint->area_node_id;
-        $this->editingType = $servicePoint->type->value;
-        $this->editingIcon = $servicePoint->icon ?? $this->defaultIconForType($servicePoint->type);
-        $this->editingName = $servicePoint->name;
-        $this->editingDisplayNumber = $servicePoint->display_number ?? '';
-        $this->editingCapacity = $servicePoint->capacity;
-        $this->editingIsActive = $servicePoint->is_active;
+        $this->fillEditingForm($servicePoint);
+    }
+
+    public function startEditingFromBoard(int $servicePointId): void
+    {
+        $this->authorizeServicePointManagement();
+
+        $servicePoint = $this->findBranchServicePoint($servicePointId);
+
+        $this->reset(
+            'filterAreaNodeId',
+            'filterType',
+            'filterStatus',
+            'filterActive',
+            'filterQr',
+        );
+        $this->servicePointSearch = $servicePoint->internal_code ?: $servicePoint->name;
+        $this->resetPage();
+        unset($this->servicePoints);
+
+        $this->fillEditingForm($servicePoint);
     }
 
     public function cancelEditing(): void
@@ -372,7 +385,7 @@ class Index extends Component
         }
 
         $this->cancelEditing();
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(variant: 'success', text: __('Service point updated.'));
     }
@@ -403,7 +416,7 @@ class Index extends Component
         $updateServicePointStatus->handle($servicePoint, $status);
 
         $this->statusSelections[$servicePoint->id] = $status->value;
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(variant: 'success', text: __('Service point status updated.'));
     }
@@ -417,7 +430,7 @@ class Index extends Component
         $openTableSession->handle($servicePoint, $this->currentUser());
 
         $this->statusSelections[$servicePoint->id] = ServicePointStatus::Occupied->value;
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(variant: 'success', text: __('Table opened.'));
     }
@@ -430,7 +443,7 @@ class Index extends Component
         $qrCode = $generateQrCode->handle($servicePoint, $this->currentUser());
 
         $this->shownQrServicePointId = $servicePoint->id;
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
 
         Flux::toast(
             variant: 'success',
@@ -520,6 +533,65 @@ class Index extends Component
         });
 
         return $servicePoints;
+    }
+
+    /**
+     * @return list<array{area_id: int|null, name: string, type: mixed, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: EloquentCollection<int, ServicePoint>}>
+     */
+    #[Computed]
+    public function floorBoardSections(): array
+    {
+        $servicePoints = new EloquentCollection($this->servicePoints->getCollection()->all());
+        $areaIds = $servicePoints
+            ->pluck('area_node_id')
+            ->filter(fn (mixed $areaNodeId): bool => $areaNodeId !== null)
+            ->map(fn (mixed $areaNodeId): int => (int) $areaNodeId)
+            ->unique()
+            ->values();
+
+        $servicePointsByAreaId = $servicePoints->groupBy(
+            fn (ServicePoint $servicePoint): string => $servicePoint->area_node_id === null
+                ? 'none'
+                : (string) $servicePoint->area_node_id,
+        );
+
+        $sections = $this->areaNodes
+            ->whereIn('id', $areaIds->all())
+            ->map(fn (AreaNode $areaNode): array => [
+                'area_id' => $areaNode->id,
+                'name' => $areaNode->name,
+                'type' => $areaNode->type,
+                'type_label' => $areaNode->type->label(),
+                'icon' => $areaNode->icon,
+                'is_active' => $areaNode->is_active,
+                'service_point_count' => $servicePointsByAreaId->get((string) $areaNode->id, new EloquentCollection)->count(),
+                'service_points' => $servicePointsByAreaId->get((string) $areaNode->id, new EloquentCollection),
+            ])
+            ->values()
+            ->all();
+
+        $servicePointsWithoutArea = $servicePointsByAreaId->get('none', new EloquentCollection);
+
+        if ($servicePointsWithoutArea->isNotEmpty()) {
+            $sections[] = [
+                'area_id' => null,
+                'name' => __('Без зоны'),
+                'type' => null,
+                'type_label' => null,
+                'icon' => 'bookmark',
+                'is_active' => true,
+                'service_point_count' => $servicePointsWithoutArea->count(),
+                'service_points' => $servicePointsWithoutArea,
+            ];
+        }
+
+        return $sections;
+    }
+
+    #[Computed]
+    public function floorBoardServicePointCount(): int
+    {
+        return array_sum(array_column($this->floorBoardSections, 'service_point_count'));
     }
 
     /**
@@ -973,7 +1045,24 @@ class Index extends Component
         $servicePoint = $this->findBranchServicePoint($servicePointId);
         $servicePoint->update(['is_active' => $isActive]);
 
-        unset($this->servicePoints);
+        $this->forgetServicePointDisplays();
+    }
+
+    private function fillEditingForm(ServicePoint $servicePoint): void
+    {
+        $this->editingServicePointId = $servicePoint->id;
+        $this->editingAreaNodeId = $servicePoint->area_node_id === null ? '' : (string) $servicePoint->area_node_id;
+        $this->editingType = $servicePoint->type->value;
+        $this->editingIcon = $servicePoint->icon ?? $this->defaultIconForType($servicePoint->type);
+        $this->editingName = $servicePoint->name;
+        $this->editingDisplayNumber = $servicePoint->display_number ?? '';
+        $this->editingCapacity = $servicePoint->capacity;
+        $this->editingIsActive = $servicePoint->is_active;
+    }
+
+    private function forgetServicePointDisplays(): void
+    {
+        unset($this->servicePoints, $this->floorBoardSections);
     }
 
     private function findBranchServicePoint(int $servicePointId): ServicePoint

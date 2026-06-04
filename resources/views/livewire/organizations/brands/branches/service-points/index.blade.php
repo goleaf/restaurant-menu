@@ -177,6 +177,143 @@
         </x-ui.card>
     @endif
 
+    @php($floorBoardSections = $this->floorBoardSections)
+
+    <x-ui.card padding="none" class="overflow-hidden">
+        <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+            <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div class="min-w-0">
+                    <flux:heading size="lg">{{ __('Визуальный зал') }}</flux:heading>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ __('Зоны, статусы и быстрые действия для работы в зале.') }}
+                    </p>
+                </div>
+
+                <x-ui.status-badge tone="muted" size="lg">
+                    {{ __('На доске') }}: {{ $this->floorBoardServicePointCount }}
+                </x-ui.status-badge>
+            </div>
+        </div>
+
+        <div class="grid gap-5 bg-zinc-50 p-4 dark:bg-zinc-950/40">
+            @forelse ($floorBoardSections as $section)
+                <section wire:key="floor-board-zone-{{ $section['area_id'] ?? 'none' }}" class="space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex min-w-0 items-center gap-3">
+                            <x-ui.area-icon :type="$section['type']" :icon="$section['icon']" :label="$section['type_label'] ? __($section['type_label']) : __('Без зоны')" :active="$section['is_active']" />
+
+                            <div class="min-w-0">
+                                <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $section['name'] }}</h2>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ $section['service_point_count'] }} {{ __('places') }}
+                                </p>
+                            </div>
+                        </div>
+
+                        @unless ($section['is_active'])
+                            <x-ui.status-badge tone="muted">{{ __('Зона выключена') }}</x-ui.status-badge>
+                        @endunless
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        @forelse ($section['service_points'] as $servicePoint)
+                            <article wire:key="floor-board-service-point-{{ $servicePoint->id }}" class="min-h-52 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex min-w-0 gap-3">
+                                        <x-ui.service-point-icon :type="$servicePoint->type" :icon="$servicePoint->icon" :label="__($servicePoint->type->label())" :active="$servicePoint->is_active" />
+
+                                        <div class="min-w-0">
+                                            <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint->name }}</h3>
+                                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                {{ __('Номер') }}: {{ $servicePoint->display_number ?: __('не указан') }}
+                                            </p>
+                                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                {{ __($servicePoint->type->label()) }} · {{ __('Гостей') }}: {{ $servicePoint->capacity }}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <x-ui.status-badge :tone="$servicePoint->status->badgeColor()" dot>{{ __($servicePoint->status->label()) }}</x-ui.status-badge>
+                                </div>
+
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    @if ($servicePoint->is_active)
+                                        <x-ui.status-badge tone="success">{{ __('Работает') }}</x-ui.status-badge>
+                                    @else
+                                        <x-ui.status-badge tone="muted">{{ __('Выключено') }}</x-ui.status-badge>
+                                    @endif
+
+                                    @if ($servicePoint->activeTableSession)
+                                        <x-ui.status-badge tone="info">{{ __('Стол открыт') }}</x-ui.status-badge>
+                                    @endif
+
+                                    @if ($canGenerateQr)
+                                        @if ($servicePoint->activeQrCode)
+                                            <x-ui.status-badge tone="success" icon="qr-code">{{ $servicePoint->activeQrCode->short_code }}</x-ui.status-badge>
+                                        @else
+                                            <x-ui.status-badge tone="muted" icon="qr-code">{{ __('QR нет') }}</x-ui.status-badge>
+                                        @endif
+                                    @endif
+                                </div>
+
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    @if ($canOpenTable)
+                                        @if ($servicePoint->activeTableSession)
+                                            <flux:button size="sm" icon="check" type="button" disabled>
+                                                {{ __('Стол открыт') }}
+                                            </flux:button>
+                                        @elseif ($servicePoint->is_active)
+                                            <flux:button size="sm" icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint->id }})">
+                                                {{ __('Открыть стол') }}
+                                            </flux:button>
+                                        @else
+                                            <flux:button size="sm" icon="lock-closed" type="button" disabled>
+                                                {{ __('Место выключено') }}
+                                            </flux:button>
+                                        @endif
+                                    @endif
+
+                                    @if ($canGenerateQr)
+                                        @if ($servicePoint->activeQrCode)
+                                            <flux:button
+                                                size="sm"
+                                                icon="qr-code"
+                                                :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
+                                                wire:navigate
+                                            >
+                                                {{ __('Показать QR') }}
+                                            </flux:button>
+                                        @else
+                                            <flux:button size="sm" icon="qr-code" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
+                                                {{ __('Создать QR') }}
+                                            </flux:button>
+                                        @endif
+                                    @endif
+
+                                    @if ($canManageServicePoints)
+                                        <flux:button size="sm" icon="pencil" type="button" wire:click="startEditingFromBoard({{ $servicePoint->id }})">
+                                            {{ __('Изменить') }}
+                                        </flux:button>
+                                    @endif
+                                </div>
+                            </article>
+                        @empty
+                            <div class="rounded-lg border border-dashed border-zinc-300 bg-white p-5 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                {{ __('В этой зоне пока нет мест.') }}
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+            @empty
+                <x-ui.empty-state
+                    icon="squares-2x2"
+                    :heading="__('Зал пока пустой')"
+                    :description="__('Добавьте зоны и столы, чтобы увидеть их на визуальной доске.')"
+                />
+            @endforelse
+        </div>
+    </x-ui.card>
+
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div class="grid gap-4">

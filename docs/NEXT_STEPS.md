@@ -4,13 +4,13 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 110 service point search filters.
+Last memory refresh: 2026-06-04 after Prompt 111 simple visual floor board.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
-lookup, branch service point search/filter pagination, and waiter-side schedule
-checks should be treated as current baseline for future guest UI, QR landing,
-ordering work, staff review, and branch setup.
+lookup, branch service point search/filter pagination, the branch visual floor
+board, and waiter-side schedule checks should be treated as current baseline for
+future guest UI, QR landing, ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt
 
@@ -57,6 +57,9 @@ Risky places:
 - Branch service point search/filter UI is branch-scoped by the nested route;
   do not turn it into a cross-branch editing screen without a separate prompt.
 - Keep service point lists paginated on SQLite.
+- The simple visual floor board uses the current paginated service point page;
+  do not turn it into a canvas, drag-and-drop editor, or all-rows floor plan
+  without a separate prompt and a SQLite performance review.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -110,6 +113,12 @@ can search by service point name, display number, stable internal code, and
 active QR `short_code`, filter by the current route branch, zone, type, status,
 active/inactive state, and active QR presence, and paginate results without
 loading every service point at once.
+
+Prompt 111 added a simple visual floor board to the same branch service point
+page. It groups the currently loaded service point page by zone, shows cards
+with type icons, status/QR/session badges, and reuses existing quick actions for
+opening a table, QR, and editing. It does not add a canvas editor, drag-and-drop
+logic, routes, schema, or heavy JavaScript.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

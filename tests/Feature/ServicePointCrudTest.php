@@ -245,6 +245,87 @@ test('manager can search and filter service points inside current branch', funct
         ->assertDontSee('Alpha Window Table');
 });
 
+test('service point page shows a simple visual floor board grouped by zones', function () {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    grantServicePointCrudPermission($manager, $organization, SystemPermission::GenerateQr);
+    grantServicePointCrudPermission($manager, $organization, SystemPermission::ViewOrders);
+    $hall = AreaNode::factory()
+        ->for($branch)
+        ->create([
+            'type' => AreaNodeType::Hall,
+            'name' => 'Board Hall',
+            'icon' => 'squares-2x2',
+            'sort_order' => 1,
+        ]);
+    $terrace = AreaNode::factory()
+        ->for($branch)
+        ->create([
+            'type' => AreaNodeType::Terrace,
+            'name' => 'Board Terrace',
+            'icon' => 'sun',
+            'sort_order' => 2,
+        ]);
+    $hallTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($hall)
+        ->create([
+            'type' => ServicePointType::Table,
+            'name' => 'Board Alpha Table',
+            'display_number' => 'A1',
+            'internal_code' => 'BOARD-HALL',
+            'status' => ServicePointStatus::HasNewOrder,
+            'icon' => 'squares-2x2',
+        ]);
+    $terraceTable = ServicePoint::factory()
+        ->for($branch)
+        ->for($terrace)
+        ->create([
+            'type' => ServicePointType::BarSeat,
+            'name' => 'Board Terrace Seat',
+            'display_number' => 'T2',
+            'internal_code' => 'BOARD-TERRACE',
+            'status' => ServicePointStatus::WaitingWaiter,
+            'icon' => 'beaker',
+        ]);
+    ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'type' => ServicePointType::PickupWindow,
+            'name' => 'Board Pickup Window',
+            'display_number' => 'P3',
+            'internal_code' => 'BOARD-PICKUP',
+            'status' => ServicePointStatus::Free,
+            'icon' => 'shopping-bag',
+        ]);
+    QrCode::factory()
+        ->for($hallTable)
+        ->create([
+            'short_code' => 'QR-BOARD1',
+            'created_by_user_id' => $manager->id,
+        ]);
+
+    Livewire::actingAs($manager)
+        ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSee('Визуальный зал')
+        ->assertSee('Board Hall')
+        ->assertSee('Board Terrace')
+        ->assertSee('Без зоны')
+        ->assertSee('Board Alpha Table')
+        ->assertSee('Board Terrace Seat')
+        ->assertSee('Board Pickup Window')
+        ->assertSee('Has new order')
+        ->assertSee('Waiting waiter')
+        ->assertSee('QR-BOARD1')
+        ->assertSee('Показать QR')
+        ->assertSee('Открыть стол')
+        ->assertSee('Изменить')
+        ->call('startEditingFromBoard', $terraceTable->id)
+        ->assertSet('editingServicePointId', $terraceTable->id)
+        ->assertSet('servicePointSearch', 'BOARD-TERRACE')
+        ->assertSee('Board Terrace Seat');
+});
+
 test('service point list is paginated instead of loading every row', function () {
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
     grantServicePointCrudPermission($manager, $organization);
@@ -412,15 +493,18 @@ function createServicePointCrudBranch(string $organizationName = 'Service Point 
     return [$organization, $brand, $branch, $manager->fresh()];
 }
 
-function grantServicePointCrudPermission(User $user, Organization $organization): void
-{
+function grantServicePointCrudPermission(
+    User $user,
+    Organization $organization,
+    SystemPermission $systemPermission = SystemPermission::ManageServicePoints,
+): void {
     $membership = OrganizationUser::query()
         ->where('organization_id', $organization->id)
         ->where('user_id', $user->id)
         ->where('status', OrganizationUserStatus::Active->value)
         ->firstOrFail();
     $permission = Permission::query()
-        ->where('code', SystemPermission::ManageServicePoints->value)
+        ->where('code', $systemPermission->value)
         ->firstOrFail();
 
     $membership->role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);

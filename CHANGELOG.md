@@ -2,6 +2,16 @@
 
 ## 2026-06-04
 
+### Prompt 111 - Simple Visual Floor Board
+
+- Added a simple visual floor board to the existing branch `Столы и места` Livewire page.
+- The board groups the currently loaded service point page by zone sections and shows service point cards with type icons, status badges, active/disabled state, active QR short code, and active table-session state.
+- Added quick actions from each card for opening a table, showing or creating QR, and jumping into the existing edit form.
+- The board reuses the existing paginated service point query, eager-loaded relationships, permissions, and actions so it does not load every service point in a large SQLite branch.
+- Touched modules/files: `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`, branch service point Blade view, `tests/Feature/ServicePointCrudTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no drag-and-drop editor, no canvas, no maps, no heavy JavaScript library, no new routes, no new database schema, no Redis/WebSockets/S3/Docker, and no QR identity changes.
+- Manual check: open a branch service point page, confirm the `Визуальный зал` block groups visible places by zone, verify status/QR badges, use quick open-table, QR, and edit actions, then confirm search/filter/pagination still limit the loaded places.
+
 ### Prompt 110 - Service Point Search Filters
 
 - Added server-side search and filters to the branch `Столы и места` admin page.

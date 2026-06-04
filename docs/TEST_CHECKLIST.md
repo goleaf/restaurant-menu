@@ -13,6 +13,37 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 111 Simple Visual Floor Board Results
+
+Programmatic coverage was added in `tests/Feature/ServicePointCrudTest.php`.
+The feature currently verifies:
+
+- the branch service point page shows the `Визуальный зал` block;
+- visible service points are grouped by zone sections, including `Без зоны`;
+- cards show service point names, status badges, active QR short code, and
+  quick actions;
+- the board edit action focuses the existing edit form through
+  `startEditingFromBoard`;
+- the existing service point search/filter/pagination tests still pass.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ServicePointCrudTest.php
+```
+
+Manual check:
+
+1. Open a branch service point page.
+2. Confirm `Визуальный зал` appears above the paginated list.
+3. Confirm visible places are grouped into zone sections and cards show type
+   icon, status badge, active/disabled state, and QR badge.
+4. Use quick actions: open table, show/create QR, and edit.
+5. Confirm edit focuses the existing form and does not change QR identity.
+6. Search/filter the list and confirm the board follows the same loaded page.
+7. Use pagination and confirm the page does not load every service point at
+   once.
+
 ## Prompt 110 Service Point Search Filters Results
 
 Programmatic coverage was added in `tests/Feature/ServicePointCrudTest.php`.

@@ -2,6 +2,83 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 111 Simple Visual Floor Board - 2026-06-04
+
+Prompt 111 added a simple visual floor board to the existing branch `Столы и места` service point page. No database schema, routes, packages, canvas editor, drag-and-drop editor, or heavy JavaScript were added.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search by service point name, display number, stable internal code, or active QR short code, filter by current branch, zone, type, status, active state, and active QR presence, and paginate results without loading every service point at once.
+- Prompt 111: the same page now has a simple visual board that groups the currently loaded service point page by zone, shows service point cards with type icons/status/QR/session badges, and exposes existing quick actions for opening a table, QR, and edit.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- No new tables or columns were added in Prompt 111.
+- The affected tables are existing `service_points`, `area_nodes`, `qr_codes`, and `table_sessions`.
+- The floor board reuses the existing paginated service point query and eager-loaded `areaNode`, `activeQrCode`, and `activeTableSession` relationships.
+- The full current table inventory remains unchanged from the Prompt 109 section below.
+
+Current routes:
+
+- No new route was added in Prompt 111.
+- Branch service point admin route remains `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
+- The visual board lives inside the existing branch route and inherits its organization/brand/branch access checks.
+
+Current Livewire components:
+
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index` now includes computed `floorBoardSections` and `floorBoardServicePointCount` values built from the current paginated `servicePoints` collection.
+- The component also has `startEditingFromBoard()` so board edit actions focus the existing edit form through a stable service point `internal_code` search.
+- Single creation, bulk creation, search/filter pagination, status changes, table opening, QR generation, and inline QR preview remain in the same component.
+- `App\Livewire\QrCodes\ShortCodeLookup` remains the separate global QR lookup page for users with `generate_qr`.
+
+Mandatory business rules:
+
+- The board must stay scoped to the route branch and organization access; it must not become a cross-branch editing screen.
+- The board must not show technical IDs in the UI.
+- QR identity remains stable during board display, search, filtering, pagination, service point rename, service point move, and ordinary edits.
+- Quick actions reuse existing permissions: CRUD/edit requires `manage_service_points`; QR requires `generate_qr`; table opening requires `view_orders` or `confirm_orders`.
+- The board must not create QR automatically and must not reissue QR during ordinary service point edits.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Do not load every service point in a large branch for the board. It intentionally uses the current paginated service point collection.
+- Use Eloquent relationships and existing SQLite indexes; do not add search services or heavy realtime infrastructure.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 111 notes:
+
+- Board UI label: `Визуальный зал`.
+- Board source: current branch service point page after search/filter/pagination, not a separate all-rows query.
+- Card actions: `Открыть стол`, `Показать QR` or `Создать QR`, and `Изменить`.
+- Focused coverage: `tests/Feature/ServicePointCrudTest.php`.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 110 Service Point Search Filters - 2026-06-04
 
 Prompt 110 added branch admin search, filters, and pagination for `service_points`. No database schema, packages, external search services, QR changes, or infrastructure were added.

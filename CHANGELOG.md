@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 097 - Shared Hosting Deployment Notes
+
+- Added `docs/DEPLOY_SHARED_HOSTING.md` with a shared-hosting deployment checklist for SQLite, local public storage, writable directories, migrations, database cache, database sessions, database queue, optional scheduler cron, and production cache commands.
+- Documented `storage:link` plus shared-hosting alternatives when symbolic links are unavailable.
+- Explicitly documented that Redis, WebSockets, S3, Docker, external queues, paid storage, and paid services are not part of the deployment profile.
+- Updated README and AI context to point future agents to the shared-hosting deployment notes and preserve the SQLite/database-driver baseline.
+
 ### Prompt 096 - Audit Access Control
 
 - Added a focused access-control regression test covering organization isolation, branch assignment isolation, waiter price restrictions, cook staff restrictions, marketer order-confirmation restrictions, accountant payment visibility without menu editing, and superadmin bypass.

@@ -17,6 +17,16 @@ This project is not only a QR menu. The current codebase is a clean shared-hosti
 
 The project intentionally does not use Redis, WebSockets, Docker as a requirement, S3, paid external services, React, Vue, or a separate SPA frontend.
 
+## Shared Hosting Deployment
+
+Deployment notes for a classic shared-hosting setup live in:
+
+```text
+docs/DEPLOY_SHARED_HOSTING.md
+```
+
+The guide covers SQLite, writable directories, `storage:link` and shared-hosting alternatives, migrations, database cache, database sessions, database queue, optional scheduler cron, local storage boundaries, and files that must never be committed.
+
 ## Access Control
 
 Access is organization-scoped first and branch-scoped when a user has active `branch_users` assignments. Regular users see only active organizations where they have an active membership. If a staff member is assigned to specific branches, branch lists, branch admin pages, QR print/display pages, waiter/payment resolvers, kitchen/bar screens, and exports must stay limited to those branches.
@@ -303,6 +313,8 @@ This stage does not send email or SMS. The user copies invite links or invite co
 ## SQLite
 
 SQLite is the only configured database connection.
+
+For full shared-hosting deployment notes, see `docs/DEPLOY_SHARED_HOSTING.md`.
 
 The default database file is:
 

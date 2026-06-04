@@ -55,6 +55,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Laravel + Livewire project foundation.
 - SQLite-only database configuration.
 - Database-backed cache, sessions, and queues.
+- Shared-hosting deployment notes in `docs/DEPLOY_SHARED_HOSTING.md`.
 - Guest, auth, restaurant dashboard, and superadmin dashboard layout zones.
 - Fortify-backed authentication.
 - Fixed system roles.
@@ -958,6 +959,7 @@ Local media storage:
 - Uses Laravel's `public` disk only.
 - Public disk root is `storage/app/public`.
 - Public browser path is `public/storage`.
+- Shared-hosting deployment notes live in `docs/DEPLOY_SHARED_HOSTING.md`.
 - Shared hosting must keep `storage/app/public`, `storage/framework`, and `storage/logs` writable by PHP.
 - `public/storage` should point to `storage/app/public`; use `php artisan storage:link` when symbolic links are available.
 - No S3, paid storage, or external media services are used.
@@ -1107,6 +1109,16 @@ Local media storage:
 - The platform dashboard shows a sensitive-data warning and a download button only inside the superadmin area.
 - The action does not create backup files on the server. If manual backup copies are created later, keep them outside `public/` and out of git.
 - Media ZIP export is not implemented yet; future work should read local files from `storage/app/public` and stay local-only.
+
+## Shared Hosting Deployment Notes
+
+- Deployment guide path is `docs/DEPLOY_SHARED_HOSTING.md`.
+- It documents the intended shared-hosting profile: web root at `public`, SQLite file outside public web root, writable `database`, `storage`, and `bootstrap/cache` paths, local public storage, database cache, database sessions, database queue, and optional cron for Laravel scheduler/queue fallback.
+- SQLite should use `DB_CONNECTION=sqlite` and a clear absolute `DB_DATABASE` path on shared hosting.
+- Cache, sessions, and queues should stay on `CACHE_STORE=database`, `SESSION_DRIVER=database`, and `QUEUE_CONNECTION=database`.
+- `public/storage` should point to `storage/app/public` through `php artisan storage:link` when symlinks are available. If symlinks are unavailable, hosting must expose the same files through a control-panel mapping or another local equivalent.
+- The guide explicitly rejects Redis, WebSockets, S3, Docker as a required deployment path, external queue services, paid storage, and paid backup/PDF/SMS/push/payment services for this baseline.
+- Future deployment-affecting changes should update this document in the same prompt.
 
 ## Current Data Export UI
 
@@ -1491,7 +1503,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, and Prompt 096 access-control audit guardrails intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, and Prompt 097 shared-hosting deployment notes intact during future feature work.
 
 ## Do Not Break
 
@@ -1589,6 +1601,8 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not print service point number or area by default on QR stickers.
 - Do not remove SQLite support.
 - Do not switch cache, sessions, or queues away from database drivers.
+- Do not add Redis, WebSockets, S3, Docker, external queues, paid storage, or paid deployment services to the shared-hosting deployment notes unless a future prompt explicitly changes the deployment target.
+- Do not forget to update `docs/DEPLOY_SHARED_HOSTING.md` when future changes affect writable paths, storage, database drivers, queue/cache/session drivers, scheduler needs, or deployment commands.
 - Do not commit `.env`, SQLite database files, backup files, `vendor`, `node_modules`, or storage uploads.
 - Do not expose backup downloads outside the `superadmin` middleware.
 - Do not add S3, paid backup services, Docker, or external backup storage.

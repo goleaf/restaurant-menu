@@ -249,6 +249,7 @@ class BuildDepartmentDashboardAction
             'created_time' => $ticket->created_at?->format('H:i'),
             'elapsed_seconds' => $elapsedSeconds,
             'elapsed_label' => $this->formatDuration($elapsedSeconds),
+            'timer_tone' => $this->timerTone($elapsedSeconds),
             'items' => $items,
             'item_count' => count($items),
         ];
@@ -269,6 +270,8 @@ class BuildDepartmentDashboardAction
             'status_value' => $status->value,
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
+            'can_start' => $status === KitchenTicketItemStatus::New,
+            'can_mark_ready' => $status !== KitchenTicketItemStatus::Ready,
             'comment' => $item->comment,
             'modifiers' => $this->modifierSummary($item->selected_modifiers ?? []),
         ];
@@ -345,6 +348,19 @@ class BuildDepartmentDashboardAction
         }
 
         return str_pad((string) $minutes, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $remainingSeconds, 2, '0', STR_PAD_LEFT);
+    }
+
+    private function timerTone(int $seconds): string
+    {
+        if ($seconds >= 900) {
+            return 'rose';
+        }
+
+        if ($seconds >= 600) {
+            return 'amber';
+        }
+
+        return 'emerald';
     }
 
     /**

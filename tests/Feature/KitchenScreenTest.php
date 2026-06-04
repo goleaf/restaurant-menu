@@ -21,10 +21,13 @@ use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -60,8 +63,13 @@ test('head chef sees only selected department tickets and updates item status', 
         ->test(KitchenDashboard::class)
         ->assertSet('selectedDepartmentId', (string) $kitchen->id)
         ->assertSee('Prompt 61 Pizza')
+        ->assertSee('Prompt 61 Table')
+        ->assertSee('Prompt 61 Hall')
         ->assertSee('Crispy crust')
         ->assertSee('Size: Large')
+        ->assertSee('Начать')
+        ->assertSee('Готово')
+        ->assertSee('oldest first')
         ->assertDontSee('Prompt 61 Coffee')
         ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::InProgress->value)
         ->assertHasNoErrors()
@@ -137,6 +145,70 @@ test('active branch assignment limits kitchen departments', function () {
 
     expect(collect($component->get('departments'))->pluck('id')->all())
         ->not->toContain($otherDepartment->id);
+});
+
+test('department tickets are sorted by oldest sent time first', function () {
+    [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
+    $currentTicket = $kitchenItem->kitchenTicket()->firstOrFail();
+    $currentTicket->loadMissing(['order', 'tableSession']);
+    $olderDraft = DraftOrder::factory()
+        ->for($currentTicket->tableSession)
+        ->create([
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now()->subMinutes(21),
+        ]);
+    $olderOrder = Order::factory()
+        ->create([
+            'branch_id' => $currentTicket->branch_id,
+            'service_point_id' => $currentTicket->service_point_id,
+            'table_session_id' => $currentTicket->table_session_id,
+            'draft_order_id' => $olderDraft->id,
+            'confirmed_at' => now()->subMinutes(20),
+        ]);
+    $olderTicket = KitchenTicket::factory()
+        ->for($olderOrder)
+        ->create([
+            'branch_id' => $currentTicket->branch_id,
+            'service_point_id' => $currentTicket->service_point_id,
+            'table_session_id' => $currentTicket->table_session_id,
+            'kitchen_department_id' => $kitchen->id,
+            'department_type' => $kitchen->type,
+            'department_name' => $kitchen->name,
+            'sent_at' => now()->subMinutes(20),
+        ]);
+    $olderOrderItem = OrderItem::factory()
+        ->for($olderOrder)
+        ->create([
+            'table_session_guest_id' => $kitchenItem->table_session_guest_id,
+            'menu_item_id' => $kitchenItem->menu_item_id,
+            'guest_name' => 'Ana',
+            'item_name' => 'Prompt 61 Old Soup',
+            'quantity' => 1,
+            'selected_modifiers' => [],
+            'comment' => 'Serve first',
+        ]);
+
+    KitchenTicketItem::factory()
+        ->for($olderTicket, 'kitchenTicket')
+        ->create([
+            'order_item_id' => $olderOrderItem->id,
+            'table_session_guest_id' => $kitchenItem->table_session_guest_id,
+            'menu_item_id' => $kitchenItem->menu_item_id,
+            'guest_name' => 'Ana',
+            'item_name' => 'Prompt 61 Old Soup',
+            'quantity' => 1,
+            'selected_modifiers' => [],
+            'comment' => 'Serve first',
+        ]);
+    $headChef = User::factory()->create(['name' => 'Prompt 61 Sorting Chef']);
+
+    attachPrompt61Staff($headChef, $organization, SystemRole::HeadChef);
+
+    $component = Livewire::actingAs($headChef)
+        ->test(KitchenDashboard::class)
+        ->assertSeeInOrder(['Prompt 61 Old Soup', 'Prompt 61 Pizza']);
+
+    expect(collect($component->get('tickets'))->pluck('id')->first())->toBe($olderTicket->id);
 });
 
 function createPrompt61KitchenScenario(): array

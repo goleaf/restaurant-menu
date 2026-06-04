@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 092 - Polish Kitchen Bar UX
+
+- Reworked the shared kitchen/bar department screen into large production cards with service point number/name, zone, live timer, positions, modifiers, comments, and clearer item status badges.
+- Kept department filtering and made oldest-first ticket sorting visible in the UI, using the existing `sent_at`/`id` ordering and bounded polling payload.
+- Replaced the dense three-status button row with two large cook-friendly actions: `Начать` for `in_progress` and `Готово` for `ready`.
+- Kept core order flow unchanged: kitchen/bar still only sees tickets created by explicit waiter dispatch, and realtime remains Livewire polling with SQLite/database drivers only.
+
 ### Prompt 091 - Polish Waiter UX
 
 - Reworked the waiter dashboard into a faster restaurant work surface with priority blocks for new orders, waiter calls, bill requests, and ready kitchen/bar items.

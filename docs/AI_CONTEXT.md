@@ -19,6 +19,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Small Blade design-system primitives in `resources/views/components/ui`
 - Polished mobile-first guest QR/table/menu UI layered on existing Livewire components
 - Polished waiter dashboard with zone grouping, priority work queues, and quick table actions
+- Polished shared kitchen/bar production screen with large ticket cards and Livewire polling
 - Pest 4
 - Vite / Tailwind CSS 4
 
@@ -80,7 +81,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Order status log schema in `order_status_logs` for persistent draft/order history.
 - Polished waiter dashboard with branch-scoped zone grouping, priority queues for new orders/calls/bills/ready items, color-coded service point cards, quick open-table action, close links for permitted users, and waiter table detail with sent/waiter-review draft visibility, guest positions, modifiers, comments, totals, edit controls, and confirm/reject controls through Livewire polling.
 - Kitchen/bar dispatch for confirmed orders with department-split `kitchen_tickets`, explicit `send_to_kitchen` permission checks, service point status updates, guest accepted state, and order status logging.
-- Basic kitchen and bar screens for dispatched department tickets with per-item `new`, `in_progress`, and `ready` statuses.
+- Polished kitchen and bar production screens for dispatched department tickets with department filtering, oldest-first sorting, large service point cards, timers, modifiers, comments, and `Начать` / `Готово` item actions.
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
@@ -1028,7 +1029,7 @@ Local media storage:
 - `App\Livewire\PublicQr\OrderStatuses` polls only guest-facing draft/order/kitchen-ticket status state.
 - `App\Livewire\PublicQr\DraftOrder` polls the visible draft item block and can run without status/totals queries on the active guest page.
 - `App\Livewire\PublicQr\DraftTotals` polls guest readiness, per-guest totals, draft/table totals, send-to-waiter, and request-bill controls.
-- `App\Livewire\Departments\Dashboard` shared abstract department ticket screen with visible-only 1-second polling for kitchen/bar ticket cards.
+- `App\Livewire\Departments\Dashboard` shared abstract department ticket screen with visible-only 1-second polling for polished kitchen/bar production cards.
 - `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
 - `App\Livewire\Superadmin\Dashboard` shows platform records, service point/order stats, local SQLite backup action, organization aggregate counters, detail/audit links, and organization subscription activate/suspend controls.
@@ -1288,12 +1289,14 @@ Local media storage:
 - Active `branch_users` assignments limit kitchen access to assigned branches.
 - The component shows one selected active kitchen department at a time.
 - The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
-- The screen shows service point display/name, zone, ticket creation time, timer, item name, quantity, guest name, modifiers, comments, and item status.
+- The screen shows large production cards sorted oldest first by `sent_at` and `id`.
+- Each card shows service point display/name, zone, ticket creation time, live timer tone, item name, quantity, guest name, modifiers, comments, and item status.
+- Visible item actions are intentionally simple: `Начать` moves a new item to `in_progress`; `Готово` moves any not-ready item to `ready`.
 - `App\Actions\Kitchen\UpdateKitchenTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
 - Kitchen item status changes call shared order/ticket sync, so waiter and guest polling see `Готовится` or `Готово` without WebSockets.
 - Kitchen cannot change a ticket item after the waiter marks it served.
 - Ticket-level work status is computed from item statuses for display only.
-- The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
+- The shared screen uses `wire:poll.visible.1s="refreshDepartment"` and does not use WebSockets.
 - The restaurant sidebar and restaurant dashboard show a kitchen link only when the current user can access at least one active department.
 - The screen does not expose unconfirmed drafts or merely confirmed orders; it reads only tickets created by explicit waiter dispatch.
 
@@ -1308,12 +1311,14 @@ Local media storage:
 - Active `branch_users` assignments limit bar access to assigned branches.
 - The component filters departments to active `KitchenDepartmentType::Bar` only.
 - The component reads only dispatched `kitchen_tickets` with `KitchenTicketStatus::Sent`.
-- The screen shows service point display/name, zone, ticket creation time, timer, drink item name, quantity, guest name, modifiers, comments, and item status.
+- The screen reuses the same large production cards as kitchen, sorted oldest first by `sent_at` and `id`.
+- Each bar card shows service point display/name, zone, ticket creation time, live timer tone, drink item name, quantity, guest name, modifiers, comments, and item status.
+- Visible item actions are intentionally simple: `Начать` moves a new drink to `in_progress`; `Готово` moves any not-ready drink to `ready`.
 - `App\Actions\Bar\UpdateBarTicketItemStatusAction` changes `kitchen_ticket_items.status` to `new`, `in_progress`, or `ready`.
 - Bar item status changes use the same shared order/ticket sync as kitchen, so waiter and guest polling see `Готовится` or `Готово` without WebSockets.
 - Bar cannot change a ticket item after the waiter marks it served.
 - Ticket-level work status is computed from item statuses for display only.
-- The shared screen uses `wire:poll.1s="refreshDepartment"` and does not use WebSockets.
+- The shared screen uses `wire:poll.visible.1s="refreshDepartment"` and does not use WebSockets.
 - The restaurant sidebar and restaurant dashboard show a bar link only when the current user can access at least one active bar department.
 - The screen does not expose unconfirmed drafts, merely confirmed orders, or non-bar department tickets; it reads only bar tickets created by explicit waiter dispatch.
 
@@ -1453,7 +1458,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, and Prompt 091 polished waiter dashboard UX intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, and Prompt 092 polished shared kitchen/bar UX intact during future feature work.
 
 ## Do Not Break
 
@@ -1523,6 +1528,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not let kitchen/bar change a ticket item after the waiter has marked it served.
 - Do not let guests mark ticket items ready or served.
 - Do not duplicate the full kitchen/bar ticket UI; keep shared department screen logic where practical.
+- Do not turn the kitchen/bar production screen back into a dense technical status list unless a future prompt explicitly asks for that; Prompt 092 uses large cards and `Начать` / `Готово` actions for cooks and bartenders.
 - Do not switch kitchen or bar screens away from Livewire polling or add WebSockets.
 - Do not recalculate old `order_items` from live menu data; confirmed orders must keep immutable snapshots.
 - Do not read live `menu_items.name`, `menu_items.description`, `menu_items.price`, or live modifier names/prices when showing old confirmed order content; prefer `OrderItem` explicit snapshots or `historical*` helpers.

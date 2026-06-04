@@ -1,4 +1,4 @@
-<section data-page="{{ $dataPage }}" wire:poll.1s="refreshDepartment" class="flex h-full w-full flex-1 flex-col gap-6">
+<section data-page="{{ $dataPage }}" wire:poll.visible.1s="refreshDepartment" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div class="min-w-0">
             <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant workspace') }}</p>

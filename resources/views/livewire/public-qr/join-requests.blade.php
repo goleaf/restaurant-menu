@@ -1,6 +1,6 @@
 <section
     data-component="guest-join-requests"
-    wire:poll.1s="refreshJoinRequests"
+    wire:poll.visible.1s="refreshJoinRequests"
     class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
     <div class="flex items-start justify-between gap-3">

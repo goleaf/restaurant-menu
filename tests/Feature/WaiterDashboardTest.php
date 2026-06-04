@@ -98,7 +98,7 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
     $this->actingAs($waiter)
         ->get(route('restaurant.waiter.dashboard'))
         ->assertOk()
-        ->assertSee('wire:poll.1s="refreshDashboard"', false);
+        ->assertSee('wire:poll.visible.1s="refreshDashboard"', false);
 });
 
 test('waiter dashboard limits branches to active branch assignments when present', function () {

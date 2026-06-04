@@ -1,4 +1,4 @@
-<div data-component="notifications-unread-count" wire:poll.1s="refreshUnreadCount">
+<div data-component="notifications-unread-count" wire:poll.visible.5s="refreshUnreadCount">
     @if ($compact)
         <button
             type="button"

@@ -1,6 +1,6 @@
 <section
     data-page="waiter-table-detail"
-    wire:poll.1s="refreshTable"
+    wire:poll.visible.1s="refreshTable"
     class="flex h-full w-full flex-1 flex-col gap-6"
 >
     <header class="flex flex-col gap-3">

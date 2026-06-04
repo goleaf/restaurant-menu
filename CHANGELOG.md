@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 083 - SQLite Performance Guardrails
+
+- Added focused SQLite indexes for hot polling, dashboard, notification, kitchen/bar ticket, draft order, and audit log paths.
+- Switched growing audit history from a fixed latest-record list to cursor pagination while keeping access checks and prepared row payloads in the backend action.
+- Reduced background notification polling pressure with visible-only polling and a slower authenticated unread notification interval.
+- Documented shared-hosting SQLite guardrails and kept the stack unchanged: SQLite, database cache/session/queue, no Redis, WebSockets, S3, Docker, or external services.
+
 ### Prompt 082 - Notification UI
 
 - Expanded the authenticated notification component from count-only to a small unread event panel for new orders, waiter calls, bill requests, and ready items.

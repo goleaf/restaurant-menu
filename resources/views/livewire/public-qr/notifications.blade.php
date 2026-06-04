@@ -1,6 +1,6 @@
 <section
     data-component="guest-notifications"
-    wire:poll.1s="refreshNotifications"
+    wire:poll.visible.2s="refreshNotifications"
     class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
     <div class="flex items-start justify-between gap-3">

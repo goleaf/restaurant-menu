@@ -11,6 +11,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\User;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
 
 class BuildAuditLogIndexAction
@@ -20,18 +21,19 @@ class BuildAuditLogIndexAction
     ) {}
 
     /**
-     * @return array{has_access: bool, logs: list<array<string, mixed>>, branch_count: int}
+     * @return array{has_access: bool, logs: CursorPaginator<int, array<string, mixed>>, branch_count: int}
      */
-    public function handle(User $user, int $limit = 100): array
+    public function handle(User $user, int $perPage = 50): array
     {
         $organizationIds = $this->accessibleOrganizationIds($user);
         $branchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewAuditLog);
+        $perPage = max(10, min(100, $perPage));
 
         if (! $user->isSuperadmin() && $organizationIds->isEmpty()) {
             return [
                 'has_access' => false,
-                'logs' => [],
+                'logs' => $this->emptyPaginator($perPage),
                 'branch_count' => 0,
             ];
         }
@@ -72,10 +74,25 @@ class BuildAuditLogIndexAction
             })
             ->latest('created_at')
             ->latest('id')
-            ->limit(max(1, min(200, $limit)))
-            ->get()
-            ->map(fn (AuditLog $auditLog): array => $this->row($auditLog))
-            ->all();
+            ->cursorPaginate(
+                $perPage,
+                [
+                    'id',
+                    'organization_id',
+                    'branch_id',
+                    'user_id',
+                    'guest_id',
+                    'guest_token',
+                    'action',
+                    'entity_type',
+                    'entity_id',
+                    'old_values',
+                    'new_values',
+                    'created_at',
+                ],
+                'auditLogsCursor',
+            )
+            ->through(fn (AuditLog $auditLog): array => $this->row($auditLog));
 
         return [
             'has_access' => true,
@@ -136,6 +153,14 @@ class BuildAuditLogIndexAction
             ->pluck('organization_id')
             ->unique()
             ->values();
+    }
+
+    /**
+     * @return CursorPaginator<int, array<string, mixed>>
+     */
+    private function emptyPaginator(int $perPage): CursorPaginator
+    {
+        return new CursorPaginator([], $perPage);
     }
 
     /**

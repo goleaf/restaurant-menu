@@ -1,6 +1,6 @@
 <section
     data-page="waiter-dashboard"
-    wire:poll.1s="refreshDashboard"
+    wire:poll.visible.1s="refreshDashboard"
     x-data="{
         playNotice() {
             try {

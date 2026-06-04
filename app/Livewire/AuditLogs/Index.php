@@ -6,33 +6,41 @@ use App\Actions\AuditLogs\BuildAuditLogIndexAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Title('Audit log')]
 class Index extends Component
 {
-    /**
-     * @var array{has_access: bool, logs: list<array<string, mixed>>, branch_count: int}
-     */
-    public array $payload = [
-        'has_access' => false,
-        'logs' => [],
-        'branch_count' => 0,
-    ];
+    use WithPagination;
 
     public function mount(): void
     {
-        $this->refreshAuditLog();
+        if (! app(BuildAuditLogIndexAction::class)->userHasAccess($this->currentUser())) {
+            abort(403);
+        }
     }
 
     public function refreshAuditLog(): void
     {
-        $this->payload = app(BuildAuditLogIndexAction::class)->handle($this->currentUser());
+        unset($this->payload);
+    }
 
-        if (! $this->payload['has_access']) {
+    /**
+     * @return array<string, mixed>
+     */
+    #[Computed]
+    public function payload(): array
+    {
+        $payload = app(BuildAuditLogIndexAction::class)->handle($this->currentUser());
+
+        if (! $payload['has_access']) {
             abort(403);
         }
+
+        return $payload;
     }
 
     public function render(): View

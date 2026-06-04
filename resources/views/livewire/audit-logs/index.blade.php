@@ -1,3 +1,5 @@
+@php($payload = $this->payload)
+
 <div data-layout="audit-log" class="flex h-full w-full flex-1 flex-col gap-5">
     <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
@@ -68,5 +70,11 @@
                 </div>
             @endforelse
         </div>
+
+        @if ($payload['logs']->hasPages())
+            <div class="mt-4">
+                {{ $payload['logs']->links() }}
+            </div>
+        @endif
     </section>
 </div>

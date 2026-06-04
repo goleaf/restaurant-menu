@@ -74,7 +74,7 @@ test('waiter sees table detail with guests positions modifiers comments and tota
     $this->actingAs($waiter)
         ->get(route('restaurant.waiter.tables.show', $tableSession))
         ->assertOk()
-        ->assertSee('wire:poll.1s="refreshTable"', false)
+        ->assertSee('wire:poll.visible.1s="refreshTable"', false)
         ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
         ->assertSeeText('22.50 EUR');
 });

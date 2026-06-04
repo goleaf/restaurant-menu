@@ -36,6 +36,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Manual payments must be offline staff-entered records only; no Stripe, PayPal, online acquiring, or external payment service is connected.
 - Basic analytics must stay lightweight, branch-scoped, and cached through the database cache store; no Redis, external BI service, or heavy refresh query loop.
 - Audit logs must stay local in SQLite and be visible only through `view_audit_log` access.
+- SQLite on shared hosting must stay protected by explicit indexes on hot foreign-key/status/polling paths, bounded polling queries, database-cache dashboards, and pagination for growing history/list screens.
 - Local backups must stay shared-hosting friendly: superadmin-only SQLite download, no S3, no paid backup services, no Docker, and no committed backup files.
 - Data exports must stay branch-scoped, CSV-first, protected by `export_data`, and must not leak another branch's orders, payments, menu, or service points.
 - Localization must stay local and fixed to `ru`, `en`, and `lt`; do not add AI translation, paid translation APIs, or external localization services.
@@ -78,6 +79,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
 - Database notifications for new join requests, drafts sent to waiters, guest waiter calls, bill requests, waiter-confirmed draft orders, kitchen/bar item cooking/ready states, and rejected draft orders, plus authenticated and guest Livewire notification UI blocks that poll the local database.
+- SQLite performance guardrails for shared hosting: extra hot-path indexes, visible-only polling attributes, database-cache dashboard preservation, and cursor-paginated audit log history.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -108,6 +110,7 @@ No menu translation admin editor, QR PDF generation, CSV-to-PDF export, online p
 - `failed_jobs`
 - `notifications`
   - Laravel database notifications for users and `table_session_guests`.
+  - Prompt 083 added composite indexes for unread count/list polling by notifiable, type, read state, and creation time.
 - `passkeys`
 - `roles`
 - `permissions`
@@ -548,6 +551,17 @@ Basic analytics:
 - `DraftOrderObserver`, `KitchenTicketObserver`, and `KitchenTicketItemObserver` invalidate affected branch restaurant dashboard cache.
 - Dashboard analytics must not be added to 1-second waiter/kitchen/bar polling loops; keep it on the restaurant dashboard or use explicit short-lived database cache.
 
+SQLite performance guardrails:
+
+- Added in Prompt 083 through `2026_06_04_053034_add_sqlite_performance_guardrail_indexes.php`.
+- The migration adds hot-path composite indexes for `notifications`, `service_points`, `table_sessions`, `table_session_join_requests`, `draft_orders`, `draft_order_items`, `orders`, `kitchen_tickets`, `kitchen_ticket_items`, and `audit_logs`.
+- These indexes support unread notification polling, waiter/service-point lists, active session scans, join approval polling, latest/sent draft lookup, shared cart item ordering, restaurant dashboard order reads, department ticket polling, ready unserved ticket checks, and audit history browsing.
+- `App\Actions\Dashboard\BuildRestaurantDashboardAction` still uses `Cache::store('database')->remember(...)` and branch cache-key indexes; do not move it to Redis or un-cached per-refresh queries.
+- `App\Actions\AuditLogs\BuildAuditLogIndexAction` now returns a cursor-paginated history payload with prepared rows; it no longer loads a fixed latest 200-row list.
+- Staff notification UI polling is `wire:poll.visible.5s`; guest notification UI polling is `wire:poll.visible.2s`.
+- Waiter, kitchen/bar, guest cart, guest list, and join-request live blocks keep 1-second polling but now use the `visible` modifier and selected/bounded Eloquent queries.
+- Do not remove existing `select([...])`, `limit(...)`, eager loads, or cursor pagination from polling/dashboard/history paths without replacing them with an equal or lighter query shape.
+
 Draft order:
 
 - Stored in `draft_orders`.
@@ -680,7 +694,7 @@ Audit log:
 - Stores `action`, `entity_type`, `entity_id`, optional JSON `old_values`, optional JSON `new_values`, and `created_at`.
 - Current action enum values are `menu_price_changed`, `menu_availability_changed`, `menu_item_deleted`, `service_point_moved`, `qr_reissued`, `staff_permission_changed`, `order_confirmed`, `order_cancelled`, `table_session_closed`, and `payment_recorded`.
 - `RecordAuditLogAction` is the shared writer. It normalizes enum/date/model values before storing JSON snapshots.
-- `BuildAuditLogIndexAction` prepares the `/restaurant/audit-log` payload and resolves access through `view_audit_log`.
+- `BuildAuditLogIndexAction` prepares the cursor-paginated `/restaurant/audit-log` payload and resolves access through `view_audit_log`.
 - Superadmins can view all audit rows. Regular users see only branch rows and organization-level rows where they have `view_audit_log`.
 - Audit UI is intentionally simple and local; no external logging service, Redis, WebSockets, S3, or Docker is used.
 
@@ -926,8 +940,8 @@ Local media storage:
 - `App\Livewire\Settings\Profile` now includes admin interface language selection.
 - `App\Livewire\PublicQr\Show` now includes guest language selection and branch-default language resolution.
 - `App\Livewire\PublicQr\GuestMenu` receives/applies the selected guest language.
-- `App\Livewire\Notifications\UnreadCount` shows authenticated unread database notification counts and event lists in the app layout and polls every 1 second.
-- `App\Livewire\PublicQr\Notifications` shows active guest unread notification counts and event lists on the public QR table page and polls every 1 second.
+- `App\Livewire\Notifications\UnreadCount` shows authenticated unread database notification counts and event lists in the app layout and polls its visible block every 5 seconds.
+- `App\Livewire\PublicQr\Notifications` shows active guest unread notification counts and event lists on the public QR table page and polls its visible block every 2 seconds.
 - `App\Livewire\Organizations\Brands\Branches\Index` and `App\Livewire\Organizations\Brands\Branches\Settings` expose supported currency selectors.
 - `App\Livewire\PublicQr\GuestMenu` formats guest-facing menu prices with the current branch currency.
 - `App\Livewire\Onboarding\RestaurantSetup`
@@ -945,16 +959,16 @@ Local media storage:
 - `App\Livewire\Organizations\Brands\Branches\Staff\Index`
 - `App\Livewire\Organizations\Brands\Branches\Settings`
 - `App\Livewire\PublicQr\Show`
-- `App\Livewire\PublicQr\JoinRequests`
-- `App\Livewire\PublicQr\TableGuests`
+- `App\Livewire\PublicQr\JoinRequests` polls visible pending-join blocks with selected columns and bounded result sets.
+- `App\Livewire\PublicQr\TableGuests` polls visible guest-list blocks with selected columns and bounded result sets.
 - `App\Livewire\PublicQr\GuestMenu`
-- `App\Livewire\PublicQr\DraftOrder`
-- `App\Livewire\Departments\Dashboard` shared abstract department ticket screen
+- `App\Livewire\PublicQr\DraftOrder` polls the visible shared cart block and reads draft state from selected/bounded Eloquent queries.
+- `App\Livewire\Departments\Dashboard` shared abstract department ticket screen with visible-only 1-second polling for kitchen/bar ticket cards.
 - `App\Livewire\Bar\Dashboard`
 - `App\Livewire\Kitchen\Dashboard`
 - `App\Livewire\Superadmin\Dashboard` shows platform records, service point/order stats, local SQLite backup action, organization aggregate counters, detail/audit links, and organization subscription activate/suspend controls.
-- `App\Livewire\Waiter\Dashboard`
-- `App\Livewire\Waiter\TableDetail`
+- `App\Livewire\Waiter\Dashboard` keeps visible-only 1-second polling for live service-point, session, draft, waiter-call, and bill-request state.
+- `App\Livewire\Waiter\TableDetail` keeps visible-only 1-second polling for the current table detail.
 - `App\Livewire\Settings\Profile`
 - `App\Livewire\Settings\Security`
 - `App\Livewire\Settings\Appearance`
@@ -1342,7 +1356,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails intact during future feature work.
 
 ## Do Not Break
 
@@ -1355,7 +1369,9 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not send operational notifications through Push, WebSockets, Redis, SMS, Telegram API, mail delivery, or paid notification providers; keep them in Laravel database notifications.
 - Do not replace notification UI polling with full-page refreshes or WebSockets; keep updates scoped to Livewire notification blocks.
+- Do not remove `wire:poll.visible` from hot polling blocks or increase polling query payloads without a clear reason.
 - Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.
+- Do not turn audit/history screens back into unpaginated fixed-size lists; keep cursor pagination or another bounded pagination strategy.
 - Do not use Redis cache tags for analytics invalidation; use explicit database-cache keys and model observers.
 - Do not send waiter calls through SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
 - Do not create more than one pending waiter call for the same service point.

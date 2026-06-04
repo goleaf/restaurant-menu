@@ -323,7 +323,7 @@
                         @if ($entryMessage || $currentJoinRequestId)
                             <div
                                 class="mt-3"
-                                @if ($currentJoinRequestId) wire:poll.1s="refreshJoinRequestStatus" @endif
+                                @if ($currentJoinRequestId) wire:poll.visible.1s="refreshJoinRequestStatus" @endif
                             >
                                 @if ($entryMessage)
                                     <p class="rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">

@@ -32,9 +32,9 @@ Current database notification events:
 - kitchen/bar marked an item ready;
 - waiter rejected a draft order.
 
-Authenticated staff see an unread notification panel in the app layout for new orders, waiter calls, bill requests, and ready items. The panel polls only its own Livewire block every second and can mark one notification or all notifications read locally.
+Authenticated staff see an unread notification panel in the app layout for new orders, waiter calls, bill requests, and ready items. The panel polls only its own visible Livewire block every 5 seconds and can mark one notification or all notifications read locally.
 
-Active guests see a small notification block on the public QR table page for join approvals, confirmed or rejected orders, and kitchen/bar item progress. The guest block also polls only itself and stores notifications against `table_session_guests`; guests are still not user accounts.
+Active guests see a small notification block on the public QR table page for join approvals, confirmed or rejected orders, and kitchen/bar item progress. The guest block polls only its own visible block every 2 seconds and stores notifications against `table_session_guests`; guests are still not user accounts.
 
 No Push, WebSocket, Redis, SMS, Telegram API, or paid notification provider is used.
 
@@ -201,6 +201,23 @@ database/database.sqlite
 This file is inside the project and outside `public/`, which keeps it suitable for shared hosting when the web root points to `public/`.
 
 `.env.example` leaves `DB_DATABASE` empty so Laravel uses the safe default from `config/database.php`.
+
+### SQLite Performance Recommendations
+
+This project is tuned for small shared-hosting deployments where SQLite, PHP, and local files are enough.
+
+Keep these guardrails in place:
+
+- keep the SQLite file outside `public/`;
+- keep `CACHE_STORE=database`, `SESSION_DRIVER=database`, and `QUEUE_CONNECTION=database`;
+- do not add Redis, WebSockets, S3, Docker, or external queue/cache services;
+- keep polling scoped to isolated Livewire blocks, not full-page refreshes;
+- keep waiter/kitchen/bar polling queries limited to selected columns and bounded result sets;
+- keep restaurant dashboard and analytics snapshots in the database cache;
+- use pagination for growing history/list screens such as audit logs;
+- do not load audit/history relationships unless the current page needs them.
+
+Prompt 083 added extra indexes for hot SQLite paths: database notifications, service point lists, active table sessions, join requests, latest/sent drafts, draft items, confirmed-order dashboard reads, kitchen/bar ticket polling, ready unserved ticket items, and audit log history.
 
 ## Local Backups
 

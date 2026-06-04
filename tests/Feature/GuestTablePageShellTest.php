@@ -62,7 +62,7 @@ test('guest list is an isolated polling block with readable statuses', function 
         'currentGuestId' => $activeGuest->id,
     ])
         ->assertSee('data-component="guest-table-guests"', false)
-        ->assertSee('wire:poll.1s="refreshGuests"', false)
+        ->assertSee('wire:poll.visible.1s="refreshGuests"', false)
         ->assertSeeText('За столом')
         ->assertSeeText('Вы')
         ->assertSeeText('Ушёл')

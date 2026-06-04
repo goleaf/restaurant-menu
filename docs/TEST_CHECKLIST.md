@@ -46,6 +46,14 @@ Manual check:
 9. On shared hosting with cron, confirm cron runs `php artisan schedule:run`;
    without cron, use the manual buttons or `php artisan table-sessions:cleanup-inactive`.
 
+## Daily Memory Update - 2026-06-04 After Prompt 116
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and
+`docs/DEPLOY_SHARED_HOSTING.md` after Prompt 116. Session inactivity cleanup is
+now part of the shared-hosting operations baseline. Future prompts must preserve
+the guardrail that active sessions are warned, not auto-closed.
+
 ## Prompt 114 Guest Name Conflict Handling Results
 
 Programmatic coverage was added in `tests/Feature/GuestCreatedPendingSessionTest.php`.

@@ -87,6 +87,7 @@ Prompt 116 notes:
 - Focused coverage: `tests/Feature/SessionInactivityCleanupTest.php`.
 - Verification run included focused inactivity cleanup tests, SQLite migration status, route list, database driver config checks, and HTTP smoke checks.
 - Manual follow-up: on shared hosting, add a cron entry for `php artisan schedule:run` if available; otherwise run cleanup from branch settings or superadmin dashboard.
+- Post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, deployment notes, and next-step notes without adding product behavior.
 
 Next recommended prompt:
 

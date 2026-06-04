@@ -13,6 +13,11 @@
 - Limitations: active sessions only warn staff; they are not automatically closed. Cleanup uses existing `cancelled` table-session status with metadata instead of adding a new status. Cron still requires shared-hosting setup for `php artisan schedule:run`; manual buttons are available if cron is missing.
 - Manual check: run `php artisan table-sessions:cleanup-inactive`, run cleanup from branch settings, run cleanup from superadmin dashboard, confirm stale empty pending sessions are cancelled, confirm active sessions only show waiter warnings, and confirm sessions with unpaid orders are skipped.
 
+### Docs - Daily Project Memory Update After Prompt 116
+
+- Refreshed README, AI context, smoke checklist, deployment notes, and next-step notes after Prompt 116 without adding product features.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, optional scheduler cron, and manual cleanup fallback.
+
 ### Prompt 114 - Guest Name Conflict Handling
 
 - Added duplicate guest-name handling on the public QR / invite entry flow.

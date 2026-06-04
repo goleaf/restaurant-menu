@@ -11,6 +11,9 @@ Last memory refresh: 2026-06-04 after Prompt 116 session inactivity cleanup.
 Wait for the next explicit user prompt. Prompt 116 is complete; do not continue
 with new product behavior automatically.
 
+Daily memory update after Prompt 116 is complete. Keep this file as the source
+for next-prompt guardrails until the user gives a new prompt.
+
 If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
 or orders, first verify:
 

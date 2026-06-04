@@ -2,6 +2,12 @@
 
 ## 2026-06-04
 
+### Docs - Daily Project Memory Update After Prompt 101
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 101 without adding product features.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local storage only.
+- Recorded Prompt 102 as the next recommended prompt: a small menu translation admin editor using existing translation tables and database cache invalidation.
+
 ### Prompt 101 - Restaurant Public Profile
 
 - Added branch-level public restaurant profile fields for public venue name, short description, local cover image, phone, email, website, and Instagram/Facebook/TikTok links while reusing existing branch logo, address, city, country, default language, and default currency data.

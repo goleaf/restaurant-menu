@@ -2,6 +2,30 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Daily Project Memory Update After Prompt 101 - 2026-06-04
+
+This is a documentation-only memory refresh after Prompt 101. No code, routes, migrations, models, Livewire components, packages, services, or infrastructure were added in this update.
+
+Current stack remains:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+Current state:
+
+- Prompt 101 is complete: branch public profiles power the guest QR landing and guest table context.
+- Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
+- Guest-facing missing profile/contact data uses fallback text.
+- Local images remain in `storage/app/public/media/...`.
+
+Next recommended prompt:
+
+- Prompt 102: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the current branch menu UI, limited to `ru`, `en`, and `lt`, with database cache invalidation through `ForgetBranchCacheAction`. Do this only when explicitly requested; do not add AI translation or external services.
+
 ## Prompt 101 - Restaurant Public Profile
 
 Prompt 101 added a branch-level public restaurant profile for the guest QR landing page and guest table header.

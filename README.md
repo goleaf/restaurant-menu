@@ -1133,6 +1133,17 @@ Not implemented yet:
 - Online payments.
 - Staff invitation acceptance flow and email/SMS delivery.
 
+## Project Memory
+
+After Prompt 101, the current working memory is:
+
+- branch public restaurant profiles are implemented and used by QR landing / guest UI;
+- SQLite, database cache, database sessions, database queue, local storage, Blade, and Livewire remain the required stack;
+- Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
+- the next recommended prompt is Prompt 102: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
+
+Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
+
 ## Local Verification
 
 Run the core checks:

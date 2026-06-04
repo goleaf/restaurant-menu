@@ -18,6 +18,11 @@ SQLite setup.
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md`.
 
+After Prompt 101, include the public restaurant profile in setup smoke checks:
+branch settings should save public name, description, local logo/cover, contact
+links, default language, and default currency, and the QR landing should show
+those values or polished fallback text.
+
 Use these focused checks after documentation-only maintenance:
 
 ```bash

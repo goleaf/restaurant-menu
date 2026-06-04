@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -188,6 +189,69 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
         return $this->organizationHasActiveSubscription($organization)
             && $this->activeOrganizationMembershipQuery($organization)->exists();
+    }
+
+    public function canAccessBranch(Branch|int $branch, Organization|int|null $organization = null): bool
+    {
+        $branch = $branch instanceof Branch
+            ? $branch
+            : Branch::query()
+                ->select(['id', 'organization_id'])
+                ->whereKey($branch)
+                ->first();
+
+        if (! $branch instanceof Branch) {
+            return false;
+        }
+
+        $organizationId = $organization instanceof Organization ? $organization->id : $organization;
+
+        if ($organizationId !== null && (int) $branch->organization_id !== (int) $organizationId) {
+            return false;
+        }
+
+        return $this
+            ->accessibleBranchIdsForOrganization((int) $branch->organization_id)
+            ->contains((int) $branch->id);
+    }
+
+    /**
+     * @return Collection<int, int>
+     */
+    public function accessibleBranchIdsForOrganization(Organization|int $organization): Collection
+    {
+        $organizationId = $organization instanceof Organization ? $organization->id : $organization;
+
+        if (! $this->canAccessOrganization($organizationId)) {
+            return collect();
+        }
+
+        if ($this->isSuperadmin()) {
+            return Branch::query()
+                ->select(['id', 'organization_id'])
+                ->where('organization_id', $organizationId)
+                ->orderBy('id')
+                ->pluck('id');
+        }
+
+        $assignedBranchIds = $this->branchAssignments()
+            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'status'])
+            ->where('organization_id', $organizationId)
+            ->where('status', OrganizationUserStatus::Active->value)
+            ->orderBy('branch_id')
+            ->pluck('branch_id')
+            ->unique()
+            ->values();
+
+        if ($assignedBranchIds->isNotEmpty()) {
+            return $assignedBranchIds;
+        }
+
+        return Branch::query()
+            ->select(['id', 'organization_id'])
+            ->where('organization_id', $organizationId)
+            ->orderBy('id')
+            ->pluck('id');
     }
 
     public function hasSystemRole(SystemRole|string $role): bool

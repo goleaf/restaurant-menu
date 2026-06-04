@@ -107,7 +107,7 @@ class PrintTemplate extends Component
         $user = $this->currentUser();
 
         if (
-            ! $user->canAccessOrganization($this->organization)
+            ! $user->canAccessBranch($this->branch, $this->organization)
             || ! $user->hasPermission(SystemPermission::GenerateQr, $this->organization)
         ) {
             abort(403);

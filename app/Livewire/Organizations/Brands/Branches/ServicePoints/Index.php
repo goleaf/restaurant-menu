@@ -99,7 +99,7 @@ class Index extends Component
 
         $user = $this->currentUser();
 
-        if (! $user->canAccessOrganization($organization)) {
+        if (! $user->canAccessBranch($branch, $organization)) {
             abort(403);
         }
 

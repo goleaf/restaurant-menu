@@ -60,7 +60,7 @@ class Index extends Component
             abort(403);
         }
 
-        if (! $this->currentUser()->canAccessOrganization($organization)) {
+        if (! $this->currentUser()->canAccessBranch($branch, $organization)) {
             abort(403);
         }
 

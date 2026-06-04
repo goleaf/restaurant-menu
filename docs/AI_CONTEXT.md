@@ -48,6 +48,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Data exports must stay branch-scoped, CSV-first, protected by `export_data`, and must not leak another branch's orders, payments, menu, or service points.
 - Localization must stay local and fixed to `ru`, `en`, and `lt`; do not add AI translation, paid translation APIs, or external localization services.
 - Currency handling must stay local: no exchange-rate APIs, no paid currency services, and no automatic conversion of stored menu/order/payment amounts.
+- Access control must stay organization-scoped first and branch-scoped when active `branch_users` assignments exist. A staff member assigned to one branch must not see or open another branch's admin/operational data unless they are superadmin or have no branch assignment narrowing in that organization.
 
 ## What Is Already Done
 
@@ -58,6 +59,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Fortify-backed authentication.
 - Fixed system roles.
 - Flexible permissions with role permissions and user overrides.
+- Prompt 096 access-control audit with regression coverage for organization isolation, branch assignment isolation, waiter price restrictions, cook staff restrictions, marketer order-confirmation restrictions, accountant payment visibility without menu editing, and superadmin bypass.
 - Organizations.
 - Simple one-plan SaaS subscriptions for organizations with local status/payment fields and superadmin manual activation/suspension.
 - Organization user memberships.
@@ -211,6 +213,8 @@ Branch:
 - Has many nested area nodes.
 - Has many service points.
 - Has many branch staff assignments through `branch_users`.
+- Active branch staff assignments narrow branch-scoped pages and resolvers through `User::canAccessBranch()` and `User::accessibleBranchIdsForOrganization()`.
+- If a regular user has active `branch_users` rows in an organization, branch lists and branch-scoped pages only expose those assigned branches. If they have no active branch assignment, organization-level access continues to cover all branches in that organization.
 - Stores optional `logo_path` for a locally stored logo.
 - Stores operational `currency`; branch settings store `default_currency`, and both are kept synced by branch/settings update actions.
 - New branches created through `CreateBranchAction` receive standard kitchen departments through `SeedKitchenDepartmentsForBranchAction`.
@@ -889,7 +893,8 @@ Superadmin access:
 - Superadmins can open existing organization details, open the audit log, suspend an organization subscription, and reactivate it from the platform dashboard.
 - Superadmin impersonation is not implemented yet.
 - Superadmins bypass organization and branch-level access checks.
-- Regular users keep organization-scoped access only.
+- Regular users keep organization-scoped access, narrowed by active `branch_users` assignments when those assignments exist in the organization.
+- `tests/Feature/AccessControlAuditTest.php` is the focused Prompt 096 regression test for normal organization visibility, branch assignment visibility, role boundary checks, and superadmin bypass.
 
 SaaS subscription:
 
@@ -1354,7 +1359,7 @@ Local media storage:
 
 - Branch menu route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/menu`.
 - Route model nesting is checked in the Livewire component: brand must belong to organization, and branch must belong to the route brand and organization.
-- Access requires either `manage_menu` or `change_availability` in the current organization context; superadmin bypass still works through computed permissions.
+- Access requires branch-level access plus either `manage_menu` or `change_availability` in the current organization context; superadmin bypass still works through computed permissions.
 - Full menu CRUD still requires `manage_menu`.
 - The stop-list section is visible to users with `change_availability` and lets them temporarily mark dishes out of stock or return them to the menu without exposing menu CRUD.
 - Availability-only users can reach this same route from the branch list as `Stop-list`.
@@ -1387,7 +1392,7 @@ Local media storage:
 
 - Branch service point route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
 - Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
-- Users can access the page when they can change service point statuses, open tables, or when they have `generate_qr` in the current organization context.
+- Users can access the page when they have branch-level access and can change service point statuses, open tables, or have `generate_qr` in the current organization context.
 - CRUD actions still require `manage_service_points`.
 - Manual status changes require `manage_service_points` or the fixed `waiter` organization role.
 - Opening a table requires `view_orders` or `confirm_orders` in the current organization context.
@@ -1402,7 +1407,7 @@ Local media storage:
 ## Current QR Admin Page
 
 - QR admin route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}`.
-- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Access requires auth, branch-level access, and `generate_qr` in the current organization context.
 - Route model nesting is checked: brand must belong to organization, branch must belong to brand and organization, service point must belong to branch, and QR must belong to service point.
 - The page eager-loads current service point and current area before rendering.
 - Blade displays prepared state only and must not query the database.
@@ -1417,7 +1422,7 @@ Local media storage:
 ## Current QR Print Template
 
 - QR print route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points/{servicePoint}/qr/{qrCode}/print`.
-- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Access requires auth, branch-level access, and `generate_qr` in the current organization context.
 - Route model nesting is checked: brand must belong to organization, branch must belong to brand and organization, service point must belong to branch, and QR must belong to service point.
 - The page uses `resources/views/layouts/print.blade.php` instead of the normal admin sidebar layout.
 - The sticker is built for browser print first, not PDF generation.
@@ -1432,7 +1437,7 @@ Local media storage:
 ## Current Bulk QR Print Page
 
 - Bulk QR print route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print`.
-- Access requires auth, organization access, and `generate_qr` in the current organization context.
+- Access requires auth, branch-level access, and `generate_qr` in the current organization context.
 - Route model nesting is checked: brand must belong to organization, and branch must belong to brand and organization.
 - The page uses `resources/views/layouts/print.blade.php` and remains browser print-friendly first.
 - The page lets users filter by all areas, one area node, or service points without an area.
@@ -1479,19 +1484,20 @@ Local media storage:
 
 - Branch service point route is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/service-points`.
 - Route model nesting is checked in the Livewire component: branch must belong to the route brand and organization.
-- Access is split between `manage_service_points`, status-changing waiter access, table-opening access, and `generate_qr` access.
+- Access requires branch-level access and is split between `manage_service_points`, status-changing waiter access, table-opening access, and `generate_qr` access.
 - The visible UI copy is simplified: `Столы и места`, `Шаг 3: добавьте столы`, large preset buttons, and plain QR/table actions.
 - Service point editing still must not change `internal_code` or reissue QR codes when a place is renamed or moved.
 - The UI does not show technical IDs to users.
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, and Prompt 095 manual smoke checklist intact during future feature work.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, and Prompt 096 access-control audit guardrails intact during future feature work.
 
 ## Do Not Break
 
 - Do not rewrite architecture.
 - Do not add unrelated future features.
+- Do not loosen branch-level access: active `branch_users` assignments must continue to narrow branch lists, branch admin pages, waiter/payment/department/export resolvers, QR pages, and branch staff screens unless the user is superadmin.
 - Do not add tariff limits, Stripe, PayPal, webhooks, online billing, paid billing providers, external subscription services, or superadmin impersonation unless a future prompt explicitly asks for that exact step.
 - Do not delete organization data, restaurants, QR codes, orders, payments, or audit logs when a subscription is deactivated; it is an access/status toggle only.
 - Do not physically delete organizations, brands, branches, area nodes, service points, menus, menu categories, or menu items through ordinary UI actions; these important entities use soft deletes.

@@ -88,7 +88,7 @@ class Settings extends Component
         $user = $this->currentUser();
 
         if (
-            ! $user->canAccessOrganization($organization)
+            ! $user->canAccessBranch($branch, $organization)
             || ! $user->canManageOrganizationBranches($organization)
         ) {
             abort(403);

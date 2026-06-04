@@ -320,6 +320,7 @@ class Index extends Component
                     ])
                     ->orderBy('id'),
             ])
+            ->whereIn('id', $this->currentUser()->accessibleBranchIdsForOrganization($this->organization))
             ->orderBy('name')
             ->orderBy('id')
             ->get();
@@ -549,7 +550,7 @@ class Index extends Component
 
     private function findBrandBranch(int $branchId): Branch
     {
-        return $this->brand
+        $branch = $this->brand
             ->branches()
             ->select([
                 'id',
@@ -568,5 +569,11 @@ class Index extends Component
             ])
             ->whereKey($branchId)
             ->firstOrFail();
+
+        if (! $this->currentUser()->canAccessBranch($branch, $this->organization)) {
+            abort(403);
+        }
+
+        return $branch;
     }
 }

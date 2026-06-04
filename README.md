@@ -17,6 +17,18 @@ This project is not only a QR menu. The current codebase is a clean shared-hosti
 
 The project intentionally does not use Redis, WebSockets, Docker as a requirement, S3, paid external services, React, Vue, or a separate SPA frontend.
 
+## Access Control
+
+Access is organization-scoped first and branch-scoped when a user has active `branch_users` assignments. Regular users see only active organizations where they have an active membership. If a staff member is assigned to specific branches, branch lists, branch admin pages, QR print/display pages, waiter/payment resolvers, kitchen/bar screens, and exports must stay limited to those branches.
+
+Prompt 096 added a focused access-control audit covering normal organization isolation, branch assignment isolation, waiter price restrictions, cook staff restrictions, marketer order-confirmation restrictions, accountant payment visibility without menu editing, and the superadmin platform-wide bypass.
+
+Focused regression command:
+
+```bash
+php artisan test --compact tests/Feature/AccessControlAuditTest.php
+```
+
 ## Simple Design System
 
 Reusable Blade UI primitives live in:

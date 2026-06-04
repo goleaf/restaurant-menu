@@ -2,6 +2,14 @@
 
 ## 2026-06-04
 
+### Prompt 096 - Audit Access Control
+
+- Added a focused access-control regression test covering organization isolation, branch assignment isolation, waiter price restrictions, cook staff restrictions, marketer order-confirmation restrictions, accountant payment visibility without menu editing, and superadmin bypass.
+- Added `User::canAccessBranch()` and `User::accessibleBranchIdsForOrganization()` so active `branch_users` assignments consistently narrow branch-scoped access inside an organization.
+- Guarded branch-scoped Livewire pages for areas, service points, menus, settings, branch staff, bulk QR print, QR display, and QR print templates with branch-level access checks.
+- Filtered branch lists by accessible branch ids, while preserving superadmin access and unassigned organization-level manager access.
+- Verified the new audit test and affected branch/menu/staff/QR/settings/waiter/superadmin tests on SQLite with database drivers and no Redis/WebSockets/S3/Docker.
+
 ### Prompt 095 - Add Smoke Test Checklist
 
 - Added `docs/TEST_CHECKLIST.md` as a lightweight manual smoke checklist for the main restaurant flow.

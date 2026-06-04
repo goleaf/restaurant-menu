@@ -13,6 +13,25 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 096 Access Control Results
+
+Programmatic audit coverage was added in `tests/Feature/AccessControlAuditTest.php`.
+The audit currently verifies:
+
+- ordinary users see only their own organizations;
+- branch-assigned employees cannot see or open another branch without access;
+- waiter-style users without `change_prices` cannot change menu item prices;
+- cooks cannot open staff management;
+- marketers cannot resolve order-confirmation access;
+- accountants can view payment branches but cannot manage payments or edit menu;
+- superadmins bypass organization and branch restrictions.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/AccessControlAuditTest.php
+```
+
 ## Prepare
 
 1. Run migrations:
@@ -272,7 +291,7 @@ Use the guest page and then waiter/cashier.
 These are optional command-line checks and do not replace the manual flow:
 
 ```bash
+php artisan test --compact tests/Feature/AccessControlAuditTest.php
 php artisan test --compact --filter=DemoRestaurantSeederTest
 php artisan test --compact
 ```
-

@@ -8,9 +8,12 @@ use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionGuestStatus;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
+use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Notifications\KitchenItemCookingNotification;
 use App\Notifications\KitchenItemReadyNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -84,6 +87,7 @@ class UpdateDepartmentTicketItemStatusAction
 
         $item = $item->refresh();
         $this->notifyWaiterRecipientsForReadyItem($item, $previousStatus, $status);
+        $this->notifyGuestRecipientForTicketItem($item, $previousStatus, $status);
 
         return $item->refresh();
     }
@@ -146,5 +150,77 @@ class UpdateDepartmentTicketItemStatusAction
         }
 
         Notification::send($recipients, new KitchenItemReadyNotification($item));
+    }
+
+    private function notifyGuestRecipientForTicketItem(
+        KitchenTicketItem $item,
+        KitchenTicketItemStatus $previousStatus,
+        KitchenTicketItemStatus $newStatus,
+    ): void {
+        if ($previousStatus === $newStatus || ! in_array($newStatus, [
+            KitchenTicketItemStatus::InProgress,
+            KitchenTicketItemStatus::Ready,
+        ], true)) {
+            return;
+        }
+
+        $item = KitchenTicketItem::query()
+            ->select([
+                'id',
+                'kitchen_ticket_id',
+                'order_item_id',
+                'table_session_guest_id',
+                'menu_item_id',
+                'guest_name',
+                'item_name',
+                'quantity',
+                'status',
+                'selected_modifiers',
+                'comment',
+                'updated_at',
+            ])
+            ->with([
+                'guest' => fn ($query) => $query->select([
+                    'id',
+                    'table_session_id',
+                    'guest_name',
+                    'guest_token',
+                    'status',
+                    'joined_at',
+                    'left_at',
+                ]),
+                'kitchenTicket' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'order_id',
+                        'branch_id',
+                        'service_point_id',
+                        'table_session_id',
+                        'kitchen_department_id',
+                        'department_type',
+                        'department_name',
+                    ])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
+            ])
+            ->whereKey($item->id)
+            ->firstOrFail();
+        $guest = $item->guest;
+
+        if (! $guest instanceof TableSessionGuest || $guest->status !== TableSessionGuestStatus::Active) {
+            return;
+        }
+
+        if ($newStatus === KitchenTicketItemStatus::InProgress) {
+            $guest->notify(new KitchenItemCookingNotification($item));
+
+            return;
+        }
+
+        $guest->notify(new KitchenItemReadyNotification($item));
     }
 }

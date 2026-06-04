@@ -2,6 +2,13 @@
 
 ## 2026-06-04
 
+### Prompt 082 - Notification UI
+
+- Expanded the authenticated notification component from count-only to a small unread event panel for new orders, waiter calls, bill requests, and ready items.
+- Added an isolated guest notification block on the public QR table page for join requests, confirmed/rejected orders, and kitchen/bar item progress.
+- Added database-only guest notifications for waiter-confirmed draft orders and kitchen/bar `in_progress` item status.
+- Kept realtime updates on Livewire polling and limited polling to notification blocks only; no WebSockets, Redis, Push, SMS, Telegram API, mail delivery, S3, Docker, or paid providers were added.
+
 ### Prompt 081 - Database Notifications
 
 - Added database-only notifications for new guest join requests, new drafts sent to waiters, kitchen/bar ready items, and rejected draft orders.

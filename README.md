@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -27,10 +27,14 @@ Current database notification events:
 - new draft order sent to waiter;
 - guest called waiter;
 - guest requested the bill;
+- waiter confirmed a guest draft order;
+- kitchen/bar started preparing an item;
 - kitchen/bar marked an item ready;
 - waiter rejected a draft order.
 
-Authenticated staff see an unread notification count in the app layout. The count updates through a small Livewire polling component and can be marked read locally. Guests are still not user accounts; guest-targeted notifications are stored against `table_session_guests`.
+Authenticated staff see an unread notification panel in the app layout for new orders, waiter calls, bill requests, and ready items. The panel polls only its own Livewire block every second and can mark one notification or all notifications read locally.
+
+Active guests see a small notification block on the public QR table page for join approvals, confirmed or rejected orders, and kitchen/bar item progress. The guest block also polls only itself and stores notifications against `table_session_guests`; guests are still not user accounts.
 
 No Push, WebSocket, Redis, SMS, Telegram API, or paid notification provider is used.
 

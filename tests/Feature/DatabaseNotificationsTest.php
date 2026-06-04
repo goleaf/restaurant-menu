@@ -4,6 +4,7 @@ use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
+use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenDepartmentType;
@@ -17,6 +18,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Notifications\UnreadCount;
+use App\Livewire\PublicQr\Notifications as GuestNotifications;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -33,6 +35,10 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Models\WaiterCall;
+use App\Notifications\BillRequestedNotification;
+use App\Notifications\KitchenItemReadyNotification;
+use App\Notifications\WaiterCalledNotification;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
 
@@ -62,6 +68,16 @@ test('new join request creates unread database notifications for active guests',
         ->and($boris->unreadNotifications()->where('type', 'join_request_created')->count())->toBe(1)
         ->and(data_get($ana->unreadNotifications()->firstOrFail()->data, 'guest_name'))->toBe('Mira')
         ->and((int) data_get($ana->unreadNotifications()->firstOrFail()->data, 'join_request_id'))->toBe($joinRequest->id);
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $ana->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 1)
+        ->assertSee('Новый гость ждёт подтверждения')
+        ->assertSee('Mira');
 });
 
 test('sent draft creates unread database notification for waiter and unread count polls it', function () {
@@ -83,10 +99,42 @@ test('sent draft creates unread database notification for waiter and unread coun
         ->test(UnreadCount::class)
         ->assertSet('unreadCount', 1)
         ->assertSee('Notifications')
+        ->assertSee('Новый заказ')
         ->call('markAllRead')
         ->assertSet('unreadCount', 0);
 
     expect($waiter->unreadNotifications()->count())->toBe(0);
+});
+
+test('staff notification ui lists waiter events and can mark one notification read', function () {
+    [, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create(['name' => 'Prompt 82 Panel Waiter']);
+    $waiterCall = WaiterCall::factory()
+        ->forServicePoint($servicePoint)
+        ->forTableSession($tableSession)
+        ->create(['requested_by_guest_id' => $guest->id]);
+    $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
+
+    $waiter->notify(new WaiterCalledNotification($waiterCall));
+    $waiter->notify(new BillRequestedNotification($tableSession, $guest));
+    $waiter->notify(new KitchenItemReadyNotification($ticketItem));
+
+    $waiterCallNotificationId = $waiter->unreadNotifications()
+        ->where('type', 'waiter_called')
+        ->firstOrFail()
+        ->id;
+
+    Livewire::actingAs($waiter)
+        ->test(UnreadCount::class)
+        ->assertSet('unreadCount', 3)
+        ->assertSee('Вызов официанта')
+        ->assertSee('Просьба счёта')
+        ->assertSee('Позиция готова')
+        ->call('markNotificationRead', $waiterCallNotificationId)
+        ->assertSet('unreadCount', 2);
+
+    expect($waiter->unreadNotifications()->where('type', 'waiter_called')->count())->toBe(0)
+        ->and($waiter->readNotifications()->where('type', 'waiter_called')->count())->toBe(1);
 });
 
 test('kitchen ready creates one unread database notification for waiter recipients', function () {
@@ -107,6 +155,7 @@ test('kitchen ready creates one unread database notification for waiter recipien
     );
 
     expect($waiter->unreadNotifications()->where('type', 'kitchen_item_ready')->count())->toBe(1)
+        ->and($guest->unreadNotifications()->where('type', 'kitchen_item_ready')->count())->toBe(1)
         ->and(data_get($waiter->unreadNotifications()->firstOrFail()->data, 'item_name'))->toBe('Prompt 81 Soup');
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
@@ -118,7 +167,56 @@ test('kitchen ready creates one unread database notification for waiter recipien
         permissionCodes: [SystemPermission::ViewKitchen],
     );
 
-    expect($waiter->unreadNotifications()->where('type', 'kitchen_item_ready')->count())->toBe(1);
+    expect($waiter->unreadNotifications()->where('type', 'kitchen_item_ready')->count())->toBe(1)
+        ->and($guest->unreadNotifications()->where('type', 'kitchen_item_ready')->count())->toBe(1);
+});
+
+test('kitchen in progress creates guest notification and guest notification ui shows cooking and ready states', function () {
+    [$organization, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
+    $cook = User::factory()->create(['name' => 'Prompt 82 Cook']);
+    attachPrompt81Staff($cook, $organization, SystemRole::Cook);
+    $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
+
+    app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+        item: $ticketItem,
+        status: KitchenTicketItemStatus::InProgress,
+        user: $cook,
+        departmentTypes: [],
+        roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    );
+
+    expect($guest->unreadNotifications()->where('type', 'kitchen_item_cooking')->count())->toBe(1);
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $guest->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 1)
+        ->assertSee('Позиция готовится')
+        ->assertSee('Prompt 81 Soup');
+
+    app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+        item: $ticketItem->fresh(),
+        status: KitchenTicketItemStatus::Ready,
+        user: $cook,
+        departmentTypes: [],
+        roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    );
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $guest->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 2)
+        ->assertSee('Позиция готова')
+        ->call('markAllRead')
+        ->assertSet('unreadCount', 0);
 });
 
 test('rejected draft creates unread database notifications for active guests', function () {
@@ -139,6 +237,46 @@ test('rejected draft creates unread database notifications for active guests', f
     expect($guest->unreadNotifications()->where('type', 'draft_order_rejected')->count())->toBe(1)
         ->and($zara->unreadNotifications()->where('type', 'draft_order_rejected')->count())->toBe(1)
         ->and(data_get($guest->unreadNotifications()->where('type', 'draft_order_rejected')->firstOrFail()->data, 'rejection_reason'))->toBe('Please remove the soup.');
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $guest->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 1)
+        ->assertSee('Заказ отклонён')
+        ->assertSee('Please remove the soup.');
+});
+
+test('confirmed draft creates unread database notifications for active guests', function () {
+    [$organization, , , $tableSession, $guest] = createPrompt81NotificationContext();
+    $zara = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+    $waiter = User::factory()->create(['name' => 'Prompt 82 Confirm Waiter']);
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
+    $draftOrder = createPrompt81DraftOrder($tableSession, $guest);
+    app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest);
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder->fresh(), $waiter);
+
+    expect($order->draft_order_id)->toBe($draftOrder->id)
+        ->and($guest->unreadNotifications()->where('type', 'draft_order_confirmed')->count())->toBe(1)
+        ->and($zara->unreadNotifications()->where('type', 'draft_order_confirmed')->count())->toBe(1);
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $guest->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 1)
+        ->assertSee('Заказ подтверждён')
+        ->assertSee('Официант подтвердил заказ.');
 });
 
 function createPrompt81NotificationContext(): array
@@ -285,4 +423,9 @@ function attachPrompt81Staff(User $user, Organization $organization, SystemRole 
     ]);
 
     return $role;
+}
+
+function prompt82GuestCookieName(string $publicToken): string
+{
+    return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
 }

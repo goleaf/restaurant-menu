@@ -11,12 +11,16 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
+use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\Order;
+use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Notifications\DraftOrderConfirmedNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class ConfirmDraftOrderByWaiterAction
@@ -30,7 +34,9 @@ class ConfirmDraftOrderByWaiterAction
 
     public function handle(DraftOrder $draftOrder, User $confirmedBy): Order
     {
-        return DB::transaction(function () use ($draftOrder, $confirmedBy): Order {
+        $shouldNotifyGuests = false;
+
+        $order = DB::transaction(function () use ($draftOrder, $confirmedBy, &$shouldNotifyGuests): Order {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
 
             $this->ensureCanConfirm($draftOrder, $confirmedBy);
@@ -93,6 +99,7 @@ class ConfirmDraftOrderByWaiterAction
                     'rejection_reason' => null,
                 ])
                 ->save();
+            $shouldNotifyGuests = true;
 
             if ($draftOrder->tableSession?->servicePoint !== null) {
                 $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
@@ -133,6 +140,12 @@ class ConfirmDraftOrderByWaiterAction
 
             return $order->refresh();
         });
+
+        if ($shouldNotifyGuests) {
+            $this->notifyActiveGuests($draftOrder, $order);
+        }
+
+        return $order;
     }
 
     private function reloadDraftOrder(DraftOrder $draftOrder): DraftOrder
@@ -226,6 +239,82 @@ class ConfirmDraftOrderByWaiterAction
                 'draft_review' => __('Нельзя подтвердить пустой черновик.'),
             ]);
         }
+    }
+
+    private function notifyActiveGuests(DraftOrder $draftOrder, Order $order): void
+    {
+        $draftOrder = $this->reloadDraftOrderForNotification($draftOrder);
+        $order = $this->reloadOrderForNotification($order);
+
+        $recipients = TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->where('table_session_id', $draftOrder->table_session_id)
+            ->where('status', TableSessionGuestStatus::Active->value)
+            ->orderBy('guest_name')
+            ->orderBy('id')
+            ->limit(100)
+            ->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        Notification::send($recipients, new DraftOrderConfirmedNotification($draftOrder, $order));
+    }
+
+    private function reloadDraftOrderForNotification(DraftOrder $draftOrder): DraftOrder
+    {
+        return DraftOrder::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'status',
+                'converted_to_order_at',
+                'converted_by_user_id',
+            ])
+            ->with([
+                'convertedByUser' => fn ($query) => $query->select(['id', 'name']),
+                'tableSession' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'service_point_id'])
+                    ->with([
+                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'organization_id', 'name']),
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
+            ])
+            ->whereKey($draftOrder->id)
+            ->firstOrFail();
+    }
+
+    private function reloadOrderForNotification(Order $order): Order
+    {
+        return Order::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'table_session_id',
+                'draft_order_id',
+                'status',
+                'confirmed_by_user_id',
+                'confirmed_at',
+                'total_price',
+                'currency',
+            ])
+            ->with([
+                'confirmedByUser' => fn ($query) => $query->select(['id', 'name']),
+            ])
+            ->whereKey($order->id)
+            ->firstOrFail();
     }
 
     private function decimalToCents(string|int|float|null $amount): int

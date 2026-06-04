@@ -3,6 +3,7 @@
 namespace App\Livewire\Notifications;
 
 use App\Models\User;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Component;
@@ -13,6 +14,11 @@ class UnreadCount extends Component
 
     public bool $compact = false;
 
+    /**
+     * @var list<array{id: string, title: string, body: string, meta: string, tone: string, created_label: string}>
+     */
+    public array $notifications = [];
+
     public function mount(bool $compact = false): void
     {
         $this->compact = $compact;
@@ -21,9 +27,40 @@ class UnreadCount extends Component
 
     public function refreshUnreadCount(): void
     {
-        $this->unreadCount = $this->currentUser()
+        $user = $this->currentUser();
+
+        $this->unreadCount = (int) $user
             ->unreadNotifications()
             ->count();
+
+        if ($this->compact) {
+            $this->notifications = [];
+
+            return;
+        }
+
+        $this->notifications = $user->unreadNotifications()
+            ->select(['id', 'type', 'notifiable_type', 'notifiable_id', 'data', 'read_at', 'created_at'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (DatabaseNotification $notification): array => $this->presentNotification($notification))
+            ->all();
+    }
+
+    public function markNotificationRead(string $notificationId): void
+    {
+        $notification = $this->currentUser()
+            ->unreadNotifications()
+            ->whereKey($notificationId)
+            ->first();
+
+        if ($notification instanceof DatabaseNotification) {
+            $notification->markAsRead();
+        }
+
+        $this->refreshUnreadCount();
     }
 
     public function markAllRead(): void
@@ -49,5 +86,76 @@ class UnreadCount extends Component
         }
 
         return $user;
+    }
+
+    /**
+     * @return array{id: string, title: string, body: string, meta: string, tone: string, created_label: string}
+     */
+    private function presentNotification(DatabaseNotification $notification): array
+    {
+        $data = is_array($notification->data) ? $notification->data : [];
+        $itemName = (string) data_get($data, 'item_name', '');
+        $guestName = (string) data_get($data, 'guest_name', '');
+        $itemsCount = (int) data_get($data, 'items_count', 0);
+
+        return [
+            'id' => $notification->id,
+            'title' => $this->titleForType($notification->type),
+            'body' => match ($notification->type) {
+                'draft_order_sent_to_waiter' => $guestName !== ''
+                    ? __(':name отправил заказ официанту.', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('Новый заказ отправлен официанту.')),
+                'waiter_called' => $guestName !== ''
+                    ? __(':name зовёт официанта.', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('Гость зовёт официанта.')),
+                'bill_requested' => $guestName !== ''
+                    ? __(':name попросил счёт.', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('Гость попросил счёт.')),
+                'kitchen_item_ready' => $itemName !== ''
+                    ? __(':item готово.', ['item' => $itemName])
+                    : (string) data_get($data, 'message', __('Позиция готова.')),
+                default => (string) data_get($data, 'message', __('Новое уведомление.')),
+            },
+            'meta' => $this->staffMetaForData($data, $itemsCount),
+            'tone' => $this->toneForType($notification->type),
+            'created_label' => $notification->created_at?->diffForHumans() ?? '',
+        ];
+    }
+
+    private function titleForType(string $type): string
+    {
+        return match ($type) {
+            'draft_order_sent_to_waiter' => __('Новый заказ'),
+            'waiter_called' => __('Вызов официанта'),
+            'bill_requested' => __('Просьба счёта'),
+            'kitchen_item_ready' => __('Позиция готова'),
+            default => __('Уведомление'),
+        };
+    }
+
+    private function toneForType(string $type): string
+    {
+        return match ($type) {
+            'draft_order_sent_to_waiter' => 'sky',
+            'waiter_called' => 'orange',
+            'bill_requested' => 'amber',
+            'kitchen_item_ready' => 'emerald',
+            default => 'zinc',
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function staffMetaForData(array $data, int $itemsCount): string
+    {
+        $parts = array_filter([
+            data_get($data, 'branch_name'),
+            data_get($data, 'service_point_name'),
+            data_get($data, 'area_name'),
+            $itemsCount > 0 ? __(':count поз.', ['count' => $itemsCount]) : null,
+        ], fn (mixed $value): bool => is_string($value) && $value !== '');
+
+        return implode(' · ', $parts);
     }
 }

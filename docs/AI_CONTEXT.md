@@ -77,7 +77,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Waiter ready/served handoff: kitchen/bar ready items appear in waiter table detail, waiters can mark ready items served, service point status can move to `ready_to_serve`, and guests see `Принято` / `Готовится` / `Готово` / `Подано`.
 - Guest waiter-call button on the public QR table shell with `waiter_calls`, database notifications, waiter dashboard polling, and handled state.
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
-- Database notifications for new join requests, drafts sent to waiters, guest waiter calls, bill requests, kitchen/bar ready items, and rejected draft orders, plus an authenticated Livewire unread-count component that polls the local database.
+- Database notifications for new join requests, drafts sent to waiters, guest waiter calls, bill requests, waiter-confirmed draft orders, kitchen/bar item cooking/ready states, and rejected draft orders, plus authenticated and guest Livewire notification UI blocks that poll the local database.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
 - Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
@@ -460,16 +460,18 @@ Database notification:
 - Stored in Laravel's existing `notifications` table.
 - Uses only the `database` channel.
 - Notifiable models are currently `App\Models\User` and `App\Models\TableSessionGuest`.
-- Current notification database types are `join_request_created`, `draft_order_sent_to_waiter`, `waiter_called`, `bill_requested`, `kitchen_item_ready`, and `draft_order_rejected`.
+- Current notification database types are `join_request_created`, `draft_order_sent_to_waiter`, `waiter_called`, `bill_requested`, `draft_order_confirmed`, `kitchen_item_cooking`, `kitchen_item_ready`, and `draft_order_rejected`.
 - `CreateTableSessionJoinRequestAction` sends `JoinRequestCreatedNotification` to active guests in the same table session.
 - `SendDraftOrderToWaiterAction` sends `DraftOrderSentToWaiterNotification` to branch waiter recipients resolved by `ResolveWaiterNotificationRecipientsAction`.
 - `RequestWaiterForTableSessionAction` sends `WaiterCalledNotification` to branch waiter recipients.
 - `RequestBillForTableSessionAction` sends `BillRequestedNotification` to branch waiter recipients.
-- `UpdateDepartmentTicketItemStatusAction` sends `KitchenItemReadyNotification` to branch waiter recipients only when an item changes to `ready`.
+- `ConfirmDraftOrderByWaiterAction` sends `DraftOrderConfirmedNotification` to active guests in the same table session after a draft is converted to an order.
+- `UpdateDepartmentTicketItemStatusAction` sends `KitchenItemCookingNotification` to the item owner when an item changes to `in_progress`.
+- `UpdateDepartmentTicketItemStatusAction` sends `KitchenItemReadyNotification` to branch waiter recipients and the item owner when an item changes to `ready`.
 - `RejectDraftOrderByWaiterAction` sends `DraftOrderRejectedNotification` to active guests in the same table session.
-- `App\Livewire\Notifications\UnreadCount` shows authenticated users their unread notification count and updates through `wire:poll.5s`.
-- The unread-count component can mark the current user's unread notifications as read locally.
-- Guest-facing notifications are stored for audit/visibility but guests still interact through the existing polled guest blocks, not a user account inbox.
+- `App\Livewire\Notifications\UnreadCount` shows authenticated users an unread notification count and event list for waiter-facing events; it updates through `wire:poll.1s` and can mark one or all current-user notifications read locally.
+- `App\Livewire\PublicQr\Notifications` shows active guests their unread join/order/kitchen notifications on the public QR table page; it validates the browser `guest_token`, updates through `wire:poll.1s`, and can mark one or all current-guest notifications read locally.
+- Guests are still not authenticated users; guest-facing notifications are attached to `table_session_guests`.
 - Do not add Push, WebSocket, Redis, SMS, Telegram API, mail delivery, or paid notification services for these operational events.
 
 Waiter call:
@@ -924,7 +926,8 @@ Local media storage:
 - `App\Livewire\Settings\Profile` now includes admin interface language selection.
 - `App\Livewire\PublicQr\Show` now includes guest language selection and branch-default language resolution.
 - `App\Livewire\PublicQr\GuestMenu` receives/applies the selected guest language.
-- `App\Livewire\Notifications\UnreadCount` shows authenticated unread database notification counts in the app layout and polls every 5 seconds.
+- `App\Livewire\Notifications\UnreadCount` shows authenticated unread database notification counts and event lists in the app layout and polls every 1 second.
+- `App\Livewire\PublicQr\Notifications` shows active guest unread notification counts and event lists on the public QR table page and polls every 1 second.
 - `App\Livewire\Organizations\Brands\Branches\Index` and `App\Livewire\Organizations\Brands\Branches\Settings` expose supported currency selectors.
 - `App\Livewire\PublicQr\GuestMenu` formats guest-facing menu prices with the current branch currency.
 - `App\Livewire\Onboarding\RestaurantSetup`
@@ -1339,7 +1342,7 @@ Local media storage:
 
 ## Next Step
 
-The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it.
+The next expected product step may be expanding local UI translation coverage, PDF export, local media ZIP export, manual payment reporting/refinement, ticket/service status history, notification read-history refinements, a bar-specific workflow refinement, QR PDF generation, staff invite acceptance flow, a menu translation admin editor, or guest menu/currency display refinements, but only implement it when a prompt explicitly requests it.
 
 ## Do Not Break
 
@@ -1351,6 +1354,7 @@ The next expected product step may be expanding local UI translation coverage, P
 - Do not turn the `Настроить ресторан` wizard into a separate setup engine unless a future prompt explicitly asks for it; it is currently a simple guide over existing routes and permissions.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
 - Do not send operational notifications through Push, WebSockets, Redis, SMS, Telegram API, mail delivery, or paid notification providers; keep them in Laravel database notifications.
+- Do not replace notification UI polling with full-page refreshes or WebSockets; keep updates scoped to Livewire notification blocks.
 - Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.
 - Do not use Redis cache tags for analytics invalidation; use explicit database-cache keys and model observers.
 - Do not send waiter calls through SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.

@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 108 - QR Label Design Presets
+
+- Added fixed browser print-friendly QR label design presets: `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and `premium`.
+- Single service point QR print and branch bulk QR print now share the same preset selector and CSS sticker classes.
+- Preset switching is Livewire state only; it does not create, reissue, disable, revoke, or otherwise change QR records.
+- The sticker still prints branch/brand logo when available, the text `Сканируйте, чтобы открыть меню`, local SVG QR image, and `short_code`.
+- The mutable service point/table number remains hidden by default; enabling it still shows the stale-text warning.
+- Touched modules/files: `App\Enums\QrLabelPreset`, QR single print Livewire component and Blade view, branch bulk QR print Livewire component and Blade view, `resources/css/app.css`, QR print tests, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no PDF generation, no paid PDF services, no external QR service, no heavy libraries, no Redis/WebSockets/S3/Docker, and no new database schema.
+- Manual check: open a service point QR print page, switch through all six presets, print preview in the browser, confirm QR/short code/logo are visible, confirm table number is hidden by default, then repeat from branch bulk QR print with several selected service points.
+
 ### Prompt 280 - Functional Consistency Pass For Menu And Staff
 
 - Checked menu, guest, waiter, kitchen/bar department, access-control, payment, and table-close flows without adding new product features.

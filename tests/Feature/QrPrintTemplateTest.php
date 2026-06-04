@@ -3,6 +3,7 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
+use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate;
@@ -50,6 +51,7 @@ test('qr print template defaults to sticker without table number or area', funct
         ->get(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode))
         ->assertOk()
         ->assertSee('data-page="qr-print-template"', false)
+        ->assertSee('data-preset="minimal"', false)
         ->assertSeeText($brand->name)
         ->assertSeeText('Сканируйте, чтобы открыть меню')
         ->assertSee('data:image/svg+xml;base64', false)
@@ -57,6 +59,39 @@ test('qr print template defaults to sticker without table number or area', funct
         ->assertDontSeeText('Стол: 15')
         ->assertDontSeeText('Main Hall')
         ->assertDontSeeText('Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.');
+});
+
+test('qr print template offers design presets without printing mutable table text by default', function () {
+    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt26QrContext();
+    grantPrompt26Permission($manager, $organization, SystemPermission::GenerateQr);
+
+    $component = Livewire::actingAs($manager)
+        ->test(PrintTemplate::class, [
+            'organization' => $organization,
+            'brand' => $brand,
+            'branch' => $branch,
+            'servicePoint' => $servicePoint,
+            'qrCode' => $qrCode,
+        ])
+        ->assertSet('preset', QrLabelPreset::Minimal->value)
+        ->assertSee('data-preset="minimal"', false)
+        ->assertSeeText('Minimal')
+        ->assertSeeText('Classic')
+        ->assertSeeText('Restaurant')
+        ->assertSeeText('Bar')
+        ->assertSeeText('Hotel')
+        ->assertSeeText('Premium')
+        ->assertDontSee('Стол: 15');
+
+    foreach (QrLabelPreset::cases() as $preset) {
+        $component
+            ->set('preset', $preset->value)
+            ->assertSet('preset', $preset->value)
+            ->assertSee('qr-sticker-preset-'.$preset->value, false)
+            ->assertSee('data-preset="'.$preset->value.'"', false)
+            ->assertSee($qrCode->short_code)
+            ->assertDontSee('Стол: 15');
+    }
 });
 
 test('qr print template can include table number with warning but still hides area', function () {
@@ -116,7 +151,9 @@ test('print table number setting does not change qr identity', function () {
             'qrCode' => $qrCode,
         ])
         ->set('printTableNumber', true)
-        ->set('printTableNumber', false);
+        ->set('printTableNumber', false)
+        ->set('preset', QrLabelPreset::Premium->value)
+        ->set('preset', QrLabelPreset::Minimal->value);
 
     $qrCode->refresh();
 

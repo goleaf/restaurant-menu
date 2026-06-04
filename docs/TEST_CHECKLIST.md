@@ -13,6 +13,40 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 108 QR Label Design Presets Results
+
+Programmatic coverage was added to existing QR print tests. The feature
+currently verifies:
+
+- single QR print defaults to the `minimal` preset;
+- all fixed presets render: `minimal`, `classic`, `restaurant`, `bar`, `hotel`,
+  and `premium`;
+- preset switching does not print mutable service point/table text by default;
+- preset switching does not change QR token, short code, status, or create a
+  second QR;
+- branch bulk QR print applies the selected preset to selected stickers.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/QrPrintTemplateTest.php tests/Feature/BulkQrPrintTest.php
+```
+
+Manual check:
+
+1. Open a service point QR print page.
+2. Switch through all six label design presets.
+3. Confirm the logo or brand text, `Сканируйте, чтобы открыть меню`, QR image,
+   and `short_code` remain visible.
+4. Confirm service point number and area are hidden by default.
+5. Enable `Print table number` and confirm the stale-sticker warning appears.
+6. Use browser print preview and confirm only the sticker prints, not the admin
+   toolbar.
+7. Open branch bulk QR print, select several service points with active QR, pick
+   a preset, and confirm the same design is applied to every selected sticker.
+8. Confirm no PDF service, external QR service, Redis, WebSockets, S3, Docker,
+   or heavy print library is involved.
+
 ## Prompt 280 Functional Consistency Results
 
 Programmatic coverage was re-run for menu, guest, staff, departments, payments,
@@ -53,13 +87,13 @@ Current known future-product gaps from the Prompt 280 checklist:
 Do not add those during consistency/bugfix prompts without a separate explicit
 scope.
 
-## Daily Memory Update - 2026-06-04 After Prompt 107
+## Daily Memory Update - 2026-06-04 After Prompt 108
 
 Project memory was refreshed in `README.md`, `CHANGELOG.md`,
-`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 107. Branch service
-modes and bulk service point creation are now part of branch setup. Prompt 108
-is the next recommended small prompt. Do not implement it until explicitly
-requested.
+`docs/AI_CONTEXT.md`, and `docs/NEXT_STEPS.md` after Prompt 108. Branch service
+modes, bulk service point creation, and QR label design presets are now part of
+branch setup and QR print. Prompt 109 is the next recommended small prompt only
+if explicitly requested.
 
 After Prompt 102, treat branch opening hours as part of the normal guest QR
 smoke flow: QR/menu viewing stays available while closed, but ordering is
@@ -99,6 +133,11 @@ behavior.
 After Prompt 107, include bulk service point creation in setup smoke checks:
 preview a range such as `T1..T20`, confirm duplicates are skipped, create the
 missing service points, and confirm QR codes are not generated automatically.
+
+After Prompt 108, include QR label presets in QR print smoke checks: open single
+and bulk QR print pages, switch through `minimal`, `classic`, `restaurant`,
+`bar`, `hotel`, and `premium`, confirm browser print preview works, and confirm
+service point number/area are not printed unless `print_table_number` is enabled.
 
 Use these focused checks after documentation-only maintenance:
 

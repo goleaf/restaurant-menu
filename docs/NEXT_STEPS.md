@@ -4,18 +4,29 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 280 functional consistency pass.
+Last memory refresh: 2026-06-04 after Prompt 108 QR label design presets.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
-modes, bulk service point creation, and waiter-side schedule checks should be
-treated as current baseline for future guest UI, QR landing, ordering work,
-staff review, and branch setup.
+modes, bulk service point creation, QR label design presets, and waiter-side
+schedule checks should be treated as current baseline for future guest UI, QR
+landing, ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt
 
+Prompt 109: add simple QR label size presets for browser print, only if the user explicitly requests it.
+
+Prompt 109 scope, if requested:
+
+- Keep it CSS/Livewire-only unless a later prompt explicitly asks for persisted branch defaults.
+- Reuse `App\Enums\QrLabelPreset` patterns if a new fixed size enum is useful.
+- Do not add PDF generation, paid PDF services, browser plugins, external QR services, or heavy libraries.
+- Do not create, reissue, disable, revoke, or otherwise alter QR records.
+- Keep single and bulk QR print behavior aligned.
+
+Alternative queued prompt:
+
 Prompt 281: decide whether to add dedicated menu tags/allergens and shared
-payment allocation foundations, or continue with the previously queued menu
-translation admin editor.
+payment allocation foundations.
 
 Prompt 281 scope, if requested:
 
@@ -29,11 +40,11 @@ Prompt 281 scope, if requested:
 - Keep guest ordering, waiter confirmation, kitchen/bar dispatch, and manual
   payment flows green.
 
-Alternative queued prompt:
+Older queued prompt:
 
-Prompt 108: add a simple menu translation admin editor.
+Add a simple menu translation admin editor.
 
-Scope:
+Translation editor scope, if requested:
 
 - Use the existing branch menu page.
 - Edit existing `menu_category_translations` and `menu_item_translations`.
@@ -44,6 +55,9 @@ Scope:
 
 Risky places:
 
+- QR print CSS is shared by single and bulk printing; keep class changes scoped to `qr-sticker` and print media.
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate` and `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint` both keep URL-backed print state; keep defaults safe.
+- Permanent QR identity must never depend on print preset, print size, service point name, service point number, or area.
 - `App\Livewire\Organizations\Brands\Branches\Menu\Index` is already large;
   keep the translation editor small and avoid broad refactors.
 - Guest menu cache is language-specific; translation saves must clear every
@@ -80,6 +94,12 @@ Prompt 107 added bulk service point creation: managers can preview generated
 labels such as `T1..T20`, skip duplicate branch `internal_code` values, create
 only missing service points, and then use the existing bulk QR print flow when
 they are ready to generate QR.
+
+Prompt 108 added QR label design presets: single and bulk QR print pages can
+switch between `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and
+`premium` browser print-friendly CSS presets. Preset changes are presentation
+only and do not change QR identity or print mutable service point text by
+default.
 
 Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft

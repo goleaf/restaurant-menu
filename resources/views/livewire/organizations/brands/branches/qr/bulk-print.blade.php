@@ -17,11 +17,19 @@
     </div>
 
     <section class="qr-print-controls">
-        <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+        <div class="grid gap-4 md:grid-cols-[1fr_16rem_auto] md:items-end">
             <flux:select wire:model.live="areaNodeId" :label="__('Zone')">
                 @foreach ($this->areaOptions as $option)
                     <flux:select.option wire:key="bulk-qr-area-{{ $option['value'] }}" value="{{ $option['value'] }}">
                         {{ $option['label'] }}
+                    </flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="preset" :label="__('Label design')">
+                @foreach ($this->presetOptions as $option)
+                    <flux:select.option wire:key="bulk-qr-preset-{{ $option['value'] }}" value="{{ $option['value'] }}">
+                        {{ __($option['label']) }}
                     </flux:select.option>
                 @endforeach
             </flux:select>
@@ -103,7 +111,11 @@
     @else
         <section class="qr-bulk-sticker-grid" aria-label="{{ __('QR stickers preview') }}">
             @foreach ($this->printItems as $item)
-                <article wire:key="bulk-print-sticker-{{ $item['service_point_id'] }}" class="qr-sticker">
+                <article
+                    wire:key="bulk-print-sticker-{{ $item['service_point_id'] }}"
+                    @class(['qr-sticker', $this->selectedPreset->cssClass()])
+                    data-preset="{{ $this->selectedPreset->value }}"
+                >
                     <div class="qr-sticker-brand">
                         @if ($this->restaurantLogoUrl)
                             <img src="{{ $this->restaurantLogoUrl }}" alt="{{ $item['brand_name'] }}" class="qr-sticker-logo">

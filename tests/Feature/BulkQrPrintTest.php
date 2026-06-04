@@ -3,6 +3,7 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
+use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
@@ -90,6 +91,32 @@ test('bulk qr print can select multiple existing eternal qr codes', function () 
         ->assertSee('QR-P27NOZN')
         ->assertSee('data:image/svg+xml;base64', false)
         ->assertDontSee('QR-P27MISS');
+});
+
+test('bulk qr print applies label design presets to selected stickers', function () {
+    [$organization, $brand, $branch, , , , $manager] = createPrompt27QrContext();
+    grantPrompt27Permission($manager, $organization, SystemPermission::GenerateQr);
+
+    Livewire::actingAs($manager)
+        ->test(BulkPrint::class, [
+            'organization' => $organization,
+            'brand' => $brand,
+            'branch' => $branch,
+        ])
+        ->assertSet('preset', QrLabelPreset::Minimal->value)
+        ->call('selectAllVisible')
+        ->assertSee('data-preset="minimal"', false)
+        ->assertSeeText('Minimal')
+        ->assertSeeText('Classic')
+        ->assertSeeText('Restaurant')
+        ->assertSeeText('Bar')
+        ->assertSeeText('Hotel')
+        ->assertSeeText('Premium')
+        ->set('preset', QrLabelPreset::Bar->value)
+        ->assertSet('preset', QrLabelPreset::Bar->value)
+        ->assertSee('qr-sticker-preset-bar', false)
+        ->assertSee('data-preset="bar"', false)
+        ->assertDontSee('Стол: 1');
 });
 
 test('bulk qr print offers and creates missing qr without duplicating active qr codes', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
 
+use App\Enums\QrLabelPreset;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -36,6 +37,9 @@ class PrintTemplate extends Component
     #[Url(as: 'print_table_number', except: false)]
     public bool $printTableNumber = false;
 
+    #[Url(as: 'preset', except: 'minimal')]
+    public string $preset = 'minimal';
+
     public function mount(
         Organization $organization,
         Brand $brand,
@@ -51,7 +55,13 @@ class PrintTemplate extends Component
 
         $this->authorizeRouteContext();
         $this->authorizeQrManagement();
+        $this->preset = $this->normalizedPresetValue($this->preset);
         $this->reloadPrintContext();
+    }
+
+    public function updatedPreset(): void
+    {
+        $this->preset = $this->normalizedPresetValue($this->preset);
     }
 
     #[Computed]
@@ -82,6 +92,21 @@ class PrintTemplate extends Component
     public function tableLabel(): string
     {
         return $this->servicePoint->display_number ?: $this->servicePoint->name;
+    }
+
+    #[Computed]
+    public function selectedPreset(): QrLabelPreset
+    {
+        return QrLabelPreset::fromValue($this->preset);
+    }
+
+    /**
+     * @return list<array{value: string, label: string, description: string}>
+     */
+    #[Computed]
+    public function presetOptions(): array
+    {
+        return QrLabelPreset::options();
     }
 
     public function render(): View
@@ -180,6 +205,11 @@ class PrintTemplate extends Component
             ->whereKey($this->qrCode->id)
             ->where('service_point_id', $this->servicePoint->id)
             ->firstOrFail();
+    }
+
+    private function normalizedPresetValue(string $preset): string
+    {
+        return QrLabelPreset::fromValue($preset)->value;
     }
 
     private function currentUser(): User

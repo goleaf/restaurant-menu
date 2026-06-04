@@ -95,8 +95,19 @@ select:focus[data-flux-control] {
 }
 
 .qr-sticker {
-    @apply flex w-full max-w-80 flex-col items-center justify-between gap-4 rounded-lg border border-zinc-950 bg-white p-5 text-center text-zinc-950 shadow-sm;
+    @apply flex w-full max-w-80 flex-col items-center justify-between gap-4 rounded-lg border bg-white p-5 text-center text-zinc-950 shadow-sm;
+    --qr-label-bg: #ffffff;
+    --qr-label-text: #0a0a0a;
+    --qr-label-border: #0a0a0a;
+    --qr-label-accent: #0a0a0a;
+    --qr-label-code-bg: #ffffff;
+    --qr-label-code-text: #0a0a0a;
     aspect-ratio: 3 / 4;
+    background: var(--qr-label-bg);
+    border-color: var(--qr-label-border);
+    border-width: 2px;
+    color: var(--qr-label-text);
+    print-color-adjust: exact;
 }
 
 .qr-sticker-brand {
@@ -109,10 +120,12 @@ select:focus[data-flux-control] {
 
 .qr-sticker-logotype {
     @apply text-lg font-semibold;
+    color: var(--qr-label-accent);
 }
 
 .qr-sticker-title {
     @apply text-xl font-semibold leading-tight;
+    color: var(--qr-label-text);
 }
 
 .qr-sticker-image {
@@ -120,11 +133,89 @@ select:focus[data-flux-control] {
 }
 
 .qr-sticker-code {
-    @apply rounded-md border border-zinc-950 px-3 py-1 text-base font-semibold;
+    @apply rounded-md border px-3 py-1 text-base font-semibold;
+    background: var(--qr-label-code-bg);
+    border-color: var(--qr-label-accent);
+    color: var(--qr-label-code-text);
 }
 
 .qr-sticker-table-number {
     @apply text-sm font-medium;
+}
+
+.qr-sticker-preset-minimal {
+    --qr-label-bg: #ffffff;
+    --qr-label-text: #0a0a0a;
+    --qr-label-border: #0a0a0a;
+    --qr-label-accent: #0a0a0a;
+}
+
+.qr-sticker-preset-classic {
+    --qr-label-bg: #fffdf5;
+    --qr-label-text: #171717;
+    --qr-label-border: #4a3728;
+    --qr-label-accent: #4a3728;
+    border-style: double;
+    border-width: 5px;
+}
+
+.qr-sticker-preset-classic .qr-sticker-code {
+    border-radius: 999px;
+}
+
+.qr-sticker-preset-restaurant {
+    --qr-label-bg: #fffafa;
+    --qr-label-text: #171717;
+    --qr-label-border: #b91c1c;
+    --qr-label-accent: #b91c1c;
+    border-top-width: 10px;
+}
+
+.qr-sticker-preset-restaurant .qr-sticker-title {
+    font-size: 1.35rem;
+}
+
+.qr-sticker-preset-bar {
+    --qr-label-bg: #fafafa;
+    --qr-label-text: #111827;
+    --qr-label-border: #3f2a56;
+    --qr-label-accent: #3f2a56;
+    --qr-label-code-bg: #3f2a56;
+    --qr-label-code-text: #ffffff;
+    border-left-width: 10px;
+}
+
+.qr-sticker-preset-bar .qr-sticker-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+}
+
+.qr-sticker-preset-hotel {
+    --qr-label-bg: #f8fcff;
+    --qr-label-text: #0f172a;
+    --qr-label-border: #0369a1;
+    --qr-label-accent: #0369a1;
+    border-bottom-width: 10px;
+}
+
+.qr-sticker-preset-hotel .qr-sticker-logotype {
+    font-weight: 500;
+}
+
+.qr-sticker-preset-premium {
+    --qr-label-bg: #ffffff;
+    --qr-label-text: #0a0a0a;
+    --qr-label-border: #0a0a0a;
+    --qr-label-accent: #9a6b12;
+    --qr-label-code-bg: #0a0a0a;
+    --qr-label-code-text: #ffffff;
+    border-width: 3px;
+    outline: 1px solid #d6b35a;
+    outline-offset: -8px;
+}
+
+.qr-sticker-preset-premium .qr-sticker-title {
+    font-weight: 700;
 }
 
 @media print {

@@ -4,6 +4,7 @@ namespace App\Livewire\Organizations\Brands\Branches\Qr;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Enums\QrCodeStatus;
+use App\Enums\QrLabelPreset;
 use App\Enums\SystemPermission;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -40,6 +41,9 @@ class BulkPrint extends Component
     #[Url(as: 'print_table_number', except: false)]
     public bool $printTableNumber = false;
 
+    #[Url(as: 'preset', except: 'minimal')]
+    public string $preset = 'minimal';
+
     /**
      * @var list<int>
      */
@@ -53,7 +57,13 @@ class BulkPrint extends Component
 
         $this->authorizeRouteContext();
         $this->authorizeQrManagement();
+        $this->preset = $this->normalizedPresetValue($this->preset);
         $this->reloadBranchContext();
+    }
+
+    public function updatedPreset(): void
+    {
+        $this->preset = $this->normalizedPresetValue($this->preset);
     }
 
     public function updatedAreaNodeId(): void
@@ -272,6 +282,21 @@ class BulkPrint extends Component
         ]);
     }
 
+    #[Computed]
+    public function selectedPreset(): QrLabelPreset
+    {
+        return QrLabelPreset::fromValue($this->preset);
+    }
+
+    /**
+     * @return list<array{value: string, label: string, description: string}>
+     */
+    #[Computed]
+    public function presetOptions(): array
+    {
+        return QrLabelPreset::options();
+    }
+
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.qr.bulk-print');
@@ -367,6 +392,11 @@ class BulkPrint extends Component
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function normalizedPresetValue(string $preset): string
+    {
+        return QrLabelPreset::fromValue($preset)->value;
     }
 
     /**

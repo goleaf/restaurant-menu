@@ -10,6 +10,14 @@
                 {{ __('QR page') }}
             </flux:button>
 
+            <flux:select wire:model.live="preset" :label="__('Label design')">
+                @foreach ($this->presetOptions as $option)
+                    <flux:select.option wire:key="single-qr-preset-{{ $option['value'] }}" value="{{ $option['value'] }}">
+                        {{ __($option['label']) }}
+                    </flux:select.option>
+                @endforeach
+            </flux:select>
+
             <flux:switch wire:model.live="printTableNumber" :label="__('Print table number')" />
 
             <flux:button icon="printer" variant="primary" type="button" x-on:click="window.print()">
@@ -24,7 +32,11 @@
         </div>
     @endif
 
-    <section class="qr-sticker" aria-label="{{ __('QR sticker preview') }}">
+    <section
+        @class(['qr-sticker', $this->selectedPreset->cssClass()])
+        data-preset="{{ $this->selectedPreset->value }}"
+        aria-label="{{ __('QR sticker preview') }}"
+    >
         <div class="qr-sticker-brand">
             @if ($this->restaurantLogoUrl)
                 <img src="{{ $this->restaurantLogoUrl }}" alt="{{ $brand->name }}" class="qr-sticker-logo">

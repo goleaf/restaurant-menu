@@ -2,6 +2,95 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 108 QR Label Design Presets - 2026-06-04
+
+Prompt 108 added browser print-friendly design presets for existing permanent QR sticker printing. No database schema, routes, packages, PDF services, external services, or infrastructure were added.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print now support fixed label design presets: `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and `premium`.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules; unavailable scheduled menu items are filtered from the waiter add-item list and blocked server-side.
+- Public QR URLs remain `/q/{public_token}` only and must not expose internal IDs.
+- Local images remain in `storage/app/public/media/...`.
+
+Current tables:
+
+- `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`.
+- `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`.
+- `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_users`, `branch_settings` including `service_modes`, `invitations`, `branch_opening_hours`.
+- `area_nodes`, `service_points`, `qr_codes`.
+- `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`.
+- `table_sessions`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, `audit_logs`.
+
+Current routes:
+
+- Public/auth: `home`, `guest.home`, `public.qr.show`, `dashboard`, Fortify auth/password routes.
+- Settings: `profile.edit`, `appearance.edit`, `security.edit`.
+- Onboarding and admin: `onboarding.restaurant`, organization/staff/brand/branch routes, branch areas/menu/QR/service-points/staff/settings.
+- QR admin/print: `organizations.brands.branches.service-points.qr.show`, `organizations.brands.branches.service-points.qr.print`, and `organizations.brands.branches.qr.print`.
+- Operations: `restaurant.dashboard`, audit log, CSV exports, waiter dashboard/table detail, kitchen dashboard, bar dashboard.
+- Superadmin: `superadmin.dashboard`, `superadmin.backups.sqlite.download`.
+
+Current Livewire components:
+
+- Auth/settings/notifications: logout, profile, appearance, security, two-factor recovery codes, unread notification panel.
+- Organization/branch admin: organizations, staff permissions, brands, branches, areas, menu, QR bulk print, service points with single and bulk creation, QR display/print with label presets, branch staff, branch settings with public profile, opening hours, temporary closure, currency, and service modes.
+- Guest QR: `PublicQr\Show`, `TableGuests`, `JoinRequests`, `Notifications`, `GuestMenu`, `DraftOrder`, `DraftTotals`, `OrderStatuses`.
+- Operations: waiter dashboard/table detail, shared department dashboard, kitchen dashboard, bar dashboard, audit log, exports, onboarding, superadmin dashboard.
+
+Mandatory business rules:
+
+- One physical service point has one active permanent QR; `/q/{public_token}` must not expose organization, branch, service point, table, or area IDs.
+- QR identity does not change on rename, move, session close, ordinary edits, bulk-created service point review, print-table-number toggle, or QR label preset switch.
+- QR label presets are fixed in `App\Enums\QrLabelPreset` and are presentation-only.
+- QR stickers print the local logo when available, the text `Сканируйте, чтобы открыть меню`, the QR image, and `short_code`.
+- QR stickers must not print service point number or area by default; enabling `print_table_number` must keep the stale-text warning.
+- Guests are not user accounts; guest access uses unguessable guest tokens.
+- New guests require active guest approval when active guests already exist.
+- Guests see one shared draft/cart, guests are sorted alphabetically, and each guest edits only their own draft items while the draft is still editable.
+- Branch opening hours, temporary closure, menu schedules, and future service-mode rules may block ordering while still allowing QR/menu viewing.
+- Menu schedule rules apply to guest ordering and waiter-side adding of new items to a pending draft.
+- Bulk service point creation must preview generated codes before writing, skip duplicate `internal_code` values, and never create QR automatically.
+- Every guest draft must be confirmed by a waiter before becoming an order and explicitly dispatched before kitchen/bar can see it.
+- Order items keep immutable snapshots; manual payments and table close preserve history and never reissue QR.
+
+Shared-hosting constraints:
+
+- SQLite file stays in the project, normally `database/database.sqlite`, outside `public`, and is never committed.
+- Keep `CACHE_STORE=database`, `SESSION_DRIVER=database`, `QUEUE_CONNECTION=database`, `FILESYSTEM_DISK=public`, and `BROADCAST_CONNECTION=log`.
+- Media is local in `storage/app/public`; realtime is Livewire polling only.
+- QR label printing is browser print only.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 108 notes:
+
+- `App\Enums\QrLabelPreset` owns the fixed preset list and labels.
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate` and `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint` both keep `preset` in Livewire URL state and normalize unknown values to `minimal`.
+- `resources/css/app.css` owns the browser print CSS for preset classes such as `qr-sticker-preset-premium`.
+
+Next recommended prompt:
+
+- Prompt 109: if explicitly requested, add simple QR label size presets for browser print. Keep it CSS/Livewire-only, do not add PDF generation, and do not change QR identity. Otherwise continue only with the next user-specified prompt.
+
 ## Prompt 280 Functional Consistency Pass - 2026-06-04
 
 Prompt 280 checked menu, guest, staff, department, access-control, payment, and table-close consistency without adding new product features, routes, tables, packages, services, or infrastructure.
@@ -1550,16 +1639,17 @@ QR code:
 - The QR print template shows a restaurant logo when a local `logo_path` exists on branch, brand, or organization.
 - Without a logo field, the QR print template uses the brand name as a simple text mark.
 - The QR print template prints `Сканируйте, чтобы открыть меню`, the local SVG QR image, and `short_code`.
+- The QR print template supports `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and `premium` label design presets through `App\Enums\QrLabelPreset`.
 - The QR print template does not print service point number or area by default.
 - The `print_table_number` URL setting can include the service point display number or name in the sticker.
 - When `print_table_number` is enabled, the UI shows the warning: `Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.`
-- Toggling `print_table_number` must not change QR identity.
+- Toggling `print_table_number` or changing the label preset must not change QR identity.
 - The branch bulk QR print page is `GET /organizations/{organization}/brands/{brand}/branches/{branch}/qr/print` and is guarded by `generate_qr` in the current organization context.
 - The bulk print page can show all areas, one area node, or service points without an area.
 - The bulk print page lets users select service points with active QR codes and prints multiple stickers in the browser print view.
 - The bulk print page offers single and visible-batch creation for service points that do not have an active QR yet.
 - Bulk QR creation reuses `GenerateQrCodeForServicePointAction`, so it does not create a second active QR for a service point that already has one.
-- Bulk printing uses the same local SVG QR renderer and the same optional local logo resolver as the one-sticker print template.
+- Bulk printing uses the same local SVG QR renderer, same optional local logo resolver, and same QR label presets as the one-sticker print template.
 - Manual reissue is the only current UI path that intentionally changes the QR identity.
 - Public route `GET /q/{token}` resolves `public_token` without exposing organization IDs, branch IDs, service point IDs, or table numbers.
 - Public QR route accepts active, disabled, revoked, and unknown token states.
@@ -2156,11 +2246,13 @@ Local media storage:
 - The page uses `resources/views/layouts/print.blade.php` instead of the normal admin sidebar layout.
 - The sticker is built for browser print first, not PDF generation.
 - The printed sticker shows brand/logo, `Сканируйте, чтобы открыть меню`, the QR image, and `short_code`.
+- The page has a `preset` URL-backed Livewire setting for `minimal`, `classic`, `restaurant`, `bar`, `hotel`, and `premium`.
+- Unknown preset values are normalized back to `minimal`.
 - Area name is not printed.
 - Service point display number is not printed by default.
 - `print_table_number` is a URL-backed Livewire setting for including the display number or service point name.
 - When `print_table_number` is enabled, the warning about stale sticker text is visible on screen and hidden in print media.
-- Print CSS lives in `resources/css/app.css`; the admin toolbar and warning are hidden in `@media print`.
+- Print CSS lives in `resources/css/app.css`; preset classes are named like `qr-sticker-preset-minimal`, and the admin toolbar and warning are hidden in `@media print`.
 - No paid PDF service, external QR service, S3, WebSockets, Redis, or Docker is used.
 
 ## Current Bulk QR Print Page
@@ -2176,6 +2268,7 @@ Local media storage:
 - `createMissingQrForVisible` creates active QR codes for the currently shown missing service points and selects them for print.
 - Existing active QR records are reused through `GenerateQrCodeForServicePointAction`; bulk print must not create duplicate active QR codes.
 - The printable grid uses local SVG QR images and the same optional local logo behavior as the single sticker template.
+- Bulk print uses the same `preset` URL-backed Livewire setting and fixed label preset list as the single sticker page.
 - Service point display number is not printed by default.
 - `print_table_number` is available on the bulk page too and shows the same stale-label warning when enabled.
 - PDF export is still not implemented.
@@ -2222,7 +2315,7 @@ Local media storage:
 
 ## Next Step
 
-The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: add a simple menu translation admin editor for existing `menu_category_translations` and `menu_item_translations` inside the existing branch menu UI, limited to `ru`, `en`, and `lt`, with branch cache invalidation through `ForgetBranchCacheAction`. Only implement it when a future prompt explicitly requests it. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, and the daily project memory update intact during future feature work.
+The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: Prompt 109, add simple QR label size presets for browser print only if the user explicitly requests it. Keep it CSS/Livewire-only and do not change QR identity. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, Prompt 108 QR label presets, and the daily project memory update intact during future feature work.
 
 ## Do Not Break
 

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, basic cached analytics, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -327,6 +327,24 @@ When the remaining confirmed order balance reaches zero, the table session statu
 
 Users with the critical `close_table_sessions` permission can also close an unpaid active session manually from waiter table detail. Manual close blocks old guest tokens and invite links from adding positions, frees the service point for the next seating, keeps old orders and payment history intact, and does not reissue or modify the permanent QR code.
 
+## Basic Analytics
+
+Basic analytics are shown on the restaurant dashboard for users with `view_reports` access in at least one branch context. Superadmins can see analytics across all branches.
+
+The dashboard currently shows:
+
+- orders today;
+- total order amount today;
+- average check;
+- popular dishes;
+- active tables;
+- closed sessions;
+- cancelled orders.
+
+Analytics are built by `BuildBasicAnalyticsDashboardAction` and cached through Laravel's explicit `database` cache store for 300 seconds. Cache keys are grouped by accessible branch ids and current date, so the dashboard does not run the same aggregate reads on every page refresh.
+
+The analytics cache is invalidated by model observers when `orders`, `order_items`, `manual_payments`, or `table_sessions` change. This keeps order totals, popular dishes, payment-related dashboard state, and session counts fresh without Redis, cache tags, WebSockets, queues, or external services.
+
 ## Table Session Guests
 
 Table session guests are stored in the `table_session_guests` table and belong to one table session.
@@ -487,7 +505,7 @@ The waiter can also reject a sent draft with a required reason. Rejection change
 
 Before confirming, a waiter with `confirm_orders` or `edit_pending_orders` can edit a sent draft from the waiter table detail page. The waiter can change quantity, delete a position, add an available active-menu dish for an active guest, change comments, and update currently available modifier selections. Any waiter edit moves the draft to `waiter_review`, recalculates snapshot totals in `draft_order_items`, writes an `order_status_logs` row, and guests see the updated shared cart through Livewire polling.
 
-This stage adds kitchen/bar dispatch tickets and basic department kitchen and bar screens. It does not add payments, analytics, or advanced kitchen/bar production history.
+This stage adds kitchen/bar dispatch tickets and basic department kitchen and bar screens. It does not add advanced kitchen/bar production history.
 
 ## Waiter Dashboard
 
@@ -603,6 +621,7 @@ Implemented:
 - Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
 - Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
+- Basic restaurant dashboard analytics cached through the SQLite-backed database cache store.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public `/q/{public_token}` route.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation model and backend creation action.
@@ -632,7 +651,7 @@ Not implemented yet:
 - Menu translation admin editor.
 - QR PDF generation.
 - Advanced kitchen/bar production history.
-- Online payments and analytics.
+- Online payments.
 - Staff invitation acceptance flow and email/SMS delivery.
 
 ## Local Verification

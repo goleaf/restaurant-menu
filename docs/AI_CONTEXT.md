@@ -30,6 +30,7 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Active guest waiter calls must use local database state and database notifications only.
 - Active guest bill requests must use `table_sessions.status = payment_requested`, local service point status, database notifications, and Livewire polling only.
 - Manual payments must be offline staff-entered records only; no Stripe, PayPal, online acquiring, or external payment service is connected.
+- Basic analytics must stay lightweight, branch-scoped, and cached through the database cache store; no Redis, external BI service, or heavy refresh query loop.
 
 ## What Is Already Done
 
@@ -66,13 +67,14 @@ This file is the working memory for coding agents. Read it before each prompt an
 - Guest request-bill button on the public QR shared basket with `table_sessions.status = payment_requested`, `service_points.status = payment_requested`, database notifications, waiter dashboard polling, and per-guest/table totals.
 - Manual payment flow with local `manual_payments`, whole-table and per-guest staff payment actions, `manage_payments` permission, fixed cashier access, paid session status, and table-session close action.
 - Manual table-session close with the critical `close_table_sessions` permission; closing moves the session to `closed`, frees the service point, blocks old guest ordering, preserves old orders, and keeps the permanent QR unchanged.
+- Basic restaurant dashboard analytics with `view_reports` access, SQLite/database-cache snapshots, and cache invalidation on order, order item, payment, and session changes.
 - Permanent QR schema, generation action, admin display page, simple and bulk browser print templates, and public QR guest landing with name entry.
 - Basic superadmin access for the platform dashboard.
 - Staff invitation backend foundation.
 - Simple organization and branch staff management UI.
 - Staff permission override UI.
 
-No menu translation admin editor, QR PDF generation, online payment provider, analytics, or advanced kitchen production history has been implemented yet.
+No menu translation admin editor, QR PDF generation, online payment provider, or advanced kitchen production history has been implemented yet.
 
 ## Tables
 
@@ -434,6 +436,22 @@ Manual payment:
 - Closing fills `closed_by_user_id` and `ended_at`, sets status to `closed`, moves the service point to `free`, and does not touch `orders`, `order_items`, or `qr_codes`.
 - Manual payments do not change kitchen tickets, do not dispatch orders, and do not connect Stripe, PayPal, online acquiring, or other external services.
 
+Basic analytics:
+
+- Stored as cached dashboard payloads in the existing database-backed `cache` table; no analytics tables were added in Prompt 069.
+- `App\Actions\Analytics\BuildBasicAnalyticsDashboardAction` builds the restaurant dashboard payload for users with `view_reports` branch access.
+- Superadmins see analytics for all branches through the same branch resolver bypass used by waiter/report access.
+- The action currently computes today's order count, today's order amount, average check, popular dishes, active table count, closed sessions today, and cancelled orders today.
+- Orders today and amount exclude `orders.status = cancelled` and use `orders.confirmed_at` within the current application day.
+- Popular dishes are based on confirmed `order_items` snapshots from today's non-cancelled orders, so later menu name/price changes do not rewrite old analytics history.
+- Active tables include table sessions in `pending`, `active`, `waiting_waiter_confirmation`, and `payment_requested`.
+- Closed sessions use `table_sessions.status = closed` with `ended_at` during the current application day.
+- Cancelled orders use `orders.status = cancelled` with `updated_at` during the current application day because there is no separate `cancelled_at` field yet.
+- Analytics cache keys are grouped by sorted branch ids and current date, for example `analytics:dashboard:branches:{sha1}:today:{date}`.
+- Branch cache-key indexes are also stored in the database cache so changing one branch can forget dashboard snapshots that include that branch without Redis cache tags.
+- `OrderObserver`, `OrderItemObserver`, `ManualPaymentObserver`, and `TableSessionObserver` invalidate affected branch analytics cache.
+- Dashboard analytics must not be added to 1-second waiter/kitchen/bar polling loops; keep it on the restaurant dashboard or use explicit short-lived database cache.
+
 Draft order:
 
 - Stored in `draft_orders`.
@@ -770,6 +788,7 @@ Local media storage:
 
 ## Livewire Components
 
+- `resources/views/pages/restaurant/dashboard.blade.php` is the restaurant dashboard Livewire single-file component and now shows the cached basic analytics block for users with `view_reports`.
 - `App\Livewire\Organizations\Index`
 - `App\Livewire\Organizations\Staff\Index`
 - `App\Livewire\Organizations\Staff\Permissions`
@@ -897,6 +916,18 @@ Local media storage:
 - After a draft is converted to an order, the cart shows a guest-facing service status from the confirmed order and ticket items: `Принято`, `Готовится`, `Готово`, or `Подано`.
 - Guests only see the shared status. They cannot mark kitchen/bar ticket items ready or served.
 - The basket can submit the draft only to waiter review and does not create final orders or online payments directly.
+
+## Current Restaurant Dashboard
+
+- Restaurant dashboard route is `GET /restaurant/dashboard`.
+- The Livewire single-file component is `resources/views/pages/restaurant/dashboard.blade.php`.
+- Analytics data is prepared by `App\Actions\Analytics\BuildBasicAnalyticsDashboardAction`; Blade receives arrays and must not query the database.
+- Access requires at least one branch resolved through `view_reports`; superadmins see all branches.
+- The dashboard shows orders today, amount today, average check, popular dishes, active tables, closed sessions, and cancelled orders.
+- Dashboard analytics use Laravel's explicit `database` cache store for 300 seconds.
+- The analytics block has a manual refresh button but does not poll every second.
+- Cache is invalidated by observers on `orders`, `order_items`, `manual_payments`, and `table_sessions`.
+- Keep this dashboard shared-hosting friendly: SQLite, database cache, no Redis, no cache tags, no WebSockets, no external BI service.
 
 ## Current Waiter Dashboard
 
@@ -1094,6 +1125,8 @@ The next expected product step may be manual payment reporting/refinement, ticke
 - Do not rewrite architecture.
 - Do not add unrelated future features.
 - Do not add Redis, WebSockets, S3, Docker, paid services, React, Vue, Inertia, or a separate SPA.
+- Do not move restaurant dashboard analytics away from SQLite/database cache or make analytics refresh with 1-second polling.
+- Do not use Redis cache tags for analytics invalidation; use explicit database-cache keys and model observers.
 - Do not send waiter calls through SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.
 - Do not create more than one pending waiter call for the same service point.
 - Do not send bill requests through online payments, SMS, push, Telegram API, WebSockets, Redis, or an external notification provider.

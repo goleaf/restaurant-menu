@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 069 - Basic Analytics
+
+- Added `BuildBasicAnalyticsDashboardAction` for branch-scoped restaurant dashboard analytics guarded by `view_reports`.
+- Added cached metrics for orders today, today amount, average check, popular dishes, active tables, closed sessions, and cancelled orders.
+- Cached analytics snapshots through Laravel's explicit `database` cache store with branch/date keys so dashboard refreshes do not rerun the same reads.
+- Added model observers for orders, order items, manual payments, and table sessions to invalidate affected branch analytics cache entries.
+- Extended the restaurant dashboard with a simple analytics block and a manual refresh action for authorized users.
+- Verified analytics demo data and cache invalidation on SQLite without Redis, WebSockets, S3, Docker, external BI tools, or paid services.
+
 ### Prompt 068 - Close Table Sessions
 
 - Added the critical `close_table_sessions` permission for manually closing table sessions without granting payment management.

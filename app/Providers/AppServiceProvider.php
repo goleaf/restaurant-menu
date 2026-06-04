@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Models\KitchenDepartment;
+use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
@@ -11,7 +12,11 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\TableSession;
 use App\Observers\KitchenDepartmentObserver;
+use App\Observers\ManualPaymentObserver;
 use App\Observers\MenuCategoryObserver;
 use App\Observers\MenuCategoryTranslationObserver;
 use App\Observers\MenuItemObserver;
@@ -19,6 +24,9 @@ use App\Observers\MenuItemTranslationObserver;
 use App\Observers\MenuObserver;
 use App\Observers\ModifierGroupObserver;
 use App\Observers\ModifierOptionObserver;
+use App\Observers\OrderItemObserver;
+use App\Observers\OrderObserver;
+use App\Observers\TableSessionObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -81,6 +89,10 @@ class AppServiceProvider extends ServiceProvider
         KitchenDepartment::observe(KitchenDepartmentObserver::class);
         ModifierGroup::observe(ModifierGroupObserver::class);
         ModifierOption::observe(ModifierOptionObserver::class);
+        Order::observe(OrderObserver::class);
+        OrderItem::observe(OrderItemObserver::class);
+        ManualPayment::observe(ManualPaymentObserver::class);
+        TableSession::observe(TableSessionObserver::class);
     }
 
     /**

@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, local media storage, local SQLite backup download, nested branch areas, service point schema and CRUD, branch menu CRUD, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, draft order schema, shared table cart UI, guest ready status, guest item editing, waiter dashboard shell, waiter table detail, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, basic kitchen and bar screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, simple and bulk browser print templates, public QR guest landing, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -80,6 +80,23 @@ php artisan db:seed
 ```
 
 Do not commit real superadmin credentials. The seeder stores only the user and assigns the fixed `superadmin` role.
+
+## SaaS Subscription
+
+Organizations have one local SaaS subscription record in `organization_subscriptions`. There is only one plan for everyone, and the system does not enforce tariff limits.
+
+The subscription stores:
+
+- `status`: `active` or `inactive`;
+- `started_at`;
+- `next_payment_at`;
+- `payment_status`: `pending`, `paid`, `overdue`, or `failed`.
+
+New organizations created through the application receive an active default subscription with a pending manual payment status. Superadmins can activate or deactivate an organization from `/superadmin/dashboard`.
+
+When an organization is explicitly inactive, regular users can no longer access that organization workspace. Superadmins keep platform-level access so they can reactivate it. Deactivation does not delete restaurants, menus, QR codes, guests, orders, payments, or audit logs.
+
+No Stripe, PayPal, online acquiring, paid billing provider, webhook, Redis, WebSocket, or external billing service is used.
 
 ## Staff Management
 
@@ -777,6 +794,7 @@ Implemented:
 - Fixed system roles seeded from enums.
 - Flexible permissions with role permissions and user overrides.
 - Organizations with owner membership.
+- Simple one-plan SaaS subscription status stored in `organization_subscriptions` with superadmin manual activation/deactivation.
 - Organization users with role, status, joined date, and inviter fields.
 - Brands inside organizations.
 - Branches inside brands and organizations.

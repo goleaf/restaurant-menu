@@ -7,6 +7,7 @@ use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -175,6 +176,13 @@ class Index extends Component
         return $this->currentUser()
             ->organizations()
             ->wherePivot('status', OrganizationUserStatus::Active->value)
+            ->where(function ($query): void {
+                $query
+                    ->whereDoesntHave('subscription')
+                    ->orWhereHas('subscription', function ($subscriptionQuery): void {
+                        $subscriptionQuery->where('status', OrganizationSubscriptionStatus::Active->value);
+                    });
+            })
             ->select([
                 'organizations.id',
                 'organizations.owner_user_id',
@@ -246,6 +254,10 @@ class Index extends Component
             ])
             ->whereKey($organizationId)
             ->firstOrFail();
+
+        if (! $this->currentUser()->canAccessOrganization($organization)) {
+            abort(403);
+        }
 
         if (! $this->currentUser()->hasOrganizationRole($organization, SystemRole::Owner)) {
             abort(403);

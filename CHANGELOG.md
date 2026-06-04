@@ -2,6 +2,15 @@
 
 ## 2026-06-04
 
+### Prompt 079 - Simple SaaS Subscription
+
+- Added local `organization_subscriptions` for the single SaaS plan without tariff limits or online billing providers.
+- Stored subscription status, manual payment status, start date, and next payment date for each organization.
+- Created default active subscriptions when organizations are created through the existing backend action.
+- Extended the superadmin platform dashboard with subscription status, payment status, dates, and manual activate/deactivate controls.
+- Blocked regular organization access when a subscription is explicitly inactive while preserving the superadmin bypass.
+- Kept the stack local and shared-hosting friendly: SQLite, Blade + Livewire, no Stripe, PayPal, Redis, WebSockets, S3, Docker, or paid billing services.
+
 ### Prompt 078 - Currency Settings
 
 - Added a fixed local `SupportedCurrency` list for branch currency settings without exchange APIs or paid services.

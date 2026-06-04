@@ -46,8 +46,73 @@
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
                 @forelse ($this->organizations as $organization)
                     <div wire:key="platform-organization-{{ $organization->id }}" class="px-4 py-3">
-                        <p class="font-medium text-zinc-950 dark:text-white">{{ $organization->name }}</p>
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $organization->owner?->email ?? __('No owner') }}</p>
+                        @php
+                            $subscription = $organization->subscription;
+                            $subscriptionIsActive = $subscription?->status === \App\Enums\OrganizationSubscriptionStatus::Active;
+                        @endphp
+
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <p class="font-medium text-zinc-950 dark:text-white">{{ $organization->name }}</p>
+
+                                    @if ($subscription)
+                                        <flux:badge :color="$subscription->status->badgeColor()">
+                                            {{ __($subscription->status->label()) }}
+                                        </flux:badge>
+                                    @else
+                                        <flux:badge color="amber">{{ __('Subscription not initialized') }}</flux:badge>
+                                    @endif
+                                </div>
+
+                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $organization->owner?->email ?? __('No owner') }}</p>
+
+                                <div class="mt-2 grid gap-1 text-xs text-zinc-500 dark:text-zinc-400 sm:grid-cols-3">
+                                    <span>
+                                        {{ __('Started') }}:
+                                        {{ $subscription?->started_at?->format('Y-m-d') ?? __('Not set') }}
+                                    </span>
+                                    <span>
+                                        {{ __('Next payment') }}:
+                                        {{ $subscription?->next_payment_at?->format('Y-m-d') ?? __('Not set') }}
+                                    </span>
+                                    <span>
+                                        {{ __('Payment') }}:
+                                        @if ($subscription)
+                                            <span class="font-medium">{{ __($subscription->payment_status->label()) }}</span>
+                                        @else
+                                            <span class="font-medium">{{ __('Pending') }}</span>
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex shrink-0 gap-2">
+                                @if ($subscriptionIsActive)
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="danger"
+                                        wire:click="deactivateOrganization({{ $organization->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="deactivateOrganization({{ $organization->id }})"
+                                    >
+                                        {{ __('Deactivate') }}
+                                    </flux:button>
+                                @else
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="primary"
+                                        wire:click="activateOrganization({{ $organization->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="activateOrganization({{ $organization->id }})"
+                                    >
+                                        {{ __('Activate') }}
+                                    </flux:button>
+                                @endif
+                            </div>
+                        </div>
                     </div>
                 @empty
                     <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No organizations yet.') }}</div>

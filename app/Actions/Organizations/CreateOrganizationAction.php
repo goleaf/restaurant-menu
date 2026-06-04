@@ -2,6 +2,7 @@
 
 namespace App\Actions\Organizations;
 
+use App\Actions\Subscriptions\EnsureOrganizationSubscriptionAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Models\Organization;
@@ -25,6 +26,7 @@ class CreateOrganizationAction
                 'owner_user_id' => $owner->id,
                 'name' => $data['name'],
             ]);
+            (new EnsureOrganizationSubscriptionAction)->handle($organization);
 
             $owner->roles()->syncWithoutDetachingOrFail([$ownerRole->id]);
             $organization->users()->syncWithoutDetachingOrFail([

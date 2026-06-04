@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
@@ -185,8 +186,8 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             return true;
         }
 
-        return $this->activeOrganizationMembershipQuery($organization)
-            ->exists();
+        return $this->organizationHasActiveSubscription($organization)
+            && $this->activeOrganizationMembershipQuery($organization)->exists();
     }
 
     public function hasSystemRole(SystemRole|string $role): bool
@@ -216,6 +217,10 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     public function hasOrganizationRole(Organization|int $organization, SystemRole|string $role): bool
     {
+        if (! $this->isSuperadmin() && ! $this->organizationHasActiveSubscription($organization)) {
+            return false;
+        }
+
         $roleCode = $role instanceof SystemRole ? $role->value : SystemRole::from($role)->value;
 
         return $this->activeOrganizationMembershipQuery($organization)
@@ -268,6 +273,22 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         return $this->organizationMemberships()
             ->where('organization_id', $organizationId)
             ->where('status', OrganizationUserStatus::Active->value);
+    }
+
+    private function organizationHasActiveSubscription(Organization|int $organization): bool
+    {
+        $organizationId = $organization instanceof Organization ? $organization->id : $organization;
+
+        return Organization::query()
+            ->whereKey($organizationId)
+            ->where(function ($query): void {
+                $query
+                    ->whereDoesntHave('subscription')
+                    ->orWhereHas('subscription', function ($subscriptionQuery): void {
+                        $subscriptionQuery->where('status', OrganizationSubscriptionStatus::Active->value);
+                    });
+            })
+            ->exists();
     }
 
     /**

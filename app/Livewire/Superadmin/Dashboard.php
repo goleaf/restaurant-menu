@@ -2,11 +2,15 @@
 
 namespace App\Livewire\Superadmin;
 
+use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use Flux\Flux;
 use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -40,9 +44,48 @@ class Dashboard extends Component
     {
         return Organization::query()
             ->select(['id', 'owner_user_id', 'name', 'created_at'])
-            ->with(['owner' => fn ($query) => $query->select(['id', 'name', 'email'])])
+            ->with([
+                'owner' => fn ($query) => $query->select(['id', 'name', 'email']),
+                'subscription' => fn ($query) => $query->select([
+                    'id',
+                    'organization_id',
+                    'status',
+                    'started_at',
+                    'next_payment_at',
+                    'payment_status',
+                    'created_at',
+                ]),
+            ])
             ->orderBy('id')
             ->cursorPaginate(10, ['id', 'owner_user_id', 'name', 'created_at'], 'organizationsCursor');
+    }
+
+    public function activateOrganization(
+        int $organizationId,
+        SetOrganizationSubscriptionStatusAction $setOrganizationSubscriptionStatus,
+    ): void {
+        $this->authorizeSuperadmin();
+
+        $organization = $this->findOrganization($organizationId);
+        $setOrganizationSubscriptionStatus->handle($organization, OrganizationSubscriptionStatus::Active);
+
+        unset($this->organizations);
+
+        Flux::toast(variant: 'success', text: __('Organization activated.'));
+    }
+
+    public function deactivateOrganization(
+        int $organizationId,
+        SetOrganizationSubscriptionStatusAction $setOrganizationSubscriptionStatus,
+    ): void {
+        $this->authorizeSuperadmin();
+
+        $organization = $this->findOrganization($organizationId);
+        $setOrganizationSubscriptionStatus->handle($organization, OrganizationSubscriptionStatus::Inactive);
+
+        unset($this->organizations);
+
+        Flux::toast(variant: 'success', text: __('Organization deactivated.'));
     }
 
     /**
@@ -90,5 +133,22 @@ class Dashboard extends Component
     public function render(): View
     {
         return view('livewire.superadmin.dashboard');
+    }
+
+    private function findOrganization(int $organizationId): Organization
+    {
+        return Organization::query()
+            ->select(['id', 'owner_user_id', 'name', 'created_at'])
+            ->whereKey($organizationId)
+            ->firstOrFail();
+    }
+
+    private function authorizeSuperadmin(): void
+    {
+        $user = Auth::user();
+
+        if (! $user instanceof User || ! $user->isSuperadmin()) {
+            abort(403);
+        }
     }
 }

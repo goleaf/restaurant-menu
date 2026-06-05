@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Enums\OrganizationUserStatus;
+use Database\Factories\OrganizationUserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
@@ -12,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 #[Fillable(['organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id'])]
 class OrganizationUser extends Pivot
 {
+    /** @use HasFactory<OrganizationUserFactory> */
+    use HasFactory;
+
     /**
      * @var array<string, mixed>
      */

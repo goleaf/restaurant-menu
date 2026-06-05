@@ -7,6 +7,9 @@ data predictable, repeatable, and safe for the shared-hosting SQLite baseline.
 Seeders orchestrate order. Factories create valid model graphs on request.
 Neither seeders nor factories may add restaurant product behavior.
 
+For the complete layer plan, read `docs/SEED_ARCHITECTURE.md`. For operating
+commands and current seeder ownership, read `docs/SEEDERS.md`.
+
 ## Scope
 
 These rules apply to:
@@ -18,6 +21,19 @@ These rules apply to:
 
 They do not define a training mode, restaurant checklist, issue module, or
 production bootstrap feature.
+
+## Core Seed Law
+
+- All seed data must be created through factories except fixed reference data.
+- Fixed reference data may use short explicit rows when those rows come from
+  enums, config, or canonical dictionaries.
+- Demo and scenario seeders must not contain large manual arrays of restaurants,
+  users, tables, menu items, QR records, orders, or payments.
+- When a demo row needs a human-readable name, pass it as a factory state or
+  explicit `state([...])` override.
+- Seeders may call Actions only when an Action protects existing domain
+  invariants, such as QR token uniqueness or branch settings defaults.
+- No seeder may create training mode, training sessions, or training orders.
 
 ## Factory Rules
 
@@ -42,6 +58,12 @@ production bootstrap feature.
   factory states, or explicitly passed model instances.
 - Factories must not use external services, S3, queues, webhooks, payment
   gateways, or network calls.
+- Factories should expose named states for demo-specific records instead of
+  making demo behavior the default.
+- Factories must create the narrowest valid graph by default. Wide restaurant
+  graphs belong in demo builders/seeders that compose factories explicitly.
+- Factories that create rows with unique columns must provide a way for seeders
+  to pass stable values.
 
 Recommended shape:
 
@@ -88,6 +110,75 @@ Order::factory()->create(); // silently creates organization, branch, full menu,
   writes and keep seeding order deterministic.
 - Seeders must not rely on external services, Redis, WebSockets, S3, payment
   providers, or paid infrastructure.
+- Reference seeders may run in production. Demo and scenario seeders are
+  local/dev only.
+- `DatabaseSeeder` must not call scenario seeders.
+- Demo seeders must be explicit commands and must be blocked in production.
+- Repeated demo seed runs must not duplicate roles, permissions, users,
+  memberships, branch assignments, service points, QR records, menu records, or
+  translations.
+
+## Seed Layer Rules
+
+Seeders must follow these layers:
+
+1. Reference seed layer:
+   - roles;
+   - permissions;
+   - role permissions;
+   - default departments;
+   - default allergens when tables exist;
+   - default tags when tables exist;
+   - languages when tables exist;
+   - currencies when tables exist;
+   - service point types when tables exist;
+   - area types when tables exist;
+   - statuses if stored.
+2. Platform seed layer:
+   - superadmin;
+   - platform settings if any.
+3. Demo organization seed layer:
+   - organization;
+   - brand;
+   - branches;
+   - branch settings;
+   - branch profiles.
+4. Restaurant structure seed layer:
+   - `area_nodes`;
+   - `service_points`;
+   - QR codes;
+   - QR image files if implemented locally.
+5. Staff seed layer:
+   - owner;
+   - director;
+   - restaurant admin;
+   - shift manager;
+   - waiter;
+   - head chef;
+   - cook;
+   - bartender;
+   - cashier;
+   - accountant;
+   - marketer.
+6. Menu seed layer:
+   - menus;
+   - categories;
+   - menu items;
+   - menu item translations;
+   - variants when tables exist;
+   - modifiers;
+   - allergens when tables exist;
+   - tags when tables exist;
+   - nutrition when columns or tables exist;
+   - images if local assets are available.
+7. Functional scenario seed layer:
+   - optional local/dev only;
+   - active session examples;
+   - draft examples;
+   - order examples;
+   - payment examples;
+   - never production;
+   - never training mode.
 
 ## Demo Seed Rules
 
@@ -105,6 +196,46 @@ Order::factory()->create(); // silently creates organization, branch, full menu,
   identities, or any account that could be mistaken for production access.
 - Demo seed must not create training orders, checklist flows, issue logs,
   sandbox restaurant modes, or fake operational modules.
+- Demo seed must create the complete local/dev restaurant through factories:
+  organization, brand, branches, branch settings, profiles, areas, service
+  points, QR records, menu, departments, staff, and users.
+- Demo staff must cover every restaurant role defined in `SystemRole`, except
+  superadmin, which belongs to platform bootstrap.
+- Demo seed must not silently run optional functional scenarios. Scenario seed
+  must be a separate explicit command.
+
+## Idempotency Keys
+
+Use stable natural keys or metadata keys for repeatable seed:
+
+| Data | Preferred key |
+| --- | --- |
+| Roles | `code` |
+| Permissions | `code` |
+| Role permissions | `role_id` plus `permission_id` |
+| Users | `email` |
+| Organizations | demo key or stable demo name |
+| Brands | `organization_id` plus demo key or name |
+| Branches | `brand_id` plus demo key or name |
+| Branch settings | `branch_id` |
+| Branch opening hours | `branch_id` plus `day_of_week` |
+| Organization memberships | `organization_id` plus `user_id` |
+| Branch assignments | `branch_id` plus `user_id` |
+| Areas | `branch_id` plus demo key, or stable parent/name/type |
+| Service points | stable `internal_code` |
+| QR codes | `service_point_id` for active permanent QR |
+| Menus | `branch_id` plus demo key or name |
+| Categories | `menu_id` plus demo key or name |
+| Category translations | `menu_category_id` plus `language_code` |
+| Menu items | `menu_id` plus demo key or name |
+| Item translations | `menu_item_id` plus `language_code` |
+| Modifier groups | `branch_id` plus demo key or name |
+| Modifier options | `modifier_group_id` plus demo key or name |
+| Scenario rows | stable `demo_key` in metadata where available |
+
+If a table has no natural unique key, prefer adding a documented demo metadata
+key when the model already supports metadata. Do not introduce hardcoded numeric
+IDs to make seeders repeatable.
 
 ## Prohibited Patterns
 
@@ -119,6 +250,8 @@ Order::factory()->create(); // silently creates organization, branch, full menu,
   production.
 - Do not seed training orders or training table sessions.
 - Do not store uploaded files, generated images, or blobs in seeders.
+- Do not call external QR generation services from seeders.
+- Do not add QR image files with non-deterministic names on every repeat run.
 - Do not hide business behavior in seeders. A seeder may create data; it must
   not become a second implementation of ordering, payments, QR, permissions, or
   kitchen/bar workflows.
@@ -141,9 +274,15 @@ Before accepting a new or changed factory/seeder:
 - Confirm enum/status values use centralized enums or status helpers.
 - Confirm production safety guards prevent demo seed from running in
   `production`.
+- Confirm optional scenario seeders are local/dev only and are not called by
+  `DatabaseSeeder`.
 - Confirm no real credentials, secrets, full server paths, or real customer
   data appear in seeded rows.
 - Confirm no external service or unsupported infrastructure is required.
+- Confirm no duplicate active QR record exists for a service point after running
+  demo seed twice.
+- Confirm all demo staff roles are represented when the prompt changes complete
+  demo seed coverage.
 
 Useful local checks:
 

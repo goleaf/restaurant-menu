@@ -4,14 +4,15 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 118 merged table sessions.
+Last memory refresh: 2026-06-05 after Prompt 119 split bill by guests.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 118 is complete; do not continue
+Wait for the next explicit user prompt. Prompt 119 is complete; do not continue
 with new product behavior automatically.
 
-The separate post-feature daily memory update after Prompt 118 is complete.
+The separate post-feature daily memory update after Prompt 119 is pending after
+the feature commit.
 Keep this file as the source for next-prompt guardrails until the user gives a
 new prompt. The update was documentation-only and did not add product behavior.
 
@@ -44,6 +45,12 @@ Risky areas:
   session, not create a duplicate active session for that linked service point.
 - Closing a merged session must free every active linked service point and mark
   those links inactive.
+- Split bill guest balances are based on confirmed `order_items`, not a
+  separately editable billing allocation table.
+- Guest-scoped manual payments must keep storing
+  `manual_payments.table_session_guest_id`.
+- Do not add online payments or shared allocation rules unless a future prompt
+  explicitly asks for them.
 - Do not move a table session to a non-free, inactive, cross-branch, pending,
   active, or payment-requested service point.
 - Already-entered guests should follow the transferred `table_session`; fresh
@@ -56,9 +63,9 @@ modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
 board, waiter zone assignments, waiter manual order entry, waiter-side schedule
 checks, guest duplicate-name handling, safe session inactivity cleanup, active
-table-session transfer, and merged table sessions should be treated as current
-baseline for future guest UI, QR landing, ordering work, staff review, and
-branch setup.
+table-session transfer, merged table sessions, and split bill by guests should
+be treated as current baseline for future guest UI, QR landing, ordering work,
+staff review, payments, and branch setup.
 
 ## Current Recommended Prompt
 

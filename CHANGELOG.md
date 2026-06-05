@@ -2,6 +2,16 @@
 
 ## 2026-06-05
 
+### Prompt 119 - Split Bill By Guests
+
+- Added explicit split-bill payment summary for waiter table detail.
+- Confirmed payment totals now come from confirmed `order_items`, so per-guest balances and the table bill use the same source of truth.
+- Waiter table detail now exposes and displays unpaid guests with their remaining manual-payment balance.
+- Guest-scoped manual payments continue to store `table_session_guest_id`; paying all guest balances marks the table session `paid`.
+- Touched modules/files: `App\Actions\Payments\BuildManualPaymentSummaryAction`, `App\Actions\Waiter\BuildWaiterTableDetailAction`, waiter table detail Blade view, `tests/Feature/ManualPaymentTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: manual payments only; no Stripe, PayPal, online acquiring, shared allocation rules, new tables, new routes, Redis, WebSockets, S3, Docker, or paid services.
+- Manual check: open a payment-requested table with two guests and confirmed orders, mark one guest paid, confirm the other guest appears under unpaid guests, mark the second guest paid, and confirm the session becomes `paid`.
+
 ### Prompt 118 - Merge Tables
 
 - Added merged table sessions so waiter/order staff can link additional free service points to one active `table_session`.

@@ -17,6 +17,7 @@ use App\Models\DraftOrderItem;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -171,6 +172,11 @@ class BuildWaiterTableDetailAction
                         'total_price',
                     ])
                     ->whereNotIn('status', [OrderStatus::Cancelled->value])
+                    ->with(['items' => fn ($itemQuery) => $itemQuery->select([
+                        'id',
+                        'order_id',
+                        'total_price',
+                    ])])
                     ->orderBy('created_at')
                     ->orderBy('id'),
             ])
@@ -498,6 +504,9 @@ class BuildWaiterTableDetailAction
             })
             ->values()
             ->all();
+        $unpaidGuests = collect($summary['unpaid_guests'] ?? [])
+            ->values()
+            ->all();
 
         return [
             'can_view' => true,
@@ -516,6 +525,8 @@ class BuildWaiterTableDetailAction
             'has_open_draft' => (bool) ($summary['has_open_draft'] ?? false),
             'is_fully_paid' => (bool) ($summary['is_fully_paid'] ?? false),
             'guest_balances' => $guestBalances,
+            'unpaid_guests' => $unpaidGuests,
+            'unpaid_guests_count' => (int) ($summary['unpaid_guests_count'] ?? count($unpaidGuests)),
             'payments' => $summary['payments'] ?? [],
         ];
     }
@@ -525,7 +536,11 @@ class BuildWaiterTableDetailAction
      */
     private function confirmedOrdersTotalCents(Collection $orders): int
     {
-        return $orders->sum(fn (Order $order): int => $this->decimalToCents($order->total_price));
+        return $orders->sum(
+            fn (Order $order): int => $order->items->sum(
+                fn (OrderItem $item): int => $this->decimalToCents($item->total_price),
+            ),
+        );
     }
 
     private function openDraftTotalCents(?DraftOrder $draftOrder, int $draftTotalCents): int

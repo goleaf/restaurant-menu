@@ -13,6 +13,44 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 119 Split Bill By Guests Results
+
+Programmatic coverage was extended in `tests/Feature/ManualPaymentTest.php`.
+The feature currently verifies:
+
+- confirmed payment totals are calculated from confirmed guest `order_items`;
+- the waiter table detail payment block exposes per-guest balances;
+- unpaid guests are listed after one guest pays;
+- guest-scoped `manual_payments` store `table_session_guest_id`;
+- when every guest balance is paid, the table session becomes `paid`;
+- whole-table payment remains available as a manual offline action.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ManualPaymentTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/VerticalSliceFlowTest.php
+```
+
+Manual check:
+
+1. Open a payment-requested table in `/restaurant/waiter/tables/{tableSession}`
+   as a cashier or staff user with `manage_payments`.
+2. Confirm the payment block shows confirmed total, paid total, remaining
+   total, per-guest balances, and unpaid guests.
+3. Mark one guest paid with cash or card terminal.
+4. Confirm the payment history stores that guest and the unpaid guests list now
+   shows only the remaining guest.
+5. Mark the remaining guest paid.
+6. Confirm unpaid guests count is zero and the table session becomes `paid`.
+7. Confirm no online payment provider, external service, Redis, WebSocket, S3,
+   or Docker dependency is involved.
+
 ## Prompt 118 Merged Table Sessions Results
 
 Programmatic coverage was added in `tests/Feature/TableSessionMergeTest.php`.

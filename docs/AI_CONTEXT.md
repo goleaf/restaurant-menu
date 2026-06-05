@@ -2,6 +2,80 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 119 Split Bill By Guests - 2026-06-05
+
+Prompt 119 added explicit split-bill handling for manual payments. It did not add online payments, payment providers, shared allocation rules, new routes, new tables, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Public guest QR flow, branch public profile, opening hours, temporary branch closed mode, menu schedules, multiple active menus, service modes, bulk service point creation, permanent QR generation/printing/lookup, branch service point filtering/board, waiter zone assignments, manual waiter order entry, duplicate guest-name handling, session inactivity cleanup, active session transfer, merged table sessions, and waiter-side schedule checks.
+- Guest sessions, join requests, invite links, shared draft cart, ready status, waiter handoff, waiter review/edit/confirm/reject, real order snapshots, kitchen/bar tickets, ready/served handoff, waiter calls, bill requests, manual payments, session close, dashboard analytics, audit logs, CSV exports, localization, currency settings, local media, superadmin controls, and shared-hosting deployment notes.
+- Prompt 119: waiter table detail now shows split bill by guests, unpaid guests, and manual whole-table or per-guest payment actions.
+- Prompt 119: payment totals now use confirmed `order_items` as the source of truth for guest balances and the table bill.
+
+Current tables:
+
+- No new table or column was added in Prompt 119.
+- Existing affected tables: `table_sessions`, `table_session_guests`, `orders`, `order_items`, `manual_payments`, and `service_points`.
+- `manual_payments.table_session_guest_id` stores the paid guest for individual manual payments.
+- Full inventory now includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_sessions`, `table_session_service_points`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 119.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}` and contains the split-bill UI.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, session, or guest IDs.
+
+Current Livewire components and actions:
+
+- `App\Actions\Payments\BuildManualPaymentSummaryAction` now calculates confirmed totals from confirmed `order_items`, builds per-guest balances, and returns `unpaid_guests` / `unpaid_guests_count`.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` now forwards unpaid guest payload and aligns waiter confirmed totals with confirmed item sums.
+- `App\Livewire\Waiter\TableDetail` continues to use the existing `recordTablePayment()` and `recordGuestPayment()` methods.
+- `resources/views/livewire/waiter/table-detail.blade.php` now shows unpaid guests and all-paid state inside the manual payments block.
+
+Mandatory business rules:
+
+- Only manual offline payments are supported.
+- Online payments, Stripe, PayPal, external acquiring, and paid payment services remain forbidden.
+- Each guest's bill is the sum of that guest's confirmed `order_items`.
+- The table bill is the sum of confirmed guest items.
+- Staff can mark the whole table paid or a specific unpaid guest paid.
+- Guest-scoped payment records must store `table_session_guest_id`.
+- If all guest/table balances are paid, the table session can become `paid`; closing remains a separate table-session action.
+- Open drafts cannot be paid; every order still requires waiter confirmation before becoming payable confirmed order history.
+- Permanent QR identity is unrelated to payments and must not change.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep payment queries selected, eager-loaded, branch-scoped, and bounded for SQLite.
+- Do not query from Blade.
+- No new infrastructure is required for split bill.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings in app code, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 119 notes:
+
+- Focused coverage: `tests/Feature/ManualPaymentTest.php`.
+- Related verification: table-session close and vertical slice flow tests.
+- Verification included a red test first for missing unpaid guest payload and item-based confirmed totals, then green focused regression.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 118 Merged Table Sessions - 2026-06-05
 
 Prompt 118 added basic merged-table-session support. It did not add new routes, roles, permissions, QR regeneration, unmerge UI, billing changes, delivery/payment integrations, Redis, WebSockets, S3, Docker, paid services, or external APIs.

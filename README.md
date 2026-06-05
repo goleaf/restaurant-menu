@@ -884,7 +884,9 @@ Manual payments are stored in the `manual_payments` table. They are staff-entere
 
 Each manual payment belongs to a branch, service point, and table session. A payment can cover the whole table or a specific table session guest. Guest-scoped payments store the guest id and a `guest_name` snapshot so the payment history remains readable later.
 
-The waiter table detail page shows payment totals for confirmed non-cancelled orders, already recorded manual payments, remaining table balance, per-guest balances, and manual payment history. Payment actions are available to users with `manage_payments` in the branch context or the fixed `cashier` organization role. Users with `view_payments` can see the payment summary but cannot record payment.
+Split bill by guests is based on confirmed `order_items`: each guest balance is the sum of that guest's confirmed order items, and the table bill is the sum of confirmed guest items. The waiter table detail page shows confirmed total, paid total, remaining table balance, per-guest balances, unpaid guests, and manual payment history. Staff can mark the whole table paid or mark one unpaid guest paid. Guest-scoped payments store `table_session_guest_id`; when every guest balance is paid, the table session can become `paid`.
+
+Payment actions are available to users with `manage_payments` in the branch context or the fixed `cashier` organization role. Users with `view_payments` can see the payment summary but cannot record payment.
 
 Manual payment never pays an open draft. If the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`, staff must finish that draft first. This protects the rule that every order must be confirmed by a waiter before it becomes payable confirmed order history.
 
@@ -1274,7 +1276,7 @@ Implemented:
 - Table session join request schema, backend create / approve / reject logic, guest approval UI, guest invite share links, and guest table page shell.
 - Guest waiter-call requests stored in `waiter_calls` with Laravel database notifications for the waiter dashboard.
 - Guest bill requests stored as `table_sessions.status = payment_requested`, with service point status updates and Laravel database notifications for the waiter dashboard.
-- Manual offline payment records stored in `manual_payments`, with whole-table and per-guest payment actions from waiter table detail.
+- Manual offline payment records stored in `manual_payments`, with whole-table and per-guest split bill payment actions from waiter table detail.
 - Table sessions can be closed after full manual payment or manually through the `close_table_sessions` permission; closing frees the service point while preserving old orders and the permanent QR.
 - Branch/restaurant dashboard with active tables, new waiter drafts, cooking orders, ready positions, today amount, popular dishes, and role-aware quick actions cached through the SQLite-backed database cache store.
 - Audit log storage and viewer for menu, service point, QR, staff permission, order, payment, and table-session control events.

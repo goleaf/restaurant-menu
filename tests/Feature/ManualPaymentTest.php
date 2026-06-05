@@ -79,18 +79,41 @@ test('cashier role can mark individual guest payments without manage payments pe
         ->assertSet('table.payment.guest_balances.0.guest_name', 'Ana')
         ->assertSet('table.payment.guest_balances.0.remaining', '20.00 EUR')
         ->assertSet('table.payment.guest_balances.1.guest_name', 'Boris')
+        ->assertSet('table.payment.unpaid_guests_count', 2)
         ->set('paymentMethod', ManualPaymentMethod::Cash->value)
         ->call('recordGuestPayment', $ana->id)
         ->assertSee('Оплата гостя отмечена.')
         ->assertSet('table.payment.remaining_total', '12.00 EUR')
+        ->assertSet('table.payment.unpaid_guests_count', 1)
+        ->assertSet('table.payment.unpaid_guests.0.guest_name', 'Boris')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordGuestPayment', $boris->id)
-        ->assertSet('table.payment.is_fully_paid', true);
+        ->assertSet('table.payment.is_fully_paid', true)
+        ->assertSet('table.payment.unpaid_guests_count', 0);
 
     expect(ManualPayment::query()->count())->toBe(2)
         ->and(ManualPayment::query()->where('scope', ManualPaymentScope::Guest->value)->count())->toBe(2)
+        ->and(ManualPayment::query()->where('table_session_guest_id', $ana->id)->value('amount'))->toBe('20.00')
+        ->and(ManualPayment::query()->where('table_session_guest_id', $boris->id)->value('amount'))->toBe('12.00')
         ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid);
+});
+
+test('split bill summary is based on confirmed guest order items', function () {
+    [$organization, , $tableSession] = createPrompt67ManualPaymentContext();
+    $manager = User::factory()->create(['name' => 'Split Bill Manager']);
+    attachPrompt67PaymentManager($manager, $organization);
+
+    $tableSession->orders()->firstOrFail()->forceFill(['total_price' => '99.00'])->save();
+
+    Livewire::actingAs($manager)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->assertSet('table.confirmed_orders_total', '32.00 EUR')
+        ->assertSet('table.payment.confirmed_total', '32.00 EUR')
+        ->assertSet('table.payment.remaining_total', '32.00 EUR')
+        ->assertSet('table.payment.guest_balances.0.due', '20.00 EUR')
+        ->assertSet('table.payment.guest_balances.1.due', '12.00 EUR')
+        ->assertSet('table.payment.unpaid_guests_count', 2);
 });
 
 test('view payments permission can see payment summary but cannot record payment', function () {

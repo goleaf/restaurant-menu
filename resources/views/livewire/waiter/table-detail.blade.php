@@ -410,6 +410,23 @@
                         </div>
                     </dl>
 
+                    @if (data_get($table, 'payment.unpaid_guests_count', 0) > 0)
+                        <div class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                            <p class="font-medium">{{ __('Unpaid guests') }}: {{ data_get($table, 'payment.unpaid_guests_count') }}</p>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach (data_get($table, 'payment.unpaid_guests', []) as $unpaidGuest)
+                                    <flux:badge wire:key="unpaid-guest-{{ $unpaidGuest['guest_id'] }}" color="amber">
+                                        {{ $unpaidGuest['guest_name'] }} · {{ $unpaidGuest['remaining'] }}
+                                    </flux:badge>
+                                @endforeach
+                            </div>
+                        </div>
+                    @elseif (data_get($table, 'payment.is_fully_paid'))
+                        <p class="mt-3 rounded-md bg-lime-50 px-3 py-2 text-sm font-medium text-lime-800 dark:bg-lime-950/40 dark:text-lime-100">
+                            {{ __('All guests are paid.') }}
+                        </p>
+                    @endif
+
                     @if (data_get($table, 'payment.has_open_draft'))
                         <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                             {{ __('Finish the current draft before marking payment.') }}

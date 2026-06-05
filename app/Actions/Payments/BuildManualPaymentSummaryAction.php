@@ -23,12 +23,20 @@ class BuildManualPaymentSummaryAction
     {
         $tableSession = $this->reloadTableSession($tableSession);
         $currency = $tableSession->branch?->currency ?? 'EUR';
-        $confirmedTotalCents = $this->confirmedOrdersTotalCents($tableSession->orders);
+        $confirmedTotalCents = $this->confirmedOrderItemsTotalCents($tableSession->orders);
         $paidTotalCents = $tableSession->manualPayments->sum(
             fn (ManualPayment $payment): int => $this->decimalToCents($payment->amount),
         );
         $remainingTotalCents = max(0, $confirmedTotalCents - $paidTotalCents);
         $isFullyPaid = $confirmedTotalCents > 0 && $remainingTotalCents === 0;
+        $guestBalances = $this->guestBalances(
+            guests: $tableSession->guests,
+            orders: $tableSession->orders,
+            payments: $tableSession->manualPayments,
+            currency: $currency,
+            isFullyPaid: $isFullyPaid,
+        );
+        $unpaidGuests = $this->unpaidGuests($guestBalances);
 
         return [
             'currency' => $currency,
@@ -42,13 +50,9 @@ class BuildManualPaymentSummaryAction
             'has_payable_total' => $confirmedTotalCents > 0,
             'has_open_draft' => $this->hasOpenDraft($tableSession->draftOrder),
             'is_fully_paid' => $isFullyPaid,
-            'guest_balances' => $this->guestBalances(
-                guests: $tableSession->guests,
-                orders: $tableSession->orders,
-                payments: $tableSession->manualPayments,
-                currency: $currency,
-                isFullyPaid: $isFullyPaid,
-            ),
+            'guest_balances' => $guestBalances,
+            'unpaid_guests' => $unpaidGuests,
+            'unpaid_guests_count' => count($unpaidGuests),
             'payments' => $this->paymentRows($tableSession->manualPayments, $currency),
         ];
     }
@@ -100,9 +104,13 @@ class BuildManualPaymentSummaryAction
     /**
      * @param  Collection<int, Order>  $orders
      */
-    private function confirmedOrdersTotalCents(Collection $orders): int
+    private function confirmedOrderItemsTotalCents(Collection $orders): int
     {
-        return $orders->sum(fn (Order $order): int => $this->decimalToCents($order->total_price));
+        return $orders->sum(
+            fn (Order $order): int => $order->items->sum(
+                fn (OrderItem $item): int => $this->decimalToCents($item->total_price),
+            ),
+        );
     }
 
     private function hasOpenDraft(?DraftOrder $draftOrder): bool
@@ -187,6 +195,24 @@ class BuildManualPaymentSummaryAction
                 ];
             })
             ->sortBy(fn (array $guestBalance): string => mb_strtolower($guestBalance['guest_name']))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $guestBalances
+     * @return list<array<string, mixed>>
+     */
+    private function unpaidGuests(array $guestBalances): array
+    {
+        return collect($guestBalances)
+            ->filter(fn (array $guestBalance): bool => (int) ($guestBalance['remaining_cents'] ?? 0) > 0)
+            ->map(fn (array $guestBalance): array => [
+                'guest_id' => $guestBalance['guest_id'],
+                'guest_name' => $guestBalance['guest_name'],
+                'remaining_cents' => $guestBalance['remaining_cents'],
+                'remaining' => $guestBalance['remaining'],
+            ])
             ->values()
             ->all();
     }

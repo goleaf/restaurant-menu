@@ -241,7 +241,7 @@ class Settings extends Component
         $this->reset('publicLogo', 'coverImage');
         $this->saved = true;
 
-        Flux::toast(variant: 'success', text: __('Settings saved.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.settings_saved'));
     }
 
     public function runSessionInactivityCleanup(CleanupInactiveTableSessionsAction $cleanupInactiveTableSessions): void
@@ -258,7 +258,7 @@ class Settings extends Component
         $result = $cleanupInactiveTableSessions->handle($this->branch->id);
         $this->cleanupMessage = $this->cleanupSummary($result);
 
-        Flux::toast(variant: 'success', text: __('Session cleanup finished.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.session_cleanup_finished'));
     }
 
     /**
@@ -448,13 +448,13 @@ class Settings extends Component
                     $closesAt = substr((string) ($interval['closes_at'] ?? ''), 0, 5);
 
                     if ($opensAt === '' || $closesAt === '') {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.opens_at"] = __('Укажите начало и конец интервала.');
+                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.opens_at"] = __('ui.livewire.organizations.brands.branches.settings.ukazite_nacalo_i_konec_i');
 
                         continue;
                     }
 
                     if ($opensAt === $closesAt) {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.closes_at"] = __('Время закрытия должно отличаться от времени открытия.');
+                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.closes_at"] = __('ui.livewire.organizations.brands.branches.settings.vremia_zakrytiia_dolzno');
 
                         continue;
                     }
@@ -466,7 +466,7 @@ class Settings extends Component
                 }
 
                 if ($intervals === []) {
-                    $errors["openingHours.$dayIndex.intervals"] = __('Добавьте интервал или отметьте день выходным.');
+                    $errors["openingHours.$dayIndex.intervals"] = __('ui.livewire.organizations.brands.branches.settings.dobavte_interval_ili_otm');
                 }
             }
 
@@ -544,7 +544,7 @@ class Settings extends Component
     private function cleanupSummary(array $result): string
     {
         return __(
-            'Cleanup checked :checked sessions. Cancelled :cancelled stale pending sessions. Active warnings: :warnings. Skipped with unpaid orders: :unpaid.',
+            'ui.livewire.organizations.brands.branches.settings.cleanup_checked_sessions',
             [
                 'checked' => $result['checked'],
                 'cancelled' => $result['pending_cancelled'],

@@ -2,7 +2,7 @@
     <header class="flex flex-col gap-2">
         <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant workspace') }}</p>
+                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('layout.restaurant_workspace') }}</p>
                 <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('reports.exports.title') }}</h1>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
                     {{ __('reports.exports.description') }}
@@ -10,7 +10,7 @@
             </div>
 
             <flux:button icon="layout-grid" :href="route('restaurant.dashboard')" wire:navigate>
-                {{ __('Restaurant dashboard') }}
+                {{ __('navigation.restaurant_dashboard') }}
             </flux:button>
         </div>
     </header>

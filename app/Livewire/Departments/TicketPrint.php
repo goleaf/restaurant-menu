@@ -43,7 +43,7 @@ class TicketPrint extends Component
     public function render(): View
     {
         return view('livewire.departments.ticket-print')
-            ->title(__('Kitchen ticket print'));
+            ->title(__('ui.livewire.departments.ticketprint.kitchen_ticket_print'));
     }
 
     private function currentUser(): User

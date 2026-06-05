@@ -65,7 +65,7 @@ class DraftOrderConfirmedNotification extends Notification
             'confirmed_at' => $order->confirmed_at?->toISOString(),
             'total_price' => $order->total_price,
             'currency' => $order->currency,
-            'message' => __('Официант подтвердил заказ.'),
+            'message' => __('ui.livewire.publicqr.notifications.oficiant_podtverdil_zakaz'),
         ];
     }
 }

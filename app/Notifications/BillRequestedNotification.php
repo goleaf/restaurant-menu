@@ -55,7 +55,7 @@ class BillRequestedNotification extends Notification
             'guest_id' => $this->guest->id,
             'guest_name' => $this->guest->guest_name,
             'requested_at' => data_get($tableSession->metadata, 'bill_requested_at'),
-            'message' => __('Гость попросил счёт.'),
+            'message' => __('ui.livewire.notifications.unreadcount.gost_poprosil_scet'),
         ];
     }
 }

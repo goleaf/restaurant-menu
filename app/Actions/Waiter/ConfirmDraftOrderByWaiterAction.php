@@ -219,7 +219,7 @@ class ConfirmDraftOrderByWaiterAction
 
         if ($tableSession === null || $branch === null) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Черновик больше не связан с открытым столом.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
             ]);
         }
 
@@ -227,13 +227,13 @@ class ConfirmDraftOrderByWaiterAction
 
         if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('У вас нет права подтверждать заказы в этом филиале.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.u_vas_net_prava_podtverzd'),
             ]);
         }
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Нельзя подтвердить заказ для закрытого стола.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.nelzia_podtverdit_zakaz_d'),
             ]);
         }
 
@@ -243,13 +243,13 @@ class ConfirmDraftOrderByWaiterAction
 
         if (! in_array($draftOrder->status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Подтвердить можно только черновик, отправленный официанту.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.podtverdit_mozno_tolko_ce'),
             ]);
         }
 
         if ($draftOrder->items->isEmpty()) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Нельзя подтвердить пустой черновик.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.nelzia_podtverdit_pustoi'),
             ]);
         }
     }
@@ -339,7 +339,7 @@ class ConfirmDraftOrderByWaiterAction
 
         if ($quantity < 1 || $unitPriceCents < 0 || $lineUnitTotalCents < 0) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Итоговая цена позиции не может быть отрицательной.'),
+                'draft_review' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.itogovaia_cena'),
             ]);
         }
 

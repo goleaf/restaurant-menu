@@ -29,7 +29,7 @@ class DeleteDraftOrderItemByWaiterAction
 
             if ($draftOrder === null) {
                 throw ValidationException::withMessages([
-                    'draft_edit' => __('Позиция больше не связана с черновиком.'),
+                    'draft_edit' => __('ui.actions.waiter.deletedraftorderitembywaiteraction.poziciia_bolse_ne_svia'),
                 ]);
             }
 

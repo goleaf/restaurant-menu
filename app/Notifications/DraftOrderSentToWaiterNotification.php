@@ -58,7 +58,7 @@ class DraftOrderSentToWaiterNotification extends Notification
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
             'items_count' => (int) ($draftOrder->items_count ?? $draftOrder->items()->count()),
             'sent_at' => $draftOrder->sent_to_waiter_at?->toISOString(),
-            'message' => __('Новый заказ отправлен официанту.'),
+            'message' => __('ui.livewire.notifications.unreadcount.novyi_zakaz_otpravlen_oficiantu'),
         ];
     }
 }

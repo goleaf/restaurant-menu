@@ -157,7 +157,7 @@ class CloseTableSessionAction
         }
 
         throw ValidationException::withMessages([
-            'table_session' => __('У вас нет права закрывать эту сессию стола.'),
+            'table_session' => __('ui.actions.tablesessions.closetablesessionaction.u_vas_net_prava_zakryvat_e'),
         ]);
     }
 }

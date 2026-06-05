@@ -66,7 +66,7 @@ class CalculateDraftOrderLinePrice
     {
         if ($unitPriceCents < 0) {
             throw ValidationException::withMessages([
-                'menu_item' => __('Цена позиции не может быть отрицательной.'),
+                'menu_item' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.cena_pozicii_ne'),
             ]);
         }
 
@@ -74,7 +74,7 @@ class CalculateDraftOrderLinePrice
 
         if ($lineUnitTotalCents < 0) {
             throw ValidationException::withMessages([
-                'selectedModifierOptions' => __('Итоговая цена позиции не может быть отрицательной.'),
+                'selectedModifierOptions' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.itogovaia_cena'),
             ]);
         }
 

@@ -311,7 +311,7 @@ class Index extends Component
         $this->resetMenuForm();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Menu created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.menu_created'));
     }
 
     public function startEditingMenu(int $menuId): void
@@ -358,7 +358,7 @@ class Index extends Component
         $this->cancelMenuEditing();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Menu updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.menu_updated'));
     }
 
     public function deleteMenu(int $menuId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -380,7 +380,7 @@ class Index extends Component
         $this->resetMenuSelections();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Menu removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.menu_removed'));
     }
 
     public function createMenuSchedule(?int $menuId = null): void
@@ -404,7 +404,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Menu schedule saved.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.menu_schedule_saved'));
     }
 
     public function deleteMenuSchedule(int $scheduleId): void
@@ -420,7 +420,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Menu schedule removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.menu_schedule_removed'));
     }
 
     public function createCategory(): void
@@ -447,7 +447,7 @@ class Index extends Component
         $this->resetCategoryForm();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Category created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.category_created'));
     }
 
     public function startEditingCategory(int $categoryId): void
@@ -499,7 +499,7 @@ class Index extends Component
         $this->cancelCategoryEditing();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Category updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.category_updated'));
     }
 
     public function deleteCategory(int $categoryId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -520,7 +520,7 @@ class Index extends Component
         $this->itemCategoryId = $this->firstCategoryIdForMenu($this->itemMenuId);
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Category removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.category_removed'));
     }
 
     public function createItem(): void
@@ -541,7 +541,7 @@ class Index extends Component
         $this->resetItemForm(keepMenuId: (string) $menu->id);
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Dish created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.dish_created'));
     }
 
     public function startEditingItem(int $itemId): void
@@ -607,7 +607,7 @@ class Index extends Component
         $this->cancelItemEditing();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Dish updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.dish_updated'));
     }
 
     public function deleteItem(int $itemId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -624,7 +624,7 @@ class Index extends Component
         $this->modifierItemId = $this->firstItemIdForMenu($this->modifierItemMenuId);
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Dish removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.dish_removed'));
     }
 
     public function setItemAvailability(int $itemId, bool $isAvailable): void
@@ -638,8 +638,8 @@ class Index extends Component
         Flux::toast(
             variant: 'success',
             text: $isAvailable
-                ? __('Dish returned to the menu.')
-                : __('Dish added to the stop-list.'),
+                ? __('ui.livewire.organizations.brands.branches.menu.index.dish_returned_to_the_m')
+                : __('ui.livewire.organizations.brands.branches.menu.index.dish_added_to_the_stop'),
         );
     }
 
@@ -708,7 +708,7 @@ class Index extends Component
         $this->resetKitchenDepartmentForm();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Kitchen department created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_cre'));
     }
 
     public function startEditingKitchenDepartment(int $departmentId): void
@@ -757,7 +757,7 @@ class Index extends Component
         $this->cancelKitchenDepartmentEditing();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Kitchen department updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_upd'));
     }
 
     public function setKitchenDepartmentActive(int $departmentId, bool $isActive): void
@@ -768,7 +768,7 @@ class Index extends Component
 
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Kitchen department updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_upd'));
     }
 
     public function deleteKitchenDepartment(int $departmentId): void
@@ -788,7 +788,7 @@ class Index extends Component
         $this->cancelKitchenDepartmentEditing();
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Kitchen department removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_rem'));
     }
 
     public function createModifierGroup(): void
@@ -813,7 +813,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier group created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_group_created'));
     }
 
     public function startEditingModifierGroup(int $modifierGroupId): void
@@ -864,7 +864,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier group updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_group_updated'));
     }
 
     public function deleteModifierGroup(int $modifierGroupId): void
@@ -886,7 +886,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier group removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_group_removed'));
     }
 
     public function createModifierOption(): void
@@ -904,7 +904,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier option created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_option_create'));
     }
 
     public function startEditingModifierOption(int $modifierOptionId): void
@@ -948,7 +948,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier option updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_option_update'));
     }
 
     public function deleteModifierOption(int $modifierOptionId): void
@@ -961,7 +961,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier option removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_option_remove'));
     }
 
     public function attachModifierGroupToItem(): void
@@ -977,7 +977,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier group assigned.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_group_assigne'));
     }
 
     public function detachModifierGroupFromItem(int $itemId, int $modifierGroupId): void
@@ -992,7 +992,7 @@ class Index extends Component
         $this->forgetMenuComputed();
         $this->forgetBranchMenuCache();
 
-        Flux::toast(variant: 'success', text: __('Modifier group unassigned.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.modifier_group_unassig'));
     }
 
     /**
@@ -1184,13 +1184,13 @@ class Index extends Component
     public function iconOptions(): array
     {
         return [
-            'bookmark' => __('Default'),
-            'cake' => __('Desserts'),
-            'beaker' => __('Drinks'),
-            'sparkles' => __('Specials'),
-            'shopping-bag' => __('Takeaway'),
-            'fire' => __('Hot'),
-            'sun' => __('Seasonal'),
+            'bookmark' => __('permissions.actions.default'),
+            'cake' => __('ui.livewire.organizations.brands.branches.menu.index.desserts'),
+            'beaker' => __('ui.livewire.bar.dashboard.drinks'),
+            'sparkles' => __('ui.livewire.organizations.brands.branches.menu.index.specials'),
+            'shopping-bag' => __('ui.livewire.organizations.brands.branches.menu.index.takeaway'),
+            'fire' => __('ui.livewire.organizations.brands.branches.menu.index.hot'),
+            'sun' => __('ui.livewire.organizations.brands.branches.menu.index.seasonal'),
         ];
     }
 
@@ -1961,8 +1961,8 @@ class Index extends Component
                         'id' => $item->id,
                         'name' => $item->name,
                         'menu_name' => $menu->name,
-                        'category_name' => $item->category?->name ?? __('No category'),
-                        'department_name' => $item->kitchenDepartment?->name ?? __('Default kitchen'),
+                        'category_name' => $item->category?->name ?? __('ui.livewire.organizations.brands.branches.menu.index.no_category'),
+                        'department_name' => $item->kitchenDepartment?->name ?? __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen'),
                         'price' => MoneyFormatter::format($item->price, $this->branch->currency),
                         'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
                     ])

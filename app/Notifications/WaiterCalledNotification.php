@@ -54,7 +54,7 @@ class WaiterCalledNotification extends Notification
             'table_session_id' => $waiterCall->table_session_id,
             'guest_name' => $waiterCall->requestedByGuest?->guest_name,
             'requested_at' => $waiterCall->requested_at?->toISOString(),
-            'message' => __('Гость зовёт официанта.'),
+            'message' => __('ui.livewire.notifications.unreadcount.gost_zovet_oficianta'),
         ];
     }
 }

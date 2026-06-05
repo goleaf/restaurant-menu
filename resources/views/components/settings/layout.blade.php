@@ -2,8 +2,8 @@
     <div class="me-10 w-full pb-4 md:w-[220px]">
         <flux:navlist aria-label="{{ __('navigation.settings') }}">
             <flux:navlist.item :href="route('profile.edit')" wire:navigate>{{ __('layout.profile') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('Security') }}</flux:navlist.item>
-            <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('security.edit')" wire:navigate>{{ __('ui.components.settings.layout.security') }}</flux:navlist.item>
+            <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('ui.components.settings.layout.appearance') }}</flux:navlist.item>
         </flux:navlist>
     </div>
 

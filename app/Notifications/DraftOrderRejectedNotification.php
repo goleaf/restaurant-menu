@@ -58,7 +58,7 @@ class DraftOrderRejectedNotification extends Notification
             'rejected_by_user_name' => $draftOrder->rejectedByUser?->name,
             'rejection_reason' => $draftOrder->rejection_reason,
             'rejected_at' => $draftOrder->rejected_at?->toISOString(),
-            'message' => __('Официант отклонил заказ.'),
+            'message' => __('ui.livewire.publicqr.notifications.oficiant_otklonil_zakaz'),
         ];
     }
 }

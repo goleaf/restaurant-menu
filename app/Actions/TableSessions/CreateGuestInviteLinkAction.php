@@ -94,13 +94,13 @@ class CreateGuestInviteLinkAction
     {
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'guest_invite' => __('Эта сессия стола уже закрыта. Новых гостей пригласить нельзя.'),
+                'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.eta_sessiia_stola_uze'),
             ]);
         }
 
         if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
             throw ValidationException::withMessages([
-                'guest_invite' => __('Это место сейчас недоступно. Новых гостей пригласить нельзя.'),
+                'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.eto_mesto_seicas_nedos'),
             ]);
         }
 
@@ -108,7 +108,7 @@ class CreateGuestInviteLinkAction
 
         if (! $settings->allow_guest_invite_links) {
             throw ValidationException::withMessages([
-                'guest_invite' => __('Приглашения гостей по ссылке отключены для этого филиала.'),
+                'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.priglaseniia_gostei_po'),
             ]);
         }
     }
@@ -117,7 +117,7 @@ class CreateGuestInviteLinkAction
     {
         if ($guest->table_session_id !== $tableSession->id || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
-                'guest_invite' => __('Только активный гость за этим столом может пригласить нового гостя.'),
+                'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.tolko_aktivnyi_gost_za'),
             ]);
         }
     }
@@ -126,7 +126,7 @@ class CreateGuestInviteLinkAction
     {
         if (! $branch instanceof Branch) {
             throw ValidationException::withMessages([
-                'guest_invite' => __('Не удалось проверить настройки филиала для приглашения.'),
+                'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.ne_udalos_proverit_nas'),
             ]);
         }
 

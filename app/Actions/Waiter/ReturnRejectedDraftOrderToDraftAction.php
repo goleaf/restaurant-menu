@@ -93,7 +93,7 @@ class ReturnRejectedDraftOrderToDraftAction
 
         if ($tableSession === null || $tableSession->branch === null) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Черновик больше не связан с открытым столом.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
             ]);
         }
 
@@ -101,19 +101,19 @@ class ReturnRejectedDraftOrderToDraftAction
 
         if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('У вас нет права возвращать заказы гостям в этом филиале.'),
+                'draft_review' => __('ui.actions.waiter.returnrejecteddraftordertodraftaction.u_vas_net_prava_voz'),
             ]);
         }
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Нельзя вернуть заказ гостям для закрытого стола.'),
+                'draft_review' => __('ui.actions.waiter.returnrejecteddraftordertodraftaction.nelzia_vernut_zakaz'),
             ]);
         }
 
         if ($draftOrder->status !== DraftOrderStatus::Rejected) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Вернуть в черновик можно только отклонённый заказ.'),
+                'draft_review' => __('ui.actions.waiter.returnrejecteddraftordertodraftaction.vernut_v_cernovik_m'),
             ]);
         }
     }

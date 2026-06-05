@@ -40,7 +40,7 @@ class UpdateDraftOrderItemByWaiterAction
 
             if ($draftOrder === null) {
                 throw ValidationException::withMessages([
-                    'draft_edit' => __('Позиция больше не связана с черновиком.'),
+                    'draft_edit' => __('ui.actions.waiter.deletedraftorderitembywaiteraction.poziciia_bolse_ne_svia'),
                 ]);
             }
 
@@ -144,7 +144,7 @@ class UpdateDraftOrderItemByWaiterAction
     {
         if ($quantity < 1 || $quantity > 99) {
             throw ValidationException::withMessages([
-                'editingQuantity' => __('Количество должно быть от 1 до 99.'),
+                'editingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
             ]);
         }
 

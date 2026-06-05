@@ -125,7 +125,7 @@ class RestaurantSetup extends Component
         $this->step = 2;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Компания создана.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.kompaniia_sozdana'));
     }
 
     public function createBrand(CreateBrandAction $createBrand): void
@@ -151,7 +151,7 @@ class RestaurantSetup extends Component
         $this->step = 3;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Ресторан создан.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.restoran_sozdan'));
     }
 
     public function createBranch(CreateBranchAction $createBranch): void
@@ -192,7 +192,7 @@ class RestaurantSetup extends Component
         $this->step = 4;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Филиал создан.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.filial_sozdan'));
     }
 
     public function createArea(CreateAreaNodeAction $createAreaNode): void
@@ -220,7 +220,7 @@ class RestaurantSetup extends Component
         $this->step = 5;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Зона добавлена.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.zona_dobavlena'));
     }
 
     public function createServicePoints(CreateServicePointAction $createServicePoint): void
@@ -255,7 +255,7 @@ class RestaurantSetup extends Component
         $this->step = 6;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Первые столы добавлены.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.pervye_stoly_dobavleny'));
     }
 
     public function generateQrCodes(GenerateQrCodeForServicePointAction $generateQrCode): void
@@ -273,7 +273,7 @@ class RestaurantSetup extends Component
             ->all();
 
         if ($qrCodeIds === []) {
-            $this->addError('servicePointIds', __('Сначала добавьте столы.'));
+            $this->addError('servicePointIds', __('ui.livewire.onboarding.restaurantsetup.snacala_dobavte_stoly'));
 
             return;
         }
@@ -282,7 +282,7 @@ class RestaurantSetup extends Component
         $this->step = 7;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('QR-коды готовы.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.qr_kody_gotovy'));
     }
 
     public function createStarterMenu(CreateStarterMenuAction $createStarterMenu): void
@@ -313,7 +313,7 @@ class RestaurantSetup extends Component
         $this->step = 8;
         unset($this->summary, $this->steps);
 
-        Flux::toast(variant: 'success', text: __('Первое меню добавлено.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.pervoe_meniu_dobavleno'));
     }
 
     public function goToStep(int $step): void
@@ -334,14 +334,14 @@ class RestaurantSetup extends Component
         $availableStep = $this->highestAvailableStep();
 
         return collect([
-            [1, __('Компания'), 'building-office', $this->organizationId !== null],
-            [2, __('Ресторан'), 'building-storefront', $this->brandId !== null],
-            [3, __('Адрес'), 'map-pin', $this->branchId !== null],
-            [4, __('Зона'), 'rectangle-group', $this->areaNodeId !== null],
-            [5, __('Столы'), 'squares-2x2', $this->servicePointIds !== []],
-            [6, __('QR'), 'qr-code', $this->qrCodeIds !== []],
-            [7, __('Меню'), 'book-open', $this->menuId !== null],
-            [8, __('Проверка'), 'check-circle', $this->menuId !== null],
+            [1, __('ui.livewire.onboarding.restaurantsetup.kompaniia'), 'building-office', $this->organizationId !== null],
+            [2, __('ui.livewire.onboarding.restaurantsetup.restoran'), 'building-storefront', $this->brandId !== null],
+            [3, __('ui.livewire.onboarding.restaurantsetup.adres'), 'map-pin', $this->branchId !== null],
+            [4, __('ui.livewire.onboarding.restaurantsetup.zona'), 'rectangle-group', $this->areaNodeId !== null],
+            [5, __('ui.livewire.onboarding.restaurantsetup.stoly'), 'squares-2x2', $this->servicePointIds !== []],
+            [6, __('permissions.groups.qr'), 'qr-code', $this->qrCodeIds !== []],
+            [7, __('ui.livewire.onboarding.restaurantsetup.meniu'), 'book-open', $this->menuId !== null],
+            [8, __('ui.livewire.onboarding.restaurantsetup.proverka'), 'check-circle', $this->menuId !== null],
         ])->map(fn (array $step): array => [
             'number' => $step[0],
             'label' => $step[1],

@@ -120,38 +120,38 @@ class TransferTableSessionAction
     {
         if (! $this->userCanTransfer($transferredBy, (int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'table_session_transfer' => __('У вас нет права переносить активную сессию стола.'),
+                'table_session_transfer' => __('ui.actions.tablesessions.transfertablesessionaction.u_vas_net_prava_perenos'),
             ]);
         }
 
         if ($this->sessionStatus($tableSession) !== TableSessionStatus::Active) {
             throw ValidationException::withMessages([
-                'table_session_transfer' => __('Перенести можно только активную сессию стола.'),
+                'table_session_transfer' => __('ui.actions.tablesessions.transfertablesessionaction.perenesti_mozno_tolko_a'),
             ]);
         }
 
         if ((int) $targetServicePoint->branch_id !== (int) $tableSession->branch_id) {
             throw ValidationException::withMessages([
-                'transferTargetServicePointId' => __('Выберите свободное место в этом же филиале.'),
+                'transferTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.vyberite_svobo'),
             ]);
         }
 
         if ((int) $targetServicePoint->id === (int) $tableSession->service_point_id) {
             throw ValidationException::withMessages([
-                'transferTargetServicePointId' => __('Выберите другое свободное место.'),
+                'transferTargetServicePointId' => __('ui.actions.tablesessions.transfertablesessionaction.vyberite_drugoe_svobodn'),
             ]);
         }
 
         if (! $targetServicePoint->is_active) {
             throw ValidationException::withMessages([
-                'transferTargetServicePointId' => __('Это место отключено. Выберите другое свободное место.'),
+                'transferTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.eto_mesto_otkl'),
             ]);
         }
 
         if ($this->servicePointStatus($targetServicePoint) !== ServicePointStatus::Free
             || $this->targetHasOpenSession($targetServicePoint)) {
             throw ValidationException::withMessages([
-                'transferTargetServicePointId' => __('Новое место уже занято или недоступно.'),
+                'transferTargetServicePointId' => __('ui.actions.tablesessions.transfertablesessionaction.novoe_mesto_uze_zaniato'),
             ]);
         }
     }

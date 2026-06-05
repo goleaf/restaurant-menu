@@ -185,17 +185,17 @@ class DemoRestaurantSeeder extends Seeder
         $marketer = $this->demoUser('Demo Marketer', 'marketer@demo.test', SystemRole::Marketer);
 
         $assignments = [
-            [$owner, SystemRole::Owner, null, $owner, SystemPermission::cases()],
-            [$director, SystemRole::Director, $owner, $owner, SystemPermission::cases()],
-            [$admin, SystemRole::RestaurantAdmin, $director, $director, $this->restaurantAdminPermissions()],
-            [$manager, SystemRole::ShiftManager, $admin, $admin, $this->shiftManagerPermissions()],
-            [$waiter, SystemRole::Waiter, $manager, $manager, $this->waiterPermissions()],
-            [$headChef, SystemRole::HeadChef, $manager, $manager, $this->headChefPermissions()],
-            [$cook, SystemRole::Cook, $headChef, $headChef, $this->cookPermissions()],
-            [$bartender, SystemRole::Bartender, $manager, $manager, $this->bartenderPermissions()],
-            [$cashier, SystemRole::Cashier, $manager, $manager, $this->cashierPermissions()],
-            [$accountant, SystemRole::Accountant, $director, $director, $this->accountantPermissions()],
-            [$marketer, SystemRole::Marketer, $admin, $admin, $this->marketerPermissions()],
+            [$owner, SystemRole::Owner, null, $owner, []],
+            [$director, SystemRole::Director, $owner, $owner, []],
+            [$admin, SystemRole::RestaurantAdmin, $director, $director, []],
+            [$manager, SystemRole::ShiftManager, $admin, $admin, []],
+            [$waiter, SystemRole::Waiter, $manager, $manager, []],
+            [$headChef, SystemRole::HeadChef, $manager, $manager, []],
+            [$cook, SystemRole::Cook, $headChef, $headChef, []],
+            [$bartender, SystemRole::Bartender, $manager, $manager, []],
+            [$cashier, SystemRole::Cashier, $manager, $manager, []],
+            [$accountant, SystemRole::Accountant, $director, $director, []],
+            [$marketer, SystemRole::Marketer, $admin, $admin, []],
         ];
 
         foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $permissions]) {
@@ -203,154 +203,6 @@ class DemoRestaurantSeeder extends Seeder
             $this->ensureBranchAssignment($organization, $branch, $user, $role, $assignedBy);
             $this->syncPermissions($user, $permissions);
         }
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function restaurantAdminPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::EditRestaurant,
-            SystemPermission::ManageBranches,
-            SystemPermission::ManageZones,
-            SystemPermission::ManageServicePoints,
-            SystemPermission::GenerateQr,
-            SystemPermission::ManageMenu,
-            SystemPermission::ChangePrices,
-            SystemPermission::ChangeAvailability,
-            SystemPermission::ViewOrders,
-            SystemPermission::ConfirmOrders,
-            SystemPermission::EditPendingOrders,
-            SystemPermission::CancelOrders,
-            SystemPermission::SendToKitchen,
-            SystemPermission::ViewKitchen,
-            SystemPermission::ViewReports,
-            SystemPermission::ManageStaff,
-            SystemPermission::ViewPayments,
-            SystemPermission::ManagePayments,
-            SystemPermission::CloseTableSessions,
-            SystemPermission::ManageSettings,
-            SystemPermission::ViewAuditLog,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function shiftManagerPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ManageZones,
-            SystemPermission::ManageServicePoints,
-            SystemPermission::GenerateQr,
-            SystemPermission::ChangeAvailability,
-            SystemPermission::ViewOrders,
-            SystemPermission::ConfirmOrders,
-            SystemPermission::EditPendingOrders,
-            SystemPermission::CancelOrders,
-            SystemPermission::SendToKitchen,
-            SystemPermission::ViewKitchen,
-            SystemPermission::ViewPayments,
-            SystemPermission::CloseTableSessions,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function waiterPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewOrders,
-            SystemPermission::ConfirmOrders,
-            SystemPermission::EditPendingOrders,
-            SystemPermission::SendToKitchen,
-            SystemPermission::ViewPayments,
-            SystemPermission::CloseTableSessions,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function headChefPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewKitchen,
-            SystemPermission::ChangeAvailability,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function cookPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewKitchen,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function bartenderPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewOrders,
-            SystemPermission::SendToKitchen,
-            SystemPermission::ViewKitchen,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function cashierPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewOrders,
-            SystemPermission::ViewPayments,
-            SystemPermission::ManagePayments,
-            SystemPermission::CloseTableSessions,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function accountantPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ViewReports,
-            SystemPermission::ViewPayments,
-            SystemPermission::ManagePayments,
-            SystemPermission::ExportData,
-            SystemPermission::ViewAuditLog,
-        ];
-    }
-
-    /**
-     * @return list<SystemPermission>
-     */
-    private function marketerPermissions(): array
-    {
-        return [
-            SystemPermission::ViewRestaurant,
-            SystemPermission::ManageMenu,
-            SystemPermission::ChangePrices,
-            SystemPermission::ChangeAvailability,
-            SystemPermission::ViewReports,
-        ];
     }
 
     /**
@@ -708,18 +560,22 @@ class DemoRestaurantSeeder extends Seeder
             'Пицца' => [
                 'en' => ['name' => 'Pizza', 'description' => 'Classic pizza for a quick demo order.'],
                 'lt' => ['name' => 'Picos', 'description' => 'Klasikinės picos greitam demo užsakymui.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Напитки' => [
                 'en' => ['name' => 'Drinks', 'description' => 'Hot and cold drinks.'],
                 'lt' => ['name' => 'Gėrimai', 'description' => 'Karšti ir šalti gėrimai.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Десерты' => [
                 'en' => ['name' => 'Desserts', 'description' => 'A sweet finish to the order.'],
                 'lt' => ['name' => 'Desertai', 'description' => 'Saldus užsakymo užbaigimas.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             default => [
                 'en' => ['name' => $name, 'description' => $description],
                 'lt' => ['name' => $name, 'description' => $description],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
         };
     }
@@ -733,34 +589,42 @@ class DemoRestaurantSeeder extends Seeder
             'Маргарита' => [
                 'en' => ['name' => 'Margherita', 'description' => 'Tomato sauce, mozzarella, basil.'],
                 'lt' => ['name' => 'Margarita', 'description' => 'Pomidorų padažas, mocarela, bazilikas.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Пепперони' => [
                 'en' => ['name' => 'Pepperoni', 'description' => 'Spicy pepperoni, mozzarella, tomato sauce.'],
                 'lt' => ['name' => 'Pepperoni', 'description' => 'Aitri pepperoni dešra, mocarela, pomidorų padažas.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Капричоза' => [
                 'en' => ['name' => 'Capricciosa', 'description' => 'Ham, mushrooms, artichokes, and mozzarella.'],
                 'lt' => ['name' => 'Capricciosa', 'description' => 'Kumpis, grybai, artišokai ir mocarela.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Домашний лимонад' => [
                 'en' => ['name' => 'Homemade lemonade', 'description' => 'Lemon, mint, ice, and sparkling water.'],
                 'lt' => ['name' => 'Naminis limonadas', 'description' => 'Citrina, mėta, ledas ir gazuotas vanduo.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Эспрессо' => [
                 'en' => ['name' => 'Espresso', 'description' => 'Classic double espresso.'],
                 'lt' => ['name' => 'Espresas', 'description' => 'Klasikinis dvigubas espresas.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Тирамису' => [
                 'en' => ['name' => 'Tiramisu', 'description' => 'Mascarpone, coffee, and cocoa.'],
                 'lt' => ['name' => 'Tiramisu', 'description' => 'Maskarponė, kava ir kakava.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             'Чизкейк' => [
                 'en' => ['name' => 'Cheesecake', 'description' => 'Creamy cheesecake with berry sauce.'],
                 'lt' => ['name' => 'Sūrio pyragas', 'description' => 'Kreminis sūrio pyragas su uogų padažu.'],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
             default => [
                 'en' => ['name' => $name, 'description' => $description],
                 'lt' => ['name' => $name, 'description' => $description],
+                'ru' => ['name' => $name, 'description' => $description],
             ],
         };
     }

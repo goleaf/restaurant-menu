@@ -410,7 +410,7 @@ class BuildRestaurantDashboardAction
                 $totalCents = $items->sum(fn (OrderItem $item): int => $this->decimalToCents($item->total_price));
 
                 return [
-                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('Dish'),
+                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish'),
                     'quantity' => $items->sum(fn (OrderItem $item): int => (int) $item->quantity),
                     'total_cents' => $totalCents,
                 ];
@@ -422,7 +422,7 @@ class BuildRestaurantDashboardAction
                 'quantity' => (int) $item['quantity'],
                 'total' => $singleCurrency !== null
                     ? $this->formatCents((int) $item['total_cents']).' '.$singleCurrency
-                    : __('Mixed'),
+                    : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
             ])
             ->values()
             ->all();

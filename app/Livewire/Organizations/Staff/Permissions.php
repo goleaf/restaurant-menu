@@ -257,7 +257,7 @@ class Permissions extends Component
 
     private function organizationUserStatusLabel(OrganizationUserStatus $status): string
     {
-        return __('staff.statuses.'.$status->value);
+        return __(sprintf('staff.statuses.%s', $status->value));
     }
 
     private function authorizeStaffManagement(): void

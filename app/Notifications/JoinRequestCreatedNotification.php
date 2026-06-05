@@ -55,7 +55,7 @@ class JoinRequestCreatedNotification extends Notification
             'area_name' => $tableSession?->servicePoint?->areaNode?->name,
             'guest_name' => $joinRequest->guest_name,
             'expires_at' => $joinRequest->expires_at?->toISOString(),
-            'message' => __('Новый гость ждёт подтверждения.'),
+            'message' => __('ui.livewire.publicqr.notifications.novyi_gost_zdet_podtverzdeniia'),
         ];
     }
 }

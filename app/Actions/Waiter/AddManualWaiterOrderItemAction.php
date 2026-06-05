@@ -85,13 +85,13 @@ class AddManualWaiterOrderItemAction
 
         if (! $editableBranchIds->contains((int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'draft_edit' => __('У вас нет права вручную добавлять позиции в этом филиале.'),
+                'draft_edit' => __('ui.actions.waiter.addmanualwaiterorderitemaction.u_vas_net_prava_vrucnuiu_d'),
             ]);
         }
 
         if ($tableSession->status !== TableSessionStatus::Active) {
             throw ValidationException::withMessages([
-                'draft_edit' => __('Вручную добавить заказ можно только в активный стол.'),
+                'draft_edit' => __('ui.actions.waiter.addmanualwaiterorderitemaction.vrucnuiu_dobavit_zakaz_moz'),
             ]);
         }
     }
@@ -172,13 +172,13 @@ class AddManualWaiterOrderItemAction
 
         if ($normalizedGuestName === '') {
             throw ValidationException::withMessages([
-                'manualGuestName' => __('Введите имя гостя или выберите гостя из списка.'),
+                'manualGuestName' => __('ui.actions.waiter.addmanualwaiterorderitemaction.vvedite_imia_gostia_ili_vy'),
             ]);
         }
 
         if (mb_strlen($normalizedGuestName) > 80) {
             throw ValidationException::withMessages([
-                'manualGuestName' => __('Имя гостя должно быть не длиннее 80 символов.'),
+                'manualGuestName' => __('ui.actions.waiter.addmanualwaiterorderitemaction.imia_gostia_dolzno_byt_ne'),
             ]);
         }
 
@@ -214,7 +214,7 @@ class AddManualWaiterOrderItemAction
             || $guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
-                'addingGuestId' => __('Выберите активного гостя за этим столом.'),
+                'addingGuestId' => __('ui.actions.waiter.adddraftorderitembywaiteraction.vyberite_aktivnogo_gostia'),
             ]);
         }
 

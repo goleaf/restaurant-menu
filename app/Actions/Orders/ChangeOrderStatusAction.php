@@ -40,7 +40,7 @@ class ChangeOrderStatusAction
                 throw BusinessRuleViolation::for(
                     BusinessRuleCode::OrderAlreadyCancelled,
                     'order_status',
-                    __('Заказ уже отменён.'),
+                    __('ui.actions.orders.changeorderstatusaction.zakaz_uze_otmenen'),
                 );
             }
 
@@ -54,7 +54,7 @@ class ChangeOrderStatusAction
 
             if ($newStatus === OrderStatus::Cancelled && $normalizedReason === null) {
                 throw ValidationException::withMessages([
-                    'orderCancellationReason' => __('Укажите причину отмены заказа.'),
+                    'orderCancellationReason' => __('ui.actions.orders.changeorderstatusaction.ukazite_pricinu_otmeny_zakaza'),
                 ]);
             }
 
@@ -147,7 +147,7 @@ class ChangeOrderStatusAction
 
         if (! $branchIds->contains((int) $order->branch_id)) {
             throw ValidationException::withMessages([
-                'order_status' => __('У вас нет права менять этот статус заказа в этом филиале.'),
+                'order_status' => __('ui.actions.orders.changeorderstatusaction.u_vas_net_prava_meniat_etot_statu'),
             ]);
         }
     }

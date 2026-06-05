@@ -16,7 +16,7 @@
     <header class="flex flex-col gap-3">
         <div>
             <flux:button icon="arrow-left" :href="route('restaurant.waiter.dashboard')" wire:navigate>
-                {{ __('Waiter dashboard') }}
+                {{ __('ui.waiter.dashboard.waiter_dashboard') }}
             </flux:button>
         </div>
 
@@ -29,35 +29,35 @@
                     {{ data_get($table, 'service_point.name') }}
                 </h1>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                    {{ __('Zone') }}: {{ data_get($table, 'zone.name') ?? __('No zone') }}
-                    · {{ __('Number') }}: {{ data_get($table, 'service_point.display_number') ?: __('Not set') }}
+                    {{ __('guest.table.zone') }}: {{ data_get($table, 'zone.name') ?? __('qr.filters.no_zone') }}
+                    · {{ __('qr.labels.number') }}: {{ data_get($table, 'service_point.display_number') ?: __('qr.labels.not_set') }}
                 </p>
             </div>
 
             <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                {{ __('Updated') }}: {{ $refreshedAt }}
+                {{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}
             </div>
         </div>
     </header>
 
     <section class="grid gap-3 md:grid-cols-4">
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Session status') }}</p>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.session_status') }}</p>
             <p class="mt-2 text-base font-semibold text-zinc-950 dark:text-white">{{ __(data_get($table, 'session.status_label')) }}</p>
         </div>
 
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Draft status') }}</p>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.draft_status') }}</p>
             <p class="mt-2 text-base font-semibold text-zinc-950 dark:text-white">{{ __(data_get($table, 'draft.status_label')) }}</p>
         </div>
 
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Guests') }}</p>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('guest.cart.other_guests') }}</p>
             <p class="mt-2 text-base font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'guest_count', 0) }}</p>
         </div>
 
         <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Table total') }}</p>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('guest.cart.table_total') }}</p>
             <p class="mt-2 text-base font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'total', '0.00') }}</p>
         </div>
     </section>
@@ -65,8 +65,8 @@
     <section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Guests and positions') }}</h2>
-                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Guests are sorted alphabetically.') }}</p>
+                <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('ui.waiter.table_detail.guests_and_positions') }}</h2>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.guests_are_sorted_alphabetically') }}</p>
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -77,7 +77,7 @@
                                 <div class="flex flex-wrap items-center gap-2">
                                     <x-ui.plain-text :text="$guestSection['guest_name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                     <flux:badge :color="$guestSection['is_ready'] ? 'green' : 'zinc'">
-                                        {{ $guestSection['is_ready'] ? __('Ready') : __('Not ready') }}
+                                        {{ $guestSection['is_ready'] ? __('guest.statuses.items.ready') : __('guest.table.not_ready') }}
                                     </flux:badge>
                                     <flux:badge>{{ __($guestSection['status_label']) }}</flux:badge>
                                 </div>
@@ -96,8 +96,8 @@
                                                 <x-ui.plain-text :text="$item['item_name']" class="inline" :preserve-lines="false" />
                                             </p>
                                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                                {{ __('Unit') }}: {{ $item['unit_total_price'] }}
-                                                · {{ __('Line') }}: {{ $item['total_price'] }}
+                                                {{ __('ui.waiter.table_detail.unit') }}: {{ $item['unit_total_price'] }}
+                                                · {{ __('ui.waiter.table_detail.line') }}: {{ $item['total_price'] }}
                                             </p>
                                         </div>
 
@@ -119,7 +119,7 @@
 
                                     @if ($item['comment'])
                                         <p class="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
-                                            {{ __('Comment') }}:
+                                            {{ __('guest.cart.comment') }}:
                                             <x-ui.plain-text :text="$item['comment']" class="inline" />
                                         </p>
                                     @endif
@@ -132,7 +132,7 @@
                                                 type="button"
                                                 wire:click="editDraftItem({{ $item['id'] }})"
                                             >
-                                                {{ __('Edit') }}
+                                                {{ __('guest.cart.edit_item') }}
                                             </flux:button>
 
                                             <flux:button
@@ -144,7 +144,7 @@
                                                 wire:loading.attr="disabled"
                                                 wire:target="deleteDraftItem({{ $item['id'] }})"
                                             >
-                                                {{ __('Delete') }}
+                                                {{ __('ui.actions.delete') }}
                                             </flux:button>
                                         </div>
                                     @endif
@@ -165,27 +165,27 @@
         </div>
 
         <aside class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Table summary') }}</h2>
+            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('ui.waiter.table_detail.table_summary') }}</h2>
 
             <dl class="mt-4 space-y-3 text-sm">
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Branch') }}</dt>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('guest.table.branch') }}</dt>
                     <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'branch.name') }}</dd>
                 </div>
 
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Zone') }}</dt>
-                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'zone.name') ?? __('No zone') }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('guest.table.zone') }}</dt>
+                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'zone.name') ?? __('qr.filters.no_zone') }}</dd>
                 </div>
 
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Service point') }}</dt>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('guest.table.service_point') }}</dt>
                     <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'service_point.name') }}</dd>
                 </div>
 
                 @if (data_get($table, 'linked_service_points') !== [])
                     <div>
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Связанные столы') }}</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.sviazannye_stoly') }}</dt>
                         <dd class="mt-2 flex flex-wrap gap-2">
                             @foreach (data_get($table, 'linked_service_points', []) as $linkedServicePoint)
                                 <flux:badge
@@ -206,7 +206,7 @@
                 @endif
 
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Service point status') }}</dt>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.service_point_status') }}</dt>
                     <dd class="mt-1">
                         <flux:badge :color="data_get($table, 'service_point.status_color', 'zinc')">
                             {{ __(data_get($table, 'service_point.status_label')) }}
@@ -215,32 +215,32 @@
                 </div>
 
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Opened') }}</dt>
-                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'session.started_at') ?? __('time not set') }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.dashboard.opened') }}</dt>
+                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'session.started_at') ?? __('ui.departments.dashboard.time_not_set') }}</dd>
                 </div>
 
                 <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Opened by') }}</dt>
-                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'session.opened_by') ?? __('Not set') }}</dd>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.opened_by') }}</dt>
+                    <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'session.opened_by') ?? __('qr.labels.not_set') }}</dd>
                 </div>
 
                 @if (data_get($table, 'confirmed_order_count', 0) > 0)
                     <div>
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Confirmed orders') }}</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.confirmed_orders') }}</dt>
                         <dd class="mt-1 font-medium text-zinc-950 dark:text-white">
                             {{ data_get($table, 'confirmed_order_count') }} · {{ data_get($table, 'confirmed_orders_total') }}
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Current draft total') }}</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.current_draft_total') }}</dt>
                         <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'current_draft_total') }}</dd>
                     </div>
                 @endif
 
                 @if (data_get($table, 'draft.sent_by_guest_name'))
                     <div>
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Sent by') }}</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.dashboard.sent_by') }}</dt>
                         <dd class="mt-1 font-medium text-zinc-950 dark:text-white">
                             <x-ui.plain-text :text="data_get($table, 'draft.sent_by_guest_name')" class="inline" :preserve-lines="false" />
                         </dd>
@@ -249,7 +249,7 @@
 
                 @if (data_get($table, 'draft.sent_at'))
                     <div>
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Sent at') }}</dt>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.sent_at') }}</dt>
                         <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'draft.sent_at') }}</dd>
                     </div>
                 @endif
@@ -267,9 +267,9 @@
 
             @if (data_get($table, 'merge.can_merge'))
                 <div id="merge-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Объединить столы') }}</h3>
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('ui.waiter.table_detail.obieedinit_stoly') }}</h3>
                     <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        {{ __('Добавьте ещё одно свободное место к этой сессии. Каждый физический стол сохраняет свой вечный QR-код.') }}
+                        {{ __('ui.waiter.table_detail.dobavte_eshhe_odno_svobodnoe_mesto_k_etoi_sessii_kaz') }}
                     </p>
 
                     @if ($mergeFeedbackMessage)
@@ -288,8 +288,8 @@
 
                     @if (data_get($table, 'merge.available_service_points') !== [])
                         <div class="mt-3 space-y-3">
-                            <flux:select wire:model="mergeTargetServicePointId" :label="__('Дополнительное место')">
-                                <flux:select.option value="">{{ __('Выберите свободное место') }}</flux:select.option>
+                            <flux:select wire:model="mergeTargetServicePointId" :label="__('ui.waiter.table_detail.dopolnitelnoe_mesto')">
+                                <flux:select.option value="">{{ __('ui.waiter.table_detail.vyberite_svobodnoe_mesto') }}</flux:select.option>
                                 @foreach (data_get($table, 'merge.available_service_points', []) as $servicePointOption)
                                     <flux:select.option wire:key="merge-target-service-point-{{ $servicePointOption['id'] }}" value="{{ $servicePointOption['id'] }}">
                                         {{ $servicePointOption['label'] }}
@@ -306,13 +306,13 @@
                                 wire:loading.attr="disabled"
                                 wire:target="mergeServicePoint"
                             >
-                                <span wire:loading.remove wire:target="mergeServicePoint">{{ __('Объединить столы') }}</span>
-                                <span wire:loading wire:target="mergeServicePoint">{{ __('Объединяем') }}</span>
+                                <span wire:loading.remove wire:target="mergeServicePoint">{{ __('ui.waiter.table_detail.obieedinit_stoly') }}</span>
+                                <span wire:loading wire:target="mergeServicePoint">{{ __('ui.waiter.table_detail.obieediniaem') }}</span>
                             </flux:button>
                         </div>
                     @else
                         <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                            {{ __('Свободных мест для объединения сейчас нет.') }}
+                            {{ __('ui.waiter.table_detail.svobodnyx_mest_dlia_obieedineniia_seicas_net') }}
                         </p>
                     @endif
                 </div>
@@ -320,9 +320,9 @@
 
             @if (data_get($table, 'transfer.can_transfer'))
                 <div id="transfer-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Перенести стол') }}</h3>
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('ui.waiter.table_detail.perenesti_stol') }}</h3>
                     <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                        {{ __('Выберите свободное место. Заказы и гости останутся в этой сессии, QR-коды столов не изменятся.') }}
+                        {{ __('ui.waiter.table_detail.vyberite_svobodnoe_mesto_zakazy_i_gosti_ostanutsia_v') }}
                     </p>
 
                     @if ($transferFeedbackMessage)
@@ -341,8 +341,8 @@
 
                     @if (data_get($table, 'transfer.available_service_points') !== [])
                         <div class="mt-3 space-y-3">
-                            <flux:select wire:model="transferTargetServicePointId" :label="__('Новое место')">
-                                <flux:select.option value="">{{ __('Выберите свободное место') }}</flux:select.option>
+                            <flux:select wire:model="transferTargetServicePointId" :label="__('ui.waiter.table_detail.novoe_mesto')">
+                                <flux:select.option value="">{{ __('ui.waiter.table_detail.vyberite_svobodnoe_mesto') }}</flux:select.option>
                                 @foreach (data_get($table, 'transfer.available_service_points', []) as $servicePointOption)
                                     <flux:select.option wire:key="transfer-target-service-point-{{ $servicePointOption['id'] }}" value="{{ $servicePointOption['id'] }}">
                                         {{ $servicePointOption['label'] }}
@@ -359,13 +359,13 @@
                                 wire:loading.attr="disabled"
                                 wire:target="transferTableSession"
                             >
-                                <span wire:loading.remove wire:target="transferTableSession">{{ __('Перенести стол') }}</span>
-                                <span wire:loading wire:target="transferTableSession">{{ __('Переносим') }}</span>
+                                <span wire:loading.remove wire:target="transferTableSession">{{ __('ui.waiter.table_detail.perenesti_stol') }}</span>
+                                <span wire:loading wire:target="transferTableSession">{{ __('ui.waiter.table_detail.perenosim') }}</span>
                             </flux:button>
                         </div>
                     @else
                         <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                            {{ __('Свободных мест для переноса сейчас нет.') }}
+                            {{ __('ui.waiter.table_detail.svobodnyx_mest_dlia_perenosa_seicas_net') }}
                         </p>
                     @endif
                 </div>
@@ -643,7 +643,7 @@
             @endif
 
             <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Waiter review') }}</h3>
+                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('guest.statuses.items.waiter_review') }}</h3>
 
                 @if ($reviewFeedbackMessage)
                     <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
@@ -682,15 +682,15 @@
                 @if (data_get($table, 'manual_order.can_add'))
                     <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                         <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">
-                            {{ data_get($table, 'draft.can_edit') ? __('Edit draft') : __('Manual waiter order') }}
+                            {{ data_get($table, 'draft.can_edit') ? __('ui.waiter.table_detail.edit_draft') : __('ui.waiter.table_detail.manual_waiter_order') }}
                         </h3>
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            {{ __('Add dishes for a guest who orders through the waiter. The order still needs waiter confirmation.') }}
+                            {{ __('ui.waiter.table_detail.add_dishes_for_a_guest_who_orders_through_the_waiter') }}
                         </p>
 
                         <div class="mt-3 space-y-3">
-                            <flux:select wire:model="addingGuestId" :label="__('Guest')">
-                                <flux:select.option value="">{{ __('Choose guest') }}</flux:select.option>
+                            <flux:select wire:model="addingGuestId" :label="__('guest.table.guest')">
+                                <flux:select.option value="">{{ __('ui.waiter.table_detail.choose_guest') }}</flux:select.option>
                                 @foreach (data_get($table, 'guest_sections', []) as $guestSection)
                                     <flux:select.option wire:key="waiter-add-guest-{{ $guestSection['guest_id'] }}" value="{{ $guestSection['guest_id'] }}">
                                         {{ $guestSection['guest_name'] }}
@@ -704,17 +704,17 @@
 
                             <flux:input
                                 wire:model="manualGuestName"
-                                :label="__('New guest name')"
+                                :label="__('ui.waiter.table_detail.new_guest_name')"
                                 maxlength="80"
-                                placeholder="{{ __('Type a name if the guest is not in the list') }}"
+                                placeholder="{{ __('ui.waiter.table_detail.type_a_name_if_the_guest_is_not_in_the_list') }}"
                             />
 
                             @error('manualGuestName')
                                 <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
                             @enderror
 
-                            <flux:select wire:model.live="addingMenuItemId" :label="__('Dish')">
-                                <flux:select.option value="">{{ __('Choose dish') }}</flux:select.option>
+                            <flux:select wire:model.live="addingMenuItemId" :label="__('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish')">
+                                <flux:select.option value="">{{ __('ui.waiter.table_detail.choose_dish') }}</flux:select.option>
                                 @foreach ($addableMenuItems as $menuItemOption)
                                     <flux:select.option wire:key="waiter-add-menu-item-{{ $menuItemOption['value'] }}" value="{{ $menuItemOption['value'] }}">
                                         {{ $menuItemOption['label'] }} · {{ $menuItemOption['price'] }} {{ data_get($table, 'branch.currency', 'EUR') }}
@@ -734,7 +734,7 @@
 
                             <flux:input
                                 wire:model.live="addingQuantity"
-                                :label="__('Quantity')"
+                                :label="__('guest.cart.quantity')"
                                 type="number"
                                 min="1"
                                 max="99"
@@ -751,8 +751,8 @@
                                             <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup['name'] }}</legend>
 
                                             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                                <span>{{ $modifierGroup['is_required'] ? __('Required') : __('Optional') }}</span>
-                                                <span>{{ __('Choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
+                                                <span>{{ $modifierGroup['is_required'] ? __('guest.cart.required') : __('guest.cart.optional') }}</span>
+                                                <span>{{ __('guest.cart.can_choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
                                             </div>
 
                                             <div class="mt-3 grid gap-2">
@@ -783,7 +783,7 @@
                             @endif
 
                             <label class="grid gap-1 text-sm">
-                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Comment') }}</span>
+                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.comment') }}</span>
                                 <textarea
                                     wire:model="addingComment"
                                     rows="3"
@@ -806,12 +806,12 @@
                                 wire:target="addDraftItem"
                             >
                                 <span wire:loading.remove wire:target="addDraftItem">
-                                    {{ __('Add position') }}
+                                    {{ __('ui.waiter.table_detail.add_position') }}
                                     @if ($addingItemTotal !== '0.00')
                                         · {{ $addingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}
                                     @endif
                                 </span>
-                                <span wire:loading wire:target="addDraftItem">{{ __('Adding') }}</span>
+                                <span wire:loading wire:target="addDraftItem">{{ __('menu.guest.adding') }}</span>
                             </flux:button>
                         </div>
                     </div>
@@ -828,12 +828,12 @@
                             wire:loading.attr="disabled"
                             wire:target="confirmDraft"
                         >
-                            <span wire:loading.remove wire:target="confirmDraft">{{ __('Confirm order') }}</span>
-                            <span wire:loading wire:target="confirmDraft">{{ __('Confirming') }}</span>
+                            <span wire:loading.remove wire:target="confirmDraft">{{ __('ui.waiter.table_detail.confirm_order') }}</span>
+                            <span wire:loading wire:target="confirmDraft">{{ __('ui.waiter.table_detail.confirming') }}</span>
                         </flux:button>
 
                         <p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                            {{ __('Confirmation creates a real order, but does not send it to kitchen or bar yet.') }}
+                            {{ __('ui.waiter.table_detail.confirmation_creates_a_real_order_but_does_not_send') }}
                         </p>
                     </div>
                 @endif
@@ -841,13 +841,13 @@
                 @if (data_get($table, 'draft.can_reject'))
                     <div class="mt-4 space-y-3">
                         <label class="grid gap-1 text-sm">
-                            <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Rejection reason') }}</span>
+                            <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('ui.waiter.table_detail.rejection_reason') }}</span>
                             <textarea
                                 wire:model="rejectionReason"
                                 rows="4"
                                 maxlength="500"
                                 class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                                placeholder="{{ __('Tell guests what needs to change.') }}"
+                                placeholder="{{ __('ui.waiter.table_detail.tell_guests_what_needs_to_change') }}"
                             ></textarea>
                         </label>
 
@@ -860,20 +860,20 @@
                             wire:loading.attr="disabled"
                             wire:target="rejectDraft"
                         >
-                            <span wire:loading.remove wire:target="rejectDraft">{{ __('Reject draft') }}</span>
-                            <span wire:loading wire:target="rejectDraft">{{ __('Rejecting') }}</span>
+                            <span wire:loading.remove wire:target="rejectDraft">{{ __('ui.waiter.table_detail.reject_draft') }}</span>
+                            <span wire:loading wire:target="rejectDraft">{{ __('ui.waiter.table_detail.rejecting') }}</span>
                         </flux:button>
                     </div>
                 @endif
 
                 @if (data_get($table, 'draft.rejection_reason'))
                     <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                        <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('Rejected reason') }}</p>
+                        <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('ui.waiter.table_detail.rejected_reason') }}</p>
                         <x-ui.plain-text :text="data_get($table, 'draft.rejection_reason')" class="mt-1 block text-sm leading-5 text-zinc-700 dark:text-zinc-200" />
 
                         @if (data_get($table, 'draft.rejected_by_user_name'))
                             <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                {{ __('Rejected by') }}: {{ data_get($table, 'draft.rejected_by_user_name') }}
+                                {{ __('ui.waiter.table_detail.rejected_by') }}: {{ data_get($table, 'draft.rejected_by_user_name') }}
                             </p>
                         @endif
                     </div>
@@ -889,8 +889,8 @@
                             wire:loading.attr="disabled"
                             wire:target="returnRejectedDraftToDraft"
                         >
-                            <span wire:loading.remove wire:target="returnRejectedDraftToDraft">{{ __('Return to draft') }}</span>
-                            <span wire:loading wire:target="returnRejectedDraftToDraft">{{ __('Returning') }}</span>
+                            <span wire:loading.remove wire:target="returnRejectedDraftToDraft">{{ __('ui.waiter.table_detail.return_to_draft') }}</span>
+                            <span wire:loading wire:target="returnRejectedDraftToDraft">{{ __('ui.waiter.table_detail.returning') }}</span>
                         </flux:button>
                     </div>
                 @endif
@@ -898,44 +898,44 @@
                 @if (data_get($table, 'draft.order_id'))
                     <div class="mt-4 border-t border-zinc-200 pt-4 text-sm dark:border-zinc-800">
                         <p class="font-medium text-zinc-950 dark:text-white">
-                            {{ __('Order') }} #{{ data_get($table, 'draft.order_id') }}
+                            {{ __('guest.table.order') }} #{{ data_get($table, 'draft.order_id') }}
                         </p>
                         <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                            {{ __('Status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
+                            {{ __('guest.table.status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
                         </p>
 
                         @if (data_get($table, 'draft.order_status_value') === 'cancelled')
                             <p class="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
-                                {{ __('Order cancelled.') }}
+                                {{ __('ui.livewire.waiter.tabledetail.order_cancelled') }}
                                 @if (data_get($table, 'draft.cancellation_reason'))
                                     <span class="block pt-1 font-normal">
-                                        {{ __('Reason') }}:
+                                        {{ __('guest.table.reason') }}:
                                         <x-ui.plain-text :text="data_get($table, 'draft.cancellation_reason')" class="inline" />
                                     </span>
                                 @endif
                             </p>
                         @elseif (in_array(data_get($table, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
                             <p class="mt-1 text-emerald-700 dark:text-emerald-300">
-                                {{ __('Kitchen/bar received this order.') }}
+                                {{ __('ui.waiter.table_detail.kitchen_bar_received_this_order') }}
                             </p>
 
                             <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                                {{ __('Tickets') }}: {{ data_get($table, 'draft.order_ticket_count', 0) }}
-                                · {{ __('Ready') }}: {{ data_get($table, 'draft.ready_ticket_item_count', 0) }}
-                                · {{ __('Served') }}: {{ data_get($table, 'draft.served_ticket_item_count', 0) }}
+                                {{ __('ui.departments.dashboard.tickets') }}: {{ data_get($table, 'draft.order_ticket_count', 0) }}
+                                · {{ __('guest.statuses.items.ready') }}: {{ data_get($table, 'draft.ready_ticket_item_count', 0) }}
+                                · {{ __('guest.statuses.items.served') }}: {{ data_get($table, 'draft.served_ticket_item_count', 0) }}
                                 @if (data_get($table, 'draft.order_ticket_departments'))
                                     · {{ implode(', ', data_get($table, 'draft.order_ticket_departments', [])) }}
                                 @endif
                             </p>
                         @else
                             <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                                {{ __('Prepared for kitchen/bar dispatch, but not sent yet.') }}
+                                {{ __('ui.waiter.table_detail.prepared_for_kitchen_bar_dispatch_but_not_sent_yet') }}
                             </p>
                         @endif
 
                         @if (data_get($table, 'draft.order_ticket_items'))
                             <div class="mt-4 space-y-2">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Kitchen/bar positions') }}</p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.kitchen_bar_positions') }}</p>
 
                                 @foreach (data_get($table, 'draft.order_ticket_items', []) as $ticketItem)
                                     <article wire:key="waiter-ticket-item-{{ $ticketItem['id'] }}" class="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
@@ -954,7 +954,7 @@
                                             </div>
 
                                             <flux:badge :color="$ticketItem['status_color']">
-                                                {{ $ticketItem['is_served'] ? __('Served') : __($ticketItem['status_label']) }}
+                                                {{ $ticketItem['is_served'] ? __('guest.statuses.items.served') : __($ticketItem['status_label']) }}
                                             </flux:badge>
                                         </div>
 
@@ -970,14 +970,14 @@
 
                                         @if ($ticketItem['comment'])
                                             <p class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                                                {{ __('Comment') }}:
+                                                {{ __('guest.cart.comment') }}:
                                                 <x-ui.plain-text :text="$ticketItem['comment']" class="inline" />
                                             </p>
                                         @endif
 
                                         @if ($ticketItem['is_served'])
                                             <p class="mt-2 text-xs text-sky-700 dark:text-sky-300">
-                                                {{ __('Served at') }}: {{ $ticketItem['served_at'] ?? __('time not set') }}
+                                                {{ __('ui.waiter.table_detail.served_at') }}: {{ $ticketItem['served_at'] ?? __('ui.departments.dashboard.time_not_set') }}
                                             </p>
                                         @elseif ($ticketItem['is_ready'])
                                             <flux:button
@@ -989,8 +989,8 @@
                                                 wire:loading.attr="disabled"
                                                 wire:target="markTicketItemServed({{ $ticketItem['id'] }})"
                                             >
-                                                <span wire:loading.remove wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('Mark served') }}</span>
-                                                <span wire:loading wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('Saving') }}</span>
+                                                <span wire:loading.remove wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('ui.waiter.dashboard.mark_served') }}</span>
+                                                <span wire:loading wire:target="markTicketItemServed({{ $ticketItem['id'] }})">{{ __('guest.table.saving') }}</span>
                                             </flux:button>
                                         @endif
                                     </article>
@@ -1008,8 +1008,8 @@
                                 wire:loading.attr="disabled"
                                 wire:target="sendOrderToKitchenBar"
                             >
-                                <span wire:loading.remove wire:target="sendOrderToKitchenBar">{{ __('Send to kitchen/bar') }}</span>
-                                <span wire:loading wire:target="sendOrderToKitchenBar">{{ __('Sending') }}</span>
+                                <span wire:loading.remove wire:target="sendOrderToKitchenBar">{{ __('permissions.labels.send_to_kitchen') }}</span>
+                                <span wire:loading wire:target="sendOrderToKitchenBar">{{ __('guest.table.sending') }}</span>
                             </flux:button>
                         @endif
 
@@ -1019,7 +1019,7 @@
 
                                 @if (data_get($table, 'draft.has_ready_or_served_warning'))
                                     <p class="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-                                        {{ __('Some positions are already ready or served.') }}
+                                        {{ __('ui.waiter.table_detail.some_positions_are_already_ready_or_served') }}
                                     </p>
                                 @endif
 
@@ -1055,7 +1055,7 @@
             <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Waiter edit') }}</p>
+                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('ui.waiter.table_detail.waiter_edit') }}</p>
                         <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
                         <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}</p>
                     </div>
@@ -1064,7 +1064,7 @@
                         type="button"
                         wire:click="closeEditDraftItem"
                         class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                        aria-label="{{ __('Close') }}"
+                        aria-label="{{ __('guest.table.close') }}"
                     >
                         x
                     </button>
@@ -1073,7 +1073,7 @@
                 <div class="mt-4 space-y-4">
                     <flux:input
                         wire:model.live="editingQuantity"
-                        :label="__('Quantity')"
+                        :label="__('guest.cart.quantity')"
                         type="number"
                         min="1"
                         max="99"
@@ -1088,8 +1088,8 @@
                             <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup['name'] }}</legend>
 
                             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                <span>{{ $modifierGroup['is_required'] ? __('Required') : __('Optional') }}</span>
-                                <span>{{ __('Choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
+                                <span>{{ $modifierGroup['is_required'] ? __('guest.cart.required') : __('guest.cart.optional') }}</span>
+                                <span>{{ __('guest.cart.can_choose') }} {{ $modifierGroup['min_select'] }}-{{ $modifierGroup['max_select'] }}</span>
                             </div>
 
                             <div class="mt-3 grid gap-2">
@@ -1124,7 +1124,7 @@
                     @endforelse
 
                     <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Comment') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.comment') }}</span>
                         <textarea
                             wire:model="editingComment"
                             rows="3"
@@ -1148,8 +1148,8 @@
                         wire:loading.attr="disabled"
                         wire:target="updateDraftItem"
                     >
-                        <span wire:loading.remove wire:target="updateDraftItem">{{ __('Save') }} · {{ $editingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}</span>
-                        <span wire:loading wire:target="updateDraftItem">{{ __('Saving') }}</span>
+                        <span wire:loading.remove wire:target="updateDraftItem">{{ __('ui.actions.save') }} · {{ $editingItemTotal }} {{ data_get($table, 'branch.currency', 'EUR') }}</span>
+                        <span wire:loading wire:target="updateDraftItem">{{ __('guest.table.saving') }}</span>
                     </flux:button>
 
                     <flux:button
@@ -1161,7 +1161,7 @@
                         wire:loading.attr="disabled"
                         wire:target="deleteDraftItem({{ $editingItemId }})"
                     >
-                        {{ __('Delete position') }}
+                        {{ __('ui.waiter.table_detail.delete_position') }}
                     </flux:button>
                 </div>
             </div>

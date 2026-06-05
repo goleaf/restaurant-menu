@@ -1,22 +1,22 @@
 <section data-page="organizations" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Administration') }}</p>
-        <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Organizations') }}</h1>
+        <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.index.administration') }}</p>
+        <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('navigation.organizations') }}</h1>
     </header>
 
     <form wire:submit="create" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-            <flux:input wire:model="name" :label="__('Organization name')" type="text" required maxlength="120" autocomplete="organization" />
+            <flux:input wire:model="name" :label="__('ui.organizations.index.organization_name')" type="text" required maxlength="120" autocomplete="organization" />
 
             <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
-                {{ __('Create') }}
+                {{ __('ui.organizations.brands.branches.menu.index.create') }}
             </flux:button>
         </div>
     </form>
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('My organizations') }}</flux:heading>
+            <flux:heading size="lg">{{ __('ui.organizations.index.my_organizations') }}</flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -24,14 +24,14 @@
                 <div wire:key="organization-{{ $organization->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingOrganizationId === $organization->id)
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-[1fr_auto_auto] md:items-end">
-                            <flux:input wire:model="editingName" :label="__('Organization name')" type="text" required maxlength="120" />
+                            <flux:input wire:model="editingName" :label="__('ui.organizations.index.organization_name')" type="text" required maxlength="120" />
 
                             <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
-                                {{ __('Save') }}
+                                {{ __('ui.actions.save') }}
                             </flux:button>
 
                             <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
-                                {{ __('Cancel') }}
+                                {{ __('ui.actions.cancel') }}
                             </flux:button>
                         </form>
                     @else
@@ -52,14 +52,14 @@
                                         <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $organization->name }}</h2>
 
                                         @if ($organization->owner_user_id === $currentUserId)
-                                            <flux:badge color="green">{{ __('Owner') }}</flux:badge>
+                                            <flux:badge color="green">{{ __('staff.roles.owner') }}</flux:badge>
                                         @else
-                                            <flux:badge>{{ __('Member') }}</flux:badge>
+                                            <flux:badge>{{ __('ui.organizations.index.member') }}</flux:badge>
                                         @endif
                                     </div>
 
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ __('Created') }} {{ $organization->created_at->format('d.m.Y') }}
+                                        {{ __('qr.labels.created') }} {{ $organization->created_at->format('d.m.Y') }}
                                     </p>
                                 </div>
                             </div>
@@ -92,17 +92,17 @@
                         @if ($organization->owner_user_id === $currentUserId)
                             <div class="flex flex-wrap gap-2 md:justify-end">
                                 <flux:button icon="building-storefront" type="button" :href="route('organizations.brands.index', $organization)" wire:navigate>
-                                    {{ __('Brands') }}
+                                    {{ __('navigation.brands') }}
                                 </flux:button>
 
                                 @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
                                     <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
-                                        {{ __('Staff') }}
+                                        {{ __('navigation.staff') }}
                                     </flux:button>
                                 @endif
 
                                 <flux:button icon="pencil" type="button" wire:click="startEditing({{ $organization->id }})">
-                                    {{ __('Edit') }}
+                                    {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
                                 <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $organization->id }})">
@@ -112,12 +112,12 @@
                         @else
                             <div class="flex flex-wrap gap-2 md:justify-end">
                                 <flux:button icon="building-storefront" type="button" :href="route('organizations.brands.index', $organization)" wire:navigate>
-                                    {{ __('Brands') }}
+                                    {{ __('navigation.brands') }}
                                 </flux:button>
 
                                 @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
                                     <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
-                                        {{ __('Staff') }}
+                                        {{ __('navigation.staff') }}
                                     </flux:button>
                                 @endif
                             </div>

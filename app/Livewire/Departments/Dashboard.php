@@ -104,7 +104,7 @@ abstract class Dashboard extends Component
         $statusEnum = KitchenTicketItemStatus::tryFrom($status);
 
         if (! $statusEnum instanceof KitchenTicketItemStatus) {
-            $this->addError('ticket_item_status', __('Неизвестный статус позиции.'));
+            $this->addError('ticket_item_status', __('ui.livewire.departments.dashboard.neizvestnyi_status_pozicii'));
 
             return;
         }
@@ -123,7 +123,7 @@ abstract class Dashboard extends Component
                 roleCodes: $this->roleCodes(),
                 permissionCodes: $this->permissionCodes(),
             );
-            $this->feedbackMessage = __('Status updated.');
+            $this->feedbackMessage = __('ui.livewire.departments.dashboard.status_updated');
             $this->resetErrorBag('ticket_item_status');
             $this->refreshDepartment();
         } catch (ValidationException $exception) {

@@ -186,19 +186,19 @@ class SendDraftOrderToWaiterAction
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'send_draft' => __('Только активный гость за этим столом может отправить заказ официанту.'),
+                'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.tolko_aktivnyi_gost_za'),
             ]);
         }
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
             throw ValidationException::withMessages([
-                'send_draft' => __('Этот черновик уже отправлен официанту.'),
+                'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.etot_cernovik_uze_otpra'),
             ]);
         }
 
         if ((int) $draftOrder->items_count < 1) {
             throw ValidationException::withMessages([
-                'send_draft' => __('Добавьте хотя бы одну позицию перед отправкой официанту.'),
+                'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.dobavte_xotia_by_odnu_p'),
             ]);
         }
 
@@ -254,7 +254,7 @@ class SendDraftOrderToWaiterAction
 
             if (! $menu instanceof Menu) {
                 throw ValidationException::withMessages([
-                    'send_draft' => __('Позиция :name сейчас недоступна.', ['name' => $item->item_name]),
+                    'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.poziciia_seicas_nedostu', ['name' => $item->item_name]),
                 ]);
             }
 
@@ -262,7 +262,7 @@ class SendDraftOrderToWaiterAction
 
             if (! $availability['is_available']) {
                 throw ValidationException::withMessages([
-                    'send_draft' => __(':label. :detail', [
+                    'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
                         'label' => $availability['label'],
                         'detail' => $availability['detail'],
                     ]),
@@ -295,7 +295,7 @@ class SendDraftOrderToWaiterAction
         }
 
         throw ValidationException::withMessages([
-            'send_draft' => __(':label. :detail', [
+            'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
                 'label' => $openingStatus['label'],
                 'detail' => $openingStatus['detail'],
             ]),

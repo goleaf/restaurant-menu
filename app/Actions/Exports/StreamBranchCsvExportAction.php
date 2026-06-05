@@ -343,19 +343,19 @@ class StreamBranchCsvExportAction
     private function enumLabel(mixed $value): string
     {
         if ($value instanceof OrderStatus) {
-            return __('reports.statuses.orders.'.$value->value);
+            return __(sprintf('reports.statuses.orders.%s', $value->value));
         }
 
         if ($value instanceof MenuStatus) {
-            return __('reports.statuses.menu.'.$value->value);
+            return __(sprintf('reports.statuses.menu.%s', $value->value));
         }
 
         if ($value instanceof ServicePointStatus) {
-            return __('reports.statuses.service_points.'.$value->value);
+            return __(sprintf('reports.statuses.service_points.%s', $value->value));
         }
 
         if ($value instanceof ServicePointType) {
-            return __('reports.service_point_types.'.$value->value);
+            return __(sprintf('reports.service_point_types.%s', $value->value));
         }
 
         if ($value instanceof ManualPaymentMethod || $value instanceof ManualPaymentScope) {

@@ -159,19 +159,19 @@ class SendOrderToKitchenBarAction
 
         if (! $branchIds->contains((int) $order->branch_id)) {
             throw ValidationException::withMessages([
-                'order_dispatch' => __('У вас нет права отправлять заказ на кухню или бар в этом филиале.'),
+                'order_dispatch' => __('ui.actions.orders.sendordertokitchenbaraction.u_vas_net_prava_otpravliat_za'),
             ]);
         }
 
         if (! in_array($order->status, [OrderStatus::ConfirmedByWaiter, OrderStatus::SentToKitchenBar], true)) {
             throw ValidationException::withMessages([
-                'order_dispatch' => __('На кухню или бар можно отправить только заказ, подтверждённый официантом.'),
+                'order_dispatch' => __('ui.actions.orders.sendordertokitchenbaraction.na_kuxniu_ili_bar_mozno_otpra'),
             ]);
         }
 
         if ($order->items->isEmpty()) {
             throw ValidationException::withMessages([
-                'order_dispatch' => __('Нельзя отправить пустой заказ на кухню или бар.'),
+                'order_dispatch' => __('ui.actions.orders.sendordertokitchenbaraction.nelzia_otpravit_pustoi_zakaz'),
             ]);
         }
     }

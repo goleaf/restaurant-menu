@@ -135,7 +135,7 @@ class Dashboard extends Component
 
         try {
             $openTableSession->handle($servicePoint, $user);
-            $this->tableActionMessage = __('Стол открыт.');
+            $this->tableActionMessage = __('ui.livewire.waiter.dashboard.stol_otkryt');
         } catch (ValidationException $exception) {
             $this->tableActionMessage = $this->firstValidationMessage($exception);
         }
@@ -152,7 +152,7 @@ class Dashboard extends Component
 
         try {
             $markHandled->handle($waiterCall, $this->currentUser());
-            $this->waiterCallMessage = __('Вызов официанта отмечен как обработанный.');
+            $this->waiterCallMessage = __('ui.livewire.waiter.dashboard.vyzov_oficianta_otmecen_kak_obrabotannyi');
         } catch (ValidationException $exception) {
             $this->waiterCallMessage = $this->firstValidationMessage($exception);
         }
@@ -182,7 +182,7 @@ class Dashboard extends Component
             ->firstOrFail();
 
         $updateBranchTemporaryClosure->handle($branch, false);
-        $this->tableActionMessage = __('Ресторан снова открыт для заказов.');
+        $this->tableActionMessage = __('ui.livewire.waiter.dashboard.restoran_snova_otkryt_dlia_zakazov');
 
         $this->refreshDashboard();
     }
@@ -207,7 +207,7 @@ class Dashboard extends Component
     {
         $messages = collect($exception->errors())->flatten();
 
-        return (string) ($messages->first() ?? __('Не удалось обработать вызов официанта.'));
+        return (string) ($messages->first() ?? __('ui.livewire.waiter.dashboard.ne_udalos_obrabotat_vyzov_oficianta'));
     }
 
     private function normalizedZoneScope(): string

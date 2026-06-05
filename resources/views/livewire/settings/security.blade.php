@@ -1,13 +1,13 @@
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <flux:heading class="sr-only">{{ __('Security settings') }}</flux:heading>
+    <flux:heading class="sr-only">{{ __('ui.settings.security.security_settings') }}</flux:heading>
 
-    <x-settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
+    <x-settings.layout :heading="__('ui.settings.security.update_password')" :subheading="__('ui.settings.security.ensure_your_account_is_using_a_long_random_password_to')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
             <flux:input
                 wire:model="current_password"
-                :label="__('Current password')"
+                :label="__('ui.settings.security.current_password')"
                 type="password"
                 required
                 autocomplete="current-password"
@@ -15,7 +15,7 @@
             />
             <flux:input
                 wire:model="password"
-                :label="__('New password')"
+                :label="__('ui.settings.security.new_password')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -24,7 +24,7 @@
             />
             <flux:input
                 wire:model="password_confirmation"
-                :label="__('Confirm password')"
+                :label="__('ui.auth.confirm_password.confirm_password')"
                 type="password"
                 required
                 autocomplete="new-password"
@@ -33,20 +33,20 @@
             />
 
             <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">{{ __('Save') }}</flux:button>
+                <flux:button variant="primary" type="submit" data-test="update-password-button">{{ __('ui.actions.save') }}</flux:button>
             </div>
         </form>
 
         @if ($canManageTwoFactor)
             <section class="mt-12">
-                <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your two-factor authentication settings') }}</flux:subheading>
+                <flux:heading>{{ __('ui.auth.two_factor_challenge.two_factor_authentication') }}</flux:heading>
+                <flux:subheading>{{ __('ui.settings.security.manage_your_two_factor_authentication_settings') }}</flux:subheading>
 
                 <div class="flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     @if ($twoFactorEnabled)
                         <div class="space-y-4">
                             <flux:text>
-                                {{ __('You will be prompted for a secure, random pin during login, which you can retrieve from the TOTP-supported application on your phone.') }}
+                                {{ __('ui.settings.security.you_will_be_prompted_for_a_secure_random_pin_during_lo') }}
                             </flux:text>
 
                             <div class="flex justify-start">
@@ -54,7 +54,7 @@
                                     variant="danger"
                                     wire:click="disable"
                                 >
-                                    {{ __('Disable 2FA') }}
+                                    {{ __('ui.settings.security.disable_2fa') }}
                                 </flux:button>
                             </div>
 
@@ -63,14 +63,14 @@
                     @else
                         <div class="space-y-4">
                             <flux:text variant="subtle">
-                                {{ __('When you enable two-factor authentication, you will be prompted for a secure pin during login. This pin can be retrieved from a TOTP-supported application on your phone.') }}
+                                {{ __('ui.settings.security.when_you_enable_two_factor_authentication_you_will_be') }}
                             </flux:text>
 
                             <flux:button
                                 variant="primary"
                                 wire:click="enable"
                             >
-                                {{ __('Enable 2FA') }}
+                                {{ __('ui.settings.security.enable_2fa') }}
                             </flux:button>
                         </div>
                     @endif
@@ -134,7 +134,7 @@
                                     class="flex-1"
                                     wire:click="resetVerification"
                                 >
-                                    {{ __('Back') }}
+                                    {{ __('ui.departments.ticket_print.back') }}
                                 </flux:button>
 
                                 <flux:button
@@ -143,7 +143,7 @@
                                     wire:click="confirmTwoFactor"
                                     x-bind:disabled="$wire.code.length < 6"
                                 >
-                                    {{ __('Confirm') }}
+                                    {{ __('ui.actions.confirm') }}
                                 </flux:button>
                             </div>
                         </div>
@@ -186,7 +186,7 @@
                             <div class="relative flex items-center justify-center w-full">
                                 <div class="absolute inset-0 w-full h-px top-1/2 bg-stone-200 dark:bg-stone-600"></div>
                                 <span class="relative px-2 text-sm bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400">
-                                    {{ __('or, enter the code manually') }}
+                                    {{ __('ui.settings.security.or_enter_the_code_manually') }}
                                 </span>
                             </div>
 
@@ -240,8 +240,8 @@
 
         @if ($canManagePasskeys)
             <section class="mt-12">
-                <flux:heading>{{ __('Passkeys') }}</flux:heading>
-                <flux:subheading>{{ __('Manage your passkeys for passwordless sign-in') }}</flux:subheading>
+                <flux:heading>{{ __('ui.settings.security.passkeys') }}</flux:heading>
+                <flux:subheading>{{ __('ui.settings.security.manage_your_passkeys_for_passwordless_sign_in') }}</flux:subheading>
 
                 <div class="mt-6 flex flex-col w-full mx-auto space-y-6 text-sm" wire:cloak>
                     <div class="border rounded-lg border-zinc-200 dark:border-zinc-700 overflow-hidden">
@@ -259,10 +259,10 @@
                                             @endif
                                         </div>
                                         <p class="text-zinc-500 dark:text-zinc-400 text-xs">
-                                            {{ __('Added :time', ['time' => $passkey['created_at_diff']]) }}
+                                            {{ __('ui.settings.security.added', ['time' => $passkey['created_at_diff']]) }}
                                             @if ($passkey['last_used_at_diff'])
                                                 <span class="opacity-50 mx-1">/</span>
-                                                {{ __('Last used :time', ['time' => $passkey['last_used_at_diff']]) }}
+                                                {{ __('ui.settings.security.last_used', ['time' => $passkey['last_used_at_diff']]) }}
                                             @endif
                                         </p>
                                     </div>
@@ -283,7 +283,7 @@
                                     <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
                                 </div>
                                 <p class="font-medium">{{ __('ui.empty.no_passkeys') }}</p>
-                                <flux:text class="mt-1">{{ __('Add a passkey to sign in without a password') }}</flux:text>
+                                <flux:text class="mt-1">{{ __('ui.settings.security.add_a_passkey_to_sign_in_without_a_password') }}</flux:text>
                             </div>
                         @endforelse
                     </div>

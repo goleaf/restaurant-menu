@@ -70,7 +70,7 @@ class Index extends Component
         $this->reset('name');
         unset($this->brands);
 
-        Flux::toast(variant: 'success', text: __('Brand created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_created'));
     }
 
     public function startEditing(int $brandId): void
@@ -110,7 +110,7 @@ class Index extends Component
         $this->cancelEditing();
         unset($this->brands);
 
-        Flux::toast(variant: 'success', text: __('Brand updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_updated'));
     }
 
     public function confirmDelete(int $brandId): void
@@ -141,7 +141,7 @@ class Index extends Component
         $this->cancelDelete();
         unset($this->brands);
 
-        Flux::toast(variant: 'success', text: __('Brand deleted.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_deleted'));
     }
 
     public function saveLogo(int $brandId, StoreLocalImageAction $storeLocalImage): void

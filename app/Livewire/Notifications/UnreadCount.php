@@ -103,18 +103,18 @@ class UnreadCount extends Component
             'title' => $this->titleForType($notification->type),
             'body' => match ($notification->type) {
                 'draft_order_sent_to_waiter' => $guestName !== ''
-                    ? __(':name отправил заказ официанту.', ['name' => $guestName])
-                    : (string) data_get($data, 'message', __('Новый заказ отправлен официанту.')),
+                    ? __('ui.livewire.notifications.unreadcount.otpravil_zakaz_oficiantu', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.novyi_zakaz_otpravlen_oficiantu')),
                 'waiter_called' => $guestName !== ''
-                    ? __(':name зовёт официанта.', ['name' => $guestName])
-                    : (string) data_get($data, 'message', __('Гость зовёт официанта.')),
+                    ? __('ui.livewire.notifications.unreadcount.zovet_oficianta', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.gost_zovet_oficianta')),
                 'bill_requested' => $guestName !== ''
-                    ? __(':name попросил счёт.', ['name' => $guestName])
-                    : (string) data_get($data, 'message', __('Гость попросил счёт.')),
+                    ? __('ui.livewire.notifications.unreadcount.poprosil_scet', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.gost_poprosil_scet')),
                 'kitchen_item_ready' => $itemName !== ''
-                    ? __(':item готово.', ['item' => $itemName])
-                    : (string) data_get($data, 'message', __('Позиция готова.')),
-                default => (string) data_get($data, 'message', __('Новое уведомление.')),
+                    ? __('ui.livewire.notifications.unreadcount.gotovo', ['item' => $itemName])
+                    : (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.poziciia_gotova')),
+                default => (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.novoe_uvedomlenie')),
             },
             'meta' => $this->staffMetaForData($data, $itemsCount),
             'tone' => $this->toneForType($notification->type),
@@ -125,11 +125,11 @@ class UnreadCount extends Component
     private function titleForType(string $type): string
     {
         return match ($type) {
-            'draft_order_sent_to_waiter' => __('Новый заказ'),
-            'waiter_called' => __('Вызов официанта'),
-            'bill_requested' => __('Просьба счёта'),
-            'kitchen_item_ready' => __('Позиция готова'),
-            default => __('Уведомление'),
+            'draft_order_sent_to_waiter' => __('ui.livewire.notifications.unreadcount.novyi_zakaz'),
+            'waiter_called' => __('ui.livewire.notifications.unreadcount.vyzov_oficianta'),
+            'bill_requested' => __('ui.livewire.notifications.unreadcount.prosba_sceta'),
+            'kitchen_item_ready' => __('ui.livewire.notifications.unreadcount.poziciia_gotova_d55866f3'),
+            default => __('ui.livewire.notifications.unreadcount.uvedomlenie'),
         };
     }
 
@@ -153,7 +153,7 @@ class UnreadCount extends Component
             data_get($data, 'branch_name'),
             data_get($data, 'service_point_name'),
             data_get($data, 'area_name'),
-            $itemsCount > 0 ? __(':count поз.', ['count' => $itemsCount]) : null,
+            $itemsCount > 0 ? __('ui.livewire.notifications.unreadcount.poz', ['count' => $itemsCount]) : null,
         ], fn (mixed $value): bool => is_string($value) && $value !== '');
 
         return implode(' · ', $parts);

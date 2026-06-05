@@ -210,7 +210,7 @@ class Index extends Component
         $this->resetCreateForm();
         $this->forgetServicePointDisplays();
 
-        Flux::toast(variant: 'success', text: __('Service point added.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service_point'));
     }
 
     public function previewBulkCreate(BulkCreateServicePointsAction $bulkCreateServicePoints): void
@@ -243,7 +243,7 @@ class Index extends Component
         $this->authorizeServicePointManagement();
 
         if (! $this->bulkPreviewReady) {
-            $this->addError('bulkPrefix', __('Preview the list before creating service points.'));
+            $this->addError('bulkPrefix', __('ui.livewire.organizations.brands.branches.servicepoints.index.preview_the_l'));
 
             return;
         }
@@ -272,7 +272,7 @@ class Index extends Component
 
         $this->forgetServicePointDisplays();
 
-        Flux::toast(variant: 'success', text: __('Service points created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__a2ac3691'));
     }
 
     public function updated(string $property): void
@@ -388,7 +388,7 @@ class Index extends Component
         $this->cancelEditing();
         $this->forgetServicePointDisplays();
 
-        Flux::toast(variant: 'success', text: __('Service point updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__c89ead5d'));
     }
 
     public function disable(int $servicePointId): void
@@ -409,7 +409,7 @@ class Index extends Component
         $status = ServicePointStatus::tryFrom($this->statusSelections[$servicePoint->id] ?? '');
 
         if (! $status instanceof ServicePointStatus) {
-            $this->addError('statusSelections.'.$servicePoint->id, __('The selected status is not available.'));
+            $this->addError('statusSelections.'.$servicePoint->id, __('ui.livewire.organizations.brands.branches.servicepoints.index.the_selected'));
 
             return;
         }
@@ -419,7 +419,7 @@ class Index extends Component
         $this->statusSelections[$servicePoint->id] = $status->value;
         $this->forgetServicePointDisplays();
 
-        Flux::toast(variant: 'success', text: __('Service point status updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__c86ce720'));
     }
 
     public function openTable(int $servicePointId, OpenTableSessionForServicePointAction $openTableSession): void
@@ -433,7 +433,7 @@ class Index extends Component
         $this->statusSelections[$servicePoint->id] = ServicePointStatus::Occupied->value;
         $this->forgetServicePointDisplays();
 
-        Flux::toast(variant: 'success', text: __('Table opened.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.table_opened'));
     }
 
     public function generateQr(int $servicePointId, GenerateQrCodeForServicePointAction $generateQrCode): void
@@ -592,7 +592,7 @@ class Index extends Component
         if ($servicePointsWithoutArea->isNotEmpty()) {
             $sections[] = [
                 'area_id' => null,
-                'name' => __('Без зоны'),
+                'name' => __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony'),
                 'type' => null,
                 'type_label' => null,
                 'icon' => 'bookmark',
@@ -642,7 +642,7 @@ class Index extends Component
     public function areaOptions(): array
     {
         return array_merge(
-            [['value' => '', 'label' => __('No zone')]],
+            [['value' => '', 'label' => __('qr.filters.no_zone')]],
             $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
         );
     }
@@ -655,8 +655,8 @@ class Index extends Component
     {
         return array_merge(
             [
-                ['value' => 'all', 'label' => __('All zones')],
-                ['value' => 'none', 'label' => __('No zone')],
+                ['value' => 'all', 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones')],
+                ['value' => 'none', 'label' => __('qr.filters.no_zone')],
             ],
             $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
         );
@@ -687,9 +687,9 @@ class Index extends Component
     public function activeFilterOptions(): array
     {
         return [
-            'all' => __('All places'),
-            'active' => __('Active only'),
-            'inactive' => __('Inactive only'),
+            'all' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_places'),
+            'active' => __('ui.livewire.organizations.brands.branches.servicepoints.index.active_only'),
+            'inactive' => __('ui.livewire.organizations.brands.branches.servicepoints.index.inactive_only'),
         ];
     }
 
@@ -733,10 +733,10 @@ class Index extends Component
     public function quickCreateOptions(): array
     {
         return [
-            ['type' => ServicePointType::Table->value, 'label' => __('Стол'), 'icon' => 'squares-2x2'],
-            ['type' => ServicePointType::BarSeat->value, 'label' => __('Место у бара'), 'icon' => 'beaker'],
-            ['type' => ServicePointType::Room->value, 'label' => __('Комната'), 'icon' => 'home'],
-            ['type' => ServicePointType::Other->value, 'label' => __('Другое место'), 'icon' => 'bookmark'],
+            ['type' => ServicePointType::Table->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.stol'), 'icon' => 'squares-2x2'],
+            ['type' => ServicePointType::BarSeat->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.mesto_u_bara'), 'icon' => 'beaker'],
+            ['type' => ServicePointType::Room->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.komnata'), 'icon' => 'home'],
+            ['type' => ServicePointType::Other->value, 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.drugoe_mesto'), 'icon' => 'bookmark'],
         ];
     }
 
@@ -861,7 +861,7 @@ class Index extends Component
         }
 
         throw ValidationException::withMessages([
-            'bulkTo' => __('Create up to :count service points at once.', [
+            'bulkTo' => __('ui.livewire.organizations.brands.branches.servicepoints.index.create_up_to', [
                 'count' => BulkCreateServicePointsAction::MAX_RANGE_SIZE,
             ]),
         ]);
@@ -990,15 +990,15 @@ class Index extends Component
     private function iconOptionRows(): array
     {
         return [
-            'squares-2x2' => __('Table'),
-            'beaker' => __('Bar seat'),
-            'sparkles' => __('VIP'),
-            'home' => __('Room'),
-            'bookmark' => __('Other'),
-            'sun' => __('Sunbed'),
-            'building-office-2' => __('Hotel room'),
-            'shopping-bag' => __('Pickup'),
-            'truck' => __('Delivery'),
+            'squares-2x2' => __('qr.labels.table'),
+            'beaker' => __('reports.service_point_types.bar_seat'),
+            'sparkles' => __('ui.livewire.organizations.brands.branches.areas.vip'),
+            'home' => __('reports.service_point_types.room'),
+            'bookmark' => __('permissions.groups.other'),
+            'sun' => __('reports.service_point_types.sunbed'),
+            'building-office-2' => __('reports.service_point_types.hotel_room'),
+            'shopping-bag' => __('ui.livewire.organizations.brands.branches.areas.pickup'),
+            'truck' => __('ui.livewire.organizations.brands.branches.areas.delivery'),
         ];
     }
 
@@ -1021,16 +1021,16 @@ class Index extends Component
     private function defaultNameForType(ServicePointType $type): string
     {
         return match ($type) {
-            ServicePointType::Table => __('New table'),
-            ServicePointType::BarSeat => __('New bar seat'),
-            ServicePointType::VipTable => __('New VIP table'),
-            ServicePointType::Room => __('New room'),
-            ServicePointType::Booth => __('New booth'),
-            ServicePointType::Sunbed => __('New sunbed'),
-            ServicePointType::HotelRoom => __('New hotel room'),
-            ServicePointType::PickupWindow => __('New pickup window'),
-            ServicePointType::DeliveryPoint => __('New delivery point'),
-            ServicePointType::Other => __('New service point'),
+            ServicePointType::Table => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_table'),
+            ServicePointType::BarSeat => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_bar_seat'),
+            ServicePointType::VipTable => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_vip_table'),
+            ServicePointType::Room => __('ui.livewire.organizations.brands.branches.areas.new_room'),
+            ServicePointType::Booth => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_booth'),
+            ServicePointType::Sunbed => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_sunbed'),
+            ServicePointType::HotelRoom => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_hotel_roo'),
+            ServicePointType::PickupWindow => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_pickup_wi'),
+            ServicePointType::DeliveryPoint => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_delivery'),
+            ServicePointType::Other => __('ui.livewire.organizations.brands.branches.servicepoints.index.new_service_p'),
         };
     }
 

@@ -3,28 +3,28 @@
 <div data-layout="audit-log" class="flex h-full w-full flex-1 flex-col gap-5">
     <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant workspace') }}</p>
-            <h1 class="mt-1 text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Audit log') }}</h1>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('layout.restaurant_workspace') }}</p>
+            <h1 class="mt-1 text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('navigation.audit_log') }}</h1>
             <p class="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
-                {{ __('Important staff, menu, QR, payment, session, and order changes.') }}
+                {{ __('ui.audit_logs.index.important_staff_menu_qr_payment_session_and_order_chang') }}
             </p>
         </div>
 
         <div class="flex flex-wrap gap-2">
             <flux:button icon="layout-grid" :href="route('restaurant.dashboard')" wire:navigate>
-                {{ __('Dashboard') }}
+                {{ __('navigation.dashboard') }}
             </flux:button>
             <flux:button icon="arrow-path" wire:click="refreshAuditLog">
-                {{ __('Refresh') }}
+                {{ __('ui.audit_logs.index.refresh') }}
             </flux:button>
         </div>
     </header>
 
     <section class="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex flex-col gap-1">
-            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Recent audit events') }}</h2>
+            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('ui.audit_logs.index.recent_audit_events') }}</h2>
             <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                {{ __('Showing the latest events for accessible branches') }}: {{ $payload['branch_count'] }}
+                {{ __('ui.audit_logs.index.showing_the_latest_events_for_accessible_branches') }}: {{ $payload['branch_count'] }}
             </p>
         </div>
 
@@ -49,19 +49,19 @@
 
                         <dl class="mt-3 grid gap-2 text-sm md:grid-cols-2">
                             <div>
-                                <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Before') }}</dt>
+                                <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('ui.audit_logs.index.before') }}</dt>
                                 <dd class="mt-1 break-words text-zinc-700 dark:text-zinc-200">{{ $log['old_summary'] }}</dd>
                             </div>
                             <div>
-                                <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('After') }}</dt>
+                                <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('ui.audit_logs.index.after') }}</dt>
                                 <dd class="mt-1 break-words text-zinc-700 dark:text-zinc-200">{{ $log['new_summary'] }}</dd>
                             </div>
                         </dl>
                     </div>
 
                     <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                        <p>{{ $log['organization_name'] ?? __('Organization unavailable') }}</p>
-                        <p class="mt-1">{{ $log['branch_name'] ?? __('Organization-level event') }}</p>
+                        <p>{{ $log['organization_name'] ?? __('qr.labels.organization_unavailable') }}</p>
+                        <p class="mt-1">{{ $log['branch_name'] ?? __('ui.audit_logs.index.organization_level_event') }}</p>
                     </div>
                 </article>
             @empty

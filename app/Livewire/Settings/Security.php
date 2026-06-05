@@ -111,7 +111,7 @@ class Security extends Component
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        Flux::toast(variant: 'success', text: __('Password updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.settings.security.password_updated'));
     }
 
     /**
@@ -284,24 +284,24 @@ class Security extends Component
     {
         if ($this->twoFactorEnabled) {
             return [
-                'title' => __('Two-factor authentication enabled'),
-                'description' => __('Two-factor authentication is now enabled. Scan the QR code or enter the setup key in your authenticator app.'),
-                'buttonText' => __('Close'),
+                'title' => __('ui.livewire.settings.security.two_factor_authentication_enabled'),
+                'description' => __('ui.livewire.settings.security.two_factor_authentication_is_now_enabled_scan'),
+                'buttonText' => __('guest.table.close'),
             ];
         }
 
         if ($this->showVerificationStep) {
             return [
-                'title' => __('Verify authentication code'),
-                'description' => __('Enter the 6-digit code from your authenticator app.'),
-                'buttonText' => __('Continue'),
+                'title' => __('ui.livewire.settings.security.verify_authentication_code'),
+                'description' => __('ui.livewire.settings.security.enter_the_6_digit_code_from_your_authenticato'),
+                'buttonText' => __('ui.actions.continue'),
             ];
         }
 
         return [
-            'title' => __('Enable two-factor authentication'),
-            'description' => __('To finish enabling two-factor authentication, scan the QR code or enter the setup key in your authenticator app.'),
-            'buttonText' => __('Continue'),
+            'title' => __('ui.livewire.settings.security.enable_two_factor_authentication'),
+            'description' => __('ui.livewire.settings.security.to_finish_enabling_two_factor_authentication'),
+            'buttonText' => __('ui.actions.continue'),
         ];
     }
 }

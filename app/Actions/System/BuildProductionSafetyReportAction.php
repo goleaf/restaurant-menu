@@ -62,10 +62,10 @@ class BuildProductionSafetyReportAction
     private function environmentLabel(string $environment): string
     {
         return match (strtolower($environment)) {
-            'production' => __('Production'),
-            'local' => __('Local'),
-            'staging' => __('Staging'),
-            'testing' => __('Testing'),
+            'production' => __('ui.actions.system.buildproductionsafetyreportaction.production'),
+            'local' => __('ui.actions.system.buildproductionsafetyreportaction.local'),
+            'staging' => __('ui.actions.system.buildproductionsafetyreportaction.staging'),
+            'testing' => __('ui.actions.system.buildproductionsafetyreportaction.testing'),
             default => Str::of($environment)
                 ->replace(['_', '-'], ' ')
                 ->headline()

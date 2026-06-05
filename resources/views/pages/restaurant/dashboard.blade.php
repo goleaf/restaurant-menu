@@ -101,7 +101,7 @@ new class extends Component
                         {{ __('reports.cached_at') }} {{ $dashboard['cached_at'] }}
                     </p>
                     <flux:button icon="arrow-path" size="sm" wire:click="refreshDashboard">
-                        {{ __('Refresh') }}
+                        {{ __('ui.audit_logs.index.refresh') }}
                     </flux:button>
                 </div>
             </div>
@@ -172,11 +172,11 @@ new class extends Component
 
                                 @if ($action['is_available'] && $action['href'] !== null)
                                     <flux:button :icon="$action['icon']" size="sm" :href="$action['href']" wire:navigate>
-                                        {{ __('Open') }}
+                                        {{ __('ui.actions.open') }}
                                     </flux:button>
                                 @else
                                     <button type="button" disabled class="inline-flex h-8 items-center rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
-                                        {{ __('No access') }}
+                                        {{ __('ui.pages.restaurant.dashboard.no_access') }}
                                     </button>
                                 @endif
                             </div>
@@ -190,15 +190,15 @@ new class extends Component
             @foreach (['Setup', 'Guest flow', 'Waiter workflow'] as $label)
                 <div wire:key="restaurant-dashboard-{{ $label }}" class="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
                     <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __($label) }}</p>
-                    <p class="mt-3 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('Available step by step') }}</p>
+                    <p class="mt-3 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('ui.pages.restaurant.dashboard.available_step_by_step') }}</p>
                 </div>
             @endforeach
         </section>
 
         <section class="min-h-64 rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
-            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Current implementation area') }}</h2>
+            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('ui.pages.restaurant.dashboard.current_implementation_area') }}</h2>
             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                {{ __('Restaurant dashboard access appears when the user has branch-level operational or reporting access.') }}
+                {{ __('ui.pages.restaurant.dashboard.restaurant_dashboard_access_appears_when_the') }}
             </p>
         </section>
     @endif

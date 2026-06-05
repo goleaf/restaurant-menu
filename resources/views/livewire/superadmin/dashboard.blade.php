@@ -1,9 +1,9 @@
 <section data-layout="platform-dashboard" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-2">
-        <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Platform workspace') }}</p>
-        <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Platform dashboard') }}</h1>
+        <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.superadmin.dashboard.platform_workspace') }}</p>
+        <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('ui.superadmin.dashboard.platform_dashboard') }}</h1>
         <p class="max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
-            {{ __('SaaS-level overview for organizations, brands, branches, and users.') }}
+            {{ __('ui.superadmin.dashboard.saas_level_overview_for_organizations_brands_branch') }}
         </p>
     </header>
 
@@ -29,14 +29,14 @@
     <section class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-                <flux:heading size="lg">{{ __('System health') }}</flux:heading>
+                <flux:heading size="lg">{{ __('navigation.system_health') }}</flux:heading>
                 <p class="mt-2 max-w-3xl text-sm text-zinc-600 dark:text-zinc-300">
-                    {{ __('Production safety checks show only safe labels and warnings.') }}
+                    {{ __('ui.superadmin.dashboard.production_safety_checks_show_only_safe_labels_and') }}
                 </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Environment') }}</span>
+                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.superadmin.dashboard.environment') }}</span>
                 <flux:badge :color="$productionSafetyReport['is_production'] ? 'amber' : 'zinc'">
                     {{ $productionSafetyReport['environment_label'] }}
                 </flux:badge>
@@ -59,9 +59,9 @@
     <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/30">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <flux:heading size="lg">{{ __('Local backups') }}</flux:heading>
+                <flux:heading size="lg">{{ __('ui.superadmin.dashboard.local_backups') }}</flux:heading>
                 <p class="mt-2 max-w-3xl text-sm text-amber-900 dark:text-amber-100">
-                    {{ __('SQLite backup contains sensitive data: users, staff access, guest sessions, orders, payments, tokens, and audit records. Store downloaded files outside git and share them carefully.') }}
+                    {{ __('ui.superadmin.dashboard.sqlite_backup_contains_sensitive_data_users_staff_a') }}
                 </p>
             </div>
 
@@ -80,13 +80,13 @@
                 >
                     <x-slot:trigger>
                         <flux:button icon="arrow-down-tray" variant="primary" type="button">
-                            {{ __('Download SQLite') }}
+                            {{ __('ui.superadmin.dashboard.download_sqlite') }}
                         </flux:button>
                     </x-slot:trigger>
                 </x-dangerous-action-confirmation>
 
                 <flux:button icon="archive-box" disabled>
-                    {{ __('Media ZIP later') }}
+                    {{ __('ui.superadmin.dashboard.media_zip_later') }}
                 </flux:button>
             </div>
         </div>
@@ -95,9 +95,9 @@
     <section class="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-800/70 dark:bg-sky-950/30">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <flux:heading size="lg">{{ __('Session cleanup') }}</flux:heading>
+                <flux:heading size="lg">{{ __('ui.superadmin.dashboard.session_cleanup') }}</flux:heading>
                 <p class="mt-2 max-w-3xl text-sm text-sky-900 dark:text-sky-100">
-                    {{ __('Scheduler can run this cleanup through cron. If cron is unavailable on shared hosting, superadmin can run it manually here.') }}
+                    {{ __('ui.superadmin.dashboard.scheduler_can_run_this_cleanup_through_cron_if_cron') }}
                 </p>
 
                 @if ($cleanupMessage)
@@ -114,8 +114,8 @@
                 wire:loading.attr="disabled"
                 wire:target="runSessionInactivityCleanup"
             >
-                <span wire:loading.remove wire:target="runSessionInactivityCleanup">{{ __('Run cleanup now') }}</span>
-                <span wire:loading wire:target="runSessionInactivityCleanup">{{ __('Running') }}</span>
+                <span wire:loading.remove wire:target="runSessionInactivityCleanup">{{ __('ui.organizations.brands.branches.settings.run_cleanup_now') }}</span>
+                <span wire:loading wire:target="runSessionInactivityCleanup">{{ __('ui.organizations.brands.branches.settings.running') }}</span>
             </flux:button>
         </div>
     </section>
@@ -123,7 +123,7 @@
     <section class="grid gap-6 xl:grid-cols-2">
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <flux:heading size="lg">{{ __('Organizations') }}</flux:heading>
+                <flux:heading size="lg">{{ __('navigation.organizations') }}</flux:heading>
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -144,50 +144,50 @@
                                             {{ __($subscription->status->label()) }}
                                         </flux:badge>
                                     @else
-                                        <flux:badge color="amber">{{ __('Subscription not initialized') }}</flux:badge>
+                                        <flux:badge color="amber">{{ __('ui.superadmin.dashboard.subscription_not_initialized') }}</flux:badge>
                                     @endif
 
                                     @if ($subscriptionIsActive)
-                                        <flux:badge color="green">{{ __('Activity active') }}</flux:badge>
+                                        <flux:badge color="green">{{ __('ui.superadmin.dashboard.activity_active') }}</flux:badge>
                                     @else
-                                        <flux:badge color="zinc">{{ __('Activity suspended') }}</flux:badge>
+                                        <flux:badge color="zinc">{{ __('ui.superadmin.dashboard.activity_suspended') }}</flux:badge>
                                     @endif
                                 </div>
 
-                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $organization->owner?->email ?? __('No owner') }}</p>
+                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $organization->owner?->email ?? __('ui.superadmin.dashboard.no_owner') }}</p>
 
                                 <div class="mt-2 grid gap-2 text-xs text-zinc-500 dark:text-zinc-400 sm:grid-cols-2 xl:grid-cols-4">
                                     <span>
-                                        {{ __('Started') }}:
-                                        {{ $subscription?->started_at?->format('Y-m-d') ?? __('Not set') }}
+                                        {{ __('ui.superadmin.dashboard.started') }}:
+                                        {{ $subscription?->started_at?->format('Y-m-d') ?? __('qr.labels.not_set') }}
                                     </span>
                                     <span>
-                                        {{ __('Next payment') }}:
-                                        {{ $subscription?->next_payment_at?->format('Y-m-d') ?? __('Not set') }}
+                                        {{ __('ui.superadmin.dashboard.next_payment') }}:
+                                        {{ $subscription?->next_payment_at?->format('Y-m-d') ?? __('qr.labels.not_set') }}
                                     </span>
                                     <span>
-                                        {{ __('Payment') }}:
+                                        {{ __('ui.superadmin.dashboard.payment') }}:
                                         @if ($subscription)
                                             <span class="font-medium">{{ __($subscription->payment_status->label()) }}</span>
                                         @else
-                                            <span class="font-medium">{{ __('Pending') }}</span>
+                                            <span class="font-medium">{{ __('staff.invitation_statuses.pending') }}</span>
                                         @endif
                                     </span>
                                     <span>
-                                        {{ __('Branches') }}:
+                                        {{ __('navigation.branches') }}:
                                         <span class="font-medium">{{ $organization->branches_count }}</span>
-                                        <span class="text-zinc-400 dark:text-zinc-500">({{ __('active') }} {{ $organization->active_branches_count }})</span>
+                                        <span class="text-zinc-400 dark:text-zinc-500">({{ __('ui.superadmin.dashboard.active') }} {{ $organization->active_branches_count }})</span>
                                     </span>
                                     <span>
-                                        {{ __('Service points') }}:
+                                        {{ __('navigation.service_points') }}:
                                         <span class="font-medium">{{ $organization->service_points_count }}</span>
                                     </span>
                                     <span>
-                                        {{ __('Orders') }}:
+                                        {{ __('navigation.orders') }}:
                                         <span class="font-medium">{{ $organization->orders_count }}</span>
                                     </span>
                                     <span>
-                                        {{ __('Brands') }}:
+                                        {{ __('navigation.brands') }}:
                                         <span class="font-medium">{{ $organization->brands_count }}</span>
                                     </span>
                                 </div>
@@ -201,7 +201,7 @@
                                     :href="route('organizations.brands.index', $organization)"
                                     wire:navigate
                                 >
-                                    {{ __('Open details') }}
+                                    {{ __('ui.superadmin.dashboard.open_details') }}
                                 </flux:button>
 
                                 <flux:button
@@ -211,7 +211,7 @@
                                     :href="route('restaurant.audit-log.index', ['organization' => $organization->id])"
                                     wire:navigate
                                 >
-                                    {{ __('Audit log') }}
+                                    {{ __('navigation.audit_log') }}
                                 </flux:button>
 
                                 @if ($subscriptionIsActive)
@@ -248,7 +248,7 @@
                                         wire:loading.attr="disabled"
                                         wire:target="activateOrganization({{ $organization->id }})"
                                     >
-                                        {{ __('Activate') }}
+                                        {{ __('ui.superadmin.dashboard.activate') }}
                                     </flux:button>
                                 @endif
                             </div>
@@ -268,14 +268,14 @@
 
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <flux:heading size="lg">{{ __('Brands') }}</flux:heading>
+                <flux:heading size="lg">{{ __('navigation.brands') }}</flux:heading>
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
                 @forelse ($this->brands as $brand)
                     <div wire:key="platform-brand-{{ $brand->id }}" class="px-4 py-3">
                         <p class="font-medium text-zinc-950 dark:text-white">{{ $brand->name }}</p>
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $brand->organization?->name ?? __('No organization') }}</p>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $brand->organization?->name ?? __('ui.superadmin.dashboard.no_organization') }}</p>
                     </div>
                 @empty
                     <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.empty.no_brands') }}</div>
@@ -291,7 +291,7 @@
 
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <flux:heading size="lg">{{ __('Branches') }}</flux:heading>
+                <flux:heading size="lg">{{ __('navigation.branches') }}</flux:heading>
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -301,14 +301,14 @@
                             <p class="font-medium text-zinc-950 dark:text-white">{{ $branch->name }}</p>
 
                             @if ($branch->is_active)
-                                <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                             @else
-                                <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                <flux:badge color="zinc">{{ __('staff.statuses.suspended') }}</flux:badge>
                             @endif
                         </div>
 
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            {{ $branch->organization?->name ?? __('No organization') }} / {{ $branch->brand?->name ?? __('No brand') }}
+                            {{ $branch->organization?->name ?? __('ui.superadmin.dashboard.no_organization') }} / {{ $branch->brand?->name ?? __('ui.superadmin.dashboard.no_brand') }}
                         </p>
 
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $branch->city }}, {{ $branch->country }}</p>
@@ -327,7 +327,7 @@
 
         <div class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                <flux:heading size="lg">{{ __('Users') }}</flux:heading>
+                <flux:heading size="lg">{{ __('ui.superadmin.dashboard.users') }}</flux:heading>
             </div>
 
             <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -336,7 +336,7 @@
                         <p class="font-medium text-zinc-950 dark:text-white">{{ $user->name }}</p>
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $user->email }}</p>
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            {{ $user->roles->pluck('name')->join(', ') ?: __('No roles') }}
+                            {{ $user->roles->pluck('name')->join(', ') ?: __('ui.superadmin.dashboard.no_roles') }}
                         </p>
                     </div>
                 @empty

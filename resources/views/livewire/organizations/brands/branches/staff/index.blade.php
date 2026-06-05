@@ -7,7 +7,7 @@
 
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
-            {{ __('Branches') }}
+            {{ __('navigation.branches') }}
         </flux:button>
 
         <div class="flex flex-col gap-1">
@@ -22,8 +22,8 @@
                 <flux:heading size="lg">{{ __('staff.create_manual') }}</flux:heading>
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="manualName" :label="__('Name')" type="text" required maxlength="120" />
-                    <flux:input wire:model="manualEmail" :label="__('Email')" type="email" required maxlength="255" />
+                    <flux:input wire:model="manualName" :label="__('reports.csv.name')" type="text" required maxlength="120" />
+                    <flux:input wire:model="manualEmail" :label="__('ui.auth.reset_password.email')" type="email" required maxlength="255" />
 
                     <flux:select wire:model="manualRoleId" :label="__('staff.role')" required>
                         @foreach ($this->roles as $role)
@@ -47,8 +47,8 @@
                 <flux:heading size="lg">{{ __('staff.invite') }}</flux:heading>
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="inviteEmail" :label="__('Email')" type="email" maxlength="255" />
-                    <flux:input wire:model="invitePhone" :label="__('Phone')" type="text" maxlength="40" />
+                    <flux:input wire:model="inviteEmail" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" />
+                    <flux:input wire:model="invitePhone" :label="__('ui.organizations.brands.branches.settings.phone')" type="text" maxlength="40" />
 
                     <flux:select wire:model="inviteRoleId" :label="__('staff.role')" required>
                         @foreach ($this->roles as $role)

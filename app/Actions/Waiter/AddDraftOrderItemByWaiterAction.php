@@ -180,7 +180,7 @@ class AddDraftOrderItemByWaiterAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::GuestNotActive,
                 'addingGuestId',
-                __('Выберите активного гостя за этим столом.'),
+                __('ui.actions.waiter.adddraftorderitembywaiteraction.vyberite_aktivnogo_gostia'),
             );
         }
 
@@ -188,7 +188,7 @@ class AddDraftOrderItemByWaiterAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::GuestNotApproved,
                 'addingGuestId',
-                __('Гость ещё не подтверждён для этого стола.'),
+                __('ui.actions.waiter.adddraftorderitembywaiteraction.gost_eshhe_ne_podtverzden'),
             );
         }
 
@@ -196,7 +196,7 @@ class AddDraftOrderItemByWaiterAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::GuestNotActive,
                 'addingGuestId',
-                __('Выберите активного гостя за этим столом.'),
+                __('ui.actions.waiter.adddraftorderitembywaiteraction.vyberite_aktivnogo_gostia'),
             );
         }
     }
@@ -213,7 +213,7 @@ class AddDraftOrderItemByWaiterAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::ItemUnavailable,
                 'addingMenuItemId',
-                __('Это блюдо сейчас недоступно для этого филиала.'),
+                __('ui.actions.waiter.adddraftorderitembywaiteraction.eto_bliudo_seicas_nedostu'),
             );
         }
 
@@ -223,7 +223,7 @@ class AddDraftOrderItemByWaiterAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::ItemUnavailable,
                 'addingMenuItemId',
-                __(':label. :detail', [
+                __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
                     'label' => $availability['label'],
                     'detail' => $availability['detail'],
                 ]),
@@ -235,7 +235,7 @@ class AddDraftOrderItemByWaiterAction
     {
         if ($quantity < 1 || $quantity > 99) {
             throw ValidationException::withMessages([
-                'addingQuantity' => __('Количество должно быть от 1 до 99.'),
+                'addingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
             ]);
         }
 

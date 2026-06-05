@@ -172,10 +172,10 @@ class BuildBasicAnalyticsDashboardAction
             'orders_today_count' => $ordersTodayCount,
             'orders_today_total' => $singleCurrency !== null
                 ? $this->formatCents($totalOrderCents).' '.$singleCurrency
-                : __('Multiple currencies'),
+                : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies'),
             'average_check' => $singleCurrency !== null && $ordersTodayCount > 0
                 ? $this->formatCents((int) round($totalOrderCents / $ordersTodayCount)).' '.$singleCurrency
-                : ($ordersTodayCount > 0 ? __('Multiple currencies') : $this->formatCents(0).' '.$defaultCurrency),
+                : ($ordersTodayCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : $this->formatCents(0).' '.$defaultCurrency),
             'currency_totals' => $currencyTotals->values()->all(),
             'popular_items' => $this->popularItems($todayOrderIds, $singleCurrency),
             'active_tables_count' => $this->activeTablesCount($branchIds),
@@ -245,7 +245,7 @@ class BuildBasicAnalyticsDashboardAction
                 $totalCents = $items->sum(fn (OrderItem $item): int => $this->decimalToCents($item->total_price));
 
                 return [
-                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('Dish'),
+                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish'),
                     'quantity' => $items->sum(fn (OrderItem $item): int => (int) $item->quantity),
                     'total_cents' => $totalCents,
                 ];
@@ -257,7 +257,7 @@ class BuildBasicAnalyticsDashboardAction
                 'quantity' => (int) $item['quantity'],
                 'total' => $singleCurrency !== null
                     ? $this->formatCents((int) $item['total_cents']).' '.$singleCurrency
-                    : __('Mixed'),
+                    : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
             ])
             ->values()
             ->all();

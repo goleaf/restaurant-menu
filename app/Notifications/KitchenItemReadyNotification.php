@@ -61,7 +61,7 @@ class KitchenItemReadyNotification extends Notification
             'guest_name' => $ticketItem->guest_name,
             'quantity' => $ticketItem->quantity,
             'ready_at' => $ticketItem->updated_at?->toISOString(),
-            'message' => __('Кухня или бар отметили позицию готовой.'),
+            'message' => __('ui.notifications.kitchenitemreadynotification.kuxnia_ili_bar_otmetili_pozic'),
         ];
     }
 }

@@ -32,8 +32,8 @@ class GetBranchOpeningStatusAction
                 'is_configured' => false,
                 'is_open' => false,
                 'can_accept_orders' => true,
-                'label' => __('Часы работы не указаны'),
-                'detail' => __('Можно смотреть меню. Заказ доступен по настройкам ресторана.'),
+                'label' => __('ui.actions.branches.getbranchopeningstatusaction.casy_raboty_ne_ukazany'),
+                'detail' => __('ui.actions.branches.getbranchopeningstatusaction.mozno_smotret_meniu_zakaz'),
                 'tone' => 'muted',
                 'next_opens_at' => null,
                 'closes_at' => null,
@@ -48,8 +48,8 @@ class GetBranchOpeningStatusAction
                 'is_configured' => true,
                 'is_open' => true,
                 'can_accept_orders' => true,
-                'label' => __('Сейчас открыто'),
-                'detail' => __('Открыто до :time', ['time' => $openInterval['closes_at']]),
+                'label' => __('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto'),
+                'detail' => __('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => $openInterval['closes_at']]),
                 'tone' => 'success',
                 'next_opens_at' => null,
                 'closes_at' => $openInterval['closes_at'],
@@ -63,10 +63,10 @@ class GetBranchOpeningStatusAction
             'is_configured' => true,
             'is_open' => false,
             'can_accept_orders' => false,
-            'label' => __('Сейчас закрыто'),
+            'label' => __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'),
             'detail' => $nextOpening === null
-                ? __('Сегодня закрыто')
-                : __('Откроется в :time', ['time' => $nextOpening['label']]),
+                ? __('ui.actions.branches.getbranchopeningstatusaction.segodnia_zakryto')
+                : __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $nextOpening['label']]),
             'tone' => 'warning',
             'next_opens_at' => $nextOpening['time'] ?? null,
             'closes_at' => null,
@@ -99,20 +99,20 @@ class GetBranchOpeningStatusAction
         }
 
         if ($closedUntil instanceof CarbonInterface) {
-            $detailParts[] = __('Закрыто до :time', [
+            $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', [
                 'time' => $closedUntil->isSameDay($now)
                     ? $closedUntil->format('H:i')
                     : $closedUntil->format('d.m H:i'),
             ]);
         } else {
-            $detailParts[] = __('Откроемся позже.');
+            $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.otkroemsia_pozze');
         }
 
         return [
             'is_configured' => true,
             'is_open' => false,
             'can_accept_orders' => false,
-            'label' => __('Ресторан временно закрыт'),
+            'label' => __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'),
             'detail' => implode('. ', $detailParts),
             'tone' => 'danger',
             'next_opens_at' => $closedUntil instanceof CarbonInterface ? $closedUntil->toIso8601String() : null,
@@ -124,13 +124,13 @@ class GetBranchOpeningStatusAction
     public static function dayLabels(): array
     {
         return [
-            1 => __('Понедельник'),
-            2 => __('Вторник'),
-            3 => __('Среда'),
-            4 => __('Четверг'),
-            5 => __('Пятница'),
-            6 => __('Суббота'),
-            7 => __('Воскресенье'),
+            1 => __('ui.actions.branches.getbranchopeningstatusaction.ponedelnik'),
+            2 => __('ui.actions.branches.getbranchopeningstatusaction.vtornik'),
+            3 => __('ui.actions.branches.getbranchopeningstatusaction.sreda'),
+            4 => __('ui.actions.branches.getbranchopeningstatusaction.cetverg'),
+            5 => __('ui.actions.branches.getbranchopeningstatusaction.piatnica'),
+            6 => __('ui.actions.branches.getbranchopeningstatusaction.subbota'),
+            7 => __('ui.actions.branches.getbranchopeningstatusaction.voskresene'),
         ];
     }
 
@@ -242,13 +242,13 @@ class GetBranchOpeningStatusAction
     private function shortDayLabel(int $dayOfWeek): string
     {
         return match ($dayOfWeek) {
-            1 => __('Пн'),
-            2 => __('Вт'),
-            3 => __('Ср'),
-            4 => __('Чт'),
-            5 => __('Пт'),
-            6 => __('Сб'),
-            7 => __('Вс'),
+            1 => __('ui.actions.branches.getbranchopeningstatusaction.pn'),
+            2 => __('ui.actions.branches.getbranchopeningstatusaction.vt'),
+            3 => __('ui.actions.branches.getbranchopeningstatusaction.sr'),
+            4 => __('ui.actions.branches.getbranchopeningstatusaction.ct'),
+            5 => __('ui.actions.branches.getbranchopeningstatusaction.pt'),
+            6 => __('ui.actions.branches.getbranchopeningstatusaction.sb'),
+            7 => __('ui.actions.branches.getbranchopeningstatusaction.vs'),
             default => '',
         };
     }

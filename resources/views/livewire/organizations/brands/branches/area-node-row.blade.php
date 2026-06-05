@@ -1,21 +1,21 @@
 <div wire:key="area-node-{{ $node['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
     @if ($editingAreaNodeId === $node['id'])
         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
-            <flux:input wire:model="editingName" :label="__('Название зоны')" type="text" required maxlength="160" />
+            <flux:input wire:model="editingName" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
 
-            <flux:select wire:model="editingType" :label="__('Что это?')">
+            <flux:select wire:model="editingType" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
                 @foreach ($this->areaTypeOptions as $value => $label)
                     <flux:select.option wire:key="editing-area-type-{{ $node['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="editingIcon" :label="__('Иконка')">
+            <flux:select wire:model="editingIcon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
                 @foreach ($this->iconOptions as $value => $label)
                     <flux:select.option wire:key="editing-area-icon-{{ $node['id'] }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="editingParentId" :label="__('Где находится?')">
+            <flux:select wire:model="editingParentId" :label="__('ui.organizations.brands.branches.area_node_row.gde_naxoditsia')">
                 @foreach ($this->parentOptions($editingAreaNodeId) as $option)
                     <flux:select.option wire:key="editing-area-parent-{{ $node['id'] }}-{{ $option['value'] === '' ? 'top' : $option['value'] }}" value="{{ $option['value'] }}">
                         {{ $option['label'] }}
@@ -23,18 +23,18 @@
                 @endforeach
             </flux:select>
 
-            <flux:input wire:model="editingSortOrder" :label="__('Порядок в списке')" type="number" required min="0" max="9999" />
+            <flux:input wire:model="editingSortOrder" :label="__('ui.organizations.brands.branches.area_node_row.poriadok_v_spiske')" type="number" required min="0" max="9999" />
 
             <div class="flex items-end justify-between gap-4">
-                <flux:switch wire:model="editingIsActive" :label="__('Использовать сейчас')" />
+                <flux:switch wire:model="editingIsActive" :label="__('ui.organizations.brands.branches.area_node_row.ispolzovat_seicas')" />
 
                 <div class="flex flex-wrap gap-2">
                     <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
-                        {{ __('Сохранить') }}
+                        {{ __('ui.organizations.brands.branches.area_node_row.soxranit') }}
                     </flux:button>
 
                     <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
-                        {{ __('Отмена') }}
+                        {{ __('ui.organizations.brands.branches.area_node_row.otmena') }}
                     </flux:button>
                 </div>
             </div>
@@ -49,9 +49,9 @@
                 <x-ui.status-badge tone="muted">{{ __($node['type_label']) }}</x-ui.status-badge>
 
                 @if ($node['is_active'])
-                    <x-ui.status-badge tone="success" dot>{{ __('Работает') }}</x-ui.status-badge>
+                    <x-ui.status-badge tone="success" dot>{{ __('ui.organizations.brands.branches.area_node_row.rabotaet') }}</x-ui.status-badge>
                 @else
-                    <x-ui.status-badge tone="muted" dot>{{ __('Выключена') }}</x-ui.status-badge>
+                    <x-ui.status-badge tone="muted" dot>{{ __('ui.organizations.brands.branches.area_node_row.vykliucena') }}</x-ui.status-badge>
                 @endif
             </div>
         </div>
@@ -59,16 +59,16 @@
         <div class="flex flex-wrap gap-2 md:justify-end">
             @if ($node['is_active'])
                 <flux:button icon="eye-slash" type="button" wire:click="disable({{ $node['id'] }})">
-                    {{ __('Выключить') }}
+                    {{ __('ui.organizations.brands.branches.area_node_row.vykliucit') }}
                 </flux:button>
             @else
                 <flux:button icon="eye" type="button" wire:click="enable({{ $node['id'] }})">
-                    {{ __('Включить') }}
+                    {{ __('ui.organizations.brands.branches.area_node_row.vkliucit') }}
                 </flux:button>
             @endif
 
             <flux:button icon="pencil" type="button" wire:click="startEditing({{ $node['id'] }})">
-                {{ __('Изменить') }}
+                {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
             </flux:button>
 
             <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $node['id'] }})">

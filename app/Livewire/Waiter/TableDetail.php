@@ -204,7 +204,7 @@ class TableDetail extends Component
         $this->reviewFeedbackMessage = '';
 
         if (! data_get($this->table, 'manual_order.can_add')) {
-            $this->addError('draft_edit', __('У вас нет права вручную добавлять позиции в этом филиале.'));
+            $this->addError('draft_edit', __('ui.actions.waiter.addmanualwaiterorderitemaction.u_vas_net_prava_vrucnuiu_d'));
 
             return;
         }
@@ -218,7 +218,7 @@ class TableDetail extends Component
         $menuItem = $this->selectedAddingMenuItem();
 
         if (! $menuItem instanceof MenuItem) {
-            $this->addError('addingMenuItemId', __('Выберите блюдо перед добавлением позиции.'));
+            $this->addError('addingMenuItemId', __('ui.livewire.waiter.tabledetail.vyberite_bliudo_pered_dobavleniem_pozicii'));
 
             return;
         }
@@ -241,7 +241,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->reviewFeedbackMessage = __('Позиция добавлена. Гости увидят обновлённый черновик.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.poziciia_dobavlena_gosti_uvidiat_obnovlennyi');
         $this->addingGuestId = (string) $draftOrderItem->table_session_guest_id;
         $this->manualGuestName = '';
         $this->resetAddingForm();
@@ -254,7 +254,7 @@ class TableDetail extends Component
         $this->reviewFeedbackMessage = '';
 
         if (! data_get($this->table, 'draft.can_edit')) {
-            $this->addError('draft_edit', __('У вас нет права редактировать этот черновик.'));
+            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.u_vas_net_prava_redaktirovat_etot_cernovik'));
 
             return;
         }
@@ -262,7 +262,7 @@ class TableDetail extends Component
         $draftOrderItem = $this->draftOrderItemForCurrentTable($itemId);
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_edit', __('Позиция не найдена в этом черновике.'));
+            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena_v_etom_cernovike'));
 
             return;
         }
@@ -321,7 +321,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_edit', __('Позиция не найдена.'));
+            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
 
             return;
         }
@@ -340,7 +340,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->reviewFeedbackMessage = __('Позиция обновлена. Гости увидят актуальную сумму.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.poziciia_obnovlena_gosti_uvidiat_aktualnuiu');
         $this->closeEditDraftItem();
         $this->refreshTable();
     }
@@ -356,7 +356,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_edit', __('Позиция не найдена.'));
+            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
 
             return;
         }
@@ -373,7 +373,7 @@ class TableDetail extends Component
             $this->closeEditDraftItem();
         }
 
-        $this->reviewFeedbackMessage = __('Позиция удалена. Гости увидят обновлённый черновик.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.poziciia_udalena_gosti_uvidiat_obnovlennyi_c');
         $this->refreshTable();
     }
 
@@ -385,7 +385,7 @@ class TableDetail extends Component
         $draftOrder = $this->currentDraftOrder();
 
         if (! $draftOrder instanceof DraftOrder) {
-            $this->addError('draft_review', __('У этого стола нет черновика для подтверждения.'));
+            $this->addError('draft_review', __('ui.livewire.waiter.tabledetail.u_etogo_stola_net_cernovika_dlia_podtverzden'));
 
             return;
         }
@@ -399,7 +399,7 @@ class TableDetail extends Component
         }
 
         $this->rejectionReason = '';
-        $this->reviewFeedbackMessage = __('Заказ подтверждён официантом. Кухня и бар пока не получают его автоматически.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po');
         $this->refreshTable();
         $this->table['draft']['order_id'] = $order->id;
     }
@@ -412,7 +412,7 @@ class TableDetail extends Component
         $order = $this->currentOrder();
 
         if (! $order instanceof Order) {
-            $this->addError('order_dispatch', __('Сначала подтвердите заказ официантом.'));
+            $this->addError('order_dispatch', __('ui.livewire.waiter.tabledetail.snacala_podtverdite_zakaz_oficiantom'));
 
             return;
         }
@@ -425,7 +425,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->reviewFeedbackMessage = __('Заказ отправлен на кухню/бар. Гости увидят, что заказ принят.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.zakaz_otpravlen_na_kuxniu_bar_gosti_uvidiat');
         $this->refreshTable();
     }
 
@@ -442,7 +442,7 @@ class TableDetail extends Component
         $order = $this->currentOrder();
 
         if (! $order instanceof Order) {
-            $this->addError('order_cancellation', __('Сначала подтвердите заказ официантом.'));
+            $this->addError('order_cancellation', __('ui.livewire.waiter.tabledetail.snacala_podtverdite_zakaz_oficiantom'));
 
             return;
         }
@@ -461,7 +461,7 @@ class TableDetail extends Component
         }
 
         $this->orderCancellationReason = '';
-        $this->reviewFeedbackMessage = __('Order cancelled.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.order_cancelled');
         $this->refreshTable();
     }
 
@@ -476,7 +476,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $ticketItem instanceof KitchenTicketItem) {
-            $this->addError('order_service', __('Позиция не найдена.'));
+            $this->addError('order_service', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
 
             return;
         }
@@ -489,7 +489,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->reviewFeedbackMessage = __('Позиция отмечена как поданная. Гости увидят обновлённый статус.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.poziciia_otmecena_kak_podannaia_gosti_uvidia');
         $this->refreshTable();
     }
 
@@ -501,14 +501,14 @@ class TableDetail extends Component
         $draftOrder = $this->currentDraftOrder();
 
         if (! $draftOrder instanceof DraftOrder) {
-            $this->addError('draft_review', __('У этого стола нет черновика для отклонения.'));
+            $this->addError('draft_review', __('ui.livewire.waiter.tabledetail.u_etogo_stola_net_cernovika_dlia_otkloneniia'));
 
             return;
         }
 
         $validated = $this->validate(RestaurantValidationRules::waiterRejectionReason('rejectionReason'), [
-            'rejectionReason.required' => __('Укажите причину отклонения.'),
-            'rejectionReason.min' => __('Причина отклонения должна быть понятной для гостя.'),
+            'rejectionReason.required' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.ukazite_pricinu_otklonenii'),
+            'rejectionReason.min' => __('ui.livewire.waiter.tabledetail.pricina_otkloneniia_dolzna_byt_poniatnoi_dli'),
         ]);
 
         try {
@@ -519,7 +519,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->reviewFeedbackMessage = __('Черновик отклонён. Гости увидят причину.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.cernovik_otklonen_gosti_uvidiat_pricinu');
         $this->refreshTable();
     }
 
@@ -531,7 +531,7 @@ class TableDetail extends Component
         $draftOrder = $this->currentDraftOrder();
 
         if (! $draftOrder instanceof DraftOrder) {
-            $this->addError('draft_review', __('У этого стола нет черновика для возврата.'));
+            $this->addError('draft_review', __('ui.livewire.waiter.tabledetail.u_etogo_stola_net_cernovika_dlia_vozvrata'));
 
             return;
         }
@@ -545,7 +545,7 @@ class TableDetail extends Component
         }
 
         $this->rejectionReason = '';
-        $this->reviewFeedbackMessage = __('Черновик возвращён гостям для правок.');
+        $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.cernovik_vozvrashhen_gostiam_dlia_pravok');
         $this->refreshTable();
     }
 
@@ -651,7 +651,7 @@ class TableDetail extends Component
         $validated = $this->validate([
             'transferTargetServicePointId' => ['required', 'integer', 'min:1'],
         ], [
-            'transferTargetServicePointId.required' => __('Выберите новое свободное место.'),
+            'transferTargetServicePointId.required' => __('ui.livewire.waiter.tabledetail.vyberite_novoe_svobodnoe_mesto'),
         ]);
 
         $targetServicePoint = ServicePoint::query()
@@ -660,7 +660,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $targetServicePoint instanceof ServicePoint) {
-            $this->addError('transferTargetServicePointId', __('Новое место не найдено.'));
+            $this->addError('transferTargetServicePointId', __('ui.livewire.waiter.tabledetail.novoe_mesto_ne_naideno'));
 
             return;
         }
@@ -677,7 +677,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->transferFeedbackMessage = __('Стол перенесён. Гости видят новое место, QR-коды не изменились.');
+        $this->transferFeedbackMessage = __('ui.livewire.waiter.tabledetail.stol_perenesen_gosti_vidiat_novoe_mesto_qr_k');
         $this->transferTargetServicePointId = null;
         $this->refreshTable();
     }
@@ -690,7 +690,7 @@ class TableDetail extends Component
         $validated = $this->validate([
             'mergeTargetServicePointId' => ['required', 'integer', 'min:1'],
         ], [
-            'mergeTargetServicePointId.required' => __('Выберите свободное место для объединения.'),
+            'mergeTargetServicePointId.required' => __('ui.livewire.waiter.tabledetail.vyberite_svobodnoe_mesto_dlia_obieedineniia'),
         ]);
 
         $targetServicePoint = ServicePoint::query()
@@ -699,7 +699,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $targetServicePoint instanceof ServicePoint) {
-            $this->addError('mergeTargetServicePointId', __('Место не найдено.'));
+            $this->addError('mergeTargetServicePointId', __('ui.livewire.waiter.tabledetail.mesto_ne_naideno'));
 
             return;
         }
@@ -716,7 +716,7 @@ class TableDetail extends Component
             return;
         }
 
-        $this->mergeFeedbackMessage = __('Столы объединены. QR-коды каждого физического стола остались прежними.');
+        $this->mergeFeedbackMessage = __('ui.livewire.waiter.tabledetail.stoly_obieedineny_qr_kody_kazdogo_fiziceskog');
         $this->mergeTargetServicePointId = null;
         $this->refreshTable();
     }
@@ -1280,7 +1280,7 @@ class TableDetail extends Component
     private function showValidationException(ValidationException $exception): void
     {
         foreach ($exception->errors() as $field => $messages) {
-            $this->addError($field, $messages[0] ?? __('Ошибка проверки.'));
+            $this->addError($field, $messages[0] ?? __('ui.livewire.waiter.tabledetail.osibka_proverki'));
         }
     }
 

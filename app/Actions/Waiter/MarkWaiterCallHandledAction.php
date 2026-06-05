@@ -75,7 +75,7 @@ class MarkWaiterCallHandledAction
 
         if (! $branchIds->contains((int) $waiterCall->branch_id)) {
             throw ValidationException::withMessages([
-                'waiter_call' => __('У вас нет доступа к вызовам официанта в этом филиале.'),
+                'waiter_call' => __('ui.actions.waiter.markwaitercallhandledaction.u_vas_net_dostupa_k_vyzovam_o'),
             ]);
         }
     }

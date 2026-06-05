@@ -109,31 +109,31 @@ class MergeTableSessionServicePointAction
     {
         if (! $this->userCanMerge($linkedBy, (int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'table_session_merge' => __('У вас нет права объединять столы.'),
+                'table_session_merge' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.u_vas_net_prav'),
             ]);
         }
 
         if ($this->sessionStatus($tableSession) !== TableSessionStatus::Active) {
             throw ValidationException::withMessages([
-                'table_session_merge' => __('Объединить можно только активную сессию стола.'),
+                'table_session_merge' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.obieedinit_moz'),
             ]);
         }
 
         if ((int) $servicePointToLink->branch_id !== (int) $tableSession->branch_id) {
             throw ValidationException::withMessages([
-                'mergeTargetServicePointId' => __('Выберите свободное место в этом же филиале.'),
+                'mergeTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.vyberite_svobo'),
             ]);
         }
 
         if ((int) $servicePointToLink->id === (int) $tableSession->service_point_id) {
             throw ValidationException::withMessages([
-                'mergeTargetServicePointId' => __('Это уже основной стол этой сессии.'),
+                'mergeTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.eto_uze_osnovn'),
             ]);
         }
 
         if (! $servicePointToLink->is_active) {
             throw ValidationException::withMessages([
-                'mergeTargetServicePointId' => __('Это место отключено. Выберите другое свободное место.'),
+                'mergeTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.eto_mesto_otkl'),
             ]);
         }
 
@@ -141,7 +141,7 @@ class MergeTableSessionServicePointAction
             || $this->targetHasOpenSession($servicePointToLink)
             || $this->targetIsAlreadyLinked($servicePointToLink)) {
             throw ValidationException::withMessages([
-                'mergeTargetServicePointId' => __('Это место уже занято или недоступно для объединения.'),
+                'mergeTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.eto_mesto_uze'),
             ]);
         }
     }

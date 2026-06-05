@@ -118,7 +118,7 @@ class Areas extends Component
         $this->resetCreateForm();
         unset($this->areaNodes, $this->treeNodes);
 
-        Flux::toast(variant: 'success', text: __('Area added.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_added'));
     }
 
     public function startEditing(int $areaNodeId): void
@@ -177,7 +177,7 @@ class Areas extends Component
         $this->cancelEditing();
         unset($this->areaNodes, $this->treeNodes);
 
-        Flux::toast(variant: 'success', text: __('Area updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_updated'));
     }
 
     public function disable(int $areaNodeId): void
@@ -218,7 +218,7 @@ class Areas extends Component
         $this->cancelDelete();
         unset($this->areaNodes, $this->treeNodes);
 
-        Flux::toast(variant: 'success', text: __('Area removed.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_removed'));
     }
 
     /**
@@ -283,12 +283,12 @@ class Areas extends Component
     public function quickCreateOptions(): array
     {
         return [
-            ['type' => AreaNodeType::Group->value, 'label' => __('Группа зон'), 'icon' => 'folder'],
-            ['type' => AreaNodeType::Floor->value, 'label' => __('Этаж'), 'icon' => 'building-office'],
-            ['type' => AreaNodeType::Hall->value, 'label' => __('Зал'), 'icon' => 'squares-2x2'],
-            ['type' => AreaNodeType::Terrace->value, 'label' => __('Терраса'), 'icon' => 'sun'],
-            ['type' => AreaNodeType::VipRoom->value, 'label' => __('VIP-зал'), 'icon' => 'sparkles'],
-            ['type' => AreaNodeType::Custom->value, 'label' => __('Своя зона'), 'icon' => 'bookmark'],
+            ['type' => AreaNodeType::Group->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.gruppa_zon'), 'icon' => 'folder'],
+            ['type' => AreaNodeType::Floor->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.etaz'), 'icon' => 'building-office'],
+            ['type' => AreaNodeType::Hall->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.zal'), 'icon' => 'squares-2x2'],
+            ['type' => AreaNodeType::Terrace->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.terrasa'), 'icon' => 'sun'],
+            ['type' => AreaNodeType::VipRoom->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.vip_zal'), 'icon' => 'sparkles'],
+            ['type' => AreaNodeType::Custom->value, 'label' => __('ui.livewire.organizations.brands.branches.areas.svoia_zona'), 'icon' => 'bookmark'],
         ];
     }
 
@@ -302,7 +302,7 @@ class Areas extends Component
             : $this->blockedParentIds($excludingAreaNodeId);
 
         return array_merge(
-            [['value' => '', 'label' => __('Top level')]],
+            [['value' => '', 'label' => __('ui.livewire.organizations.brands.branches.areas.top_level')]],
             $this->flattenParentOptions($this->treeNodes, $blockedIds),
         );
     }
@@ -449,18 +449,18 @@ class Areas extends Component
     private function iconOptionRows(): array
     {
         return [
-            'folder' => __('Folder'),
-            'building-office' => __('Building'),
-            'squares-2x2' => __('Hall'),
-            'sun' => __('Terrace'),
-            'sparkles' => __('VIP'),
-            'beaker' => __('Bar'),
-            'cake' => __('Banquet'),
-            'home' => __('Room'),
-            'building-office-2' => __('Hotel'),
-            'shopping-bag' => __('Pickup'),
-            'truck' => __('Delivery'),
-            'bookmark' => __('Custom'),
+            'folder' => __('ui.livewire.organizations.brands.branches.areas.folder'),
+            'building-office' => __('ui.livewire.organizations.brands.branches.areas.building'),
+            'squares-2x2' => __('ui.livewire.organizations.brands.branches.areas.hall'),
+            'sun' => __('ui.livewire.organizations.brands.branches.areas.terrace'),
+            'sparkles' => __('ui.livewire.organizations.brands.branches.areas.vip'),
+            'beaker' => __('navigation.bar'),
+            'cake' => __('ui.livewire.organizations.brands.branches.areas.banquet'),
+            'home' => __('reports.service_point_types.room'),
+            'building-office-2' => __('qr.print.presets.hotel.label'),
+            'shopping-bag' => __('ui.livewire.organizations.brands.branches.areas.pickup'),
+            'truck' => __('ui.livewire.organizations.brands.branches.areas.delivery'),
+            'bookmark' => __('reports.filters.custom'),
         ];
     }
 
@@ -485,18 +485,18 @@ class Areas extends Component
     private function defaultNameForType(AreaNodeType $type): string
     {
         return match ($type) {
-            AreaNodeType::Group => __('New group'),
-            AreaNodeType::Floor => __('New floor'),
-            AreaNodeType::Hall => __('New hall'),
-            AreaNodeType::Terrace => __('New terrace'),
-            AreaNodeType::VipRoom => __('New VIP room'),
-            AreaNodeType::BarArea => __('New bar area'),
-            AreaNodeType::BanquetHall => __('New banquet hall'),
-            AreaNodeType::Room => __('New room'),
-            AreaNodeType::HotelArea => __('New hotel area'),
-            AreaNodeType::PickupArea => __('New pickup area'),
-            AreaNodeType::DeliveryArea => __('New delivery area'),
-            AreaNodeType::Custom => __('New custom area'),
+            AreaNodeType::Group => __('ui.livewire.organizations.brands.branches.areas.new_group'),
+            AreaNodeType::Floor => __('ui.livewire.organizations.brands.branches.areas.new_floor'),
+            AreaNodeType::Hall => __('ui.livewire.organizations.brands.branches.areas.new_hall'),
+            AreaNodeType::Terrace => __('ui.livewire.organizations.brands.branches.areas.new_terrace'),
+            AreaNodeType::VipRoom => __('ui.livewire.organizations.brands.branches.areas.new_vip_room'),
+            AreaNodeType::BarArea => __('ui.livewire.organizations.brands.branches.areas.new_bar_area'),
+            AreaNodeType::BanquetHall => __('ui.livewire.organizations.brands.branches.areas.new_banquet_hall'),
+            AreaNodeType::Room => __('ui.livewire.organizations.brands.branches.areas.new_room'),
+            AreaNodeType::HotelArea => __('ui.livewire.organizations.brands.branches.areas.new_hotel_area'),
+            AreaNodeType::PickupArea => __('ui.livewire.organizations.brands.branches.areas.new_pickup_area'),
+            AreaNodeType::DeliveryArea => __('ui.livewire.organizations.brands.branches.areas.new_delivery_area'),
+            AreaNodeType::Custom => __('ui.livewire.organizations.brands.branches.areas.new_custom_area'),
         };
     }
 

@@ -139,7 +139,7 @@ class Index extends Component
         $this->resetCreateForm();
         unset($this->branches);
 
-        Flux::toast(variant: 'success', text: __('Branch created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_created'));
     }
 
     public function startEditing(int $branchId): void
@@ -192,8 +192,8 @@ class Index extends Component
 
         if ($branch->is_active && ! (bool) $validated['editingIsActive']) {
             $reasonValidation = $this->validate(RestaurantValidationRules::auditReason('branchSuspendReason'), [
-                'branchSuspendReason.required' => __('Explain why this branch is being suspended.'),
-                'branchSuspendReason.min' => __('The suspension reason must be clear enough for the audit log.'),
+                'branchSuspendReason.required' => __('ui.livewire.organizations.brands.branches.index.explain_why_this_branch_is'),
+                'branchSuspendReason.min' => __('ui.livewire.organizations.brands.branches.index.the_suspension_reason_must'),
             ]);
 
             $reason = (string) $reasonValidation['branchSuspendReason'];
@@ -209,7 +209,7 @@ class Index extends Component
         $this->cancelEditing();
         unset($this->branches);
 
-        Flux::toast(variant: 'success', text: __('Branch updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_updated'));
     }
 
     public function confirmDelete(int $branchId): void
@@ -240,7 +240,7 @@ class Index extends Component
         $this->cancelDelete();
         unset($this->branches);
 
-        Flux::toast(variant: 'success', text: __('Branch deleted.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_deleted'));
     }
 
     public function saveLogo(int $branchId, StoreLocalImageAction $storeLocalImage): void
@@ -451,43 +451,43 @@ class Index extends Component
         return [
             [
                 'number' => 1,
-                'label' => __('Создать филиал'),
+                'label' => __('ui.livewire.organizations.brands.branches.index.sozdat_filial'),
                 'description' => $branch->is_active
-                    ? __('Филиал создан и готов к настройке.')
-                    : __('Филиал создан, но пока выключен.'),
+                    ? __('ui.livewire.organizations.brands.branches.index.filial_sozdan_i_gotov_k_nas')
+                    : __('ui.livewire.organizations.brands.branches.index.filial_sozdan_no_poka_vykli'),
                 'icon' => 'building-office',
                 'href' => $this->canManageBranches
                     ? route('organizations.brands.branches.settings.index', [$this->organization, $this->brand, $branch])
                     : null,
-                'button_label' => $this->canManageBranches ? __('Настройки') : null,
+                'button_label' => $this->canManageBranches ? __('ui.livewire.organizations.brands.branches.index.nastroiki') : null,
                 'is_done' => true,
                 'is_available' => $this->canManageBranches,
             ],
             [
                 'number' => 2,
-                'label' => __('Добавить зоны'),
+                'label' => __('ui.livewire.organizations.brands.branches.index.dobavit_zony'),
                 'description' => $areaCount > 0
-                    ? trans_choice('{1} :count зона уже добавлена|[2,*] :count зоны уже добавлены', $areaCount, ['count' => $areaCount])
-                    : __('Создайте зал, террасу или VIP-зону.'),
+                    ? trans_choice('ui.livewire.organizations.brands.branches.index.1_zona_uze_dobavlena_2_zony', $areaCount, ['count' => $areaCount])
+                    : __('ui.livewire.organizations.brands.branches.index.sozdaite_zal_terrasu_ili_vi'),
                 'icon' => 'rectangle-group',
                 'href' => $this->canManageZones
                     ? route('organizations.brands.branches.areas.index', [$this->organization, $this->brand, $branch])
                     : null,
-                'button_label' => __('Зоны'),
+                'button_label' => __('ui.livewire.organizations.brands.branches.index.zony'),
                 'is_done' => $areaCount > 0,
                 'is_available' => $this->canManageZones,
             ],
             [
                 'number' => 3,
-                'label' => __('Добавить столы'),
+                'label' => __('ui.livewire.organizations.brands.branches.index.dobavit_stoly'),
                 'description' => $servicePointCount > 0
-                    ? trans_choice('{1} :count стол или место добавлено|[2,*] :count столов или мест добавлено', $servicePointCount, ['count' => $servicePointCount])
-                    : __('Добавьте столы, барные места или комнаты.'),
+                    ? trans_choice('ui.livewire.organizations.brands.branches.index.1_stol_ili_mesto_dobavleno', $servicePointCount, ['count' => $servicePointCount])
+                    : __('ui.livewire.organizations.brands.branches.index.dobavte_stoly_barnye_mesta'),
                 'icon' => 'squares-2x2',
                 'href' => $this->canManageServicePoints
                     ? route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $branch])
                     : null,
-                'button_label' => __('Столы'),
+                'button_label' => __('ui.livewire.onboarding.restaurantsetup.stoly'),
                 'is_done' => $servicePointCount > 0,
                 'is_available' => $this->canManageServicePoints,
             ],

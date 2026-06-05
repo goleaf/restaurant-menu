@@ -32,8 +32,8 @@
 
         <div class="rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                {{ __('Guest mobile UI starts from permanent QR links.') }}
-                {{ __('The public fallback page is available at') }}
+                {{ __('ui.views.dashboard.guest_mobile_ui_starts_from_permanent_qr_links') }}
+                {{ __('ui.views.dashboard.the_public_fallback_page_is_available_at') }}
                 <a href="{{ route('guest.home') }}" class="font-medium underline underline-offset-4" wire:navigate>{{ __('navigation.guest_area') }}</a>.
             </p>
         </div>

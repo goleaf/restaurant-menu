@@ -81,13 +81,13 @@ class RejectTableSessionJoinRequestAction
     {
         if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending) {
             throw ValidationException::withMessages([
-                'join_request' => __('This join request is no longer pending.'),
+                'join_request' => __('ui.actions.tablesessions.approvetablesessionjoinrequestaction.this_join_req'),
             ]);
         }
 
         if ($joinRequest->expires_at !== null && $joinRequest->expires_at->isPast()) {
             throw ValidationException::withMessages([
-                'join_request' => __('This join request has expired.'),
+                'join_request' => __('guest.table.join_request_expired'),
             ]);
         }
     }
@@ -105,7 +105,7 @@ class RejectTableSessionJoinRequestAction
             ->save();
 
         throw ValidationException::withMessages([
-            'join_request' => __('This join request has expired.'),
+            'join_request' => __('guest.table.join_request_expired'),
         ]);
     }
 
@@ -119,7 +119,7 @@ class RejectTableSessionJoinRequestAction
             || $guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
-                'guest' => __('Only an active guest at this table can reject join requests.'),
+                'guest' => __('ui.actions.tablesessions.rejecttablesessionjoinrequestaction.only_an_active'),
             ]);
         }
     }

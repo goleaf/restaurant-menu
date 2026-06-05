@@ -139,13 +139,13 @@ class UpdateGuestDraftOrderItemAction
             || ! $servicePoint->is_active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'draft_item' => __('Можно изменять только свои позиции за этим столом.'),
+                'draft_item' => __('ui.actions.draftorders.updateguestdraftorderitemaction.mozno_izmeniat_tolko'),
             ]);
         }
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
             throw ValidationException::withMessages([
-                'draft_order' => __('Этот черновик уже отправлен официанту. Изменения заблокированы.'),
+                'draft_order' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.etot_cernovik_uze_ot'),
             ]);
         }
     }
@@ -154,7 +154,7 @@ class UpdateGuestDraftOrderItemAction
     {
         if ($quantity < 1 || $quantity > 99) {
             throw ValidationException::withMessages([
-                'editingQuantity' => __('Количество должно быть от 1 до 99.'),
+                'editingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
             ]);
         }
 

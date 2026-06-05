@@ -37,12 +37,12 @@ class Dashboard extends DepartmentDashboard
 
     protected function screenTitle(): string
     {
-        return __('Kitchen screen');
+        return __('ui.livewire.kitchen.dashboard.kitchen_screen');
     }
 
     protected function screenSubtitle(): string
     {
-        return __('Department tickets ready for work.');
+        return __('ui.livewire.kitchen.dashboard.department_tickets_ready_for_work');
     }
 
     protected function screenDataPage(): string
@@ -57,6 +57,6 @@ class Dashboard extends DepartmentDashboard
 
     protected function screenItemCountLabel(): string
     {
-        return __('Items');
+        return __('reports.csv.items');
     }
 }

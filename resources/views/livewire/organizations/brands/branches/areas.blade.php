@@ -1,23 +1,23 @@
 <section data-page="branch-areas" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
-            {{ __('Филиалы') }}
-            <span class="sr-only">{{ __('Branches') }}</span>
+            {{ __('ui.organizations.brands.branches.areas.filialy') }}
+            <span class="sr-only">{{ __('navigation.branches') }}</span>
         </flux:button>
 
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
-                {{ __('Зоны ресторана') }}
-                <span class="sr-only">{{ __('Areas') }}</span>
+                {{ __('ui.organizations.brands.branches.areas.zony_restorana') }}
+                <span class="sr-only">{{ __('ui.organizations.brands.branches.areas.areas') }}</span>
             </h1>
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Создайте понятную карту: этажи, залы, терраса, VIP-зал или своя зона.') }}</p>
+            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.brands.branches.areas.sozdaite_poniatnuiu_kartu_etazi_zaly') }}</p>
         </div>
     </header>
 
     <x-ui.card
-        :heading="__('Шаг 2: добавьте зоны')"
-        :description="__('Нажмите готовый вариант, впишите название и сохраните.')"
+        :heading="__('ui.organizations.brands.branches.areas.sag_2_dobavte_zony')"
+        :description="__('ui.organizations.brands.branches.areas.nazmite_gotovyi_variant_vpisite_nazv')"
     >
 
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -35,21 +35,21 @@
         </div>
 
         <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
-            <flux:input wire:model="name" :label="__('Название зоны')" type="text" required maxlength="160" />
+            <flux:input wire:model="name" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
 
-            <flux:select wire:model="type" :label="__('Что это?')">
+            <flux:select wire:model="type" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
                 @foreach ($this->areaTypeOptions as $value => $label)
                     <flux:select.option wire:key="area-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="icon" :label="__('Иконка')">
+            <flux:select wire:model="icon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
                 @foreach ($this->iconOptions as $value => $label)
                     <flux:select.option wire:key="area-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model="parentId" :label="__('Где находится?')">
+            <flux:select wire:model="parentId" :label="__('ui.organizations.brands.branches.area_node_row.gde_naxoditsia')">
                 @foreach ($this->parentOptions() as $option)
                     <flux:select.option wire:key="area-parent-create-{{ $option['value'] === '' ? 'top' : $option['value'] }}" value="{{ $option['value'] }}">
                         {{ $option['label'] }}
@@ -57,13 +57,13 @@
                 @endforeach
             </flux:select>
 
-            <flux:input wire:model="sortOrder" :label="__('Порядок в списке')" type="number" required min="0" max="9999" />
+            <flux:input wire:model="sortOrder" :label="__('ui.organizations.brands.branches.area_node_row.poriadok_v_spiske')" type="number" required min="0" max="9999" />
 
             <div class="flex items-end justify-between gap-4">
-                <flux:switch wire:model="isActive" :label="__('Использовать сейчас')" />
+                <flux:switch wire:model="isActive" :label="__('ui.organizations.brands.branches.area_node_row.ispolzovat_seicas')" />
 
                 <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
-                    {{ __('Добавить зону') }}
+                    {{ __('ui.organizations.brands.branches.areas.dobavit_zonu') }}
                 </flux:button>
             </div>
         </form>
@@ -71,7 +71,7 @@
 
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('Список зон') }}</flux:heading>
+            <flux:heading size="lg">{{ __('ui.organizations.brands.branches.areas.spisok_zon') }}</flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">

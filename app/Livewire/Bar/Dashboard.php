@@ -37,12 +37,12 @@ class Dashboard extends DepartmentDashboard
 
     protected function screenTitle(): string
     {
-        return __('Bar screen');
+        return __('ui.livewire.bar.dashboard.bar_screen');
     }
 
     protected function screenSubtitle(): string
     {
-        return __('Bar drinks ready for service.');
+        return __('ui.livewire.bar.dashboard.bar_drinks_ready_for_service');
     }
 
     protected function screenDataPage(): string
@@ -57,6 +57,6 @@ class Dashboard extends DepartmentDashboard
 
     protected function screenItemCountLabel(): string
     {
-        return __('Drinks');
+        return __('ui.livewire.bar.dashboard.drinks');
     }
 }

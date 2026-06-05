@@ -63,7 +63,7 @@ class Index extends Component
         $this->reset('name');
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('Organization created.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_created'));
     }
 
     public function startEditing(int $organizationId): void
@@ -99,7 +99,7 @@ class Index extends Component
         $this->cancelEditing();
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('Organization updated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_updated'));
     }
 
     public function confirmDelete(int $organizationId): void
@@ -126,7 +126,7 @@ class Index extends Component
         $this->cancelDelete();
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('Organization deleted.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_deleted'));
     }
 
     public function saveLogo(int $organizationId, StoreLocalImageAction $storeLocalImage): void

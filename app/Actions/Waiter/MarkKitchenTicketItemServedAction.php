@@ -29,7 +29,7 @@ class MarkKitchenTicketItemServedAction
 
             if (! $order instanceof Order) {
                 throw ValidationException::withMessages([
-                    'order_service' => __('Позиция не связана с заказом.'),
+                    'order_service' => __('ui.actions.waiter.markkitchenticketitemservedaction.poziciia_ne_sviazana_s'),
                 ]);
             }
 
@@ -39,7 +39,7 @@ class MarkKitchenTicketItemServedAction
                 throw BusinessRuleViolation::for(
                     BusinessRuleCode::OrderAlreadyCancelled,
                     'order_service',
-                    __('Заказ отменён. Позиции больше нельзя подавать.'),
+                    __('ui.actions.waiter.markkitchenticketitemservedaction.zakaz_otmenen_pozicii_b'),
                 );
             }
 
@@ -49,7 +49,7 @@ class MarkKitchenTicketItemServedAction
 
             if ($this->itemStatus($item) !== KitchenTicketItemStatus::Ready) {
                 throw ValidationException::withMessages([
-                    'order_service' => __('Подать можно только готовую позицию.'),
+                    'order_service' => __('ui.actions.waiter.markkitchenticketitemservedaction.podat_mozno_tolko_gotov'),
                 ]);
             }
 
@@ -101,7 +101,7 @@ class MarkKitchenTicketItemServedAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::BranchInaccessible,
                 'order_service',
-                __('У вас нет доступа к подаче позиций в этом филиале.'),
+                __('ui.actions.waiter.markkitchenticketitemservedaction.u_vas_net_dostupa_k_pod'),
             );
         }
     }

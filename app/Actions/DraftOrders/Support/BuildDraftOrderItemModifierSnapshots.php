@@ -107,7 +107,7 @@ class BuildDraftOrderItemModifierSnapshots
                 throw BusinessRuleViolation::for(
                     BusinessRuleCode::ItemUnavailable,
                     'selectedModifierOptions.'.$modifierGroupId,
-                    __('Выбранный вариант недоступен.'),
+                    __('ui.actions.draftorders.support.builddraftorderitemmodifiersnapshots.vybrannyi_va'),
                 );
             }
         }
@@ -124,7 +124,7 @@ class BuildDraftOrderItemModifierSnapshots
                     throw BusinessRuleViolation::for(
                         BusinessRuleCode::ItemUnavailable,
                         'selectedModifierOptions.'.$modifierGroup->id,
-                        __('Выбранный вариант недоступен.'),
+                        __('ui.actions.draftorders.support.builddraftorderitemmodifiersnapshots.vybrannyi_va'),
                     );
                 }
             }
@@ -141,13 +141,13 @@ class BuildDraftOrderItemModifierSnapshots
                 throw BusinessRuleViolation::for(
                     BusinessRuleCode::RequiredModifierMissing,
                     'selectedModifierOptions.'.$modifierGroup->id,
-                    __('Выберите вариант.'),
+                    __('ui.actions.draftorders.support.builddraftorderitemmodifiersnapshots.vyberite_var'),
                 );
             }
 
             if ($maxSelect > 0 && $selectedCount > $maxSelect) {
                 throw ValidationException::withMessages([
-                    'selectedModifierOptions.'.$modifierGroup->id => __('Выбрано слишком много вариантов.'),
+                    'selectedModifierOptions.'.$modifierGroup->id => __('ui.actions.draftorders.support.builddraftorderitemmodifiersnapshots.vybrano_slis'),
                 ]);
             }
         });

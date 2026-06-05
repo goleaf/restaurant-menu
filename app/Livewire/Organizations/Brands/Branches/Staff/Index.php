@@ -329,12 +329,12 @@ class Index extends Component
 
     public function memberStatusLabel(OrganizationUserStatus $status): string
     {
-        return __('staff.statuses.'.$status->value);
+        return __(sprintf('staff.statuses.%s', $status->value));
     }
 
     public function invitationStatusLabel(InvitationStatus $status): string
     {
-        return __('staff.invitation_statuses.'.$status->value);
+        return __(sprintf('staff.invitation_statuses.%s', $status->value));
     }
 
     /**

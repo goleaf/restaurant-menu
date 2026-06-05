@@ -292,13 +292,13 @@ class RecordManualPaymentAction
 
         if ($tipsCents < 0 || $tipsCents > 10000000) {
             throw ValidationException::withMessages([
-                'tipsAmount' => __('Введите понятную сумму чаевых.'),
+                'tipsAmount' => __('ui.actions.payments.recordmanualpaymentaction.vvedite_poniatnuiu_summu_caev'),
             ]);
         }
 
         if (! $tipsEnabled && $tipsCents > 0) {
             throw ValidationException::withMessages([
-                'tipsAmount' => __('Чаевые выключены в настройках филиала.'),
+                'tipsAmount' => __('ui.actions.payments.recordmanualpaymentaction.caevye_vykliuceny_v_nastroika'),
             ]);
         }
 

@@ -93,13 +93,13 @@ class ApproveTableSessionJoinRequestAction
     {
         if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending) {
             throw ValidationException::withMessages([
-                'join_request' => __('This join request is no longer pending.'),
+                'join_request' => __('ui.actions.tablesessions.approvetablesessionjoinrequestaction.this_join_req'),
             ]);
         }
 
         if ($joinRequest->expires_at !== null && $joinRequest->expires_at->isPast()) {
             throw ValidationException::withMessages([
-                'join_request' => __('This join request has expired.'),
+                'join_request' => __('guest.table.join_request_expired'),
             ]);
         }
     }
@@ -117,7 +117,7 @@ class ApproveTableSessionJoinRequestAction
             ->save();
 
         throw ValidationException::withMessages([
-            'join_request' => __('This join request has expired.'),
+            'join_request' => __('guest.table.join_request_expired'),
         ]);
     }
 
@@ -131,7 +131,7 @@ class ApproveTableSessionJoinRequestAction
             || $guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
-                'guest' => __('Only an active guest at this table can approve join requests.'),
+                'guest' => __('ui.actions.tablesessions.approvetablesessionjoinrequestaction.only_an_activ'),
             ]);
         }
     }

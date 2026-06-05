@@ -61,7 +61,7 @@ class KitchenItemCookingNotification extends Notification
             'guest_name' => $ticketItem->guest_name,
             'quantity' => $ticketItem->quantity,
             'started_at' => $ticketItem->updated_at?->toISOString(),
-            'message' => __('Позиция готовится.'),
+            'message' => __('ui.livewire.publicqr.notifications.poziciia_gotovitsia'),
         ];
     }
 }

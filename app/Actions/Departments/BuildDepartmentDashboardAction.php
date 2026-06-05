@@ -242,7 +242,7 @@ class BuildDepartmentDashboardAction
         return [
             'id' => $ticket->id,
             'order_id' => $ticket->order_id,
-            'service_point_name' => $servicePointName === '' ? __('Service point') : $servicePointName,
+            'service_point_name' => $servicePointName === '' ? __('guest.table.service_point') : $servicePointName,
             'service_point_display_number' => $displayNumber,
             'service_point_label' => $this->servicePointLabel($displayNumber, $servicePointName),
             'zone_name' => $ticket->servicePoint?->areaNode?->name,
@@ -329,7 +329,7 @@ class BuildDepartmentDashboardAction
             return $displayNumber;
         }
 
-        return $name === '' ? __('Service point') : $name;
+        return $name === '' ? __('guest.table.service_point') : $name;
     }
 
     private function elapsedSeconds(?CarbonInterface $startedAt): int

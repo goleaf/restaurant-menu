@@ -24,7 +24,7 @@ class EnsureWaiterCanEditDraftOrderAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::SessionClosed,
                 'draft_edit',
-                __('Черновик больше не связан с открытым столом.'),
+                __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
             );
         }
 
@@ -38,7 +38,7 @@ class EnsureWaiterCanEditDraftOrderAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::BranchInaccessible,
                 'draft_edit',
-                __('У вас нет права редактировать черновик заказа в этом филиале.'),
+                __('ui.actions.waiter.ensurewaitercaneditdraftorderaction.u_vas_net_prava_redak'),
             );
         }
 
@@ -46,7 +46,7 @@ class EnsureWaiterCanEditDraftOrderAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::SessionClosed,
                 'draft_edit',
-                __('Нельзя редактировать заказ для закрытого стола.'),
+                __('ui.actions.waiter.ensurewaitercaneditdraftorderaction.nelzia_redaktirovat_z'),
             );
         }
 
@@ -54,7 +54,7 @@ class EnsureWaiterCanEditDraftOrderAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::DraftLocked,
                 'draft_edit',
-                __('Редактировать можно только черновик, отправленный официанту.'),
+                __('ui.actions.waiter.ensurewaitercaneditdraftorderaction.redaktirovat_mozno_to'),
             );
         }
     }

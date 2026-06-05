@@ -109,7 +109,7 @@ class Dashboard extends Component
 
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('Organization activated.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.superadmin.dashboard.organization_activated'));
     }
 
     public function suspendOrganization(
@@ -121,8 +121,8 @@ class Dashboard extends Component
         $validated = $this->validate([
             'organizationSuspendReason' => ['required', 'string', 'min:3', 'max:500'],
         ], [
-            'organizationSuspendReason.required' => __('Explain why this organization is being suspended.'),
-            'organizationSuspendReason.min' => __('The suspension reason must be clear enough for the audit log.'),
+            'organizationSuspendReason.required' => __('ui.livewire.superadmin.dashboard.explain_why_this_organization_is_being_sus'),
+            'organizationSuspendReason.min' => __('ui.livewire.organizations.brands.branches.index.the_suspension_reason_must'),
         ]);
 
         $organization = $this->findOrganization($organizationId);
@@ -137,7 +137,7 @@ class Dashboard extends Component
         unset($this->organizations);
 
         Flux::modals()->close();
-        Flux::toast(variant: 'success', text: __('Organization suspended.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.superadmin.dashboard.organization_suspended'));
     }
 
     public function runSessionInactivityCleanup(CleanupInactiveTableSessionsAction $cleanupInactiveTableSessions): void
@@ -147,7 +147,7 @@ class Dashboard extends Component
         $result = $cleanupInactiveTableSessions->handle();
         $this->cleanupMessage = $this->cleanupSummary($result);
 
-        Flux::toast(variant: 'success', text: __('Session cleanup finished.'));
+        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.session_cleanup_finished'));
     }
 
     public function downloadBackup(): RedirectResponse
@@ -251,7 +251,7 @@ class Dashboard extends Component
     private function cleanupSummary(array $result): string
     {
         return __(
-            'Cleanup checked :checked sessions. Cancelled :cancelled stale pending sessions. Active warnings: :warnings. Skipped with unpaid orders: :unpaid.',
+            'ui.livewire.organizations.brands.branches.settings.cleanup_checked_sessions',
             [
                 'checked' => $result['checked'],
                 'cancelled' => $result['pending_cancelled'],

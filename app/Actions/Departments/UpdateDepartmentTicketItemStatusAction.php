@@ -76,7 +76,7 @@ class UpdateDepartmentTicketItemStatusAction
 
         if ($departmentId === null || ! $accessibleDepartmentIds->contains((int) $departmentId)) {
             throw ValidationException::withMessages([
-                'ticket_item_status' => __('У вас нет доступа к этому тикету.'),
+                'ticket_item_status' => __('ui.actions.departments.updatedepartmentticketitemstatusaction.u_vas_net_dos'),
             ]);
         }
 
@@ -84,7 +84,7 @@ class UpdateDepartmentTicketItemStatusAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::DepartmentAlreadyReady,
                 'ticket_item_status',
-                __('Эта позиция уже подана официантом.'),
+                __('ui.actions.departments.updatedepartmentticketitemstatusaction.eta_poziciia'),
             );
         }
 
@@ -93,7 +93,7 @@ class UpdateDepartmentTicketItemStatusAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::OrderAlreadyCancelled,
                 'ticket_item_status',
-                __('Заказ отменён. Кухня и бар больше не работают по нему.'),
+                __('ui.actions.departments.updatedepartmentticketitemstatusaction.zakaz_otmenen'),
             );
         }
 
@@ -103,7 +103,7 @@ class UpdateDepartmentTicketItemStatusAction
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::DepartmentAlreadyReady,
                 'ticket_item_status',
-                __('Позиция уже отмечена готовой.'),
+                __('ui.actions.departments.updatedepartmentticketitemstatusaction.poziciia_uze'),
             );
         }
 

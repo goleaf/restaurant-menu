@@ -108,13 +108,13 @@ class DeleteGuestDraftOrderItemAction
             || ! $servicePoint->is_active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'draft_item' => __('Можно удалить только свою позицию за этим столом.'),
+                'draft_item' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.mozno_udalit_tolko_s'),
             ]);
         }
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
             throw ValidationException::withMessages([
-                'draft_order' => __('Этот черновик уже отправлен официанту. Изменения заблокированы.'),
+                'draft_order' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.etot_cernovik_uze_ot'),
             ]);
         }
     }

@@ -30,17 +30,17 @@ enum BusinessRuleCode: string
     public function message(): string
     {
         return match ($this) {
-            self::SessionClosed => __('Нельзя выполнить действие для закрытого стола.'),
-            self::DraftLocked => __('Черновик сейчас нельзя изменить.'),
-            self::GuestNotActive => __('Выберите активного гостя за этим столом.'),
-            self::GuestNotApproved => __('Гость ещё не подтверждён для этого стола.'),
-            self::OrderAlreadyCancelled => __('Заказ уже отменён.'),
-            self::DepartmentAlreadyReady => __('Позиция уже отмечена готовой.'),
+            self::SessionClosed => __('ui.enums.businessrulecode.nelzia_vypolnit_deistvie_dlia_zakrytogo_stola'),
+            self::DraftLocked => __('ui.enums.businessrulecode.cernovik_seicas_nelzia_izmenit'),
+            self::GuestNotActive => __('ui.actions.waiter.adddraftorderitembywaiteraction.vyberite_aktivnogo_gostia'),
+            self::GuestNotApproved => __('ui.actions.waiter.adddraftorderitembywaiteraction.gost_eshhe_ne_podtverzden'),
+            self::OrderAlreadyCancelled => __('ui.actions.orders.changeorderstatusaction.zakaz_uze_otmenen'),
+            self::DepartmentAlreadyReady => __('ui.actions.departments.updatedepartmentticketitemstatusaction.poziciia_uze'),
             self::PaymentExceedsRemaining => __('payments.errors.amount_exceeds_remaining'),
             self::QrDisabled => __('qr.errors.disabled.title'),
-            self::BranchInaccessible => __('У вас нет доступа к этому филиалу.'),
-            self::ItemUnavailable => __('Эта позиция сейчас недоступна.'),
-            self::RequiredModifierMissing => __('Выберите обязательный вариант.'),
+            self::BranchInaccessible => __('ui.enums.businessrulecode.u_vas_net_dostupa_k_etomu_filialu'),
+            self::ItemUnavailable => __('ui.enums.businessrulecode.eta_poziciia_seicas_nedostupna'),
+            self::RequiredModifierMissing => __('ui.enums.businessrulecode.vyberite_obiazatelnyi_variant'),
         };
     }
 

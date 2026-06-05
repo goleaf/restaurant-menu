@@ -463,7 +463,7 @@ class BuildWaiterTableDetailAction
         $parts = [$servicePoint->name];
 
         if (filled($servicePoint->display_number)) {
-            $parts[] = __('№ :number', ['number' => $servicePoint->display_number]);
+            $parts[] = __('ui.actions.waiter.buildwaitertabledetailaction.message', ['number' => $servicePoint->display_number]);
         }
 
         if ($servicePoint->areaNode?->name) {
@@ -606,13 +606,13 @@ class BuildWaiterTableDetailAction
 
         $draftItems->each(function (DraftOrderItem $item) use (&$guestSections, $currency): void {
             $guestId = (int) $item->table_session_guest_id;
-            $guestName = $item->guest?->guest_name ?? __('Guest');
+            $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
 
             if (! isset($guestSections[$guestId])) {
                 $guestSections[$guestId] = [
                     'guest_id' => $guestId,
                     'guest_name' => $guestName,
-                    'status_label' => $item->guest?->status?->label() ?? __('Guest'),
+                    'status_label' => $item->guest?->status?->label() ?? __('guest.table.guest'),
                     'is_ready' => false,
                     'total_cents' => 0,
                     'items' => [],
@@ -691,7 +691,7 @@ class BuildWaiterTableDetailAction
             return [
                 'id' => null,
                 'status_value' => null,
-                'status_label' => __('No draft'),
+                'status_label' => __('ui.actions.waiter.buildwaitertabledetailaction.no_draft'),
                 'sent_at' => null,
                 'sent_by_guest_name' => null,
                 'rejected_at' => null,

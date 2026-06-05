@@ -57,7 +57,7 @@ class ToggleTableSessionGuestReadyAction
             || $tableSession === null
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'ready_status' => __('Только активный гость за открытым столом может менять готовность.'),
+                'ready_status' => __('ui.actions.tablesessions.toggletablesessionguestreadyaction.tolko_aktivnyi'),
             ]);
         }
     }

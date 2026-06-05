@@ -194,19 +194,19 @@ class Notifications extends Component
             'title' => $this->titleForType($notification->type),
             'body' => match ($notification->type) {
                 'join_request_created' => $guestName !== ''
-                    ? __(':name хочет присоединиться к столу.', ['name' => $guestName])
-                    : (string) data_get($data, 'message', __('Новый гость ждёт подтверждения.')),
-                'draft_order_confirmed' => (string) data_get($data, 'message', __('Официант подтвердил заказ.')),
+                    ? __('ui.livewire.publicqr.notifications.xocet_prisoedinitsia_k_stolu', ['name' => $guestName])
+                    : (string) data_get($data, 'message', __('ui.livewire.publicqr.notifications.novyi_gost_zdet_podtverzdeniia')),
+                'draft_order_confirmed' => (string) data_get($data, 'message', __('ui.livewire.publicqr.notifications.oficiant_podtverdil_zakaz')),
                 'draft_order_rejected' => $reason !== ''
-                    ? __('Причина: :reason', ['reason' => $reason])
-                    : (string) data_get($data, 'message', __('Официант отклонил заказ.')),
+                    ? __('ui.livewire.publicqr.notifications.pricina', ['reason' => $reason])
+                    : (string) data_get($data, 'message', __('ui.livewire.publicqr.notifications.oficiant_otklonil_zakaz')),
                 'kitchen_item_cooking' => $itemName !== ''
-                    ? __(':item начали готовить.', ['item' => $itemName])
-                    : (string) data_get($data, 'message', __('Позиция готовится.')),
+                    ? __('ui.livewire.publicqr.notifications.nacali_gotovit', ['item' => $itemName])
+                    : (string) data_get($data, 'message', __('ui.livewire.publicqr.notifications.poziciia_gotovitsia')),
                 'kitchen_item_ready' => $itemName !== ''
-                    ? __(':item готово.', ['item' => $itemName])
-                    : (string) data_get($data, 'message', __('Позиция готова.')),
-                default => (string) data_get($data, 'message', __('Новое уведомление.')),
+                    ? __('ui.livewire.notifications.unreadcount.gotovo', ['item' => $itemName])
+                    : (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.poziciia_gotova')),
+                default => (string) data_get($data, 'message', __('ui.livewire.notifications.unreadcount.novoe_uvedomlenie')),
             },
             'meta' => $this->metaForData($data),
             'tone' => $this->toneForType($notification->type),
@@ -217,12 +217,12 @@ class Notifications extends Component
     private function titleForType(string $type): string
     {
         return match ($type) {
-            'join_request_created' => __('Новый гость ждёт подтверждения'),
-            'draft_order_confirmed' => __('Заказ подтверждён'),
-            'draft_order_rejected' => __('Заказ отклонён'),
-            'kitchen_item_cooking' => __('Позиция готовится'),
-            'kitchen_item_ready' => __('Позиция готова'),
-            default => __('Уведомление'),
+            'join_request_created' => __('ui.livewire.publicqr.notifications.novyi_gost_zdet_podtverzdeniia_7813e12a'),
+            'draft_order_confirmed' => __('ui.livewire.publicqr.notifications.zakaz_podtverzden'),
+            'draft_order_rejected' => __('ui.livewire.publicqr.notifications.zakaz_otklonen'),
+            'kitchen_item_cooking' => __('ui.livewire.publicqr.notifications.poziciia_gotovitsia_c07e0e57'),
+            'kitchen_item_ready' => __('ui.livewire.notifications.unreadcount.poziciia_gotova_d55866f3'),
+            default => __('ui.livewire.notifications.unreadcount.uvedomlenie'),
         };
     }
 

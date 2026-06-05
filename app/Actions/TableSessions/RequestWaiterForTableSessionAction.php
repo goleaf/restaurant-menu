@@ -123,7 +123,7 @@ class RequestWaiterForTableSessionAction
 
         if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             throw ValidationException::withMessages([
-                'waiter_call' => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
+                'waiter_call' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
         }
 
@@ -131,7 +131,7 @@ class RequestWaiterForTableSessionAction
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'waiter_call' => __('Только активный гость за этим столом может позвать официанта.'),
+                'waiter_call' => __('ui.actions.tablesessions.requestwaiterfortablesessionaction.tolko_aktivnyi'),
             ]);
         }
     }

@@ -54,13 +54,13 @@ class BuildDepartmentTicketPrintAction
             ],
             'branch' => [
                 'id' => $ticket->branch_id,
-                'name' => $ticket->branch?->name ?? __('Branch'),
+                'name' => $ticket->branch?->name ?? __('guest.table.branch'),
                 'city' => $ticket->branch?->city,
                 'country' => $ticket->branch?->country,
             ],
             'service_point' => [
                 'id' => $ticket->service_point_id,
-                'name' => $ticket->servicePoint?->name ?? __('Service point'),
+                'name' => $ticket->servicePoint?->name ?? __('guest.table.service_point'),
                 'display_number' => $ticket->servicePoint?->display_number,
                 'label' => $this->servicePointLabel(
                     (string) ($ticket->servicePoint?->display_number ?? ''),
@@ -222,7 +222,7 @@ class BuildDepartmentTicketPrintAction
             return $displayNumber;
         }
 
-        return $name === '' ? __('Service point') : $name;
+        return $name === '' ? __('guest.table.service_point') : $name;
     }
 
     private function formatTime(?CarbonInterface $time, string $timezone): ?string

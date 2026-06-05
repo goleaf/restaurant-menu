@@ -135,7 +135,7 @@ class RequestBillForTableSessionAction
 
         if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             throw ValidationException::withMessages([
-                'bill_request' => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
+                'bill_request' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
         }
 
@@ -143,7 +143,7 @@ class RequestBillForTableSessionAction
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Paid, TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'bill_request' => __('Только активный гость за этим столом может попросить счёт.'),
+                'bill_request' => __('ui.actions.tablesessions.requestbillfortablesessionaction.tolko_aktivnyi_go'),
             ]);
         }
     }

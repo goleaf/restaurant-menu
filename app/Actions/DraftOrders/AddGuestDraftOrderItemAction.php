@@ -173,7 +173,7 @@ class AddGuestDraftOrderItemAction
 
         if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             throw ValidationException::withMessages([
-                'guest' => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
+                'guest' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
         }
 
@@ -181,7 +181,7 @@ class AddGuestDraftOrderItemAction
             || $guest->status !== TableSessionGuestStatus::Active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'guest' => __('Только активный гость за этим столом может добавлять позиции.'),
+                'guest' => __('ui.actions.draftorders.addguestdraftorderitemaction.tolko_aktivnyi_gost_za'),
             ]);
         }
 
@@ -195,7 +195,7 @@ class AddGuestDraftOrderItemAction
             || ! $menuItem->category?->is_active
             || ! $menuItem->is_available) {
             throw ValidationException::withMessages([
-                'menu_item' => __('Это блюдо сейчас недоступно.'),
+                'menu_item' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_bliudo_seicas_nedos'),
             ]);
         }
 
@@ -203,7 +203,7 @@ class AddGuestDraftOrderItemAction
 
         if (! $availability['is_available']) {
             throw ValidationException::withMessages([
-                'menu_item' => __(':label. :detail', [
+                'menu_item' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
                     'label' => $availability['label'],
                     'detail' => $availability['detail'],
                 ]),
@@ -236,7 +236,7 @@ class AddGuestDraftOrderItemAction
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
             throw ValidationException::withMessages([
-                'draft_order' => __('Этот черновик уже отправлен официанту.'),
+                'draft_order' => __('ui.actions.draftorders.addguestdraftorderitemaction.etot_cernovik_uze_otpra'),
             ]);
         }
 
@@ -267,7 +267,7 @@ class AddGuestDraftOrderItemAction
         }
 
         throw ValidationException::withMessages([
-            $field => __(':label. :detail', [
+            $field => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
                 'label' => $openingStatus['label'],
                 'detail' => $openingStatus['detail'],
             ]),

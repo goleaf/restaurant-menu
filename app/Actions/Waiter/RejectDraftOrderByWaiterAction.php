@@ -176,7 +176,7 @@ class RejectDraftOrderByWaiterAction
 
         if ($tableSession === null || $tableSession->branch === null) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Черновик больше не связан с открытым столом.'),
+                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
             ]);
         }
 
@@ -184,31 +184,31 @@ class RejectDraftOrderByWaiterAction
 
         if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('У вас нет права отклонять заказы в этом филиале.'),
+                'draft_review' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.u_vas_net_prava_otkloniat'),
             ]);
         }
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Нельзя отклонить заказ для закрытого стола.'),
+                'draft_review' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.nelzia_otklonit_zakaz_dlia'),
             ]);
         }
 
         if (! in_array($draftOrder->status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true)) {
             throw ValidationException::withMessages([
-                'draft_review' => __('Отклонить можно только черновик, отправленный официанту.'),
+                'draft_review' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.otklonit_mozno_tolko_cerno'),
             ]);
         }
 
         if ($reason === '') {
             throw ValidationException::withMessages([
-                'rejectionReason' => __('Укажите причину отклонения.'),
+                'rejectionReason' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.ukazite_pricinu_otklonenii'),
             ]);
         }
 
         if (mb_strlen($reason) > 500) {
             throw ValidationException::withMessages([
-                'rejectionReason' => __('Причина отклонения не должна быть длиннее 500 символов.'),
+                'rejectionReason' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.pricina_otkloneniia_ne_dol'),
             ]);
         }
     }

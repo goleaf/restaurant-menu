@@ -58,7 +58,7 @@
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="{{ $palette['badge'] }} inline-flex min-h-7 items-center rounded-md px-2.5 py-1 text-xs font-semibold">
-                            {{ $card['kicker'] ?? __('Guest access') }}
+                            {{ $card['kicker'] ?? __('guest.table.guest_access') }}
                         </span>
 
                         <span class="{{ $palette['dot'] }} size-2 rounded-full"></span>
@@ -69,7 +69,7 @@
                     @endif
 
                     <h1 class="mt-2 text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">
-                        {{ $card['title'] ?? __('Guest access is unavailable') }}
+                        {{ $card['title'] ?? __('guest.table.guest_access_unavailable_title') }}
                     </h1>
 
                     <p class="mt-3 text-base leading-6 text-zinc-700 dark:text-zinc-200">

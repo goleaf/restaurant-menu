@@ -4,12 +4,31 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 121 order cancellation with reason.
+Last memory refresh: 2026-06-05 after rescue mode before Prompt 122.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 121 is complete; do not continue
-with new product behavior automatically.
+Prompt 122 - Void item before payment.
+
+Rescue mode ran before Prompt 122 because the project was already broken by a
+missing `Flux\\Flux` import in `App\\Livewire\\Waiter\\TableDetail`. The rescue
+fix restored the existing waiter table detail/payment regression suite and did
+not implement item-level voiding.
+
+When Prompt 122 is started again, keep the step small:
+
+- add item-level void status/history without deleting `order_items`;
+- require a reason;
+- recalculate payment totals from non-voided items;
+- update related kitchen ticket item only when it is not served;
+- write both `order_status_logs` and `audit_logs`;
+- authorize through `cancel_orders` or an explicitly existing/seeded
+  `manage_orders` permission.
+
+Do not continue with new product behavior automatically without the user's next
+explicit prompt.
+
+Prompt 121 is complete; do not continue with new product behavior automatically.
 
 Prompt 121 added order cancellation with required reason. Keep cancellation as
 status/history, not deletion. Cancelled order tickets must remain hidden from

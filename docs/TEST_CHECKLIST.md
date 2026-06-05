@@ -13,6 +13,30 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Rescue Mode Before Prompt 122 Results
+
+The pre-Prompt 122 health check found the waiter table detail component was
+broken before new feature work started:
+
+- failing check: `php artisan test --compact tests/Feature/OrderCancellationTest.php tests/Feature/ManualPaymentTest.php`;
+- error: `Class "App\\Livewire\\Waiter\\Flux" not found`;
+- fix: add the missing `Flux\\Flux` import to
+  `App\\Livewire\\Waiter\\TableDetail`;
+- Prompt 122 order item void flow was not implemented during rescue mode.
+
+Focused verification after the fix:
+
+```bash
+php artisan migrate --no-interaction
+php artisan test --compact tests/Feature/OrderCancellationTest.php tests/Feature/ManualPaymentTest.php
+```
+
+Manual check:
+
+1. Open `/restaurant/waiter/tables/{tableSession}` as staff with payment access.
+2. Close a paid table session or use the close confirmation flow.
+3. Confirm no Flux namespace error appears and the waiter table detail refreshes.
+
 ## Prompt 121 Order Cancellation With Reason Results
 
 Programmatic coverage was added in `tests/Feature/OrderCancellationTest.php`.

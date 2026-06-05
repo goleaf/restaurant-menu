@@ -5,6 +5,7 @@ namespace App\Actions\Departments;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\KitchenTicketStatus;
+use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\KitchenDepartment;
@@ -196,6 +197,9 @@ class BuildDepartmentDashboardAction
             ])
             ->where('kitchen_department_id', $department->id)
             ->where('status', KitchenTicketStatus::Sent->value)
+            ->whereHas('order', function ($query): void {
+                $query->where('status', '!=', OrderStatus::Cancelled->value);
+            })
             ->orderBy('sent_at')
             ->orderBy('id')
             ->limit(100)

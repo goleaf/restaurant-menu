@@ -5,9 +5,12 @@ namespace App\Actions\Orders;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
+use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -31,13 +34,42 @@ class ChangeOrderStatusAction
             $this->ensureCanChangeStatus($order, $newStatus, $changedBy);
 
             $previousStatus = $order->status;
+            $normalizedReason = $this->normalizeReason($reason);
 
             if ($previousStatus === $newStatus) {
                 return $order;
             }
 
+            if ($newStatus === OrderStatus::Cancelled && $normalizedReason === null) {
+                throw ValidationException::withMessages([
+                    'orderCancellationReason' => __('Укажите причину отмены заказа.'),
+                ]);
+            }
+
+            $ticketItemWarningCounts = $newStatus === OrderStatus::Cancelled
+                ? $this->readyAndServedTicketItemCounts($order)
+                : ['ready' => 0, 'served' => 0];
+            $orderMetadata = $this->orderMetadataForStatusChange(
+                order: $order,
+                newStatus: $newStatus,
+                changedBy: $changedBy,
+                reason: $normalizedReason,
+                ticketItemWarningCounts: $ticketItemWarningCounts,
+            );
+            $logMetadata = ['source' => 'manual_status_change'] + $metadata;
+
+            if ($newStatus === OrderStatus::Cancelled) {
+                $logMetadata += [
+                    'ready_ticket_items_count' => $ticketItemWarningCounts['ready'],
+                    'served_ticket_items_count' => $ticketItemWarningCounts['served'],
+                ];
+            }
+
             $order
-                ->forceFill(['status' => $newStatus])
+                ->forceFill([
+                    'status' => $newStatus,
+                    'metadata' => $orderMetadata,
+                ])
                 ->save();
 
             $this->createOrderStatusLog->handle(
@@ -47,8 +79,8 @@ class ChangeOrderStatusAction
                 previousStatus: $previousStatus,
                 newStatus: $newStatus,
                 statusType: 'order',
-                reason: $this->normalizeReason($reason),
-                metadata: ['source' => 'manual_status_change'] + $metadata,
+                reason: $normalizedReason,
+                metadata: $logMetadata,
             );
 
             if ($newStatus === OrderStatus::Cancelled) {
@@ -64,7 +96,9 @@ class ChangeOrderStatusAction
                     ],
                     newValues: [
                         'status' => $newStatus,
-                        'reason' => $this->normalizeReason($reason),
+                        'reason' => $normalizedReason,
+                        'ready_ticket_items_count' => $ticketItemWarningCounts['ready'],
+                        'served_ticket_items_count' => $ticketItemWarningCounts['served'],
                     ],
                 );
             }
@@ -83,6 +117,7 @@ class ChangeOrderStatusAction
                 'table_session_id',
                 'draft_order_id',
                 'status',
+                'metadata',
             ])
             ->with(['branch:id,organization_id'])
             ->whereKey($order->id)
@@ -91,6 +126,10 @@ class ChangeOrderStatusAction
 
     private function ensureCanChangeStatus(Order $order, OrderStatus $newStatus, User $user): void
     {
+        if ($newStatus === OrderStatus::Cancelled && $this->canCancelByManagementRole($order, $user)) {
+            return;
+        }
+
         $permission = $this->permissionFor($newStatus);
         $branchIds = $this->resolveAccessibleBranchIds->handle($user, $permission);
 
@@ -99,6 +138,18 @@ class ChangeOrderStatusAction
                 'order_status' => __('У вас нет права менять этот статус заказа в этом филиале.'),
             ]);
         }
+    }
+
+    private function canCancelByManagementRole(Order $order, User $user): bool
+    {
+        $organizationId = $order->branch?->organization_id;
+
+        if ($organizationId === null) {
+            return false;
+        }
+
+        return $user->hasOrganizationRole($organizationId, SystemRole::Director)
+            || $user->hasOrganizationRole($organizationId, SystemRole::ShiftManager);
     }
 
     private function permissionFor(OrderStatus $newStatus): SystemPermission
@@ -128,5 +179,54 @@ class ChangeOrderStatusAction
         }
 
         return mb_substr($normalizedReason, 0, 500);
+    }
+
+    /**
+     * @return array{ready: int, served: int}
+     */
+    private function readyAndServedTicketItemCounts(Order $order): array
+    {
+        $ticketItems = KitchenTicketItem::query()
+            ->select(['id', 'kitchen_ticket_id', 'status', 'served_at'])
+            ->whereHas('kitchenTicket', function ($query) use ($order): void {
+                $query->where('order_id', $order->id);
+            })
+            ->limit(500)
+            ->get();
+
+        return [
+            'ready' => $ticketItems
+                ->filter(fn (KitchenTicketItem $item): bool => $item->status === KitchenTicketItemStatus::Ready)
+                ->count(),
+            'served' => $ticketItems
+                ->filter(fn (KitchenTicketItem $item): bool => $item->served_at !== null)
+                ->count(),
+        ];
+    }
+
+    /**
+     * @param  array{ready: int, served: int}  $ticketItemWarningCounts
+     * @return array<string, mixed>
+     */
+    private function orderMetadataForStatusChange(
+        Order $order,
+        OrderStatus $newStatus,
+        User $changedBy,
+        ?string $reason,
+        array $ticketItemWarningCounts,
+    ): array {
+        $metadata = is_array($order->metadata) ? $order->metadata : [];
+
+        if ($newStatus !== OrderStatus::Cancelled) {
+            return $metadata;
+        }
+
+        return array_merge($metadata, [
+            'cancelled_at' => now()->toISOString(),
+            'cancelled_by_user_id' => $changedBy->id,
+            'cancellation_reason' => $reason,
+            'ready_ticket_items_at_cancellation' => $ticketItemWarningCounts['ready'],
+            'served_ticket_items_at_cancellation' => $ticketItemWarningCounts['served'],
+        ]);
     }
 }

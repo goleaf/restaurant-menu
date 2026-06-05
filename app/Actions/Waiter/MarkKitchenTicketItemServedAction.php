@@ -4,6 +4,7 @@ namespace App\Actions\Waiter;
 
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
 use App\Enums\KitchenTicketItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
@@ -31,6 +32,12 @@ class MarkKitchenTicketItemServedAction
             }
 
             $this->ensureCanServe($order, $servedBy);
+
+            if ($order->status === OrderStatus::Cancelled) {
+                throw ValidationException::withMessages([
+                    'order_service' => __('Заказ отменён. Позиции больше нельзя подавать.'),
+                ]);
+            }
 
             if ($item->served_at !== null) {
                 return $item;

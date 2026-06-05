@@ -29,11 +29,17 @@
             'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $serviceStatusTone === 'emerald',
             'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => $serviceStatusTone === 'amber',
             'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $serviceStatusTone === 'sky',
+            'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-100' => $serviceStatusTone === 'red',
             'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $serviceStatusTone === 'zinc',
         ])>
             {{ __('Статус заказа') }}: {{ $serviceStatusLabel }}
 
-            @if ($serviceStatusValue === 'accepted' && $orderStatusValue === 'sent_to_kitchen_bar')
+            @if ($serviceStatusValue === 'cancelled')
+                <span class="block pt-1 font-normal">{{ __('Заказ отменён.') }}</span>
+                @if ($cancellationReason)
+                    <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $cancellationReason }}</span>
+                @endif
+            @elseif ($serviceStatusValue === 'accepted' && $orderStatusValue === 'sent_to_kitchen_bar')
                 <span class="block pt-1 font-normal">{{ __('Заказ принят. Кухня и бар получили позиции.') }}</span>
             @endif
         </p>

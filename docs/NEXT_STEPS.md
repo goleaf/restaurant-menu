@@ -4,12 +4,16 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 120 manual service charge and tips.
+Last memory refresh: 2026-06-05 after Prompt 121 order cancellation with reason.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 120 is complete; do not continue
+Wait for the next explicit user prompt. Prompt 121 is complete; do not continue
 with new product behavior automatically.
+
+Prompt 121 added order cancellation with required reason. Keep cancellation as
+status/history, not deletion. Cancelled order tickets must remain hidden from
+kitchen/bar work screens and blocked in ticket item update actions.
 
 The separate post-feature daily memory update after Prompt 120 is complete.
 Keep this file as the source for next-prompt guardrails until the user gives a
@@ -25,6 +29,7 @@ or orders, first verify:
 - `tests/Feature/GuestTablePageShellTest.php`;
 - `tests/Feature/WaiterDashboardTest.php`;
 - `tests/Feature/ManualPaymentTest.php`;
+- `tests/Feature/OrderCancellationTest.php`;
 - `tests/Feature/VerticalSliceFlowTest.php` for broader flow changes.
 
 Risky areas:
@@ -54,6 +59,9 @@ Risky areas:
   service-charge balance.
 - Do not add online payments, tax logic, or shared allocation rules unless a
   future prompt explicitly asks for them.
+- Do not delete cancelled orders or order items; cancellation must keep
+  `order_status_logs`, `audit_logs`, and guest-facing reason history.
+- Do not let kitchen/bar staff continue ticket work for cancelled orders.
 - Do not move a table session to a non-free, inactive, cross-branch, pending,
   active, or payment-requested service point.
 - Already-entered guests should follow the transferred `table_session`; fresh

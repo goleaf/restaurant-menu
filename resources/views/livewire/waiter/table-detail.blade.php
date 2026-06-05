@@ -619,11 +619,19 @@
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
+                @error('order_cancellation')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
                 @error('order_service')
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
                 @error('rejectionReason')
+                    <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                @enderror
+
+                @error('orderCancellationReason')
                     <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                 @enderror
 
@@ -852,7 +860,14 @@
                             {{ __('Status') }}: {{ __(data_get($table, 'draft.order_status_label')) }}
                         </p>
 
-                        @if (in_array(data_get($table, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
+                        @if (data_get($table, 'draft.order_status_value') === 'cancelled')
+                            <p class="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
+                                {{ __('Order cancelled.') }}
+                                @if (data_get($table, 'draft.cancellation_reason'))
+                                    <span class="block pt-1 font-normal">{{ __('Reason') }}: {{ data_get($table, 'draft.cancellation_reason') }}</span>
+                                @endif
+                            </p>
+                        @elseif (in_array(data_get($table, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
                             <p class="mt-1 text-emerald-700 dark:text-emerald-300">
                                 {{ __('Kitchen/bar received this order.') }}
                             </p>
@@ -947,6 +962,42 @@
                                 <span wire:loading.remove wire:target="sendOrderToKitchenBar">{{ __('Send to kitchen/bar') }}</span>
                                 <span wire:loading wire:target="sendOrderToKitchenBar">{{ __('Sending') }}</span>
                             </flux:button>
+                        @endif
+
+                        @if (data_get($table, 'draft.can_cancel'))
+                            <div class="mt-4 space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                                <h4 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Cancel order') }}</h4>
+
+                                @if (data_get($table, 'draft.has_ready_or_served_warning'))
+                                    <p class="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                                        {{ __('Some positions are already ready or served.') }}
+                                    </p>
+                                @endif
+
+                                <label class="grid gap-1 text-sm">
+                                    <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Cancellation reason') }}</span>
+                                    <textarea
+                                        wire:model="orderCancellationReason"
+                                        rows="3"
+                                        maxlength="500"
+                                        class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                                        placeholder="{{ __('Explain why this order is cancelled.') }}"
+                                    ></textarea>
+                                </label>
+
+                                <flux:button
+                                    icon="x-mark"
+                                    variant="danger"
+                                    type="button"
+                                    class="w-full"
+                                    wire:click="cancelOrder"
+                                    wire:loading.attr="disabled"
+                                    wire:target="cancelOrder"
+                                >
+                                    <span wire:loading.remove wire:target="cancelOrder">{{ __('Cancel order') }}</span>
+                                    <span wire:loading wire:target="cancelOrder">{{ __('Cancelling') }}</span>
+                                </flux:button>
+                            </div>
                         @endif
                     </div>
                 @endif

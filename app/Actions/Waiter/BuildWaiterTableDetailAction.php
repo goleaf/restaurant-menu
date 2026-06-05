@@ -9,6 +9,7 @@ use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
@@ -123,6 +124,7 @@ class BuildWaiterTableDetailAction
                                 'confirmed_at',
                                 'confirmed_by_user_id',
                                 'total_price',
+                                'metadata',
                             ])
                             ->withCount('kitchenTickets')
                             ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
@@ -220,6 +222,12 @@ class BuildWaiterTableDetailAction
         $sendToKitchenBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::SendToKitchen);
         $canSendToKitchen = $sendToKitchenBranchIds->contains((int) $tableSession->branch_id);
+        $cancelOrderBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::CancelOrders);
+        $organizationId = (int) ($branch?->organization_id ?? 0);
+        $canCancelOrder = $cancelOrderBranchIds->contains((int) $tableSession->branch_id)
+            || ($organizationId > 0 && $user->hasOrganizationRole($organizationId, SystemRole::Director))
+            || ($organizationId > 0 && $user->hasOrganizationRole($organizationId, SystemRole::ShiftManager));
         $paymentViewableBranchIds = $this->resolvePaymentAccess->viewableBranchIds($user);
         $paymentManageableBranchIds = $this->resolvePaymentAccess->manageableBranchIds($user);
         $canViewPayments = $paymentViewableBranchIds->contains((int) $tableSession->branch_id);
@@ -298,6 +306,7 @@ class BuildWaiterTableDetailAction
                 canReviewDraft: $canReviewDraft,
                 canEditPendingDraft: $canEditPendingDraft,
                 canSendToKitchen: $canSendToKitchen,
+                canCancelOrder: $canCancelOrder,
             ),
             'payment' => $this->paymentPayload(
                 summary: $paymentSummary,
@@ -676,6 +685,7 @@ class BuildWaiterTableDetailAction
         bool $canReviewDraft,
         bool $canEditPendingDraft,
         bool $canSendToKitchen,
+        bool $canCancelOrder,
     ): array {
         if (! $draftOrder instanceof DraftOrder) {
             return [
@@ -697,12 +707,15 @@ class BuildWaiterTableDetailAction
                 'order_ticket_items' => [],
                 'ready_ticket_item_count' => 0,
                 'served_ticket_item_count' => 0,
+                'cancellation_reason' => null,
+                'has_ready_or_served_warning' => false,
                 'total' => '0.00 '.$currency,
                 'can_confirm' => false,
                 'can_reject' => false,
                 'can_return_to_draft' => false,
                 'can_edit' => false,
                 'can_send_to_kitchen' => false,
+                'can_cancel' => false,
             ];
         }
 
@@ -730,6 +743,10 @@ class BuildWaiterTableDetailAction
         $servedTicketItemCount = collect($orderTicketItems)
             ->filter(fn (array $item): bool => (bool) $item['is_served'])
             ->count();
+        $hasReadyOrServedWarning = $readyTicketItemCount > 0 || $servedTicketItemCount > 0;
+        $cancellationReason = $draftOrder->order instanceof Order
+            ? ($draftOrder->order->metadata['cancellation_reason'] ?? null)
+            : null;
 
         return [
             'id' => $draftOrder->id,
@@ -750,13 +767,29 @@ class BuildWaiterTableDetailAction
             'order_ticket_items' => $orderTicketItems,
             'ready_ticket_item_count' => $readyTicketItemCount,
             'served_ticket_item_count' => $servedTicketItemCount,
+            'cancellation_reason' => is_string($cancellationReason) ? $cancellationReason : null,
+            'has_ready_or_served_warning' => $hasReadyOrServedWarning,
             'total' => $this->formatCents($totalCents).' '.$currency,
             'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
             'can_edit' => $canEditPendingDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
             'can_send_to_kitchen' => $canSendToKitchen && $orderStatus === OrderStatus::ConfirmedByWaiter,
+            'can_cancel' => $canCancelOrder && $this->orderCanBeCancelled($orderStatus),
         ];
+    }
+
+    private function orderCanBeCancelled(?OrderStatus $orderStatus): bool
+    {
+        if (! $orderStatus instanceof OrderStatus) {
+            return false;
+        }
+
+        return ! in_array($orderStatus, [
+            OrderStatus::Cancelled,
+            OrderStatus::Paid,
+            OrderStatus::Closed,
+        ], true);
     }
 
     /**

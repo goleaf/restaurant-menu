@@ -42,6 +42,8 @@ class OrderStatuses extends Component
 
     public ?string $rejectionReason = null;
 
+    public ?string $cancellationReason = null;
+
     public function mount(int $tableSessionId, int $pollingIntervalSeconds = 1): void
     {
         $this->tableSessionId = $tableSessionId;
@@ -69,6 +71,10 @@ class OrderStatuses extends Component
         $this->serviceStatusLabel = $serviceStatus['label'];
         $this->serviceStatusTone = $serviceStatus['tone'];
         $this->rejectionReason = $draftOrder?->rejection_reason;
+        $this->cancellationReason = $order instanceof Order
+            && is_string($order->metadata['cancellation_reason'] ?? null)
+                ? $order->metadata['cancellation_reason']
+                : null;
     }
 
     public function render(): View
@@ -101,6 +107,7 @@ class OrderStatuses extends Component
                     'id',
                     'draft_order_id',
                     'status',
+                    'metadata',
                 ]),
             ])
             ->where('table_session_id', $this->tableSessionId)
@@ -140,6 +147,10 @@ class OrderStatuses extends Component
     {
         if (! $draftOrder instanceof DraftOrder || $draftOrder->status !== DraftOrderStatus::ConvertedToOrder) {
             return ['value' => '', 'label' => '', 'tone' => 'zinc'];
+        }
+
+        if ($orderStatus === OrderStatus::Cancelled) {
+            return ['value' => 'cancelled', 'label' => __('Отменён'), 'tone' => 'red'];
         }
 
         if ($orderStatus === OrderStatus::Served || ($ticketItems->isNotEmpty() && $ticketItems->every(

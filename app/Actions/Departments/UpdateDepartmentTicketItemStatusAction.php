@@ -6,6 +6,7 @@ use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
@@ -74,6 +75,13 @@ class UpdateDepartmentTicketItemStatusAction
         if ($item->served_at !== null) {
             throw ValidationException::withMessages([
                 'ticket_item_status' => __('Эта позиция уже подана официантом.'),
+            ]);
+        }
+
+        if ($item->kitchenTicket?->order instanceof Order
+            && $item->kitchenTicket->order->status === OrderStatus::Cancelled) {
+            throw ValidationException::withMessages([
+                'ticket_item_status' => __('Заказ отменён. Кухня и бар больше не работают по нему.'),
             ]);
         }
 

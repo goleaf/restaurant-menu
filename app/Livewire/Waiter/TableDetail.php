@@ -4,6 +4,7 @@ namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
+use App\Actions\Orders\ChangeOrderStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
@@ -19,6 +20,7 @@ use App\Actions\Waiter\ReturnRejectedDraftOrderToDraftAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\MenuStatus;
+use App\Enums\OrderStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
@@ -47,6 +49,8 @@ class TableDetail extends Component
     public string $refreshedAt = '';
 
     public string $rejectionReason = '';
+
+    public string $orderCancellationReason = '';
 
     public string $reviewFeedbackMessage = '';
 
@@ -392,6 +396,44 @@ class TableDetail extends Component
         }
 
         $this->reviewFeedbackMessage = __('Заказ отправлен на кухню/бар. Гости увидят, что заказ принят.');
+        $this->refreshTable();
+    }
+
+    public function cancelOrder(ChangeOrderStatusAction $changeOrderStatus): void
+    {
+        $this->resetValidation();
+        $this->reviewFeedbackMessage = '';
+
+        $validated = $this->validate([
+            'orderCancellationReason' => ['required', 'string', 'min:3', 'max:500'],
+        ], [
+            'orderCancellationReason.required' => __('Укажите причину отмены заказа.'),
+            'orderCancellationReason.min' => __('Причина отмены должна быть понятной для истории заказа.'),
+        ]);
+
+        $order = $this->currentOrder();
+
+        if (! $order instanceof Order) {
+            $this->addError('order_cancellation', __('Сначала подтвердите заказ официантом.'));
+
+            return;
+        }
+
+        try {
+            $changeOrderStatus->handle(
+                order: $order,
+                newStatus: OrderStatus::Cancelled,
+                changedBy: $this->currentUser(),
+                reason: (string) $validated['orderCancellationReason'],
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->orderCancellationReason = '';
+        $this->reviewFeedbackMessage = __('Order cancelled.');
         $this->refreshTable();
     }
 

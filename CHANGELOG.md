@@ -2,6 +2,18 @@
 
 ## 2026-06-05
 
+### Prompt 121 - Order Cancellation With Reason
+
+- Added safe order cancellation without deleting orders.
+- Cancellation now requires a non-empty reason and changes `orders.status` to `cancelled`.
+- `order_status_logs` and `audit_logs` record the cancellation actor, previous/new status, reason, and ready/served ticket warning counts.
+- Waiters with `cancel_orders`, directors, shift managers, and superadmin users can cancel eligible orders.
+- Guests see cancelled order status and the saved reason in the guest order-status block.
+- Kitchen/bar dashboards hide tickets for cancelled orders, and direct kitchen/bar ticket item updates are blocked after cancellation.
+- Touched modules/files: `ChangeOrderStatusAction`, waiter table detail payload/component/view, guest order status Livewire component/view, department dashboard and ticket-item update actions, waiter served-item action, and `tests/Feature/OrderCancellationTest.php`.
+- Limitations: order cancellation does not delete records, does not add a kitchen ticket status enum, does not add new routes/tables, does not change payment flow, and does not use Redis, WebSockets, S3, Docker, or paid services.
+- Manual check: send an order to kitchen/bar, mark one position ready, cancel the order from waiter table detail with a reason, confirm guests see the cancellation reason, confirm kitchen/bar no longer show the ticket, and confirm a direct ticket status update is rejected.
+
 ### Prompt 120 - Manual Service Charge And Tips
 
 - Added manual service charge percentage to branch settings while keeping the existing `service_charge_enabled` guard.

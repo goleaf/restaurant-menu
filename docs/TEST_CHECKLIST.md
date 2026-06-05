@@ -13,6 +13,49 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 121 Order Cancellation With Reason Results
+
+Programmatic coverage was added in `tests/Feature/OrderCancellationTest.php`.
+The feature currently verifies:
+
+- waiter table detail shows `Cancel order` only to staff with cancellation
+  access;
+- cancellation requires a non-empty reason;
+- cancelled orders keep the order row and change `orders.status` to
+  `cancelled`;
+- `orders.metadata`, `order_status_logs`, and `audit_logs` store the reason and
+  ready/served warning counts;
+- directors and shift managers can cancel without an explicit `cancel_orders`
+  role permission;
+- guests see `Заказ отменён.` and the cancellation reason;
+- kitchen dashboards hide tickets for cancelled orders;
+- direct kitchen/bar ticket item status updates are rejected after cancellation.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/OrderCancellationTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/OrderCancellationTest.php tests/Feature/KitchenScreenTest.php tests/Feature/KitchenTicketDispatchTest.php tests/Feature/WaiterDraftReviewTest.php tests/Feature/WaiterTableDetailTest.php
+```
+
+Manual check:
+
+1. Open a table with an order already sent to kitchen/bar.
+2. Mark one kitchen/bar position ready.
+3. Open `/restaurant/waiter/tables/{tableSession}` as a waiter with
+   `cancel_orders`.
+4. Confirm the ready/served warning appears.
+5. Try cancelling without a reason and confirm validation blocks it.
+6. Enter a clear reason and cancel.
+7. Confirm guests see the cancelled status and reason in the QR table UI.
+8. Confirm kitchen/bar screens no longer show the ticket and direct status
+   changes are rejected.
+
 ## Prompt 120 Manual Service Charge And Tips Results
 
 Programmatic coverage was extended in `tests/Feature/BranchSettingsTest.php`

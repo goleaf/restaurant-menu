@@ -2,6 +2,89 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 121 Order Cancellation With Reason - 2026-06-05
+
+Prompt 121 added safe order cancellation with a required reason. It did not add new tables, routes, payment providers, kitchen ticket statuses, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Public guest QR flow, branch public profile, opening hours, temporary branch closed mode, menu schedules, multiple active menus, service modes, bulk service point creation, permanent QR generation/printing/lookup, branch service point filtering/board, waiter zone assignments, manual waiter order entry, duplicate guest-name handling, session inactivity cleanup, active session transfer, merged table sessions, and waiter-side schedule checks.
+- Guest sessions, join requests, invite links, shared draft cart, ready status, waiter handoff, waiter review/edit/confirm/reject, real order snapshots, kitchen/bar tickets, ready/served handoff, waiter calls, bill requests, manual payments, split bill by guests, manual service charge/tips snapshots, session close, dashboard analytics, audit logs, CSV exports, localization, currency settings, local media, superadmin controls, and shared-hosting deployment notes.
+- Prompt 121: waiters with `cancel_orders`, directors, shift managers, and superadmin users can cancel eligible orders from the existing waiter table detail flow.
+- Prompt 121: cancellation requires a non-empty reason and stores stable metadata on the order.
+- Prompt 121: guests see cancelled order status and reason; kitchen/bar dashboards hide cancelled-order tickets and ticket item updates are blocked after cancellation.
+
+Current tables:
+
+- No new table or column was added in Prompt 121.
+- Existing affected tables: `orders`, `order_status_logs`, `audit_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `draft_orders`, `table_sessions`, `table_session_guests`, `branches`, `organizations`, `roles`, `permissions`, `permission_role`, and `organization_users`.
+- `orders.status` uses existing `cancelled`.
+- `orders.metadata` stores `cancelled_at`, `cancelled_by_user_id`, `cancellation_reason`, `ready_ticket_items_at_cancellation`, and `served_ticket_items_at_cancellation`.
+- `order_status_logs.reason` stores the required cancellation reason; `order_status_logs.metadata` stores ready/served warning counts.
+- Full inventory includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_sessions`, `table_session_service_points`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 121.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}` and now contains the cancellation form for eligible orders.
+- Kitchen route remains `GET /restaurant/kitchen`.
+- Bar route remains `GET /restaurant/bar`.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, session, or guest IDs.
+
+Current Livewire components and actions:
+
+- `App\Actions\Orders\ChangeOrderStatusAction` now requires a cancellation reason, allows director/shift-manager cancellation, stores order metadata, writes status log metadata, and writes audit log details.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` exposes `draft.can_cancel`, `draft.cancellation_reason`, and `draft.has_ready_or_served_warning`.
+- `App\Livewire\Waiter\TableDetail` exposes `orderCancellationReason` and `cancelOrder()`.
+- `resources/views/livewire/waiter/table-detail.blade.php` shows cancellation reason input, ready/served warning, and cancelled-order reason.
+- `App\Livewire\PublicQr\OrderStatuses` and its Blade view show guest-facing cancelled order state and reason.
+- `App\Actions\Departments\BuildDepartmentDashboardAction` hides cancelled-order tickets.
+- `App\Actions\Departments\UpdateDepartmentTicketItemStatusAction` blocks kitchen/bar item status changes for cancelled orders.
+- `App\Actions\Waiter\MarkKitchenTicketItemServedAction` blocks serving cancelled-order items.
+
+Mandatory business rules:
+
+- Orders are never deleted for cancellation.
+- Cancellation must require a human-readable reason.
+- Cancelled orders must keep history in `orders`, `order_items`, `order_status_logs`, and `audit_logs`.
+- Guests must see that their order was cancelled and why.
+- Kitchen/bar must not keep working on cancelled orders.
+- If any kitchen/bar positions are already ready or served, waiter UI must show a warning before cancellation.
+- Every normal order still requires waiter confirmation before kitchen/bar dispatch.
+- Permanent QR identity is unrelated to order cancellation and must not change.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep cancellation checks selected, eager-loaded, branch-scoped, and bounded for SQLite.
+- Do not query from Blade.
+- No new infrastructure is required for cancellation.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings in app code, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 121 notes:
+
+- Focused coverage: `tests/Feature/OrderCancellationTest.php`.
+- Related regression coverage: kitchen screen, kitchen dispatch, waiter draft review, and waiter table detail tests.
+- Verification included a red test first for missing cancellation UI/reason/guards, then green focused and regression runs.
+- Keep cancellation as a status/history action, not a destructive delete.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 120 Manual Service Charge And Tips - 2026-06-05
 
 Prompt 120 added manual service charge and tips to the existing offline payment flow. It did not add online payments, tax logic, payment providers, new routes, Redis, WebSockets, S3, Docker, paid services, or external APIs.

@@ -35,6 +35,12 @@ test('new interface translation keys use semantic dotted names', function () {
     }
 });
 
+test('translation key namespace map defines required namespaces', function () {
+    $mappedNamespaces = translationStandardMappedNamespaces();
+
+    expect($mappedNamespaces)->toBe(translationStandardRequiredNamespaces());
+});
+
 /**
  * @return array<string, string>
  */
@@ -104,4 +110,58 @@ function translationStandardSemanticKeyPattern(): string
 function translationStandardProjectPath(string $path): string
 {
     return dirname(__DIR__, 2).DIRECTORY_SEPARATOR.$path;
+}
+
+/**
+ * @return list<string>
+ */
+function translationStandardMappedNamespaces(): array
+{
+    $map = file_get_contents(translationStandardProjectPath('docs/TRANSLATION_KEY_MAP.md'));
+
+    preg_match(
+        '/<!-- translation-key-namespaces:start -->(.*?)<!-- translation-key-namespaces:end -->/s',
+        $map,
+        $matches,
+    );
+
+    expect($matches[1] ?? null)->toBeString();
+
+    preg_match_all('/^- `([a-z_]+(?:\.[a-z_]+)?\.\*)`/m', $matches[1], $namespaceMatches);
+
+    return $namespaceMatches[1];
+}
+
+/**
+ * @return list<string>
+ */
+function translationStandardRequiredNamespaces(): array
+{
+    return [
+        'ui.*',
+        'ui.confirmations.*',
+        'auth.*',
+        'navigation.*',
+        'organizations.*',
+        'brands.*',
+        'branches.*',
+        'areas.*',
+        'service_points.*',
+        'qr.*',
+        'guest.*',
+        'menu.*',
+        'waiter.*',
+        'departments.*',
+        'orders.*',
+        'payments.*',
+        'reports.*',
+        'staff.*',
+        'permissions.*',
+        'statuses.*',
+        'validation.*',
+        'errors.*',
+        'notifications.*',
+        'activity.*',
+        'superadmin.*',
+    ];
 }

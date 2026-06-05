@@ -55,18 +55,7 @@ Language values must be translated per file:
 
 ## Naming Convention
 
-Use stable namespaces that describe where the text belongs:
-
-- `ui.actions.*` for shared buttons and commands.
-- `ui.labels.*` for shared labels.
-- `ui.status.*` for shared statuses.
-- `guest.*` for public guest-facing QR/table UI.
-- `qr.*` for QR-specific UI and errors.
-- `areas.*` for zones, tables, rooms, and service areas.
-- `orders.*` for ordering, draft order, and order-status UI.
-- `payments.*` for manual payment and bill UI.
-- `permissions.*` for permission labels, groups, and descriptions.
-- `errors.*` for controlled application error pages and messages.
+Use stable namespaces that describe where the text belongs. The canonical namespace list lives in `docs/TRANSLATION_KEY_MAP.md`; use that map before creating any new translation key.
 
 Use suffixes consistently:
 

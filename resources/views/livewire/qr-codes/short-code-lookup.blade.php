@@ -30,7 +30,7 @@
                 :label="__('qr.labels.short_code')"
                 type="text"
                 maxlength="24"
-                placeholder="QR-8F92"
+                :placeholder="__('qr.placeholders.short_code_example')"
                 autocomplete="off"
                 required
             />

@@ -35,6 +35,7 @@ All keys must follow the project translation standard:
 - `staff.*` - staff management UI.
 - `permissions.*` - permission labels, groups, and descriptions.
 - `statuses.*` - human-readable statuses.
+- `fields.*` - reusable field placeholders and field helper text.
 - `validation.*` - labels and validation messages when routed through JSON keys.
 - `errors.*` - general controlled errors.
 - `notifications.*` - notification UI and notification messages.
@@ -271,6 +272,17 @@ Examples:
 - `statuses.inactive`
 - `statuses.pending`
 - `statuses.closed`
+
+### `fields.*`
+
+Use for reusable field-level placeholders and helper text when the same field copy appears in more than one form.
+
+Examples:
+
+- `fields.placeholders.email_example`
+- `fields.placeholders.phone_example`
+- `fields.placeholders.website_url_example`
+- `fields.help.optional`
 
 ### `validation.*`
 

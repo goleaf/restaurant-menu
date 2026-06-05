@@ -122,7 +122,7 @@
                                     name="code"
                                     wire:model="code"
                                     length="6"
-                                    label="OTP Code"
+                                    :label="__('ui.auth.two_factor_challenge.authentication_code')"
                                     label:sr-only
                                     class="mx-auto"
                                 />

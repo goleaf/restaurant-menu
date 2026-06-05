@@ -158,6 +158,7 @@ function translationStandardRequiredNamespaces(): array
         'staff.*',
         'permissions.*',
         'statuses.*',
+        'fields.*',
         'validation.*',
         'errors.*',
         'notifications.*',

@@ -26,12 +26,12 @@
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <flux:input wire:model="publicName" :label="__('ui.organizations.brands.branches.settings.venue_name')" maxlength="160" :placeholder="$branch->name" />
-                    <flux:input wire:model="phone" :label="__('ui.organizations.brands.branches.settings.phone')" maxlength="80" placeholder="+370..." />
-                    <flux:input wire:model="email" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" placeholder="hello@example.com" />
-                    <flux:input wire:model="websiteUrl" :label="__('guest.table.website')" type="url" maxlength="2048" placeholder="https://example.com" />
-                    <flux:input wire:model="instagramUrl" :label="__('ui.organizations.brands.branches.settings.instagram_link')" type="url" maxlength="2048" placeholder="https://instagram.com/..." />
-                    <flux:input wire:model="facebookUrl" :label="__('ui.organizations.brands.branches.settings.facebook_link')" type="url" maxlength="2048" placeholder="https://facebook.com/..." />
-                    <flux:input wire:model="tiktokUrl" :label="__('ui.organizations.brands.branches.settings.tiktok_link')" type="url" maxlength="2048" placeholder="https://tiktok.com/@..." />
+                    <flux:input wire:model="phone" :label="__('ui.organizations.brands.branches.settings.phone')" maxlength="80" :placeholder="__('fields.placeholders.phone_example')" />
+                    <flux:input wire:model="email" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" :placeholder="__('fields.placeholders.branch_email_example')" />
+                    <flux:input wire:model="websiteUrl" :label="__('guest.table.website')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.website_url_example')" />
+                    <flux:input wire:model="instagramUrl" :label="__('ui.organizations.brands.branches.settings.instagram_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.instagram_url_example')" />
+                    <flux:input wire:model="facebookUrl" :label="__('ui.organizations.brands.branches.settings.facebook_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.facebook_url_example')" />
+                    <flux:input wire:model="tiktokUrl" :label="__('ui.organizations.brands.branches.settings.tiktok_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.tiktok_url_example')" />
                 </div>
 
                 <label class="grid gap-2 text-sm">

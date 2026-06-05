@@ -93,7 +93,7 @@
                         @endforeach
                     </flux:select>
 
-                    <flux:input wire:model.live="bulkPrefix" :label="__('ui.organizations.brands.branches.service_points.index.prefix')" type="text" required maxlength="20" placeholder="T" />
+                    <flux:input wire:model.live="bulkPrefix" :label="__('ui.organizations.brands.branches.service_points.index.prefix')" type="text" required maxlength="20" :placeholder="__('fields.placeholders.service_point_prefix_example')" />
                     <flux:input wire:model.live="bulkFrom" :label="__('ui.organizations.brands.branches.service_points.index.from')" type="number" required min="1" max="9999" />
                     <flux:input wire:model.live="bulkTo" :label="__('ui.organizations.brands.branches.service_points.index.to')" type="number" required min="1" max="9999" />
                     <flux:input wire:model.live="bulkCapacity" :label="__('ui.organizations.brands.branches.service_points.index.skolko_gostei')" type="number" required min="1" max="999" />

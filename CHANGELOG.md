@@ -2,6 +2,16 @@
 
 ## 2026-06-05
 
+### Prompt 120 - Manual Service Charge And Tips
+
+- Added manual service charge percentage to branch settings while keeping the existing `service_charge_enabled` guard.
+- Waiter/cashier payment summary now shows confirmed subtotal, optional service charge, recorded tips, paid total, and remaining bill amount.
+- Manual payment recording can store a tips amount when branch tips are enabled.
+- `manual_payments` now stores payment snapshots for covered subtotal, service charge percent, service charge amount, and tips amount so payment history remains stable after branch settings change.
+- Touched modules/files: `branch_settings` and `manual_payments` migration, `BranchSetting`, `ManualPayment`, `UpdateBranchSettingsAction`, `BuildManualPaymentSummaryAction`, `RecordManualPaymentAction`, waiter table detail Livewire component/view, branch settings Livewire component/view, payment factory, `tests/Feature/BranchSettingsTest.php`, `tests/Feature/ManualPaymentTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: manual/offline payments only; no tax logic, Stripe, PayPal, online acquiring, external service, new route, Redis, WebSocket, S3, Docker, or paid provider was added.
+- Manual check: enable service charge and tips in branch settings, open a payment-requested waiter table, confirm the service charge appears in the bill summary, record a table or guest payment with tips, then confirm payment history shows subtotal, service charge, tips, and the stable snapshot values.
+
 ### Prompt 119 - Split Bill By Guests
 
 - Added explicit split-bill payment summary for waiter table detail.

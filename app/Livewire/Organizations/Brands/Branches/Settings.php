@@ -65,6 +65,8 @@ class Settings extends Component
 
     public bool $serviceChargeEnabled = false;
 
+    public string $serviceChargePercent = '0.00';
+
     public bool $tipsEnabled = false;
 
     public string $orderFlowMode = 'waiter_confirmation';
@@ -189,6 +191,7 @@ class Settings extends Component
                 'default_language' => SupportedLocale::normalize($validated['defaultLanguage']),
                 'default_currency' => SupportedCurrency::normalize($validated['defaultCurrency']),
                 'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
+                'service_charge_percent' => $validated['serviceChargePercent'],
                 'tips_enabled' => (bool) $validated['tipsEnabled'],
                 'order_flow_mode' => $validated['orderFlowMode'],
                 'service_modes' => $validated['serviceModes'],
@@ -332,6 +335,13 @@ class Settings extends Component
             'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
             'defaultCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             'serviceChargeEnabled' => ['boolean'],
+            'serviceChargePercent' => [
+                'required',
+                'numeric',
+                'min:0',
+                'max:100',
+                'decimal:0,2',
+            ],
             'tipsEnabled' => ['boolean'],
             'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
             'serviceModes' => ['required', 'array', 'min:1'],
@@ -382,6 +392,7 @@ class Settings extends Component
         $this->defaultLanguage = $settings->default_language;
         $this->defaultCurrency = SupportedCurrency::normalize($settings->default_currency);
         $this->serviceChargeEnabled = $settings->service_charge_enabled;
+        $this->serviceChargePercent = $settings->service_charge_percent;
         $this->tipsEnabled = $settings->tips_enabled;
         $this->orderFlowMode = $settings->order_flow_mode->value;
         $this->serviceModes = BranchServiceMode::normalizeList($settings->service_modes);

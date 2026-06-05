@@ -4,11 +4,11 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 119 split bill by guests.
+Last memory refresh: 2026-06-05 after Prompt 120 manual service charge and tips.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 119 is complete; do not continue
+Wait for the next explicit user prompt. Prompt 120 is complete; do not continue
 with new product behavior automatically.
 
 The separate post-feature daily memory update after Prompt 119 is complete.
@@ -48,8 +48,12 @@ Risky areas:
   separately editable billing allocation table.
 - Guest-scoped manual payments must keep storing
   `manual_payments.table_session_guest_id`.
-- Do not add online payments or shared allocation rules unless a future prompt
-  explicitly asks for them.
+- Manual service charge must stay percentage-based and stored as payment
+  snapshots when a payment is recorded.
+- Tips are manual optional extras and must not reduce the required subtotal or
+  service-charge balance.
+- Do not add online payments, tax logic, or shared allocation rules unless a
+  future prompt explicitly asks for them.
 - Do not move a table session to a non-free, inactive, cross-branch, pending,
   active, or payment-requested service point.
 - Already-entered guests should follow the transferred `table_session`; fresh
@@ -64,7 +68,8 @@ board, waiter zone assignments, waiter manual order entry, waiter-side schedule
 checks, guest duplicate-name handling, safe session inactivity cleanup, active
 table-session transfer, merged table sessions, and split bill by guests should
 be treated as current baseline for future guest UI, QR landing, ordering work,
-staff review, payments, and branch setup.
+staff review, payments, and branch setup. Prompt 120 manual service charge and
+tips are also baseline for bill summaries and manual payment history.
 
 ## Current Recommended Prompt
 
@@ -203,6 +208,13 @@ Prompt 280 checked functional consistency across menu, guest, staff,
 departments, payments, and access control. It fixed waiter-side adding of draft
 items so menu schedules are respected in both the add-item UI and backend Action.
 No dedicated variants/tags/allergens/shared-allocation schema was added.
+
+Prompt 120 added manual service charge and tips: branch settings store an
+optional service charge percent, waiter/cashier bill summaries show service
+charge and recorded tips, and `manual_payments` store stable snapshots for
+covered subtotal, service charge percent/amount, tips, and total collected
+amount. This remains manual/offline only, with no tax logic or online payment
+provider.
 
 Prompt 102 added branch opening hours: weekly schedules with closed days,
 several intervals per day, branch-timezone status checks, admin settings UI, and

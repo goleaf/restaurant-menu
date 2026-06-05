@@ -2,6 +2,88 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 120 Manual Service Charge And Tips - 2026-06-05
+
+Prompt 120 added manual service charge and tips to the existing offline payment flow. It did not add online payments, tax logic, payment providers, new routes, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Public guest QR flow, branch public profile, opening hours, temporary branch closed mode, menu schedules, multiple active menus, service modes, bulk service point creation, permanent QR generation/printing/lookup, branch service point filtering/board, waiter zone assignments, manual waiter order entry, duplicate guest-name handling, session inactivity cleanup, active session transfer, merged table sessions, and waiter-side schedule checks.
+- Guest sessions, join requests, invite links, shared draft cart, ready status, waiter handoff, waiter review/edit/confirm/reject, real order snapshots, kitchen/bar tickets, ready/served handoff, waiter calls, bill requests, manual payments, split bill by guests, session close, dashboard analytics, audit logs, CSV exports, localization, currency settings, local media, superadmin controls, and shared-hosting deployment notes.
+- Prompt 120: branch settings can store `service_charge_percent` alongside `service_charge_enabled` and `tips_enabled`.
+- Prompt 120: waiter/cashier payment summary shows confirmed subtotal, service charge, recorded tips, paid total, and remaining balance.
+- Prompt 120: manual payment history stores covered subtotal, service charge percent, service charge amount, tips amount, and total paid snapshot values.
+
+Current tables:
+
+- New columns in `branch_settings`: `service_charge_percent`.
+- New columns in `manual_payments`: `covered_subtotal_amount`, `service_charge_percent`, `service_charge_amount`, `tips_amount`.
+- Existing affected tables: `table_sessions`, `table_session_guests`, `orders`, `order_items`, `manual_payments`, `branch_settings`, and `service_points`.
+- `manual_payments.amount` stores total collected amount, including tips when entered.
+- `manual_payments.covered_subtotal_amount` and `manual_payments.service_charge_amount` store the bill-covering snapshot; tips are extra and do not reduce the required remaining bill.
+- Full inventory now includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_sessions`, `table_session_service_points`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 120.
+- Branch settings route remains under `GET /organizations/{organization}/brands/{brand}/branches/{branch}/settings`.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}` and contains the manual service charge/tips UI.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, session, or guest IDs.
+
+Current Livewire components and actions:
+
+- `App\Livewire\Organizations\Brands\Branches\Settings` exposes `serviceChargePercent` and validates it from 0 to 100 with up to two decimals.
+- `App\Actions\Branches\UpdateBranchSettingsAction` normalizes `service_charge_percent` and keeps branch cache invalidation through existing settings save behavior.
+- `App\Actions\Payments\BuildManualPaymentSummaryAction` calculates confirmed subtotal, optional service charge, paid covered subtotal, paid service charge, recorded tips, remaining bill total, and per-guest balances including service charge.
+- `App\Actions\Payments\RecordManualPaymentAction` records table or guest payment snapshots and rejects positive tips when branch tips are disabled.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` forwards the new payment summary fields to the waiter table detail payload.
+- `App\Livewire\Waiter\TableDetail` exposes `tipsAmount` and resets it after successful table or guest payment.
+- `resources/views/livewire/waiter/table-detail.blade.php` shows service charge, tips input, tips total, and payment history snapshot rows.
+- `resources/views/livewire/organizations/brands/branches/settings.blade.php` shows the service charge percent field and manual/offline billing note.
+
+Mandatory business rules:
+
+- Only manual offline payments are supported.
+- Online payments, Stripe, PayPal, external acquiring, tax logic, and paid payment services remain forbidden.
+- `service_charge_enabled` controls whether the configured percent is added to confirmed order subtotals.
+- `tips_enabled` controls whether a manual tips amount can be recorded.
+- Tips are optional extras and must not reduce the required subtotal/service-charge bill balance.
+- Payment history must preserve service charge and tips snapshots even if branch settings change later.
+- Open drafts cannot be paid; every order still requires waiter confirmation before becoming payable confirmed order history.
+- Permanent QR identity is unrelated to payments and must not change.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep payment queries selected, eager-loaded, branch-scoped, and bounded for SQLite.
+- Do not query from Blade.
+- No new infrastructure is required for manual service charge and tips.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings in app code, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 120 notes:
+
+- Focused coverage: `tests/Feature/BranchSettingsTest.php` and `tests/Feature/ManualPaymentTest.php`.
+- Related verification: table-session close, vertical slice, audit log, data export, and basic analytics tests.
+- Verification included a red test first for missing service charge/tips snapshot behavior, then green focused and regression runs.
+- Keep payments manual-only until a future prompt explicitly asks for online payment, tax, or allocation features.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 119 Split Bill By Guests - 2026-06-05
 
 Prompt 119 added explicit split-bill handling for manual payments. It did not add online payments, payment providers, shared allocation rules, new routes, new tables, Redis, WebSockets, S3, Docker, paid services, or external APIs.

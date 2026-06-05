@@ -249,6 +249,22 @@
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
+                <flux:input
+                    wire:model="serviceChargePercent"
+                    :label="__('Service charge percent')"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    :disabled="! $serviceChargeEnabled"
+                />
+
+                <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
+                    {{ __('Service charge and tips are manual offline billing values. No tax logic or online payment provider is connected.') }}
+                </p>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
                 <flux:input wire:model="pollingIntervalSeconds" :label="__('Polling interval, seconds')" type="number" required min="1" max="60" />
                 <flux:field>
                     <flux:label>{{ __('Default language') }}</flux:label>

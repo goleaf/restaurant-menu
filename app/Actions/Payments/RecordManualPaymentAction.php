@@ -31,6 +31,7 @@ class RecordManualPaymentAction
         User $recordedBy,
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
+        string|int|float|null $tipsAmount = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -39,6 +40,7 @@ class RecordManualPaymentAction
             scope: ManualPaymentScope::Table,
             guest: null,
             note: $note,
+            tipsAmount: $tipsAmount,
         );
     }
 
@@ -48,6 +50,7 @@ class RecordManualPaymentAction
         User $recordedBy,
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
+        string|int|float|null $tipsAmount = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -56,6 +59,7 @@ class RecordManualPaymentAction
             scope: ManualPaymentScope::Guest,
             guest: $guest,
             note: $note,
+            tipsAmount: $tipsAmount,
         );
     }
 
@@ -66,15 +70,16 @@ class RecordManualPaymentAction
         ManualPaymentScope $scope,
         ?TableSessionGuest $guest,
         ?string $note,
+        string|int|float|null $tipsAmount,
     ): ManualPayment {
-        return DB::transaction(function () use ($tableSession, $recordedBy, $paymentMethod, $scope, $guest, $note): ManualPayment {
+        return DB::transaction(function () use ($tableSession, $recordedBy, $paymentMethod, $scope, $guest, $note, $tipsAmount): ManualPayment {
             $tableSession = $this->reloadTableSession($tableSession);
             $method = $this->normalizePaymentMethod($paymentMethod);
 
             $this->ensureCanRecord($tableSession, $recordedBy);
 
             $summary = $this->buildPaymentSummary->handle($tableSession);
-            $amountCents = $this->paymentAmountCents($summary, $scope, $guest);
+            $breakdown = $this->paymentBreakdownCents($summary, $scope, $guest, $tipsAmount);
 
             $manualPayment = ManualPayment::query()->create([
                 'branch_id' => $tableSession->branch_id,
@@ -84,18 +89,33 @@ class RecordManualPaymentAction
                 'recorded_by_user_id' => $recordedBy->id,
                 'scope' => $scope,
                 'payment_method' => $method,
-                'amount' => $this->formatCents($amountCents),
+                'covered_subtotal_amount' => $this->formatCents($breakdown['covered_subtotal_cents']),
+                'service_charge_percent' => $breakdown['service_charge_percent'],
+                'service_charge_amount' => $this->formatCents($breakdown['service_charge_cents']),
+                'tips_amount' => $this->formatCents($breakdown['tips_cents']),
+                'amount' => $this->formatCents($breakdown['amount_cents']),
                 'currency' => (string) $summary['currency'],
                 'guest_name' => $guest?->guest_name,
                 'note' => $this->normalizeNote($note),
                 'paid_at' => now(),
-                'metadata' => [],
+                'metadata' => [
+                    'bill_snapshot' => [
+                        'confirmed_total' => $this->formatCents((int) $summary['confirmed_total_cents']),
+                        'covered_subtotal_amount' => $this->formatCents($breakdown['covered_subtotal_cents']),
+                        'service_charge_enabled' => (bool) $summary['service_charge_enabled'],
+                        'service_charge_percent' => $breakdown['service_charge_percent'],
+                        'service_charge_amount' => $this->formatCents($breakdown['service_charge_cents']),
+                        'tips_enabled' => (bool) $summary['tips_enabled'],
+                        'tips_amount' => $this->formatCents($breakdown['tips_cents']),
+                        'total_amount' => $this->formatCents($breakdown['amount_cents']),
+                    ],
+                ],
             ]);
 
             $this->syncSessionAndServicePointStatus(
                 tableSession: $tableSession,
                 recordedBy: $recordedBy,
-                remainingCentsAfterPayment: max(0, (int) $summary['remaining_total_cents'] - $amountCents),
+                remainingCentsAfterPayment: max(0, (int) $summary['remaining_total_cents'] - $breakdown['bill_cents']),
             );
 
             $this->recordAuditLog->handle(
@@ -111,6 +131,10 @@ class RecordManualPaymentAction
                 newValues: [
                     'scope' => $manualPayment->scope,
                     'payment_method' => $manualPayment->payment_method,
+                    'covered_subtotal_amount' => $manualPayment->covered_subtotal_amount,
+                    'service_charge_percent' => $manualPayment->service_charge_percent,
+                    'service_charge_amount' => $manualPayment->service_charge_amount,
+                    'tips_amount' => $manualPayment->tips_amount,
                     'amount' => $manualPayment->amount,
                     'currency' => $manualPayment->currency,
                     'table_session_guest_id' => $manualPayment->table_session_guest_id,
@@ -168,9 +192,14 @@ class RecordManualPaymentAction
 
     /**
      * @param  array<string, mixed>  $summary
+     * @return array{covered_subtotal_cents: int, service_charge_cents: int, tips_cents: int, bill_cents: int, amount_cents: int, service_charge_percent: string}
      */
-    private function paymentAmountCents(array $summary, ManualPaymentScope $scope, ?TableSessionGuest $guest): int
-    {
+    private function paymentBreakdownCents(
+        array $summary,
+        ManualPaymentScope $scope,
+        ?TableSessionGuest $guest,
+        string|int|float|null $tipsAmount,
+    ): array {
         if ((bool) $summary['has_open_draft']) {
             throw ValidationException::withMessages([
                 'manual_payment' => __('Сначала завершите текущий черновик заказа: подтвердите, отклоните или верните его гостям.'),
@@ -183,10 +212,13 @@ class RecordManualPaymentAction
             ]);
         }
 
+        $tipsCents = $this->normalizeTipsCents($tipsAmount, (bool) $summary['tips_enabled']);
         $remainingTotalCents = (int) $summary['remaining_total_cents'];
 
         if ($scope === ManualPaymentScope::Table) {
-            $amountCents = $remainingTotalCents;
+            $coveredSubtotalCents = (int) $summary['remaining_subtotal_cents'];
+            $serviceChargeCents = (int) $summary['remaining_service_charge_cents'];
+            $billCents = $remainingTotalCents;
         } else {
             if (! $guest instanceof TableSessionGuest) {
                 throw ValidationException::withMessages([
@@ -203,16 +235,44 @@ class RecordManualPaymentAction
                 ]);
             }
 
-            $amountCents = min((int) $balance['remaining_cents'], $remainingTotalCents);
+            $coveredSubtotalCents = min((int) $balance['remaining_subtotal_cents'], (int) $summary['remaining_subtotal_cents']);
+            $serviceChargeCents = min((int) $balance['remaining_service_charge_cents'], (int) $summary['remaining_service_charge_cents']);
+            $billCents = min((int) $balance['remaining_cents'], $remainingTotalCents);
         }
 
-        if ($amountCents <= 0) {
+        if ($billCents <= 0) {
             throw ValidationException::withMessages([
                 'manual_payment' => __('Для этой оплаты нет остатка к оплате.'),
             ]);
         }
 
-        return $amountCents;
+        return [
+            'covered_subtotal_cents' => $coveredSubtotalCents,
+            'service_charge_cents' => $serviceChargeCents,
+            'tips_cents' => $tipsCents,
+            'bill_cents' => $billCents,
+            'amount_cents' => $billCents + $tipsCents,
+            'service_charge_percent' => $this->formatPercent($summary['service_charge_percent'] ?? '0.00'),
+        ];
+    }
+
+    private function normalizeTipsCents(string|int|float|null $tipsAmount, bool $tipsEnabled): int
+    {
+        $tipsCents = $this->decimalToCents($tipsAmount);
+
+        if ($tipsCents < 0 || $tipsCents > 10000000) {
+            throw ValidationException::withMessages([
+                'tipsAmount' => __('Введите понятную сумму чаевых.'),
+            ]);
+        }
+
+        if (! $tipsEnabled && $tipsCents > 0) {
+            throw ValidationException::withMessages([
+                'tipsAmount' => __('Чаевые выключены в настройках филиала.'),
+            ]);
+        }
+
+        return $tipsCents;
     }
 
     private function syncSessionAndServicePointStatus(
@@ -282,5 +342,21 @@ class RecordManualPaymentAction
         $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
 
         return $negative ? '-'.$formatted : $formatted;
+    }
+
+    private function decimalToCents(string|int|float|null $amount): int
+    {
+        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
+        $negative = str_starts_with($normalized, '-');
+        $normalized = ltrim($normalized, '-');
+        [$whole, $fraction] = explode('.', $normalized);
+        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
+
+        return $negative ? -$cents : $cents;
+    }
+
+    private function formatPercent(string|int|float|null $percent): string
+    {
+        return number_format((float) ($percent ?? 0), 2, '.', '');
     }
 }

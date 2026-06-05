@@ -399,10 +399,26 @@
                             <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.confirmed_total') }}</dd>
                         </div>
 
+                        @if (data_get($table, 'payment.service_charge_enabled'))
+                            <div class="flex items-center justify-between gap-3">
+                                <dt class="text-zinc-500 dark:text-zinc-400">
+                                    {{ __('Service charge') }} · {{ data_get($table, 'payment.service_charge_percent') }}%
+                                </dt>
+                                <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.service_charge_total') }}</dd>
+                            </div>
+                        @endif
+
                         <div class="flex items-center justify-between gap-3">
                             <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Paid') }}</dt>
                             <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.paid_total') }}</dd>
                         </div>
+
+                        @if (data_get($table, 'payment.tips_enabled'))
+                            <div class="flex items-center justify-between gap-3">
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Tips recorded') }}</dt>
+                                <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.tips_paid_total') }}</dd>
+                            </div>
+                        @endif
 
                         <div class="flex items-center justify-between gap-3">
                             <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Remaining') }}</dt>
@@ -456,6 +472,20 @@
                                     class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                                 ></textarea>
                             </label>
+
+                            @if (data_get($table, 'payment.tips_enabled'))
+                                <flux:input
+                                    wire:model="tipsAmount"
+                                    :label="__('Tips amount')"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                />
+
+                                @error('tipsAmount')
+                                    <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                            @endif
 
                             @if (data_get($table, 'payment.can_record_table_payment'))
                                 <flux:button
@@ -539,6 +569,13 @@
                                                     · {{ $payment['guest_name'] }}
                                                 @endif
                                             </p>
+                                            @if ($payment['service_charge_amount'] !== '0.00 '.data_get($table, 'payment.currency', 'EUR') || $payment['tips_amount'] !== '0.00 '.data_get($table, 'payment.currency', 'EUR'))
+                                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                    {{ __('Subtotal') }}: {{ $payment['covered_subtotal'] }}
+                                                    · {{ __('Service charge') }}: {{ $payment['service_charge_amount'] }}
+                                                    · {{ __('Tips') }}: {{ $payment['tips_amount'] }}
+                                                </p>
+                                            @endif
                                         </div>
 
                                         <p class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $payment['paid_at'] }}</p>

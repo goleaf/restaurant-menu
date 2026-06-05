@@ -13,6 +13,48 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 120 Manual Service Charge And Tips Results
+
+Programmatic coverage was extended in `tests/Feature/BranchSettingsTest.php`
+and `tests/Feature/ManualPaymentTest.php`. The feature currently verifies:
+
+- `branch_settings.service_charge_percent` exists and defaults to `0.00`;
+- branch settings UI can enable service charge, save a percentage, and enable
+  manual tips;
+- service charge percentage validation rejects values over 100;
+- waiter payment summary includes confirmed subtotal, service charge, tips
+  enabled state, and remaining bill total;
+- recording table payment with tips stores `covered_subtotal_amount`,
+  `service_charge_percent`, `service_charge_amount`, `tips_amount`, and total
+  collected `amount`;
+- payment metadata stores a stable `bill_snapshot`.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/BranchSettingsTest.php tests/Feature/ManualPaymentTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/BranchSettingsTest.php tests/Feature/ManualPaymentTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/VerticalSliceFlowTest.php tests/Feature/AuditLogTest.php tests/Feature/DataExportsTest.php tests/Feature/BasicAnalyticsTest.php
+```
+
+Manual check:
+
+1. Open branch settings as staff with branch settings access.
+2. Enable service charge, set a percent such as `10.00`, enable tips, and save.
+3. Open a payment-requested table in `/restaurant/waiter/tables/{tableSession}`
+   as a cashier or staff user with payment access.
+4. Confirm the bill summary shows confirmed subtotal, service charge, paid
+   total, tips recorded, and remaining total.
+5. Enter a tips amount and record a table or guest payment.
+6. Confirm the payment history shows subtotal, service charge, tips, payment
+   method, and stable paid amount.
+7. Confirm no online payment provider, tax logic, external service, Redis,
+   WebSocket, S3, Docker, or paid service is involved.
+
 ## Prompt 119 Split Bill By Guests Results
 
 Programmatic coverage was extended in `tests/Feature/ManualPaymentTest.php`.

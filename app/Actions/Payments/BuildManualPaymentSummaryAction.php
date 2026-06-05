@@ -6,6 +6,8 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\OrderStatus;
+use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\DraftOrder;
 use App\Models\ManualPayment;
 use App\Models\Order;
@@ -24,27 +26,59 @@ class BuildManualPaymentSummaryAction
         $tableSession = $this->reloadTableSession($tableSession);
         $currency = $tableSession->branch?->currency ?? 'EUR';
         $confirmedTotalCents = $this->confirmedOrderItemsTotalCents($tableSession->orders);
+        $settings = $this->settingsPayload($tableSession->branch?->settings, $tableSession->branch);
+        $serviceChargeTotalCents = $settings['service_charge_enabled']
+            ? $this->percentageCents($confirmedTotalCents, $settings['service_charge_percent'])
+            : 0;
+        $coveredSubtotalCents = $tableSession->manualPayments->sum(
+            fn (ManualPayment $payment): int => $this->coveredSubtotalCents($payment),
+        );
+        $serviceChargePaidCents = $tableSession->manualPayments->sum(
+            fn (ManualPayment $payment): int => $this->decimalToCents($payment->service_charge_amount),
+        );
+        $tipsPaidTotalCents = $tableSession->manualPayments->sum(
+            fn (ManualPayment $payment): int => $this->decimalToCents($payment->tips_amount),
+        );
         $paidTotalCents = $tableSession->manualPayments->sum(
             fn (ManualPayment $payment): int => $this->decimalToCents($payment->amount),
         );
-        $remainingTotalCents = max(0, $confirmedTotalCents - $paidTotalCents);
-        $isFullyPaid = $confirmedTotalCents > 0 && $remainingTotalCents === 0;
+        $remainingSubtotalCents = max(0, $confirmedTotalCents - $coveredSubtotalCents);
+        $remainingServiceChargeCents = max(0, $serviceChargeTotalCents - $serviceChargePaidCents);
+        $remainingTotalCents = $remainingSubtotalCents + $remainingServiceChargeCents;
+        $isFullyPaid = $confirmedTotalCents > 0 && $remainingSubtotalCents === 0 && $remainingServiceChargeCents === 0;
         $guestBalances = $this->guestBalances(
             guests: $tableSession->guests,
             orders: $tableSession->orders,
             payments: $tableSession->manualPayments,
             currency: $currency,
             isFullyPaid: $isFullyPaid,
+            serviceChargePercent: $settings['service_charge_percent'],
+            serviceChargeEnabled: $settings['service_charge_enabled'],
         );
         $unpaidGuests = $this->unpaidGuests($guestBalances);
 
         return [
             'currency' => $currency,
             'payment_methods' => $this->paymentMethodPayload(),
+            'service_charge_enabled' => $settings['service_charge_enabled'],
+            'service_charge_percent' => $settings['service_charge_percent'],
+            'service_charge_total_cents' => $serviceChargeTotalCents,
+            'service_charge_paid_cents' => $serviceChargePaidCents,
+            'remaining_service_charge_cents' => $remainingServiceChargeCents,
+            'service_charge_total' => $this->formatCents($serviceChargeTotalCents).' '.$currency,
+            'service_charge_paid' => $this->formatCents($serviceChargePaidCents).' '.$currency,
+            'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents).' '.$currency,
+            'tips_enabled' => $settings['tips_enabled'],
+            'tips_paid_total_cents' => $tipsPaidTotalCents,
+            'tips_paid_total' => $this->formatCents($tipsPaidTotalCents).' '.$currency,
             'confirmed_total_cents' => $confirmedTotalCents,
+            'covered_subtotal_cents' => $coveredSubtotalCents,
+            'remaining_subtotal_cents' => $remainingSubtotalCents,
             'paid_total_cents' => $paidTotalCents,
             'remaining_total_cents' => $remainingTotalCents,
             'confirmed_total' => $this->formatCents($confirmedTotalCents).' '.$currency,
+            'covered_subtotal' => $this->formatCents($coveredSubtotalCents).' '.$currency,
+            'remaining_subtotal' => $this->formatCents($remainingSubtotalCents).' '.$currency,
             'paid_total' => $this->formatCents($paidTotalCents).' '.$currency,
             'remaining_total' => $this->formatCents($remainingTotalCents).' '.$currency,
             'has_payable_total' => $confirmedTotalCents > 0,
@@ -62,7 +96,15 @@ class BuildManualPaymentSummaryAction
         return TableSession::query()
             ->select(['id', 'branch_id', 'service_point_id', 'status'])
             ->with([
-                'branch' => fn ($query) => $query->select(['id', 'currency']),
+                'branch' => fn ($query) => $query
+                    ->select(['id', 'currency'])
+                    ->with(['settings' => fn ($settingsQuery) => $settingsQuery->select([
+                        'id',
+                        'branch_id',
+                        'service_charge_enabled',
+                        'service_charge_percent',
+                        'tips_enabled',
+                    ])]),
                 'guests' => fn ($query) => $query->select(['id', 'table_session_id', 'guest_name', 'status']),
                 'draftOrder' => fn ($query) => $query->select(['draft_orders.id', 'draft_orders.table_session_id', 'draft_orders.status']),
                 'orders' => fn ($query) => $query
@@ -86,6 +128,10 @@ class BuildManualPaymentSummaryAction
                         'recorded_by_user_id',
                         'scope',
                         'payment_method',
+                        'covered_subtotal_amount',
+                        'service_charge_percent',
+                        'service_charge_amount',
+                        'tips_amount',
                         'amount',
                         'currency',
                         'guest_name',
@@ -142,9 +188,13 @@ class BuildManualPaymentSummaryAction
         Collection $payments,
         string $currency,
         bool $isFullyPaid,
+        string $serviceChargePercent,
+        bool $serviceChargeEnabled,
     ): array {
         $dueByGuest = [];
-        $paidByGuest = [];
+        $coveredSubtotalByGuest = [];
+        $serviceChargePaidByGuest = [];
+        $paidTotalByGuest = [];
 
         $orders->each(function (Order $order) use (&$dueByGuest): void {
             $order->items->each(function (OrderItem $item) use (&$dueByGuest): void {
@@ -160,33 +210,57 @@ class BuildManualPaymentSummaryAction
 
         $payments
             ->filter(fn (ManualPayment $payment): bool => $payment->scope === ManualPaymentScope::Guest)
-            ->each(function (ManualPayment $payment) use (&$paidByGuest): void {
+            ->each(function (ManualPayment $payment) use (&$coveredSubtotalByGuest, &$serviceChargePaidByGuest, &$paidTotalByGuest): void {
                 $guestId = (int) $payment->table_session_guest_id;
 
                 if ($guestId < 1) {
                     return;
                 }
 
-                $paidByGuest[$guestId] = ($paidByGuest[$guestId] ?? 0) + $this->decimalToCents($payment->amount);
+                $coveredSubtotalByGuest[$guestId] = ($coveredSubtotalByGuest[$guestId] ?? 0) + $this->coveredSubtotalCents($payment);
+                $serviceChargePaidByGuest[$guestId] = ($serviceChargePaidByGuest[$guestId] ?? 0) + $this->decimalToCents($payment->service_charge_amount);
+                $paidTotalByGuest[$guestId] = ($paidTotalByGuest[$guestId] ?? 0) + $this->decimalToCents($payment->amount);
             });
 
         return $guests
-            ->map(function (TableSessionGuest $guest) use ($dueByGuest, $paidByGuest, $currency, $isFullyPaid): array {
-                $dueCents = (int) ($dueByGuest[$guest->id] ?? 0);
-                $paidCents = (int) ($paidByGuest[$guest->id] ?? 0);
-                $guestRemainingCents = max(0, $dueCents - $paidCents);
+            ->map(function (TableSessionGuest $guest) use ($dueByGuest, $coveredSubtotalByGuest, $serviceChargePaidByGuest, $paidTotalByGuest, $currency, $isFullyPaid, $serviceChargePercent, $serviceChargeEnabled): array {
+                $subtotalDueCents = (int) ($dueByGuest[$guest->id] ?? 0);
+                $serviceChargeDueCents = $serviceChargeEnabled
+                    ? $this->percentageCents($subtotalDueCents, $serviceChargePercent)
+                    : 0;
+                $dueCents = $subtotalDueCents + $serviceChargeDueCents;
+                $coveredSubtotalCents = (int) ($coveredSubtotalByGuest[$guest->id] ?? 0);
+                $serviceChargePaidCents = (int) ($serviceChargePaidByGuest[$guest->id] ?? 0);
+                $paidCents = (int) ($paidTotalByGuest[$guest->id] ?? 0);
+                $remainingSubtotalCents = max(0, $subtotalDueCents - $coveredSubtotalCents);
+                $remainingServiceChargeCents = max(0, $serviceChargeDueCents - $serviceChargePaidCents);
+                $guestRemainingCents = $remainingSubtotalCents + $remainingServiceChargeCents;
                 $isCoveredByTablePayment = $isFullyPaid && $guestRemainingCents > 0;
 
                 if ($isCoveredByTablePayment) {
+                    $remainingSubtotalCents = 0;
+                    $remainingServiceChargeCents = 0;
                     $guestRemainingCents = 0;
                 }
 
                 return [
                     'guest_id' => $guest->id,
                     'guest_name' => $guest->guest_name,
+                    'subtotal_due_cents' => $subtotalDueCents,
+                    'service_charge_cents' => $serviceChargeDueCents,
+                    'covered_subtotal_cents' => $coveredSubtotalCents,
+                    'service_charge_paid_cents' => $serviceChargePaidCents,
+                    'remaining_subtotal_cents' => $remainingSubtotalCents,
+                    'remaining_service_charge_cents' => $remainingServiceChargeCents,
                     'due_cents' => $dueCents,
                     'paid_cents' => $paidCents,
                     'remaining_cents' => $guestRemainingCents,
+                    'subtotal_due' => $this->formatCents($subtotalDueCents).' '.$currency,
+                    'service_charge' => $this->formatCents($serviceChargeDueCents).' '.$currency,
+                    'covered_subtotal' => $this->formatCents($coveredSubtotalCents).' '.$currency,
+                    'service_charge_paid' => $this->formatCents($serviceChargePaidCents).' '.$currency,
+                    'remaining_subtotal' => $this->formatCents($remainingSubtotalCents).' '.$currency,
+                    'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents).' '.$currency,
                     'due' => $this->formatCents($dueCents).' '.$currency,
                     'paid' => $this->formatCents($paidCents).' '.$currency,
                     'remaining' => $this->formatCents($guestRemainingCents).' '.$currency,
@@ -239,6 +313,10 @@ class BuildManualPaymentSummaryAction
                     'scope_label' => $scope->label(),
                     'method' => $method->value,
                     'method_label' => $method->label(),
+                    'covered_subtotal' => $this->formatCents($this->coveredSubtotalCents($payment)).' '.($payment->currency ?: $currency),
+                    'service_charge_percent' => $this->formatPercent($payment->service_charge_percent),
+                    'service_charge_amount' => $this->formatCents($this->decimalToCents($payment->service_charge_amount)).' '.($payment->currency ?: $currency),
+                    'tips_amount' => $this->formatCents($this->decimalToCents($payment->tips_amount)).' '.($payment->currency ?: $currency),
                     'amount' => $this->formatCents($this->decimalToCents($payment->amount)).' '.($payment->currency ?: $currency),
                     'guest_name' => $payment->guest?->guest_name ?? $payment->guest_name,
                     'recorded_by_name' => $payment->recordedBy?->name,
@@ -248,6 +326,45 @@ class BuildManualPaymentSummaryAction
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array{service_charge_enabled: bool, service_charge_percent: string, tips_enabled: bool}
+     */
+    private function settingsPayload(?BranchSetting $settings, ?Branch $branch): array
+    {
+        $defaults = BranchSetting::defaults($branch);
+
+        return [
+            'service_charge_enabled' => (bool) ($settings?->service_charge_enabled ?? $defaults['service_charge_enabled']),
+            'service_charge_percent' => $this->formatPercent($settings?->service_charge_percent ?? $defaults['service_charge_percent']),
+            'tips_enabled' => (bool) ($settings?->tips_enabled ?? $defaults['tips_enabled']),
+        ];
+    }
+
+    private function coveredSubtotalCents(ManualPayment $payment): int
+    {
+        $coveredSubtotalCents = $this->decimalToCents($payment->covered_subtotal_amount);
+        $snapshotCents = $coveredSubtotalCents
+            + $this->decimalToCents($payment->service_charge_amount)
+            + $this->decimalToCents($payment->tips_amount);
+
+        if ($snapshotCents > 0) {
+            return $coveredSubtotalCents;
+        }
+
+        return $this->decimalToCents($payment->amount);
+    }
+
+    private function percentageCents(int $baseCents, string|int|float|null $percent): int
+    {
+        if ($baseCents <= 0) {
+            return 0;
+        }
+
+        $basisPoints = (int) round(((float) ($percent ?? 0)) * 100);
+
+        return (int) round($baseCents * $basisPoints / 10000);
     }
 
     /**
@@ -282,5 +399,10 @@ class BuildManualPaymentSummaryAction
         $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
 
         return $negative ? '-'.$formatted : $formatted;
+    }
+
+    private function formatPercent(string|int|float|null $percent): string
+    {
+        return number_format((float) ($percent ?? 0), 2, '.', '');
     }
 }

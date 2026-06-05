@@ -12,6 +12,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\TableDetail;
 use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\ManualPayment;
@@ -114,6 +115,47 @@ test('split bill summary is based on confirmed guest order items', function () {
         ->assertSet('table.payment.guest_balances.0.due', '20.00 EUR')
         ->assertSet('table.payment.guest_balances.1.due', '12.00 EUR')
         ->assertSet('table.payment.unpaid_guests_count', 2);
+});
+
+test('manual service charge and tips are visible and stored as payment snapshot', function () {
+    [$organization, , $tableSession] = createPrompt67ManualPaymentContext();
+    $manager = User::factory()->create(['name' => 'Service Charge Cashier']);
+    attachPrompt67PaymentManager($manager, $organization);
+
+    $branch = $tableSession->branch()->firstOrFail();
+    $branch->settings()->create([
+        ...BranchSetting::defaults($branch),
+        'service_charge_enabled' => true,
+        'service_charge_percent' => '10.00',
+        'tips_enabled' => true,
+    ]);
+
+    Livewire::actingAs($manager)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->assertSet('table.payment.confirmed_total', '32.00 EUR')
+        ->assertSet('table.payment.service_charge_enabled', true)
+        ->assertSet('table.payment.service_charge_percent', '10.00')
+        ->assertSet('table.payment.service_charge_total', '3.20 EUR')
+        ->assertSet('table.payment.tips_enabled', true)
+        ->assertSet('table.payment.remaining_total', '35.20 EUR')
+        ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
+        ->set('tipsAmount', '5.00')
+        ->call('recordTablePayment')
+        ->assertSee('Оплата всего стола отмечена.')
+        ->assertSet('table.payment.is_fully_paid', true)
+        ->assertSet('table.payment.remaining_total', '0.00 EUR')
+        ->assertSet('table.payment.tips_paid_total', '5.00 EUR');
+
+    $payment = ManualPayment::query()->firstOrFail();
+
+    expect($payment->amount)->toBe('40.20')
+        ->and($payment->covered_subtotal_amount)->toBe('32.00')
+        ->and($payment->service_charge_percent)->toBe('10.00')
+        ->and($payment->service_charge_amount)->toBe('3.20')
+        ->and($payment->tips_amount)->toBe('5.00')
+        ->and($payment->metadata['bill_snapshot']['confirmed_total'])->toBe('32.00')
+        ->and($payment->metadata['bill_snapshot']['service_charge_amount'])->toBe('3.20')
+        ->and($payment->metadata['bill_snapshot']['tips_amount'])->toBe('5.00');
 });
 
 test('view payments permission can see payment summary but cannot record payment', function () {

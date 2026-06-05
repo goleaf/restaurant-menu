@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['branch_id', 'service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
+#[Fillable(['branch_id', 'service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_amount', 'service_charge_percent', 'service_charge_amount', 'tips_amount', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
 class ManualPayment extends Model
 {
     /** @use HasFactory<ManualPaymentFactory> */
@@ -22,6 +22,10 @@ class ManualPayment extends Model
     protected $attributes = [
         'scope' => 'table',
         'payment_method' => 'cash',
+        'covered_subtotal_amount' => '0.00',
+        'service_charge_percent' => '0.00',
+        'service_charge_amount' => '0.00',
+        'tips_amount' => '0.00',
         'amount' => '0.00',
         'currency' => 'EUR',
         'metadata' => '[]',
@@ -35,6 +39,10 @@ class ManualPayment extends Model
         return [
             'scope' => ManualPaymentScope::class,
             'payment_method' => ManualPaymentMethod::class,
+            'covered_subtotal_amount' => 'decimal:2',
+            'service_charge_percent' => 'decimal:2',
+            'service_charge_amount' => 'decimal:2',
+            'tips_amount' => 'decimal:2',
             'amount' => 'decimal:2',
             'paid_at' => 'datetime',
             'metadata' => 'array',

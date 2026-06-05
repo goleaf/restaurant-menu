@@ -64,6 +64,8 @@ class TableDetail extends Component
 
     public string $paymentNote = '';
 
+    public string $tipsAmount = '0.00';
+
     /**
      * @var list<array{value: string, label: string, price: string}>
      */
@@ -483,6 +485,7 @@ class TableDetail extends Component
                 recordedBy: $this->currentUser(),
                 paymentMethod: $this->currentPaymentMethod(),
                 note: $this->paymentNote,
+                tipsAmount: $this->tipsAmount,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -491,6 +494,7 @@ class TableDetail extends Component
         }
 
         $this->paymentNote = '';
+        $this->tipsAmount = '0.00';
         $this->paymentFeedbackMessage = __('Оплата всего стола отмечена.');
         $this->refreshTable();
     }
@@ -515,6 +519,7 @@ class TableDetail extends Component
                 recordedBy: $this->currentUser(),
                 paymentMethod: $this->currentPaymentMethod(),
                 note: $this->paymentNote,
+                tipsAmount: $this->tipsAmount,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -523,6 +528,7 @@ class TableDetail extends Component
         }
 
         $this->paymentNote = '';
+        $this->tipsAmount = '0.00';
         $this->paymentFeedbackMessage = __('Оплата гостя отмечена.');
         $this->refreshTable();
     }

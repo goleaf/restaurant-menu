@@ -31,6 +31,7 @@ test('branch settings table has safe operational fields', function () {
         'default_language',
         'default_currency',
         'service_charge_enabled',
+        'service_charge_percent',
         'tips_enabled',
         'order_flow_mode',
         'service_modes',
@@ -61,6 +62,7 @@ test('creating branch creates settings with safe defaults', function () {
     expect($settings->default_language)->toBe('en');
     expect($settings->default_currency)->toBe('EUR');
     expect($settings->service_charge_enabled)->toBeFalse();
+    expect($settings->service_charge_percent)->toBe('0.00');
     expect($settings->tips_enabled)->toBeFalse();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::WaiterConfirmation);
     expect($settings->service_modes)->toBe(['dine_in']);
@@ -84,6 +86,7 @@ test('owner can update branch settings', function () {
         ->assertSet('allowGuestInviteLinks', true)
         ->assertSet('guestJoinRequiresApproval', true)
         ->assertSet('pollingIntervalSeconds', 1)
+        ->assertSet('serviceChargePercent', '0.00')
         ->assertSet('serviceModes', ['dine_in'])
         ->assertSeeText('Service modes')
         ->set('allowGuestCreatedSessions', true)
@@ -94,6 +97,7 @@ test('owner can update branch settings', function () {
         ->set('defaultLanguage', 'lt')
         ->set('defaultCurrency', 'usd')
         ->set('serviceChargeEnabled', true)
+        ->set('serviceChargePercent', '12.50')
         ->set('tipsEnabled', true)
         ->set('orderFlowMode', BranchOrderFlowMode::StaffManaged->value)
         ->set('serviceModes', ['pickup', 'delivery', 'hotel_room_service', 'bar_only', 'custom'])
@@ -111,6 +115,7 @@ test('owner can update branch settings', function () {
     expect($settings->default_currency)->toBe('USD');
     expect($branch->fresh()->currency)->toBe('USD');
     expect($settings->service_charge_enabled)->toBeTrue();
+    expect($settings->service_charge_percent)->toBe('12.50');
     expect($settings->tips_enabled)->toBeTrue();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::StaffManaged);
     expect($settings->service_modes)->toBe([
@@ -177,12 +182,15 @@ test('settings validation keeps polling and order flow safe', function () {
         ->set('pollingIntervalSeconds', 0)
         ->set('defaultCurrency', 'EURO')
         ->set('orderFlowMode', 'guest_direct')
+        ->set('serviceChargeEnabled', true)
+        ->set('serviceChargePercent', '100.01')
         ->set('serviceModes', ['maps_and_couriers'])
         ->call('save')
         ->assertHasErrors([
             'pollingIntervalSeconds' => ['min'],
             'defaultCurrency' => ['size', 'in'],
             'orderFlowMode' => ['in'],
+            'serviceChargePercent' => ['max'],
             'serviceModes.0' => ['in'],
         ]);
 });

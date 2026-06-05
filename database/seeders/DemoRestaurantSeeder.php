@@ -15,7 +15,6 @@ use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointType;
-use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
@@ -34,14 +33,14 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use RuntimeException;
 
 class DemoRestaurantSeeder extends Seeder
 {
-    private const DEMO_PASSWORD = 'password';
-
     private const ORGANIZATION_NAME = 'Demo Food Group';
 
     private const BRAND_NAME = 'Bella Pizza';
@@ -60,7 +59,10 @@ class DemoRestaurantSeeder extends Seeder
         $this->call(SystemPermissionsSeeder::class);
 
         DB::transaction(function (): void {
-            $owner = $this->demoUser('Demo Owner', 'demo.owner@example.com', SystemRole::Owner);
+            $superadmin = $this->demoUser('Demo Superadmin', 'superadmin@demo.test', SystemRole::Superadmin);
+            $this->syncPermissions($superadmin, []);
+
+            $owner = $this->demoUser('Demo Owner', 'owner@demo.test', SystemRole::Owner);
             $organization = $this->demoOrganization($owner);
             $brand = $this->demoBrand($organization);
             $branch = $this->demoBranch($brand);
@@ -142,46 +144,126 @@ class DemoRestaurantSeeder extends Seeder
 
     private function demoUser(string $name, string $email, SystemRole $role): User
     {
-        $user = User::query()->updateOrCreate(
-            ['email' => $email],
-            [
-                'name' => $name,
-                'password' => self::DEMO_PASSWORD,
-                'locale' => SupportedLocale::English->value,
-            ],
-        );
+        $user = User::query()
+            ->where('email', $email)
+            ->first();
+
+        if (! $user instanceof User) {
+            $user = User::factory()
+                ->demoIdentity($name, $email)
+                ->create();
+        } else {
+            $attributes = User::factory()
+                ->demoIdentity($name, $email)
+                ->make()
+                ->getAttributes();
+
+            if (Hash::check(UserFactory::DEMO_PASSWORD, (string) $user->password)) {
+                unset($attributes['password']);
+            }
+
+            $user->forceFill($attributes)->save();
+        }
 
         $roleModel = $this->role($role);
-        $user->roles()->syncWithoutDetachingOrFail([$roleModel->id]);
+        $user->roles()->sync([$roleModel->id]);
 
-        return $user;
+        return $user->refresh();
     }
 
     private function seedStaff(Organization $organization, Branch $branch, User $owner): void
     {
-        $this->ensureOrganizationMembership($organization, $owner, SystemRole::Owner, null);
-        $this->grantPermissions($owner, SystemPermission::cases());
+        $director = $this->demoUser('Demo Director', 'director@demo.test', SystemRole::Director);
+        $admin = $this->demoUser('Demo Restaurant Admin', 'admin@demo.test', SystemRole::RestaurantAdmin);
+        $manager = $this->demoUser('Demo Shift Manager', 'manager@demo.test', SystemRole::ShiftManager);
+        $waiter = $this->demoUser('Demo Waiter', 'waiter@demo.test', SystemRole::Waiter);
+        $headChef = $this->demoUser('Demo Head Chef', 'chef@demo.test', SystemRole::HeadChef);
+        $cook = $this->demoUser('Demo Cook', 'cook@demo.test', SystemRole::Cook);
+        $bartender = $this->demoUser('Demo Bartender', 'bartender@demo.test', SystemRole::Bartender);
+        $cashier = $this->demoUser('Demo Cashier', 'cashier@demo.test', SystemRole::Cashier);
+        $accountant = $this->demoUser('Demo Accountant', 'accountant@demo.test', SystemRole::Accountant);
+        $marketer = $this->demoUser('Demo Marketer', 'marketer@demo.test', SystemRole::Marketer);
 
-        $manager = $this->demoUser('Demo Restaurant Admin', 'demo.admin@example.com', SystemRole::RestaurantAdmin);
-        $waiter = $this->demoUser('Demo Waiter', 'demo.waiter@example.com', SystemRole::Waiter);
-        $chef = $this->demoUser('Demo Chef', 'demo.chef@example.com', SystemRole::HeadChef);
-        $bartender = $this->demoUser('Demo Bartender', 'demo.bartender@example.com', SystemRole::Bartender);
-        $cashier = $this->demoUser('Demo Cashier', 'demo.cashier@example.com', SystemRole::Cashier);
+        $assignments = [
+            [$owner, SystemRole::Owner, null, $owner, SystemPermission::cases()],
+            [$director, SystemRole::Director, $owner, $owner, SystemPermission::cases()],
+            [$admin, SystemRole::RestaurantAdmin, $director, $director, $this->restaurantAdminPermissions()],
+            [$manager, SystemRole::ShiftManager, $admin, $admin, $this->shiftManagerPermissions()],
+            [$waiter, SystemRole::Waiter, $manager, $manager, $this->waiterPermissions()],
+            [$headChef, SystemRole::HeadChef, $manager, $manager, $this->headChefPermissions()],
+            [$cook, SystemRole::Cook, $headChef, $headChef, $this->cookPermissions()],
+            [$bartender, SystemRole::Bartender, $manager, $manager, $this->bartenderPermissions()],
+            [$cashier, SystemRole::Cashier, $manager, $manager, $this->cashierPermissions()],
+            [$accountant, SystemRole::Accountant, $director, $director, $this->accountantPermissions()],
+            [$marketer, SystemRole::Marketer, $admin, $admin, $this->marketerPermissions()],
+        ];
 
-        $this->ensureOrganizationMembership($organization, $manager, SystemRole::RestaurantAdmin, $owner);
-        $this->ensureOrganizationMembership($organization, $waiter, SystemRole::Waiter, $manager);
-        $this->ensureOrganizationMembership($organization, $chef, SystemRole::HeadChef, $manager);
-        $this->ensureOrganizationMembership($organization, $bartender, SystemRole::Bartender, $manager);
-        $this->ensureOrganizationMembership($organization, $cashier, SystemRole::Cashier, $manager);
+        foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $permissions]) {
+            $this->ensureOrganizationMembership($organization, $user, $role, $invitedBy);
+            $this->ensureBranchAssignment($organization, $branch, $user, $role, $assignedBy);
+            $this->syncPermissions($user, $permissions);
+        }
+    }
 
-        $this->ensureBranchAssignment($organization, $branch, $manager, SystemRole::RestaurantAdmin, $owner);
-        $this->ensureBranchAssignment($organization, $branch, $waiter, SystemRole::Waiter, $manager);
-        $this->ensureBranchAssignment($organization, $branch, $chef, SystemRole::HeadChef, $manager);
-        $this->ensureBranchAssignment($organization, $branch, $bartender, SystemRole::Bartender, $manager);
-        $this->ensureBranchAssignment($organization, $branch, $cashier, SystemRole::Cashier, $manager);
+    /**
+     * @return list<SystemPermission>
+     */
+    private function restaurantAdminPermissions(): array
+    {
+        return [
+            SystemPermission::ViewRestaurant,
+            SystemPermission::EditRestaurant,
+            SystemPermission::ManageBranches,
+            SystemPermission::ManageZones,
+            SystemPermission::ManageServicePoints,
+            SystemPermission::GenerateQr,
+            SystemPermission::ManageMenu,
+            SystemPermission::ChangePrices,
+            SystemPermission::ChangeAvailability,
+            SystemPermission::ViewOrders,
+            SystemPermission::ConfirmOrders,
+            SystemPermission::EditPendingOrders,
+            SystemPermission::CancelOrders,
+            SystemPermission::SendToKitchen,
+            SystemPermission::ViewKitchen,
+            SystemPermission::ViewReports,
+            SystemPermission::ManageStaff,
+            SystemPermission::ViewPayments,
+            SystemPermission::ManagePayments,
+            SystemPermission::CloseTableSessions,
+            SystemPermission::ManageSettings,
+            SystemPermission::ViewAuditLog,
+        ];
+    }
 
-        $this->grantPermissions($manager, SystemPermission::cases());
-        $this->grantPermissions($waiter, [
+    /**
+     * @return list<SystemPermission>
+     */
+    private function shiftManagerPermissions(): array
+    {
+        return [
+            SystemPermission::ViewRestaurant,
+            SystemPermission::ManageZones,
+            SystemPermission::ManageServicePoints,
+            SystemPermission::GenerateQr,
+            SystemPermission::ChangeAvailability,
+            SystemPermission::ViewOrders,
+            SystemPermission::ConfirmOrders,
+            SystemPermission::EditPendingOrders,
+            SystemPermission::CancelOrders,
+            SystemPermission::SendToKitchen,
+            SystemPermission::ViewKitchen,
+            SystemPermission::ViewPayments,
+            SystemPermission::CloseTableSessions,
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function waiterPermissions(): array
+    {
+        return [
             SystemPermission::ViewRestaurant,
             SystemPermission::ViewOrders,
             SystemPermission::ConfirmOrders,
@@ -189,24 +271,86 @@ class DemoRestaurantSeeder extends Seeder
             SystemPermission::SendToKitchen,
             SystemPermission::ViewPayments,
             SystemPermission::CloseTableSessions,
-        ]);
-        $this->grantPermissions($chef, [
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function headChefPermissions(): array
+    {
+        return [
             SystemPermission::ViewRestaurant,
             SystemPermission::ViewKitchen,
             SystemPermission::ChangeAvailability,
-        ]);
-        $this->grantPermissions($bartender, [
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function cookPermissions(): array
+    {
+        return [
+            SystemPermission::ViewRestaurant,
+            SystemPermission::ViewKitchen,
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function bartenderPermissions(): array
+    {
+        return [
             SystemPermission::ViewRestaurant,
             SystemPermission::ViewOrders,
             SystemPermission::SendToKitchen,
-        ]);
-        $this->grantPermissions($cashier, [
+            SystemPermission::ViewKitchen,
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function cashierPermissions(): array
+    {
+        return [
             SystemPermission::ViewRestaurant,
             SystemPermission::ViewOrders,
             SystemPermission::ViewPayments,
             SystemPermission::ManagePayments,
             SystemPermission::CloseTableSessions,
-        ]);
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function accountantPermissions(): array
+    {
+        return [
+            SystemPermission::ViewRestaurant,
+            SystemPermission::ViewReports,
+            SystemPermission::ViewPayments,
+            SystemPermission::ManagePayments,
+            SystemPermission::ExportData,
+            SystemPermission::ViewAuditLog,
+        ];
+    }
+
+    /**
+     * @return list<SystemPermission>
+     */
+    private function marketerPermissions(): array
+    {
+        return [
+            SystemPermission::ViewRestaurant,
+            SystemPermission::ManageMenu,
+            SystemPermission::ChangePrices,
+            SystemPermission::ChangeAvailability,
+            SystemPermission::ViewReports,
+        ];
     }
 
     /**
@@ -668,7 +812,7 @@ class DemoRestaurantSeeder extends Seeder
     /**
      * @param  list<SystemPermission>  $permissions
      */
-    private function grantPermissions(User $user, array $permissions): void
+    private function syncPermissions(User $user, array $permissions): void
     {
         $permissionIds = Permission::query()
             ->whereIn('code', array_map(fn (SystemPermission $permission): string => $permission->value, $permissions))
@@ -679,11 +823,7 @@ class DemoRestaurantSeeder extends Seeder
             ->mapWithKeys(fn (int $permissionId): array => [$permissionId => ['enabled' => true]])
             ->all();
 
-        if ($syncRows === []) {
-            return;
-        }
-
-        $user->permissionOverrides()->syncWithoutDetachingOrFail($syncRows);
+        $user->permissionOverrides()->sync($syncRows);
     }
 
     private function role(SystemRole $role): Role

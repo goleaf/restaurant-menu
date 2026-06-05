@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\SupportedLocale;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    public const DEMO_PASSWORD = 'DemoPassword2026!';
+
     /**
      * The current password being used by the factory.
      */
@@ -44,6 +47,21 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function demoIdentity(string $name, string $email): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'name' => $name,
+            'email' => $email,
+            'locale' => SupportedLocale::English->value,
+            'email_verified_at' => now(),
+            'password' => self::DEMO_PASSWORD,
+            'remember_token' => null,
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
         ]);
     }
 

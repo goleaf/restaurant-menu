@@ -2,6 +2,63 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Rescue Mode Before Prompt 122 - 2026-06-05
+
+Prompt 122 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the existing waiter table detail flow by adding the missing `Flux\\Flux` import used by `Flux::modals()->close()`.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Same baseline as Prompt 121: public QR guest flow, permanent QR codes, branch setup, service points, guest sessions, shared drafts, waiter confirmation/rejection/cancellation, kitchen/bar tickets, manual payments, split bill by guests, manual service charge/tips, audit logs, and shared-hosting deployment notes.
+- Rescue mode only restored an existing Livewire component namespace/import problem; it did not add order item voiding.
+
+Current tables:
+
+- No new tables or columns were added in rescue mode.
+- Existing order/payment tables remain `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No routes were added or removed in rescue mode.
+- Main relevant routes remain `GET /restaurant/waiter/dashboard`, `GET /restaurant/waiter/tables/{tableSession}`, `GET /restaurant/kitchen`, `GET /restaurant/bar`, and public `GET /q/{token}`.
+
+Current Livewire components and actions:
+
+- `App\\Livewire\\Waiter\\TableDetail` now imports `Flux\\Flux` so its existing modal close call resolves correctly.
+- No Prompt 122 action, enum, migration, or UI was added yet.
+
+Mandatory business rules:
+
+- Rescue mode must not add new business behavior.
+- Order cancellation remains whole-order status/history only until a future prompt implements item-level voiding.
+- Existing payment totals, order snapshots, audit logs, kitchen/bar cancellation guardrails, and permanent QR rules must remain intact.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- No new infrastructure was added.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings in app code, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Rescue verification:
+
+- `php artisan migrate --no-interaction`
+- `php artisan test --compact tests/Feature/OrderCancellationTest.php tests/Feature/ManualPaymentTest.php`
+
+Next recommended prompt:
+
+- Prompt 122 - Void item before payment. Start it only after a fresh context/health check, and implement it as a small order-item status/history flow without deleting order data.
+
 ## Prompt 121 Order Cancellation With Reason - 2026-06-05
 
 Prompt 121 added safe order cancellation with a required reason. It did not add new tables, routes, payment providers, kitchen ticket statuses, Redis, WebSockets, S3, Docker, paid services, or external APIs.

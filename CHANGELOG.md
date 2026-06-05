@@ -2,6 +2,20 @@
 
 ## 2026-06-05
 
+### Bugfix - Restore Project After Previous Prompt
+
+- Restored the waiter table detail component after the pre-Prompt 122 health check found `Class "App\\Livewire\\Waiter\\Flux" not found`.
+- Added the missing `Flux\\Flux` import used by the existing `Flux::modals()->close()` call.
+- Touched modules/files: `App\\Livewire\\Waiter\\TableDetail`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: no Prompt 122 order item void flow, schema, payment logic, kitchen ticket logic, route, Redis, WebSocket, S3, Docker, or paid service was added in rescue mode.
+- Manual check: open a waiter table detail with payment access, close a paid session, and confirm no Flux namespace error appears.
+
+### Docs - Daily Project Memory Update After Rescue Mode
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after the rescue fix.
+- Confirmed Prompt 122 was paused because rescue mode took priority.
+- Next recommended prompt is Prompt 122 order item void flow, after confirming the project remains green.
+
 ### Prompt 121 - Order Cancellation With Reason
 
 - Added safe order cancellation without deleting orders.

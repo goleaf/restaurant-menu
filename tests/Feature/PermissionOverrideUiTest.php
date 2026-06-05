@@ -82,20 +82,18 @@ test('staff permission overrides can allow deny and return to default', function
     [$manager, $organization] = createPrompt16Organization();
     grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
-    $viewOrders = Permission::query()->where('code', SystemPermission::ViewOrders->value)->firstOrFail();
+    $changePrices = Permission::query()->where('code', SystemPermission::ChangePrices->value)->firstOrFail();
     $confirmOrders = Permission::query()->where('code', SystemPermission::ConfirmOrders->value)->firstOrFail();
 
-    expect($staff->fresh()->hasPermission(SystemPermission::ViewOrders, $organization))->toBeFalse();
+    expect($staff->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeFalse();
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
-        ->call('setPermissionState', $viewOrders->id, 'allow')
+        ->call('setPermissionState', $changePrices->id, 'allow')
         ->assertSee(__('permissions.states.allowed_by_override'));
 
-    expect($staff->fresh()->hasPermission(SystemPermission::ViewOrders, $organization))->toBeTrue();
-    expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $viewOrders->id)->firstOrFail()->pivot->enabled)->toBeTrue();
-
-    grantRolePermission(SystemRole::Waiter, SystemPermission::ConfirmOrders);
+    expect($staff->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeTrue();
+    expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $changePrices->id)->firstOrFail()->pivot->enabled)->toBeTrue();
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
 
@@ -183,6 +181,15 @@ function createPrompt16Organization(): array
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => 'Permission Overrides Group']);
+    $role = Role::query()->where('code', SystemRole::ShiftManager->value)->firstOrFail();
+
+    $manager->roles()->sync([$role->id]);
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail()
+        ->forceFill(['role_id' => $role->id])
+        ->save();
 
     return [$manager->fresh(), $organization];
 }
@@ -216,12 +223,4 @@ function grantPrompt16Permission(User $user, Organization $organization, SystemP
         ->firstOrFail();
 
     $membership->role->permissions()->updateExistingPivot($permissionModel->id, ['enabled' => true]);
-}
-
-function grantRolePermission(SystemRole $role, SystemPermission $permission): void
-{
-    $roleModel = Role::query()->where('code', $role->value)->firstOrFail();
-    $permissionModel = Permission::query()->where('code', $permission->value)->firstOrFail();
-
-    $roleModel->permissions()->updateExistingPivot($permissionModel->id, ['enabled' => true]);
 }

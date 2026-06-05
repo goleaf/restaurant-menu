@@ -125,7 +125,7 @@ Seeders must follow these layers:
 1. Reference seed layer:
    - roles;
    - permissions;
-   - role permissions;
+   - role permissions with baseline enabled/disabled states;
    - default departments;
    - default allergens when tables exist;
    - default tags when tables exist;
@@ -212,7 +212,7 @@ Use stable natural keys or metadata keys for repeatable seed:
 | --- | --- |
 | Roles | `code` |
 | Permissions | `code` |
-| Role permissions | `role_id` plus `permission_id` |
+| Role permissions | `role_id` plus `permission_id`; `enabled` is synced from the baseline matrix |
 | Users | `email` |
 | Organizations | demo key or stable demo name |
 | Brands | `organization_id` plus demo key or name |

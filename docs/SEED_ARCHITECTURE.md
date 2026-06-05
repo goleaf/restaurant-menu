@@ -46,7 +46,7 @@ Required reference groups:
 
 - roles from `App\Enums\SystemRole`;
 - permissions from `App\Enums\SystemPermission`;
-- role permissions in `permission_role`;
+- fixed role permission baseline in `permission_role`;
 - default kitchen departments from `App\Enums\KitchenDepartmentType`;
 - default allergens when an allergen table exists;
 - default tags when a tag table exists;
@@ -59,7 +59,8 @@ Required reference groups:
 Current schema note:
 
 - roles and permissions are stored in `roles`, `permissions`, and
-  `permission_role`;
+  `permission_role`; `SystemPermissionsSeeder` owns the baseline enabled state
+  for fixed roles;
 - default kitchen departments are stored per branch in `kitchen_departments`;
 - languages, currencies, service point types, area types, and most statuses are
   currently enum-backed and do not have dedicated tables;
@@ -285,7 +286,7 @@ Running the same seed command repeatedly must not duplicate:
 
 - roles;
 - permissions;
-- role permission rows;
+- role permission rows and their baseline `enabled` state;
 - superadmin users;
 - demo users;
 - organization memberships;

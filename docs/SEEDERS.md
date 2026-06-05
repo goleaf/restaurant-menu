@@ -10,7 +10,7 @@ seeders. For the architecture rules behind these commands, read
 | --- | --- | --- |
 | `DatabaseSeeder` | Orchestration | Runs production-safe base seeders in order. |
 | `SystemRolesSeeder` | Reference | Creates or updates roles from `SystemRole`. |
-| `SystemPermissionsSeeder` | Reference | Creates or updates permissions and ensures role/permission pivot rows exist. |
+| `SystemPermissionsSeeder` | Reference | Creates or updates permissions and syncs the fixed role baseline matrix in `permission_role`. |
 | `FirstSuperadminSeeder` | Platform | Creates or links one configured superadmin when config is present. |
 | `KitchenDepartmentsSeeder` | Reference per branch | Ensures default kitchen department rows exist for existing branches. |
 | `DemoRestaurantSeeder` | Demo | Creates the local/dev demo restaurant. Must remain blocked in production. |
@@ -53,7 +53,7 @@ Allowed in production:
 
 - roles;
 - permissions;
-- role/permission pivot rows;
+- role/permission pivot rows with the fixed baseline `enabled` state;
 - configured first superadmin when required config exists;
 - default per-branch kitchen departments when branches already exist.
 
@@ -76,7 +76,7 @@ Use this order whenever the complete local demo data set is built:
 
 1. Reference roles.
 2. Reference permissions.
-3. Role permission matrix.
+3. Role permission matrix with baseline enabled/disabled states.
 4. Platform superadmin from config, if present.
 5. Demo organization owner through `UserFactory`.
 6. Demo organization through `OrganizationFactory`.

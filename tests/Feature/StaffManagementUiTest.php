@@ -219,6 +219,15 @@ function createOrganizationForStaff(): array
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => 'Staff Group']);
+    $role = Role::query()->where('code', SystemRole::ShiftManager->value)->firstOrFail();
+
+    $manager->roles()->sync([$role->id]);
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail()
+        ->forceFill(['role_id' => $role->id])
+        ->save();
 
     return [$manager->fresh(), $organization];
 }

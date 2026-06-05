@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Models\Permission;
-use App\Models\PermissionRole;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -37,31 +37,48 @@ class SystemPermissionsSeeder extends Seeder
                     ],
                 );
             }
+
+            $this->syncBaselineRolePermissions();
         });
+    }
 
-        $roleIds = Role::query()
-            ->orderBy('id')
-            ->pluck('id');
+    private function syncBaselineRolePermissions(): void
+    {
+        $permissions = Permission::query()
+            ->select(['id', 'code'])
+            ->whereIn('code', SystemPermission::values())
+            ->get()
+            ->keyBy('code');
 
-        $permissionIds = Permission::query()
-            ->orderBy('id')
-            ->pluck('id');
+        Role::query()
+            ->select(['id', 'code'])
+            ->whereIn('code', SystemRole::values())
+            ->orderBy('sort_order')
+            ->get()
+            ->each(function (Role $role) use ($permissions): void {
+                $systemRole = $role->code instanceof SystemRole
+                    ? $role->code
+                    : SystemRole::from((string) $role->code);
 
-        $now = now();
-        $rows = [];
+                $enabledCodes = collect(SystemPermission::baselineForRole($systemRole))
+                    ->map(fn (SystemPermission $permission): string => $permission->value)
+                    ->flip();
 
-        foreach ($roleIds as $roleId) {
-            foreach ($permissionIds as $permissionId) {
-                $rows[] = [
-                    'role_id' => $roleId,
-                    'permission_id' => $permissionId,
-                    'enabled' => false,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-        }
+                $syncPayload = [];
 
-        PermissionRole::query()->insertOrIgnore($rows);
+                foreach (SystemPermission::cases() as $systemPermission) {
+                    $permission = $permissions->get($systemPermission->value);
+
+                    if (! $permission instanceof Permission) {
+                        continue;
+                    }
+
+                    $syncPayload[(int) $permission->id] = [
+                        'enabled' => $enabledCodes->has($systemPermission->value),
+                    ];
+                }
+
+                $role->permissions()->sync($syncPayload, false);
+            });
     }
 }

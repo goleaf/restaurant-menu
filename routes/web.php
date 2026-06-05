@@ -5,6 +5,7 @@ use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
 use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
+use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
 use App\Livewire\Exports\Index as DataExportsIndex;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
@@ -124,6 +125,12 @@ Route::middleware(['auth'])
         Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
         Route::livewire('qr-lookup', QrShortCodeLookup::class)->name('qr-lookup.index');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
+
+        Route::prefix('departments')
+            ->name('departments.')
+            ->group(function () {
+                Route::livewire('tickets/{kitchenTicket}/print', DepartmentTicketPrint::class)->name('tickets.print');
+            });
 
         Route::prefix('exports')
             ->name('exports.')

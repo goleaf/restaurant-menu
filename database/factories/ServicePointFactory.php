@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
 use App\Models\Branch;
+use App\Models\QrCode;
 use App\Models\ServicePoint;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -35,5 +36,46 @@ class ServicePointFactory extends Factory
             'is_active' => true,
             'metadata' => [],
         ];
+    }
+
+    public function free(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ServicePointStatus::Free,
+            'is_active' => true,
+        ]);
+    }
+
+    public function occupied(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ServicePointStatus::Occupied,
+            'is_active' => true,
+        ]);
+    }
+
+    public function blocked(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ServicePointStatus::Blocked,
+            'is_active' => false,
+        ]);
+    }
+
+    public function withQr(): static
+    {
+        return $this->afterCreating(function (ServicePoint $servicePoint): void {
+            QrCode::factory()
+                ->for($servicePoint)
+                ->active()
+                ->create();
+        });
+    }
+
+    public function withoutQr(): static
+    {
+        return $this->afterCreating(function (ServicePoint $servicePoint): void {
+            $servicePoint->qrCodes()->delete();
+        });
     }
 }

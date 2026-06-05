@@ -31,10 +31,21 @@ class QrCodeFactory extends Factory
         ];
     }
 
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => QrCodeStatus::Active,
+            'revoked_at' => null,
+            'revoked_by_user_id' => null,
+        ]);
+    }
+
     public function disabled(): static
     {
         return $this->state(fn (): array => [
             'status' => QrCodeStatus::Disabled,
+            'revoked_at' => null,
+            'revoked_by_user_id' => null,
         ]);
     }
 

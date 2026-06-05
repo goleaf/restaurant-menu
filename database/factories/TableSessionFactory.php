@@ -6,6 +6,8 @@ use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
+use App\Models\TableSessionGuest;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -50,7 +52,30 @@ class TableSessionFactory extends Factory
     {
         return $this->state(fn (): array => [
             'source' => TableSessionSource::WaiterOpened,
+            'opened_by_user_id' => User::factory(),
+            'opened_by_guest_id' => null,
         ]);
+    }
+
+    public function guestCreated(): static
+    {
+        return $this->state(fn (): array => [
+            'source' => TableSessionSource::GuestCreated,
+            'opened_by_user_id' => null,
+        ])->afterCreating(function (TableSession $tableSession): void {
+            if ($tableSession->opened_by_guest_id !== null) {
+                return;
+            }
+
+            $guest = TableSessionGuest::factory()
+                ->for($tableSession)
+                ->active()
+                ->create();
+
+            $tableSession->forceFill([
+                'opened_by_guest_id' => $guest->id,
+            ])->save();
+        });
     }
 
     public function active(): static
@@ -58,6 +83,34 @@ class TableSessionFactory extends Factory
         return $this->state(fn (): array => [
             'status' => TableSessionStatus::Active,
             'started_at' => now(),
+            'ended_at' => null,
+        ]);
+    }
+
+    public function paymentRequested(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::PaymentRequested,
+            'started_at' => now(),
+            'ended_at' => null,
+        ]);
+    }
+
+    public function paid(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::Paid,
+            'started_at' => now()->subHour(),
+            'ended_at' => null,
+        ]);
+    }
+
+    public function closed(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::Closed,
+            'started_at' => now()->subHours(2),
+            'ended_at' => now(),
         ]);
     }
 }

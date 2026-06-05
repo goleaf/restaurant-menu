@@ -31,4 +31,59 @@ class DraftOrderFactory extends Factory
             'converted_by_user_id' => null,
         ];
     }
+
+    public function draft(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DraftOrderStatus::Draft,
+            'sent_to_waiter_at' => null,
+            'rejected_at' => null,
+            'rejection_reason' => null,
+            'converted_to_order_at' => null,
+        ]);
+    }
+
+    public function sentToWaiter(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now(),
+            'rejected_at' => null,
+            'rejection_reason' => null,
+            'converted_to_order_at' => null,
+        ]);
+    }
+
+    public function waiterReview(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DraftOrderStatus::WaiterReview,
+            'sent_to_waiter_at' => now(),
+            'rejected_at' => null,
+            'rejection_reason' => null,
+            'converted_to_order_at' => null,
+        ]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DraftOrderStatus::Rejected,
+            'sent_to_waiter_at' => now()->subMinute(),
+            'rejected_at' => now(),
+            'rejection_reason' => 'Factory rejection reason.',
+            'converted_to_order_at' => null,
+        ]);
+    }
+
+    public function convertedToOrder(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => DraftOrderStatus::ConvertedToOrder,
+            'sent_to_waiter_at' => now()->subMinute(),
+            'rejected_at' => null,
+            'rejection_reason' => null,
+            'converted_to_order_at' => now(),
+        ]);
+    }
 }

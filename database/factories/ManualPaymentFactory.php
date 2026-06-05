@@ -45,6 +45,27 @@ class ManualPaymentFactory extends Factory
         ];
     }
 
+    public function cash(): static
+    {
+        return $this->state(fn (): array => [
+            'payment_method' => ManualPaymentMethod::Cash,
+        ]);
+    }
+
+    public function cardTerminal(): static
+    {
+        return $this->state(fn (): array => [
+            'payment_method' => ManualPaymentMethod::CardTerminal,
+        ]);
+    }
+
+    public function other(): static
+    {
+        return $this->state(fn (): array => [
+            'payment_method' => ManualPaymentMethod::Other,
+        ]);
+    }
+
     public function forGuest(TableSessionGuest $guest): static
     {
         return $this->state(fn (): array => [

@@ -31,4 +31,47 @@ class TableSessionGuestFactory extends Factory
             'metadata' => [],
         ];
     }
+
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionGuestStatus::Active,
+            'joined_at' => now(),
+            'left_at' => null,
+        ]);
+    }
+
+    public function pendingApproval(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionGuestStatus::PendingApproval,
+            'joined_at' => null,
+            'left_at' => null,
+        ]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionGuestStatus::Rejected,
+            'joined_at' => null,
+            'left_at' => now(),
+        ]);
+    }
+
+    public function removed(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionGuestStatus::Removed,
+            'left_at' => now(),
+        ]);
+    }
+
+    public function left(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionGuestStatus::Left,
+            'left_at' => now(),
+        ]);
+    }
 }

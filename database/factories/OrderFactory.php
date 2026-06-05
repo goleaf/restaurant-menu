@@ -35,4 +35,52 @@ class OrderFactory extends Factory
             'metadata' => [],
         ];
     }
+
+    public function confirmedByWaiter(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::ConfirmedByWaiter,
+            'confirmed_at' => now(),
+        ]);
+    }
+
+    public function sentToDepartments(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::SentToKitchenBar,
+            'confirmed_at' => now()->subMinute(),
+        ]);
+    }
+
+    public function preparing(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::InProgress,
+            'confirmed_at' => now()->subMinutes(5),
+        ]);
+    }
+
+    public function ready(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::Ready,
+            'confirmed_at' => now()->subMinutes(10),
+        ]);
+    }
+
+    public function served(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::Served,
+            'confirmed_at' => now()->subMinutes(15),
+        ]);
+    }
+
+    public function cancelled(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::Cancelled,
+            'confirmed_at' => now()->subMinutes(15),
+        ]);
+    }
 }

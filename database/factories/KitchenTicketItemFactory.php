@@ -46,4 +46,31 @@ class KitchenTicketItemFactory extends Factory
             'comment' => $orderItem->comment,
         ];
     }
+
+    public function pending(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => KitchenTicketItemStatus::New,
+            'served_at' => null,
+            'served_by_user_id' => null,
+        ]);
+    }
+
+    public function preparing(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => KitchenTicketItemStatus::InProgress,
+            'served_at' => null,
+            'served_by_user_id' => null,
+        ]);
+    }
+
+    public function ready(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => KitchenTicketItemStatus::Ready,
+            'served_at' => null,
+            'served_by_user_id' => null,
+        ]);
+    }
 }

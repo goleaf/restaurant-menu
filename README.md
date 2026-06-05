@@ -49,7 +49,7 @@ Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, imp
 
 Latest memory refresh: 2026-06-04 after Prompt 117 active table-session transfer. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, and active-session transfer are now part of the baseline branch setup, guest entry, and order-review context.
 
-The memory refresh after Prompt 117 records the current active-session transfer status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update did not add product behavior.
+The memory refresh after Prompt 117 records the current active-session transfer status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 
 ## Active Table Session Transfer
 

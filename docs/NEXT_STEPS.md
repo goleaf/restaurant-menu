@@ -12,7 +12,8 @@ Wait for the next explicit user prompt. Prompt 117 is complete; do not continue
 with new product behavior automatically.
 
 Daily memory update after Prompt 117 is complete. Keep this file as the source
-for next-prompt guardrails until the user gives a new prompt.
+for next-prompt guardrails until the user gives a new prompt. The update was
+documentation-only and did not add product behavior.
 
 If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
 or orders, first verify:

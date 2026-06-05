@@ -13,6 +13,12 @@
 - Limitations: only active sessions can be moved; target service point must be active, free, in the same branch, and without an open session. No QR reissue, no new routes, no migrations, no Redis/WebSockets/S3/Docker, and no paid services were added.
 - Manual check: open an active waiter table, choose `Перенести стол`, select a free table, confirm old table becomes free, new table becomes occupied, guests see the new place after refresh, orders remain under the same session, and both QR public tokens stay unchanged.
 
+### Docs - Daily Project Memory Update After Prompt 117
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 117 without adding product behavior.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, and no Redis/WebSockets/S3/Docker or paid services.
+- Recorded active table-session transfer as part of the waiter/guest/QR baseline and kept future work blocked until the next explicit prompt.
+
 ### Prompt 116 - Session Inactivity Cleanup
 
 - Added branch-level inactivity settings: `inactivity_warning_minutes` and `pending_session_expire_minutes`.

@@ -59,6 +59,15 @@ Manual check:
 7. Confirm old and new service point QR public tokens are unchanged.
 8. Confirm audit log contains `Table session transferred`.
 
+## Daily Memory Update - 2026-06-04 After Prompt 117
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 117. Active table-session transfer is now part of the waiter/guest/QR
+baseline. Future prompts must preserve the guardrail that transferring a
+session changes the current session place but never changes permanent QR
+identity.
+
 ## Prompt 116 Session Inactivity Cleanup Results
 
 Programmatic coverage was added in `tests/Feature/SessionInactivityCleanupTest.php`.

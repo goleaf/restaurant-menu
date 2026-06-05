@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-05
+
+### Prompt 118 - Merge Tables
+
+- Added merged table sessions so waiter/order staff can link additional free service points to one active `table_session`.
+- Added `table_session_service_points` with an active-link guard for SQLite, plus `TableSessionServicePoint` model/factory relationships.
+- The waiter table detail screen now shows linked physical places and a simple `Объединить столы` action.
+- Linked service points become `occupied`; closing the session frees both the main and linked service points.
+- Public QR guest entry now resolves an active linked service point to the same main session and creates the normal join request when guests are already active.
+- Permanent QR records remain attached to their original physical `service_point_id`; merge does not reissue, disable, revoke, or regenerate QR codes.
+- Touched modules/files: `table_session_service_points` migration/model/factory, `MergeTableSessionServicePointAction`, table-session open/close/guest-entry actions, waiter table detail payload/component/view, service point admin list, public QR component, audit enum, README, AI context, smoke checklist, next-step notes, and `tests/Feature/TableSessionMergeTest.php`.
+- Limitations: this step only adds linking/merge into one active session; it does not add a separate unmerge UI, table-combination billing rules, drag-and-drop floor plans, new QR rules, Redis/WebSockets/S3/Docker, or paid services.
+- Manual check: open an active table, merge a free service point, confirm both places show occupied, scan the linked service point QR in a fresh browser, confirm it requests entry to the same session, close the table, and confirm both service points become free while both QR public tokens remain unchanged.
+
 ## 2026-06-04
 
 ### Prompt 117 - Move Active Session To Another Service Point

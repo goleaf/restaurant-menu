@@ -13,6 +13,7 @@ enum AuditLogAction: string
     case OrderConfirmed = 'order_confirmed';
     case OrderCancelled = 'order_cancelled';
     case TableSessionTransferred = 'table_session_transferred';
+    case TableSessionServicePointLinked = 'table_session_service_point_linked';
     case TableSessionClosed = 'table_session_closed';
     case PaymentRecorded = 'payment_recorded';
 
@@ -28,6 +29,7 @@ enum AuditLogAction: string
             self::OrderConfirmed => 'Order confirmed',
             self::OrderCancelled => 'Order cancelled',
             self::TableSessionTransferred => 'Table session transferred',
+            self::TableSessionServicePointLinked => 'Table session service point linked',
             self::TableSessionClosed => 'Table session closed',
             self::PaymentRecorded => 'Payment recorded',
         };

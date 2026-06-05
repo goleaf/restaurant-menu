@@ -171,6 +171,28 @@
                     <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'service_point.name') }}</dd>
                 </div>
 
+                @if (data_get($table, 'linked_service_points') !== [])
+                    <div>
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Связанные столы') }}</dt>
+                        <dd class="mt-2 flex flex-wrap gap-2">
+                            @foreach (data_get($table, 'linked_service_points', []) as $linkedServicePoint)
+                                <flux:badge
+                                    wire:key="linked-service-point-{{ $linkedServicePoint['id'] }}"
+                                    :color="$linkedServicePoint['status_color']"
+                                >
+                                    {{ $linkedServicePoint['name'] }}
+                                    @if ($linkedServicePoint['display_number'])
+                                        · № {{ $linkedServicePoint['display_number'] }}
+                                    @endif
+                                    @if ($linkedServicePoint['zone_name'])
+                                        · {{ $linkedServicePoint['zone_name'] }}
+                                    @endif
+                                </flux:badge>
+                            @endforeach
+                        </dd>
+                    </div>
+                @endif
+
                 <div>
                     <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Service point status') }}</dt>
                     <dd class="mt-1">
@@ -228,6 +250,59 @@
             @error('table_session')
                 <p class="mt-5 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
             @enderror
+
+            @if (data_get($table, 'merge.can_merge'))
+                <div id="merge-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Объединить столы') }}</h3>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ __('Добавьте ещё одно свободное место к этой сессии. Каждый физический стол сохраняет свой вечный QR-код.') }}
+                    </p>
+
+                    @if ($mergeFeedbackMessage)
+                        <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                            {{ $mergeFeedbackMessage }}
+                        </p>
+                    @endif
+
+                    @error('table_session_merge')
+                        <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                    @enderror
+
+                    @error('mergeTargetServicePointId')
+                        <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                    @enderror
+
+                    @if (data_get($table, 'merge.available_service_points') !== [])
+                        <div class="mt-3 space-y-3">
+                            <flux:select wire:model="mergeTargetServicePointId" :label="__('Дополнительное место')">
+                                <flux:select.option value="">{{ __('Выберите свободное место') }}</flux:select.option>
+                                @foreach (data_get($table, 'merge.available_service_points', []) as $servicePointOption)
+                                    <flux:select.option wire:key="merge-target-service-point-{{ $servicePointOption['id'] }}" value="{{ $servicePointOption['id'] }}">
+                                        {{ $servicePointOption['label'] }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <flux:button
+                                icon="plus"
+                                variant="primary"
+                                type="button"
+                                class="w-full"
+                                wire:click="mergeServicePoint"
+                                wire:loading.attr="disabled"
+                                wire:target="mergeServicePoint"
+                            >
+                                <span wire:loading.remove wire:target="mergeServicePoint">{{ __('Объединить столы') }}</span>
+                                <span wire:loading wire:target="mergeServicePoint">{{ __('Объединяем') }}</span>
+                            </flux:button>
+                        </div>
+                    @else
+                        <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            {{ __('Свободных мест для объединения сейчас нет.') }}
+                        </p>
+                    @endif
+                </div>
+            @endif
 
             @if (data_get($table, 'transfer.can_transfer'))
                 <div id="transfer-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">

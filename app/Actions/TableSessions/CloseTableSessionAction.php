@@ -56,6 +56,20 @@ class CloseTableSessionAction
                 $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Free);
             }
 
+            $linkedServicePointIds = [];
+
+            foreach ($tableSession->activeServicePointLinks as $link) {
+                if ($link->servicePoint instanceof ServicePoint) {
+                    $linkedServicePointIds[] = $link->servicePoint->id;
+                    $this->updateServicePointStatus->handle($link->servicePoint, ServicePointStatus::Free);
+                }
+
+                $link->fill([
+                    'unlinked_by_user_id' => $closedBy->id,
+                    'unlinked_at' => now(),
+                ])->save();
+            }
+
             $this->recordAuditLog->handle(
                 action: AuditLogAction::TableSessionClosed,
                 entityType: 'table_session',
@@ -70,6 +84,7 @@ class CloseTableSessionAction
                 newValues: [
                     'status' => TableSessionStatus::Closed,
                     'service_point_status' => ServicePointStatus::Free,
+                    'linked_service_point_ids' => $linkedServicePointIds,
                     'closed_by_user_id' => $closedBy->id,
                 ],
             );
@@ -93,6 +108,19 @@ class CloseTableSessionAction
             ->with([
                 'branch:id,organization_id',
                 'servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status']),
+                'activeServicePointLinks' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'table_session_id',
+                        'service_point_id',
+                        'unlinked_by_user_id',
+                        'unlinked_at',
+                    ])
+                    ->with(['servicePoint' => fn ($servicePointQuery) => $servicePointQuery->select([
+                        'id',
+                        'branch_id',
+                        'status',
+                    ])]),
             ])
             ->whereKey($tableSession->id)
             ->firstOrFail();

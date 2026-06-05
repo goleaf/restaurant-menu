@@ -47,9 +47,26 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 117 active table-session transfer. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, and active-session transfer are now part of the baseline branch setup, guest entry, and order-review context.
+Latest memory refresh: 2026-06-05 after Prompt 118 merged table sessions. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, active-session transfer, and merged table sessions are now part of the baseline branch setup, guest entry, and order-review context.
 
-The memory refresh after Prompt 117 records the current active-session transfer status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
+The memory refresh after Prompt 118 records the current merged-table-session status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
+
+## Merged Table Sessions
+
+Prompt 118 lets authorized waiter/order staff attach additional free service points to one active `table_session` from the waiter table detail screen.
+
+- The main session keeps its current `service_point_id`; linked physical places are stored in `table_session_service_points`.
+- All linked service points are marked `occupied` while the session is active.
+- Each physical service point keeps its own permanent QR record and public token; merge never reissues, disables, revokes, or regenerates QR codes.
+- A guest scanning any linked QR is routed into the same active table session and, when active guests already exist, creates the normal join request for approval.
+- Closing the table session frees the main and linked service points and marks the active links as unlinked.
+- Merge creates a `table_session_service_point_linked` audit log entry.
+
+Focused Prompt 118 command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionMergeTest.php
+```
 
 ## Active Table Session Transfer
 

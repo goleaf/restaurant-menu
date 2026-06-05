@@ -517,6 +517,22 @@ class Index extends Component
                     'started_at',
                     'created_at',
                 ])->where('status', TableSessionStatus::Active->value),
+                'activeTableSessionServicePointLinks' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'table_session_id',
+                        'service_point_id',
+                        'unlinked_at',
+                    ])
+                    ->with(['tableSession' => fn ($tableSessionQuery) => $tableSessionQuery->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                        'status',
+                        'started_at',
+                        'created_at',
+                    ])->where('status', TableSessionStatus::Active->value)])
+                    ->whereNull('unlinked_at'),
             ]);
 
         $this->applyServicePointFilters($servicePoints);

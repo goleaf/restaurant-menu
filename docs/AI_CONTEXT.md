@@ -2,6 +2,105 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 118 Merged Table Sessions - 2026-06-05
+
+Prompt 118 added basic merged-table-session support. It did not add new routes, roles, permissions, QR regeneration, unmerge UI, billing changes, delivery/payment integrations, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block guest ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search/filter/paginate service points without loading every row.
+- Prompt 111: the same page has a simple visual board grouped by zone.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or `All zones`.
+- Prompt 113: a waiter can manually add positions to an active table and still confirm through the normal order snapshot flow.
+- Prompt 114: duplicate guest display names show a warning and suggestions before join request creation.
+- Prompt 116: stale empty pending sessions can be cancelled safely, active sessions show waiter inactivity warnings, and cleanup can run by scheduler or manual action.
+- Prompt 117: staff with `view_orders` or `confirm_orders` can transfer an active session to another active free service point without changing QR codes.
+- Prompt 118: staff with `view_orders` or `confirm_orders` can link additional free service points to one active table session; linked QR scans resolve to the same session.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- New table: `table_session_service_points`.
+- `table_session_service_points` stores `table_session_id`, `service_point_id`, nullable guarded `active_service_point_id`, `linked_by_user_id`, `linked_at`, `unlinked_by_user_id`, `unlinked_at`, and timestamps.
+- `active_service_point_id` is unique and nullable so one service point can be actively linked to at most one session, then reused after `unlinked_at` is set.
+- Existing affected tables: `table_sessions`, `service_points`, `qr_codes`, `table_session_guests`, `table_session_join_requests`, `audit_logs`, `draft_orders`, `orders`, and `manual_payments`.
+- Closing a merged session sets linked records `unlinked_at`/`unlinked_by_user_id` and frees all linked service points.
+- Permanent QR rows stay attached to their original `qr_codes.service_point_id` and are not changed by merge.
+- Full inventory now includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_sessions`, `table_session_service_points`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 118.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, or guest IDs.
+- Invite links still use the existing `/q/{token}?invite={token}` route.
+
+Current Livewire components and actions:
+
+- New action: `App\Actions\TableSessions\MergeTableSessionServicePointAction`.
+- New model/factory: `App\Models\TableSessionServicePoint` and `Database\Factories\TableSessionServicePointFactory`.
+- `App\Models\TableSession` now has `servicePointLinks()` and `activeServicePointLinks()`.
+- `App\Models\ServicePoint` now has `tableSessionServicePointLinks()` and `activeTableSessionServicePointLinks()`.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` now returns `linked_service_points` and `merge.can_merge` with bounded free service point options.
+- `App\Livewire\Waiter\TableDetail` exposes `mergeTargetServicePointId`, `mergeFeedbackMessage`, and `mergeServicePoint()`.
+- `resources/views/livewire/waiter/table-detail.blade.php` shows linked places and the `Объединить столы` block.
+- `App\Actions\TableSessions\OpenTableSessionForServicePointAction` reuses an active linked session instead of creating a duplicate session from a linked occupied QR/place.
+- `App\Actions\TableSessions\CloseTableSessionAction` frees linked service points and deactivates links when a session closes.
+- `App\Actions\TableSessions\CreateGuestPendingTableSessionAction` resolves an active linked service point to the main active session.
+- `App\Livewire\PublicQr\Show` resolves guest-name conflict checks and entry landing data through the linked active session.
+- `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index` now eager-loads active service point links so linked occupied places do not show as openable.
+
+Mandatory business rules:
+
+- One physical service point still owns one permanent QR; merge must not change, reissue, disable, revoke, or regenerate QR codes.
+- Merge links additional physical service points to the active session; the main `table_sessions.service_point_id` remains the main service point.
+- Linked service points become `occupied` while linked.
+- Guests scanning any linked QR should reach the same active session and go through the normal active-guest join approval flow.
+- Closing a merged session frees the main and linked service points and does not touch QR identity.
+- Only active table sessions can be merged in this step.
+- Target service point must be active, free, same-branch, without an open direct session, and without another active merge link.
+- Orders still require waiter confirmation before kitchen/bar dispatch.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep merge queries selected, eager-loaded, branch-scoped, bounded, and index-backed for SQLite.
+- Do not query from Blade.
+- No new infrastructure is required for merge.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 118 notes:
+
+- Focused coverage: `tests/Feature/TableSessionMergeTest.php`.
+- Related verification: table-session transfer, waiter open table, table close, guest created session, and guest table shell tests.
+- Verification run included SQLite migration status, route list, database driver config checks, and HTTP smoke for `/`, `/login`, and waiter dashboard redirect.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 117 Active Table Session Transfer - 2026-06-04
 
 Prompt 117 added active table-session transfer to another free service point. It did not add routes, migrations, roles, permissions, guest accounts, direct kitchen/bar dispatch, online payments, Redis, WebSockets, S3, Docker, paid services, or external APIs.

@@ -23,6 +23,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use App\Models\TableSessionServicePoint;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
@@ -400,6 +401,10 @@ class Show extends Component
         $this->guestCanViewTable = $guest instanceof TableSessionGuest
             && $tableSession instanceof TableSession
             && $this->canGuestViewTable($guest, $tableSession);
+
+        if ($tableSession instanceof TableSession) {
+            $this->syncLandingServicePointFromTableSession($tableSession);
+        }
 
         if ($guest instanceof TableSessionGuest && $tableSession instanceof TableSession) {
             Cookie::queue($this->guestTokenCookieName($qrCode->public_token), $guest->guest_token, 60 * 24 * 30);
@@ -886,7 +891,7 @@ class Show extends Component
         ServicePoint $servicePoint,
         TableSessionStatus $status,
     ): ?TableSession {
-        return TableSession::query()
+        $tableSession = TableSession::query()
             ->select([
                 'id',
                 'branch_id',
@@ -904,6 +909,34 @@ class Show extends Component
             ->orderBy('started_at')
             ->orderBy('id')
             ->first();
+
+        if ($tableSession instanceof TableSession || $status !== TableSessionStatus::Active) {
+            return $tableSession;
+        }
+
+        $link = TableSessionServicePoint::query()
+            ->select(['id', 'table_session_id', 'service_point_id', 'unlinked_at'])
+            ->with([
+                'tableSession' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                        'opened_by_guest_id',
+                        'status',
+                        'source',
+                        'started_at',
+                        'ended_at',
+                    ])
+                    ->where('branch_id', $servicePoint->branch_id)
+                    ->where('status', $status->value)
+                    ->whereHas('activeGuests'),
+            ])
+            ->active()
+            ->where('service_point_id', $servicePoint->id)
+            ->first();
+
+        return $link?->tableSession;
     }
 
     private function findCurrentTableSessionForInvite(): ?TableSession

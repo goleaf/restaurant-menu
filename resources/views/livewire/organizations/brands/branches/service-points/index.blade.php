@@ -245,6 +245,8 @@
 
                                     @if ($servicePoint->activeTableSession)
                                         <x-ui.status-badge tone="info">{{ __('Стол открыт') }}</x-ui.status-badge>
+                                    @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                        <x-ui.status-badge tone="info">{{ __('Столы объединены') }}</x-ui.status-badge>
                                     @endif
 
                                     @if ($canGenerateQr)
@@ -258,7 +260,7 @@
 
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     @if ($canOpenTable)
-                                        @if ($servicePoint->activeTableSession)
+                                        @if ($servicePoint->activeTableSession || $servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
                                             <flux:button size="sm" icon="check" type="button" disabled>
                                                 {{ __('Стол открыт') }}
                                             </flux:button>
@@ -448,6 +450,11 @@
                                         {{ __('Стол открыт') }}
                                         <span class="sr-only">{{ __('Active session') }}</span>
                                     </x-ui.status-badge>
+                                @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                    <x-ui.status-badge tone="info">
+                                        {{ __('Столы объединены') }}
+                                        <span class="sr-only">{{ __('Merged table session') }}</span>
+                                    </x-ui.status-badge>
                                 @endif
 
                                 @if ($canGenerateQr)
@@ -478,6 +485,10 @@
                                     {{ __('Открыт') }}:
                                     {{ $servicePoint->activeTableSession->started_at?->format('Y-m-d H:i') ?? __('сейчас') }}
                                 </p>
+                            @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                    {{ __('Объединён с активным столом') }}
+                                </p>
                             @endif
 
                             @if ($canGenerateQr && $servicePoint->activeQrCode)
@@ -489,7 +500,7 @@
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
                             @if ($canOpenTable)
-                                @if ($servicePoint->activeTableSession)
+                                @if ($servicePoint->activeTableSession || $servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
                                     <flux:button icon="check" type="button" disabled>
                                         {{ __('Стол открыт') }}
                                         <span class="sr-only">{{ __('Table opened') }}</span>

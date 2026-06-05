@@ -149,4 +149,25 @@ class ServicePoint extends Model
         return $this->hasOne(QrCode::class)
             ->where('status', QrCodeStatus::Active->value);
     }
+
+    /**
+     * @return HasMany<TableSessionServicePoint, $this>
+     */
+    public function tableSessionServicePointLinks(): HasMany
+    {
+        return $this->hasMany(TableSessionServicePoint::class)
+            ->orderBy('linked_at')
+            ->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<TableSessionServicePoint, $this>
+     */
+    public function activeTableSessionServicePointLinks(): HasMany
+    {
+        return $this->hasMany(TableSessionServicePoint::class)
+            ->whereNull('unlinked_at')
+            ->orderBy('linked_at')
+            ->orderBy('id');
+    }
 }

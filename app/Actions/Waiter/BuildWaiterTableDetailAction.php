@@ -20,6 +20,7 @@ use App\Models\Order;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\TableSessionServicePoint;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -69,6 +70,20 @@ class BuildWaiterTableDetailAction
                 'servicePoint' => fn ($query) => $query
                     ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'capacity', 'status', 'is_active'])
                     ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                'activeServicePointLinks' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'table_session_id',
+                        'service_point_id',
+                        'linked_by_user_id',
+                        'linked_at',
+                        'unlinked_at',
+                    ])
+                    ->with([
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'capacity', 'status', 'is_active'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
                 'openedByUser' => fn ($query) => $query->select(['id', 'name']),
                 'openedByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
                 'guests' => fn ($query) => $query->select([
@@ -213,6 +228,7 @@ class BuildWaiterTableDetailAction
             ->values();
         $canTransferTableSession = $sessionStatus === TableSessionStatus::Active
             && $transferBranchIds->contains((int) $tableSession->branch_id);
+        $canMergeTableSession = $canTransferTableSession;
         $canCloseTableSession = ! in_array($sessionStatus, [
             TableSessionStatus::Closed,
             TableSessionStatus::Cancelled,
@@ -258,6 +274,7 @@ class BuildWaiterTableDetailAction
                 'status_color' => $servicePointStatus->badgeColor(),
                 'is_active' => (bool) $servicePoint?->is_active,
             ],
+            'linked_service_points' => $this->linkedServicePointsPayload($tableSession),
             'session' => [
                 'id' => $tableSession->id,
                 'status_label' => $sessionStatus->label(),
@@ -286,6 +303,7 @@ class BuildWaiterTableDetailAction
                 'can_add' => $canAddManualOrderItems,
             ],
             'transfer' => $this->transferPayload($tableSession, $canTransferTableSession),
+            'merge' => $this->mergePayload($tableSession, $canMergeTableSession),
             'guest_sections' => $guestSections,
             'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
             'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
@@ -324,6 +342,7 @@ class BuildWaiterTableDetailAction
             ->where('is_active', true)
             ->where('status', ServicePointStatus::Free->value)
             ->whereDoesntHave('tableSessions', fn ($query) => $query->whereIn('status', $openStatuses))
+            ->whereDoesntHave('activeTableSessionServicePointLinks')
             ->orderBy('name')
             ->orderBy('id')
             ->limit(100)
@@ -340,6 +359,86 @@ class BuildWaiterTableDetailAction
 
         return [
             'can_transfer' => true,
+            'available_service_points' => $availableServicePoints,
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, name: string, display_number: string|null, zone_name: string|null, status_label: string, status_color: string}>
+     */
+    private function linkedServicePointsPayload(TableSession $tableSession): array
+    {
+        return $tableSession
+            ->activeServicePointLinks
+            ->map(function (TableSessionServicePoint $link): ?array {
+                $servicePoint = $link->servicePoint;
+
+                if (! $servicePoint instanceof ServicePoint) {
+                    return null;
+                }
+
+                $status = $servicePoint->status instanceof ServicePointStatus
+                    ? $servicePoint->status
+                    : ServicePointStatus::from((string) $servicePoint->status);
+
+                return [
+                    'id' => $servicePoint->id,
+                    'name' => $servicePoint->name,
+                    'display_number' => $servicePoint->display_number,
+                    'zone_name' => $servicePoint->areaNode?->name,
+                    'status_label' => $status->label(),
+                    'status_color' => $status->badgeColor(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{can_merge: bool, available_service_points: list<array{id: int, label: string, name: string, display_number: string|null, zone_name: string|null}>}
+     */
+    private function mergePayload(TableSession $tableSession, bool $canMerge): array
+    {
+        if (! $canMerge) {
+            return [
+                'can_merge' => false,
+                'available_service_points' => [],
+            ];
+        }
+
+        $openStatuses = [
+            TableSessionStatus::Pending->value,
+            TableSessionStatus::Active->value,
+            TableSessionStatus::WaitingWaiterConfirmation->value,
+            TableSessionStatus::PaymentRequested->value,
+        ];
+
+        $availableServicePoints = ServicePoint::query()
+            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status', 'is_active'])
+            ->with(['areaNode' => fn ($query) => $query->select(['id', 'branch_id', 'name'])])
+            ->where('branch_id', $tableSession->branch_id)
+            ->whereKeyNot($tableSession->service_point_id)
+            ->where('is_active', true)
+            ->where('status', ServicePointStatus::Free->value)
+            ->whereDoesntHave('tableSessions', fn ($query) => $query->whereIn('status', $openStatuses))
+            ->whereDoesntHave('activeTableSessionServicePointLinks')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (ServicePoint $servicePoint): array => [
+                'id' => $servicePoint->id,
+                'label' => $this->servicePointTransferLabel($servicePoint),
+                'name' => $servicePoint->name,
+                'display_number' => $servicePoint->display_number,
+                'zone_name' => $servicePoint->areaNode?->name,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'can_merge' => true,
             'available_service_points' => $availableServicePoints,
         ];
     }

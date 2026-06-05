@@ -4,20 +4,21 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 117 active table-session transfer.
+Last memory refresh: 2026-06-05 after Prompt 118 merged table sessions.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 117 is complete; do not continue
+Wait for the next explicit user prompt. Prompt 118 is complete; do not continue
 with new product behavior automatically.
 
-Daily memory update after Prompt 117 is complete. Keep this file as the source
+Daily memory update after Prompt 118 is complete. Keep this file as the source
 for next-prompt guardrails until the user gives a new prompt. The update was
 documentation-only and did not add product behavior.
 
 If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
 or orders, first verify:
 
+- `tests/Feature/TableSessionMergeTest.php`;
 - `tests/Feature/TableSessionTransferTest.php`;
 - `tests/Feature/SessionInactivityCleanupTest.php`;
 - `tests/Feature/TableSessionCloseTest.php`;
@@ -33,6 +34,16 @@ Risky areas:
 - Do not reissue permanent QR when a session is cancelled or closed.
 - Do not reissue, disable, revoke, or regenerate permanent QR when an active
   table session is transferred to another service point.
+- Do not reissue, disable, revoke, or regenerate permanent QR when a table
+  session links additional service points.
+- Merged-table links live in `table_session_service_points`; the main
+  `table_sessions.service_point_id` remains the primary active service point.
+- Linked service points must show `occupied`, but their QR records must remain
+  attached to their own physical `service_point_id`.
+- A guest scanning a linked QR should enter or request to join the same active
+  session, not create a duplicate active session for that linked service point.
+- Closing a merged session must free every active linked service point and mark
+  those links inactive.
 - Do not move a table session to a non-free, inactive, cross-branch, pending,
   active, or payment-requested service point.
 - Already-entered guests should follow the transferred `table_session`; fresh
@@ -44,9 +55,10 @@ branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
 board, waiter zone assignments, waiter manual order entry, waiter-side schedule
-checks, guest duplicate-name handling, safe session inactivity cleanup, and
-active table-session transfer should be treated as current baseline
-for future guest UI, QR landing, ordering work, staff review, and branch setup.
+checks, guest duplicate-name handling, safe session inactivity cleanup, active
+table-session transfer, and merged table sessions should be treated as current
+baseline for future guest UI, QR landing, ordering work, staff review, and
+branch setup.
 
 ## Current Recommended Prompt
 

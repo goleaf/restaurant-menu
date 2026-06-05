@@ -12,6 +12,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use App\Models\TableSessionServicePoint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -135,7 +136,7 @@ class CreateGuestPendingTableSessionAction
 
     private function findTableSession(ServicePoint $servicePoint, TableSessionStatus $status): ?TableSession
     {
-        return $servicePoint
+        $tableSession = $servicePoint
             ->tableSessions()
             ->select([
                 'id',
@@ -158,6 +159,44 @@ class CreateGuestPendingTableSessionAction
             ->orderBy('started_at')
             ->orderBy('id')
             ->first();
+
+        if ($tableSession instanceof TableSession || $status !== TableSessionStatus::Active) {
+            return $tableSession;
+        }
+
+        return $this->findLinkedActiveTableSession($servicePoint);
+    }
+
+    private function findLinkedActiveTableSession(ServicePoint $servicePoint): ?TableSession
+    {
+        $link = TableSessionServicePoint::query()
+            ->select(['id', 'table_session_id', 'service_point_id', 'unlinked_at'])
+            ->with([
+                'tableSession' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                        'active_service_point_id',
+                        'pending_service_point_id',
+                        'opened_by_user_id',
+                        'opened_by_guest_id',
+                        'status',
+                        'source',
+                        'started_at',
+                        'ended_at',
+                        'closed_by_user_id',
+                        'metadata',
+                        'created_at',
+                        'updated_at',
+                    ])
+                    ->where('status', TableSessionStatus::Active->value),
+            ])
+            ->active()
+            ->where('service_point_id', $servicePoint->id)
+            ->first();
+
+        return $link?->tableSession;
     }
 
     private function settingsFor(Branch $branch): BranchSetting

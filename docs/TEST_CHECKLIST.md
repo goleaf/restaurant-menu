@@ -13,6 +13,54 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 118 Merged Table Sessions Results
+
+Programmatic coverage was added in `tests/Feature/TableSessionMergeTest.php`.
+The feature currently verifies:
+
+- a waiter/order staff user can link a free service point to an active table
+  session;
+- `table_session_service_points` stores the active link and the linked service
+  point becomes `occupied`;
+- QR public tokens and QR `service_point_id` values for main and linked service
+  points do not change;
+- an occupied or otherwise unavailable service point cannot be linked;
+- waiter table detail exposes `Объединить столы`, available free places, and
+  the linked-place list;
+- a guest scanning the linked service point QR creates a join request for the
+  main active session;
+- closing a merged session frees both the main and linked service points and
+  marks the link inactive.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionMergeTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionMergeTest.php tests/Feature/TableSessionTransferTest.php tests/Feature/WaiterOpenTableActionTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/GuestCreatedPendingSessionTest.php tests/Feature/GuestTablePageShellTest.php
+```
+
+Manual check:
+
+1. Open an active table in `/restaurant/waiter/tables/{tableSession}` as staff
+   with `view_orders` or `confirm_orders`.
+2. Confirm the `Объединить столы` block lists only active free places from the
+   same branch.
+3. Choose a free target place and merge.
+4. Confirm the main and linked service points both show `occupied`.
+5. Confirm the linked place appears in the waiter table summary and the branch
+   service point list/board no longer offers `Open table` for that linked place.
+6. Open the linked service point `/q/{public_token}` in a fresh browser, enter a
+   guest name, and confirm the guest asks to join the same active session.
+7. Close the session and confirm the main and linked service points become
+   `free`.
+8. Confirm QR public tokens and QR `service_point_id` values for both physical
+   places are unchanged.
+
 ## Prompt 117 Active Table Session Transfer Results
 
 Programmatic coverage was added in `tests/Feature/TableSessionTransferTest.php`.

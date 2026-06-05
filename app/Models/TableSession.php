@@ -205,4 +205,25 @@ class TableSession extends Model
             ->orderBy('paid_at')
             ->orderBy('id');
     }
+
+    /**
+     * @return HasMany<TableSessionServicePoint, $this>
+     */
+    public function servicePointLinks(): HasMany
+    {
+        return $this->hasMany(TableSessionServicePoint::class)
+            ->orderBy('linked_at')
+            ->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<TableSessionServicePoint, $this>
+     */
+    public function activeServicePointLinks(): HasMany
+    {
+        return $this->hasMany(TableSessionServicePoint::class)
+            ->whereNull('unlinked_at')
+            ->orderBy('linked_at')
+            ->orderBy('id');
+    }
 }

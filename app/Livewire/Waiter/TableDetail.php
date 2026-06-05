@@ -7,6 +7,7 @@ use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
+use App\Actions\TableSessions\MergeTableSessionServicePointAction;
 use App\Actions\TableSessions\TransferTableSessionAction;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
@@ -54,6 +55,10 @@ class TableDetail extends Component
     public string $transferFeedbackMessage = '';
 
     public ?int $transferTargetServicePointId = null;
+
+    public string $mergeFeedbackMessage = '';
+
+    public ?int $mergeTargetServicePointId = null;
 
     public string $paymentMethod = 'cash';
 
@@ -138,6 +143,7 @@ class TableDetail extends Component
         $this->table = $payload['table'] ?? [];
         $this->syncAddableMenuItems();
         $this->syncTransferTargetServicePoint();
+        $this->syncMergeTargetServicePoint();
         $this->refreshedAt = now()->format('H:i:s');
     }
 
@@ -582,6 +588,45 @@ class TableDetail extends Component
         $this->refreshTable();
     }
 
+    public function mergeServicePoint(MergeTableSessionServicePointAction $mergeTableSessionServicePoint): void
+    {
+        $this->resetValidation();
+        $this->mergeFeedbackMessage = '';
+
+        $validated = $this->validate([
+            'mergeTargetServicePointId' => ['required', 'integer', 'min:1'],
+        ], [
+            'mergeTargetServicePointId.required' => __('Выберите свободное место для объединения.'),
+        ]);
+
+        $targetServicePoint = ServicePoint::query()
+            ->select(['id'])
+            ->whereKey((int) $validated['mergeTargetServicePointId'])
+            ->first();
+
+        if (! $targetServicePoint instanceof ServicePoint) {
+            $this->addError('mergeTargetServicePointId', __('Место не найдено.'));
+
+            return;
+        }
+
+        try {
+            $mergeTableSessionServicePoint->handle(
+                tableSession: $this->currentTableSession(),
+                servicePointToLink: $targetServicePoint,
+                linkedBy: $this->currentUser(),
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->mergeFeedbackMessage = __('Столы объединены. QR-коды каждого физического стола остались прежними.');
+        $this->mergeTargetServicePointId = null;
+        $this->refreshTable();
+    }
+
     public function render(): View
     {
         return view('livewire.waiter.table-detail');
@@ -800,6 +845,19 @@ class TableDetail extends Component
         if ($this->transferTargetServicePointId !== null
             && ! in_array($this->transferTargetServicePointId, $availableIds, true)) {
             $this->transferTargetServicePointId = null;
+        }
+    }
+
+    private function syncMergeTargetServicePoint(): void
+    {
+        $availableIds = collect(data_get($this->table, 'merge.available_service_points', []))
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        if ($this->mergeTargetServicePointId !== null
+            && ! in_array($this->mergeTargetServicePointId, $availableIds, true)) {
+            $this->mergeTargetServicePointId = null;
         }
     }
 

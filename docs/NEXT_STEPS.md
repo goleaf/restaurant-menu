@@ -16,6 +16,9 @@ existing isolated Livewire polling component. Do not add more status states,
 order lifecycle changes, or payment correction behavior unless a future prompt
 explicitly asks for them.
 
+The separate post-feature daily memory update after Prompt 124 is complete.
+Keep this file as the source for next-prompt guardrails until the user gives a
+new prompt. The update was documentation-only and did not add product behavior.
 Rescue mode ran before Prompt 123 because the project was already broken by a
 compiled waiter table detail Blade parse error. The rescue fix cleared stale
 compiled views and restored the focused manual payment/order cancellation

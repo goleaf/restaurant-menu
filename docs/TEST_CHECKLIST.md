@@ -51,6 +51,14 @@ Manual check:
 7. Request the bill and record payment manually; confirm the whole-table status
    shows `Счёт запрошен` and then `Оплачено`.
 
+## Daily Memory Update - 2026-06-05 After Prompt 124
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 124. Guest order statuses are now part of the public QR table baseline.
+Future prompts must preserve friendly guest status text, isolated Livewire
+polling, waiter confirmation before kitchen/bar dispatch, and SQLite/shared
+hosting constraints.
 ## Rescue Mode Before Prompt 123 Results
 
 The pre-Prompt 123 health check found the waiter table detail/payment flow was

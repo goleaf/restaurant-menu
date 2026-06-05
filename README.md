@@ -66,6 +66,8 @@ Focused Prompt 124 command:
 php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/RepeatOrdersTest.php tests/Feature/OrderCancellationTest.php
 ```
 
+Post-feature daily memory update after Prompt 124 refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior. Future guest status work must keep polling isolated and must not expose technical status keys.
+
 Previous memory refresh: 2026-06-05 after rescue mode before Prompt 122. The waiter table detail component now imports Flux before calling `Flux::modals()`, restoring the manual payment/table close regression suite. Prompt 122 order item void flow was not implemented during rescue mode.
 
 Previous memory refresh: 2026-06-05 after Prompt 121 order cancellation with reason. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, active-session transfer, merged table sessions, split bill by guests, manual service charge/tips, and order cancellation with required reason are now part of the baseline branch setup, guest entry, order-review, kitchen/bar, and manual-payment context.

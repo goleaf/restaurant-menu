@@ -13,6 +13,11 @@
 - Limitations: this step does not change waiter confirmation, kitchen/bar dispatch, payment correction, item voiding, notifications, schema, QR rules, or order lifecycle rules.
 - Manual check: open an active guest QR table, add a draft item, send it to the waiter, move it through waiter review/confirmation/kitchen ready/served, request bill, mark paid, and confirm the guest status block shows friendly text without full-page refresh.
 
+### Docs - Daily Project Memory Update After Prompt 124
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 124 without adding product behavior.
+- Confirmed the guest order status screen is now part of the public QR table baseline.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, isolated polling, and no Redis/WebSockets/S3/Docker or paid services.
 ### Bugfix - Restore Project Before Prompt 123
 
 - Prompt 123 was not implemented because the pre-prompt health check found the project was already broken.

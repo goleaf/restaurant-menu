@@ -66,6 +66,11 @@ Next recommended prompt:
 
 - Prompt 123 - Payment correction remains pending/skipped unless the user explicitly asks to return to it. Otherwise wait for the next explicit prompt and start with a fresh context/health check.
 
+Post-feature daily memory update:
+
+- README, CHANGELOG, AI context, smoke checklist, and next-step notes were refreshed after Prompt 124.
+- No product behavior, schema, route, permission, infrastructure, payment, QR, or order lifecycle change was added by the daily memory update.
+- Future guest status work must keep `App\Livewire\PublicQr\OrderStatuses` isolated and must not show technical enum keys to guests.
 ## Rescue Mode Before Prompt 123 - 2026-06-05
 
 Prompt 123 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the waiter table detail/payment flow after the focused regression suite hit a compiled Blade parse error: `syntax error, unexpected token "endif"` in the waiter table detail view cache. The current source view was validated, stale compiled views were cleared, and the focused suite passed again.

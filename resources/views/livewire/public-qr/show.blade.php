@@ -8,7 +8,7 @@
 
             <div class="flex items-center gap-2">
                 @if ($state === 'ready')
-                    <label for="guest-page-language" class="sr-only">{{ __('Interface language') }}</label>
+                    <label for="guest-page-language" class="sr-only">{{ __('guest.table.interface_language') }}</label>
                     <select
                         id="guest-page-language"
                         wire:model.live="language"
@@ -37,7 +37,7 @@
                         <div class="border-b border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
                             <div class="flex items-center justify-between gap-3">
                                 <x-ui.status-badge tone="success" dot>
-                                    {{ __('Вход сохранён') }}
+                                    {{ __('guest.table.entry_saved_badge') }}
                                 </x-ui.status-badge>
 
                                 <x-ui.status-badge tone="muted">
@@ -63,14 +63,14 @@
                             <div class="min-w-0 flex-1">
                                 <p class="truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
                                 <h1 class="mt-1 text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
-                                <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $landing['public_description'] }}</p>
+                                <x-ui.plain-text :text="$landing['public_description']" class="mt-2 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
                                 <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {{ __('Место') }}: <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $landing['service_point_name'] }}</span>
+                                    {{ __('guest.table.service_point') }}: <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $landing['service_point_name'] }}</span>
                                 </p>
 
                                 @if ($landing['area_name'])
                                     <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                                        {{ __('Зона') }}: {{ $landing['area_name'] }}
+                                        {{ __('guest.table.zone') }}: {{ $landing['area_name'] }}
                                     </p>
                                 @endif
                             </div>
@@ -78,28 +78,28 @@
 
                         <div class="mt-4 grid grid-cols-2 gap-3">
                             <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Место') }}</p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.service_point') }}</p>
                                 <p class="mt-1 truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</p>
                             </div>
 
                             <div class="rounded-lg bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Заказ') }}</p>
-                                <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">{{ __('Черновик') }}</p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.order') }}</p>
+                                <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">{{ __('guest.statuses.steps.draft') }}</p>
                             </div>
                         </div>
 
                         <div class="mt-4 rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                             <div class="flex flex-wrap items-center justify-between gap-2">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Часы работы') }}</p>
+                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.opening_hours') }}</p>
                                 <x-ui.status-badge :tone="$landing['opening_status_tone']">
                                     {{ $landing['opening_status_label'] }}
                                 </x-ui.status-badge>
                             </div>
-                            <p class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $landing['opening_status_detail'] }}</p>
+                            <x-ui.plain-text :text="$landing['opening_status_detail']" class="mt-2 block text-sm font-medium text-zinc-800 dark:text-zinc-100" />
 
                             @if (! $landing['can_accept_orders'])
                                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {{ $landing['opening_status_tone'] === 'danger' ? __('Заказы принимаем после открытия ресторана.') : __('Заказы принимаем в часы работы ресторана.') }}
+                                    {{ $landing['opening_status_tone'] === 'danger' ? __('guest.table.orders_after_opening') : __('guest.table.closed_description') }}
                                 </p>
                             @endif
                         </div>
@@ -108,7 +108,7 @@
                             <div class="mt-4 rounded-lg bg-emerald-50 px-3 py-3 dark:bg-emerald-950/30">
                                 @if ($preparedGuestName)
                                     <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
-                                        {{ __('Добро пожаловать, :name.', ['name' => $preparedGuestName]) }}
+                                        {{ __('guest.table.welcome_name', ['name' => $preparedGuestName]) }}
                                     </p>
                                 @endif
 
@@ -128,8 +128,8 @@
                                 </div>
 
                                 <div class="min-w-0">
-                                    <p class="text-xs font-medium uppercase text-amber-700 dark:text-amber-300">{{ __('Помощь') }}</p>
-                                    <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Позвать официанта') }}</h2>
+                                    <p class="text-xs font-medium uppercase text-amber-700 dark:text-amber-300">{{ __('guest.table.help') }}</p>
+                                    <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.request_waiter') }}</h2>
                                 </div>
                             </div>
 
@@ -148,8 +148,8 @@
                                 full-width
                                 icon="bell"
                             >
-                                <span wire:loading.remove wire:target="requestWaiter">{{ __('Позвать официанта') }}</span>
-                                <span wire:loading wire:target="requestWaiter">{{ __('Отправляем вызов') }}</span>
+                                <span wire:loading.remove wire:target="requestWaiter">{{ __('guest.table.request_waiter') }}</span>
+                                <span wire:loading wire:target="requestWaiter">{{ __('guest.table.sending_waiter_call') }}</span>
                             </x-ui.button>
                         </div>
                     </x-ui.card>
@@ -158,6 +158,7 @@
                         :table-session-id="$currentTableSessionId"
                         :current-guest-id="$currentGuestId"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :language="$language"
                         wire:key="guest-table-guests-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
@@ -171,8 +172,8 @@
 
                     <x-ui.card data-component="guest-invite-share">
                         <div class="space-y-1">
-                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Гости') }}</p>
-                            <h2 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Пригласить гостя') }}</h2>
+                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.guests') }}</p>
+                            <h2 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.invite_guest') }}</h2>
                         </div>
 
                         @if ($guestInviteMessage)
@@ -191,8 +192,8 @@
                                 full-width
                                 class="mt-4"
                             >
-                                <span wire:loading.remove wire:target="createGuestInviteLink">{{ __('Пригласить гостя') }}</span>
-                                <span wire:loading wire:target="createGuestInviteLink">{{ __('Готовим ссылку') }}</span>
+                                <span wire:loading.remove wire:target="createGuestInviteLink">{{ __('guest.table.invite_guest') }}</span>
+                                <span wire:loading wire:target="createGuestInviteLink">{{ __('guest.table.preparing_link') }}</span>
                             </x-ui.button>
                         @else
                             <div
@@ -233,7 +234,7 @@
                                     variant="dark"
                                     full-width
                                 >
-                                    {{ __('Пригласить гостя') }}
+                                    {{ __('guest.table.share_link') }}
                                 </x-ui.button>
 
                                 <x-ui.button
@@ -243,7 +244,7 @@
                                     variant="dark"
                                     full-width
                                 >
-                                    {{ __('Скопировать ссылку') }}
+                                    {{ __('guest.table.copy_link') }}
                                 </x-ui.button>
 
                                 <x-ui.button
@@ -254,11 +255,11 @@
                                     size="sm"
                                     full-width
                                 >
-                                    {{ __('Скопировать ссылку') }}
+                                    {{ __('guest.table.copy_link') }}
                                 </x-ui.button>
 
                                 <x-ui.alert x-cloak x-show="copied" tone="success">
-                                    {{ __('Ссылка скопирована.') }}
+                                    {{ __('guest.table.link_copied') }}
                                 </x-ui.alert>
                             </div>
                         @endif
@@ -269,12 +270,14 @@
                         :guest-id="$currentGuestId"
                         :public-token="$token"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :language="$language"
                         wire:key="guest-join-requests-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
                     <livewire:public-qr.order-statuses
                         :table-session-id="$currentTableSessionId"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
+                        :language="$language"
                         wire:key="guest-order-statuses-{{ $currentTableSessionId }}"
                     />
 
@@ -302,6 +305,7 @@
                         :show-controls="false"
                         :show-totals="false"
                         :show-statuses="false"
+                        :language="$language"
                         wire:key="guest-draft-order-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
@@ -313,6 +317,7 @@
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
                         :branch-can-accept-orders="$landing['can_accept_orders']"
                         :branch-opening-status-message="$landing['opening_status_detail']"
+                        :language="$language"
                         wire:key="guest-draft-totals-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
                 </section>
@@ -345,20 +350,20 @@
 
                                 <p class="mt-4 max-w-full truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
                                 <h1 class="mt-1 text-3xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
-                                <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $landing['public_description'] }}</p>
+                                <x-ui.plain-text :text="$landing['public_description']" class="mt-2 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
                                 <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
                             </div>
 
                             <dl class="grid gap-2 px-5 pb-5 text-left">
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Restaurant') }}</dt>
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.restaurant') }}</dt>
                                     <dd class="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-100">
                                         {{ $landing['branch_address'] ? $landing['branch_address'].', ' : '' }}{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}
                                     </dd>
                                 </div>
 
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Contact') }}</dt>
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.contact') }}</dt>
 
                                     @if ($landing['has_contact_details'])
                                         <dd class="mt-2 flex flex-wrap gap-2">
@@ -371,7 +376,7 @@
                                             @endif
 
                                             @foreach ([
-                                                'website_url' => __('Website'),
+                                                'website_url' => __('guest.table.website'),
                                                 'instagram_url' => 'Instagram',
                                                 'facebook_url' => 'Facebook',
                                                 'tiktok_url' => 'TikTok',
@@ -382,54 +387,56 @@
                                             @endforeach
                                         </dd>
                                     @else
-                                        <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('Contact details are not published yet.') }}</dd>
+                                        <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.table.contact_unpublished') }}</dd>
                                     @endif
                                 </div>
 
                                 <div class="grid gap-2 sm:grid-cols-3">
                                     <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Часы работы') }}</dt>
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.opening_hours') }}</dt>
                                         <dd class="mt-1">
                                             <x-ui.status-badge :tone="$landing['opening_status_tone']">
                                                 {{ $landing['opening_status_label'] }}
                                             </x-ui.status-badge>
                                         </dd>
-                                        <dd class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">{{ $landing['opening_status_detail'] }}</dd>
+                                        <dd class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                            <x-ui.plain-text :text="$landing['opening_status_detail']" class="inline" />
+                                        </dd>
                                     </div>
 
                                     <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Language') }}</dt>
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.language') }}</dt>
                                         <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_language_label'] }} ({{ $landing['default_language'] }})</dd>
                                     </div>
 
                                     <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Currency') }}</dt>
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.currency') }}</dt>
                                         <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_currency'] }}</dd>
                                     </div>
                                 </div>
 
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Зона') }}</dt>
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.zone') }}</dt>
                                     <dd class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">
-                                        {{ $landing['area_name'] ?? __('Зона не назначена') }}
+                                        {{ $landing['area_name'] ?? __('guest.table.zone_unassigned') }}
                                     </dd>
                                 </div>
 
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Место') }}</dt>
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.place') }}</dt>
                                     <dd class="mt-1 text-lg font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</dd>
                                     <dd class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                                         {{ __($landing['service_point_type']) }}
 
                                         @if ($landing['service_point_display_number'])
-                                            · {{ __('№') }} {{ $landing['service_point_display_number'] }}
+                                            · {{ __('guest.table.service_point_number') }} {{ $landing['service_point_display_number'] }}
                                         @endif
                                     </dd>
                                 </div>
 
                                 <div class="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
                                     <div>
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Филиал') }}</dt>
+                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.branch') }}</dt>
                                         <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</dd>
                                     </div>
 
@@ -445,7 +452,7 @@
                         <x-ui.form-field
                             for="guest-name"
                             name="guestName"
-                            :label="__('Ваше имя')"
+                            :label="__('guest.table.your_name')"
                             :description="$message"
                         >
                             <input
@@ -457,19 +464,19 @@
                                 minlength="2"
                                 maxlength="80"
                                 autocomplete="name"
-                                placeholder="{{ __('Например, Анна') }}"
+                                placeholder="{{ __('guest.table.guest_name_placeholder') }}"
                                 class="block h-14 w-full rounded-lg border border-zinc-300 bg-white px-4 text-lg font-semibold text-zinc-950 outline-hidden transition placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
                             >
                         </x-ui.form-field>
 
                         @if ($hasGuestNameConflict)
                             <div class="mt-3 space-y-3">
-                                <x-ui.alert tone="warning" :heading="__('Похожее имя уже есть')">
+                                <x-ui.alert tone="warning" :heading="__('guest.table.duplicate_guest_title')">
                                     <p>
-                                        {{ __('За столом уже есть гость с именем :name.', ['name' => $guestNameConflictExistingName]) }}
+                                        <x-ui.plain-text :text="__('guest.table.duplicate_guest_description', ['name' => $guestNameConflictExistingName])" />
                                     </p>
                                     <p class="mt-1">
-                                        {{ __('Чтобы гости не путались в общем заказе, выберите понятное имя или введите другое.') }}
+                                        {{ __('guest.table.duplicate_guest_help') }}
                                     </p>
                                 </x-ui.alert>
 
@@ -498,11 +505,11 @@
                                         variant="warning"
                                         full-width
                                     >
-                                        {{ __('Войти как :name', ['name' => $preparedGuestName ?? $guestName]) }}
+                                        {{ __('guest.table.enter_as', ['name' => $preparedGuestName ?? $guestName]) }}
                                     </x-ui.button>
 
                                     <p class="text-center text-sm text-zinc-600 dark:text-zinc-300">
-                                        {{ __('Или просто введите другое имя в поле выше.') }}
+                                        {{ __('guest.table.enter_different_name_help') }}
                                     </p>
                                 </div>
                             </div>
@@ -510,7 +517,7 @@
 
                         @if ($preparedGuestName && ! $hasGuestNameConflict)
                             <x-ui.alert tone="success" class="mt-3">
-                                {{ __('Добро пожаловать, :name.', ['name' => $preparedGuestName]) }}
+                                {{ __('guest.table.welcome_name', ['name' => $preparedGuestName]) }}
                             </x-ui.alert>
                         @endif
 
@@ -544,7 +551,7 @@
                                 full-width
                                 icon-trailing="arrow-right"
                             >
-                                {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('Запрос закрыт') : __('Запрос отправлен')) : ($currentGuestId ? __('Вход сохранён') : __('Войти за стол')) }}
+                                {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('guest.table.request_closed') : __('guest.table.request_sent')) : ($currentGuestId ? __('guest.table.entry_saved') : __('guest.table.join_table')) }}
                             </x-ui.button>
                         </x-ui.mobile-bottom-actions>
                     </form>

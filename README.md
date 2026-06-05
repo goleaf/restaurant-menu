@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest name conflict handling, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, active table-session transfer, waiter manual order entry, waiter draft editing/confirmation/rejection, order cancellation with required reason, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments with split bill by guests, manual service charge and tips snapshots, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest name conflict handling, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, guest order status screen with item-level polling, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, active table-session transfer, waiter manual order entry, waiter draft editing/confirmation/rejection, order cancellation with required reason, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments with split bill by guests, manual service charge and tips snapshots, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -35,19 +35,86 @@ A short developer/coding-agent overview of the current domain model, QR/session 
 docs/CURRENT_VERSION.md
 ```
 
+## Security Rules
+
+Mandatory security rules for branch isolation, permissions, guest/staff separation, QR tokens, guest tokens, invite tokens, Livewire public properties, validation, uploads, XSS, CSRF, server-side money totals, activity logs, backups, exports, and shared hosting live in:
+
+```text
+docs/SECURITY_RULES.md
+```
+
 ## Project Memory
 
 Daily project memory for future coding-agent sessions is maintained in:
 
 ```text
 docs/AI_CONTEXT.md
+docs/SECURITY_RULES.md
+docs/ERROR_HANDLING.md
 docs/TEST_CHECKLIST.md
 docs/NEXT_STEPS.md
 ```
 
-Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
+Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. Read `docs/SECURITY_RULES.md` before auth, guest, staff, token, export, backup, upload, or branch-access work. Read `docs/ERROR_HANDLING.md` before changing validation, business-rule errors, exception handling, error pages, logs, or user-facing error copy. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-05 after Prompt 124 guest order status screen. The public QR table now shows a guest-friendly status timeline, whole-table status, and per-position status labels for draft, waiter review, accepted, cooking, ready, served, bill requested, and paid states through the existing isolated Livewire polling block. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
+Latest memory refresh: 2026-06-05 after rescue mode before Prompt 125. Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored guest status translations and Public QR polling-locale propagation, kept SQLite/database drivers intact, and left Prompt 125 as the next recommended feature prompt after a fresh health check.
+
+Latest memory refresh: 2026-06-05 after Prompt 334 CSRF and route protection audit. Public guest routes are GET-only guest surfaces, staff/admin/department/export routes require authenticated web sessions, backup download requires superadmin, and the private local disk no longer registers unauthenticated temporary storage routes. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
+
+Previous memory refresh: 2026-06-05 after Prompt 335 XSS protection audit. User-entered restaurant, guest, staff, menu, order, reason, note, branch-profile, and notification text is treated as plain text, normalized before storage where current write paths exist, and rendered through escaped Blade output.
+
+Previous memory refresh: 2026-06-05 after Prompt 343 error handling strategy. The app now has a shared `ApplicationErrorType` catalog, mapped business-rule errors, controlled JSON for expected business errors, safe translated HTTP error pages, and exception handler context for unexpected logs.
+
+Previous memory refresh: 2026-06-05 after Prompt 124 guest order status screen. The public QR table now shows a guest-friendly status timeline, whole-table status, and per-position status labels for draft, waiter review, accepted, cooking, ready, served, bill requested, and paid states through the existing isolated Livewire polling block.
+
+## XSS Protection Audit
+
+Prompt 335 keeps user-entered content plain text across guest and staff UI.
+
+- `App\Support\PlainText` strips HTML tags, normalizes line endings/control characters, and applies length limits before storage on current guest-name, comment, note, reason, branch-profile, category, and menu-item write paths.
+- `<x-ui.plain-text>` renders dynamic content through escaped Blade output while preserving safe line breaks with `whitespace-pre-line` and preventing long-string layout breaks with `break-words`.
+- Guest names, guest comments, order comments, waiter notes, menu item names/descriptions, category descriptions, branch public descriptions, payment notes, cancellation/rejection reasons, notifications, kitchen/bar ticket labels, and waiter table details are rendered as escaped text.
+- Raw output is allowed only for audited generated QR SVG output; user/menu/order/guest text must not use `{!! !!}`.
+- No first-party announcements, legal-text, support-note, or internal-note surface currently exists. If added later, it must follow the same plain-text or explicitly sanitized-limited-formatting rule.
+
+Focused Prompt 335 command:
+
+```bash
+php artisan test --compact tests/Feature/XssProtectionTest.php
+```
+
+## CSRF And Route Protection Audit
+
+Prompt 334 keeps route boundaries explicit without adding new product routes.
+
+- Public guest entry remains `GET /guest` and `GET /q/{token}` under the web/session middleware and without `auth`; it is only for the guest QR/table flow.
+- Restaurant, organization, onboarding, waiter, kitchen, bar, export, settings, and profile routes require authenticated web sessions.
+- Superadmin dashboard and SQLite backup download require both `auth` and `superadmin`.
+- Export downloads require `auth` at the route level and `export_data` branch access inside the export action.
+- Laravel web middleware remains the CSRF/session boundary for forms and Livewire updates; no global CSRF exclusion was added.
+- The private `local` filesystem disk has `serve` disabled, so no unauthenticated `storage.local` download/upload route is registered. Public media continues through the existing `public` disk and `/storage` link.
+
+Focused Prompt 334 command:
+
+```bash
+php artisan test --compact tests/Feature/RouteProtectionAuditTest.php tests/Feature/DataExportsTest.php tests/Feature/SuperadminBackupTest.php
+```
+
+## Error Handling Strategy
+
+Prompt 343 defines a shared error approach without changing product flows.
+
+- `App\Enums\ApplicationErrorType` catalogs validation, permission, branch access, QR, session, guest, draft, order transition, payment amount, file upload, and system errors.
+- `BusinessRuleViolation` remains a controlled expected error: validation-style, non-reportable, translated, and safe for normal users.
+- `bootstrap/app.php` adds duplicate-report suppression, safe request context for unexpected exception logs, and controlled JSON for business-rule errors.
+- `resources/views/errors/` contains safe translated pages for 403, 404, 419, 422, 500, and 5xx responses.
+- Activity logs remain for business actions only; technical exceptions are not written into `audit_logs`.
+
+Focused Prompt 343 command:
+
+```bash
+php artisan test --compact tests/Feature/ErrorHandlingStrategyTest.php tests/Feature/BusinessRuleExceptionTest.php
+```
 
 ## Guest Order Status Screen
 
@@ -67,6 +134,26 @@ php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Fe
 ```
 
 Post-feature daily memory update after Prompt 124 refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior. Future guest status work must keep polling isolated and must not expose technical status keys.
+
+Previous memory refresh: 2026-06-05 after rescue mode before Prompt 123. Prompt 123 manual payment correction was not implemented because the pre-prompt health check found a stale compiled Blade parse error on waiter table detail. Compiled views were cleared, the manual payment/order cancellation regression suite is green again, and Prompt 123 remains the next recommended prompt after a fresh health check.
+
+Previous memory refresh: 2026-06-05 after Prompt 346 dangerous action confirmations. High-impact actions now use shared consequence modals, server-side permission checks, required reasons where needed, typed confirmation for QR reissue/unpaid close/backup download, and audit logs after execution.
+
+## Permissions Documentation UI
+
+Prompt 345 makes the existing staff permission override screen understandable for directors without changing the permission model.
+
+- `SystemPermission` now exposes UI group, label key, and description key metadata for the current fixed permission registry.
+- The permission override screen groups permissions into restaurant business areas and shows human labels plus short descriptions.
+- Ordinary managers/directors do not see raw keys such as `manage_service_points`.
+- Superadmin technical mode can still see the raw key in small monospace text for diagnostics.
+- Critical permission overrides still use the dangerous-action confirmation modal and require a reason server-side.
+
+Focused Prompt 345 command:
+
+```bash
+php artisan test --compact tests/Feature/PermissionOverrideUiTest.php
+```
 
 Previous memory refresh: 2026-06-05 after rescue mode before Prompt 122. The waiter table detail component now imports Flux before calling `Flux::modals()`, restoring the manual payment/table close regression suite. Prompt 122 order item void flow was not implemented during rescue mode.
 
@@ -89,6 +176,18 @@ Prompt 122 was paused after rescue mode. Re-run it as the next feature step if t
 Before starting Prompt 123, the focused order/payment regression check found a compiled Blade parse error in waiter table detail: `syntax error, unexpected token "endif"`. Rescue mode cleared stale compiled views and re-ran the focused payment/order cancellation suite successfully.
 
 Prompt 123 payment correction was paused. Re-run it as the next feature step if manual payment correction is still desired.
+
+## Dangerous Action Confirmations
+
+Prompt 346 adds a shared dangerous-action confirmation pattern for irreversible or high-impact staff actions.
+
+- The shared registry is `App\Enums\DangerousAction`.
+- The reusable modal is `resources/views/components/dangerous-action-confirmation.blade.php`.
+- Covered current entry points include QR disable/reissue, organization and branch suspension, staff deactivation, critical permission overrides, order cancellation, manual payment recording, unpaid table close, menu item deactivate/delete, media delete, and SQLite backup download.
+- Reasons are required server-side for QR disable, organization/branch suspension, staff deactivation, critical permission changes, and order cancellation.
+- Typed confirmation is required server-side for QR reissue, unpaid table close, and backup download.
+- Permissions remain checked inside Livewire components/actions/controllers, and audit logs are written by the existing action/observer layer after execution.
+- Future dangerous actions must use the same registry/modal pattern and must not execute from a single accidental click.
 
 ## Order Cancellation With Reason
 
@@ -669,7 +768,7 @@ Superadmins can download the current SQLite database file from the platform dash
 /superadmin/backups/sqlite
 ```
 
-The route is protected by `auth` and `superadmin` middleware. Regular users receive `403 Forbidden` and do not see the backup controls.
+The route is protected by `auth` and `superadmin` middleware. Regular users receive `403 Forbidden` and do not see the backup controls. The dashboard download entry requires typing `BACKUP` before redirecting to the download route, and the controller writes a backup-download audit log.
 
 The download streams the configured SQLite file, normally:
 
@@ -1421,7 +1520,7 @@ After Prompt 105, the current working memory is:
 - Redis, WebSockets, S3, Docker as a requirement, paid services, React/Vue SPA, online payments, and external APIs remain out of scope;
 - the next recommended prompt is Prompt 106: a small menu translation admin editor for existing `ru`, `en`, and `lt` translation tables.
 
-Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
+Before the next coding prompt, read `docs/AI_CONTEXT.md`, `docs/SECURITY_RULES.md`, `docs/TEST_CHECKLIST.md`, `docs/NEXT_STEPS.md`, and `docs/DEPLOY_SHARED_HOSTING.md`.
 
 ## Local Verification
 

@@ -13,6 +13,136 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Rescue Mode Before Prompt 125 Results
+
+Prompt 125 kitchen delay timers were not implemented because the health check
+found an existing regression in the guest status flow.
+
+Programmatic checks restored and passed:
+
+```bash
+php artisan migrate --no-interaction
+php artisan route:list --except-vendor
+php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/WaiterDashboardTest.php tests/Feature/WaiterTableDetailTest.php
+php artisan test --compact tests/Feature/LayoutZonesTest.php
+```
+
+Manual check:
+
+1. Open an active QR guest table in the branch default/selected language.
+2. Move an order item through accepted, cooking, ready, and served states.
+3. Confirm the guest status block shows friendly text, not raw translation
+   keys such as `guest.statuses.service.ready`.
+4. Confirm waiter, kitchen, and bar pages still open without changing cache,
+   session, queue, SQLite, or realtime drivers.
+
+## Prompt 334 CSRF And Route Protection Audit Results
+
+Programmatic coverage was added for the route protection baseline. The feature
+currently verifies:
+
+- public guest routes are GET-only web routes without `auth` or `superadmin`;
+- restaurant, organization, onboarding, waiter, kitchen, bar, export, settings,
+  and profile routes require authenticated web sessions;
+- Fortify auth routes remain inside the web/session middleware group;
+- export downloads use the export controller behind `auth`;
+- SQLite backup downloads use the backup controller behind `auth` and
+  `superadmin`;
+- the private `local` filesystem disk does not register `storage.local` or
+  `storage.local.upload`;
+- `bootstrap/app.php` does not add global CSRF exclusions.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/RouteProtectionAuditTest.php tests/Feature/DataExportsTest.php tests/Feature/SuperadminBackupTest.php
+```
+
+Route snapshot check:
+
+```bash
+php artisan tinker --execute 'collect(app("router")->getRoutes())->filter(fn ($route) => str_contains($route->uri(), "storage") || str_starts_with((string) $route->getName(), "restaurant.") || str_starts_with((string) $route->getName(), "superadmin.") || str_starts_with((string) $route->getName(), "public.qr.") || str_starts_with((string) $route->getName(), "guest."))->each(fn ($route) => dump([$route->methods(), $route->uri(), $route->getName(), $route->gatherMiddleware()]));'
+```
+
+Manual check:
+
+1. Open `/q/{token}` and confirm it shows only the guest QR flow.
+2. Try opening restaurant, waiter, kitchen/bar, export, and settings pages
+   while logged out; confirm they redirect to login.
+3. Try opening `/superadmin/backups/sqlite` as an ordinary user; confirm it is
+   forbidden.
+4. Confirm public media still loads from `/storage/...`, while private local
+   disk routes are not registered.
+
+## Prompt 335 XSS Protection Audit Results
+
+Programmatic coverage was added for the plain-text XSS strategy. The feature
+currently verifies:
+
+- `<x-ui.plain-text>` escapes HTML while preserving safe line breaks and layout
+  protection classes;
+- `App\Support\PlainText` strips HTML tags before storage;
+- unsafe existing menu/category text is escaped in the public guest menu;
+- guest order comments are stored as plain text and rendered without raw script
+  HTML.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/XssProtectionTest.php
+```
+
+Raw-output audit:
+
+```bash
+rg -n "\\{!!|!!\\}|echo \\$svg" resources app
+```
+
+Only generated QR SVG output may remain as raw first-party output. User-entered
+guest, staff, menu, order, branch, reason, note, and notification text must not
+use raw HTML.
+
+Manual check:
+
+1. Enter script-like text in a guest name and guest order comment.
+2. Enter script-like text in a menu item name/description and category
+   description.
+3. Enter script-like text in branch public profile or temporary-closure copy.
+4. Open public QR, waiter table detail, kitchen/bar dashboard, notifications,
+   and menu-management screens.
+5. Confirm the text is visible as escaped text, line breaks are preserved where
+   intended, long strings wrap, and no script runs.
+
+## Prompt 343 Error Handling Strategy Results
+
+Programmatic coverage was added for the shared error strategy. The feature
+currently verifies:
+
+- `ApplicationErrorType` covers the expected error types from Prompt 343;
+- existing `BusinessRuleCode` values map to the shared catalog;
+- business-rule JSON responses contain controlled `message`, `error.type`,
+  `error.code`, and validation `errors`;
+- production 403 admin errors do not expose raw permission messages;
+- guest 404 errors do not expose raw token details;
+- production 500 system errors do not expose raw exception messages;
+- technical exceptions do not create `audit_logs` rows.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/ErrorHandlingStrategyTest.php tests/Feature/BusinessRuleExceptionTest.php
+```
+
+Manual check:
+
+1. Open a forbidden staff/admin page in production-like mode and confirm it
+   shows actionable access-denied copy, not raw permission keys.
+2. Open an invalid guest/QR-style link and confirm it gives friendly guidance.
+3. Trigger or inspect a controlled business-rule error and confirm the UI shows
+   a translated validation-style message.
+4. Confirm unexpected technical exceptions appear in Laravel logs, while the
+   browser sees only the safe system-error page.
+
 ## Prompt 124 Guest Order Status Screen Results
 
 Programmatic coverage was added for the existing public QR guest order status
@@ -59,6 +189,37 @@ Prompt 124. Guest order statuses are now part of the public QR table baseline.
 Future prompts must preserve friendly guest status text, isolated Livewire
 polling, waiter confirmation before kitchen/bar dispatch, and SQLite/shared
 hosting constraints.
+
+## Prompt 345 Permissions Documentation UI Results
+
+Programmatic coverage was added for the existing staff permission override UI.
+The feature currently verifies:
+
+- permissions are grouped into director-readable business sections;
+- human labels and short descriptions are rendered for current permission codes;
+- ordinary managers/directors do not see raw keys such as
+  `manage_service_points`;
+- superadmin technical mode can still see raw permission keys;
+- critical permission changes still require a reason.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/PermissionOverrideUiTest.php
+```
+
+Manual check:
+
+1. Open `/organizations/{organization}/staff/{staffMember}/permissions` as a
+   non-superadmin manager with `manage_staff`.
+2. Confirm permissions are grouped by restaurant area and show readable labels
+   plus descriptions.
+3. Confirm raw keys such as `manage_service_points` are not visible.
+4. Open the same page as superadmin and confirm raw keys are visible only as
+   small technical text.
+5. Try changing a critical permission and confirm the confirmation modal
+   explains the consequence and requires a reason.
+
 ## Rescue Mode Before Prompt 123 Results
 
 The pre-Prompt 123 health check found the waiter table detail/payment flow was
@@ -83,6 +244,42 @@ Manual check:
 1. Open `/restaurant/waiter/tables/{tableSession}` as staff with payment access.
 2. Confirm the payment block renders.
 3. Confirm order cancellation still shows its confirmation flow and does not break the page.
+
+## Prompt 346 Dangerous Action Confirmations Results
+
+Programmatic coverage was added or updated for the shared dangerous-action
+registry and the affected QR, organization, branch, staff, permission, waiter,
+menu, payment, backup, and order-cancellation flows.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/DangerousActionConfirmationTest.php tests/Feature/QrAdminDisplayTest.php tests/Feature/QrShortCodeLookupTest.php tests/Feature/OrganizationSubscriptionTest.php tests/Feature/SuperadminAccessTest.php tests/Feature/StaffManagementUiTest.php tests/Feature/PermissionOverrideUiTest.php tests/Feature/BranchManagementTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/SuperadminBackupTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/MenuCrudTest.php tests/Feature/ManualPaymentTest.php tests/Feature/OrderCancellationTest.php
+```
+
+Manual check:
+
+1. Open QR admin and QR lookup as staff with `generate_qr`.
+2. Confirm disable QR requires a reason and reissue QR requires typing the
+   current short code.
+3. Open superadmin dashboard and confirm organization suspension requires a
+   reason while backup download requires typing `BACKUP`.
+4. Open branch edit, turn an active branch off, and confirm branch suspension
+   requires a reason.
+5. Open staff and permission screens and confirm staff deactivation / critical
+   permission changes require a reason.
+6. Open waiter table detail and confirm cancel order, record payment, and close
+   unpaid table all explain consequences before executing.
+7. Open menu management and confirm stop-list, delete dish, and remove photo
+   actions show consequences before executing.
+8. Confirm each executed action still enforces server-side permissions and
+   writes the expected audit log.
 
 ## Rescue Mode Before Prompt 122 Results
 

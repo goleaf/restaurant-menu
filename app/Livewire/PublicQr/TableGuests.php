@@ -3,37 +3,48 @@
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
+use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Isolate]
 class TableGuests extends Component
 {
+    #[Locked]
     public int $tableSessionId = 0;
 
+    #[Locked]
     public int $currentGuestId = 0;
 
     public int $pollingIntervalSeconds = 1;
+
+    public string $language = 'ru';
 
     /**
      * @var list<array{id: int, guest_name: string, status: string, status_label: string, status_tone: string, is_ready: bool, ready_label: string, is_current: bool}>
      */
     public array $guests = [];
 
-    public function mount(int $tableSessionId, int $currentGuestId, int $pollingIntervalSeconds = 1): void
+    public function mount(int $tableSessionId, int $currentGuestId, int $pollingIntervalSeconds = 1, string $language = 'ru'): void
     {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
+        $this->language = SupportedLocale::normalize($language, 'ru');
+        $this->applyLocale();
 
         $this->refreshGuests();
     }
 
     public function refreshGuests(): void
     {
+        $this->applyLocale();
+
         $this->guests = TableSessionGuest::query()
             ->select([
                 'id',
@@ -55,7 +66,7 @@ class TableGuests extends Component
                 'status_label' => $this->statusLabel($guest->status),
                 'status_tone' => $this->statusTone($guest->status),
                 'is_ready' => $guest->ready_at !== null,
-                'ready_label' => $guest->ready_at === null ? __('Не готов') : __('Готов'),
+                'ready_label' => $guest->ready_at === null ? __('guest.table.not_ready') : __('guest.table.ready'),
                 'is_current' => $guest->id === $this->currentGuestId,
             ])
             ->all();
@@ -63,17 +74,24 @@ class TableGuests extends Component
 
     public function render(): View
     {
+        $this->applyLocale();
+
         return view('livewire.public-qr.table-guests');
+    }
+
+    private function applyLocale(): void
+    {
+        App::setLocale($this->language);
     }
 
     private function statusLabel(TableSessionGuestStatus $status): string
     {
         return match ($status) {
-            TableSessionGuestStatus::PendingApproval => __('Ожидает'),
-            TableSessionGuestStatus::Active => __('За столом'),
-            TableSessionGuestStatus::Rejected => __('Не подтверждён'),
-            TableSessionGuestStatus::Left => __('Ушёл'),
-            TableSessionGuestStatus::Removed => __('Удалён'),
+            TableSessionGuestStatus::PendingApproval => __('guest.statuses.pending_approval'),
+            TableSessionGuestStatus::Active => __('guest.statuses.active'),
+            TableSessionGuestStatus::Rejected => __('guest.statuses.rejected'),
+            TableSessionGuestStatus::Left => __('guest.statuses.left'),
+            TableSessionGuestStatus::Removed => __('guest.statuses.removed'),
         };
     }
 

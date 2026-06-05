@@ -2,6 +2,210 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Rescue Mode Before Prompt 125 - 2026-06-05
+
+Prompt 125 kitchen delay timers were not implemented. The pre-prompt health check found the project was already broken, so rescue mode restored the existing guest/waiter/kitchen status flow first.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Shared-hosting-first deployment; no Redis, WebSocket, S3, Docker requirement, Stripe/PayPal, paid services, React/Vue SPA, or external realtime/storage service.
+
+What was restored:
+
+- Missing guest-facing order/status translation keys were added for `ru`, `en`, and `lt` so guest QR pages do not show raw keys such as `guest.statuses.service.ready`.
+- Public QR polling islands now receive and apply the selected guest language when rendering guests, join requests, draft order, draft totals, and order status blocks.
+- Existing Actions can again save required relationship/status fields for the focused guest/waiter/kitchen regression suite.
+- Prompt 125 remains pending; no kitchen delay timer, expected prepare minutes, schema, background worker, analytics, or new infrastructure was added.
+
+Current tables:
+
+- No new tables or columns were added in rescue mode.
+- The restored checks use the existing guest/session/order flow tables: `table_sessions`, `table_session_guests`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `kitchen_tickets`, `kitchen_ticket_items`, `branches`, `branch_settings`, `service_points`, and menu tables.
+
+Current routes:
+
+- No routes were added or changed in rescue mode.
+- Public guest entry remains `GET /q/{token}`.
+- Waiter detail remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Kitchen and bar dashboards remain `GET /restaurant/kitchen` and `GET /restaurant/bar`.
+
+Current Livewire components touched:
+
+- `App\Livewire\PublicQr\DraftOrder`
+- `App\Livewire\PublicQr\DraftTotals`
+- `App\Livewire\PublicQr\TableGuests`
+- `App\Livewire\PublicQr\JoinRequests`
+- `App\Livewire\PublicQr\OrderStatuses`
+- `resources/views/livewire/public-qr/show.blade.php`
+
+Mandatory business rules:
+
+- Guests must see friendly translated labels, not technical status keys.
+- Guest polling must stay split into isolated Livewire blocks; do not refresh the whole QR page for guests, join requests, draft totals, draft order, or order statuses.
+- Waiter confirmation remains mandatory before kitchen/bar work.
+- Kitchen/bar sees only dispatched tickets.
+- Permanent QR identity must not change during table-session, guest-status, or status-display fixes.
+
+Verification:
+
+- `php artisan migrate --no-interaction`
+- `php artisan route:list --except-vendor`
+- `php artisan config:show database.default`
+- `php artisan config:show cache.default`
+- `php artisan config:show session.driver`
+- `php artisan config:show queue.default`
+- `php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/WaiterDashboardTest.php tests/Feature/WaiterTableDetailTest.php`
+- `php artisan test --compact tests/Feature/LayoutZonesTest.php`
+
+Next recommended prompt:
+
+- Prompt 125 - Kitchen delay timers. Start it only after a fresh context and health check. Keep the implementation display-time only unless a future prompt explicitly requests background processing.
+
+## Prompt 334 CSRF And Route Protection Audit - 2026-06-05
+
+Prompt 334 audited route/session/CSRF boundaries and removed an unnecessary private-storage public route surface without adding product features, admin operations, tables, external services, or CSRF exclusions.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+
+What changed:
+
+- `config/filesystems.php` now keeps the private `local` disk at `storage/app/private` with `serve` disabled, so Laravel does not register `storage.local` or `storage.local.upload` public routes.
+- `tests/Feature/RouteProtectionAuditTest.php` verifies route middleware boundaries for public guest routes, Fortify auth routes, staff/admin routes, waiter routes, kitchen/bar routes, export/download routes, superadmin backup routes, Livewire web updates, and private local storage exposure.
+- Existing export and backup tests were kept as the runtime proof that export downloads require `export_data` branch access and backups require superadmin.
+
+Current route rules:
+
+- Public routes: `GET /`, `GET /guest`, and `GET /q/{token}` are web-session routes without `auth`; they must stay guest/public surfaces only.
+- Auth routes: Fortify login/logout/password/register routes use the `web` middleware group.
+- Staff/admin routes: dashboard, onboarding, organizations, branch admin, QR admin, settings, profile, restaurant dashboard, audit log, kitchen, bar, waiter, and export pages require `auth`.
+- Export download: `GET /restaurant/exports/branches/{branch}/{export}` requires `auth`; `StreamBranchCsvExportAction` must still enforce `export_data` branch access server-side.
+- Backup download: `GET /superadmin/backups/sqlite` requires `auth` and `superadmin` and records the download.
+- Livewire updates stay under the web/session middleware path. Do not move Livewire actions to unprotected routes.
+
+Mandatory business rules:
+
+- Do not create public POST/PATCH/DELETE routes for admin, waiter, department, export, backup, file, or payment actions.
+- Do not disable CSRF globally and do not add CSRF exclusions unless a future audited webhook prompt explicitly requires one.
+- Public QR routes must not expose admin data or staff operations.
+- Backup/download-sensitive routes must never live in a public unauthenticated group.
+- File download/upload routes must either be public-media-only or must check access through auth, superadmin, branch permission, or an explicit signed URL flow.
+
+Verification:
+
+- `vendor/bin/pint --dirty --format agent`
+- `php -l tests/Feature/RouteProtectionAuditTest.php && php -l config/filesystems.php`
+- `php artisan test --compact tests/Feature/RouteProtectionAuditTest.php tests/Feature/DataExportsTest.php tests/Feature/SuperadminBackupTest.php`
+- route snapshot confirmed no `storage.local` / `storage.local.upload` routes are registered after disabling private local disk serving.
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction. Start it only after a fresh context/health check. Prompt 122 remains skipped/pending unless the user explicitly asks to return to it.
+
+## Prompt 335 XSS Protection Audit - 2026-06-05
+
+Prompt 335 audited guest/admin user-content rendering and fixed current plain-text write/render paths without adding product features, routes, tables, external services, or rich-text support.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+
+What changed:
+
+- `App\Support\PlainText` normalizes plain user-visible text before storage by stripping HTML tags, normalizing line endings/control characters, trimming or squishing where appropriate, and enforcing max lengths.
+- `resources/views/components/ui/plain-text.blade.php` renders text through escaped Blade output and adds `whitespace-pre-line` plus `break-words` so safe line breaks are preserved and long strings do not break layouts.
+- Current write paths now normalize guest names, guest/order/waiter comments, payment notes, cancellation/rejection reasons, branch public profile text, branch temporary-closure reasons, menu category names/descriptions, and menu item names/descriptions as plain text.
+- Guest QR, waiter, kitchen/bar, notification, and menu-management views now render risky guest/menu/order/branch/note/reason strings through escaped output.
+- Remaining first-party raw output is limited to audited generated QR SVG output, not user-entered text.
+
+Audited fields:
+
+- `guest_name`;
+- guest comments;
+- order comments;
+- waiter notes;
+- menu item name and description;
+- category description;
+- branch public profile description and opening/closure messages;
+- payment notes, order cancellation reasons, draft rejection reasons, notification text, and kitchen/bar/waiter ticket labels.
+
+No current first-party surface was found for announcements, legal text, support notes, or internal notes. If a future prompt adds one, it must render plain text by default or include explicit sanitization for limited formatting.
+
+Mandatory business rules:
+
+- User, guest, staff, menu, order, branch, reason, note, and notification content must render escaped by default.
+- Guest comments must not support HTML.
+- Menu descriptions should stay plain text unless a future prompt adds an explicit sanitizer with a limited allowlist.
+- Do not use `{!! !!}` for user-entered content.
+- Do not store unsafe HTML without sanitization.
+- Preserve line breaks safely with escaped text, not raw HTML.
+- Protect layouts from long unbroken strings with `break-words` or equivalent.
+
+Verification:
+
+- `vendor/bin/pint --dirty --format agent`
+- `php -l app/Support/PlainText.php`
+- `php artisan test --compact tests/Feature/XssProtectionTest.php`
+- raw-output audit: only generated QR SVG output may remain in first-party `{!! !!}` / direct SVG echo paths.
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction. Start it only after a fresh context/health check. Prompt 122 remains skipped/pending unless the user explicitly asks to return to it.
+
+## Prompt 343 Error Handling Strategy - 2026-06-05
+
+Prompt 343 added a shared error handling strategy without adding product features, routes, tables, external services, or activity-log spam.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+
+What changed:
+
+- `App\Enums\ApplicationErrorType` catalogs validation, permission denied, branch access denied, QR not found, QR disabled, session closed, guest rejected/removed, draft locked, order invalid transition, payment invalid amount, file upload error, and system error.
+- `BusinessRuleCode::errorType()` maps existing expected business denials into the shared catalog.
+- `BusinessRuleViolation` exposes the mapped error type and remains validation-style plus non-reportable.
+- `bootstrap/app.php` now deduplicates reports, marks `BusinessRuleViolation` non-reportable, adds safe request context to unexpected exception logs, and returns controlled JSON for business-rule errors.
+- `resources/views/errors/` now contains translated safe pages for 403, 404, 419, 422, 500, and 5xx responses.
+- `docs/ERROR_HANDLING.md` records the durable strategy for future prompts.
+
+Mandatory business rules:
+
+- Guests must never see stack traces, raw exception messages, tokens, internal IDs, permission keys, SQL, or config values.
+- Normal staff/admin users get actionable translated guidance, not raw exception messages.
+- Superadmins/developers use Laravel logs for technical detail.
+- Expected business errors use controlled translated messages and should not be reported as technical exceptions.
+- Unexpected exceptions must not be swallowed; Laravel should render safe pages and log them with safe request context.
+- Activity logs remain for business actions only, not every technical exception.
+
+Verification:
+
+- `php -l app/Enums/ApplicationErrorType.php && php -l app/Enums/BusinessRuleCode.php && php -l app/Exceptions/BusinessRuleViolation.php && php -l bootstrap/app.php && php -l tests/Feature/ErrorHandlingStrategyTest.php`
+- `php -r 'foreach (["lang/en.json", "lang/ru.json", "lang/lt.json"] as $file) { json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR); echo $file." ok\n"; }'`
+- `php artisan test --compact tests/Feature/ErrorHandlingStrategyTest.php tests/Feature/BusinessRuleExceptionTest.php`
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction. Start it only after a fresh context/health check. Prompt 122 remains skipped/pending unless the user explicitly asks to return to it.
+
 ## Prompt 124 Guest Order Status Screen - 2026-06-05
 
 Prompt 124 improved the existing public QR guest order status screen without changing schema, routes, waiter confirmation, kitchen/bar dispatch, payments, QR rules, or infrastructure.
@@ -71,6 +275,50 @@ Post-feature daily memory update:
 - README, CHANGELOG, AI context, smoke checklist, and next-step notes were refreshed after Prompt 124.
 - No product behavior, schema, route, permission, infrastructure, payment, QR, or order lifecycle change was added by the daily memory update.
 - Future guest status work must keep `App\Livewire\PublicQr\OrderStatuses` isolated and must not show technical enum keys to guests.
+
+## Prompt 345 Permissions Documentation UI - 2026-06-05
+
+Prompt 345 made the existing staff permission override UI understandable for directors without changing roles, permissions, routes, tables, or dangerous-action behavior.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+
+What changed:
+
+- `App\Enums\SystemPermission` now exposes UI group, label key, and description key metadata for every current fixed permission.
+- `App\Livewire\Organizations\Staff\Permissions` now returns grouped permission payloads with translated labels/descriptions and keeps raw keys hidden unless the current user is superadmin.
+- `resources/views/livewire/organizations/staff/permissions.blade.php` renders permission groups for Restaurant, Branches, Zones and tables, QR, Menu, Orders, Kitchen/bar, Payment, Reports, Staff, and History.
+- `lang/en.json`, `lang/ru.json`, and `lang/lt.json` include labels and short descriptions for every current permission code.
+- `tests/Feature/PermissionOverrideUiTest.php` covers grouped human copy, raw-key hiding for ordinary managers/directors, raw-key visibility for superadmin, and required reason validation for critical permission changes.
+
+Current tables and routes:
+
+- No tables, columns, routes, roles, or permission codes were added.
+- Staff permission route remains `GET /organizations/{organization}/staff/{staffMember}/permissions`.
+- Permission storage remains `permissions`, `permission_role`, and `permission_user_overrides`.
+
+Mandatory business rules:
+
+- Directors/managers must not see only raw permission keys such as `manage_service_points`; show business labels and short descriptions.
+- Technical permission keys may appear only in superadmin technical mode.
+- Critical permission changes must keep the dangerous-action modal, required reason validation, server-side permission checks, and audit logging.
+- Do not grant or revoke permissions from a single accidental click when the permission is critical.
+
+Verification:
+
+- `php -r 'foreach (["lang/en.json", "lang/ru.json", "lang/lt.json"] as $file) { json_decode(file_get_contents($file), true, 512, JSON_THROW_ON_ERROR); echo $file." ok\n"; }'`
+- `php -l app/Enums/SystemPermission.php && php -l app/Livewire/Organizations/Staff/Permissions.php`
+- `php artisan test --compact tests/Feature/PermissionOverrideUiTest.php`
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction. Start it only after a fresh context/health check. Prompt 122 remains skipped/pending unless the user explicitly asks to return to it.
+
 ## Rescue Mode Before Prompt 123 - 2026-06-05
 
 Prompt 123 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the waiter table detail/payment flow after the focused regression suite hit a compiled Blade parse error: `syntax error, unexpected token "endif"` in the waiter table detail view cache. The current source view was validated, stale compiled views were cleared, and the focused suite passed again.
@@ -2959,8 +3207,10 @@ Staff permission overrides:
 - `allow` and `deny` save `permission_user_overrides.enabled` as true or false.
 - Effective permission display is computed from superadmin access, then user override, then role default.
 - Superadmins always have full effective access.
-- Critical permissions include `manage_staff`, `manage_subscription`, `manage_settings`, and `export_data`.
-- Critical permission changes show a warning.
+- Permission UI is grouped by business area and shows translation-backed human labels plus short descriptions.
+- Raw permission keys are hidden from ordinary directors/managers and shown only to superadmin technical mode.
+- Critical permissions include `manage_staff`, `edit_pending_orders`, `manage_subscription`, `manage_payments`, `close_table_sessions`, `manage_settings`, and `export_data`.
+- Critical permission changes use the dangerous-action confirmation modal and require a reason.
 - Users cannot edit their own permission overrides from the staff permission page.
 - Permission override changes create `staff_permission_changed` audit rows with the target staff user, permission code, previous state, and new state.
 
@@ -3517,6 +3767,18 @@ Local media storage:
 - Service point editing still must not change `internal_code` or reissue QR codes when a place is renamed or moved.
 - The UI does not show technical IDs to users.
 
+## Prompt 346 Dangerous Action Confirmations
+
+Prompt 346 added a shared dangerous-action confirmation pattern without changing the shared-hosting stack.
+
+- `App\Enums\DangerousAction` lists the current high-impact action names, consequences, reason requirements, and typed-confirmation requirements.
+- `resources/views/components/dangerous-action-confirmation.blade.php` is the reusable confirmation modal for dangerous actions.
+- Current covered entry points include QR disable/reissue, organization suspension, branch suspension, staff deactivation, critical permission overrides, order cancellation, manual payment recording, unpaid table close, menu item deactivate/delete, local media delete, and SQLite backup download.
+- Reason is required server-side for QR disable, organization suspension, branch suspension, staff deactivation, critical permission changes, and order cancellation.
+- Typed confirmation is required server-side for QR reissue, unpaid table close, and backup download.
+- Activity logs are added or preserved through actions/observers/controllers for QR, organization subscription, branch suspension, staff, permissions, order cancellation, payment, table close, menu availability/delete, and backup download actions.
+- `clear_cache_all` and `void_order_item` are registry entries only until an explicit future prompt adds those actual product actions.
+
 ## Next Step
 
 The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommendation: wait for the next explicit user prompt and do not continue feature work automatically. Keep Prompt 083 SQLite performance guardrails, Prompt 084 split guest polling, Prompt 085 QR/guest session hardening, Prompt 087 important-entity soft deletes, Prompt 088 explicit order item snapshots, Prompt 089 lightweight Blade design-system primitives, Prompt 090 polished guest mobile UI, Prompt 091 polished waiter dashboard UX, Prompt 092 polished shared kitchen/bar UX, Prompt 093 centralized branch cache invalidation, Prompt 094 explicit idempotent demo seed, Prompt 095 manual smoke checklist, Prompt 096 access-control audit guardrails, Prompt 097 shared-hosting deployment notes, Prompt 098 project cleanup guardrails, Prompt 099 vertical-slice regression, Prompt 100 current-version snapshot, Prompt 108 QR label presets, Prompt 109 QR short-code lookup, Prompt 110 service point search filters, and the daily project memory update intact during future feature work.
@@ -3558,6 +3820,8 @@ The next recommended prompt is tracked in `docs/NEXT_STEPS.md`. Current recommen
 - Do not allow manual payment while the latest draft is still `draft`, `sent_to_waiter`, or `waiter_review`.
 - Do not allow opening a second table session for a service point while its current session is `payment_requested`.
 - Do not let closed table sessions accept guest draft items, guest invite joins, or any new guest ordering.
+- Do not execute dangerous staff/admin actions from a single accidental click.
+- Do not remove consequences, required reasons, typed confirmations, server-side permission checks, or audit logs from dangerous actions.
 - Do not let configured closed branch hours accept guest draft items or send-to-waiter actions; QR and menu viewing must still stay available.
 - Do not let inactive service points accept guest-created sessions, guest invite links, join requests, draft item changes, or send-to-waiter actions.
 - Do not replace random hidden QR, guest, or invite tokens with visible IDs, table numbers, names, or short codes.

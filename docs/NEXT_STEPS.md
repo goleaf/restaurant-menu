@@ -4,11 +4,27 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 124 guest order status screen.
+Last memory refresh: 2026-06-05 after rescue mode before Prompt 125.
 
 ## Next Recommended Prompt
 
-Prompt 123 - Payment correction.
+Prompt 125 - Kitchen delay timers.
+
+Prompt 125 was requested, but it was paused because the pre-prompt health check
+found the project was already broken. Rescue mode restored guest status
+translations and Public QR polling-locale propagation first.
+
+When Prompt 125 is started again, keep the step small:
+
+- add `expected_prepare_minutes` to the simplest existing place, either
+  kitchen department or menu item, based on current schema conventions;
+- show elapsed time on kitchen/bar ticket cards from existing ticket timestamps;
+- show a friendly delayed badge when elapsed minutes exceed the expected
+  preparation time;
+- surface delayed items to the waiter in the existing waiter dashboard/table
+  detail;
+- calculate delay at render/query time; do not add background workers,
+  complex analytics, Redis, WebSockets, S3, Docker, or paid services.
 
 Prompt 124 is complete. The guest order status block now shows a friendly
 timeline, whole-table status, and per-position status labels through the
@@ -19,6 +35,27 @@ explicitly asks for them.
 The separate post-feature daily memory update after Prompt 124 is complete.
 Keep this file as the source for next-prompt guardrails until the user gives a
 new prompt. The update was documentation-only and did not add product behavior.
+
+Prompt 343 is complete. Future validation, permission, branch, QR, guest,
+draft, order, payment, file upload, and system error work must use
+`ApplicationErrorType`, controlled translated messages, and safe error pages.
+Unexpected exceptions must be logged by Laravel and must not create audit-log
+rows unless a business action itself writes an audit entry.
+
+Prompt 335 is complete. Future UI and storage work must treat guest names,
+guest comments, order comments, waiter notes, menu descriptions, category
+descriptions, branch profile text, reasons, notes, and notification text as
+plain text by default. Do not use raw HTML for user content; use escaped Blade
+output or `<x-ui.plain-text>`, and add explicit sanitization before allowing any
+limited formatting.
+
+Prompt 334 is complete. Future route work must keep public QR/guest routes as
+guest-only GET surfaces, keep staff/admin/waiter/kitchen/bar/export/settings
+routes behind authenticated web sessions, keep backup downloads behind
+`auth` plus `superadmin`, and keep export downloads behind server-side
+`export_data` branch access. Do not enable public private-storage routes or add
+CSRF exclusions without a separate audited prompt.
+
 Rescue mode ran before Prompt 123 because the project was already broken by a
 compiled waiter table detail Blade parse error. The rescue fix cleared stale
 compiled views and restored the focused manual payment/order cancellation
@@ -51,6 +88,10 @@ When Prompt 122 is started again, keep the step small:
 - authorize through `cancel_orders` or an explicitly existing/seeded
   `manage_orders` permission.
 
+Prompt 345 is complete. Future permission UI work must preserve grouped
+business labels/descriptions for directors and keep raw permission keys visible
+only to superadmin technical mode.
+
 Do not continue with new product behavior automatically without the user's next
 explicit prompt.
 
@@ -61,6 +102,9 @@ status/history, not deletion. Cancelled order tickets must remain hidden from
 kitchen/bar work screens and blocked in ticket item update actions.
 
 The separate post-feature daily memory update after Prompt 121 is complete.
+Prompt 350 completed a technical architecture hygiene pass without adding
+restaurant features. Keep the new translation and forbidden-module regression
+guards in place.
 Keep this file as the source for next-prompt guardrails until the user gives a
 new prompt. The update was documentation-only and did not add product behavior.
 
@@ -119,6 +163,34 @@ Risky areas:
   physical QR scans should still start from the QR's service point.
 - Do not add Redis/WebSockets/S3/Docker/paid services for scheduling or realtime.
 - Keep scheduler support optional for shared hosting; manual cleanup must remain available.
+
+Architecture hygiene debts to handle only through small future refactors:
+
+- Several Livewire components remain large orchestration surfaces, especially
+  `App\Livewire\Organizations\Brands\Branches\Menu\Index`,
+  `App\Livewire\PublicQr\Show`, `App\Livewire\Waiter\TableDetail`,
+  `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index`, and
+  `App\Livewire\PublicQr\DraftOrder`. Do not rewrite them wholesale; extract
+  one action/view-model at a time when touching the related flow.
+- Guest shared draft totals still have duplicated shaping between
+  `App\Livewire\PublicQr\DraftOrder` and `App\Livewire\PublicQr\DraftTotals`.
+  Move that payload into a central Action before changing split totals again.
+- A few Blade views still call Livewire methods or computed properties for
+  presentation payloads, such as menu availability and service-point board
+  sections. Keep Blade query-free, and move those values into prebuilt
+  component state when touching the related screens.
+- Money formatting is centralized in `App\Support\MoneyFormatter`, but some
+  analytics, waiter, dashboard, and draft actions still keep private
+  decimal/cent helpers. Replace those opportunistically when editing those
+  files, with focused tests.
+- Server-side permissions are enforced through `SystemPermission`, user
+  membership checks, and action-specific guards. A full Laravel Policy layer is
+  still not present; add policies only per aggregate when a future change needs
+  them, not as a broad rewrite.
+- Existing kitchen/bar ticket item statuses power the current production flow.
+  Do not introduce additional item-level operational statuses; if the product
+  later wants a coarser status model, migrate the kitchen/bar flow explicitly
+  with regression coverage.
 The implemented public restaurant profile, branch opening hours, temporary
 branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
@@ -296,6 +368,14 @@ guest UI: public venue name, short description, local logo/cover image,
 address/contact/social links, default language, and default currency. Profile
 images stay local in `storage/app/public`; no maps, external APIs, S3,
 WebSockets, paid services, React, or Vue were added.
+
+Prompt 346 added shared dangerous-action confirmations. Future dangerous
+actions must reuse `App\Enums\DangerousAction` and
+`resources/views/components/dangerous-action-confirmation.blade.php`, explain
+the consequence before execution, require a reason or typed confirmation when
+the registry says so, check permissions server-side, and write audit logs after
+the action. `void_order_item` and `clear_cache_all` are registry entries only
+until an explicit future prompt adds those actual product actions.
 
 ## Other Good Future Prompts
 

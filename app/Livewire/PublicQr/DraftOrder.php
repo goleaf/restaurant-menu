@@ -12,6 +12,7 @@ use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder as DraftOrderModel;
@@ -22,22 +23,30 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Isolate]
 class DraftOrder extends Component
 {
+    #[Locked]
     public int $tableSessionId = 0;
 
+    #[Locked]
     public int $currentGuestId = 0;
 
+    #[Locked]
     public string $publicToken = '';
 
     public string $currency = 'EUR';
+
+    public string $language = 'ru';
 
     public int $pollingIntervalSeconds = 1;
 
@@ -153,23 +162,28 @@ class DraftOrder extends Component
         bool $showControls = true,
         bool $showTotals = true,
         bool $showStatuses = true,
+        string $language = 'ru',
     ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->currency = $currency;
         $this->publicToken = $publicToken;
+        $this->language = SupportedLocale::normalize($language, 'ru');
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->branchCanAcceptOrders = $branchCanAcceptOrders;
         $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
         $this->showControls = $showControls;
         $this->showTotals = $showTotals;
         $this->showStatuses = $showStatuses;
+        $this->applyLocale();
 
         $this->refreshDraft();
     }
 
     public function refreshDraft(): void
     {
+        $this->applyLocale();
+
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder($this->showStatuses);
         $draftItems = $draftOrder?->items ?? collect();
@@ -267,7 +281,7 @@ class DraftOrder extends Component
                 $unitTotalCents = max(0, self::decimalToCents($item->unit_price) + self::decimalToCents($item->modifier_total));
                 $totalCents += $itemTotalCents;
                 $guestId = (int) $item->table_session_guest_id;
-                $guestName = $item->guest?->guest_name ?? __('Гость');
+                $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
 
                 if (! isset($guestSections[$guestId])) {
                     $guestSections[$guestId] = [
@@ -354,7 +368,7 @@ class DraftOrder extends Component
         $guest = $this->currentActiveGuest();
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('ready_status', __('Только активный гость за этим столом может менять готовность.'));
+            $this->addError('ready_status', __('guest.table.ready_requires_active_guest'));
 
             return;
         }
@@ -368,8 +382,8 @@ class DraftOrder extends Component
         }
 
         $this->feedbackMessage = $guest->ready_at === null
-            ? __('Готовность снята.')
-            : __('Вы отметили готовность.');
+            ? __('guest.table.not_ready_feedback')
+            : __('guest.table.ready_feedback');
 
         $this->refreshDraft();
     }
@@ -382,7 +396,7 @@ class DraftOrder extends Component
         $guest = $this->currentActiveGuest();
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('bill_request', __('Только активный гость за этим столом может попросить счёт.'));
+            $this->addError('bill_request', __('guest.table.bill_requires_active_guest'));
 
             return;
         }
@@ -393,7 +407,7 @@ class DraftOrder extends Component
             ->first();
 
         if (! $tableSession instanceof TableSession) {
-            $this->addError('bill_request', __('Сессия стола не найдена.'));
+            $this->addError('bill_request', __('guest.table.session_not_found'));
 
             return;
         }
@@ -408,7 +422,7 @@ class DraftOrder extends Component
 
         $this->closeEditItem();
         $this->sendNeedsReadyConfirmation = false;
-        $this->feedbackMessage = __('Официант получил просьбу принести счёт.');
+        $this->feedbackMessage = __('guest.table.bill_requested');
         $this->refreshDraft();
     }
 
@@ -427,7 +441,7 @@ class DraftOrder extends Component
         $draftOrder = $this->draftOrderForSending();
 
         if (! $guest instanceof TableSessionGuest || ! $draftOrder instanceof DraftOrderModel) {
-            $this->addError('send_draft', __('Только активный гость за этим столом может отправить заказ официанту.'));
+            $this->addError('send_draft', __('guest.table.send_requires_active_guest'));
 
             return;
         }
@@ -442,7 +456,7 @@ class DraftOrder extends Component
 
         $this->closeEditItem();
         $this->sendNeedsReadyConfirmation = false;
-        $this->feedbackMessage = __('Заказ отправлен официанту.');
+        $this->feedbackMessage = __('guest.table.sent_to_waiter');
         $this->refreshDraft();
     }
 
@@ -459,7 +473,7 @@ class DraftOrder extends Component
         $guest = $this->currentActiveGuest();
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('draft_item', __('Только активный гость за этим столом может менять позиции.'));
+            $this->addError('draft_item', __('guest.cart.edit_requires_active_guest'));
 
             return;
         }
@@ -467,13 +481,13 @@ class DraftOrder extends Component
         $draftOrderItem = $this->editableDraftOrderItem($itemId);
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_item', __('Можно изменять только свои позиции за этим столом.'));
+            $this->addError('draft_item', __('guest.cart.edit_own_items_only'));
 
             return;
         }
 
         if ($draftOrderItem->draftOrder?->status !== DraftOrderStatus::Draft) {
-            $this->addError('draft_order', __('Этот черновик уже отправлен официанту. Изменения заблокированы.'));
+            $this->addError('draft_order', __('guest.cart.draft_locked'));
 
             return;
         }
@@ -561,14 +575,16 @@ class DraftOrder extends Component
             return;
         }
 
+        $validated = $this->validate($this->editingDraftItemRules());
+        $this->editingQuantity = (int) $validated['editingQuantity'];
+        $this->editingComment = (string) ($validated['editingComment'] ?? '');
+        $this->editingModifierOptions = $validated['editingModifierOptions'] ?? [];
+
         $guest = $this->currentActiveGuest();
-        $draftOrderItem = DraftOrderItem::query()
-            ->select(['id'])
-            ->whereKey($this->editingItemId)
-            ->first();
+        $draftOrderItem = $this->editableDraftOrderItem($this->editingItemId);
 
         if (! $guest instanceof TableSessionGuest || ! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_item', __('Только активный гость за этим столом может менять позиции.'));
+            $this->addError('draft_item', __('guest.cart.edit_requires_active_guest'));
 
             return;
         }
@@ -587,7 +603,7 @@ class DraftOrder extends Component
             return;
         }
 
-        $this->feedbackMessage = __('Позиция обновлена.');
+        $this->feedbackMessage = __('guest.cart.item_updated');
         $this->closeEditItem();
         $this->refreshDraft();
     }
@@ -598,13 +614,10 @@ class DraftOrder extends Component
         $this->feedbackMessage = '';
 
         $guest = $this->currentActiveGuest();
-        $draftOrderItem = DraftOrderItem::query()
-            ->select(['id'])
-            ->whereKey($itemId)
-            ->first();
+        $draftOrderItem = $this->editableDraftOrderItem($itemId);
 
         if (! $guest instanceof TableSessionGuest || ! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_item', __('Только активный гость за этим столом может удалять позиции.'));
+            $this->addError('draft_item', __('guest.cart.remove_requires_active_guest'));
 
             return;
         }
@@ -621,13 +634,32 @@ class DraftOrder extends Component
             $this->closeEditItem();
         }
 
-        $this->feedbackMessage = __('Позиция удалена.');
+        $this->feedbackMessage = __('guest.cart.item_removed');
         $this->refreshDraft();
     }
 
     public function render(): View
     {
+        $this->applyLocale();
+
         return view('livewire.public-qr.draft-order');
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function editingDraftItemRules(): array
+    {
+        return [
+            ...RestaurantValidationRules::quantity('editingQuantity'),
+            ...RestaurantValidationRules::guestComment('editingComment'),
+            ...RestaurantValidationRules::selectedModifierOptions('editingModifierOptions'),
+        ];
+    }
+
+    private function applyLocale(): void
+    {
+        App::setLocale($this->language);
     }
 
     /**
@@ -766,7 +798,7 @@ class DraftOrder extends Component
 
                 return [
                     'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('Гость'),
+                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('guest.table.guest'),
                     'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
                 ];
             })
@@ -811,13 +843,13 @@ class DraftOrder extends Component
         if ($orderStatus === OrderStatus::Served || ($ticketItems->isNotEmpty() && $ticketItems->every(
             fn (KitchenTicketItem $item): bool => $item->served_at !== null,
         ))) {
-            return ['value' => 'served', 'label' => __('Подано'), 'tone' => 'sky'];
+            return ['value' => 'served', 'label' => __('guest.statuses.service.served'), 'tone' => 'sky'];
         }
 
         if ($orderStatus === OrderStatus::Ready || ($ticketItems->isNotEmpty() && $ticketItems->every(
             fn (KitchenTicketItem $item): bool => $this->ticketItemStatus($item) === KitchenTicketItemStatus::Ready,
         ))) {
-            return ['value' => 'ready', 'label' => __('Готово'), 'tone' => 'emerald'];
+            return ['value' => 'ready', 'label' => __('guest.statuses.service.ready'), 'tone' => 'emerald'];
         }
 
         if ($orderStatus === OrderStatus::InProgress || $ticketItems->contains(
@@ -826,11 +858,11 @@ class DraftOrder extends Component
                 KitchenTicketItemStatus::Ready,
             ], true),
         )) {
-            return ['value' => 'cooking', 'label' => __('Готовится'), 'tone' => 'amber'];
+            return ['value' => 'cooking', 'label' => __('guest.statuses.service.cooking'), 'tone' => 'amber'];
         }
 
         if (in_array($orderStatus, [OrderStatus::ConfirmedByWaiter, OrderStatus::SentToKitchenBar], true)) {
-            return ['value' => 'accepted', 'label' => __('Принято'), 'tone' => 'emerald'];
+            return ['value' => 'accepted', 'label' => __('guest.statuses.service.accepted'), 'tone' => 'emerald'];
         }
 
         return ['value' => '', 'label' => '', 'tone' => 'zinc'];

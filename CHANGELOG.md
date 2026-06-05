@@ -2,6 +2,53 @@
 
 ## 2026-06-05
 
+### Bugfix - Restore Project Before Prompt 125
+
+- Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken.
+- Restored public QR guest status rendering by adding missing guest-facing status translations and passing the selected guest language into the isolated Livewire polling blocks.
+- Restored model mass-assignment consistency for the current regression suite so required relationship/status fields can be saved by existing Actions again.
+- Touched modules/files: public QR polling Livewire components, public QR table Blade shell, locale JSON files, README, AI context, smoke checklist, and next-step docs.
+- Limitations: no kitchen delay timers, expected prepare minutes, schema, worker, analytics, Redis, WebSocket, S3, Docker, Stripe/PayPal, or paid service was added in rescue mode.
+- Manual check: open a QR guest table in Russian, move an order item through ready/served states, and confirm friendly labels render instead of raw translation keys.
+
+### Docs - Daily Project Memory Update Before Prompt 125
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after rescue mode.
+- Confirmed the project remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, and no Redis/WebSockets/S3/Docker or paid services.
+- Confirmed Prompt 125 remains the next recommended prompt and must start with a fresh health check.
+
+### Prompt 334 - CSRF And Route Protection Audit
+
+- Added focused route-protection regression coverage for public QR/guest routes, Fortify auth routes, restaurant/admin/waiter/department routes, export/download routes, superadmin backup routes, and the Livewire web update endpoint.
+- Confirmed public guest routes are GET-only web-session routes and do not carry admin, waiter, department, export, or superadmin access.
+- Confirmed restaurant, organization, onboarding, waiter, kitchen, bar, export, settings, and profile routes require authenticated web sessions.
+- Confirmed the SQLite backup download route requires both `auth` and `superadmin`.
+- Confirmed export downloads remain behind route-level auth and server-side `export_data` branch access checks.
+- Disabled `serve` on the private `local` filesystem disk so Laravel no longer registers unauthenticated `storage.local` download/upload routes.
+- Preserved public media through the existing `public` disk and `/storage` symlink; no S3, external file service, or public admin POST route was added.
+- Limitations: no new product feature, admin operation, route family, table, permission, Redis, WebSocket, S3, Docker requirement, paid service, Stripe/PayPal, CSRF exclusion, training mode, pilot issue log, live launch checklist, safe mode module, or item-level operational status was added.
+
+### Prompt 335 - XSS Protection Audit
+
+- Added `App\Support\PlainText` for storage-side plain-text normalization of current guest names, comments, notes, reasons, branch public profile fields, menu category text, and menu item text.
+- Added the escaped `<x-ui.plain-text>` Blade component to preserve safe line breaks and break long strings without rendering user content as HTML.
+- Updated guest QR, waiter, kitchen/bar, notifications, and menu-management views to render guest names, comments, descriptions, notes, reasons, item labels, and branch messages through escaped text output.
+- Confirmed remaining first-party raw output is limited to audited generated QR SVG output, not user-entered restaurant/guest/order content.
+- Added focused XSS regression coverage for escaped rendering, storage normalization, unsafe menu/category text, and unsafe guest order comments.
+- Documented that no first-party announcements, legal-text, support-note, or internal-note surface currently exists; future surfaces must use plain text or explicit sanitization.
+- Limitations: no new product feature, route, table, permission, Redis, WebSocket, S3, Docker requirement, paid service, Stripe/PayPal, training mode, pilot issue log, live launch checklist, safe mode module, or item-level operational status was added.
+
+### Prompt 343 - Error Handling Strategy
+
+- Added `ApplicationErrorType` as the shared catalog for validation, permission, branch access, QR, session, guest, draft, order transition, payment amount, file upload, and system errors.
+- Mapped existing `BusinessRuleCode` values to the shared error catalog and exposed the mapped type from `BusinessRuleViolation`.
+- Configured Laravel exception handling to deduplicate reports, keep `BusinessRuleViolation` non-reportable, add safe request context to unexpected exception logs, and return controlled JSON for business-rule errors.
+- Added production-safe translated error pages for 403, 404, 419, 422, 500, and 5xx responses without rendering raw exception messages.
+- Added error strategy translations in English, Russian, and Lithuanian.
+- Added focused tests for the error catalog, business-rule JSON rendering, production-safe admin/guest/system error pages, and the rule that technical exceptions do not create audit logs.
+- Documented the strategy in `docs/ERROR_HANDLING.md` and refreshed project memory docs.
+- Limitations: no new product flow, route family, database table, activity log spam, Redis, WebSocket, S3, Docker requirement, paid service, Stripe/PayPal, training mode, pilot issue log, live launch checklist, safe mode module, or item-level operational status was added.
+
 ### Prompt 124 - Guest Order Status Screen
 
 - Improved the public QR guest order status block with guest-friendly labels for draft, sent to waiter, waiter review, accepted, cooking, ready, served, bill requested, and paid states.
@@ -18,6 +65,17 @@
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 124 without adding product behavior.
 - Confirmed the guest order status screen is now part of the public QR table baseline.
 - Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, isolated polling, and no Redis/WebSockets/S3/Docker or paid services.
+
+### Prompt 345 - Permissions Documentation UI
+
+- Grouped the staff permission override UI into director-readable sections: Restaurant, Branches, Zones and tables, QR, Menu, Orders, Kitchen/bar, Payment, Reports, Staff, and History.
+- Added translation-backed human labels and short descriptions for every current `SystemPermission` value in English, Russian, and Lithuanian.
+- Hid technical permission keys from ordinary managers/directors; only the current superadmin technical mode shows the raw key in small monospace text.
+- Kept critical permission changes behind the existing dangerous-action confirmation modal with required reason validation and server-side permission checks.
+- Added focused regression coverage for grouped labels/descriptions, hidden raw keys for ordinary staff managers, visible raw keys for superadmin, and required reason validation for critical permission changes.
+- Touched modules/files: `SystemPermission`, staff permission Livewire component/view, locale JSON files, `PermissionOverrideUiTest`, README, AI context, smoke checklist, guardrails, current-version, security, and next-step docs.
+- Limitations: no new permission, role, route, table, Redis, WebSocket, S3, Docker requirement, paid service, Stripe/PayPal, training mode, pilot log, live launch checklist, safe mode module, or item-level operational status was added.
+
 ### Bugfix - Restore Project Before Prompt 123
 
 - Prompt 123 was not implemented because the pre-prompt health check found the project was already broken.
@@ -32,6 +90,16 @@
 - Refreshed README, AI context, smoke checklist, and next-step notes after rescue mode.
 - Confirmed Prompt 123 manual payment correction is still pending and must start with a fresh health check.
 - Confirmed Prompt 122 order item void flow remains skipped/pending unless explicitly requested again.
+
+### Prompt 346 - Dangerous Action Confirmations
+
+- Added a shared dangerous-action registry and reusable confirmation modal for high-impact actions.
+- Wrapped QR disable/reissue, organization/branch suspension, staff deactivation, critical permission changes, order cancellation, manual payment recording, unpaid table close, menu item deactivate/delete, media delete, and backup download entry points in explicit consequence modals where those actions exist today.
+- Added required reason validation for QR disable, organization/branch suspension, staff deactivation, critical permission changes, and order cancellation.
+- Added typed confirmation for QR reissue, unpaid table close, and SQLite backup download.
+- Added or preserved audit logging for QR disable/reissue, organization subscription suspension, branch suspension, staff deactivation, permission changes, order cancellation, manual payments, table close, menu availability/delete, media-backed menu deletion, and backup download.
+- Touched modules/files: `DangerousAction`, `dangerous-action-confirmation` Blade component, QR admin/lookup components, superadmin dashboard/backup controller, branch index, staff index/permissions, waiter table detail, menu management UI, audit actions/enums, focused tests, and docs.
+- Limitations: no Redis, WebSockets, S3, Docker requirement, paid service, Stripe/PayPal, online payment, new route family, clear-cache-all implementation, training mode, pilot issue log, live launch checklist, safe mode module, or item-level operational statuses were added.
 
 ### Bugfix - Restore Project After Previous Prompt
 
@@ -64,6 +132,19 @@
 - Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 121 without adding product behavior.
 - Confirmed order cancellation with required reason is now part of the waiter/order/kitchen/guest baseline.
 - Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, permanent QR identity, and no Redis/WebSockets/S3/Docker or paid services.
+
+### Prompt 350 - Architecture Hygiene Pass
+
+- Ran an architecture hygiene pass across Blade, Livewire, totals, statuses,
+  server-side permissions, branch isolation, forbidden services, forbidden
+  module names, and documentation.
+- Wrapped remaining dashboard chrome text in translation calls.
+- Added regression coverage so dashboard entry chrome stays translatable and
+  forbidden first-party product modules are not reintroduced under `app/`.
+- Recorded remaining refactor tasks in `docs/NEXT_STEPS.md` instead of doing a
+  broad rewrite of large Livewire flows.
+- Limitations: no restaurant feature, route, schema, status model, external
+  service, Redis, WebSocket, S3, Docker, or paid provider was added.
 
 ### Prompt 120 - Manual Service Charge And Tips
 

@@ -8,6 +8,7 @@ use App\Actions\TableSessions\RequestBillForTableSessionAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatus;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
@@ -17,21 +18,28 @@ use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Isolate]
 class DraftTotals extends Component
 {
+    #[Locked]
     public int $tableSessionId = 0;
 
+    #[Locked]
     public int $currentGuestId = 0;
 
+    #[Locked]
     public string $publicToken = '';
 
     public string $currency = 'EUR';
+
+    public string $language = 'ru';
 
     public int $pollingIntervalSeconds = 1;
 
@@ -84,20 +92,25 @@ class DraftTotals extends Component
         int $pollingIntervalSeconds = 1,
         bool $branchCanAcceptOrders = true,
         string $branchOpeningStatusMessage = '',
+        string $language = 'ru',
     ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->currency = $currency;
         $this->publicToken = $publicToken;
+        $this->language = SupportedLocale::normalize($language, 'ru');
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->branchCanAcceptOrders = $branchCanAcceptOrders;
         $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
+        $this->applyLocale();
 
         $this->refreshTotals();
     }
 
     public function refreshTotals(): void
     {
+        $this->applyLocale();
+
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder();
         $draftItems = $draftOrder?->items ?? collect();
@@ -171,7 +184,7 @@ class DraftTotals extends Component
             $itemTotalCents = self::decimalToCents($item->total_price);
             $draftTotalCents += $itemTotalCents;
             $guestId = (int) $item->table_session_guest_id;
-            $guestName = $item->guest?->guest_name ?? __('Гость');
+            $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
 
             if (! isset($guestTotals[$guestId])) {
                 $guestTotals[$guestId] = [
@@ -229,7 +242,7 @@ class DraftTotals extends Component
         $guest = $this->currentActiveGuest();
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('ready_status', __('Только активный гость за этим столом может менять готовность.'));
+            $this->addError('ready_status', __('guest.table.ready_requires_active_guest'));
 
             return;
         }
@@ -243,8 +256,8 @@ class DraftTotals extends Component
         }
 
         $this->feedbackMessage = $guest->ready_at === null
-            ? __('Готовность снята.')
-            : __('Вы отметили готовность.');
+            ? __('guest.table.not_ready_feedback')
+            : __('guest.table.ready_feedback');
 
         $this->refreshTotals();
     }
@@ -257,7 +270,7 @@ class DraftTotals extends Component
         $guest = $this->currentActiveGuest();
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('bill_request', __('Только активный гость за этим столом может попросить счёт.'));
+            $this->addError('bill_request', __('guest.table.bill_requires_active_guest'));
 
             return;
         }
@@ -268,7 +281,7 @@ class DraftTotals extends Component
             ->first();
 
         if (! $tableSession instanceof TableSession) {
-            $this->addError('bill_request', __('Сессия стола не найдена.'));
+            $this->addError('bill_request', __('guest.table.session_not_found'));
 
             return;
         }
@@ -282,7 +295,7 @@ class DraftTotals extends Component
         }
 
         $this->sendNeedsReadyConfirmation = false;
-        $this->feedbackMessage = __('Официант получил просьбу принести счёт.');
+        $this->feedbackMessage = __('guest.table.bill_requested');
         $this->refreshTotals();
     }
 
@@ -301,7 +314,7 @@ class DraftTotals extends Component
         $draftOrder = $this->draftOrderForSending();
 
         if (! $guest instanceof TableSessionGuest || ! $draftOrder instanceof DraftOrder) {
-            $this->addError('send_draft', __('Только активный гость за этим столом может отправить заказ официанту.'));
+            $this->addError('send_draft', __('guest.table.send_requires_active_guest'));
 
             return;
         }
@@ -315,7 +328,7 @@ class DraftTotals extends Component
         }
 
         $this->sendNeedsReadyConfirmation = false;
-        $this->feedbackMessage = __('Заказ отправлен официанту.');
+        $this->feedbackMessage = __('guest.table.sent_to_waiter');
         $this->refreshTotals();
     }
 
@@ -326,7 +339,14 @@ class DraftTotals extends Component
 
     public function render(): View
     {
+        $this->applyLocale();
+
         return view('livewire.public-qr.draft-totals');
+    }
+
+    private function applyLocale(): void
+    {
+        App::setLocale($this->language);
     }
 
     /**
@@ -438,7 +458,7 @@ class DraftTotals extends Component
 
                 return [
                     'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('Гость'),
+                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('guest.table.guest'),
                     'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
                 ];
             })

@@ -13,6 +13,52 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 117 Active Table Session Transfer Results
+
+Programmatic coverage was added in `tests/Feature/TableSessionTransferTest.php`.
+The feature currently verifies:
+
+- a waiter/order staff user can transfer an active session to another free
+  service point in the same branch;
+- `table_sessions.service_point_id` and `active_service_point_id` move to the
+  new service point;
+- the old service point becomes `free` and the new service point becomes
+  `occupied`;
+- QR public tokens and QR `service_point_id` values for both service points do
+  not change;
+- transfer to an occupied target is rejected and leaves the session unchanged;
+- already-entered guests restored from the original QR cookie see the current
+  transferred service point;
+- a `table_session_transferred` audit event is written.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionTransferTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionTransferTest.php tests/Feature/TableSessionCloseTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/AuditLogTest.php tests/Feature/WaiterOpenTableActionTest.php
+```
+
+Manual check:
+
+1. Open an active table in `/restaurant/waiter/tables/{tableSession}` as staff
+   with `view_orders` or `confirm_orders`.
+2. Confirm the `Перенести стол` block lists only active free places from the
+   same branch.
+3. Choose a free target place and transfer.
+4. Confirm the old service point is `free` and the new service point is
+   `occupied`.
+5. Refresh the guest table page for an already-entered guest and confirm it
+   shows the new service point and zone.
+6. Confirm existing guests, drafts, orders, and payments remain under the same
+   table session.
+7. Confirm old and new service point QR public tokens are unchanged.
+8. Confirm audit log contains `Table session transferred`.
+
 ## Prompt 116 Session Inactivity Cleanup Results
 
 Programmatic coverage was added in `tests/Feature/SessionInactivityCleanupTest.php`.

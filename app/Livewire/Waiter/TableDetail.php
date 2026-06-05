@@ -7,6 +7,7 @@ use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
+use App\Actions\TableSessions\TransferTableSessionAction;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -22,6 +23,7 @@ use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -48,6 +50,10 @@ class TableDetail extends Component
     public string $reviewFeedbackMessage = '';
 
     public string $paymentFeedbackMessage = '';
+
+    public string $transferFeedbackMessage = '';
+
+    public ?int $transferTargetServicePointId = null;
 
     public string $paymentMethod = 'cash';
 
@@ -131,6 +137,7 @@ class TableDetail extends Component
 
         $this->table = $payload['table'] ?? [];
         $this->syncAddableMenuItems();
+        $this->syncTransferTargetServicePoint();
         $this->refreshedAt = now()->format('H:i:s');
     }
 
@@ -536,6 +543,45 @@ class TableDetail extends Component
         $this->refreshTable();
     }
 
+    public function transferTableSession(TransferTableSessionAction $transferTableSession): void
+    {
+        $this->resetValidation();
+        $this->transferFeedbackMessage = '';
+
+        $validated = $this->validate([
+            'transferTargetServicePointId' => ['required', 'integer', 'min:1'],
+        ], [
+            'transferTargetServicePointId.required' => __('Выберите новое свободное место.'),
+        ]);
+
+        $targetServicePoint = ServicePoint::query()
+            ->select(['id'])
+            ->whereKey((int) $validated['transferTargetServicePointId'])
+            ->first();
+
+        if (! $targetServicePoint instanceof ServicePoint) {
+            $this->addError('transferTargetServicePointId', __('Новое место не найдено.'));
+
+            return;
+        }
+
+        try {
+            $transferTableSession->handle(
+                tableSession: $this->currentTableSession(),
+                targetServicePoint: $targetServicePoint,
+                transferredBy: $this->currentUser(),
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->transferFeedbackMessage = __('Стол перенесён. Гости видят новое место, QR-коды не изменились.');
+        $this->transferTargetServicePointId = null;
+        $this->refreshTable();
+    }
+
     public function render(): View
     {
         return view('livewire.waiter.table-detail');
@@ -742,6 +788,19 @@ class TableDetail extends Component
 
         $this->addableMenuItems = $this->menuItemOptionsForCurrentBranch();
         $this->addableMenuItemsBranchId = $branchId;
+    }
+
+    private function syncTransferTargetServicePoint(): void
+    {
+        $availableIds = collect(data_get($this->table, 'transfer.available_service_points', []))
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        if ($this->transferTargetServicePointId !== null
+            && ! in_array($this->transferTargetServicePointId, $availableIds, true)) {
+            $this->transferTargetServicePointId = null;
+        }
     }
 
     private function prepareAddingMenuItem(): void

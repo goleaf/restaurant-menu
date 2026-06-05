@@ -229,6 +229,59 @@
                 <p class="mt-5 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
             @enderror
 
+            @if (data_get($table, 'transfer.can_transfer'))
+                <div id="transfer-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Перенести стол') }}</h3>
+                    <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ __('Выберите свободное место. Заказы и гости останутся в этой сессии, QR-коды столов не изменятся.') }}
+                    </p>
+
+                    @if ($transferFeedbackMessage)
+                        <p class="mt-3 rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+                            {{ $transferFeedbackMessage }}
+                        </p>
+                    @endif
+
+                    @error('table_session_transfer')
+                        <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                    @enderror
+
+                    @error('transferTargetServicePointId')
+                        <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                    @enderror
+
+                    @if (data_get($table, 'transfer.available_service_points') !== [])
+                        <div class="mt-3 space-y-3">
+                            <flux:select wire:model="transferTargetServicePointId" :label="__('Новое место')">
+                                <flux:select.option value="">{{ __('Выберите свободное место') }}</flux:select.option>
+                                @foreach (data_get($table, 'transfer.available_service_points', []) as $servicePointOption)
+                                    <flux:select.option wire:key="transfer-target-service-point-{{ $servicePointOption['id'] }}" value="{{ $servicePointOption['id'] }}">
+                                        {{ $servicePointOption['label'] }}
+                                    </flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <flux:button
+                                icon="arrow-right"
+                                variant="primary"
+                                type="button"
+                                class="w-full"
+                                wire:click="transferTableSession"
+                                wire:loading.attr="disabled"
+                                wire:target="transferTableSession"
+                            >
+                                <span wire:loading.remove wire:target="transferTableSession">{{ __('Перенести стол') }}</span>
+                                <span wire:loading wire:target="transferTableSession">{{ __('Переносим') }}</span>
+                            </flux:button>
+                        </div>
+                    @else
+                        <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                            {{ __('Свободных мест для переноса сейчас нет.') }}
+                        </p>
+                    @endif
+                </div>
+            @endif
+
             @if (data_get($table, 'session.can_close'))
                 <div id="close-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                     <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Close table session') }}</h3>

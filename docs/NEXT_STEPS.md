@@ -4,21 +4,23 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-04 after Prompt 116 session inactivity cleanup.
+Last memory refresh: 2026-06-04 after Prompt 117 active table-session transfer.
 
 ## Next Recommended Prompt
 
-Wait for the next explicit user prompt. Prompt 116 is complete; do not continue
+Wait for the next explicit user prompt. Prompt 117 is complete; do not continue
 with new product behavior automatically.
 
-Daily memory update after Prompt 116 is complete. Keep this file as the source
+Daily memory update after Prompt 117 is complete. Keep this file as the source
 for next-prompt guardrails until the user gives a new prompt.
 
 If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
 or orders, first verify:
 
+- `tests/Feature/TableSessionTransferTest.php`;
 - `tests/Feature/SessionInactivityCleanupTest.php`;
 - `tests/Feature/TableSessionCloseTest.php`;
+- `tests/Feature/GuestTablePageShellTest.php`;
 - `tests/Feature/WaiterDashboardTest.php`;
 - `tests/Feature/ManualPaymentTest.php`;
 - `tests/Feature/VerticalSliceFlowTest.php` for broader flow changes.
@@ -28,6 +30,12 @@ Risky areas:
 - Do not auto-close active sessions from cleanup.
 - Do not cancel sessions with unpaid orders.
 - Do not reissue permanent QR when a session is cancelled or closed.
+- Do not reissue, disable, revoke, or regenerate permanent QR when an active
+  table session is transferred to another service point.
+- Do not move a table session to a non-free, inactive, cross-branch, pending,
+  active, or payment-requested service point.
+- Already-entered guests should follow the transferred `table_session`; fresh
+  physical QR scans should still start from the QR's service point.
 - Do not add Redis/WebSockets/S3/Docker/paid services for scheduling or realtime.
 - Keep scheduler support optional for shared hosting; manual cleanup must remain available.
 The implemented public restaurant profile, branch opening hours, temporary
@@ -35,7 +43,8 @@ branch closed mode, menu schedules, multiple active branch menus, branch service
 modes, bulk service point creation, QR label design presets, QR short-code
 lookup, branch service point search/filter pagination, the branch visual floor
 board, waiter zone assignments, waiter manual order entry, waiter-side schedule
-checks, and guest duplicate-name handling should be treated as current baseline
+checks, guest duplicate-name handling, safe session inactivity cleanup, and
+active table-session transfer should be treated as current baseline
 for future guest UI, QR landing, ordering work, staff review, and branch setup.
 
 ## Current Recommended Prompt

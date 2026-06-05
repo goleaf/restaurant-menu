@@ -2,7 +2,7 @@
 
 Laravel SaaS foundation for restaurants, cafes, bars, hotels, food courts, and similar venues.
 
-This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest name conflict handling, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, waiter manual order entry, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
+This project is not only a QR menu. The current codebase is a clean shared-hosting-friendly foundation for the platform, with authentication, system roles, permissions, organizations, simple SaaS subscription status, brands, branches, branch settings, branch service modes, local media storage, local SQLite backup download, nested branch areas, service point schema, CRUD, bulk creation, search/filter pagination, a simple visual floor board, branch menu CRUD, multiple active branch menus, menu schedules, menu translations, menu modifiers, kitchen departments, guest menu display with modifier selection, table session schema, guest-created pending sessions, guest name conflict handling, guest join approval UI, guest invite share links, guest table page shell, guest waiter-call and bill requests, database notifications with unread polling UI, draft order schema, shared table cart UI, guest ready status, guest item editing, polished waiter dashboard UX with waiter zone assignments, waiter table detail, active table-session transfer, waiter manual order entry, waiter draft editing/confirmation/rejection, repeat orders in the same table session, real order snapshots, kitchen/bar dispatch tickets, polished kitchen and bar production screens, waiter ready/served handoff, manual offline payments, branch/restaurant dashboard, basic cached analytics, audit logs, permanent QR schema, generation, admin display page, short-code lookup, simple and bulk browser print templates with QR label design presets, public QR guest landing with mobile-first error pages, basic superadmin access, staff invitation foundations, simple staff management UI, and staff permission override UI.
 
 ## Stack
 
@@ -47,9 +47,25 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-04 after Prompt 116 session inactivity cleanup. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, and safe table-session inactivity cleanup are now part of the baseline branch setup, guest entry, and order-review context.
+Latest memory refresh: 2026-06-04 after Prompt 117 active table-session transfer. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, and active-session transfer are now part of the baseline branch setup, guest entry, and order-review context.
 
-The memory refresh after Prompt 116 records the current inactivity-cleanup status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update did not add product behavior.
+The memory refresh after Prompt 117 records the current active-session transfer status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update did not add product behavior.
+
+## Active Table Session Transfer
+
+Prompt 117 lets authorized waiter/order staff move an active `table_session` to another free service point from the waiter table detail screen.
+
+- The session changes `service_point_id`; old orders, guests, drafts, and payments stay attached to the same session.
+- The old service point becomes `free`, and the new service point becomes `occupied`.
+- Existing QR codes for both service points are not changed, reissued, disabled, or regenerated.
+- Active guests restored from their saved QR cookie or invite flow see the current transferred service point on the guest table page.
+- The transfer creates a `table_session_transferred` audit log entry with old/new service point data.
+
+Focused Prompt 117 command:
+
+```bash
+php artisan test --compact tests/Feature/TableSessionTransferTest.php
+```
 
 ## Session Inactivity Cleanup
 

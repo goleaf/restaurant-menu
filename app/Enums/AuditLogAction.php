@@ -12,6 +12,7 @@ enum AuditLogAction: string
     case StaffPermissionChanged = 'staff_permission_changed';
     case OrderConfirmed = 'order_confirmed';
     case OrderCancelled = 'order_cancelled';
+    case TableSessionTransferred = 'table_session_transferred';
     case TableSessionClosed = 'table_session_closed';
     case PaymentRecorded = 'payment_recorded';
 
@@ -26,6 +27,7 @@ enum AuditLogAction: string
             self::StaffPermissionChanged => 'Staff permission changed',
             self::OrderConfirmed => 'Order confirmed',
             self::OrderCancelled => 'Order cancelled',
+            self::TableSessionTransferred => 'Table session transferred',
             self::TableSessionClosed => 'Table session closed',
             self::PaymentRecorded => 'Payment recorded',
         };

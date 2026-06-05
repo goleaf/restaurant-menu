@@ -17,6 +17,7 @@ use App\Models\DraftOrderItem;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -205,6 +206,13 @@ class BuildWaiterTableDetailAction
         $closeTableSessionBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::CloseTableSessions);
         $canManuallyCloseTableSession = $closeTableSessionBranchIds->contains((int) $tableSession->branch_id);
+        $transferBranchIds = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ViewOrders)
+            ->merge($this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
+            ->unique()
+            ->values();
+        $canTransferTableSession = $sessionStatus === TableSessionStatus::Active
+            && $transferBranchIds->contains((int) $tableSession->branch_id);
         $canCloseTableSession = ! in_array($sessionStatus, [
             TableSessionStatus::Closed,
             TableSessionStatus::Cancelled,
@@ -277,6 +285,7 @@ class BuildWaiterTableDetailAction
             'manual_order' => [
                 'can_add' => $canAddManualOrderItems,
             ],
+            'transfer' => $this->transferPayload($tableSession, $canTransferTableSession),
             'guest_sections' => $guestSections,
             'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
             'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
@@ -286,6 +295,68 @@ class BuildWaiterTableDetailAction
             'guest_count' => count($guestSections),
             'item_count' => collect($guestSections)->sum(fn (array $guestSection): int => count($guestSection['items'])),
         ];
+    }
+
+    /**
+     * @return array{can_transfer: bool, available_service_points: list<array{id: int, label: string, name: string, display_number: string|null, zone_name: string|null}>}
+     */
+    private function transferPayload(TableSession $tableSession, bool $canTransfer): array
+    {
+        if (! $canTransfer) {
+            return [
+                'can_transfer' => false,
+                'available_service_points' => [],
+            ];
+        }
+
+        $openStatuses = [
+            TableSessionStatus::Pending->value,
+            TableSessionStatus::Active->value,
+            TableSessionStatus::WaitingWaiterConfirmation->value,
+            TableSessionStatus::PaymentRequested->value,
+        ];
+
+        $availableServicePoints = ServicePoint::query()
+            ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status', 'is_active'])
+            ->with(['areaNode' => fn ($query) => $query->select(['id', 'branch_id', 'name'])])
+            ->where('branch_id', $tableSession->branch_id)
+            ->whereKeyNot($tableSession->service_point_id)
+            ->where('is_active', true)
+            ->where('status', ServicePointStatus::Free->value)
+            ->whereDoesntHave('tableSessions', fn ($query) => $query->whereIn('status', $openStatuses))
+            ->orderBy('name')
+            ->orderBy('id')
+            ->limit(100)
+            ->get()
+            ->map(fn (ServicePoint $servicePoint): array => [
+                'id' => $servicePoint->id,
+                'label' => $this->servicePointTransferLabel($servicePoint),
+                'name' => $servicePoint->name,
+                'display_number' => $servicePoint->display_number,
+                'zone_name' => $servicePoint->areaNode?->name,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'can_transfer' => true,
+            'available_service_points' => $availableServicePoints,
+        ];
+    }
+
+    private function servicePointTransferLabel(ServicePoint $servicePoint): string
+    {
+        $parts = [$servicePoint->name];
+
+        if (filled($servicePoint->display_number)) {
+            $parts[] = __('№ :number', ['number' => $servicePoint->display_number]);
+        }
+
+        if ($servicePoint->areaNode?->name) {
+            $parts[] = $servicePoint->areaNode->name;
+        }
+
+        return implode(' · ', $parts);
     }
 
     /**

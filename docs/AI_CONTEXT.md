@@ -2,6 +2,97 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 117 Active Table Session Transfer - 2026-06-04
+
+Prompt 117 added active table-session transfer to another free service point. It did not add routes, migrations, roles, permissions, guest accounts, direct kitchen/bar dispatch, online payments, Redis, WebSockets, S3, Docker, paid services, or external APIs.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Prompt 101: branch public profiles power the guest QR landing and guest table context.
+- Prompt 102: branch opening hours show guest open/closed status and block guest ordering while a configured branch is closed.
+- Prompt 103: temporary branch closed mode blocks new guest ordering while keeping QR and menu viewing available.
+- Prompt 104: menu schedules restrict guest ordering to active branch-timezone menu windows.
+- Prompt 105: guest menu payloads and UI support several active branch menus at once, grouped and sorted, while hiding inactive menus and respecting schedules.
+- Prompt 106: branch service modes can be enabled from branch settings using fixed values for dine-in, pickup, delivery, hotel room service, bar-only, and custom foundation scenarios.
+- Prompt 107: branch service point managers can bulk-create numbered service points with preview, duplicate `internal_code` skips, and no automatic QR generation.
+- Prompt 108: single service point QR print and branch bulk QR print support fixed browser print label design presets.
+- Prompt 109: users with `generate_qr` can search existing QR records by printed `short_code` from `/restaurant/qr-lookup`, scoped to accessible branches.
+- Prompt 110: the branch `Столы и места` page can search and filter service points and paginate results without loading every service point at once.
+- Prompt 111: the same page has a simple visual board that groups the currently loaded service point page by zone.
+- Prompt 112: branch staff managers can assign fixed `waiter` users to active branch `area_nodes`; waiter dashboard can filter to `My zones` or show `All zones`.
+- Prompt 113: a waiter can manually add positions to an active table, choose an active guest or create a manual guest name, create/reuse a waiter-review draft, and confirm it through the normal order snapshot flow.
+- Prompt 114: a guest entering a duplicate display name sees a warning and suggestions before a join request is created, while still being allowed to continue with the same display name intentionally.
+- Prompt 116: stale empty pending sessions can be cancelled safely, active sessions show waiter warnings after inactivity, and cleanup can run by scheduler or manual admin/superadmin action.
+- Prompt 117: staff with `view_orders` or `confirm_orders` branch access can transfer an active table session to another active free service point in the same branch without changing QR codes.
+- Prompt 280: waiter-side draft item adding respects menu availability schedules.
+
+Current tables:
+
+- No new table or column was added in Prompt 117.
+- Existing affected tables: `table_sessions`, `service_points`, `qr_codes`, `table_session_guests`, `draft_orders`, `orders`, `manual_payments`, and `audit_logs`.
+- Transfer updates `table_sessions.service_point_id`; `TableSession::booted()` keeps `active_service_point_id` pointed at the new service point for active sessions.
+- Transfer stores a short history in `table_sessions.metadata.transfers` and `table_sessions.metadata.last_transfer`.
+- Transfer writes `audit_logs.action = table_session_transferred` with old/new service point data.
+- Permanent QR rows stay attached to their original `service_point_id` and are not changed by transfer.
+- Full inventory still includes: `users`, `password_reset_tokens`, `sessions`, `cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `notifications`, `passkeys`, `roles`, `permissions`, `permission_role`, `role_user`, `permission_user_overrides`, `organizations`, `organization_subscriptions`, `organization_users`, `brands`, `branches`, `branch_settings`, `branch_users`, `area_node_waiters`, `invitations`, `branch_opening_hours`, `area_nodes`, `service_points`, `qr_codes`, `menus`, `menu_availability_schedules`, `menu_categories`, `menu_category_translations`, `menu_items`, `menu_item_translations`, `modifier_groups`, `modifier_options`, `menu_item_modifier_groups`, `kitchen_departments`, `table_session_guests`, `table_session_join_requests`, `waiter_calls`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, `manual_payments`, and `audit_logs`.
+
+Current routes:
+
+- No new routes were added in Prompt 117.
+- Waiter dashboard route remains `GET /restaurant/waiter/dashboard`.
+- Waiter table detail route remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Public QR route remains `GET /q/{token}` and still exposes no branch, service point, table, or guest IDs.
+- Invite links still use the existing `/q/{token}?invite={token}` route.
+
+Current Livewire components and actions:
+
+- New action: `App\Actions\TableSessions\TransferTableSessionAction`.
+- `App\Actions\Waiter\BuildWaiterTableDetailAction` now returns `transfer.can_transfer` and a bounded list of free active service points in the same branch.
+- `App\Livewire\Waiter\TableDetail` exposes `transferTargetServicePointId`, `transferFeedbackMessage`, and `transferTableSession()`.
+- `resources/views/livewire/waiter/table-detail.blade.php` shows the `Перенести стол` block when transfer is allowed.
+- `App\Livewire\PublicQr\Show` now restores existing guests and invite-link join flows by branch/session token rather than by the original QR service point, then updates the displayed guest landing service point from the current table session.
+
+Mandatory business rules:
+
+- One physical service point still owns one permanent QR; transfer must not change, reissue, disable, revoke, or regenerate QR codes.
+- Transfer changes the active session's current `service_point_id`, not the QR identity of either service point.
+- Only active table sessions can be transferred in this step.
+- Target service point must be active, free, in the same branch, and without a pending/active/payment open session.
+- Old service point becomes `free`; new service point becomes `occupied`.
+- Existing guests, drafts, orders, payments, kitchen tickets, and audit history stay preserved under the same table session.
+- Already-entered guests should see the current transferred place after refresh; fresh scans of a physical QR still start from that QR's physical service point.
+- Orders still require waiter confirmation before kitchen/bar dispatch.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Keep transfer queries selected, eager-loaded, branch-scoped, and bounded for SQLite.
+- Do not query from Blade.
+- No new infrastructure is required for transfer.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Prompt 117 notes:
+
+- Focused coverage: `tests/Feature/TableSessionTransferTest.php`.
+- Related verification: table-session close, guest table shell, audit log, and waiter open-table tests.
+- Verification run included SQLite migration status, route list, database driver config checks, and HTTP smoke for `/`, `/login`, and waiter dashboard redirect.
+
+Next recommended prompt:
+
+- Wait for the next explicit user prompt. If no new prompt is provided, do not continue feature work automatically; keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
+
 ## Prompt 116 Session Inactivity Cleanup - 2026-06-04
 
 Prompt 116 added safe inactivity cleanup for table sessions. It did not add new routes, guest accounts, roles, permissions, online payments, Redis, WebSockets, S3, Docker, paid services, external APIs, or automatic active-table closing.

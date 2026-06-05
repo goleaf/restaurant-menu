@@ -2,6 +2,17 @@
 
 ## 2026-06-04
 
+### Prompt 117 - Move Active Session To Another Service Point
+
+- Added active `table_session` transfer from the waiter table detail page.
+- Staff with `view_orders` or `confirm_orders` branch access can choose another free active service point in the same branch and move the session there.
+- Transfer updates `table_sessions.service_point_id`, frees the old service point, marks the new service point `occupied`, and preserves guests, drafts, orders, payments, and both service point QR codes.
+- Public QR guest restore/invite flows now show the current transferred service point for already-entered guests while normal fresh scans still use the physical QR service point.
+- Added `table_session_transferred` audit log entries with old/new service point data.
+- Touched modules/files: `App\Actions\TableSessions\TransferTableSessionAction`, `App\Enums\AuditLogAction`, `App\Actions\Waiter\BuildWaiterTableDetailAction`, `App\Livewire\Waiter\TableDetail`, waiter table detail Blade view, `App\Livewire\PublicQr\Show`, `tests/Feature/TableSessionTransferTest.php`, README, AI context, smoke checklist, and next-step notes.
+- Limitations: only active sessions can be moved; target service point must be active, free, in the same branch, and without an open session. No QR reissue, no new routes, no migrations, no Redis/WebSockets/S3/Docker, and no paid services were added.
+- Manual check: open an active waiter table, choose `Перенести стол`, select a free table, confirm old table becomes free, new table becomes occupied, guests see the new place after refresh, orders remain under the same session, and both QR public tokens stay unchanged.
+
 ### Prompt 116 - Session Inactivity Cleanup
 
 - Added branch-level inactivity settings: `inactivity_warning_minutes` and `pending_session_expire_minutes`.

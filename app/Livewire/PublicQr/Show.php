@@ -526,6 +526,7 @@ class Show extends Component
             $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
             $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
             $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
+            $this->syncLandingServicePointFromTableSession($tableSession);
 
             return;
         }
@@ -673,6 +674,7 @@ class Show extends Component
         $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
         $this->entryMessage = $this->messageForGuestAccess($guest, $tableSession);
         $this->entryIssueCode = $this->guestAccessIssueCode($guest, $tableSession);
+        $this->syncLandingServicePointFromTableSession($tableSession);
 
         session()->put('guest_entries.'.$qrCode->public_token, [
             'table_session_id' => $tableSession->id,
@@ -703,6 +705,7 @@ class Show extends Component
             : 'join_request_blocked';
         $this->entryMessage = $this->messageForJoinRequestAccess($joinRequest);
         $this->entryIssueCode = $this->joinRequestAccessIssueCode($joinRequest);
+        $this->syncLandingServicePointFromTableSession($tableSession);
 
         session()->put('guest_entries.'.$this->token, [
             'table_session_id' => $tableSession->id,
@@ -739,6 +742,7 @@ class Show extends Component
         $this->currentGuestId = null;
         $this->guestCanAddItems = false;
         $this->guestCanViewTable = false;
+        $this->syncLandingServicePointFromTableSession($tableSession);
 
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             $this->entryState = 'guest_invite_closed';
@@ -792,18 +796,22 @@ class Show extends Component
                 'left_at',
             ])
             ->with([
-                'tableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'status',
-                    'ended_at',
-                ]),
+                'tableSession' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                        'status',
+                        'ended_at',
+                    ])
+                    ->with([
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
             ])
             ->where('guest_token', $guestToken)
-            ->whereHas('tableSession', fn ($query) => $query
-                ->where('branch_id', $servicePoint->branch_id)
-                ->where('service_point_id', $servicePoint->id))
+            ->whereHas('tableSession', fn ($query) => $query->where('branch_id', $servicePoint->branch_id))
             ->first();
     }
 
@@ -823,18 +831,22 @@ class Show extends Component
                 'expires_at',
             ])
             ->with([
-                'tableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'status',
-                    'ended_at',
-                ]),
+                'tableSession' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'branch_id',
+                        'service_point_id',
+                        'status',
+                        'ended_at',
+                    ])
+                    ->with([
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                            ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
+                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                    ]),
             ])
             ->where('guest_token', $guestToken)
-            ->whereHas('tableSession', fn ($query) => $query
-                ->where('branch_id', $servicePoint->branch_id)
-                ->where('service_point_id', $servicePoint->id))
+            ->whereHas('tableSession', fn ($query) => $query->where('branch_id', $servicePoint->branch_id))
             ->first();
     }
 
@@ -854,8 +866,12 @@ class Show extends Component
                 'guest_invite_created_at',
                 'guest_invite_created_by_guest_id',
             ])
+            ->with([
+                'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
+                    ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
+                    ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+            ])
             ->where('branch_id', $servicePoint->branch_id)
-            ->where('service_point_id', $servicePoint->id)
             ->where('guest_invite_token', $inviteToken)
             ->first();
     }
@@ -1030,6 +1046,26 @@ class Show extends Component
             ->where('table_session_id', $joinRequest->table_session_id)
             ->where('guest_token', $joinRequest->guest_token)
             ->first();
+    }
+
+    private function syncLandingServicePointFromTableSession(TableSession $tableSession): void
+    {
+        $tableSession->loadMissing([
+            'servicePoint' => fn ($query) => $query
+                ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
+                ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+        ]);
+
+        $servicePoint = $tableSession->servicePoint;
+
+        if (! $servicePoint instanceof ServicePoint) {
+            return;
+        }
+
+        $this->landing['service_point_name'] = $servicePoint->name;
+        $this->landing['service_point_display_number'] = $servicePoint->display_number;
+        $this->landing['service_point_type'] = $servicePoint->type->label();
+        $this->landing['area_name'] = $servicePoint->areaNode?->name;
     }
 
     private function showError(string $state, string $title, string $message): void

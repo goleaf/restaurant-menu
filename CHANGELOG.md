@@ -12,6 +12,12 @@
 - Limitations: manual payments only; no Stripe, PayPal, online acquiring, shared allocation rules, new tables, new routes, Redis, WebSockets, S3, Docker, or paid services.
 - Manual check: open a payment-requested table with two guests and confirmed orders, mark one guest paid, confirm the other guest appears under unpaid guests, mark the second guest paid, and confirm the session becomes `paid`.
 
+### Docs - Daily Project Memory Update After Prompt 119
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 119 without adding product behavior.
+- Confirmed split bill by guests is now part of the manual offline payment baseline.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, permanent QR identity, and no Redis/WebSockets/S3/Docker or paid services.
+
 ### Prompt 118 - Merge Tables
 
 - Added merged table sessions so waiter/order staff can link additional free service points to one active `table_session`.

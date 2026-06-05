@@ -71,6 +71,8 @@ Prompt 119 notes:
 - Focused coverage: `tests/Feature/ManualPaymentTest.php`.
 - Related verification: table-session close and vertical slice flow tests.
 - Verification included a red test first for missing unpaid guest payload and item-based confirmed totals, then green focused regression.
+- Post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
+- Keep split bill manual-only until a future prompt explicitly asks for online payments or allocation rules.
 
 Next recommended prompt:
 

@@ -51,6 +51,15 @@ Manual check:
 7. Confirm no online payment provider, external service, Redis, WebSocket, S3,
    or Docker dependency is involved.
 
+## Daily Memory Update - 2026-06-05 After Prompt 119
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 119. Split bill by guests is now part of the manual offline payment
+baseline. Future prompts must preserve the guardrail that guest payment records
+store `manual_payments.table_session_guest_id` and that no online provider is
+used unless explicitly requested.
+
 ## Prompt 118 Merged Table Sessions Results
 
 Programmatic coverage was added in `tests/Feature/TableSessionMergeTest.php`.

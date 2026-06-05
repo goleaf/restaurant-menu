@@ -78,6 +78,7 @@ Prompt 120 notes:
 - Focused coverage: `tests/Feature/BranchSettingsTest.php` and `tests/Feature/ManualPaymentTest.php`.
 - Related verification: table-session close, vertical slice, audit log, data export, and basic analytics tests.
 - Verification included a red test first for missing service charge/tips snapshot behavior, then green focused and regression runs.
+- Post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 - Keep payments manual-only until a future prompt explicitly asks for online payment, tax, or allocation features.
 
 Next recommended prompt:

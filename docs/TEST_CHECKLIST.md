@@ -55,6 +55,15 @@ Manual check:
 7. Confirm no online payment provider, tax logic, external service, Redis,
    WebSocket, S3, Docker, or paid service is involved.
 
+## Daily Memory Update - 2026-06-05 After Prompt 120
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 120. Manual service charge and tips snapshots are now part of the manual
+offline payment baseline. Future prompts must preserve the guardrail that tips
+are optional extras and do not reduce the required subtotal/service-charge
+balance.
+
 ## Prompt 119 Split Bill By Guests Results
 
 Programmatic coverage was extended in `tests/Feature/ManualPaymentTest.php`.

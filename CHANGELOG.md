@@ -12,6 +12,12 @@
 - Limitations: manual/offline payments only; no tax logic, Stripe, PayPal, online acquiring, external service, new route, Redis, WebSocket, S3, Docker, or paid provider was added.
 - Manual check: enable service charge and tips in branch settings, open a payment-requested waiter table, confirm the service charge appears in the bill summary, record a table or guest payment with tips, then confirm payment history shows subtotal, service charge, tips, and the stable snapshot values.
 
+### Docs - Daily Project Memory Update After Prompt 120
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 120 without adding product behavior.
+- Confirmed manual service charge and tips snapshots are now part of the manual offline payment baseline.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, permanent QR identity, and no Redis/WebSockets/S3/Docker or paid services.
+
 ### Prompt 119 - Split Bill By Guests
 
 - Added explicit split-bill payment summary for waiter table detail.

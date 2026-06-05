@@ -49,9 +49,9 @@ Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, imp
 
 Latest memory refresh: 2026-06-05 after Prompt 120 manual service charge and tips. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, active-session transfer, merged table sessions, split bill by guests, and manual service charge/tips are now part of the baseline branch setup, guest entry, order-review, and manual-payment context.
 
-The memory refresh after Prompt 120 records the current manual bill-summary status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`.
+The memory refresh after Prompt 120 records the current manual bill-summary status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 
-Daily memory update after Prompt 119 confirmed the project remains on the shared-hosting baseline: SQLite, database cache/session/queue, local storage, Blade + Livewire UI, permanent physical service point QR codes, manual offline payments only, and no Redis/WebSockets/S3/Docker or paid services.
+Daily memory update after Prompt 120 confirmed the project remains on the shared-hosting baseline: SQLite, database cache/session/queue, local storage, Blade + Livewire UI, permanent physical service point QR codes, manual offline payments only, manual service charge/tips snapshots, and no Redis/WebSockets/S3/Docker or paid services.
 
 ## Manual Service Charge And Tips
 

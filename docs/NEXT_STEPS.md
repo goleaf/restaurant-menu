@@ -11,7 +11,7 @@ Last memory refresh: 2026-06-05 after Prompt 120 manual service charge and tips.
 Wait for the next explicit user prompt. Prompt 120 is complete; do not continue
 with new product behavior automatically.
 
-The separate post-feature daily memory update after Prompt 119 is complete.
+The separate post-feature daily memory update after Prompt 120 is complete.
 Keep this file as the source for next-prompt guardrails until the user gives a
 new prompt. The update was documentation-only and did not add product behavior.
 

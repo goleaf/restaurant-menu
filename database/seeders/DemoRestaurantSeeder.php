@@ -226,7 +226,12 @@ class DemoRestaurantSeeder extends Seeder
     private function ensureBranchSetup(Branch $branch): void
     {
         $settings = app(EnsureBranchSettingsAction::class)->handle($branch);
-        $settings->forceFill(BranchSetting::defaults($branch))->save();
+        $attributes = BranchSetting::factory()
+            ->demoReadyForService($branch)
+            ->make()
+            ->toArray();
+
+        $settings->forceFill($attributes)->save();
 
         app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
     }

@@ -1,10 +1,13 @@
 <?php
 
+use App\Enums\BranchOrderFlowMode;
+use App\Enums\BranchServiceMode;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -18,6 +21,7 @@ use App\Models\User;
 use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 test('demo restaurant seeder creates a runnable demo restaurant', function () {
     $this->seed(DemoRestaurantSeeder::class);
@@ -230,6 +234,47 @@ test('demo staff users are assigned to all or selected demo branches', function 
         ->and($waiter->canAccessBranch($branches->get('Coffee Bar Small Hall'), $organization))->toBeFalse();
 });
 
+test('demo restaurant seeder applies complete branch settings to every demo branch', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organization = Organization::query()
+        ->where('name', 'Demo Food Group')
+        ->firstOrFail();
+
+    $branches = Branch::query()
+        ->where('organization_id', $organization->id)
+        ->with('settings')
+        ->orderBy('name')
+        ->get();
+
+    expect($branches)->toHaveCount(4);
+
+    foreach ($branches as $branch) {
+        expect($branch->settings)->toBeInstanceOf(BranchSetting::class);
+
+        foreach (demoBranchSettingValues($branch) as $field => $expectedValue) {
+            expect($branch->settings->getAttribute($field))->toBe($expectedValue);
+        }
+    }
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect(BranchSetting::query()
+        ->whereIn('branch_id', $branches->pluck('id'))
+        ->count())->toBe(4);
+});
+
+test('branch settings have translated labels and descriptions', function () {
+    foreach (demoBranchSettingsTranslationLines() as $locale => $lines) {
+        foreach (demoBranchSettingTranslationFields() as $field) {
+            expect($lines)->toHaveKey("fields.branch_settings.$field.label")
+                ->and($lines["fields.branch_settings.$field.label"])->not->toBe('')
+                ->and($lines)->toHaveKey("fields.branch_settings.$field.description")
+                ->and($lines["fields.branch_settings.$field.description"])->not->toBe('');
+        }
+    }
+});
+
 test('demo restaurant seeder is idempotent', function () {
     $this->seed(DemoRestaurantSeeder::class);
     $this->seed(DemoRestaurantSeeder::class);
@@ -392,6 +437,94 @@ function demoBranchAssignments(): array
 function demoExpectedBranchAssignmentCount(): int
 {
     return collect(demoBranchAssignments())->sum(fn (array $branchNames): int => count($branchNames));
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function demoBranchSettingValues(Branch $branch): array
+{
+    $values = [
+        'allow_guest_created_sessions' => true,
+        'allow_waiter_opened_sessions' => true,
+        'guest_join_requires_approval' => true,
+        'allow_guest_invite_links' => true,
+        'require_waiter_confirmation_for_orders' => true,
+        'polling_interval_seconds' => 1,
+        'inactivity_warning_minutes' => 45,
+        'pending_session_expire_minutes' => 30,
+        'default_language' => 'en',
+        'default_currency' => $branch->currency,
+        'service_charge_enabled' => false,
+        'service_charge_percent' => '0.00',
+        'tips_enabled' => false,
+        'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation,
+        'service_modes' => BranchServiceMode::defaultValues(),
+    ];
+
+    foreach (demoOptionalBranchSettingValues() as $field => $value) {
+        if (Schema::hasColumn('branch_settings', $field)) {
+            $values[$field] = $value;
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function demoOptionalBranchSettingValues(): array
+{
+    return [
+        'allow_guest_bill_request' => true,
+        'allow_guest_waiter_call' => true,
+        'allow_repeat_orders_before_payment_request' => true,
+        'manual_payment_only' => true,
+    ];
+}
+
+/**
+ * @return list<string>
+ */
+function demoBranchSettingTranslationFields(): array
+{
+    return [
+        'allow_guest_created_sessions',
+        'allow_waiter_opened_sessions',
+        'guest_join_requires_approval',
+        'allow_guest_invite_links',
+        'require_waiter_confirmation_for_orders',
+        'polling_interval_seconds',
+        'inactivity_warning_minutes',
+        'pending_session_expire_minutes',
+        'default_language',
+        'default_currency',
+        'allow_guest_bill_request',
+        'allow_guest_waiter_call',
+        'allow_repeat_orders_before_payment_request',
+        'manual_payment_only',
+        'service_charge_enabled',
+        'service_charge_percent',
+        'tips_enabled',
+        'order_flow_mode',
+        'service_modes',
+    ];
+}
+
+/**
+ * @return array<string, array<string, string>>
+ */
+function demoBranchSettingsTranslationLines(): array
+{
+    return collect(['en', 'lt', 'ru'])
+        ->mapWithKeys(function (string $locale): array {
+            $path = base_path("lang/$locale.json");
+            $lines = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
+            return [$locale => $lines];
+        })
+        ->all();
 }
 
 /**

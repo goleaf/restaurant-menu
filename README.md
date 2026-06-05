@@ -51,6 +51,8 @@ Latest memory refresh: 2026-06-05 after Prompt 118 merged table sessions. Branch
 
 The memory refresh after Prompt 118 records the current merged-table-session status and keeps the next-step guardrails in `docs/NEXT_STEPS.md`. The post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 
+Daily memory update after Prompt 118 confirmed the project remains on the shared-hosting baseline: SQLite, database cache/session/queue, local storage, Blade + Livewire UI, permanent physical service point QR codes, and no Redis/WebSockets/S3/Docker or paid services.
+
 ## Merged Table Sessions
 
 Prompt 118 lets authorized waiter/order staff attach additional free service points to one active `table_session` from the waiter table detail screen.

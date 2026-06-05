@@ -61,6 +61,14 @@ Manual check:
 8. Confirm QR public tokens and QR `service_point_id` values for both physical
    places are unchanged.
 
+## Daily Memory Update - 2026-06-05 After Prompt 118
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 118. Merged table sessions are now part of the waiter/guest/QR baseline.
+Future prompts must preserve the guardrail that linking physical tables to one
+active session never changes permanent QR identity.
+
 ## Prompt 117 Active Table Session Transfer Results
 
 Programmatic coverage was added in `tests/Feature/TableSessionTransferTest.php`.

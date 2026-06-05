@@ -96,6 +96,7 @@ Prompt 118 notes:
 - Focused coverage: `tests/Feature/TableSessionMergeTest.php`.
 - Related verification: table-session transfer, waiter open table, table close, guest created session, and guest table shell tests.
 - Verification run included SQLite migration status, route list, database driver config checks, and HTTP smoke for `/`, `/login`, and waiter dashboard redirect.
+- Post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 
 Next recommended prompt:
 

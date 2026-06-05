@@ -14,6 +14,12 @@
 - Limitations: this step only adds linking/merge into one active session; it does not add a separate unmerge UI, table-combination billing rules, drag-and-drop floor plans, new QR rules, Redis/WebSockets/S3/Docker, or paid services.
 - Manual check: open an active table, merge a free service point, confirm both places show occupied, scan the linked service point QR in a fresh browser, confirm it requests entry to the same session, close the table, and confirm both service points become free while both QR public tokens remain unchanged.
 
+### Docs - Daily Project Memory Update After Prompt 118
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 118 without adding product behavior.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue and local public storage only.
+- Recorded merged table sessions as part of the waiter/guest/QR baseline and kept future work blocked until the next explicit prompt.
+
 ## 2026-06-04
 
 ### Prompt 117 - Move Active Session To Another Service Point

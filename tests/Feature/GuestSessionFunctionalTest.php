@@ -111,11 +111,12 @@ test('active guest approves join request and approved guest sees table page', fu
             'tableSessionId' => $tableSession->id,
             'guestId' => $activeGuest->id,
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->assertSet('canModerate', true)
         ->assertSeeText('Lina')
         ->call('approve', $joinRequest->id)
-        ->assertSeeText('Гость Lina теперь за столом.');
+        ->assertSeeText('Guest approved.');
 
     $approvedGuest = TableSessionGuest::query()
         ->where('guest_token', $joinRequest->guest_token)
@@ -156,9 +157,10 @@ test('active guest rejects join request and rejected guest cannot add items', fu
             'tableSessionId' => $tableSession->id,
             'guestId' => $activeGuest->id,
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->call('reject', $joinRequest->id)
-        ->assertSeeText('Запрос гостя Nina отклонён.');
+        ->assertSeeText('Guest rejected.');
 
     $waitingGuest
         ->call('refreshJoinRequestStatus')
@@ -213,10 +215,10 @@ test('closed session blocks old guest actions and fresh qr scan can start a new 
     [$qrCode, $branch, $tableSession, $activeGuest] = createPrompt353ActiveTableContext();
     $menuItem = createPrompt353MenuItem($branch);
 
-    $tableSession->update([
+    $tableSession->forceFill([
         'status' => TableSessionStatus::Closed,
         'ended_at' => now(),
-    ]);
+    ])->save();
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $activeGuest->guest_token)
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])

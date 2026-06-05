@@ -5,8 +5,8 @@
 >
     <div class="flex items-start justify-between gap-3">
         <div>
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Статус') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Что с заказом') }}</h2>
+            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.status') }}</p>
+            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.order_status_title') }}</h2>
         </div>
 
         <span @class([
@@ -29,15 +29,15 @@
         'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-100' => $overallStatusTone === 'red',
         'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $overallStatusTone === 'zinc',
     ])>
-        <p class="font-semibold">{{ __('Статус заказа') }}: {{ $overallStatusLabel }}</p>
+        <p class="font-semibold">{{ __('guest.table.order_status') }}: {{ $overallStatusLabel }}</p>
         <p class="pt-1">{{ $overallStatusDescription }}</p>
 
         @if ($draftStatusValue === 'rejected' && $rejectionReason)
-            <p class="pt-2 font-medium">{{ __('Причина') }}: {{ $rejectionReason }}</p>
+            <p class="pt-2 font-medium">{{ __('guest.table.reason') }}: {{ $rejectionReason }}</p>
         @endif
 
         @if ($serviceStatusValue === 'cancelled' && $cancellationReason)
-            <p class="pt-2 font-medium">{{ __('Причина') }}: {{ $cancellationReason }}</p>
+            <p class="pt-2 font-medium">{{ __('guest.table.reason') }}: {{ $cancellationReason }}</p>
         @endif
     </div>
 
@@ -73,8 +73,8 @@
 
     <div class="mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800">
         <div class="flex items-center justify-between gap-3">
-            <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Позиции') }}</h3>
-            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Обновляется автоматически') }}</span>
+            <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('guest.cart.my_items') }}</h3>
+            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('guest.table.auto_updates') }}</span>
         </div>
 
         @forelse ($itemStatuses as $item)
@@ -83,7 +83,7 @@
                     <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $item['name'] }}</p>
                         <p class="pt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            {{ $item['guest_name'] }} · {{ __('Кол-во') }}: {{ $item['quantity'] }}
+                            {{ $item['guest_name'] }} · {{ __('guest.cart.quantity_short') }}: {{ $item['quantity'] }}
                         </p>
                     </div>
 
@@ -103,13 +103,13 @@
 
                 @if ($item['comment'])
                     <p class="mt-2 rounded-md bg-white px-2 py-1.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                        {{ __('Комментарий') }}: {{ $item['comment'] }}
+                        {{ __('guest.cart.comment') }}: {{ $item['comment'] }}
                     </p>
                 @endif
             </div>
         @empty
             <p class="mt-3 rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-300">
-                {{ __('Пока позиций нет. Когда гости добавят блюда, здесь появятся их статусы.') }}
+                {{ __('guest.statuses.items.empty') }}
             </p>
         @endforelse
     </div>

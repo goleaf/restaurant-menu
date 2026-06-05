@@ -68,10 +68,11 @@ test('ready kitchen items appear for waiter and can be marked served', function 
         'currentGuestId' => $guest->id,
         'currency' => 'EUR',
         'publicToken' => 'prompt63publictoken',
+        'language' => 'en',
     ])
         ->assertSet('serviceStatusValue', 'ready')
-        ->assertSee('Статус заказа')
-        ->assertSee('Готово');
+        ->assertSee('Order status')
+        ->assertSee('Ready');
 
     Livewire::actingAs($waiter)
         ->test(WaiterTableDetail::class, ['tableSession' => $tableSession])
@@ -102,10 +103,11 @@ test('ready kitchen items appear for waiter and can be marked served', function 
         'currentGuestId' => $guest->id,
         'currency' => 'EUR',
         'publicToken' => 'prompt63publictoken',
+        'language' => 'en',
     ])
         ->assertSet('serviceStatusValue', 'served')
-        ->assertSee('Статус заказа')
-        ->assertSee('Подано');
+        ->assertSee('Order status')
+        ->assertSee('Served');
 });
 
 function createPrompt63ReadyItemScenario(): array

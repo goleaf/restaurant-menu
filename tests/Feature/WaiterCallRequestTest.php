@@ -65,7 +65,7 @@ test('active guest can request waiter and waiter handles the database notificati
         ->assertSeeText('Call waiter')
         ->call('requestWaiter')
         ->assertSet('waiterCallPending', true)
-        ->assertSeeText('Официант получил вызов.');
+        ->assertSeeText('The waiter has been called.');
 
     $waiterCall = WaiterCall::query()->firstOrFail();
 
@@ -104,13 +104,13 @@ test('active guest can request waiter and waiter handles the database notificati
 test('non active guest cannot request waiter from an old guest token', function () {
     [$qrCode, , , $activeGuest, $waiter] = createPrompt65WaiterCallContext();
 
-    $activeGuest->update(['status' => TableSessionGuestStatus::Removed]);
+    $activeGuest->forceFill(['status' => TableSessionGuestStatus::Removed])->save();
 
     Livewire::withCookie(prompt65GuestCookieName($qrCode), $activeGuest->guest_token)
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->call('requestWaiter')
         ->assertSet('waiterCallPending', false)
-        ->assertSet('waiterCallMessage', 'Только активный гость за этим столом может позвать официанта.');
+        ->assertSet('waiterCallMessage', 'Only an active guest at this table can call the waiter.');
 
     expect(WaiterCall::query()->exists())->toBeFalse()
         ->and($waiter->notifications()->exists())->toBeFalse();

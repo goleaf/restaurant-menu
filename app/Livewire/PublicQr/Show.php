@@ -200,8 +200,8 @@ class Show extends Component
         if ($organization->subscription?->status === OrganizationSubscriptionStatus::Inactive) {
             $this->showError(
                 state: 'restaurant_unavailable',
-                title: __('Restaurant is temporarily unavailable'),
-                message: __('Please ask the staff when service will resume.'),
+                title: __('guest.table.restaurant_unavailable_title'),
+                message: __('guest.table.restaurant_unavailable_message'),
             );
 
             return;
@@ -221,7 +221,7 @@ class Show extends Component
         $venueName = $branch->publicDisplayName();
         $publicDescription = filled($branch->public_description)
             ? (string) $branch->public_description
-            : __('Restaurant details will appear here soon.');
+            : __('guest.table.restaurant_description_placeholder');
         $logoUrl = $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl();
         $contactLinks = [
             'phone' => $this->nullableLandingString($branch->phone),
@@ -235,8 +235,8 @@ class Show extends Component
         $this->state = 'ready';
         $this->title = $venueName;
         $this->message = $this->currentInviteToken === null
-            ? __('Enter your name to continue.')
-            : __('Введите имя, чтобы попроситься к этому столу.');
+            ? __('guest.table.enter_name')
+            : __('guest.table.invite_request_name');
         $this->landing = [
             'organization_name' => $organization->name,
             'brand_name' => $brand->name,
@@ -333,9 +333,9 @@ class Show extends Component
         $validated = $this->validate([
             'guestName' => ['required', 'string', 'min:2', 'max:80'],
         ], [
-            'guestName.required' => __('Введите имя, чтобы войти за стол.'),
-            'guestName.min' => __('Имя должно содержать минимум 2 символа.'),
-            'guestName.max' => __('Имя должно быть не длиннее 80 символов.'),
+            'guestName.required' => __('guest.table.enter_name_validation'),
+            'guestName.min' => __('guest.table.guest_name_min'),
+            'guestName.max' => __('guest.table.guest_name_max'),
         ]);
 
         $this->preparedGuestName = str($validated['guestName'])->squish()->toString();
@@ -437,7 +437,7 @@ class Show extends Component
         $guest = $this->findCurrentActiveGuestForInvite();
 
         if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest) {
-            $this->guestInviteMessage = __('Только активный гость за этим столом может пригласить нового гостя.');
+            $this->guestInviteMessage = __('guest.table.invite_requires_active_guest');
 
             return;
         }
@@ -463,7 +463,7 @@ class Show extends Component
         $guest = $this->findCurrentActiveGuestForInvite();
 
         if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest) {
-            $this->waiterCallMessage = __('Только активный гость за этим столом может позвать официанта.');
+            $this->waiterCallMessage = __('guest.table.waiter_requires_active_guest');
             $this->waiterCallPending = false;
 
             return;
@@ -479,7 +479,7 @@ class Show extends Component
         }
 
         $this->waiterCallPending = $waiterCall->status === WaiterCallStatus::Pending;
-        $this->waiterCallMessage = __('Официант получил вызов. Пожалуйста, подождите.');
+        $this->waiterCallMessage = __('guest.table.waiter_called');
     }
 
     public function refreshJoinRequestStatus(): void
@@ -733,7 +733,7 @@ class Show extends Component
         if (! $tableSession instanceof TableSession) {
             $this->entryState = 'guest_invite_invalid';
             $this->entryIssueCode = 'invite_expired';
-            $this->entryMessage = __('Ссылка приглашения больше не активна. Пожалуйста, попросите гостей отправить новую ссылку или отсканируйте QR-код на месте.');
+            $this->entryMessage = __('guest.table.invite_expired_message');
             $this->currentTableSessionId = null;
             $this->currentGuestId = null;
             $this->currentJoinRequestId = null;
@@ -752,7 +752,7 @@ class Show extends Component
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             $this->entryState = 'guest_invite_closed';
             $this->entryIssueCode = 'invite_closed';
-            $this->entryMessage = __('Эта сессия стола уже закрыта. Пожалуйста, попросите гостей отправить новую ссылку.');
+            $this->entryMessage = __('guest.table.session_closed');
             $this->currentJoinRequestId = null;
 
             return;
@@ -768,7 +768,7 @@ class Show extends Component
         if (! $joinRequest instanceof TableSessionJoinRequest) {
             $this->entryState = 'guest_invite_unavailable';
             $this->entryIssueCode = 'invite_unavailable';
-            $this->entryMessage = __('Сейчас за столом нет активных гостей для подтверждения входа.');
+            $this->entryMessage = __('guest.table.no_active_guest_approvers');
             $this->currentJoinRequestId = null;
 
             return;
@@ -1132,7 +1132,7 @@ class Show extends Component
     private function fillGuestInviteShareState(TableSession $tableSession): void
     {
         if (! is_string($tableSession->guest_invite_token) || strlen($tableSession->guest_invite_token) !== 64) {
-            $this->guestInviteMessage = __('Не удалось создать ссылку приглашения.');
+            $this->guestInviteMessage = __('guest.table.invite_failed');
 
             return;
         }
@@ -1142,11 +1142,11 @@ class Show extends Component
             'invite' => $tableSession->guest_invite_token,
             'lang' => $this->language,
         ]);
-        $this->guestInviteTitle = __('Приглашение за стол');
-        $this->guestInviteText = __('Присоединяйтесь к столу в :venue. Откройте ссылку и введите имя, чтобы текущие гости подтвердили вход.', [
+        $this->guestInviteTitle = __('guest.table.invite_title');
+        $this->guestInviteText = __('guest.table.invite_text', [
             'venue' => $this->landing['venue_name'] ?: config('app.name', 'Restaurant'),
         ]);
-        $this->guestInviteMessage = __('Ссылка приглашения готова.');
+        $this->guestInviteMessage = __('guest.table.invite_link_ready');
     }
 
     private function guestTokenFromCurrentCookie(): ?string
@@ -1175,7 +1175,7 @@ class Show extends Component
     {
         $messages = collect($exception->errors())->flatten();
 
-        return (string) ($messages->first() ?? __('Не удалось создать ссылку приглашения.'));
+        return (string) ($messages->first() ?? __('guest.table.invite_failed'));
     }
 
     private function pauseForGuestNameConflict(TableSession $tableSession, string $guestName): bool
@@ -1368,15 +1368,15 @@ class Show extends Component
     private function messageForGuestAccess(TableSessionGuest $guest, TableSession $tableSession): string
     {
         if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
-            return __('Эта сессия стола уже закрыта. Пожалуйста, обратитесь к официанту.');
+            return __('guest.table.session_closed');
         }
 
         return match ($guest->status) {
-            TableSessionGuestStatus::Active => __('Вы уже за этим столом. Ваш вход сохранён.'),
-            TableSessionGuestStatus::PendingApproval => __('Ваше присоединение ожидает подтверждения текущими гостями.'),
-            TableSessionGuestStatus::Rejected => __('Ваше присоединение к этому столу не подтверждено.'),
-            TableSessionGuestStatus::Removed => __('Вы были удалены из этой сессии стола.'),
-            TableSessionGuestStatus::Left => __('Вы уже покинули эту сессию стола.'),
+            TableSessionGuestStatus::Active => __('guest.table.entry_saved'),
+            TableSessionGuestStatus::PendingApproval => __('guest.table.waiting_for_approval'),
+            TableSessionGuestStatus::Rejected => __('guest.table.rejected_message'),
+            TableSessionGuestStatus::Removed => __('guest.table.removed_message'),
+            TableSessionGuestStatus::Left => __('guest.table.left_message'),
         };
     }
 
@@ -1400,14 +1400,14 @@ class Show extends Component
         if ($joinRequest->status === TableSessionJoinRequestStatus::Pending
             && $joinRequest->expires_at !== null
             && $joinRequest->expires_at->isPast()) {
-            return __('Ваш запрос на присоединение истёк. Пожалуйста, отправьте новый запрос.');
+            return __('guest.table.join_request_expired');
         }
 
         return match ($joinRequest->status) {
-            TableSessionJoinRequestStatus::Pending => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
-            TableSessionJoinRequestStatus::Approved => __('Ваш запрос на присоединение подтверждён.'),
-            TableSessionJoinRequestStatus::Rejected => __('Ваш запрос на присоединение отклонён.'),
-            TableSessionJoinRequestStatus::Expired => __('Ваш запрос на присоединение истёк. Пожалуйста, отправьте новый запрос.'),
+            TableSessionJoinRequestStatus::Pending => __('guest.table.join_request_sent'),
+            TableSessionJoinRequestStatus::Approved => __('guest.table.join_request_approved'),
+            TableSessionJoinRequestStatus::Rejected => __('guest.table.rejected_message'),
+            TableSessionJoinRequestStatus::Expired => __('guest.table.join_request_expired'),
         };
     }
 
@@ -1428,12 +1428,12 @@ class Show extends Component
     private function messageForEntryState(GuestTableEntryState $state): string
     {
         return match ($state) {
-            GuestTableEntryState::PendingSessionCreated => __('Стол ожидает подтверждения официанта. Заказы пока не отправляются на кухню или бар.'),
-            GuestTableEntryState::ActiveSessionExists => __('Стол уже открыт. На следующем этапе здесь появится запрос на присоединение.'),
-            GuestTableEntryState::PendingSessionExists => __('Стол уже ожидает подтверждения официанта. На следующем этапе здесь появится присоединение к текущей сессии.'),
-            GuestTableEntryState::JoinRequestCreated => __('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.'),
-            GuestTableEntryState::GuestCreatedSessionsDisabled => __('Открытие стола гостем отключено. Пожалуйста, позовите официанта.'),
-            GuestTableEntryState::ServicePointUnavailable => __('Это место сейчас недоступно. Пожалуйста, обратитесь к персоналу.'),
+            GuestTableEntryState::PendingSessionCreated => __('guest.table.pending_session_created'),
+            GuestTableEntryState::ActiveSessionExists => __('guest.table.active_session_exists'),
+            GuestTableEntryState::PendingSessionExists => __('guest.table.pending_session_exists'),
+            GuestTableEntryState::JoinRequestCreated => __('guest.table.join_request_sent'),
+            GuestTableEntryState::GuestCreatedSessionsDisabled => __('guest.table.guest_created_sessions_disabled'),
+            GuestTableEntryState::ServicePointUnavailable => __('guest.table.service_point_unavailable'),
         };
     }
 
@@ -1465,7 +1465,7 @@ class Show extends Component
             'title' => $this->title,
             'message' => $this->message,
             'support_text' => $this->supportTextForPageErrorState($state),
-            'primary_label' => $state === 'not_found' ? __('Open start page') : __('Try again'),
+            'primary_label' => $state === 'not_found' ? __('guest.table.open_start_page') : __('guest.table.try_again'),
             'primary_url' => $state === 'not_found' ? route('guest.home') : $this->currentPublicQrUrl(),
             'secondary_label' => null,
             'secondary_url' => null,
@@ -1489,7 +1489,7 @@ class Show extends Component
             'title' => $this->titleForEntryIssueCode($this->entryIssueCode),
             'message' => $this->entryMessage,
             'support_text' => $this->supportTextForEntryIssueCode($this->entryIssueCode),
-            'primary_label' => __('Return to QR page'),
+            'primary_label' => __('guest.table.return_to_qr_page'),
             'primary_url' => $this->currentPublicQrUrl(withoutInvite: true),
             'secondary_label' => null,
             'secondary_url' => null,
@@ -1544,9 +1544,9 @@ class Show extends Component
             'not_found' => __('QR access'),
             'disabled',
             'revoked' => __('QR access paused'),
-            'inactive_service_point' => __('Place unavailable'),
+            'inactive_service_point' => __('guest.table.place_unavailable'),
             'restaurant_unavailable' => __('Restaurant unavailable'),
-            default => __('Guest access'),
+            default => __('guest.table.guest_access'),
         };
     }
 
@@ -1566,16 +1566,16 @@ class Show extends Component
     {
         return match ($issueCode) {
             'session_closed',
-            'invite_closed' => __('Table closed'),
+            'invite_closed' => __('guest.table.table_closed'),
             'guest_rejected',
             'guest_removed',
-            'guest_left' => __('Guest access'),
+            'guest_left' => __('guest.table.guest_access'),
             'invite_expired',
-            'join_request_unavailable' => __('Invite link'),
-            'service_point_unavailable' => __('Place unavailable'),
+            'join_request_unavailable' => __('guest.table.invite_link'),
+            'service_point_unavailable' => __('guest.table.place_unavailable'),
             'guest_created_sessions_disabled',
-            'invite_unavailable' => __('Ask the staff'),
-            default => __('Guest access'),
+            'invite_unavailable' => __('guest.table.ask_staff'),
+            default => __('guest.table.guest_access'),
         };
     }
 
@@ -1583,16 +1583,16 @@ class Show extends Component
     {
         return match ($issueCode) {
             'session_closed',
-            'invite_closed' => __('This table session is closed'),
-            'guest_rejected' => __('Guest access was not approved'),
-            'guest_removed' => __('Guest access was removed'),
-            'guest_left' => __('You have left this table'),
+            'invite_closed' => __('guest.table.closed_session_title'),
+            'guest_rejected' => __('guest.table.rejected_title'),
+            'guest_removed' => __('guest.table.removed_title'),
+            'guest_left' => __('guest.table.guest_left_title'),
             'invite_expired',
-            'join_request_unavailable' => __('Invite link has expired'),
+            'join_request_unavailable' => __('guest.table.invite_expired_title'),
             'service_point_unavailable' => __('This place is temporarily unavailable'),
-            'guest_created_sessions_disabled' => __('Please ask a waiter to open this table'),
-            'invite_unavailable' => __('No active guests can approve this invite'),
-            default => __('Guest access is unavailable'),
+            'guest_created_sessions_disabled' => __('guest.table.ask_waiter_open_table_title'),
+            'invite_unavailable' => __('guest.table.no_active_guest_approvers_title'),
+            default => __('guest.table.guest_access_unavailable_title'),
         };
     }
 
@@ -1600,16 +1600,16 @@ class Show extends Component
     {
         return match ($issueCode) {
             'session_closed',
-            'invite_closed' => __('A closed table keeps its old orders, but it cannot accept new guest actions.'),
+            'invite_closed' => __('guest.table.closed_session_description'),
             'guest_rejected',
             'guest_removed',
-            'guest_left' => __('You cannot add items from this guest entry. Please ask the table or staff for help.'),
+            'guest_left' => __('guest.table.guest_entry_blocked_description'),
             'invite_expired',
-            'join_request_unavailable' => __('Ask an active guest to share a new invite link, or scan the QR code at the table.'),
+            'join_request_unavailable' => __('guest.table.invite_expired_description'),
             'service_point_unavailable' => __('Ordering from this place is paused until staff reopens it.'),
             'guest_created_sessions_disabled',
-            'invite_unavailable' => __('A staff member can help you continue from this table.'),
-            default => __('Please ask the staff for help.'),
+            'invite_unavailable' => __('guest.table.staff_help_description'),
+            default => __('guest.table.staff_help'),
         };
     }
 
@@ -1642,7 +1642,7 @@ class Show extends Component
         }
 
         $this->message = $this->currentInviteToken === null
-            ? __('Enter your name to continue.')
-            : __('Введите имя, чтобы попроситься к этому столу.');
+            ? __('guest.table.enter_name')
+            : __('guest.table.invite_request_name');
     }
 }

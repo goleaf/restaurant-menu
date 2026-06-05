@@ -43,6 +43,7 @@ test('active guest can request bill and waiter sees the request', function () {
             'currentGuestId' => $ana->id,
             'currency' => 'EUR',
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->assertSet('tableTotalAmount', '37.50')
         ->assertSet('guestSections.0.guest_name', 'Ana')
@@ -53,11 +54,11 @@ test('active guest can request bill and waiter sees the request', function () {
         ->assertSet('guestSections.1.confirmed_total', '12.00')
         ->assertSet('guestSections.1.total', '12.00')
         ->assertSet('canRequestBill', true)
-        ->assertSee('Попросить счёт')
+        ->assertSee('Ask for bill')
         ->call('requestBill')
         ->assertSet('billRequested', true)
         ->assertSet('canRequestBill', false)
-        ->assertSee('Счёт запрошен')
+        ->assertSee('The waiter has been asked to bring the bill.')
         ->assertSee('37.50 EUR');
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::PaymentRequested)
@@ -89,7 +90,7 @@ test('active guest can request bill and waiter sees the request', function () {
 test('non active guest cannot request bill from an old token', function () {
     [$qrCode, $servicePoint, $tableSession, $ana, $waiter] = createPrompt66BillRequestContext();
 
-    $ana->update(['status' => TableSessionGuestStatus::Removed]);
+    $ana->forceFill(['status' => TableSessionGuestStatus::Removed])->save();
 
     Livewire::withCookie(prompt66GuestCookieName($qrCode), $ana->guest_token)
         ->test(GuestDraftOrder::class, [
@@ -97,6 +98,7 @@ test('non active guest cannot request bill from an old token', function () {
             'currentGuestId' => $ana->id,
             'currency' => 'EUR',
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->call('requestBill')
         ->assertHasErrors(['bill_request']);

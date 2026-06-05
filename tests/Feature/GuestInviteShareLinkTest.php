@@ -34,7 +34,7 @@ test('active guest can create an invite share link for current table session', f
         ->assertSet('currentGuestId', $activeGuest->id)
         ->assertSeeText('Invite guest')
         ->call('createGuestInviteLink')
-        ->assertSeeText('Ссылка приглашения готова.')
+        ->assertSeeText('Invite link is ready.')
         ->assertSeeText('Copy link')
         ->assertSee('navigator.share', false);
 
@@ -63,7 +63,7 @@ test('guest invite link opens landing and creates a pending join request', funct
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('currentInviteToken', $inviteToken)
-        ->assertSeeText('Enter your name to request access to this table.')
+        ->assertSeeText('Enter your name to ask to join this table.')
         ->set('guestName', '  Jonas  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -71,7 +71,7 @@ test('guest invite link opens landing and creates a pending join request', funct
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', null)
         ->assertSet('guestCanAddItems', false)
-        ->assertSeeText('Запрос на присоединение отправлен.')
+        ->assertSeeText('Request sent. Waiting for guests at the table.')
         ->assertSeeText('Request sent');
 
     $joinRequest = TableSessionJoinRequest::query()->firstOrFail();

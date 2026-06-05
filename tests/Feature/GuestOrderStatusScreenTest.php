@@ -37,36 +37,36 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
         'tableSessionId' => $tableSession->id,
         'pollingIntervalSeconds' => 1,
     ])
-        ->assertSet('overallStatusLabel', 'Вы выбираете')
-        ->assertSet('itemStatuses.0.status_label', 'В черновике')
-        ->assertSeeText('Вы выбираете')
+        ->assertSet('overallStatusLabel', 'Choosing items')
+        ->assertSet('itemStatuses.0.status_label', 'In draft')
+        ->assertSeeText('Choosing items')
         ->assertSeeText('Маргарита')
-        ->assertSeeText('В черновике');
+        ->assertSeeText('In draft');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'draft')['state'])->toBe('current');
 
-    $draftOrder->update([
+    $draftOrder->forceFill([
         'status' => DraftOrderStatus::SentToWaiter,
         'sent_to_waiter_at' => now(),
         'sent_by_guest_id' => $guest->id,
-    ]);
+    ])->save();
 
     $component
         ->call('refreshOrderStatuses')
-        ->assertSet('overallStatusLabel', 'Отправлено официанту')
-        ->assertSet('itemStatuses.0.status_label', 'Ждёт официанта')
-        ->assertSeeText('Отправлено официанту')
-        ->assertSeeText('Ждёт официанта');
+        ->assertSet('overallStatusLabel', 'Sent to waiter')
+        ->assertSet('itemStatuses.0.status_label', 'Waiting for waiter')
+        ->assertSeeText('Sent to waiter')
+        ->assertSeeText('Waiting for waiter');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'sent_to_waiter')['state'])->toBe('current');
 
-    $draftOrder->update(['status' => DraftOrderStatus::WaiterReview]);
+    $draftOrder->forceFill(['status' => DraftOrderStatus::WaiterReview])->save();
 
     $component
         ->call('refreshOrderStatuses')
-        ->assertSet('overallStatusLabel', 'Официант проверяет')
-        ->assertSet('itemStatuses.0.status_label', 'Официант проверяет')
-        ->assertSeeText('Официант проверяет');
+        ->assertSet('overallStatusLabel', 'Waiter review')
+        ->assertSet('itemStatuses.0.status_label', 'Waiter review')
+        ->assertSeeText('Waiter review');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'waiter_review')['state'])->toBe('current');
 });
@@ -83,9 +83,9 @@ test('guest sees accepted cooking ready and served item statuses', function () {
         'tableSessionId' => $tableSession->id,
         'pollingIntervalSeconds' => 1,
     ])
-        ->assertSet('overallStatusLabel', 'Заказ принят')
-        ->assertSet('itemStatuses.0.status_label', 'Заказ принят')
-        ->assertSeeText('Заказ принят')
+        ->assertSet('overallStatusLabel', 'Order accepted')
+        ->assertSet('itemStatuses.0.status_label', 'Order accepted')
+        ->assertSeeText('Order accepted')
         ->assertSeeText('Суп дня');
 
     $order->update(['status' => OrderStatus::InProgress]);
@@ -109,37 +109,37 @@ test('guest sees accepted cooking ready and served item statuses', function () {
         'tableSessionId' => $tableSession->id,
         'pollingIntervalSeconds' => 1,
     ])
-        ->assertSet('overallStatusLabel', 'Готовится')
-        ->assertSet('itemStatuses.0.status_label', 'Принято')
-        ->assertSet('itemStatuses.1.status_label', 'Готовится')
-        ->assertSet('itemStatuses.2.status_label', 'Готово')
-        ->assertSet('itemStatuses.3.status_label', 'Подано')
-        ->assertSeeText('Принято')
-        ->assertSeeText('Готовится')
-        ->assertSeeText('Готово')
-        ->assertSeeText('Подано');
+        ->assertSet('overallStatusLabel', 'Cooking')
+        ->assertSet('itemStatuses.0.status_label', 'Accepted')
+        ->assertSet('itemStatuses.1.status_label', 'Cooking')
+        ->assertSet('itemStatuses.2.status_label', 'Ready')
+        ->assertSet('itemStatuses.3.status_label', 'Served')
+        ->assertSeeText('Accepted')
+        ->assertSeeText('Cooking')
+        ->assertSeeText('Ready')
+        ->assertSeeText('Served');
 });
 
 test('guest sees whole table bill and paid statuses', function () {
     [$tableSession] = createPrompt124TableSession();
 
-    $tableSession->update(['status' => TableSessionStatus::PaymentRequested]);
+    $tableSession->forceFill(['status' => TableSessionStatus::PaymentRequested])->save();
 
     $component = Livewire::test(OrderStatuses::class, [
         'tableSessionId' => $tableSession->id,
         'pollingIntervalSeconds' => 1,
     ])
-        ->assertSet('overallStatusLabel', 'Счёт запрошен')
-        ->assertSeeText('Счёт запрошен');
+        ->assertSet('overallStatusLabel', 'Bill requested')
+        ->assertSeeText('Bill requested');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'bill')['state'])->toBe('current');
 
-    $tableSession->update(['status' => TableSessionStatus::Paid]);
+    $tableSession->update(['status' => TableSessionStatus::Paid])->save();
 
     $component
         ->call('refreshOrderStatuses')
-        ->assertSet('overallStatusLabel', 'Оплачено')
-        ->assertSeeText('Оплачено');
+        ->assertSet('overallStatusLabel', 'Paid')
+        ->assertSeeText('Paid');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'paid')['state'])->toBe('current');
 });

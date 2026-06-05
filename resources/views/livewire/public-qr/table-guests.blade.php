@@ -6,8 +6,8 @@
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-center justify-between gap-3">
         <div class="min-w-0">
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Гости') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('За столом') }}</h2>
+            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.guests') }}</p>
+            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.title') }}</h2>
         </div>
 
         <x-ui.status-badge tone="muted" size="lg">
@@ -29,7 +29,7 @@
 
                         @if ($guest['is_current'])
                             <x-ui.status-badge tone="success">
-                                {{ __('Вы') }}
+                                {{ __('guest.table.you') }}
                             </x-ui.status-badge>
                         @endif
                     </div>
@@ -47,7 +47,7 @@
             </article>
         @empty
             <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
-                {{ __('Пока никого нет за столом.') }}
+                {{ __('guest.table.no_guests') }}
             </p>
         @endforelse
     </div>

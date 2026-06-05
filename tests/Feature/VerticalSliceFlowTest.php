@@ -159,7 +159,7 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSet('currentGuestId', $firstGuest->id)
         ->call('createGuestInviteLink')
         ->assertHasNoErrors()
-        ->assertSeeText('Ссылка приглашения готова.');
+        ->assertSeeText('Invite link is ready.');
 
     $inviteToken = $tableSession->fresh()->guest_invite_token;
 
@@ -192,12 +192,13 @@ test('first vertical slice works from registration to closed table session', fun
             'tableSessionId' => $tableSession->id,
             'guestId' => $firstGuest->id,
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->assertSet('canModerate', true)
         ->assertSeeText('Boris')
         ->call('approve', $joinRequest->id)
         ->assertHasNoErrors()
-        ->assertSeeText('Гость Boris теперь за столом.');
+        ->assertSeeText('Guest approved.');
 
     $secondGuest = TableSessionGuest::query()
         ->select(['id', 'table_session_id', 'guest_name', 'guest_token', 'status'])
@@ -230,7 +231,7 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSee('Vertical Lemonade')
         ->call('sendDraftToWaiter', true)
         ->assertHasNoErrors()
-        ->assertSee('Заказ отправлен официанту.');
+        ->assertSee('Order sent to the waiter.');
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::SentToWaiter)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder)
@@ -300,7 +301,7 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSet('tableTotalAmount', '16.50')
         ->call('requestBill')
         ->assertHasNoErrors()
-        ->assertSee('Официант получил просьбу принести счёт.');
+        ->assertSee('The waiter has been asked to bring the bill.');
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::PaymentRequested)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::PaymentRequested);
@@ -311,10 +312,10 @@ test('first vertical slice works from registration to closed table session', fun
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
         ->assertHasNoErrors()
-        ->assertSee('Оплата всего стола отмечена.')
+        ->assertSee(__('payments.messages.payment_recorded'))
         ->call('closePaidSession')
         ->assertHasNoErrors()
-        ->assertSee('Стол закрыт. Место свободно для следующих гостей.');
+        ->assertSee(__('payments.messages.session_closed'));
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Closed)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
@@ -449,6 +450,7 @@ function verticalSliceDraftProps(QrCode $qrCode, TableSession $tableSession, Tab
         'currentGuestId' => $guest->id,
         'currency' => 'EUR',
         'publicToken' => $qrCode->public_token,
+        'language' => 'en',
     ];
 }
 

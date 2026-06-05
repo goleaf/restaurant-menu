@@ -31,7 +31,7 @@ test('first guest creates pending table session and active session guest from qr
         ->assertSet('preparedGuestName', 'Ana Maria')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value)
         ->assertSeeText('Welcome, Ana Maria.')
-        ->assertSeeText('Стол ожидает подтверждения официанта.');
+        ->assertSeeText('Table opened. You can start choosing.');
 
     $tableSession = TableSession::query()->firstOrFail();
     $guest = TableSessionGuest::query()->firstOrFail();
@@ -79,14 +79,14 @@ test('guest token cookie restores table session after page refresh', function ()
         ->assertSet('currentGuestId', $guest->id)
         ->assertSet('guestCanAddItems', true)
         ->assertSet('entryState', 'guest_restored')
-        ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
+        ->assertSeeText('Entry saved.')
         ->assertSeeText('Entry saved');
 
     $this
         ->withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
         ->get(route('public.qr.show', ['token' => $qrCode->public_token], false))
         ->assertOk()
-        ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
+        ->assertSeeText('Entry saved.')
         ->assertSeeText('Entry saved');
 });
 
@@ -114,7 +114,7 @@ test('guest token restore shows message when table session is closed', function 
         ->assertSet('currentGuestId', $guest->id)
         ->assertSet('guestCanAddItems', false)
         ->assertSet('entryState', 'guest_blocked')
-        ->assertSeeText('Эта сессия стола уже закрыта. Пожалуйста, обратитесь к официанту.');
+        ->assertSeeText('This table session is closed.');
 });
 
 test('blocked guest statuses cannot add items after token restore', function (TableSessionGuestStatus $status, string $message) {
@@ -138,8 +138,8 @@ test('blocked guest statuses cannot add items after token restore', function (Ta
         ->assertSet('entryState', 'guest_blocked')
         ->assertSeeText($message);
 })->with([
-    'rejected' => [TableSessionGuestStatus::Rejected, 'Ваше присоединение к этому столу не подтверждено.'],
-    'removed' => [TableSessionGuestStatus::Removed, 'Вы были удалены из этой сессии стола.'],
+    'rejected' => [TableSessionGuestStatus::Rejected, 'Your request to join this table was rejected.'],
+    'removed' => [TableSessionGuestStatus::Removed, 'You are no longer active at this table.'],
 ]);
 
 test('guest-created sessions setting can block first guest session creation', function () {
@@ -152,7 +152,7 @@ test('guest-created sessions setting can block first guest session creation', fu
         ->assertSet('entryState', GuestTableEntryState::GuestCreatedSessionsDisabled->value)
         ->assertSet('currentTableSessionId', null)
         ->assertSet('currentGuestId', null)
-        ->assertSeeText('Открытие стола гостем отключено.');
+        ->assertSeeText('Guests cannot start a new table session right now.');
 
     expect(TableSession::query()->exists())->toBeFalse();
     expect(TableSessionGuest::query()->exists())->toBeFalse();
@@ -173,7 +173,7 @@ test('guest entering table does not create pending session when active session a
         ->assertSet('entryState', GuestTableEntryState::ActiveSessionExists->value)
         ->assertSet('currentTableSessionId', $activeTableSession->id)
         ->assertSet('currentGuestId', null)
-        ->assertSeeText('Стол уже открыт.');
+        ->assertSeeText('There is already an active table session.');
 
     expect(TableSession::query()->count())->toBe(1);
     expect(TableSessionGuest::query()->exists())->toBeFalse();
@@ -198,7 +198,7 @@ test('guest entering active session with active guests creates pending join requ
         ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
         ->assertSet('currentTableSessionId', $activeTableSession->id)
         ->assertSet('currentGuestId', null)
-        ->assertSeeText('Запрос на присоединение отправлен.')
+        ->assertSeeText('Request sent. Waiting for guests at the table.')
         ->assertSeeText('Request sent');
 
     $joinRequest = TableSessionJoinRequest::query()->firstOrFail();
@@ -241,10 +241,10 @@ test('guest sees duplicate name warning before join request is created', functio
         ->assertSet('guestNameConflictExistingName', 'Анна')
         ->assertSet('guestNameSuggestions', ['Анна 2', 'Анна К.'])
         ->assertSet('currentJoinRequestId', null)
-        ->assertSeeText('За столом уже есть гость с именем Анна.')
+        ->assertSeeText('There is already a guest named Анна at this table.')
         ->assertSeeText('Анна 2')
         ->assertSeeText('Анна К.')
-        ->assertSeeText('Войти как Анна');
+        ->assertSeeText('Enter as Анна');
 
     expect(TableSessionJoinRequest::query()->exists())->toBeFalse();
     expect(TableSessionGuest::query()->count())->toBe(1);
@@ -340,7 +340,7 @@ test('fresh guest landing sees existing pending session without creating another
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)
         ->assertSet('currentGuestId', null)
-        ->assertSeeText('Запрос на присоединение отправлен.');
+        ->assertSeeText('Request sent. Waiting for guests at the table.');
 
     expect(TableSession::query()->count())->toBe(1);
     expect(TableSessionGuest::query()->count())->toBe(1);

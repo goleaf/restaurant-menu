@@ -294,7 +294,7 @@ test('guest menu blocks rejected guest from adding draft items', function () {
     [, , $availableItem] = createGuestMenuRows($branch);
     [$requiredGroup, $largeOption] = createGuestMenuModifierRows($branch, $availableItem);
 
-    $activeGuest->update(['status' => TableSessionGuestStatus::Rejected]);
+    $activeGuest->forceFill(['status' => TableSessionGuestStatus::Rejected])->save();
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
         ->test(GuestMenu::class, [
@@ -358,15 +358,16 @@ test('draft order component shows shared items and guest totals through polling 
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->assertSee('data-component="guest-draft-order"', false)
         ->assertSeeText('Guests')
-        ->assertSeeText('По алфавиту')
+        ->assertSeeText('Alphabetical')
         ->assertSeeText('Margherita')
         ->assertSeeText('Water')
         ->assertSeeText('Large')
-        ->assertSeeText('Не готов')
-        ->assertSeeText('Изменить')
+        ->assertSeeText('Not ready')
+        ->assertSeeText('Edit')
         ->assertSet('activeGuestCount', 2)
         ->assertSet('readyGuestCount', 0)
         ->assertSet('allGuestsReady', false)
@@ -387,6 +388,7 @@ test('draft order component shows shared items and guest totals through polling 
             'currentGuestId' => $zara->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->assertSet('guestSections.0.guest_name', 'Ana')
         ->assertSet('guestSections.0.items.0.item_name', 'Water')
@@ -414,9 +416,10 @@ test('draft order component lets active guests toggle ready status', function ()
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
-        ->assertSeeText('Я готов')
-        ->assertSeeText('Не все готовы')
+        ->assertSeeText('I am ready')
+        ->assertSeeText('Not everyone is ready')
         ->assertSet('activeGuestCount', 2)
         ->assertSet('readyGuestCount', 1)
         ->assertSet('allGuestsReady', false)
@@ -427,9 +430,9 @@ test('draft order component lets active guests toggle ready status', function ()
         ->assertSet('guestSections.1.is_ready', true)
         ->call('toggleReadyStatus')
         ->assertHasNoErrors()
-        ->assertSeeText('Вы отметили готовность.')
-        ->assertSeeText('Снять готовность')
-        ->assertSeeText('Все готовы')
+        ->assertSeeText('You marked yourself ready.')
+        ->assertSeeText('Cancel ready')
+        ->assertSeeText('Everyone is ready')
         ->assertSet('readyGuestCount', 2)
         ->assertSet('allGuestsReady', true)
         ->assertSet('currentGuestReady', true);
@@ -440,9 +443,9 @@ test('draft order component lets active guests toggle ready status', function ()
     $component
         ->call('toggleReadyStatus')
         ->assertHasNoErrors()
-        ->assertSeeText('Готовность снята.')
-        ->assertSeeText('Я готов')
-        ->assertSeeText('Не все готовы')
+        ->assertSeeText('Ready status removed.')
+        ->assertSeeText('I am ready')
+        ->assertSeeText('Not everyone is ready')
         ->assertSet('readyGuestCount', 1)
         ->assertSet('allGuestsReady', false)
         ->assertSet('currentGuestReady', false);
@@ -478,15 +481,16 @@ test('draft order component asks confirmation when not all guests are ready befo
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
-        ->assertSeeText('Отправить официанту')
+        ->assertSeeText('Send to waiter')
         ->assertSet('canSendDraftToWaiter', true)
         ->assertSet('readyGuestCount', 1)
         ->assertSet('allGuestsReady', false)
         ->call('sendDraftToWaiter')
         ->assertHasNoErrors()
         ->assertSet('sendNeedsReadyConfirmation', true)
-        ->assertSeeText('Не все гости отметили готовность.');
+        ->assertSeeText('Not all guests are ready');
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
@@ -497,9 +501,9 @@ test('draft order component asks confirmation when not all guests are ready befo
         ->assertSet('canEditDraft', false)
         ->assertSet('canSendDraftToWaiter', false)
         ->assertSet('sendNeedsReadyConfirmation', false)
-        ->assertSeeText('Заказ отправлен официанту.')
-        ->assertSeeText('Черновик отправлен официанту. Изменения сейчас недоступны.')
-        ->assertDontSeeText('Изменить')
+        ->assertSeeText('Order sent to the waiter.')
+        ->assertSeeText('Draft sent to the waiter. Changes are not available right now.')
+        ->assertDontSeeText('Edit')
         ->call('editItem', $draftOrderItem->id)
         ->assertHasErrors(['draft_order']);
 
@@ -540,15 +544,16 @@ test('any active guest can send the shared draft to waiter when everyone is read
             'currentGuestId' => $zara->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->assertSet('allGuestsReady', true)
         ->assertSet('readyGuestCount', 2)
-        ->assertSeeText('Отправить официанту')
+        ->assertSeeText('Send to waiter')
         ->call('sendDraftToWaiter')
         ->assertHasNoErrors()
         ->assertSet('canEditDraft', false)
         ->assertSet('sendNeedsReadyConfirmation', false)
-        ->assertSeeText('Заказ отправлен официанту.');
+        ->assertSeeText('Order sent to the waiter.');
 
     $draftOrder = $draftOrder->fresh();
 
@@ -594,6 +599,7 @@ test('draft order component lets active guest edit own draft item modifiers quan
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->call('editItem', $draftOrderItem->id)
         ->assertSet('editingItemId', $draftOrderItem->id)
@@ -607,7 +613,7 @@ test('draft order component lets active guest edit own draft item modifiers quan
         ->call('updateItem')
         ->assertHasNoErrors()
         ->assertSet('editingItemId', null)
-        ->assertSeeText('Позиция обновлена.')
+        ->assertSeeText('Item updated.')
         ->assertSeeText('38.50 EUR');
 
     $draftOrderItem = $draftOrderItem->fresh();
@@ -640,11 +646,12 @@ test('draft order component lets active guest delete own draft item', function (
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->assertSeeText('Water')
         ->call('deleteItem', $draftOrderItem->id)
         ->assertHasNoErrors()
-        ->assertSeeText('Позиция удалена.')
+        ->assertSeeText('Item removed.')
         ->assertDontSeeText('Water');
 
     expect(DraftOrderItem::query()->whereKey($draftOrderItem->id)->exists())->toBeFalse();
@@ -674,6 +681,7 @@ test('draft order component blocks current guest from editing another guest draf
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->call('editItem', $zaraItem->id)
         ->assertHasErrors(['draft_item'])
@@ -705,9 +713,10 @@ test('draft order component blocks edits after draft is sent to waiter', functio
             'currentGuestId' => $ana->id,
             'publicToken' => $qrCode->public_token,
             'currency' => 'EUR',
+            'language' => 'en',
         ])
         ->assertSet('canEditDraft', false)
-        ->assertSeeText('Черновик отправлен официанту. Изменения сейчас недоступны.')
+        ->assertSeeText('Draft sent to the waiter. Changes are not available right now.')
         ->call('editItem', $draftOrderItem->id)
         ->assertHasErrors(['draft_order'])
         ->call('deleteItem', $draftOrderItem->id)
@@ -729,6 +738,7 @@ function createGuestMenuDisplayContext(string $defaultLanguage = 'en'): array
             'city' => 'Vilnius',
             'country' => 'Lithuania',
             'currency' => 'EUR',
+            'language' => 'en',
         ]);
     BranchSetting::factory()->for($branch)->create(['default_language' => $defaultLanguage]);
     $servicePoint = ServicePoint::factory()

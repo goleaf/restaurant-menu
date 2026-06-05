@@ -38,9 +38,9 @@ test('active guest sees the guest table page shell', function () {
         ->assertSee('data-component="guest-order-statuses"', false)
         ->assertSee('data-component="guest-draft-order"', false)
         ->assertSee('data-component="guest-draft-totals"', false)
-        ->assertSeeText('Общий заказ')
-        ->assertSeeText('Корзина')
-        ->assertSeeText('Общая сумма')
+        ->assertSeeText('Order status')
+        ->assertSeeText('Cart')
+        ->assertSeeText('Table total')
         ->assertSeeText('0.00 EUR')
         ->assertDontSee('id="guest-name"', false);
 });
@@ -74,8 +74,8 @@ test('guest table polling blocks use branch settings interval', function () {
             'showStatuses' => false,
         ])
         ->assertSee('wire:poll.visible.3s="refreshDraft"', false)
-        ->assertDontSee('Статус заказа')
-        ->assertDontSee('Общая сумма');
+        ->assertDontSee('Order status')
+        ->assertDontSee('Table total');
 
     Livewire::test(DraftTotals::class, [
         'tableSessionId' => $tableSession->id,
@@ -83,6 +83,7 @@ test('guest table polling blocks use branch settings interval', function () {
         'currency' => 'EUR',
         'publicToken' => $qrCode->public_token,
         'pollingIntervalSeconds' => 3,
+        'language' => 'en',
     ])->assertSee('wire:poll.visible.3s="refreshTotals"', false);
 
     Livewire::test(OrderStatuses::class, [
@@ -119,15 +120,16 @@ test('guest list is an isolated polling block with readable statuses', function 
     $component = Livewire::test(TableGuests::class, [
         'tableSessionId' => $tableSession->id,
         'currentGuestId' => $activeGuest->id,
+        'language' => 'en',
     ])
         ->assertSee('data-component="guest-table-guests"', false)
         ->assertSee('wire:poll.visible.1s="refreshGuests"', false)
-        ->assertSeeText('За столом')
-        ->assertSeeText('Вы')
-        ->assertSeeText('Ушёл')
-        ->assertSeeText('Удалён')
-        ->assertSeeText('Готов')
-        ->assertSeeText('Не готов')
+        ->assertSeeText('At the table')
+        ->assertSeeText('You')
+        ->assertSeeText('Left')
+        ->assertSeeText('Removed')
+        ->assertSeeText('Ready')
+        ->assertSeeText('Not ready')
         ->assertSet('guests.0.is_ready', true)
         ->assertSet('guests.1.is_ready', false);
 
@@ -160,9 +162,10 @@ test('join request block can use current guest session before browser cookie ret
         'tableSessionId' => $tableSession->id,
         'guestId' => $activeGuest->id,
         'publicToken' => $qrCode->public_token,
+        'language' => 'en',
     ])
         ->assertSet('canModerate', true)
-        ->assertSeeText('Новых гостей на подтверждение нет.');
+        ->assertSeeText('No new guests waiting.');
 });
 
 function createGuestTablePageShellContext(): array

@@ -32,11 +32,12 @@ test('active guest can approve a pending guest from the polled join requests blo
             'tableSessionId' => $tableSession->id,
             'guestId' => $activeGuest->id,
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->assertSet('canModerate', true)
         ->assertSeeText('Jonas')
         ->call('approve', $joinRequest->id)
-        ->assertSeeText('Гость Jonas теперь за столом.');
+        ->assertSeeText('Guest approved.');
 
     $approvedGuest = TableSessionGuest::query()
         ->where('guest_token', $joinRequest->guest_token)
@@ -64,7 +65,7 @@ test('waiting guest becomes active after approval status polling', function () {
         ->assertSet('currentGuestId', null)
         ->assertSet('currentJoinRequestId', $joinRequest->id)
         ->assertSet('guestCanAddItems', false)
-        ->assertSeeText('Запрос на присоединение отправлен. Текущие гости должны подтвердить вход.');
+        ->assertSeeText('Request sent. Waiting for guests at the table.');
 
     app(ApproveTableSessionJoinRequestAction::class)->handle($joinRequest, $activeGuest);
 
@@ -78,7 +79,7 @@ test('waiting guest becomes active after approval status polling', function () {
         ->assertSet('currentGuestId', $approvedGuest->id)
         ->assertSet('currentJoinRequestId', null)
         ->assertSet('guestCanAddItems', true)
-        ->assertSeeText('Вы уже за этим столом. Ваш вход сохранён.')
+        ->assertSeeText('Entry saved')
         ->assertSeeText('Entry saved');
 });
 
@@ -100,9 +101,10 @@ test('waiting guest sees rejection after a current guest rejects from the join r
             'tableSessionId' => $tableSession->id,
             'guestId' => $activeGuest->id,
             'publicToken' => $qrCode->public_token,
+            'language' => 'en',
         ])
         ->call('reject', $joinRequest->id)
-        ->assertSeeText('Запрос гостя Nina отклонён.');
+        ->assertSeeText('Guest rejected.');
 
     $waitingGuest
         ->call('refreshJoinRequestStatus')
@@ -110,7 +112,7 @@ test('waiting guest sees rejection after a current guest rejects from the join r
         ->assertSet('currentJoinRequestId', $joinRequest->id)
         ->assertSet('guestCanAddItems', false)
         ->assertSet('entryState', 'join_request_blocked')
-        ->assertSeeText('Ваш запрос на присоединение отклонён.')
+        ->assertSeeText('Your request to join this table was rejected.')
         ->assertSeeText('Request closed');
 
     expect($joinRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Rejected);

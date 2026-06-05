@@ -6,13 +6,13 @@
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Общий заказ') }}</p>
-            <h2 class="mt-1 text-xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Корзина') }}</h2>
+            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.table_cart') }}</p>
+            <h2 class="mt-1 text-xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.cart.title') }}</h2>
         </div>
 
         <div class="flex shrink-0 flex-col items-end gap-2">
             <x-ui.status-badge tone="muted" size="lg">
-                {{ trans_choice(':count позиция|:count позиции|:count позиций', $itemCount, ['count' => $itemCount]) }}
+                {{ trans_choice('guest.cart.item_count', $itemCount, ['count' => $itemCount]) }}
             </x-ui.status-badge>
 
             @if ($showControls && $canToggleReadyStatus)
@@ -25,9 +25,9 @@
                     size="sm"
                 >
                     <span wire:loading.remove wire:target="toggleReadyStatus">
-                        {{ $currentGuestReady ? __('Снять готовность') : __('Я готов') }}
+                        {{ $currentGuestReady ? __('guest.table.cancel_ready') : __('guest.table.mark_ready') }}
                     </span>
-                    <span wire:loading wire:target="toggleReadyStatus">{{ __('Сохраняем') }}</span>
+                    <span wire:loading wire:target="toggleReadyStatus">{{ __('guest.table.saving') }}</span>
                 </x-ui.button>
             @endif
         </div>
@@ -38,10 +38,10 @@
     @if ($showControls)
         <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-950/60">
             <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                {{ __('Готовы') }}: {{ $readyGuestCount }}/{{ $activeGuestCount }}
+                {{ __('guest.table.ready_count') }}: {{ $readyGuestCount }}/{{ $activeGuestCount }}
             </span>
             <x-ui.status-badge :tone="$allGuestsReady ? 'success' : 'warning'">
-                {{ $allGuestsReady ? __('Все готовы') : __('Не все готовы') }}
+                {{ $allGuestsReady ? __('guest.table.all_ready') : __('guest.table.not_all_ready') }}
             </x-ui.status-badge>
         </div>
     @endif
@@ -49,9 +49,9 @@
     @if ($showStatuses)
         @if ($draftStatusValue === 'rejected')
             <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
-                {{ __('Официант отклонил черновик.') }}
+                {{ __('guest.table.draft_rejected_message') }}
                 @if ($rejectionReason)
-                    <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $rejectionReason }}</span>
+                    <span class="block pt-1 font-normal">{{ __('guest.table.reason') }}: {{ $rejectionReason }}</span>
                 @endif
             </p>
         @elseif ($serviceStatusValue !== '')
@@ -62,19 +62,19 @@
                 'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $serviceStatusTone === 'sky',
                 'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $serviceStatusTone === 'zinc',
             ])>
-                {{ __('Статус заказа') }}: {{ $serviceStatusLabel }}
+                {{ __('guest.table.order_status') }}: {{ $serviceStatusLabel }}
 
                 @if ($serviceStatusValue === 'accepted' && $orderStatusValue === 'sent_to_kitchen_bar')
-                    <span class="block pt-1 font-normal">{{ __('Заказ принят. Кухня и бар получили позиции.') }}</span>
+                    <span class="block pt-1 font-normal">{{ __('guest.statuses.service.accepted_description') }}</span>
                 @endif
             </p>
         @elseif ($draftStatusValue === 'converted_to_order')
             <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-                {{ __('Официант подтвердил заказ. Изменения сейчас недоступны.') }}
+                {{ __('guest.statuses.draft.converted_description') }}
             </p>
         @elseif (! $canEditDraft)
             <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-                {{ __('Черновик отправлен официанту. Изменения сейчас недоступны.') }}
+                {{ __('guest.cart.draft_sent_locked') }}
             </p>
         @endif
     @endif
@@ -106,16 +106,16 @@
     @enderror
 
     @if (! $branchCanAcceptOrders)
-        <x-ui.alert tone="warning" class="mt-4" :heading="__('Сейчас закрыто')">
-            {{ $branchOpeningStatusMessage ?: __('Заказы принимаем в часы работы ресторана.') }}
+        <x-ui.alert tone="warning" class="mt-4" :heading="__('guest.table.closed_title')">
+            {{ $branchOpeningStatusMessage ?: __('guest.table.closed_description') }}
         </x-ui.alert>
     @endif
 
     <div class="mt-4 space-y-4">
         <section class="space-y-3">
             <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Гости') }}</h3>
-                <span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('По алфавиту') }}</span>
+                <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('guest.cart.other_guests') }}</h3>
+                <span class="text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ __('guest.table.sorted_by_name') }}</span>
             </div>
 
             @forelse ($guestSections as $guestSection)
@@ -139,30 +139,30 @@
 
                                 @if ($guestSection['is_current_guest'])
                                     <x-ui.status-badge tone="success">
-                                        {{ __('Вы') }}
+                                        {{ __('guest.table.you') }}
                                     </x-ui.status-badge>
                                 @endif
 
                                 <x-ui.status-badge :tone="$guestSection['is_ready'] ? 'success' : 'muted'">
-                                    {{ $guestSection['is_ready'] ? __('Готов') : __('Не готов') }}
+                                    {{ $guestSection['is_ready'] ? __('guest.table.ready') : __('guest.table.not_ready') }}
                                 </x-ui.status-badge>
                             </div>
 
                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                {{ trans_choice(':count позиция|:count позиции|:count позиций', count($guestSection['items']), ['count' => count($guestSection['items'])]) }}
+                                {{ trans_choice('guest.cart.item_count', count($guestSection['items']), ['count' => count($guestSection['items'])]) }}
                             </p>
                             </div>
                         </div>
 
                         <div class="shrink-0 text-right">
                             <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestSection['total'] }} {{ $currency }}</p>
-                            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Сумма гостя') }}</p>
+                            <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('guest.cart.guest_total') }}</p>
 
                             @if ($guestSection['has_confirmed_total'])
                                 <p class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                                    {{ __('Принято') }}: {{ $guestSection['confirmed_total'] }} {{ $currency }}
+                                    {{ __('guest.cart.confirmed_total') }}: {{ $guestSection['confirmed_total'] }} {{ $currency }}
                                     @if ($guestSection['has_draft_total'])
-                                        <span class="block">{{ __('Сейчас') }}: {{ $guestSection['draft_total'] }} {{ $currency }}</span>
+                                        <span class="block">{{ __('guest.cart.current_draft') }}: {{ $guestSection['draft_total'] }} {{ $currency }}</span>
                                     @endif
                                 </p>
                             @endif
@@ -177,12 +177,12 @@
                                         <h5 class="text-sm font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['item_name'] }}</h5>
 
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ __('Цена') }}: {{ $item['total_price'] }} {{ $currency }}
+                                            {{ __('guest.cart.price') }}: {{ $item['total_price'] }} {{ $currency }}
 
                                             @if ($item['quantity'] > 1)
-                                                <span>{{ __('·') }} ×{{ $item['quantity'] }} {{ __('по') }} {{ $item['unit_total_price'] }} {{ $currency }}</span>
+                                                <span>{{ __('guest.cart.separator') }} ×{{ $item['quantity'] }} {{ __('guest.cart.each') }} {{ $item['unit_total_price'] }} {{ $currency }}</span>
                                             @else
-                                                <span>{{ __('·') }} ×{{ $item['quantity'] }}</span>
+                                                <span>{{ __('guest.cart.separator') }} ×{{ $item['quantity'] }}</span>
                                             @endif
                                         </p>
                                     </div>
@@ -194,13 +194,13 @@
 
                                 @if ($item['modifiers'] !== [])
                                     <p class="mt-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
-                                        {{ __('Модификаторы') }}: {{ implode(', ', $item['modifiers']) }}
+                                        {{ __('guest.cart.modifiers') }}: {{ implode(', ', $item['modifiers']) }}
                                     </p>
                                 @endif
 
                                 @if ($item['comment'])
                                     <p class="mt-2 rounded-md bg-zinc-50 px-2 py-1.5 text-xs leading-5 text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                                        {{ __('Комментарий') }}: {{ $item['comment'] }}
+                                        {{ __('guest.cart.comment') }}: {{ $item['comment'] }}
                                     </p>
                                 @endif
 
@@ -212,7 +212,7 @@
                                             variant="secondary"
                                             size="sm"
                                         >
-                                            {{ __('Изменить') }}
+                                            {{ __('guest.cart.edit_item') }}
                                         </x-ui.button>
 
                                         <x-ui.button
@@ -223,21 +223,21 @@
                                             variant="danger"
                                             size="sm"
                                         >
-                                            {{ __('Удалить') }}
+                                            {{ __('guest.cart.remove_item') }}
                                         </x-ui.button>
                                     </div>
                                 @endif
                             </div>
                         @empty
                             <p class="rounded-lg bg-white px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                                {{ __('Пока нет позиций') }}
+                                {{ __('guest.cart.empty') }}
                             </p>
                         @endforelse
                     </div>
                 </article>
             @empty
                 <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                    {{ __('Гости появятся после входа за стол.') }}
+                    {{ __('guest.table.no_guests') }}
                 </p>
             @endforelse
         </section>
@@ -245,7 +245,7 @@
         @if ($showTotals)
             <div class="flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
                 <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300">
-                    {{ $hasConfirmedOrders ? __('Текущий черновик') : __('Общая сумма') }}
+                    {{ $hasConfirmedOrders ? __('guest.cart.current_draft') : __('guest.cart.table_total') }}
                 </span>
                 <span class="text-xl font-semibold text-zinc-950 dark:text-white">
                     {{ $totalAmount }} {{ $currency }}
@@ -255,12 +255,12 @@
             @if ($hasConfirmedOrders)
                 <div class="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-sm dark:bg-emerald-950/30">
                     <div class="flex items-center justify-between gap-3">
-                        <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('Уже подтверждено') }}</span>
+                        <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.confirmed_total') }}</span>
                         <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalAmount }} {{ $currency }}</span>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 border-t border-emerald-100 pt-2 dark:border-emerald-900/60">
-                        <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('Итого за стол') }}</span>
+                        <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.table_total') }}</span>
                         <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalAmount }} {{ $currency }}</span>
                     </div>
                 </div>
@@ -271,8 +271,8 @@
             <div class="space-y-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
                 @if ($billRequested)
                     <div class="rounded-lg bg-sky-50 px-3 py-3 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
-                        {{ __('Счёт запрошен. Официант скоро подойдёт.') }}
-                        <span class="mt-1 block font-normal">{{ __('Итого за стол') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
+                        {{ __('guest.table.bill_requested') }}
+                        <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
                     </div>
                 @elseif ($canRequestBill)
                     <button
@@ -282,8 +282,8 @@
                         wire:target="requestBill"
                         class="flex min-h-12 w-full items-center justify-center rounded-lg bg-sky-700 px-4 text-base font-semibold text-white transition hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                     >
-                        <span wire:loading.remove wire:target="requestBill">{{ __('Попросить счёт') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
-                        <span wire:loading wire:target="requestBill">{{ __('Отправляем') }}</span>
+                        <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
+                        <span wire:loading wire:target="requestBill">{{ __('guest.table.sending') }}</span>
                     </button>
                 @endif
             </div>
@@ -293,10 +293,10 @@
                     @if ($sendNeedsReadyConfirmation)
                         <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/70 dark:bg-amber-950/30">
                             <p class="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                                {{ __('Не все гости отметили готовность.') }}
+                                {{ __('guest.table.not_all_ready_title') }}
                             </p>
                             <p class="mt-1 text-sm text-amber-800 dark:text-amber-100">
-                                {{ __('Можно отправить сейчас, но официант всё равно должен подтвердить заказ перед кухней или баром.') }}
+                                {{ __('guest.table.not_all_ready_description') }}
                             </p>
 
                             <div class="mt-3 grid gap-2 sm:grid-cols-2">
@@ -307,8 +307,8 @@
                                     wire:target="sendDraftToWaiter"
                                     class="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-700 px-4 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-hidden focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                                 >
-                                    <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить всё равно') }}</span>
-                                    <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
+                                    <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_anyway') }}</span>
+                                    <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
                                 </button>
 
                                 <button
@@ -316,7 +316,7 @@
                                     wire:click="cancelSendDraftConfirmation"
                                     class="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 dark:border-amber-900/70 dark:bg-zinc-900 dark:text-amber-200 dark:hover:bg-amber-950/30"
                                 >
-                                    {{ __('Подождать гостей') }}
+                                    {{ __('guest.table.wait_for_guests') }}
                                 </button>
                             </div>
                         </div>
@@ -328,8 +328,8 @@
                             wire:target="sendDraftToWaiter"
                             class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                         >
-                            <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('Отправить официанту') }}</span>
-                            <span wire:loading wire:target="sendDraftToWaiter">{{ __('Отправляем') }}</span>
+                            <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_to_waiter') }}</span>
+                            <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
                         </button>
                     @endif
                 </div>
@@ -343,7 +343,7 @@
             <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Моя позиция') }}</p>
+                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.my_items') }}</p>
                         <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
                         <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotal }} {{ $currency }}</p>
                     </div>
@@ -352,7 +352,7 @@
                         type="button"
                         wire:click="closeEditItem"
                         class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                        aria-label="{{ __('Закрыть') }}"
+                        aria-label="{{ __('guest.table.close') }}"
                     >
                         <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
@@ -360,7 +360,7 @@
 
                 <div class="mt-4 space-y-4">
                     <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Количество') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.quantity') }}</span>
                         <input
                             type="number"
                             min="1"
@@ -381,12 +381,12 @@
 
                             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                                 @if ($modifierGroup['is_required'])
-                                    <span>{{ __('Обязательно') }}</span>
+                                    <span>{{ __('guest.cart.required') }}</span>
                                 @else
-                                    <span>{{ __('По желанию') }}</span>
+                                    <span>{{ __('guest.cart.optional') }}</span>
                                 @endif
 
-                                <span>{{ __('Можно выбрать') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</span>
+                                <span>{{ __('guest.cart.can_choose') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</span>
                             </div>
 
                             <div class="mt-3 grid gap-2">
@@ -409,7 +409,7 @@
                                     </button>
                                 @empty
                                     <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                                        {{ __('Нет доступных вариантов') }}
+                                        {{ __('guest.cart.no_options') }}
                                     </p>
                                 @endforelse
                             </div>
@@ -420,12 +420,12 @@
                         </fieldset>
                     @empty
                         <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                            {{ __('Для этой позиции нет дополнительных настроек') }}
+                            {{ __('guest.cart.no_item_options') }}
                         </p>
                     @endforelse
 
                     <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Комментарий') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.comment') }}</span>
                         <textarea
                             wire:model="editingComment"
                             rows="3"
@@ -448,8 +448,8 @@
                         size="lg"
                         full-width
                     >
-                        <span wire:loading.remove wire:target="updateItem">{{ __('Сохранить') }} · {{ $editingItemTotal }} {{ $currency }}</span>
-                        <span wire:loading wire:target="updateItem">{{ __('Сохраняем') }}</span>
+                        <span wire:loading.remove wire:target="updateItem">{{ __('guest.cart.save_item') }} · {{ $editingItemTotal }} {{ $currency }}</span>
+                        <span wire:loading wire:target="updateItem">{{ __('guest.table.saving') }}</span>
                     </x-ui.button>
 
                     <x-ui.button
@@ -460,7 +460,7 @@
                         variant="danger"
                         full-width
                     >
-                        {{ __('Удалить позицию') }}
+                        {{ __('guest.cart.remove_item') }}
                     </x-ui.button>
                 </x-ui.mobile-bottom-actions>
             </div>

@@ -56,6 +56,15 @@ Manual check:
 8. Confirm kitchen/bar screens no longer show the ticket and direct status
    changes are rejected.
 
+## Daily Memory Update - 2026-06-05 After Prompt 121
+
+Project memory was refreshed in `README.md`, `CHANGELOG.md`,
+`docs/AI_CONTEXT.md`, `docs/TEST_CHECKLIST.md`, and `docs/NEXT_STEPS.md` after
+Prompt 121. Order cancellation with required reason is now part of the
+waiter/order/kitchen/guest baseline. Future prompts must preserve the guardrail
+that cancellation keeps order history, status logs, audit logs, guest-facing
+reason text, and blocks kitchen/bar work for cancelled orders.
+
 ## Prompt 120 Manual Service Charge And Tips Results
 
 Programmatic coverage was extended in `tests/Feature/BranchSettingsTest.php`

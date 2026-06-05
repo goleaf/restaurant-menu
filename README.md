@@ -53,6 +53,8 @@ The memory refresh after Prompt 120 records the current manual bill-summary stat
 
 Daily memory update after Prompt 121 confirmed the project remains on the shared-hosting baseline: SQLite, database cache/session/queue, local storage, Blade + Livewire UI, permanent physical service point QR codes, manual offline payments only, manual service charge/tips snapshots, order cancellation with audit/status logs, and no Redis/WebSockets/S3/Docker or paid services.
 
+The post-feature daily memory update after Prompt 121 refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior. Future order work must keep cancellation as status/history, not deletion.
+
 ## Order Cancellation With Reason
 
 Prompt 121 adds safe order cancellation without deleting order history.

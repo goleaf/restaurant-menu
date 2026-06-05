@@ -15,7 +15,7 @@ Prompt 121 added order cancellation with required reason. Keep cancellation as
 status/history, not deletion. Cancelled order tickets must remain hidden from
 kitchen/bar work screens and blocked in ticket item update actions.
 
-The separate post-feature daily memory update after Prompt 120 is complete.
+The separate post-feature daily memory update after Prompt 121 is complete.
 Keep this file as the source for next-prompt guardrails until the user gives a
 new prompt. The update was documentation-only and did not add product behavior.
 

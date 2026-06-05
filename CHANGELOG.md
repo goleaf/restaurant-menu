@@ -14,6 +14,12 @@
 - Limitations: order cancellation does not delete records, does not add a kitchen ticket status enum, does not add new routes/tables, does not change payment flow, and does not use Redis, WebSockets, S3, Docker, or paid services.
 - Manual check: send an order to kitchen/bar, mark one position ready, cancel the order from waiter table detail with a reason, confirm guests see the cancellation reason, confirm kitchen/bar no longer show the ticket, and confirm a direct ticket status update is rejected.
 
+### Docs - Daily Project Memory Update After Prompt 121
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after Prompt 121 without adding product behavior.
+- Confirmed order cancellation with required reason is now part of the waiter/order/kitchen/guest baseline.
+- Confirmed the current stack remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, permanent QR identity, and no Redis/WebSockets/S3/Docker or paid services.
+
 ### Prompt 120 - Manual Service Charge And Tips
 
 - Added manual service charge percentage to branch settings while keeping the existing `service_charge_enabled` guard.

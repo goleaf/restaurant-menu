@@ -79,6 +79,7 @@ Prompt 121 notes:
 - Focused coverage: `tests/Feature/OrderCancellationTest.php`.
 - Related regression coverage: kitchen screen, kitchen dispatch, waiter draft review, and waiter table detail tests.
 - Verification included a red test first for missing cancellation UI/reason/guards, then green focused and regression runs.
+- Post-feature daily memory update refreshed README, CHANGELOG, AI context, smoke checklist, and next-step notes without adding product behavior.
 - Keep cancellation as a status/history action, not a destructive delete.
 
 Next recommended prompt:

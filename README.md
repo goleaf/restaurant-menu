@@ -47,7 +47,9 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-05 after rescue mode before Prompt 122. The waiter table detail component now imports Flux before calling `Flux::modals()`, restoring the manual payment/table close regression suite. Prompt 122 order item void flow was not implemented during rescue mode.
+Latest memory refresh: 2026-06-05 after rescue mode before Prompt 123. Prompt 123 manual payment correction was not implemented because the pre-prompt health check found a stale compiled Blade parse error on waiter table detail. Compiled views were cleared, the manual payment/order cancellation regression suite is green again, and Prompt 123 remains the next recommended prompt after a fresh health check.
+
+Previous memory refresh: 2026-06-05 after rescue mode before Prompt 122. The waiter table detail component now imports Flux before calling `Flux::modals()`, restoring the manual payment/table close regression suite. Prompt 122 order item void flow was not implemented during rescue mode.
 
 Previous memory refresh: 2026-06-05 after Prompt 121 order cancellation with reason. Branch public profiles, branch opening hours, temporary branch closed mode, menu availability schedules, multiple active branch menus, branch service modes, bulk service point creation, QR label presets, QR short-code lookup, branch service point search/filter pagination, the branch visual floor board, waiter zone assignments, waiter-side schedule checks, waiter manual order entry, guest duplicate-name handling, safe table-session inactivity cleanup, active-session transfer, merged table sessions, split bill by guests, manual service charge/tips, and order cancellation with required reason are now part of the baseline branch setup, guest entry, order-review, kitchen/bar, and manual-payment context.
 
@@ -62,6 +64,12 @@ The post-feature daily memory update after Prompt 121 refreshed README, CHANGELO
 Before starting Prompt 122, the focused order/payment regression check found `Class "App\Livewire\Waiter\Flux" not found` in `App\Livewire\Waiter\TableDetail`. The fix is intentionally small: import `Flux\Flux` where the component already calls `Flux::modals()->close()`.
 
 Prompt 122 was paused after rescue mode. Re-run it as the next feature step if the order item void flow is still desired.
+
+## Rescue Mode Before Prompt 123
+
+Before starting Prompt 123, the focused order/payment regression check found a compiled Blade parse error in waiter table detail: `syntax error, unexpected token "endif"`. Rescue mode cleared stale compiled views and re-ran the focused payment/order cancellation suite successfully.
+
+Prompt 123 payment correction was paused. Re-run it as the next feature step if manual payment correction is still desired.
 
 ## Order Cancellation With Reason
 

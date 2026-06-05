@@ -2,6 +2,67 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Rescue Mode Before Prompt 123 - 2026-06-05
+
+Prompt 123 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the waiter table detail/payment flow after the focused regression suite hit a compiled Blade parse error: `syntax error, unexpected token "endif"` in the waiter table detail view cache. The current source view was validated, stale compiled views were cleared, and the focused suite passed again.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Tailwind CSS 4 / Vite; generated `public/build` remains uncommitted.
+
+What is already implemented:
+
+- Same baseline as Prompt 121 plus the existing dirty workspace work recorded in the changelog around dangerous-action confirmations.
+- Guest QR/table flows, permanent QR codes, branch setup, service points, shared drafts, waiter confirmation/rejection/cancellation, kitchen/bar tickets, manual offline payments, split bill by guests, manual service charge/tips, audit logs, and shared-hosting deployment notes remain the active baseline.
+- Rescue mode only restored runtime health; it did not add manual payment correction records or any Prompt 123 product behavior.
+
+Current tables:
+
+- No new tables or columns were added in rescue mode before Prompt 123.
+- Existing payment/order tables remain `manual_payments`, `orders`, `order_items`, `order_status_logs`, `kitchen_tickets`, `kitchen_ticket_items`, and `audit_logs`.
+- `manual_payment_corrections` does not exist yet.
+
+Current routes:
+
+- No routes were added or removed in rescue mode before Prompt 123.
+- Main relevant routes remain `GET /restaurant/waiter/dashboard`, `GET /restaurant/waiter/tables/{tableSession}`, `GET /restaurant/kitchen`, `GET /restaurant/bar`, and public `GET /q/{token}`.
+
+Current Livewire components and actions:
+
+- `App\\Livewire\\Waiter\\TableDetail` and `resources/views/livewire/waiter/table-detail.blade.php` are the critical health-check surface for manual payments, order cancellation, and table close.
+- No `CorrectManualPaymentAction`, `ManualPaymentCorrection` model, migration, or payment correction UI exists yet.
+
+Mandatory business rules:
+
+- Manual payments are offline accounting records; they must not be silently deleted.
+- Future payment correction work must create correction history, store reason/actor/old and new values, and write audit logs.
+- Existing payment totals, service charge/tips snapshots, order snapshots, audit logs, kitchen/bar cancellation guardrails, and permanent QR rules must remain intact.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local public storage, and Livewire polling.
+- Do not add infrastructure to fix runtime health issues.
+
+Forbidden:
+
+- Do not use Redis, WebSockets/Reverb/Pusher, S3, Docker as a requirement, external queue/cache/storage/search, Stripe, PayPal, paid APIs, Push/SMS/Telegram API, paid PDF services, heavy PDF/print libraries, maps/courier/payment integrations, AI translation, React/Vue/Inertia SPA, canvas floor-plan editors, drag-and-drop floor-plan editors, raw SQL strings in app code, committed `.env`, SQLite database files, backups, `vendor`, `node_modules`, uploads, or generated build/export files.
+
+Rescue verification:
+
+- `php artisan migrate --no-interaction`
+- `php artisan route:list --except-vendor`
+- `php artisan config:show database.default`
+- `php artisan test --compact tests/Feature/ManualPaymentTest.php tests/Feature/OrderCancellationTest.php`
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction. Start it only after a fresh context/health check. Prompt 122 remains skipped/pending unless the user explicitly asks to return to it.
+
 ## Rescue Mode Before Prompt 122 - 2026-06-05
 
 Prompt 122 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the existing waiter table detail flow by adding the missing `Flux\\Flux` import used by `Flux::modals()->close()`.

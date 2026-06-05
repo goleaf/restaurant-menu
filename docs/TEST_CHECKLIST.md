@@ -13,6 +13,31 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Rescue Mode Before Prompt 123 Results
+
+The pre-Prompt 123 health check found the waiter table detail/payment flow was
+broken before new feature work started:
+
+- failing check: `php artisan test --compact tests/Feature/ManualPaymentTest.php tests/Feature/OrderCancellationTest.php`;
+- error: `syntax error, unexpected token "endif"` from the compiled waiter table detail Blade view;
+- fix: clear stale compiled Blade views after validating the current source view;
+- Prompt 123 manual payment correction was not implemented during rescue mode.
+
+Focused verification after the fix:
+
+```bash
+php artisan migrate --no-interaction
+php artisan route:list --except-vendor
+php artisan config:show database.default
+php artisan test --compact tests/Feature/ManualPaymentTest.php tests/Feature/OrderCancellationTest.php
+```
+
+Manual check:
+
+1. Open `/restaurant/waiter/tables/{tableSession}` as staff with payment access.
+2. Confirm the payment block renders.
+3. Confirm order cancellation still shows its confirmation flow and does not break the page.
+
 ## Rescue Mode Before Prompt 122 Results
 
 The pre-Prompt 122 health check found the waiter table detail component was

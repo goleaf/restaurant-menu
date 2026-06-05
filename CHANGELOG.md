@@ -2,6 +2,21 @@
 
 ## 2026-06-05
 
+### Bugfix - Restore Project Before Prompt 123
+
+- Prompt 123 was not implemented because the pre-prompt health check found the project was already broken.
+- Restored the waiter table detail/payment flow by clearing stale compiled Blade views after the current source view was confirmed valid.
+- Verified the focused manual payment and order cancellation regression suite now opens the waiter table detail page without the Blade `unexpected token "endif"` parse error.
+- Touched modules/files: project memory documentation and Laravel compiled-view cache state only.
+- Limitations: no manual payment correction schema, UI, audit behavior, route, Redis, WebSocket, S3, Docker, Stripe, PayPal, or paid service was added in rescue mode.
+- Manual check: open a waiter table detail with payment access, confirm the payment block renders, and confirm order cancellation still shows its confirmation flow.
+
+### Docs - Daily Project Memory Update Before Prompt 123
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after rescue mode.
+- Confirmed Prompt 123 manual payment correction is still pending and must start with a fresh health check.
+- Confirmed Prompt 122 order item void flow remains skipped/pending unless explicitly requested again.
+
 ### Bugfix - Restore Project After Previous Prompt
 
 - Restored the waiter table detail component after the pre-Prompt 122 health check found `Class "App\\Livewire\\Waiter\\Flux" not found`.

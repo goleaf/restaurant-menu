@@ -4,11 +4,28 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after rescue mode before Prompt 122.
+Last memory refresh: 2026-06-05 after rescue mode before Prompt 123.
 
 ## Next Recommended Prompt
 
-Prompt 122 - Void item before payment.
+Prompt 123 - Payment correction.
+
+Rescue mode ran before Prompt 123 because the project was already broken by a
+compiled waiter table detail Blade parse error. The rescue fix cleared stale
+compiled views and restored the focused manual payment/order cancellation
+regression suite. Prompt 123 was not implemented.
+
+When Prompt 123 is started again, keep the step small:
+
+- add correction history for manual payments without deleting payment records;
+- store reason, actor, old amount/method, and new amount/method;
+- keep the flow manual/offline only, with no online refund provider;
+- write audit logs for every correction;
+- preserve existing split-bill, service charge, tips, and session paid/closed
+  behavior with focused tests.
+
+Prompt 122 - Void item before payment remains skipped/pending unless the user
+explicitly asks to return to it.
 
 Rescue mode ran before Prompt 122 because the project was already broken by a
 missing `Flux\\Flux` import in `App\\Livewire\\Waiter\\TableDetail`. The rescue

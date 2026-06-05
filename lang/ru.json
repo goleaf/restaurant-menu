@@ -164,6 +164,7 @@
     "reports.csv.order_id": "ID заказа",
     "reports.csv.payment_id": "ID оплаты",
     "reports.csv.branch": "Филиал",
+    "reports.csv.service_point_id": "ID места обслуживания",
     "reports.csv.service_point": "Место обслуживания",
     "reports.csv.table_session_id": "ID сессии стола",
     "reports.csv.confirmed_at": "Подтверждено",

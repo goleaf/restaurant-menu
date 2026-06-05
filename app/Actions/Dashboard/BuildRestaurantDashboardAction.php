@@ -478,8 +478,8 @@ class BuildRestaurantDashboardAction
                 isAvailable: $access['kitchen']->isNotEmpty(),
             ),
             $this->screenQuickAction(
-                label: 'Reports',
-                description: 'View cached branch analytics',
+                label: 'reports.title',
+                description: 'reports.quick_actions.view_cached_branch_analytics',
                 icon: 'chart-bar',
                 routeName: 'restaurant.dashboard',
                 isAvailable: $access['reports']->isNotEmpty(),

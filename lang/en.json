@@ -164,6 +164,7 @@
     "reports.csv.order_id": "Order ID",
     "reports.csv.payment_id": "Payment ID",
     "reports.csv.branch": "Branch",
+    "reports.csv.service_point_id": "Service point ID",
     "reports.csv.service_point": "Service point",
     "reports.csv.table_session_id": "Table session ID",
     "reports.csv.confirmed_at": "Confirmed at",

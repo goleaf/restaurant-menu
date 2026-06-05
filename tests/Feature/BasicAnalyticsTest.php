@@ -54,8 +54,8 @@ test('reports viewer sees cached basic analytics for demo data', function () {
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertSee('data-layout="restaurant-dashboard"', false)
-        ->assertSeeText('Restaurant overview')
-        ->assertSeeText('Amount today')
+        ->assertSeeText(__('reports.title'))
+        ->assertSeeText(__('reports.revenue.net_total'))
         ->assertSeeText('30.00 EUR')
         ->assertSeeText('Pizza');
 });

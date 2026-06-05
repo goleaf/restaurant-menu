@@ -3,9 +3,9 @@
         <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
                 <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant workspace') }}</p>
-                <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Data exports') }}</h1>
+                <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('reports.exports.title') }}</h1>
                 <p class="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
-                    {{ __('Download branch CSV files for orders, payments, menu, and tables.') }}
+                    {{ __('reports.exports.description') }}
                 </p>
             </div>
 
@@ -16,9 +16,9 @@
     </header>
 
     <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/30">
-        <p class="text-sm font-medium text-amber-950 dark:text-amber-100">{{ __('CSV export only') }}</p>
+        <p class="text-sm font-medium text-amber-950 dark:text-amber-100">{{ __('reports.exports.csv_only') }}</p>
         <p class="mt-1 text-sm text-amber-900 dark:text-amber-100">
-            {{ __('Exports can contain guest names, staff names, order history, and payment data. PDF export is planned for a later step.') }}
+            {{ __('reports.exports.warning') }}
         </p>
     </section>
 
@@ -42,14 +42,14 @@
                             icon="arrow-down-tray"
                             :href="$branch['downloads'][$type['value']]"
                         >
-                            {{ __($type['label']) }} CSV
+                            {{ __('reports.actions.export_type_csv', ['type' => $type['label']]) }}
                         </flux:button>
                     @endforeach
                 </div>
             </article>
         @empty
             <div class="rounded-lg border border-zinc-200 bg-white p-6 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-                {{ __('No branches available for export.') }}
+                {{ __('reports.empty.no_data') }}
             </div>
         @endforelse
     </section>

@@ -87,18 +87,18 @@ new class extends Component
         <section id="reports" class="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div>
-                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Restaurant overview') }}</p>
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('reports.title') }}</p>
                     <h2 class="mt-1 text-xl font-semibold text-zinc-950 dark:text-white">
-                        {{ __('Today') }} · {{ $dashboard['period_label'] }}
+                        {{ __('reports.filters.today') }} · {{ $dashboard['period_label'] }}
                     </h2>
                     <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
-                        {{ __('Branches') }}: {{ $dashboard['branch_count'] }}
+                        {{ __('reports.filters.branch') }}: {{ $dashboard['branch_count'] }}
                     </p>
                 </div>
 
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ __('Cached at') }} {{ $dashboard['cached_at'] }}
+                        {{ __('reports.cached_at') }} {{ $dashboard['cached_at'] }}
                     </p>
                     <flux:button icon="arrow-path" size="sm" wire:click="refreshDashboard">
                         {{ __('Refresh') }}
@@ -108,60 +108,60 @@ new class extends Component
 
             <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Active tables') }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.active_tables') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['active_tables_count'] }}</p>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('New orders to waiter') }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.new_orders_to_waiter') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['new_orders_to_waiter_count'] }}</p>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Cooking orders') }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.cooking_orders') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['cooking_orders_count'] }}</p>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Ready positions') }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.ready_positions') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['ready_positions_count'] }}</p>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Amount today') }}</p>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.revenue.net_total') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">
                         {{ $dashboard['metrics']['orders_today_total'] ?? '—' }}
                     </p>
                     @unless ($dashboard['can_view_reports'])
-                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Reports access required') }}</p>
+                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('reports.access_required') }}</p>
                     @endunless
                 </div>
             </div>
 
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Popular dishes') }}</h3>
+                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('reports.popular_items.title') }}</h3>
                     <div class="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
                         @if ($dashboard['can_view_reports'])
                             @forelse ($dashboard['popular_items'] as $item)
                                 <div wire:key="dashboard-popular-item-{{ $loop->index }}" class="flex items-center justify-between gap-4 py-3">
                                     <div>
                                         <p class="font-medium text-zinc-950 dark:text-white">{{ $item['item_name'] }}</p>
-                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Quantity') }}: {{ $item['quantity'] }}</p>
+                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.popular_items.quantity_sold') }}: {{ $item['quantity'] }}</p>
                                     </div>
                                     <p class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ $item['total'] }}</p>
                                 </div>
                             @empty
-                                <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No confirmed orders today yet.') }}</p>
+                                <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.empty.no_data') }}</p>
                             @endforelse
                         @else
-                            <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Reports access is required to see popular dishes.') }}</p>
+                            <p class="py-3 text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.access_required_popular_items') }}</p>
                         @endif
                     </div>
                 </div>
 
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Quick actions') }}</h3>
+                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('reports.quick_actions.title') }}</h3>
                     <div class="mt-3 grid gap-2">
                         @foreach ($dashboard['quick_actions'] as $action)
                             <div wire:key="dashboard-action-{{ $action['label'] }}" class="flex items-center justify-between gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">

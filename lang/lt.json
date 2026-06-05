@@ -164,6 +164,7 @@
     "reports.csv.order_id": "Užsakymo ID",
     "reports.csv.payment_id": "Mokėjimo ID",
     "reports.csv.branch": "Filialas",
+    "reports.csv.service_point_id": "Aptarnavimo vietos ID",
     "reports.csv.service_point": "Aptarnavimo vieta",
     "reports.csv.table_session_id": "Stalo sesijos ID",
     "reports.csv.confirmed_at": "Patvirtinta",

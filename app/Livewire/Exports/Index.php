@@ -6,10 +6,8 @@ use App\Actions\Exports\BuildDataExportsIndexAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Data exports')]
 class Index extends Component
 {
     /**
@@ -34,6 +32,7 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.exports.index');
+        return view('livewire.exports.index')
+            ->title(__('reports.exports.title'));
     }
 }

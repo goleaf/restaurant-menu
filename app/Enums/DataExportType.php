@@ -11,11 +11,16 @@ enum DataExportType: string
 
     public function label(): string
     {
+        return __($this->labelKey());
+    }
+
+    public function labelKey(): string
+    {
         return match ($this) {
-            self::Orders => 'Orders',
-            self::Payments => 'Payments',
-            self::Menu => 'Menu',
-            self::ServicePoints => 'Tables',
+            self::Orders => 'reports.orders.title',
+            self::Payments => 'reports.payments.title',
+            self::Menu => 'reports.exports.menu',
+            self::ServicePoints => 'reports.exports.tables',
         };
     }
 

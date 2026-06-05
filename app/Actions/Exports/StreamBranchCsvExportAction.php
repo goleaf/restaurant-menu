@@ -3,6 +3,12 @@
 namespace App\Actions\Exports;
 
 use App\Enums\DataExportType;
+use App\Enums\ManualPaymentMethod;
+use App\Enums\ManualPaymentScope;
+use App\Enums\MenuStatus;
+use App\Enums\OrderStatus;
+use App\Enums\ServicePointStatus;
+use App\Enums\ServicePointType;
 use App\Models\Branch;
 use App\Models\ManualPayment;
 use App\Models\MenuItem;
@@ -57,18 +63,18 @@ class StreamBranchCsvExportAction
      */
     private function writeOrders(mixed $handle, Branch $branch): void
     {
-        $this->putRow($handle, [
-            'order_id',
-            'status',
-            'branch',
-            'service_point',
-            'table_session_id',
-            'confirmed_at',
-            'confirmed_by',
-            'total_price',
-            'currency',
-            'items',
-            'created_at',
+        $this->putHeader($handle, [
+            'reports.csv.order_id',
+            'reports.filters.status',
+            'reports.csv.branch',
+            'reports.csv.service_point',
+            'reports.csv.table_session_id',
+            'reports.csv.confirmed_at',
+            'reports.csv.confirmed_by',
+            'reports.csv.total_price',
+            'reports.csv.currency',
+            'reports.csv.items',
+            'reports.csv.created_at',
         ]);
 
         Order::query()
@@ -94,7 +100,7 @@ class StreamBranchCsvExportAction
                 $orders->each(function (Order $order) use ($handle, $branch): void {
                     $this->putRow($handle, [
                         $order->id,
-                        $this->enumValue($order->status),
+                        $this->enumLabel($order->status),
                         $branch->name,
                         $this->servicePointLabel($order->servicePoint),
                         $order->table_session_id,
@@ -114,19 +120,19 @@ class StreamBranchCsvExportAction
      */
     private function writePayments(mixed $handle, Branch $branch): void
     {
-        $this->putRow($handle, [
-            'payment_id',
-            'scope',
-            'payment_method',
-            'branch',
-            'service_point',
-            'table_session_id',
-            'guest_name',
-            'recorded_by',
-            'amount',
-            'currency',
-            'paid_at',
-            'note',
+        $this->putHeader($handle, [
+            'reports.csv.payment_id',
+            'reports.csv.scope',
+            'reports.payments.method',
+            'reports.csv.branch',
+            'reports.csv.service_point',
+            'reports.csv.table_session_id',
+            'reports.csv.guest_name',
+            'reports.csv.recorded_by',
+            'reports.payments.amount',
+            'reports.csv.currency',
+            'reports.csv.paid_at',
+            'reports.csv.note',
         ]);
 
         ManualPayment::query()
@@ -153,8 +159,8 @@ class StreamBranchCsvExportAction
                 $payments->each(function (ManualPayment $payment) use ($handle, $branch): void {
                     $this->putRow($handle, [
                         $payment->id,
-                        $this->enumValue($payment->scope),
-                        $this->enumValue($payment->payment_method),
+                        $this->enumLabel($payment->scope),
+                        $this->enumLabel($payment->payment_method),
                         $branch->name,
                         $this->servicePointLabel($payment->servicePoint),
                         $payment->table_session_id,
@@ -174,23 +180,23 @@ class StreamBranchCsvExportAction
      */
     private function writeMenu(mixed $handle, Branch $branch): void
     {
-        $this->putRow($handle, [
-            'menu_id',
-            'menu_name',
-            'menu_status',
-            'category_id',
-            'category_name',
-            'parent_category',
-            'item_id',
-            'item_name',
-            'item_description',
-            'price',
-            'kitchen_department',
-            'weight',
-            'volume',
-            'calories',
-            'is_available',
-            'sort_order',
+        $this->putHeader($handle, [
+            'reports.csv.menu_id',
+            'reports.csv.menu_name',
+            'reports.csv.menu_status',
+            'reports.csv.category_id',
+            'reports.csv.category_name',
+            'reports.csv.parent_category',
+            'reports.csv.item_id',
+            'reports.csv.item_name',
+            'reports.csv.item_description',
+            'reports.csv.price',
+            'reports.csv.kitchen_department',
+            'reports.csv.weight',
+            'reports.csv.volume',
+            'reports.csv.calories',
+            'reports.csv.is_available',
+            'reports.csv.sort_order',
         ]);
 
         MenuItem::query()
@@ -222,7 +228,7 @@ class StreamBranchCsvExportAction
                     $this->putRow($handle, [
                         $item->menu_id,
                         $item->menu?->name ?? '',
-                        $this->enumValue($item->menu?->status),
+                        $this->enumLabel($item->menu?->status),
                         $item->category_id,
                         $item->category?->name ?? '',
                         $item->category?->parent?->name ?? '',
@@ -234,7 +240,7 @@ class StreamBranchCsvExportAction
                         $item->weight ?? '',
                         $item->volume ?? '',
                         $item->calories ?? '',
-                        $item->is_available ? 'yes' : 'no',
+                        $this->booleanLabel((bool) $item->is_available),
                         $item->sort_order,
                     ]);
                 });
@@ -246,20 +252,20 @@ class StreamBranchCsvExportAction
      */
     private function writeServicePoints(mixed $handle, Branch $branch): void
     {
-        $this->putRow($handle, [
-            'service_point_id',
-            'branch',
-            'area',
-            'type',
-            'name',
-            'display_number',
-            'internal_code',
-            'capacity',
-            'status',
-            'is_active',
-            'position_x',
-            'position_y',
-            'created_at',
+        $this->putHeader($handle, [
+            'reports.csv.service_point_id',
+            'reports.csv.branch',
+            'reports.csv.area',
+            'reports.csv.type',
+            'reports.csv.name',
+            'reports.csv.display_number',
+            'reports.csv.internal_code',
+            'reports.csv.capacity',
+            'reports.filters.status',
+            'reports.csv.is_available',
+            'reports.csv.position_x',
+            'reports.csv.position_y',
+            'reports.csv.created_at',
         ]);
 
         ServicePoint::query()
@@ -286,19 +292,31 @@ class StreamBranchCsvExportAction
                         $servicePoint->id,
                         $branch->name,
                         $servicePoint->areaNode?->name ?? '',
-                        $this->enumValue($servicePoint->type),
+                        $this->enumLabel($servicePoint->type),
                         $servicePoint->name,
                         $servicePoint->display_number ?? '',
                         $servicePoint->internal_code ?? '',
                         $servicePoint->capacity,
-                        $this->enumValue($servicePoint->status),
-                        $servicePoint->is_active ? 'yes' : 'no',
+                        $this->enumLabel($servicePoint->status),
+                        $this->booleanLabel((bool) $servicePoint->is_active),
                         $servicePoint->position_x ?? '',
                         $servicePoint->position_y ?? '',
                         $this->dateValue($servicePoint->created_at),
                     ]);
                 });
             });
+    }
+
+    /**
+     * @param  resource  $handle
+     * @param  list<string>  $keys
+     */
+    private function putHeader(mixed $handle, array $keys): void
+    {
+        $this->putRow(
+            $handle,
+            array_map(fn (string $key): string => __($key), $keys),
+        );
     }
 
     /**
@@ -310,13 +328,38 @@ class StreamBranchCsvExportAction
         fputcsv($handle, $row);
     }
 
-    private function enumValue(mixed $value): string
+    private function enumLabel(mixed $value): string
     {
+        if ($value instanceof OrderStatus) {
+            return __('reports.statuses.orders.'.$value->value);
+        }
+
+        if ($value instanceof MenuStatus) {
+            return __('reports.statuses.menu.'.$value->value);
+        }
+
+        if ($value instanceof ServicePointStatus) {
+            return __('reports.statuses.service_points.'.$value->value);
+        }
+
+        if ($value instanceof ServicePointType) {
+            return __('reports.service_point_types.'.$value->value);
+        }
+
+        if ($value instanceof ManualPaymentMethod || $value instanceof ManualPaymentScope) {
+            return $value->label();
+        }
+
         if ($value instanceof BackedEnum) {
-            return (string) $value->value;
+            return method_exists($value, 'label') ? __($value->label()) : (string) $value->value;
         }
 
         return $value === null ? '' : (string) $value;
+    }
+
+    private function booleanLabel(bool $value): string
+    {
+        return $value ? __('reports.csv.yes') : __('reports.csv.no');
     }
 
     private function dateValue(mixed $value): string

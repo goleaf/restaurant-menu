@@ -61,27 +61,27 @@ test('manager sees restaurant dashboard metrics and quick actions', function () 
         ->and($dashboard['metrics']['orders_today_total'])->toBe('32.00 EUR')
         ->and($dashboard['popular_items'][0]['item_name'])->toBe('Pasta')
         ->and(collect($dashboard['quick_actions'])->where('is_available', true)->pluck('label')->all())
-        ->toContain('Menu', 'Tables', 'QR', 'Waiter screen', 'Kitchen', 'Reports');
+        ->toContain('Menu', 'Tables', 'QR', 'Waiter screen', 'Kitchen', 'reports.title');
 
     $this->actingAs($manager)
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertSee('data-layout="restaurant-dashboard"', false)
-        ->assertSeeText('Restaurant overview')
-        ->assertSeeText('Active tables')
-        ->assertSeeText('New orders to waiter')
-        ->assertSeeText('Cooking orders')
-        ->assertSeeText('Ready positions')
-        ->assertSeeText('Amount today')
+        ->assertSeeText(__('reports.title'))
+        ->assertSeeText(__('reports.active_tables'))
+        ->assertSeeText(__('reports.new_orders_to_waiter'))
+        ->assertSeeText(__('reports.cooking_orders'))
+        ->assertSeeText(__('reports.ready_positions'))
+        ->assertSeeText(__('reports.revenue.net_total'))
         ->assertSeeText('32.00 EUR')
         ->assertSeeText('Pasta')
-        ->assertSeeText('Quick actions')
+        ->assertSeeText(__('reports.quick_actions.title'))
         ->assertSeeText('Menu')
         ->assertSeeText('Tables')
         ->assertSeeText('QR')
         ->assertSeeText('Waiter screen')
         ->assertSeeText('Kitchen')
-        ->assertSeeText('Reports');
+        ->assertSeeText(__('reports.title'));
 });
 
 test('waiter sees operational dashboard without report totals', function () {
@@ -101,14 +101,14 @@ test('waiter sees operational dashboard without report totals', function () {
         ->and($dashboard['metrics']['orders_today_total'])->toBeNull()
         ->and($dashboard['popular_items'])->toBe([])
         ->and(collect($dashboard['quick_actions'])->firstWhere('label', 'Tables')['is_available'])->toBeTrue()
-        ->and(collect($dashboard['quick_actions'])->firstWhere('label', 'Reports')['is_available'])->toBeFalse();
+        ->and(collect($dashboard['quick_actions'])->firstWhere('label', 'reports.title')['is_available'])->toBeFalse();
 
     $this->actingAs($waiter)
         ->get(route('restaurant.dashboard'))
         ->assertOk()
-        ->assertSeeText('Restaurant overview')
-        ->assertSeeText('Reports access required')
-        ->assertSeeText('Reports access is required to see popular dishes.')
+        ->assertSeeText(__('reports.title'))
+        ->assertSeeText(__('reports.access_required'))
+        ->assertSeeText(__('reports.access_required_popular_items'))
         ->assertDontSeeText('32.00 EUR');
 });
 

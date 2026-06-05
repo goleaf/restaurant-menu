@@ -70,13 +70,13 @@ test('data export page shows only assigned export branches', function () {
     $this->actingAs($user)
         ->get(route('restaurant.exports.index'))
         ->assertOk()
-        ->assertSee('Data exports')
+        ->assertSee(__('reports.exports.title'))
         ->assertSee($firstBranch->name)
         ->assertDontSee($secondBranch->name)
-        ->assertSee('Orders CSV')
-        ->assertSee('Payments CSV')
-        ->assertSee('Menu CSV')
-        ->assertSee('Tables CSV');
+        ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.orders.title')]))
+        ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.payments.title')]))
+        ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.exports.menu')]))
+        ->assertSee(__('reports.actions.export_type_csv', ['type' => __('reports.exports.tables')]));
 
     $this->actingAs($user)
         ->get(route('restaurant.exports.download', [$secondBranch, DataExportType::Orders->value]))
@@ -155,8 +155,13 @@ test('orders csv export includes selected branch orders only', function () {
     $content = $response->streamedContent();
 
     expect($content)
-        ->toContain('order_id,status,branch,service_point')
-        ->toContain('served')
+        ->toContain(csvColumns([
+            __('reports.csv.order_id'),
+            __('reports.filters.status'),
+            __('reports.csv.branch'),
+            __('reports.csv.service_point'),
+        ]))
+        ->toContain(__('reports.statuses.orders.served'))
         ->toContain('Window table #7')
         ->toContain('Ana: Margherita x2 = 25.00')
         ->not->toContain('Other branch steak');
@@ -226,8 +231,13 @@ test('payments menu and tables csv exports stream branch data', function () {
         ->streamedContent();
 
     expect($paymentContent)
-        ->toContain('payment_id,scope,payment_method,branch')
-        ->toContain('card_terminal')
+        ->toContain(csvColumns([
+            __('reports.csv.payment_id'),
+            __('reports.csv.scope'),
+            __('reports.payments.method'),
+            __('reports.csv.branch'),
+        ]))
+        ->toContain(__('ui.payment_methods.card_terminal'))
         ->toContain('Cashier Kate')
         ->toContain('Terminal approved');
 
@@ -238,7 +248,12 @@ test('payments menu and tables csv exports stream branch data', function () {
         ->streamedContent();
 
     expect($menuContent)
-        ->toContain('menu_id,menu_name,menu_status,category_id')
+        ->toContain(csvColumns([
+            __('reports.csv.menu_id'),
+            __('reports.csv.menu_name'),
+            __('reports.csv.menu_status'),
+            __('reports.csv.category_id'),
+        ]))
         ->toContain('Dinner Menu')
         ->toContain('Pepperoni')
         ->toContain('13.50');
@@ -250,11 +265,35 @@ test('payments menu and tables csv exports stream branch data', function () {
         ->streamedContent();
 
     expect($tablesContent)
-        ->toContain('service_point_id,branch,area,type,name')
+        ->toContain(csvColumns([
+            __('reports.csv.service_point_id'),
+            __('reports.csv.branch'),
+            __('reports.csv.area'),
+            __('reports.csv.type'),
+            __('reports.csv.name'),
+        ]))
         ->toContain('Main Hall')
         ->toContain('Table Nine')
         ->toContain('SP-EXPORT-9');
 });
+
+/**
+ * @param  list<string>  $columns
+ */
+function csvColumns(array $columns): string
+{
+    $handle = fopen('php://temp', 'r+');
+
+    expect($handle)->not->toBeFalse();
+
+    fputcsv($handle, $columns);
+    rewind($handle);
+
+    $content = stream_get_contents($handle);
+    fclose($handle);
+
+    return rtrim((string) $content, "\r\n");
+}
 
 function createPrompt76ExportBranches(): array
 {

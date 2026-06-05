@@ -78,6 +78,145 @@ test('guest qr page uses branch default language and can switch language', funct
         ->assertSee('Enter your name to continue.');
 });
 
+test('dashboard entry views keep visible chrome translatable', function () {
+    $dashboardSources = [
+        resource_path('views/dashboard.blade.php'),
+        resource_path('views/pages/restaurant/dashboard.blade.php'),
+    ];
+
+    foreach ($dashboardSources as $dashboardSource) {
+        $source = file_get_contents($dashboardSource);
+
+        expect($source)
+            ->not->toContain('>Workspace overview<')
+            ->not->toContain('>Quick start<')
+            ->not->toContain('>Restaurant staff<')
+            ->not->toContain('>Platform staff<')
+            ->not->toContain('>Restaurant workspace<')
+            ->not->toContain('>Restaurant dashboard<')
+            ->not->toContain('>Available step by step<')
+            ->not->toContain('>Current implementation area<');
+    }
+});
+
+test('payment ui uses semantic json translation keys in every locale', function () {
+    $paymentKeys = [
+        'payments.title',
+        'payments.summary',
+        'payments.table_total',
+        'payments.total_paid',
+        'payments.remaining',
+        'payments.guest_total',
+        'payments.guest_paid',
+        'payments.guest_remaining',
+        'payments.pay_whole_table',
+        'payments.pay_guest',
+        'payments.record_payment',
+        'payments.payment_history',
+        'payments.payment_correction',
+        'payments.correction_reason',
+        'payments.close_session',
+        'payments.close_session_warning',
+        'payments.fully_paid',
+        'payments.partially_paid',
+        'payments.unpaid',
+        'payments.paid',
+        'ui.payment_methods.cash',
+        'ui.payment_methods.card_terminal',
+        'ui.payment_methods.other',
+        'payments.forms.amount',
+        'payments.forms.method',
+        'payments.forms.note',
+        'payments.forms.guest',
+        'payments.forms.reason',
+        'payments.messages.payment_recorded',
+        'payments.messages.payment_corrected',
+        'payments.messages.session_paid',
+        'payments.errors.amount_required',
+        'payments.errors.amount_invalid',
+        'payments.errors.amount_exceeds_remaining',
+        'payments.errors.method_required',
+    ];
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $translations = json_decode((string) file_get_contents(lang_path($locale.'.json')), true);
+
+        expect($translations)->toBeArray()
+            ->and($translations)->toHaveKeys($paymentKeys)
+            ->and($translations)->not->toHaveKey('ui.payment_methods.card');
+    }
+});
+
+test('staff and permission ui uses semantic json translation keys in every locale', function () {
+    $staffKeys = [
+        'staff.title',
+        'staff.list',
+        'staff.add',
+        'staff.invite',
+        'staff.invite_link',
+        'staff.invite_code',
+        'staff.create_manual',
+        'staff.deactivate',
+        'staff.reactivate',
+        'staff.role',
+        'staff.status',
+        'staff.branch_access',
+        'staff.organization_access',
+        'staff.actions.update_permissions',
+        'staff.messages.invitation_created',
+        'staff.messages.staff_created',
+        'staff.messages.staff_deactivated',
+        'staff.roles.superadmin',
+        'staff.roles.owner',
+        'staff.roles.director',
+        'staff.roles.restaurant_admin',
+        'staff.roles.shift_manager',
+        'staff.roles.waiter',
+        'staff.roles.head_chef',
+        'staff.roles.cook',
+        'staff.roles.bartender',
+        'staff.roles.cashier',
+        'staff.roles.accountant',
+        'staff.roles.marketer',
+    ];
+
+    $permissionKeys = [
+        'permissions.groups.restaurant',
+        'permissions.groups.branches',
+        'permissions.groups.zones',
+        'permissions.groups.service_points',
+        'permissions.groups.qr',
+        'permissions.groups.menu',
+        'permissions.groups.orders',
+        'permissions.groups.departments',
+        'permissions.groups.payments',
+        'permissions.groups.reports',
+        'permissions.groups.staff',
+        'permissions.groups.history',
+        'permissions.labels.manage_menu',
+        'permissions.labels.change_prices',
+        'permissions.labels.change_availability',
+        'permissions.labels.view_orders',
+        'permissions.labels.confirm_orders',
+        'permissions.labels.cancel_orders',
+        'permissions.labels.send_to_departments',
+        'permissions.labels.view_payments',
+        'permissions.labels.manage_payments',
+        'permissions.labels.view_reports',
+        'permissions.labels.export_data',
+        'permissions.labels.manage_staff',
+        'permissions.labels.view_order_history',
+    ];
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $translations = json_decode((string) file_get_contents(lang_path($locale.'.json')), true);
+
+        expect($translations)->toBeArray()
+            ->and($translations)->toHaveKeys($staffKeys)
+            ->and($translations)->toHaveKeys($permissionKeys);
+    }
+});
+
 test('reports ui uses semantic json translation keys in every locale', function () {
     $reportKeys = [
         'reports.title',
@@ -216,6 +355,43 @@ test('reports ui uses semantic json translation keys in every locale', function 
         expect($translations)->toBeArray()
             ->and($translations)->toHaveKeys($reportKeys)
             ->and($translations)->toHaveKeys($reportSupportKeys);
+    }
+});
+
+test('upload ui uses semantic json translation keys in every locale', function () {
+    $uploadKeys = [
+        'uploads.actions.choose_file',
+        'uploads.actions.upload',
+        'uploads.actions.remove',
+        'uploads.actions.replace',
+        'uploads.labels.logo',
+        'uploads.labels.image',
+        'uploads.labels.gallery',
+        'uploads.labels.max_size',
+        'uploads.labels.allowed_types',
+        'uploads.messages.uploaded',
+        'uploads.messages.removed',
+        'uploads.errors.invalid_type',
+        'uploads.errors.too_large',
+        'uploads.errors.upload_failed',
+        'uploads.errors.not_writable',
+    ];
+
+    $legacyUploadKeys = [
+        'Allowed formats: :formats. Max size: :size.',
+        'Upload a :formats image.',
+        'Image must be :size or smaller.',
+    ];
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $translations = json_decode((string) file_get_contents(lang_path($locale.'.json')), true);
+
+        expect($translations)->toBeArray()
+            ->and($translations)->toHaveKeys($uploadKeys);
+
+        foreach ($legacyUploadKeys as $legacyUploadKey) {
+            expect($translations)->not->toHaveKey($legacyUploadKey);
+        }
     }
 });
 

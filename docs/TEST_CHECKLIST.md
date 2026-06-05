@@ -13,6 +13,43 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 127 Print Friendly Kitchen Tickets Results
+
+Programmatic coverage was added for browser print pages for existing
+kitchen/bar tickets. The feature currently verifies:
+
+- kitchen staff can open the print page for a visible department ticket;
+- the page renders branch, service point, zone, order number, department, item,
+  modifier, comment, guest, and browser print action;
+- the shared kitchen dashboard links visible ticket cards to the print page;
+- bar staff can print bar tickets but cannot print kitchen tickets;
+- unauthenticated users are redirected to login;
+- staff without department access receive `403`.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/KitchenTicketPrintTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/KitchenTicketPrintTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php
+```
+
+Manual check:
+
+1. Open `/restaurant/kitchen/dashboard` as a cook/head chef or staff with
+   `view_kitchen`.
+2. Open a visible ticket's `Print` action.
+3. Confirm branch, service point, current zone, order number, department, time,
+   items, modifiers, comments, and guest names are visible.
+4. Use the browser print dialog and confirm the toolbar is not part of the
+   printed content.
+5. Repeat from `/restaurant/bar/dashboard` as a bartender and confirm only bar
+   department tickets are printable.
+
 ## Rescue Mode Before Prompt 126 Results
 
 Prompt 126 waiter notification sound settings were not implemented because the
@@ -1554,6 +1591,30 @@ Use the guest page and then waiter/cashier.
    - old guest page cannot add more positions;
    - QR public URL still opens the same permanent QR entry point;
    - a new seating creates a new session for the same service point.
+
+## Token Security Regression
+
+Run after token, QR, guest session, invite, staff, export, or audit-log changes:
+
+```bash
+php artisan test --compact tests/Feature/TokenSecurityRulesTest.php tests/Feature/StaffInvitationTest.php
+```
+
+Manual checks:
+
+1. Generate a QR and confirm the public URL is `/q/{public_token}`, not an
+   organization, branch, service point, table, guest, or order ID.
+2. Search/print by `short_code` as staff, but confirm `/q/{short_code}` is not
+   a guest security credential.
+3. Join a table as a guest and confirm the raw `guest_token` is not visible in
+   rendered HTML, staff screens, ordinary exports, or user-facing logs.
+4. Open staff routes with only a guest cookie and confirm they still require
+   staff authentication.
+5. Try disabled/revoked QR, expired staff invite token, closed session invite
+   token, inactive service point, rejected guest, and stale join request flows;
+   all must show controlled guest/admin errors and must not create order access.
+6. Download branch CSV exports and confirm they omit `public_token`,
+   `guest_token`, `invite_token`, and `guest_invite_token`.
 
 ## Pass Criteria
 

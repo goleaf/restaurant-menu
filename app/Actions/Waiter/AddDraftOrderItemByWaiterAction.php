@@ -2,27 +2,33 @@
 
 namespace App\Actions\Waiter;
 
-use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
+use App\Enums\AuditLogAction;
+use App\Enums\BusinessRuleCode;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AddDraftOrderItemByWaiterAction
 {
     public function __construct(
-        private readonly BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     /**
@@ -38,7 +44,7 @@ class AddDraftOrderItemByWaiterAction
         ?string $comment = null,
         ?string $itemName = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($draftOrder, $guest, $menuItem, $editedBy, $quantity, $selectedModifierOptions, $comment, $itemName): DraftOrderItem {
+        return DB::transaction(function () use ($draftOrder, $guest, $menuItem, $editedBy, $quantity, $selectedModifierOptions, $comment): DraftOrderItem {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
             $guest = $this->reloadGuest($guest);
             $menuItem = $this->reloadMenuItem($menuItem);
@@ -48,11 +54,7 @@ class AddDraftOrderItemByWaiterAction
             $this->ensureMenuItemCanBeAdded($draftOrder, $menuItem);
 
             $quantity = $this->normalizeQuantity($quantity);
-            $modifierGroups = $this->modifierSnapshots->groupsFor($menuItem);
-            $selectedModifiers = $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions);
-            $unitPriceCents = self::decimalToCents($menuItem->price);
-            $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
-            $lineUnitTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
+            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, $quantity);
 
             $previousStatus = $draftOrder->status;
             $this->markAsWaiterReview($draftOrder);
@@ -60,12 +62,12 @@ class AddDraftOrderItemByWaiterAction
             $draftOrderItem = $draftOrder->items()->create([
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
-                'item_name' => $this->snapshotName($itemName, $menuItem),
+                'item_name' => $this->snapshotName($menuItem),
                 'quantity' => $quantity,
-                'unit_price' => self::centsToDecimal($unitPriceCents),
-                'modifier_total' => self::centsToDecimal($modifierTotalCents),
-                'total_price' => self::centsToDecimal($lineUnitTotalCents * $quantity),
-                'selected_modifiers' => $selectedModifiers,
+                'unit_price' => $linePrice['unit_price'],
+                'modifier_total' => $linePrice['modifier_total'],
+                'total_price' => $linePrice['total_price'],
+                'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
             ])->refresh();
 
@@ -82,6 +84,23 @@ class AddDraftOrderItemByWaiterAction
                     'guest_id' => $guest->id,
                     'menu_item_id' => $menuItem->id,
                     'quantity' => $draftOrderItem->quantity,
+                ],
+            );
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::DraftOrderEditedByWaiter,
+                entityType: 'draft_order_item',
+                entityId: $draftOrderItem->id,
+                actorUser: $editedBy,
+                organizationId: $draftOrder->tableSession?->branch?->organization_id,
+                branchId: $draftOrder->tableSession?->branch_id,
+                newValues: [
+                    'operation' => 'waiter_item_added',
+                    'draft_order_id' => $draftOrder->id,
+                    'guest_id' => $guest->id,
+                    'menu_item_id' => $menuItem->id,
+                    'quantity' => $draftOrderItem->quantity,
+                    'total_price' => $draftOrderItem->total_price,
                 ],
             );
 
@@ -157,10 +176,28 @@ class AddDraftOrderItemByWaiterAction
 
     private function ensureGuestCanReceiveItem(DraftOrder $draftOrder, TableSessionGuest $guest): void
     {
-        if ($guest->table_session_id !== $draftOrder->table_session_id || $guest->status !== TableSessionGuestStatus::Active) {
-            throw ValidationException::withMessages([
-                'addingGuestId' => __('Выберите активного гостя за этим столом.'),
-            ]);
+        if ($guest->table_session_id !== $draftOrder->table_session_id) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::GuestNotActive,
+                'addingGuestId',
+                __('Выберите активного гостя за этим столом.'),
+            );
+        }
+
+        if ($guest->status === TableSessionGuestStatus::PendingApproval) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::GuestNotApproved,
+                'addingGuestId',
+                __('Гость ещё не подтверждён для этого стола.'),
+            );
+        }
+
+        if ($guest->status !== TableSessionGuestStatus::Active) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::GuestNotActive,
+                'addingGuestId',
+                __('Выберите активного гостя за этим столом.'),
+            );
         }
     }
 
@@ -173,20 +210,24 @@ class AddDraftOrderItemByWaiterAction
             || $menuItem->menu?->status !== MenuStatus::Active
             || ! $menuItem->category?->is_active
             || ! $menuItem->is_available) {
-            throw ValidationException::withMessages([
-                'addingMenuItemId' => __('Это блюдо сейчас недоступно для этого филиала.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::ItemUnavailable,
+                'addingMenuItemId',
+                __('Это блюдо сейчас недоступно для этого филиала.'),
+            );
         }
 
         $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu);
 
         if (! $availability['is_available']) {
-            throw ValidationException::withMessages([
-                'addingMenuItemId' => __(':label. :detail', [
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::ItemUnavailable,
+                'addingMenuItemId',
+                __(':label. :detail', [
                     'label' => $availability['label'],
                     'detail' => $availability['detail'],
                 ]),
-            ]);
+            );
         }
     }
 
@@ -201,25 +242,17 @@ class AddDraftOrderItemByWaiterAction
         return $quantity;
     }
 
-    private function snapshotName(?string $itemName, MenuItem $menuItem): string
+    private function snapshotName(MenuItem $menuItem): string
     {
-        $normalizedItemName = str((string) $itemName)->squish()->toString();
-
-        return $normalizedItemName === '' ? $menuItem->name : $normalizedItemName;
+        return $menuItem->name;
     }
 
     private function normalizeComment(?string $comment): ?string
     {
-        $normalizedComment = trim((string) $comment);
+        $normalizedComment = PlainText::optional($comment, 500);
 
-        if ($normalizedComment === '') {
+        if ($normalizedComment === null) {
             return null;
-        }
-
-        if (mb_strlen($normalizedComment) > 500) {
-            throw ValidationException::withMessages([
-                'addingComment' => __('Комментарий слишком длинный.'),
-            ]);
         }
 
         return $normalizedComment;
@@ -232,19 +265,5 @@ class AddDraftOrderItemByWaiterAction
                 ->forceFill(['status' => DraftOrderStatus::WaiterReview])
                 ->save();
         }
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return (int) round(((float) ($amount ?? 0)) * 100);
-    }
-
-    private static function centsToDecimal(int $amount): string
-    {
-        $negative = $amount < 0;
-        $absoluteAmount = abs($amount);
-        $formatted = intdiv($absoluteAmount, 100).'.'.str_pad((string) ($absoluteAmount % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

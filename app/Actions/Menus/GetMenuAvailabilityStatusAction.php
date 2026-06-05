@@ -28,8 +28,8 @@ class GetMenuAvailabilityStatusAction
             return [
                 'is_configured' => false,
                 'is_available' => true,
-                'label' => __('Доступно всегда'),
-                'detail' => __('Для этого меню расписание не задано.'),
+                'label' => __('menu.guest.available_always'),
+                'detail' => __('menu.guest.availability_schedule_missing'),
                 'tone' => 'muted',
                 'next_available_at' => null,
                 'available_until' => null,
@@ -43,8 +43,8 @@ class GetMenuAvailabilityStatusAction
             return [
                 'is_configured' => true,
                 'is_available' => true,
-                'label' => __('Доступно сейчас'),
-                'detail' => __('Доступно до :time', ['time' => $availableInterval['ends_at']]),
+                'label' => __('menu.guest.available_now'),
+                'detail' => __('menu.guest.available_until', ['time' => $availableInterval['ends_at']]),
                 'tone' => 'success',
                 'next_available_at' => null,
                 'available_until' => $availableInterval['ends_at'],
@@ -57,10 +57,10 @@ class GetMenuAvailabilityStatusAction
         return [
             'is_configured' => true,
             'is_available' => false,
-            'label' => __('Меню сейчас недоступно'),
+            'label' => __('menu.guest.unavailable'),
             'detail' => $nextAvailable === null
-                ? __('Расписание недоступно.')
-                : __('Будет доступно с :time', ['time' => $nextAvailable['label']]),
+                ? __('menu.guest.schedule_unknown')
+                : __('menu.guest.available_from', ['time' => $nextAvailable['label']]),
             'tone' => 'warning',
             'next_available_at' => $nextAvailable['time'] ?? null,
             'available_until' => null,
@@ -191,13 +191,13 @@ class GetMenuAvailabilityStatusAction
     private function shortDayLabel(int $dayOfWeek): string
     {
         return match ($dayOfWeek) {
-            1 => __('Пн'),
-            2 => __('Вт'),
-            3 => __('Ср'),
-            4 => __('Чт'),
-            5 => __('Пт'),
-            6 => __('Сб'),
-            7 => __('Вс'),
+            1 => __('menu.guest.days.mon'),
+            2 => __('menu.guest.days.tue'),
+            3 => __('menu.guest.days.wed'),
+            4 => __('menu.guest.days.thu'),
+            5 => __('menu.guest.days.fri'),
+            6 => __('menu.guest.days.sat'),
+            7 => __('menu.guest.days.sun'),
             default => '',
         };
     }

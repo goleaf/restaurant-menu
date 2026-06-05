@@ -29,19 +29,20 @@ class AddBranchStaffMemberAction
         return DB::transaction(function () use ($organization, $branch, $role, $assignedBy, $data): User {
             $user = $this->addOrganizationStaffMember->handle($organization, $role, $assignedBy, $data, replaceExistingMembershipRole: false);
 
-            BranchUser::query()->updateOrCreate(
-                [
-                    'branch_id' => $branch->id,
-                    'user_id' => $user->id,
-                ],
-                [
-                    'organization_id' => $organization->id,
-                    'role_id' => $role->id,
-                    'status' => OrganizationUserStatus::Active,
-                    'assigned_at' => now(),
-                    'assigned_by_user_id' => $assignedBy->id,
-                ],
-            );
+            $branchUser = BranchUser::query()
+                ->where('branch_id', $branch->id)
+                ->where('user_id', $user->id)
+                ->first() ?? new BranchUser;
+
+            $branchUser->forceFill([
+                'organization_id' => $organization->id,
+                'branch_id' => $branch->id,
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+                'status' => OrganizationUserStatus::Active,
+                'assigned_at' => now(),
+                'assigned_by_user_id' => $assignedBy->id,
+            ])->save();
 
             return $user;
         });

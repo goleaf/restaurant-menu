@@ -8,13 +8,18 @@ enum ManualPaymentMethod: string
     case CardTerminal = 'card_terminal';
     case Other = 'other';
 
-    public function label(): string
+    public function translationKey(): string
     {
         return match ($this) {
-            self::Cash => 'Cash',
-            self::CardTerminal => 'Card terminal',
-            self::Other => 'Other',
+            self::Cash => 'ui.payment_methods.cash',
+            self::CardTerminal => 'ui.payment_methods.card_terminal',
+            self::Other => 'ui.payment_methods.other',
         };
+    }
+
+    public function label(): string
+    {
+        return __($this->translationKey());
     }
 
     /**

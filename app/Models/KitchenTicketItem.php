@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'status', 'served_at', 'served_by_user_id', 'selected_modifiers', 'comment'])]
+#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'served_at', 'served_by_user_id', 'selected_modifiers', 'comment'])]
 class KitchenTicketItem extends Model
 {
     /** @use HasFactory<KitchenTicketItemFactory> */

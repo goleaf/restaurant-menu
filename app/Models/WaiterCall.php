@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['branch_id', 'service_point_id', 'active_service_point_id', 'table_session_id', 'requested_by_guest_id', 'status', 'requested_at', 'handled_at', 'handled_by_user_id', 'metadata'])]
+#[Fillable(['service_point_id', 'active_service_point_id', 'table_session_id', 'requested_by_guest_id', 'requested_at', 'handled_at', 'handled_by_user_id', 'metadata'])]
 class WaiterCall extends Model
 {
     /** @use HasFactory<WaiterCallFactory> */

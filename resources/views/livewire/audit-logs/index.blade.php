@@ -66,7 +66,7 @@
                 </article>
             @empty
                 <div class="p-6 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No audit events yet.') }}
+                    {{ __('ui.empty.no_activity') }}
                 </div>
             @endforelse
         </div>

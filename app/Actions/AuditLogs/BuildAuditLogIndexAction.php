@@ -2,6 +2,7 @@
 
 namespace App\Actions\AuditLogs;
 
+use App\Actions\AuditLogs\Support\AuditLogValueSanitizer;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
@@ -18,6 +19,7 @@ class BuildAuditLogIndexAction
 {
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        private readonly AuditLogValueSanitizer $valueSanitizer,
     ) {}
 
     /**
@@ -45,7 +47,7 @@ class BuildAuditLogIndexAction
                 'branch_id',
                 'user_id',
                 'guest_id',
-                'guest_token',
+                'guest_display_name',
                 'action',
                 'entity_type',
                 'entity_id',
@@ -82,7 +84,7 @@ class BuildAuditLogIndexAction
                     'branch_id',
                     'user_id',
                     'guest_id',
-                    'guest_token',
+                    'guest_display_name',
                     'action',
                     'entity_type',
                     'entity_id',
@@ -178,44 +180,13 @@ class BuildAuditLogIndexAction
             'organization_name' => $auditLog->organization?->name,
             'branch_name' => $auditLog->branch?->name,
             'actor' => $auditLog->user?->name
+                ?? $auditLog->guest_display_name
                 ?? $auditLog->guest?->guest_name
-                ?? $auditLog->guest_token
                 ?? 'System',
             'old_values' => $auditLog->old_values ?? [],
             'new_values' => $auditLog->new_values ?? [],
-            'old_summary' => $this->valueSummary($auditLog->old_values ?? []),
-            'new_summary' => $this->valueSummary($auditLog->new_values ?? []),
+            'old_summary' => $this->valueSanitizer->summary($auditLog->old_values ?? []),
+            'new_summary' => $this->valueSanitizer->summary($auditLog->new_values ?? []),
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $values
-     */
-    private function valueSummary(array $values): string
-    {
-        if ($values === []) {
-            return '—';
-        }
-
-        return collect($values)
-            ->map(fn (mixed $value, string $key): string => $key.': '.$this->displayValue($value))
-            ->implode('; ');
-    }
-
-    private function displayValue(mixed $value): string
-    {
-        if (is_bool($value)) {
-            return $value ? 'yes' : 'no';
-        }
-
-        if ($value === null) {
-            return 'empty';
-        }
-
-        if (is_array($value)) {
-            return json_encode($value, JSON_UNESCAPED_UNICODE) ?: '[]';
-        }
-
-        return (string) $value;
     }
 }

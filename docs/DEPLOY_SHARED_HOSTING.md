@@ -41,6 +41,11 @@ FILESYSTEM_DISK=public
 BROADCAST_CONNECTION=log
 ```
 
+Never run production with `APP_DEBUG=true`. Laravel can expose stack traces and
+configuration context when debug mode is enabled. The superadmin system health
+panel warns about unsafe production settings, but it does not change `.env`
+values for you.
+
 `DB_DATABASE` may be left empty only when Laravel can safely resolve
 `database/database.sqlite` in the deployed project path. On shared hosting, an
 absolute path is clearer and safer.
@@ -123,6 +128,13 @@ this directory. As a last resort, `public/storage` must contain the same files a
 new uploads must stay in sync.
 
 Do not commit `public/storage`, local media uploads, or copied storage files.
+Keep `storage/app/public/.htaccess` deployed with the media directory so Apache
+denies direct execution of `.php`, `.phtml`, and `.phar` files through
+`public/storage`.
+
+The private `local` disk under `storage/app/private` must not be exposed
+through public storage routes. Use explicit authenticated controllers for
+sensitive downloads such as SQLite backups.
 
 ## Migrations
 
@@ -142,8 +154,8 @@ Optional demo data for local QA or a first test install:
 php artisan db:seed --class=DemoRestaurantSeeder --force
 ```
 
-Do not run the demo seeder on production data unless you intentionally want demo
-records.
+The demo seeder is development-only and is blocked when `APP_ENV=production`.
+Do not use demo credentials or demo records on production data.
 
 ## Database Cache
 
@@ -241,7 +253,7 @@ Never commit:
 .env.backup
 .env.production
 database/*.sqlite*
-storage/app/public/*
+storage/app/public/* except storage/app/public/.htaccess
 storage/logs/*
 storage/framework/*
 public/storage
@@ -254,6 +266,22 @@ auth.json
 Backups, CSV exports, media files, logs, and SQLite database copies can contain
 sensitive data. Keep them outside git and outside the public web root unless
 they are intentionally public media exposed through `public/storage`.
+
+## Production Safety Checklist
+
+Before serving production traffic:
+
+- Confirm `APP_ENV=production` and `APP_DEBUG=false`.
+- Confirm demo data is not seeded; `DemoRestaurantSeeder` is for local QA only.
+- Keep SQLite backup download behind the superadmin middleware and controller
+  check.
+- Do not add filesystem log viewers. The domain audit log is permissioned
+  application data; raw application logs must not be exposed through routes.
+- Do not add debug, `phpinfo`, test payment, or fake training routes.
+- Keep `storage/app/public/.htaccess` present so public storage cannot execute
+  PHP files.
+- Review the superadmin system health panel after deployment and fix warnings
+  in hosting config or deployed files.
 
 ## Infrastructure Boundaries
 

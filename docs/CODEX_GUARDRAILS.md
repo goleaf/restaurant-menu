@@ -1,6 +1,6 @@
 # Codex Guardrails
 
-Short hard rules for coding-agent work in this repository. Read this file before touching code, then read the longer project memory.
+Short hard rules for every Codex prompt in this project.
 
 ## Always
 
@@ -8,11 +8,18 @@ Short hard rules for coding-agent work in this repository. Read this file before
 - Make one small change per prompt.
 - Update docs after each prompt.
 - Commit after each prompt.
-- Keep SQLite and shared-hosting compatibility.
-- Use database cache, database sessions, and database queue.
-- Use Blade and Livewire.
+- Keep SQLite/shared hosting compatibility.
+- Use database cache/session/queue.
+- Use Blade + Livewire.
 - Check permissions server-side.
-- Keep guest and staff flows separated.
+- Keep guest and staff separated.
+- Keep public QR routes guest-only.
+- Keep token families separated: QR public token, QR short code, guest token, staff invite token, and guest session invite token.
+- Check token status and expiration server-side before use.
+- Use controlled translated errors.
+- Log unexpected exceptions.
+- Escape user/staff/guest content by default.
+- Store guest comments and menu descriptions as plain text unless explicitly sanitized.
 
 ## Never
 
@@ -21,7 +28,7 @@ Short hard rules for coding-agent work in this repository. Read this file before
 - No S3.
 - No Docker requirement.
 - No paid services.
-- No Stripe or PayPal.
+- No Stripe/PayPal.
 - No training mode.
 - No pilot issue log.
 - No live launch checklist.
@@ -30,29 +37,47 @@ Short hard rules for coding-agent work in this repository. Read this file before
 - No hardcoded UI strings.
 - No business logic in Blade.
 - No trusting frontend totals.
+- No unsafe public admin POST/PATCH/DELETE routes.
+- No global CSRF disable.
+- No public sensitive backup/download routes.
+- No incremental IDs as public tokens.
+- No accepting `short_code` as a security token.
+- No exposing `guest_token` in UI, URLs, exports, logs, or Livewire public properties.
+- No accepting expired invite tokens, revoked QR tokens, or closed-session invite tokens.
+- No stack traces or raw exception messages for normal users.
+- No sensitive data in error messages.
+- No unescaped output for user-entered content.
+- No unsafe HTML storage without sanitization.
 
 ## Current Next Prompt
 
-- Wait for the next explicit user prompt.
-- Do not continue feature work automatically.
-- Keep `docs/NEXT_STEPS.md` as the source for queued ideas and guardrails.
-- Alternative queued prompt, only if explicitly requested: Prompt 281, dedicated menu tags/allergens and shared payment allocation foundations.
+- Use only the user's next explicit prompt.
+- Existing queued candidates in project docs include Prompt 123 payment correction and Prompt 125 kitchen delay timers; start either only after a fresh health check.
+- Prompt 122 order item void flow remains skipped/pending unless explicitly requested.
 
 ## Current Critical Business Rules
 
-- Payments are manual/offline only.
-- Backend actions must calculate totals from confirmed server-side records.
-- Open drafts cannot be paid.
-- Every order must be confirmed by staff before kitchen/bar dispatch.
-- Guest users are not staff accounts and must not receive staff access.
-- Staff permissions must be checked on the server for every branch action.
-- One physical service point owns one permanent QR code.
-- QR identity must not change when service points are renamed, moved, transferred, merged, cancelled, paid, or closed.
-- Guest QR URLs must not expose organization, branch, service point, table, session, or guest IDs.
-- Table-session cleanup must not auto-close active sessions or cancel sessions with unpaid orders.
-- Merged table sessions must keep the main `table_sessions.service_point_id` as the primary service point.
-- Tips are optional extras and must not reduce the required subtotal or service-charge balance.
-- Manual payment history must preserve service charge and tips snapshots after settings change.
-- All visible UI text must be localization-backed.
-- Blade views must receive prepared data and must not query or own business logic.
-- SQLite queries must stay bounded, eager-loaded, indexed, and shared-hosting friendly.
+- Guests are not staff users and never get staff permissions.
+- Admin, waiter, kitchen/bar, export, settings, and superadmin routes require authenticated web sessions.
+- Superadmin backup routes require `auth` plus `superadmin`.
+- Export downloads require `auth` plus server-side `export_data` branch access.
+- Private local storage must not register public download/upload routes.
+- Public QR and guest invite URLs must not expose internal IDs.
+- QR `public_token`, guest tokens, staff invite tokens, and guest invite tokens must be random, long, non-incremental, status-checked credentials.
+- QR `short_code` is staff lookup/print text only.
+- Staff invitation acceptance must require pending status and unexpired token.
+- Closed/cancelled sessions and revoked/disabled QR codes must not create guest ordering access.
+- Permanent QR identity belongs to physical service points; ordinary edits must not reissue QR.
+- Orders, payments, QR changes, staff changes, permission changes, and dangerous actions must keep audit history.
+- Order cancellation keeps order history and requires a reason.
+- Permission UI must show grouped human labels/descriptions; raw keys only for superadmin technical mode.
+- Critical permission changes require confirmation and reason.
+- Expected business errors must use controlled messages; unexpected system errors stay in Laravel logs.
+- Technical exceptions must not create activity/audit log noise.
+- Guest comments, order comments, waiter notes, menu descriptions, category descriptions, branch profile text, and notification text must render as escaped plain text.
+- Raw HTML is allowed only for audited generated output such as QR SVG, never for user content.
+- Manual payments are offline only; guests never create payment records.
+- Kitchen/bar work starts only after waiter confirmation and explicit dispatch.
+- Menu availability changes must clear database cache and write audit logs.
+- Money totals must be recalculated server-side from stored records.
+- Important business records use status/history or soft deletes instead of destructive deletion.

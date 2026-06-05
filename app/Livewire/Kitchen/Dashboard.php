@@ -52,7 +52,7 @@ class Dashboard extends DepartmentDashboard
 
     protected function screenEmptyMessage(): string
     {
-        return __('No tickets for this department.');
+        return __('departments.dashboard.no_orders');
     }
 
     protected function screenItemCountLabel(): string

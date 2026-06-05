@@ -3,9 +3,11 @@
 namespace App\Actions\Waiter;
 
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
+use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
@@ -34,9 +36,11 @@ class MarkKitchenTicketItemServedAction
             $this->ensureCanServe($order, $servedBy);
 
             if ($order->status === OrderStatus::Cancelled) {
-                throw ValidationException::withMessages([
-                    'order_service' => __('Заказ отменён. Позиции больше нельзя подавать.'),
-                ]);
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::OrderAlreadyCancelled,
+                    'order_service',
+                    __('Заказ отменён. Позиции больше нельзя подавать.'),
+                );
             }
 
             if ($item->served_at !== null) {
@@ -94,9 +98,11 @@ class MarkKitchenTicketItemServedAction
         $branchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::ViewOrders);
 
         if (! $branchIds->contains((int) $order->branch_id)) {
-            throw ValidationException::withMessages([
-                'order_service' => __('У вас нет доступа к подаче позиций в этом филиале.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::BranchInaccessible,
+                'order_service',
+                __('У вас нет доступа к подаче позиций в этом филиале.'),
+            );
         }
     }
 

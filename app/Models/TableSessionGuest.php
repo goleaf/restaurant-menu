@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'ready_at', 'joined_at', 'left_at', 'metadata'])]
+#[Fillable(['table_session_id', 'guest_name', 'ready_at', 'joined_at', 'left_at', 'metadata'])]
 class TableSessionGuest extends Model
 {
     /** @use HasFactory<TableSessionGuestFactory> */

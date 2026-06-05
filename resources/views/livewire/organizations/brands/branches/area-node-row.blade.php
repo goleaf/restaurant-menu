@@ -72,22 +72,22 @@
             </flux:button>
 
             <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $node['id'] }})">
-                {{ __('Удалить') }}
+                {{ __('ui.actions.delete') }}
             </flux:button>
         </div>
 
         @if ($deletingAreaNodeId === $node['id'])
             <x-ui.alert tone="danger" class="md:col-span-2">
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <span>{{ __('Удалить эту зону?') }}</span>
+                    <span>{{ __('ui.confirmations.delete.title') }}</span>
 
                     <div class="flex flex-wrap gap-2">
                         <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                            {{ __('Удалить') }}
+                            {{ __('ui.actions.delete') }}
                         </flux:button>
 
                         <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
-                            {{ __('Отмена') }}
+                            {{ __('ui.actions.cancel') }}
                         </flux:button>
                     </div>
                 </div>

@@ -74,7 +74,7 @@
                 <div class="flex flex-col gap-1">
                     <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('Добавить сразу несколько') }}</h2>
                     <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                        {{ __('Сначала покажем preview. QR не создаются автоматически, чтобы не запутать печать наклеек.') }}
+                        {{ __('qr.messages.bulk_preview_no_auto_create') }}
                     </p>
                 </div>
 
@@ -152,7 +152,7 @@
                         <div class="grid gap-3">
                             <p>
                                 {{ __('Skipped existing codes') }}: {{ $bulkSkippedCount }}.
-                                {{ __('Generate QR later') }}.
+                                {{ __('qr.messages.generate_later') }}.
                             </p>
 
                             @if ($canGenerateQr)
@@ -162,12 +162,12 @@
                                         :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])"
                                         wire:navigate
                                     >
-                                        {{ __('Перейти к массовой печати QR') }}
+                                        {{ __('qr.actions.bulk_print') }}
                                     </flux:button>
                                 </div>
                             @else
                                 <p class="text-sm">
-                                    {{ __('Пользователь с правом generate_qr сможет создать QR позже на странице QR-печати.') }}
+                                    {{ __('qr.messages.generate_permission_hint') }}
                                 </p>
                             @endif
                         </div>
@@ -253,7 +253,7 @@
                                         @if ($servicePoint->activeQrCode)
                                             <x-ui.status-badge tone="success" icon="qr-code">{{ $servicePoint->activeQrCode->short_code }}</x-ui.status-badge>
                                         @else
-                                            <x-ui.status-badge tone="muted" icon="qr-code">{{ __('QR нет') }}</x-ui.status-badge>
+                                            <x-ui.status-badge tone="muted" icon="qr-code">{{ __('qr.labels.no_qr') }}</x-ui.status-badge>
                                         @endif
                                     @endif
                                 </div>
@@ -283,11 +283,11 @@
                                                 :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
                                                 wire:navigate
                                             >
-                                                {{ __('Показать QR') }}
+                                                {{ __('qr.actions.show') }}
                                             </flux:button>
                                         @else
                                             <flux:button size="sm" icon="qr-code" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
-                                                {{ __('Создать QR') }}
+                                                {{ __('qr.actions.generate') }}
                                             </flux:button>
                                         @endif
                                     @endif
@@ -309,8 +309,8 @@
             @empty
                 <x-ui.empty-state
                     icon="squares-2x2"
-                    :heading="__('Зал пока пустой')"
-                    :description="__('Добавьте зоны и столы, чтобы увидеть их на визуальной доске.')"
+                    :heading="__('service_points.empty.no_floor_board')"
+                    :description="__('service_points.empty.no_floor_board_description')"
                 />
             @endforelse
         </div>
@@ -332,7 +332,7 @@
                         :label="__('Поиск')"
                         type="search"
                         maxlength="160"
-                        :placeholder="__('Название, номер, код или QR')"
+                        :placeholder="__('qr.placeholders.service_point_search')"
                     />
 
                     <flux:select wire:model.live="filterAreaNodeId" :label="__('Зона')">
@@ -363,7 +363,7 @@
                         @endforeach
                     </flux:select>
 
-                    <flux:select wire:model.live="filterQr" :label="__('QR')">
+                    <flux:select wire:model.live="filterQr" :label="__('qr.labels.qr')">
                         @foreach ($this->qrFilterOptions as $value => $label)
                             <flux:select.option wire:key="service-point-filter-qr-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                         @endforeach
@@ -460,13 +460,13 @@
                                 @if ($canGenerateQr)
                                     @if ($servicePoint->activeQrCode)
                                         <x-ui.status-badge tone="success" icon="qr-code">
-                                            {{ __('QR готов') }}
-                                            <span class="sr-only">{{ __('QR active') }}</span>
+                                            {{ __('qr.labels.ready') }}
+                                            <span class="sr-only">{{ __('qr.status.active') }}</span>
                                         </x-ui.status-badge>
                                     @else
                                         <x-ui.status-badge tone="muted" icon="qr-code">
-                                            {{ __('QR нет') }}
-                                            <span class="sr-only">{{ __('No QR') }}</span>
+                                            {{ __('qr.labels.no_qr') }}
+                                            <span class="sr-only">{{ __('qr.labels.no_qr') }}</span>
                                         </x-ui.status-badge>
                                     @endif
                                 @endif
@@ -493,7 +493,7 @@
 
                             @if ($canGenerateQr && $servicePoint->activeQrCode)
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ __('QR') }}: {{ $servicePoint->activeQrCode->short_code }} / {{ __($servicePoint->activeQrCode->status->label()) }}
+                                    {{ __('qr.labels.qr') }}: {{ $servicePoint->activeQrCode->short_code }} / {{ __($servicePoint->activeQrCode->status->label()) }}
                                 </p>
                             @endif
                         </div>
@@ -539,13 +539,13 @@
                                         :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
                                         wire:navigate
                                     >
-                                        {{ __('Показать QR') }}
-                                        <span class="sr-only">{{ __('Show QR') }}</span>
+                                        {{ __('qr.actions.show') }}
+                                        <span class="sr-only">{{ __('qr.actions.show') }}</span>
                                     </flux:button>
                                 @else
                                     <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
-                                        {{ __('Создать QR') }}
-                                        <span class="sr-only">{{ __('Create QR') }}</span>
+                                        {{ __('qr.actions.generate') }}
+                                        <span class="sr-only">{{ __('qr.actions.generate') }}</span>
                                     </flux:button>
                                 @endif
                             @endif
@@ -572,7 +572,7 @@
                                 @if ($servicePoint->activeQrCode)
                                     <div class="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
                                         <div class="min-w-0 space-y-1">
-                                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('QR') }} {{ $servicePoint->activeQrCode->short_code }}</p>
+                                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('qr.labels.qr') }} {{ $servicePoint->activeQrCode->short_code }}</p>
                                             <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint->activeQrCode->publicPath() }}</p>
                                             <p class="text-zinc-500 dark:text-zinc-400">{{ __('Статус') }}: {{ __($servicePoint->activeQrCode->status->label()) }}</p>
                                         </div>
@@ -582,7 +582,7 @@
                                         </flux:button>
                                     </div>
                                 @else
-                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Активного QR пока нет.') }}</p>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('qr.empty.no_active') }}</p>
                                 @endif
                             </div>
                         @endif
@@ -592,12 +592,12 @@
                 <div class="p-4">
                     <x-ui.empty-state
                         icon="squares-2x2"
-                        :heading="__('Столов и мест пока нет')"
+                        :heading="__('ui.empty.no_service_points')"
                         :description="$this->servicePointFiltersAreActive
-                            ? __('Измените поиск или сбросьте фильтры.')
-                            : __('Начните с кнопки “Стол”. QR позже привяжется к месту и не изменится при переименовании или переносе.')"
+                            ? __('ui.empty.no_results')
+                            : __('service_points.empty.no_service_points_description')"
                     />
-                    <span class="sr-only">{{ __('No service points yet.') }}</span>
+                    <span class="sr-only">{{ __('ui.empty.no_service_points') }}</span>
                 </div>
             @endforelse
         </div>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['branch_id', 'day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])]
+#[Fillable(['day_of_week', 'is_closed', 'opens_at', 'closes_at', 'sort_order'])]
 class BranchOpeningHour extends Model
 {
     /** @use HasFactory<BranchOpeningHourFactory> */

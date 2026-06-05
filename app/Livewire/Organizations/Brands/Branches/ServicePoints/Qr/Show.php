@@ -4,6 +4,7 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
 
 use App\Actions\QrCodes\DisableQrCodeAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
+use App\Enums\DangerousAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
@@ -15,13 +16,12 @@ use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-#[Title('QR code')]
 class Show extends Component
 {
     public Organization $organization;
@@ -35,6 +35,10 @@ class Show extends Component
     public QrCode $qrCode;
 
     public bool $confirmingReissue = false;
+
+    public string $qrDisableReason = '';
+
+    public string $qrReissueConfirmation = '';
 
     public function mount(
         Organization $organization,
@@ -58,12 +62,25 @@ class Show extends Component
     {
         $this->authorizeQrManagement();
 
-        $disableQrCode->handle($this->qrCode);
+        $validated = $this->validate([
+            'qrDisableReason' => ['required', 'string', 'min:3', 'max:500'],
+        ], [
+            'qrDisableReason.required' => __('qr.validation.disable_reason_required'),
+            'qrDisableReason.min' => __('qr.validation.disable_reason_min'),
+        ]);
+
+        $disableQrCode->handle(
+            qrCode: $this->qrCode,
+            disabledBy: $this->currentUser(),
+            reason: (string) $validated['qrDisableReason'],
+        );
 
         $this->confirmingReissue = false;
+        $this->qrDisableReason = '';
         $this->reloadQrCode();
 
-        Flux::toast(variant: 'success', text: __('QR disabled.'));
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('qr.messages.disabled'));
     }
 
     public function confirmReissue(): void
@@ -71,18 +88,29 @@ class Show extends Component
         $this->authorizeQrManagement();
 
         $this->confirmingReissue = true;
+        $this->qrReissueConfirmation = '';
     }
 
     public function cancelReissue(): void
     {
         $this->confirmingReissue = false;
+        $this->qrReissueConfirmation = '';
     }
 
     public function reissueQr(ReissueQrCodeForServicePointAction $reissueQrCode): void
     {
         $this->authorizeQrManagement();
 
+        $this->validate([
+            'qrReissueConfirmation' => ['required', 'string', Rule::in([$this->qrCode->short_code])],
+        ], [
+            'qrReissueConfirmation.required' => __('qr.validation.reissue_confirmation_required'),
+            'qrReissueConfirmation.in' => __('qr.validation.reissue_confirmation_mismatch'),
+        ]);
+
         $newQrCode = $reissueQrCode->handle($this->qrCode, $this->currentUser());
+
+        $this->qrReissueConfirmation = '';
 
         $this->redirectRoute(
             'organizations.brands.branches.service-points.qr.show',
@@ -139,7 +167,13 @@ class Show extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.service-points.qr.show');
+        return view('livewire.organizations.brands.branches.service-points.qr.show')
+            ->title(__('qr.labels.title'));
+    }
+
+    public function dangerousAction(string $action): DangerousAction
+    {
+        return DangerousAction::from($action);
     }
 
     private function authorizeRouteContext(): void

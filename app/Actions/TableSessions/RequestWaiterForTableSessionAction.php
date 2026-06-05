@@ -45,7 +45,8 @@ class RequestWaiterForTableSessionAction
                 ? $servicePoint->status->value
                 : ServicePointStatus::Occupied->value;
 
-            $waiterCall = WaiterCall::query()->create([
+            $waiterCall = new WaiterCall;
+            $waiterCall->forceFill([
                 'branch_id' => $tableSession->branch_id,
                 'service_point_id' => $tableSession->service_point_id,
                 'table_session_id' => $tableSession->id,
@@ -55,7 +56,7 @@ class RequestWaiterForTableSessionAction
                 'metadata' => [
                     'previous_service_point_status' => $previousStatus,
                 ],
-            ]);
+            ])->save();
 
             $this->markServicePointWaiting($tableSession);
 

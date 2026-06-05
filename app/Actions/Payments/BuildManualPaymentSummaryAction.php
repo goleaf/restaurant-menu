@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 
 class BuildManualPaymentSummaryAction
@@ -312,7 +313,7 @@ class BuildManualPaymentSummaryAction
                     'scope' => $scope->value,
                     'scope_label' => $scope->label(),
                     'method' => $method->value,
-                    'method_label' => $method->label(),
+                    'method_label' => $method->translationKey(),
                     'covered_subtotal' => $this->formatCents($this->coveredSubtotalCents($payment)).' '.($payment->currency ?: $currency),
                     'service_charge_percent' => $this->formatPercent($payment->service_charge_percent),
                     'service_charge_amount' => $this->formatCents($this->decimalToCents($payment->service_charge_amount)).' '.($payment->currency ?: $currency),
@@ -375,7 +376,7 @@ class BuildManualPaymentSummaryAction
         return collect(ManualPaymentMethod::cases())
             ->map(fn (ManualPaymentMethod $method): array => [
                 'value' => $method->value,
-                'label' => $method->label(),
+                'label' => $method->translationKey(),
             ])
             ->values()
             ->all();
@@ -383,22 +384,12 @@ class BuildManualPaymentSummaryAction
 
     private function decimalToCents(string|int|float|null $amount): int
     {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
+        return MoneyFormatter::decimalToCents($amount);
     }
 
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 
     private function formatPercent(string|int|float|null $percent): string

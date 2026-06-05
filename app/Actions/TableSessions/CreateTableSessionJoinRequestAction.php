@@ -10,6 +10,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Notifications\JoinRequestCreatedNotification;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ class CreateTableSessionJoinRequestAction
 {
     public function handle(TableSession $tableSession, string $guestName): ?TableSessionJoinRequest
     {
-        $normalizedGuestName = str($guestName)->squish()->toString();
+        $normalizedGuestName = PlainText::required($guestName, 80, squish: true);
 
         $joinRequest = DB::transaction(function () use ($tableSession, $normalizedGuestName): ?TableSessionJoinRequest {
             $tableSession = $this->reloadTableSession($tableSession);
@@ -35,12 +36,16 @@ class CreateTableSessionJoinRequestAction
                 return null;
             }
 
-            return $tableSession->joinRequests()->create([
+            $joinRequest = $tableSession->joinRequests()->make([
                 'guest_name' => $normalizedGuestName,
-                'guest_token' => Str::random(64),
-                'status' => TableSessionJoinRequestStatus::Pending,
                 'expires_at' => now()->addMinutes(30),
             ]);
+            $joinRequest->forceFill([
+                'guest_token' => Str::random(64),
+                'status' => TableSessionJoinRequestStatus::Pending,
+            ])->save();
+
+            return $joinRequest;
         });
 
         if ($joinRequest instanceof TableSessionJoinRequest) {

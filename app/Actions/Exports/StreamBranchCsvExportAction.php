@@ -17,6 +17,7 @@ use App\Models\OrderItem;
 use App\Models\ServicePoint;
 use App\Models\User;
 use BackedEnum;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -26,14 +27,19 @@ class StreamBranchCsvExportAction
         private readonly ResolveExportAccessibleBranchIdsAction $resolveExportAccessibleBranchIds,
     ) {}
 
-    public function handle(User $user, Branch $branch, DataExportType $type): StreamedResponse
-    {
+    public function handle(
+        User $user,
+        Branch $branch,
+        DataExportType $type,
+        ?CarbonInterface $startedAt = null,
+        ?CarbonInterface $endedAt = null,
+    ): StreamedResponse {
         abort_unless($this->resolveExportAccessibleBranchIds->canExport($user, $branch), 403);
 
         $filename = 'restaurant-menu-'.$type->filenamePart().'-branch-'.$branch->id.'-'.now()->format('Y-m-d-His').'.csv';
 
         return response()->streamDownload(
-            function () use ($branch, $type): void {
+            function () use ($branch, $type, $startedAt, $endedAt): void {
                 $handle = fopen('php://output', 'w');
 
                 if ($handle === false) {
@@ -41,8 +47,8 @@ class StreamBranchCsvExportAction
                 }
 
                 match ($type) {
-                    DataExportType::Orders => $this->writeOrders($handle, $branch),
-                    DataExportType::Payments => $this->writePayments($handle, $branch),
+                    DataExportType::Orders => $this->writeOrders($handle, $branch, $startedAt, $endedAt),
+                    DataExportType::Payments => $this->writePayments($handle, $branch, $startedAt, $endedAt),
                     DataExportType::Menu => $this->writeMenu($handle, $branch),
                     DataExportType::ServicePoints => $this->writeServicePoints($handle, $branch),
                 };
@@ -61,7 +67,7 @@ class StreamBranchCsvExportAction
     /**
      * @param  resource  $handle
      */
-    private function writeOrders(mixed $handle, Branch $branch): void
+    private function writeOrders(mixed $handle, Branch $branch, ?CarbonInterface $startedAt, ?CarbonInterface $endedAt): void
     {
         $this->putHeader($handle, [
             'reports.csv.order_id',
@@ -96,6 +102,9 @@ class StreamBranchCsvExportAction
                 'items:id,order_id,guest_name,guest_name_snapshot,item_name,item_name_snapshot,quantity,total_price',
             ])
             ->where('branch_id', $branch->id)
+            ->when($startedAt instanceof CarbonInterface && $endedAt instanceof CarbonInterface, function ($query) use ($startedAt, $endedAt): void {
+                $query->whereBetween('confirmed_at', [$startedAt, $endedAt]);
+            })
             ->chunkById(200, function (Collection $orders) use ($handle, $branch): void {
                 $orders->each(function (Order $order) use ($handle, $branch): void {
                     $this->putRow($handle, [
@@ -118,7 +127,7 @@ class StreamBranchCsvExportAction
     /**
      * @param  resource  $handle
      */
-    private function writePayments(mixed $handle, Branch $branch): void
+    private function writePayments(mixed $handle, Branch $branch, ?CarbonInterface $startedAt, ?CarbonInterface $endedAt): void
     {
         $this->putHeader($handle, [
             'reports.csv.payment_id',
@@ -155,6 +164,9 @@ class StreamBranchCsvExportAction
                 'recordedBy:id,name,email',
             ])
             ->where('branch_id', $branch->id)
+            ->when($startedAt instanceof CarbonInterface && $endedAt instanceof CarbonInterface, function ($query) use ($startedAt, $endedAt): void {
+                $query->whereBetween('paid_at', [$startedAt, $endedAt]);
+            })
             ->chunkById(200, function (Collection $payments) use ($handle, $branch): void {
                 $payments->each(function (ManualPayment $payment) use ($handle, $branch): void {
                     $this->putRow($handle, [

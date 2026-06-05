@@ -8,15 +8,19 @@ use App\Models\TableSessionGuest;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Isolate]
 class Notifications extends Component
 {
+    #[Locked]
     public int $tableSessionId = 0;
 
+    #[Locked]
     public int $currentGuestId = 0;
 
+    #[Locked]
     public string $publicToken = '';
 
     public int $pollingIntervalSeconds = 1;

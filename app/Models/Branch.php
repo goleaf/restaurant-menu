@@ -16,7 +16,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
-    'organization_id',
     'brand_id',
     'name',
     'public_name',

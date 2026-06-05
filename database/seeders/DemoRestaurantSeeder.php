@@ -36,6 +36,7 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class DemoRestaurantSeeder extends Seeder
 {
@@ -52,6 +53,10 @@ class DemoRestaurantSeeder extends Seeder
      */
     public function run(): void
     {
+        if (strtolower((string) config('app.env')) === 'production') {
+            throw new RuntimeException('DemoRestaurantSeeder is development-only and cannot run while APP_ENV=production.');
+        }
+
         $this->call(SystemPermissionsSeeder::class);
 
         DB::transaction(function (): void {
@@ -622,18 +627,19 @@ class DemoRestaurantSeeder extends Seeder
         SystemRole $role,
         ?User $invitedBy,
     ): void {
-        OrganizationUser::query()->updateOrCreate(
-            [
-                'organization_id' => $organization->id,
-                'user_id' => $user->id,
-            ],
-            [
-                'role_id' => $this->role($role)->id,
-                'status' => OrganizationUserStatus::Active,
-                'joined_at' => now(),
-                'invited_by_user_id' => $invitedBy?->id,
-            ],
-        );
+        $membership = OrganizationUser::query()
+            ->where('organization_id', $organization->id)
+            ->where('user_id', $user->id)
+            ->first() ?? new OrganizationUser;
+
+        $membership->forceFill([
+            'organization_id' => $organization->id,
+            'user_id' => $user->id,
+            'role_id' => $this->role($role)->id,
+            'status' => OrganizationUserStatus::Active,
+            'joined_at' => now(),
+            'invited_by_user_id' => $invitedBy?->id,
+        ])->save();
     }
 
     private function ensureBranchAssignment(
@@ -643,19 +649,20 @@ class DemoRestaurantSeeder extends Seeder
         SystemRole $role,
         User $assignedBy,
     ): void {
-        BranchUser::query()->updateOrCreate(
-            [
-                'branch_id' => $branch->id,
-                'user_id' => $user->id,
-            ],
-            [
-                'organization_id' => $organization->id,
-                'role_id' => $this->role($role)->id,
-                'status' => OrganizationUserStatus::Active,
-                'assigned_at' => now(),
-                'assigned_by_user_id' => $assignedBy->id,
-            ],
-        );
+        $assignment = BranchUser::query()
+            ->where('branch_id', $branch->id)
+            ->where('user_id', $user->id)
+            ->first() ?? new BranchUser;
+
+        $assignment->forceFill([
+            'organization_id' => $organization->id,
+            'branch_id' => $branch->id,
+            'user_id' => $user->id,
+            'role_id' => $this->role($role)->id,
+            'status' => OrganizationUserStatus::Active,
+            'assigned_at' => now(),
+            'assigned_by_user_id' => $assignedBy->id,
+        ])->save();
     }
 
     /**

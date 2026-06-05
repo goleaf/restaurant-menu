@@ -3,6 +3,7 @@
 namespace App\Actions\Branches;
 
 use App\Models\Branch;
+use App\Support\PlainText;
 use Illuminate\Support\Carbon;
 
 class UpdateBranchTemporaryClosureAction
@@ -47,9 +48,7 @@ class UpdateBranchTemporaryClosureAction
 
     private function nullableString(?string $value): ?string
     {
-        $value = str((string) $value)->squish()->toString();
-
-        return $value === '' ? null : $value;
+        return PlainText::optional($value, 255, squish: true);
     }
 
     private function timezoneFor(Branch $branch): string

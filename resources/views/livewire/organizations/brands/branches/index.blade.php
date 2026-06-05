@@ -1,4 +1,12 @@
 <section data-page="brand-branches" class="flex h-full w-full flex-1 flex-col gap-6">
+    @php
+        $branchSuspendTitle = \App\Enums\DangerousAction::SuspendBranch->title();
+        $branchSuspendConsequence = \App\Enums\DangerousAction::SuspendBranch->consequence();
+        $branchSuspendRequiresReason = \App\Enums\DangerousAction::SuspendBranch->requiresReason();
+        $deleteMediaTitle = \App\Enums\DangerousAction::DeleteMediaFile->title();
+        $deleteMediaConsequence = \App\Enums\DangerousAction::DeleteMediaFile->consequence();
+    @endphp
+
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.index', $organization)" wire:navigate>
             {{ __('Бренды') }}
@@ -64,7 +72,7 @@
 
                 <div wire:key="branch-{{ $branch->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingBranchId === $branch->id)
-                        <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
+                        <div class="grid gap-3 md:col-span-2 md:grid-cols-2">
                             <flux:input wire:model="editingName" :label="__('Название филиала')" type="text" required maxlength="160" />
                             <flux:input wire:model="editingAddress" :label="__('Адрес')" type="text" required maxlength="255" />
                             <flux:input wire:model="editingCity" :label="__('Город')" type="text" required maxlength="120" />
@@ -86,16 +94,38 @@
                                 <flux:switch wire:model="editingIsActive" :label="__('Филиал работает')" />
 
                                 <div class="flex flex-wrap gap-2">
-                                    <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
-                                        {{ __('Сохранить') }}
-                                    </flux:button>
+                                    @if ($branch->is_active && ! $editingIsActive)
+                                        <x-dangerous-action-confirmation
+                                            name="suspend-branch-{{ $branch->id }}"
+                                            :title="$branchSuspendTitle"
+                                            :consequence="$branchSuspendConsequence"
+                                            confirm-action="update"
+                                            submit-target="update"
+                                            confirm-label="ui.actions.confirm"
+                                            loading-label="ui.actions.saving"
+                                            reason-model="branchSuspendReason"
+                                            reason-label="ui.confirmations.reason.label"
+                                            reason-placeholder="ui.confirmations.reason.placeholder"
+                                            :reason-required="$branchSuspendRequiresReason"
+                                        >
+                                            <x-slot:trigger>
+                                                <flux:button icon="check" variant="primary" type="button">
+                                                    {{ __('Сохранить') }}
+                                                </flux:button>
+                                            </x-slot:trigger>
+                                        </x-dangerous-action-confirmation>
+                                    @else
+                                        <flux:button icon="check" variant="primary" type="button" wire:click="update" wire:loading.attr="disabled" wire:target="update">
+                                            {{ __('Сохранить') }}
+                                        </flux:button>
+                                    @endif
 
                                     <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
                                         {{ __('Отмена') }}
                                     </flux:button>
                                 </div>
                             </div>
-                        </form>
+                        </div>
                     @else
                         <div class="min-w-0">
                             @php($branchLogoUrl = $branch->logoUrl())
@@ -105,7 +135,7 @@
                                     @if ($branchLogoUrl)
                                         <img src="{{ $branchLogoUrl }}" alt="{{ $branch->name }}" class="size-full object-contain">
                                     @else
-                                        <span class="text-xs font-medium text-zinc-400">{{ __('Logo') }}</span>
+                                        <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.logo') }}</span>
                                     @endif
                                 </div>
 
@@ -132,20 +162,31 @@
 
                             @if ($canManageBranches)
                                 <form wire:submit="saveLogo({{ $branch->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                    <label for="branch-logo-{{ $branch->id }}" class="sr-only">{{ __('Branch logo') }}</label>
-                                    <input id="branch-logo-{{ $branch->id }}" wire:model="branchLogos.{{ $branch->id }}" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
+                                    <label for="branch-logo-{{ $branch->id }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
+                                    <input id="branch-logo-{{ $branch->id }}" wire:model="branchLogos.{{ $branch->id }}" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.logo') }}" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
+                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</p>
 
                                     <div class="flex flex-wrap gap-2">
                                         <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="branchLogos.{{ $branch->id }}, saveLogo({{ $branch->id }})">
-                                            {{ __('Загрузить логотип') }}
-                                            <span class="sr-only">{{ __('Upload logo') }}</span>
+                                            {{ $branchLogoUrl ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
                                         </flux:button>
 
                                         @if ($branchLogoUrl)
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $branch->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $branch->id }})">
-                                                {{ __('Убрать логотип') }}
-                                                <span class="sr-only">{{ __('Remove logo') }}</span>
-                                            </flux:button>
+                                            <x-dangerous-action-confirmation
+                                                name="remove-branch-logo-{{ $branch->id }}"
+                                                :title="$deleteMediaTitle"
+                                                :consequence="$deleteMediaConsequence"
+                                                confirm-action="removeLogo({{ $branch->id }})"
+                                                submit-target="removeLogo({{ $branch->id }})"
+                                                confirm-label="ui.actions.confirm"
+                                                loading-label="ui.actions.removing"
+                                            >
+                                                <x-slot:trigger>
+                                                    <flux:button icon="trash" type="button" variant="danger">
+                                                        {{ __('uploads.actions.remove') }}
+                                                    </flux:button>
+                                                </x-slot:trigger>
+                                            </x-dangerous-action-confirmation>
                                         @endif
                                     </div>
 
@@ -281,7 +322,7 @@
                                     </flux:button>
 
                                     <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $branch->id }})">
-                                        {{ __('Удалить') }}
+                                        {{ __('ui.actions.delete') }}
                                     </flux:button>
                                 @endif
                             </div>
@@ -290,15 +331,15 @@
                         @if ($deletingBranchId === $branch->id)
                             <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                    <span>{{ __('Удалить этот филиал?') }}</span>
+                                    <span>{{ __('ui.confirmations.delete.title') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
                                         <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                                            {{ __('Удалить') }}
+                                            {{ __('ui.actions.delete') }}
                                         </flux:button>
 
                                         <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
-                                            {{ __('Отмена') }}
+                                            {{ __('ui.actions.cancel') }}
                                         </flux:button>
                                     </div>
                                 </div>
@@ -309,7 +350,7 @@
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
                     {{ __('Филиалов пока нет. Создайте первый филиал выше.') }}
-                    <span class="sr-only">{{ __('No branches yet.') }}</span>
+                    <span class="sr-only">{{ __('ui.empty.no_branches') }}</span>
                 </div>
             @endforelse
         </div>

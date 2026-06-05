@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\SetInterfaceLocale;
 use Illuminate\Foundation\Application;
@@ -23,7 +24,36 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontReportDuplicates();
+        $exceptions->dontReport([
+            BusinessRuleViolation::class,
+        ]);
+        $exceptions->context(function (): array {
+            $request = request();
+            $route = $request->route();
+
+            return [
+                'http_method' => $request->method(),
+                'request_path' => $request->path(),
+                'route_name' => $route?->getName(),
+                'guest_surface' => $request->is('q/*') || $request->is('guest*'),
+            ];
+        });
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+        $exceptions->render(function (BusinessRuleViolation $exception, Request $request) {
+            if (! $request->expectsJson() && ! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->errorType()->message(),
+                'error' => [
+                    'type' => $exception->errorType()->value,
+                    'code' => $exception->businessRule()->value,
+                ],
+                'errors' => $exception->errors(),
+            ], $exception->errorType()->statusCode());
+        });
     })->create();

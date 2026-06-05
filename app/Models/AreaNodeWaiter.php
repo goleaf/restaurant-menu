@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['organization_id', 'branch_id', 'area_node_id', 'user_id', 'assigned_by_user_id', 'assigned_at'])]
+#[Fillable(['area_node_id', 'user_id', 'assigned_by_user_id', 'assigned_at'])]
 class AreaNodeWaiter extends Model
 {
     /** @use HasFactory<AreaNodeWaiterFactory> */

@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -327,12 +328,8 @@ class Areas extends Component
         }
 
         return [
-            $fieldPrefix === '' ? 'name' : $fieldPrefix.'Name' => ['required', 'string', 'max:160'],
-            $fieldPrefix === '' ? 'type' : $fieldPrefix.'Type' => ['required', 'string', Rule::in(AreaNodeType::values())],
-            $fieldPrefix === '' ? 'icon' : $fieldPrefix.'Icon' => ['required', 'string', Rule::in(array_keys($this->iconOptionRows()))],
+            ...RestaurantValidationRules::areaNode($fieldPrefix, array_keys($this->iconOptionRows())),
             $parentField => $parentRules,
-            $fieldPrefix === '' ? 'sortOrder' : $fieldPrefix.'SortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-            $fieldPrefix === '' ? 'isActive' : $fieldPrefix.'IsActive' => ['boolean'],
         ];
     }
 

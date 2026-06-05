@@ -3,7 +3,7 @@
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
-use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
@@ -18,13 +18,14 @@ use App\Models\MenuItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AddGuestDraftOrderItemAction
 {
     public function __construct(
-        private BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
@@ -39,7 +40,7 @@ class AddGuestDraftOrderItemAction
         ?string $comment = null,
         ?string $itemName = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $comment, $itemName): DraftOrderItem {
+        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $comment): DraftOrderItem {
             $tableSession = $this->reloadTableSession($tableSession);
             $guest = $this->reloadGuest($guest);
             $menuItem = $this->reloadMenuItem($menuItem);
@@ -47,23 +48,19 @@ class AddGuestDraftOrderItemAction
             $this->ensureGuestCanAddItems($tableSession, $guest);
             $this->ensureMenuItemCanBeAdded($tableSession, $menuItem);
 
-            $modifierGroups = $this->modifierSnapshots->groupsFor($menuItem);
-            $selectedModifiers = $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions);
-            $unitPriceCents = self::decimalToCents($menuItem->price);
-            $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
-            $lineTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
+            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1);
             $draftOrder = $this->draftOrderFor($tableSession);
             $draftWasCreated = $draftOrder->wasRecentlyCreated;
 
             $draftOrderItem = $draftOrder->items()->create([
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
-                'item_name' => $this->snapshotName($itemName, $menuItem),
+                'item_name' => $this->snapshotName($menuItem),
                 'quantity' => 1,
-                'unit_price' => self::centsToDecimal($unitPriceCents),
-                'modifier_total' => self::centsToDecimal($modifierTotalCents),
-                'total_price' => self::centsToDecimal($lineTotalCents),
-                'selected_modifiers' => $selectedModifiers,
+                'unit_price' => $linePrice['unit_price'],
+                'modifier_total' => $linePrice['modifier_total'],
+                'total_price' => $linePrice['total_price'],
+                'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
             ])->refresh();
 
@@ -228,10 +225,13 @@ class AddGuestDraftOrderItemAction
             ->first();
 
         if (! $draftOrder instanceof DraftOrder) {
-            return DraftOrder::query()->create([
+            $draftOrder = new DraftOrder;
+            $draftOrder->forceFill([
                 'table_session_id' => $tableSession->id,
                 'status' => DraftOrderStatus::Draft,
-            ]);
+            ])->save();
+
+            return $draftOrder;
         }
 
         if ($draftOrder->status !== DraftOrderStatus::Draft) {
@@ -274,41 +274,19 @@ class AddGuestDraftOrderItemAction
         ]);
     }
 
-    private function snapshotName(?string $itemName, MenuItem $menuItem): string
+    private function snapshotName(MenuItem $menuItem): string
     {
-        $normalizedItemName = str((string) $itemName)->squish()->toString();
-
-        return $normalizedItemName === '' ? $menuItem->name : $normalizedItemName;
+        return $menuItem->name;
     }
 
     private function normalizeComment(?string $comment): ?string
     {
-        $normalizedComment = trim((string) $comment);
+        $normalizedComment = PlainText::optional($comment, 500);
 
-        if ($normalizedComment === '') {
+        if ($normalizedComment === null) {
             return null;
         }
 
-        if (mb_strlen($normalizedComment) > 500) {
-            throw ValidationException::withMessages([
-                'itemComment' => __('Комментарий слишком длинный.'),
-            ]);
-        }
-
         return $normalizedComment;
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return (int) round(((float) ($amount ?? 0)) * 100);
-    }
-
-    private static function centsToDecimal(int $amount): string
-    {
-        $negative = $amount < 0;
-        $absoluteAmount = abs($amount);
-        $formatted = intdiv($absoluteAmount, 100).'.'.str_pad((string) ($absoluteAmount % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

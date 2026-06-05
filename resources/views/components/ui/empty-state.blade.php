@@ -9,10 +9,10 @@
         <flux:icon :name="$icon" variant="mini" class="size-5" />
     </div>
 
-    <p class="mt-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ $heading }}</p>
+    <p class="mt-3 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{{ __($heading) }}</p>
 
     @if ($description)
-        <p class="mx-auto mt-1 max-w-sm text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $description }}</p>
+        <p class="mx-auto mt-1 max-w-sm text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ __($description) }}</p>
     @endif
 
     @isset($actions)

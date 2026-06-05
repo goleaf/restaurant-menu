@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Index as BrandsIndex;
@@ -11,6 +12,7 @@ use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -29,6 +31,8 @@ test('organization owner can upload replace and remove local logo', function () 
 
     Livewire::actingAs($owner)
         ->test(OrganizationsIndex::class)
+        ->assertSee(__('uploads.labels.allowed_types', ['types' => StoreLocalImageAction::allowedExtensionsLabel()]))
+        ->assertSee(__('uploads.labels.max_size', ['size' => StoreLocalImageAction::maxSizeLabel()]))
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('organization-logo.png')->size(512))
         ->call('saveLogo', $organization->id)
         ->assertHasNoErrors();
@@ -70,7 +74,7 @@ test('brand manager can upload a local brand logo', function () {
         ->set('brandLogos.'.$brand->id, UploadedFile::fake()->image('brand-logo.webp')->size(400))
         ->call('saveLogo', $brand->id)
         ->assertHasNoErrors()
-        ->assertSee('Upload logo');
+        ->assertSee(__('uploads.actions.replace'));
 
     $brand->refresh();
 
@@ -90,7 +94,7 @@ test('branch manager can upload a local branch logo', function () {
         ->set('branchLogos.'.$branch->id, UploadedFile::fake()->image('branch-logo.jpg')->size(400))
         ->call('saveLogo', $branch->id)
         ->assertHasNoErrors()
-        ->assertSee('Upload logo');
+        ->assertSee(__('uploads.actions.replace'));
 
     $branch->refresh();
 
@@ -106,15 +110,73 @@ test('local logo uploads validate file type and size', function () {
         ->test(OrganizationsIndex::class)
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->create('logo.txt', 100, 'text/plain'))
         ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id);
+        ->assertHasErrors('organizationLogos.'.$organization->id)
+        ->assertSee(__('uploads.errors.invalid_type', ['formats' => StoreLocalImageAction::allowedExtensionsLabel()]));
 
     Livewire::actingAs($owner)
         ->test(OrganizationsIndex::class)
         ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('too-large.png')->size(3000))
         ->call('saveLogo', $organization->id)
-        ->assertHasErrors('organizationLogos.'.$organization->id);
+        ->assertHasErrors('organizationLogos.'.$organization->id)
+        ->assertSee(__('uploads.errors.too_large', ['size' => StoreLocalImageAction::maxSizeLabel()]));
 
     expect($organization->refresh()->logo_path)->toBeNull();
+});
+
+test('local image uploads reject dangerous original extensions even when content is an image', function () {
+    [$organization, , , $owner] = createPrompt28MediaContext();
+
+    Livewire::actingAs($owner)
+        ->test(OrganizationsIndex::class)
+        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->image('shell.php')->size(100))
+        ->call('saveLogo', $organization->id)
+        ->assertHasErrors('organizationLogos.'.$organization->id);
+
+    expect($organization->refresh()->logo_path)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBe([]);
+});
+
+test('local image uploads reject scriptable formats', function (string $filename, string $mimeType) {
+    [$organization, , , $owner] = createPrompt28MediaContext();
+
+    Livewire::actingAs($owner)
+        ->test(OrganizationsIndex::class)
+        ->set('organizationLogos.'.$organization->id, UploadedFile::fake()->create($filename, 10, $mimeType))
+        ->call('saveLogo', $organization->id)
+        ->assertHasErrors('organizationLogos.'.$organization->id);
+
+    expect($organization->refresh()->logo_path)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBe([]);
+})->with([
+    'php' => ['avatar.php', 'application/x-php'],
+    'svg' => ['avatar.svg', 'image/svg+xml'],
+    'html' => ['avatar.html', 'text/html'],
+    'js' => ['avatar.js', 'application/javascript'],
+]);
+
+test('local image storage validates direct action calls and never uses the original filename', function () {
+    $storeLocalImage = app(StoreLocalImageAction::class);
+
+    expect(fn () => $storeLocalImage->handle(
+        file: UploadedFile::fake()->create('avatar.php', 10, 'application/x-php'),
+        directory: 'media/security-check',
+    ))->toThrow(ValidationException::class);
+
+    expect(fn () => $storeLocalImage->handle(
+        file: UploadedFile::fake()->image('logo.png')->size(100),
+        directory: '../security-check',
+    ))->toThrow(RuntimeException::class, __('uploads.errors.not_writable'));
+
+    $path = $storeLocalImage->handle(
+        file: UploadedFile::fake()->image('my.original.logo.png')->size(100),
+        directory: 'media/security-check',
+    );
+
+    expect($path)->toStartWith('media/security-check/')
+        ->and(basename($path))->not->toContain('my.original.logo')
+        ->and(basename($path))->toMatch('/^[0-9a-f-]{36}\.(jpg|jpeg|png|webp)$/');
+
+    Storage::disk('public')->assertExists($path);
 });
 
 function createPrompt28MediaContext(): array

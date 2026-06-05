@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['branch_id', 'service_point_id', 'table_session_id', 'draft_order_id', 'order_id', 'actor_user_id', 'actor_guest_id', 'actor_type', 'actor_name', 'event', 'status_type', 'previous_status', 'new_status', 'reason', 'metadata', 'occurred_at'])]
+#[Fillable(['service_point_id', 'table_session_id', 'draft_order_id', 'order_id', 'actor_user_id', 'actor_guest_id', 'actor_type', 'actor_name', 'event', 'status_type', 'previous_status', 'new_status', 'reason', 'metadata', 'occurred_at'])]
 class OrderStatusLog extends Model
 {
     /** @use HasFactory<OrderStatusLogFactory> */

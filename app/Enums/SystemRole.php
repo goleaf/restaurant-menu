@@ -35,6 +35,16 @@ enum SystemRole: string
         };
     }
 
+    public function translationKey(): string
+    {
+        return 'staff.roles.'.$this->value;
+    }
+
+    public function localizedLabel(): string
+    {
+        return __($this->translationKey());
+    }
+
     /**
      * @return list<string>
      */

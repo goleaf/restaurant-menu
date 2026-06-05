@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['branch_id', 'service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_amount', 'service_charge_percent', 'service_charge_amount', 'tips_amount', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
+#[Fillable(['service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_amount', 'service_charge_percent', 'service_charge_amount', 'tips_amount', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
 class ManualPayment extends Model
 {
     /** @use HasFactory<ManualPaymentFactory> */
@@ -30,6 +30,33 @@ class ManualPayment extends Model
         'currency' => 'EUR',
         'metadata' => '[]',
     ];
+
+    public function save(array $options = []): bool
+    {
+        if ($this->exists && $this->isDirty()) {
+            return false;
+        }
+
+        return parent::save($options);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $options
+     */
+    public function update(array $attributes = [], array $options = []): bool
+    {
+        if ($this->exists) {
+            return false;
+        }
+
+        return parent::update($attributes, $options);
+    }
+
+    public function delete(): ?bool
+    {
+        return false;
+    }
 
     /**
      * @return array<string, string>

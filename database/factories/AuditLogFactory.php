@@ -36,6 +36,7 @@ class AuditLogFactory extends Factory
             },
             'user_id' => User::factory(),
             'guest_id' => null,
+            'guest_display_name' => null,
             'guest_token' => null,
             'action' => AuditLogAction::MenuPriceChanged,
             'entity_type' => 'menu_item',

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Payments\RecordManualPaymentAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
@@ -45,7 +46,7 @@ test('payment manager can mark whole table paid and close the session', function
         ->assertSet('table.payment.remaining_total', '32.00 EUR')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
-        ->assertSee('Оплата всего стола отмечена.')
+        ->assertSee(__('payments.messages.payment_recorded'))
         ->assertSet('table.payment.is_fully_paid', true)
         ->assertSet('table.payment.remaining_total', '0.00 EUR');
 
@@ -61,7 +62,7 @@ test('payment manager can mark whole table paid and close the session', function
 
     $component
         ->call('closePaidSession')
-        ->assertSee('Стол закрыт. Место свободно для следующих гостей.');
+        ->assertSee(__('payments.messages.session_closed'));
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Closed)
         ->and($tableSession->fresh()->closed_by_user_id)->toBe($manager->id)
@@ -83,7 +84,7 @@ test('cashier role can mark individual guest payments without manage payments pe
         ->assertSet('table.payment.unpaid_guests_count', 2)
         ->set('paymentMethod', ManualPaymentMethod::Cash->value)
         ->call('recordGuestPayment', $ana->id)
-        ->assertSee('Оплата гостя отмечена.')
+        ->assertSee(__('payments.messages.payment_recorded'))
         ->assertSet('table.payment.remaining_total', '12.00 EUR')
         ->assertSet('table.payment.unpaid_guests_count', 1)
         ->assertSet('table.payment.unpaid_guests.0.guest_name', 'Boris')
@@ -141,7 +142,7 @@ test('manual service charge and tips are visible and stored as payment snapshot'
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->set('tipsAmount', '5.00')
         ->call('recordTablePayment')
-        ->assertSee('Оплата всего стола отмечена.')
+        ->assertSee(__('payments.messages.payment_recorded'))
         ->assertSet('table.payment.is_fully_paid', true)
         ->assertSet('table.payment.remaining_total', '0.00 EUR')
         ->assertSet('table.payment.tips_paid_total', '5.00 EUR');
@@ -158,6 +159,54 @@ test('manual service charge and tips are visible and stored as payment snapshot'
         ->and($payment->metadata['bill_snapshot']['tips_amount'])->toBe('5.00');
 });
 
+test('manual payment amounts are server calculated and reject negative or duplicate payments', function () {
+    [$organization, , $tableSession, $ana] = createPrompt67ManualPaymentContext();
+    $manager = User::factory()->create(['name' => 'Payment Security Manager']);
+    attachPrompt67PaymentManager($manager, $organization);
+
+    Livewire::actingAs($manager)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->set('tipsAmount', '-1.00')
+        ->call('recordTablePayment')
+        ->assertHasErrors(['tipsAmount']);
+
+    expect(ManualPayment::query()->exists())->toBeFalse();
+
+    $firstGuestPayment = app(RecordManualPaymentAction::class)->recordGuest(
+        tableSession: $tableSession,
+        guest: $ana,
+        recordedBy: $manager,
+        paymentMethod: ManualPaymentMethod::Cash,
+    );
+
+    expect($firstGuestPayment->amount)->toBe('20.00');
+
+    Livewire::actingAs($manager)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->call('recordGuestPayment', $ana->id)
+        ->assertHasErrors(['manual_payment']);
+
+    expect(ManualPayment::query()->where('table_session_guest_id', $ana->id)->count())->toBe(1);
+});
+
+test('manual payments cannot be silently corrected through ordinary model paths', function () {
+    [$organization, , $tableSession] = createPrompt67ManualPaymentContext();
+    $manager = User::factory()->create(['name' => 'Payment Immutability Manager']);
+    attachPrompt67PaymentManager($manager, $organization);
+
+    $payment = app(RecordManualPaymentAction::class)->recordTable(
+        tableSession: $tableSession,
+        recordedBy: $manager,
+        paymentMethod: ManualPaymentMethod::CardTerminal,
+    );
+
+    expect($payment->amount)->toBe('32.00')
+        ->and($payment->update(['amount' => '-100.00', 'note' => null]))->toBeFalse()
+        ->and($payment->fresh()->amount)->toBe('32.00')
+        ->and($payment->delete())->toBeFalse()
+        ->and(ManualPayment::query()->whereKey($payment->id)->exists())->toBeTrue();
+});
+
 test('view payments permission can see payment summary but cannot record payment', function () {
     [$organization, , $tableSession] = createPrompt67ManualPaymentContext();
     $viewer = User::factory()->create(['name' => 'Payment Viewer']);
@@ -166,7 +215,7 @@ test('view payments permission can see payment summary but cannot record payment
     $this->actingAs($viewer)
         ->get(route('restaurant.waiter.tables.show', $tableSession))
         ->assertOk()
-        ->assertSeeText('Payments')
+        ->assertSeeText(__('payments.title'))
         ->assertSeeText('32.00 EUR');
 
     Livewire::actingAs($viewer)

@@ -13,6 +13,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Models\TableSessionServicePoint;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -27,7 +28,7 @@ class CreateGuestPendingTableSessionAction
      */
     public function handle(ServicePoint $servicePoint, string $guestName): array
     {
-        $normalizedGuestName = str($guestName)->squish()->toString();
+        $normalizedGuestName = PlainText::required($guestName, 80, squish: true);
 
         return DB::transaction(function () use ($servicePoint, $normalizedGuestName): array {
             $servicePoint = $this->reloadServicePoint($servicePoint);
@@ -70,21 +71,25 @@ class CreateGuestPendingTableSessionAction
                 return $this->result(GuestTableEntryState::GuestCreatedSessionsDisabled);
             }
 
-            $tableSession = $servicePoint->tableSessions()->create([
-                'branch_id' => $servicePoint->branch_id,
-                'status' => TableSessionStatus::Pending,
+            $tableSession = $servicePoint->tableSessions()->make([
                 'source' => TableSessionSource::GuestCreated,
                 'started_at' => now(),
                 'metadata' => [],
             ]);
+            $tableSession->forceFill([
+                'branch_id' => $servicePoint->branch_id,
+                'status' => TableSessionStatus::Pending,
+            ])->save();
 
-            $guest = $tableSession->guests()->create([
+            $guest = $tableSession->guests()->make([
                 'guest_name' => $normalizedGuestName,
-                'guest_token' => Str::random(64),
-                'status' => TableSessionGuestStatus::Active,
                 'joined_at' => now(),
                 'metadata' => [],
             ]);
+            $guest->forceFill([
+                'guest_token' => Str::random(64),
+                'status' => TableSessionGuestStatus::Active,
+            ])->save();
 
             $tableSession
                 ->forceFill(['opened_by_guest_id' => $guest->id])

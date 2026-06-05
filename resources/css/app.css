@@ -61,6 +61,10 @@ select:focus[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+[x-cloak] {
+    display: none !important;
+}
+
 .qr-print-page {
     @apply flex min-h-svh flex-col items-center gap-4 px-4 py-6;
 }

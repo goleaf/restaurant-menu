@@ -1,4 +1,11 @@
 <section data-page="branch-menu" class="flex h-full w-full flex-1 flex-col gap-6">
+    @php
+        $menuItemDangerousTitle = \App\Enums\DangerousAction::DeleteOrDeactivateMenuItem->title();
+        $menuItemDangerousConsequence = \App\Enums\DangerousAction::DeleteOrDeactivateMenuItem->consequence();
+        $deleteMediaTitle = \App\Enums\DangerousAction::DeleteMediaFile->title();
+        $deleteMediaConsequence = \App\Enums\DangerousAction::DeleteMediaFile->consequence();
+    @endphp
+
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
             {{ __('Branches') }}
@@ -32,7 +39,7 @@
                                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $stopListItem['name'] }}</h2>
+                                            <x-ui.plain-text :text="$stopListItem['name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                             <flux:badge color="zinc">{{ __('Out of stock') }}</flux:badge>
                                             <flux:badge>{{ $stopListItem['price'] }}</flux:badge>
                                         </div>
@@ -57,7 +64,7 @@
                             </div>
                         @empty
                             <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                                {{ __('No dishes are in the stop-list now.') }}
+                                {{ __('menu.empty.no_stop_list_items') }}
                             </p>
                         @endforelse
                     </div>
@@ -75,7 +82,7 @@
                                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $availableItem['name'] }}</h2>
+                                            <x-ui.plain-text :text="$availableItem['name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                             <flux:badge color="green">{{ __('Available') }}</flux:badge>
                                             <flux:badge>{{ $availableItem['price'] }}</flux:badge>
                                         </div>
@@ -89,14 +96,26 @@
                                         </p>
                                     </div>
 
-                                    <flux:button icon="eye-slash" type="button" wire:click="setItemAvailability({{ $availableItem['id'] }}, false)" wire:loading.attr="disabled" wire:target="setItemAvailability({{ $availableItem['id'] }}, false)">
-                                        {{ __('Add to stop-list') }}
-                                    </flux:button>
+                                    <x-dangerous-action-confirmation
+                                        name="stop-list-available-item-{{ $availableItem['id'] }}"
+                                        :title="$menuItemDangerousTitle"
+                                        :consequence="$menuItemDangerousConsequence"
+                                        confirm-action="setItemAvailability({{ $availableItem['id'] }}, false)"
+                                        submit-target="setItemAvailability({{ $availableItem['id'] }}, false)"
+                                        confirm-label="ui.actions.confirm"
+                                        loading-label="ui.actions.saving"
+                                    >
+                                        <x-slot:trigger>
+                                            <flux:button icon="eye-slash" type="button">
+                                                {{ __('Add to stop-list') }}
+                                            </flux:button>
+                                        </x-slot:trigger>
+                                    </x-dangerous-action-confirmation>
                                 </div>
                             </div>
                         @empty
                             <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                                {{ __('No available dishes yet.') }}
+                                {{ __('menu.empty.no_available_items') }}
                             </p>
                         @endforelse
                     </div>
@@ -373,7 +392,7 @@
                                 </div>
                             @empty
                                 <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                                    {{ __('No schedule yet. This menu is available all day.') }}
+                                    {{ __('menu.empty.no_schedule') }}
                                 </p>
                             @endforelse
                         </div>
@@ -448,7 +467,7 @@
                                                     </div>
 
                                                     @if ($category->description)
-                                                        <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ $category->description }}</p>
+                                                        <x-ui.plain-text :text="$category->description" class="mt-2 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                     @endif
 
                                                     <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('Sort') }} {{ $category->sort_order }}</p>
@@ -467,7 +486,7 @@
                                         @endif
                                     </div>
                                 @empty
-                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No categories yet.') }}</p>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('menu.empty.no_categories') }}</p>
                                 @endforelse
                             </div>
                         </div>
@@ -543,13 +562,13 @@
                                                     @if ($item->imageUrl())
                                                         <img src="{{ $item->imageUrl() }}" alt="{{ $item->name }}" class="size-full object-cover">
                                                     @else
-                                                        <span class="text-xs font-medium text-zinc-400">{{ __('Photo') }}</span>
+                                                        <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.image') }}</span>
                                                     @endif
                                                 </div>
 
                                                 <div class="min-w-0">
                                                     <div class="flex flex-wrap items-center gap-2">
-                                                        <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $item->name }}</h3>
+                                                        <x-ui.plain-text :text="$item->name" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                                         <flux:badge>{{ $item->category?->name ?? __('No category') }}</flux:badge>
                                                         @if ($item->kitchenDepartment)
                                                             <flux:badge :color="$item->kitchenDepartment->type->badgeColor()">{{ $item->kitchenDepartment->name }}</flux:badge>
@@ -565,7 +584,7 @@
                                                     </div>
 
                                                     @if ($item->description)
-                                                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $item->description }}</p>
+                                                        <x-ui.plain-text :text="$item->description" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                     @endif
 
                                                     <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
@@ -594,18 +613,31 @@
                                                     @endif
 
                                                     <form wire:submit="saveItemImage({{ $item->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                                        <label for="item-photo-{{ $item->id }}" class="sr-only">{{ __('Dish photo') }}</label>
-                                                        <input id="item-photo-{{ $item->id }}" wire:model="itemImages.{{ $item->id }}" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
+                                                        <label for="item-photo-{{ $item->id }}" class="sr-only">{{ __('uploads.labels.image') }}</label>
+                                                        <input id="item-photo-{{ $item->id }}" wire:model="itemImages.{{ $item->id }}" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.image') }}" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
+                                                        <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</p>
 
                                                         <div class="flex flex-wrap gap-2">
                                                             <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="itemImages.{{ $item->id }}, saveItemImage({{ $item->id }})">
-                                                                {{ __('Upload photo') }}
+                                                                {{ $item->imageUrl() ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
                                                             </flux:button>
 
                                                             @if ($item->imageUrl())
-                                                                <flux:button icon="trash" type="button" variant="danger" wire:click="removeItemImage({{ $item->id }})" wire:loading.attr="disabled" wire:target="removeItemImage({{ $item->id }})">
-                                                                    {{ __('Remove photo') }}
-                                                                </flux:button>
+                                                                <x-dangerous-action-confirmation
+                                                                    name="remove-menu-item-photo-{{ $item->id }}"
+                                                                    :title="$deleteMediaTitle"
+                                                                    :consequence="$deleteMediaConsequence"
+                                                                    confirm-action="removeItemImage({{ $item->id }})"
+                                                                    submit-target="removeItemImage({{ $item->id }})"
+                                                                    confirm-label="ui.actions.confirm"
+                                                                    loading-label="ui.actions.removing"
+                                                                >
+                                                                    <x-slot:trigger>
+                                                                        <flux:button icon="trash" type="button" variant="danger">
+                                                                            {{ __('uploads.actions.remove') }}
+                                                                        </flux:button>
+                                                                    </x-slot:trigger>
+                                                                </x-dangerous-action-confirmation>
                                                             @endif
                                                         </div>
 
@@ -618,9 +650,21 @@
                                                 <div class="flex flex-wrap gap-2 md:justify-end">
                                                     @if ($canChangeAvailability)
                                                         @if ($item->is_available)
-                                                            <flux:button icon="eye-slash" type="button" wire:click="setItemAvailability({{ $item->id }}, false)">
-                                                                {{ __('Disable') }}
-                                                            </flux:button>
+                                                            <x-dangerous-action-confirmation
+                                                                name="disable-menu-item-{{ $item->id }}"
+                                                                :title="$menuItemDangerousTitle"
+                                                                :consequence="$menuItemDangerousConsequence"
+                                                                confirm-action="setItemAvailability({{ $item->id }}, false)"
+                                                                submit-target="setItemAvailability({{ $item->id }}, false)"
+                                                                confirm-label="ui.actions.confirm"
+                                                                loading-label="ui.actions.saving"
+                                                            >
+                                                                <x-slot:trigger>
+                                                                    <flux:button icon="eye-slash" type="button">
+                                                                        {{ __('ui.actions.disable') }}
+                                                                    </flux:button>
+                                                                </x-slot:trigger>
+                                                            </x-dangerous-action-confirmation>
                                                         @else
                                                             <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item->id }}, true)">
                                                                 {{ __('Enable') }}
@@ -632,15 +676,27 @@
                                                         {{ __('Edit') }}
                                                     </flux:button>
 
-                                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteItem({{ $item->id }})">
-                                                        {{ __('Delete') }}
-                                                    </flux:button>
+                                                    <x-dangerous-action-confirmation
+                                                        name="delete-menu-item-{{ $item->id }}"
+                                                        :title="$menuItemDangerousTitle"
+                                                        :consequence="$menuItemDangerousConsequence"
+                                                        confirm-action="deleteItem({{ $item->id }})"
+                                                        submit-target="deleteItem({{ $item->id }})"
+                                                        confirm-label="ui.actions.confirm"
+                                                        loading-label="ui.actions.deleting"
+                                                    >
+                                                        <x-slot:trigger>
+                                                            <flux:button icon="trash" type="button" variant="danger">
+                                                                {{ __('ui.actions.delete') }}
+                                                            </flux:button>
+                                                        </x-slot:trigger>
+                                                    </x-dangerous-action-confirmation>
                                                 </div>
                                             </div>
                                         @endif
                                     </div>
                                 @empty
-                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No dishes yet.') }}</p>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('menu.empty.no_items') }}</p>
                                 @endforelse
                             </div>
                         </div>
@@ -648,7 +704,7 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No menus yet.') }}
+                    {{ __('menu.empty.no_menus') }}
                 </div>
             @endforelse
         </div>
@@ -724,7 +780,7 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No kitchen departments yet.') }}
+                    {{ __('departments.empty.no_departments') }}
                 </div>
             @endforelse
         </div>
@@ -902,13 +958,13 @@
                                 @endif
                             </div>
                         @empty
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No options yet.') }}</p>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('menu.empty.no_options') }}</p>
                         @endforelse
                     </div>
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No modifier groups yet.') }}
+                    {{ __('menu.empty.no_modifier_groups') }}
                 </div>
             @endforelse
         </div>

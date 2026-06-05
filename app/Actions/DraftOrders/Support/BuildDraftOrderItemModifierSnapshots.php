@@ -2,11 +2,13 @@
 
 namespace App\Actions\DraftOrders\Support;
 
+use App\Enums\BusinessRuleCode;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
-use Illuminate\Validation\ValidationException;
 
 class BuildDraftOrderItemModifierSnapshots
 {
@@ -102,9 +104,11 @@ class BuildDraftOrderItemModifierSnapshots
 
         foreach (array_keys($selection) as $modifierGroupId) {
             if (! in_array($modifierGroupId, $assignedGroupIds, true)) {
-                throw ValidationException::withMessages([
-                    'selectedModifierOptions.'.$modifierGroupId => __('Выбранный вариант недоступен.'),
-                ]);
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::ItemUnavailable,
+                    'selectedModifierOptions.'.$modifierGroupId,
+                    __('Выбранный вариант недоступен.'),
+                );
             }
         }
 
@@ -117,9 +121,11 @@ class BuildDraftOrderItemModifierSnapshots
 
             foreach ($selectedOptionIds as $optionId) {
                 if (! in_array($optionId, $availableOptionIds, true)) {
-                    throw ValidationException::withMessages([
-                        'selectedModifierOptions.'.$modifierGroup->id => __('Выбранный вариант недоступен.'),
-                    ]);
+                    throw BusinessRuleViolation::for(
+                        BusinessRuleCode::ItemUnavailable,
+                        'selectedModifierOptions.'.$modifierGroup->id,
+                        __('Выбранный вариант недоступен.'),
+                    );
                 }
             }
 
@@ -132,9 +138,11 @@ class BuildDraftOrderItemModifierSnapshots
             }
 
             if ($selectedCount < $minSelect) {
-                throw ValidationException::withMessages([
-                    'selectedModifierOptions.'.$modifierGroup->id => __('Выберите вариант.'),
-                ]);
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::RequiredModifierMissing,
+                    'selectedModifierOptions.'.$modifierGroup->id,
+                    __('Выберите вариант.'),
+                );
             }
 
             if ($maxSelect > 0 && $selectedCount > $maxSelect) {
@@ -177,6 +185,6 @@ class BuildDraftOrderItemModifierSnapshots
 
     private static function decimalToCents(string|int|float|null $amount): int
     {
-        return (int) round(((float) ($amount ?? 0)) * 100);
+        return MoneyFormatter::decimalToCents($amount);
     }
 }

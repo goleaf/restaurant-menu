@@ -36,7 +36,7 @@
                 <article wire:key="join-request-{{ $request['id'] }}" class="rounded-lg border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-900 dark:bg-amber-950/20">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <p class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $request['guest_name'] }}</p>
+                            <x-ui.plain-text :text="$request['guest_name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                             <p class="mt-1 text-xs text-zinc-600 dark:text-zinc-300">
                                 {{ __('guest.table.waiting_for_approval') }}
 

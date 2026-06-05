@@ -14,6 +14,7 @@ use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -115,12 +116,13 @@ class AddManualWaiterOrderItemAction
             ->first();
 
         if (! $draftOrder instanceof DraftOrder) {
-            $draftOrder = DraftOrder::query()->create([
+            $draftOrder = new DraftOrder;
+            $draftOrder->forceFill([
                 'table_session_id' => $tableSession->id,
                 'status' => DraftOrderStatus::WaiterReview,
                 'sent_to_waiter_at' => now(),
                 'sent_by_guest_id' => null,
-            ]);
+            ])->save();
 
             $this->createOrderStatusLog->handle(
                 event: OrderStatusLogEvent::DraftCreated,
@@ -166,7 +168,7 @@ class AddManualWaiterOrderItemAction
             return $this->reloadSelectedGuest($tableSession, $guest);
         }
 
-        $normalizedGuestName = str((string) $guestName)->squish()->toString();
+        $normalizedGuestName = PlainText::required($guestName, 80, squish: true);
 
         if ($normalizedGuestName === '') {
             throw ValidationException::withMessages([
@@ -180,7 +182,8 @@ class AddManualWaiterOrderItemAction
             ]);
         }
 
-        return TableSessionGuest::query()->create([
+        $guest = new TableSessionGuest;
+        $guest->forceFill([
             'table_session_id' => $tableSession->id,
             'guest_name' => $normalizedGuestName,
             'guest_token' => Str::random(64),
@@ -190,7 +193,9 @@ class AddManualWaiterOrderItemAction
                 'source' => 'waiter_manual_entry',
                 'created_by_user_id' => $waiter->id,
             ],
-        ]);
+        ])->save();
+
+        return $guest;
     }
 
     private function reloadSelectedGuest(TableSession $tableSession, TableSessionGuest $guest): TableSessionGuest

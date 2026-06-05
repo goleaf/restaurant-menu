@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['branch_id', 'type', 'name', 'sort_order', 'is_active'])]
+#[Fillable(['type', 'name', 'sort_order', 'is_active'])]
 class KitchenDepartment extends Model
 {
     /** @use HasFactory<KitchenDepartmentFactory> */

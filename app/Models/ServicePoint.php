@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['branch_id', 'area_node_id', 'type', 'name', 'display_number', 'internal_code', 'capacity', 'icon', 'status', 'position_x', 'position_y', 'is_active', 'metadata'])]
+#[Fillable(['area_node_id', 'type', 'name', 'display_number', 'internal_code', 'capacity', 'icon', 'position_x', 'position_y', 'is_active', 'metadata'])]
 class ServicePoint extends Model
 {
     /** @use HasFactory<ServicePointFactory> */

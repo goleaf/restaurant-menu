@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['service_point_id', 'public_token', 'short_code', 'status', 'created_by_user_id', 'revoked_at', 'revoked_by_user_id'])]
+#[Fillable(['service_point_id', 'short_code', 'revoked_at', 'revoked_by_user_id'])]
 class QrCode extends Model
 {
     /** @use HasFactory<QrCodeFactory> */

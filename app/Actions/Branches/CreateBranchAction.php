@@ -19,8 +19,7 @@ class CreateBranchAction
         return DB::transaction(function () use ($brand, $data): Branch {
             $currency = SupportedCurrency::normalize($data['currency'] ?? null);
 
-            $branch = $brand->branches()->create([
-                'organization_id' => $brand->organization_id,
+            $branch = $brand->branches()->make([
                 'name' => $data['name'],
                 'address' => $data['address'],
                 'city' => $data['city'],
@@ -29,6 +28,9 @@ class CreateBranchAction
                 'currency' => $currency,
                 'is_active' => $data['is_active'],
             ]);
+            $branch->forceFill([
+                'organization_id' => $brand->organization_id,
+            ])->save();
 
             $branch->settings()->create(BranchSetting::defaults($branch));
             app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);

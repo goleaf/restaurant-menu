@@ -40,11 +40,10 @@ class RequestBillForTableSessionAction
             $metadata['bill_requested_at'] = now()->toISOString();
             $metadata['bill_requested_by_guest_id'] = $guest->id;
 
-            $tableSession->fill([
+            $tableSession->forceFill([
                 'status' => TableSessionStatus::PaymentRequested,
                 'metadata' => $metadata,
-            ]);
-            $tableSession->save();
+            ])->save();
 
             $this->markServicePointPaymentRequested($tableSession);
 

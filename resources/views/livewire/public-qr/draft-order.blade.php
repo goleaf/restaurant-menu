@@ -51,7 +51,10 @@
             <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
                 {{ __('guest.table.draft_rejected_message') }}
                 @if ($rejectionReason)
-                    <span class="block pt-1 font-normal">{{ __('guest.table.reason') }}: {{ $rejectionReason }}</span>
+                    <span class="block pt-1 font-normal">
+                        {{ __('guest.table.reason') }}:
+                        <x-ui.plain-text :text="$rejectionReason" class="inline" />
+                    </span>
                 @endif
             </p>
         @elseif ($serviceStatusValue !== '')
@@ -107,7 +110,7 @@
 
     @if (! $branchCanAcceptOrders)
         <x-ui.alert tone="warning" class="mt-4" :heading="__('guest.table.closed_title')">
-            {{ $branchOpeningStatusMessage ?: __('guest.table.closed_description') }}
+            <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
         </x-ui.alert>
     @endif
 
@@ -135,7 +138,7 @@
 
                             <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <h4 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $guestSection['guest_name'] }}</h4>
+                                <x-ui.plain-text :text="$guestSection['guest_name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
 
                                 @if ($guestSection['is_current_guest'])
                                     <x-ui.status-badge tone="success">
@@ -174,7 +177,7 @@
                             <div wire:key="draft-order-item-{{ $item['id'] }}" class="rounded-lg border border-white/70 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
-                                        <h5 class="text-sm font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['item_name'] }}</h5>
+                                        <x-ui.plain-text :text="$item['item_name']" class="block text-sm font-semibold leading-5 text-zinc-950 dark:text-white" :preserve-lines="false" />
 
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                             {{ __('guest.cart.price') }}: {{ $item['total_price'] }} {{ $currency }}
@@ -200,7 +203,8 @@
 
                                 @if ($item['comment'])
                                     <p class="mt-2 rounded-md bg-zinc-50 px-2 py-1.5 text-xs leading-5 text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                                        {{ __('guest.cart.comment') }}: {{ $item['comment'] }}
+                                        {{ __('guest.cart.comment') }}:
+                                        <x-ui.plain-text :text="$item['comment']" class="inline" />
                                     </p>
                                 @endif
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['organization_id', 'status', 'started_at', 'next_payment_at', 'payment_status'])]
+#[Fillable(['started_at', 'next_payment_at', 'payment_status'])]
 class OrganizationSubscription extends Model
 {
     /** @use HasFactory<OrganizationSubscriptionFactory> */

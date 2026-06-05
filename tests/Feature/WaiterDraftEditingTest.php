@@ -95,6 +95,8 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->assertSee('Waiter review')
         ->assertSee('25.00 EUR');
 
+    $pizzaDraftItem->forceFill(['total_price' => '0.01'])->save();
+
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->call('confirmDraft')
@@ -297,6 +299,10 @@ test('user with view orders only cannot edit sent draft', function () {
     ] = createPrompt55SentDraftScenario();
     $viewer = User::factory()->create();
     attachPrompt55Staff($viewer, $organization, [SystemPermission::ViewOrders]);
+
+    expect($viewer->fresh()->hasPermission(SystemPermission::ViewOrders, $organization))->toBeTrue()
+        ->and($viewer->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeFalse()
+        ->and($viewer->fresh()->hasPermission(SystemPermission::EditPendingOrders, $organization))->toBeFalse();
 
     Livewire::actingAs($viewer)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
@@ -536,14 +542,6 @@ function attachPrompt55Staff(User $user, Organization $organization, array $perm
         ->where('code', SystemRole::Waiter->value)
         ->firstOrFail();
 
-    foreach ($permissions as $permission) {
-        $permissionModel = Permission::query()
-            ->where('code', $permission->value)
-            ->firstOrFail();
-
-        $role->permissions()->updateExistingPivot($permissionModel->id, ['enabled' => true]);
-    }
-
     $organization->users()->syncWithoutDetachingOrFail([
         $user->id => [
             'role_id' => $role->id,
@@ -552,6 +550,19 @@ function attachPrompt55Staff(User $user, Organization $organization, array $perm
             'invited_by_user_id' => null,
         ],
     ]);
+
+    $enabledPermissionCodes = collect($permissions)
+        ->map(fn (SystemPermission $permission): string => $permission->value)
+        ->all();
+    $permissionStates = Permission::query()
+        ->select(['id', 'code'])
+        ->get()
+        ->mapWithKeys(fn (Permission $permission): array => [
+            $permission->id => ['enabled' => in_array($permission->code, $enabledPermissionCodes, true)],
+        ])
+        ->all();
+
+    $user->permissionOverrides()->sync($permissionStates);
 
     return $role;
 }

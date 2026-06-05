@@ -2,7 +2,9 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Models\DraftOrder;
@@ -16,6 +18,7 @@ class DeleteDraftOrderItemByWaiterAction
     public function __construct(
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(DraftOrderItem $draftOrderItem, User $editedBy): void
@@ -33,6 +36,13 @@ class DeleteDraftOrderItemByWaiterAction
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
             $previousStatus = $draftOrder->status;
             $this->markAsWaiterReview($draftOrder);
+            $oldValues = [
+                'operation' => 'waiter_item_deleted',
+                'draft_order_id' => $draftOrder->id,
+                'quantity' => $draftOrderItem->quantity,
+                'total_price' => $draftOrderItem->total_price,
+                'comment' => $draftOrderItem->comment,
+            ];
 
             $draftOrderItem->delete();
 
@@ -48,6 +58,21 @@ class DeleteDraftOrderItemByWaiterAction
                     'draft_order_item_id' => $draftOrderItem->id,
                 ],
             );
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::DraftOrderEditedByWaiter,
+                entityType: 'draft_order_item',
+                entityId: $draftOrderItem->id,
+                actorUser: $editedBy,
+                organizationId: $draftOrder->tableSession?->branch?->organization_id,
+                branchId: $draftOrder->tableSession?->branch_id,
+                oldValues: $oldValues,
+                newValues: [
+                    'operation' => 'waiter_item_deleted',
+                    'draft_order_id' => $draftOrder->id,
+                    'deleted' => true,
+                ],
+            );
         });
     }
 
@@ -57,6 +82,9 @@ class DeleteDraftOrderItemByWaiterAction
             ->select([
                 'id',
                 'draft_order_id',
+                'quantity',
+                'total_price',
+                'comment',
             ])
             ->with([
                 'draftOrder' => fn ($query) => $query

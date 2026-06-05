@@ -10,8 +10,8 @@ enum ManualPaymentScope: string
     public function label(): string
     {
         return match ($this) {
-            self::Table => 'Whole table',
-            self::Guest => 'Guest',
+            self::Table => __('payments.scopes.table'),
+            self::Guest => __('payments.scopes.guest'),
         };
     }
 }

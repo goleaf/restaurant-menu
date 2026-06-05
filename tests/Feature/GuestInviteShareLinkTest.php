@@ -58,12 +58,16 @@ test('guest invite link opens landing and creates a pending join request', funct
 
     $inviteToken = $tableSession->fresh()->guest_invite_token;
 
-    Livewire::withQueryParams(['invite' => $inviteToken])
+    $component = Livewire::withQueryParams(['invite' => $inviteToken])
         ->withCookie(guestInviteShareCookieName($qrCode), str_repeat('x', 64))
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
-        ->assertSet('currentInviteToken', $inviteToken)
-        ->assertSeeText('Enter your name to ask to join this table.')
+        ->assertSet('hasCurrentInviteToken', true)
+        ->assertSeeText('Enter your name to ask to join this table.');
+
+    expect(session(guestInviteShareInviteSessionKey($qrCode)))->toBe($inviteToken);
+
+    $component
         ->set('guestName', '  Jonas  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -141,4 +145,9 @@ function createGuestInviteShareContext(bool $allowGuestInviteLinks = true): arra
 function guestInviteShareCookieName(QrCode $qrCode): string
 {
     return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
+}
+
+function guestInviteShareInviteSessionKey(QrCode $qrCode): string
+{
+    return 'guest_invites.'.substr(hash('sha256', $qrCode->public_token), 0, 24).'.invite_token';
 }

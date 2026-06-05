@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -22,5 +23,15 @@ class BrandFactory extends Factory
             'organization_id' => Organization::factory(),
             'name' => fake()->company(),
         ];
+    }
+
+    public function withBranches(int $count = 1): static
+    {
+        return $this->afterCreating(function (Brand $brand) use ($count): void {
+            Branch::factory()
+                ->count($count)
+                ->forBrand($brand)
+                ->create();
+        });
     }
 }

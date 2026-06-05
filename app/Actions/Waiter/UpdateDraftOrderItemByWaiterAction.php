@@ -2,22 +2,26 @@
 
 namespace App\Actions\Waiter;
 
-use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Orders\CreateOrderStatusLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdateDraftOrderItemByWaiterAction
 {
     public function __construct(
-        private readonly BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     /**
@@ -43,26 +47,23 @@ class UpdateDraftOrderItemByWaiterAction
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
 
             $quantity = $this->normalizeQuantity($quantity);
-            $selectedModifiers = $draftOrderItem->selected_modifiers ?? [];
-            $modifierTotalCents = self::decimalToCents($draftOrderItem->modifier_total);
-
-            if ($draftOrderItem->menuItem !== null) {
-                $modifierGroups = $this->modifierSnapshots->groupsFor($draftOrderItem->menuItem);
-                $selectedModifiers = $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions);
-                $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
-            }
-
-            $unitPriceCents = self::decimalToCents($draftOrderItem->unit_price);
-            $lineUnitTotalCents = max(0, $unitPriceCents + $modifierTotalCents);
+            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity);
 
             $previousStatus = $draftOrder->status;
+            $oldValues = [
+                'operation' => 'waiter_item_updated',
+                'draft_order_id' => $draftOrder->id,
+                'quantity' => $draftOrderItem->quantity,
+                'total_price' => $draftOrderItem->total_price,
+                'comment' => $draftOrderItem->comment,
+            ];
             $this->markAsWaiterReview($draftOrder);
 
             $draftOrderItem->update([
                 'quantity' => $quantity,
-                'modifier_total' => self::centsToDecimal($modifierTotalCents),
-                'total_price' => self::centsToDecimal($lineUnitTotalCents * $quantity),
-                'selected_modifiers' => $selectedModifiers,
+                'modifier_total' => $linePrice['modifier_total'],
+                'total_price' => $linePrice['total_price'],
+                'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
             ]);
 
@@ -77,6 +78,23 @@ class UpdateDraftOrderItemByWaiterAction
                     'operation' => 'waiter_item_updated',
                     'draft_order_item_id' => $draftOrderItem->id,
                     'quantity' => $quantity,
+                ],
+            );
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::DraftOrderEditedByWaiter,
+                entityType: 'draft_order_item',
+                entityId: $draftOrderItem->id,
+                actorUser: $editedBy,
+                organizationId: $draftOrder->tableSession?->branch?->organization_id,
+                branchId: $draftOrder->tableSession?->branch_id,
+                oldValues: $oldValues,
+                newValues: [
+                    'operation' => 'waiter_item_updated',
+                    'draft_order_id' => $draftOrder->id,
+                    'quantity' => $draftOrderItem->quantity,
+                    'total_price' => $draftOrderItem->total_price,
+                    'comment' => $draftOrderItem->comment,
                 ],
             );
 
@@ -135,16 +153,10 @@ class UpdateDraftOrderItemByWaiterAction
 
     private function normalizeComment(?string $comment): ?string
     {
-        $normalizedComment = trim((string) $comment);
+        $normalizedComment = PlainText::optional($comment, 500);
 
-        if ($normalizedComment === '') {
+        if ($normalizedComment === null) {
             return null;
-        }
-
-        if (mb_strlen($normalizedComment) > 500) {
-            throw ValidationException::withMessages([
-                'editingComment' => __('Комментарий слишком длинный.'),
-            ]);
         }
 
         return $normalizedComment;
@@ -157,19 +169,5 @@ class UpdateDraftOrderItemByWaiterAction
                 ->forceFill(['status' => DraftOrderStatus::WaiterReview])
                 ->save();
         }
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return (int) round(((float) ($amount ?? 0)) * 100);
-    }
-
-    private static function centsToDecimal(int $amount): string
-    {
-        $negative = $amount < 0;
-        $absoluteAmount = abs($amount);
-        $formatted = intdiv($absoluteAmount, 100).'.'.str_pad((string) ($absoluteAmount % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

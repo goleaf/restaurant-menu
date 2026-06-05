@@ -19,10 +19,10 @@ use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -171,7 +171,7 @@ class Settings extends Component
     ): void {
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
 
-        $validated = $this->validate($this->rules());
+        $validated = $this->validate($this->rules(), $this->imageValidationMessages());
         $openingHoursConfigured = (bool) $validated['openingHoursConfigured'];
         $openingHours = $openingHoursConfigured
             ? $this->validatedOpeningHours($validated['openingHours'] ?? [])
@@ -324,57 +324,12 @@ class Settings extends Component
     private function rules(): array
     {
         return [
-            'requireWaiterConfirmationForOrders' => ['boolean'],
-            'allowGuestCreatedSessions' => ['boolean'],
-            'allowWaiterOpenedSessions' => ['boolean'],
-            'allowGuestInviteLinks' => ['boolean'],
-            'guestJoinRequiresApproval' => ['boolean'],
-            'pollingIntervalSeconds' => ['required', 'integer', 'min:1', 'max:60'],
-            'inactivityWarningMinutes' => ['required', 'integer', 'min:1', 'max:1440'],
-            'pendingSessionExpireMinutes' => ['required', 'integer', 'min:1', 'max:1440'],
-            'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
-            'defaultCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
-            'serviceChargeEnabled' => ['boolean'],
-            'serviceChargePercent' => [
-                'required',
-                'numeric',
-                'min:0',
-                'max:100',
-                'decimal:0,2',
-            ],
-            'tipsEnabled' => ['boolean'],
-            'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
-            'serviceModes' => ['required', 'array', 'min:1'],
-            'serviceModes.*' => ['required', 'string', Rule::in(BranchServiceMode::values())],
-            'publicName' => ['nullable', 'string', 'max:160'],
-            'publicDescription' => ['nullable', 'string', 'max:1200'],
-            'phone' => ['nullable', 'string', 'max:80'],
-            'email' => ['nullable', 'email:rfc', 'max:255'],
-            'websiteUrl' => ['nullable', 'url', 'max:2048'],
-            'instagramUrl' => ['nullable', 'url', 'max:2048'],
-            'facebookUrl' => ['nullable', 'url', 'max:2048'],
-            'tiktokUrl' => ['nullable', 'url', 'max:2048'],
+            ...RestaurantValidationRules::branchSettings(),
+            ...RestaurantValidationRules::branchProfile(),
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
-            'temporarilyClosed' => ['boolean'],
-            'temporaryClosedReason' => [
-                Rule::requiredIf($this->temporarilyClosed),
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'temporaryClosedUntil' => [
-                'nullable',
-                'date',
-            ],
-            'openingHoursConfigured' => ['boolean'],
-            'openingHours' => ['array', 'size:7'],
-            'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7'],
-            'openingHours.*.label' => ['required', 'string', 'max:40'],
-            'openingHours.*.is_closed' => ['boolean'],
-            'openingHours.*.intervals' => ['array', 'max:4'],
-            'openingHours.*.intervals.*.opens_at' => ['nullable', 'date_format:H:i'],
-            'openingHours.*.intervals.*.closes_at' => ['nullable', 'date_format:H:i'],
+            ...RestaurantValidationRules::temporaryClosure($this->temporarilyClosed),
+            ...RestaurantValidationRules::openingHours(),
         ];
     }
 
@@ -534,11 +489,17 @@ class Settings extends Component
      */
     private function optionalImageRules(): array
     {
+        return RestaurantValidationRules::optionalImageUpload('image')['image'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function imageValidationMessages(): array
+    {
         return [
-            'nullable',
-            'image',
-            'mimes:jpg,jpeg,png,webp',
-            'max:'.StoreLocalImageAction::MAX_IMAGE_KILOBYTES,
+            ...StoreLocalImageAction::validationMessages('publicLogo'),
+            ...StoreLocalImageAction::validationMessages('coverImage'),
         ];
     }
 

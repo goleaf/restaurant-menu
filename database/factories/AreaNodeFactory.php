@@ -30,4 +30,33 @@ class AreaNodeFactory extends Factory
             'metadata' => [],
         ];
     }
+
+    public function forBranch(Branch $branch): static
+    {
+        return $this->state(fn (): array => [
+            'branch_id' => $branch->id,
+        ]);
+    }
+
+    public function withParent(?AreaNode $parent = null): static
+    {
+        return $this
+            ->state(fn (): array => $parent instanceof AreaNode ? [
+                'branch_id' => $parent->branch_id,
+                'parent_id' => $parent->id,
+            ] : [])
+            ->afterCreating(function (AreaNode $areaNode) use ($parent): void {
+                if ($parent instanceof AreaNode) {
+                    return;
+                }
+
+                $createdParent = AreaNode::factory()
+                    ->forBranch($areaNode->branch)
+                    ->create(['parent_id' => null]);
+
+                $areaNode->forceFill([
+                    'parent_id' => $createdParent->id,
+                ])->save();
+            });
+    }
 }

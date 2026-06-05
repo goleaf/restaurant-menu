@@ -15,6 +15,10 @@ use InvalidArgumentException;
 
 class CreateInvitationAction
 {
+    private const INVITE_TOKEN_LENGTH = 64;
+
+    private const INVITE_CODE_LENGTH = 8;
+
     /**
      * @param  array{brand?: Brand|null, branch?: Branch|null, email?: string|null, phone?: string|null, invite_token?: string|null, invite_code?: string|null, expires_at?: CarbonInterface|null}  $data
      */
@@ -25,19 +29,22 @@ class CreateInvitationAction
 
         $this->ensureScopeBelongsToOrganization($organization, $brand, $branch);
 
-        return Invitation::query()->create([
+        $invitation = new Invitation;
+        $invitation->forceFill([
             'organization_id' => $organization->id,
             'brand_id' => $brand?->id ?? $branch?->brand_id,
             'branch_id' => $branch?->id,
             'role_id' => $role->id,
             'email' => $data['email'] ?? null,
             'phone' => $data['phone'] ?? null,
-            'invite_token' => $data['invite_token'] ?? Str::random(64),
-            'invite_code' => $data['invite_code'] ?? Str::upper(Str::random(8)),
+            'invite_token' => $this->inviteToken($data['invite_token'] ?? null),
+            'invite_code' => $this->inviteCode($data['invite_code'] ?? null),
             'expires_at' => $data['expires_at'] ?? now()->addDays(7),
             'status' => InvitationStatus::Pending,
             'invited_by_user_id' => $invitedBy->id,
-        ]);
+        ])->save();
+
+        return $invitation;
     }
 
     private function ensureScopeBelongsToOrganization(Organization $organization, ?Brand $brand, ?Branch $branch): void
@@ -57,5 +64,37 @@ class CreateInvitationAction
         if ($brand instanceof Brand && $branch->brand_id !== $brand->id) {
             throw new InvalidArgumentException('Invitation branch must belong to the selected brand.');
         }
+    }
+
+    private function inviteToken(?string $token): string
+    {
+        if ($token !== null) {
+            $token = trim($token);
+
+            if (strlen($token) !== self::INVITE_TOKEN_LENGTH || ! ctype_alnum($token)) {
+                throw new InvalidArgumentException('Invitation token must be a 64 character random token.');
+            }
+
+            return $token;
+        }
+
+        do {
+            $token = Str::random(self::INVITE_TOKEN_LENGTH);
+        } while (Invitation::query()->where('invite_token', $token)->exists());
+
+        return $token;
+    }
+
+    private function inviteCode(?string $code): string
+    {
+        if ($code !== null) {
+            return Str::upper(trim($code));
+        }
+
+        do {
+            $code = Str::upper(Str::random(self::INVITE_CODE_LENGTH));
+        } while (Invitation::query()->where('invite_code', $code)->exists());
+
+        return $code;
     }
 }

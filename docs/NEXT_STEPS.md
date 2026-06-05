@@ -4,11 +4,34 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after rescue mode before Prompt 126.
+Last memory refresh: 2026-06-05 after Prompt 333 token security rules.
 
 ## Next Recommended Prompt
 
-Prompt 126 - Waiter notification sound settings.
+Use only the user's next explicit prompt. If returning to the existing queue, start with a fresh health check because earlier rescue-mode notes mention Prompt 123, Prompt 125, and Prompt 126 as pending candidates.
+
+Prompt 127 is complete. Kitchen/bar tickets now have a browser print-friendly
+page through `restaurant.departments.tickets.print`.
+
+Future ticket print work must preserve these guardrails:
+
+- print pages are read-only and must not change orders, ticket items, payments,
+  guests, service points, or QR codes;
+- access must stay scoped to the same department visibility as kitchen/bar
+  screens;
+- no hardware printer integration, PDF service, paid service, Redis,
+  WebSocket, S3, Docker requirement, or external infrastructure;
+- keep Blade query-free by preparing ticket data in backend actions.
+
+Prompt 333 is complete. Future QR, guest, staff invitation, session invite, export, or audit-log work must preserve token separation:
+
+- `/q/{public_token}` uses the QR public token only;
+- `short_code` is staff lookup/print text only;
+- `guest_token` must never grant staff access or appear in UI, URLs, exports, or user-facing logs;
+- staff invite acceptance must check a 64-character alphanumeric token, pending status, and future `expires_at`;
+- revoked QR tokens, closed session invite tokens, expired invite tokens, inactive service points, and rejected/removed guests must not create ordering access.
+
+Historical queued candidate: Prompt 126 - Waiter notification sound settings.
 
 Prompt 126 was requested, but it was paused because the pre-prompt health check
 found the project was already broken. Rescue mode restored branch staff

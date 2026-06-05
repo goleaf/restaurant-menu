@@ -9,13 +9,40 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['organization_id', 'branch_id', 'user_id', 'guest_id', 'guest_token', 'action', 'entity_type', 'entity_id', 'old_values', 'new_values', 'created_at'])]
+#[Fillable(['user_id', 'guest_id', 'action', 'entity_type', 'entity_id', 'old_values', 'new_values', 'created_at'])]
 class AuditLog extends Model
 {
     /** @use HasFactory<AuditLogFactory> */
     use HasFactory;
 
     public const UPDATED_AT = null;
+
+    public function save(array $options = []): bool
+    {
+        if ($this->exists && $this->isDirty()) {
+            return false;
+        }
+
+        return parent::save($options);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $options
+     */
+    public function update(array $attributes = [], array $options = []): bool
+    {
+        if ($this->exists) {
+            return false;
+        }
+
+        return parent::update($attributes, $options);
+    }
+
+    public function delete(): ?bool
+    {
+        return false;
+    }
 
     /**
      * @return array<string, string>

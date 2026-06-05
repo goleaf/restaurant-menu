@@ -11,14 +11,23 @@ class EnsureOrganizationSubscriptionAction
 {
     public function handle(Organization $organization): OrganizationSubscription
     {
-        return OrganizationSubscription::query()->firstOrCreate(
-            ['organization_id' => $organization->id],
-            [
-                'status' => OrganizationSubscriptionStatus::Active,
-                'started_at' => now(),
-                'next_payment_at' => now()->addMonthNoOverflow(),
-                'payment_status' => OrganizationSubscriptionPaymentStatus::Pending,
-            ],
-        );
+        $subscription = OrganizationSubscription::query()
+            ->where('organization_id', $organization->id)
+            ->first();
+
+        if ($subscription instanceof OrganizationSubscription) {
+            return $subscription;
+        }
+
+        $subscription = new OrganizationSubscription;
+        $subscription->forceFill([
+            'organization_id' => $organization->id,
+            'status' => OrganizationSubscriptionStatus::Active,
+            'started_at' => now(),
+            'next_payment_at' => now()->addMonthNoOverflow(),
+            'payment_status' => OrganizationSubscriptionPaymentStatus::Pending,
+        ])->save();
+
+        return $subscription;
     }
 }

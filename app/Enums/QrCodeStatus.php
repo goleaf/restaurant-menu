@@ -11,9 +11,9 @@ enum QrCodeStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Active => 'Active',
-            self::Disabled => 'Disabled',
-            self::Revoked => 'Revoked',
+            self::Active => 'qr.status.active',
+            self::Disabled => 'qr.status.disabled',
+            self::Revoked => 'qr.status.revoked',
         };
     }
 

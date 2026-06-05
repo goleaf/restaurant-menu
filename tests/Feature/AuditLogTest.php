@@ -1,5 +1,8 @@
 <?php
 
+use App\Actions\AuditLogs\BuildAuditLogIndexAction;
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
 use App\Actions\Orders\ChangeOrderStatusAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Payments\RecordManualPaymentAction;
@@ -8,8 +11,12 @@ use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\Staff\SetUserPermissionOverrideAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
+use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
+use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
 use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
@@ -29,6 +36,9 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
@@ -71,6 +81,7 @@ test('audit log schema and page are restricted by view audit log permission', fu
             'branch_id',
             'user_id',
             'guest_id',
+            'guest_display_name',
             'guest_token',
             'action',
             'entity_type',
@@ -100,6 +111,68 @@ test('audit log schema and page are restricted by view audit log permission', fu
         ->test(AuditLogIndex::class)
         ->assertSet('payload.has_access', true)
         ->assertSee('Price changed');
+});
+
+test('audit logs are immutable through ordinary model edit and delete paths', function () {
+    $auditLog = AuditLog::factory()->create([
+        'entity_type' => 'menu_item',
+        'old_values' => ['price' => '10.00'],
+        'new_values' => ['price' => '12.00'],
+    ]);
+
+    expect($auditLog->update(['entity_type' => 'tampered']))->toBeFalse()
+        ->and($auditLog->fresh()->entity_type)->toBe('menu_item')
+        ->and($auditLog->delete())->toBeFalse()
+        ->and(AuditLog::query()->whereKey($auditLog->id)->exists())->toBeTrue();
+});
+
+test('guest audit actors use display name and values mask sensitive tokens', function () {
+    [$organization, , $branch, , $servicePoint] = createPrompt71Context();
+    $viewer = User::factory()->create(['name' => 'Guest Audit Viewer']);
+    attachPrompt71Staff($viewer, $organization, [SystemPermission::ViewAuditLog]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create(['status' => TableSessionStatus::Active]);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => '  Ana Guest  ',
+            'guest_token' => str_repeat('g', 64),
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+
+    $auditLog = app(RecordAuditLogAction::class)->handle(
+        action: AuditLogAction::DraftOrderEditedByWaiter,
+        entityType: 'draft_order',
+        entityId: 123,
+        actorGuest: $guest,
+        guestToken: str_repeat('x', 64),
+        organizationId: $organization->id,
+        branchId: $branch->id,
+        oldValues: [
+            'guest_token' => str_repeat('a', 64),
+            'nested' => ['invite_token' => str_repeat('b', 64)],
+        ],
+        newValues: [
+            'api_secret' => 'plain-secret',
+            'quantity' => 2,
+        ],
+    );
+
+    $payload = app(BuildAuditLogIndexAction::class)->handle($viewer);
+    $row = collect($payload['logs']->items())->firstWhere('id', $auditLog->id);
+
+    expect($auditLog->fresh()->guest_id)->toBe($guest->id)
+        ->and($auditLog->fresh()->guest_display_name)->toBe('Ana Guest')
+        ->and($auditLog->fresh()->guest_token)->toBeNull()
+        ->and($auditLog->fresh()->old_values['guest_token'])->toBe('[redacted]')
+        ->and($auditLog->fresh()->old_values['nested']['invite_token'])->toBe('[redacted]')
+        ->and($auditLog->fresh()->new_values['api_secret'])->toBe('[redacted]')
+        ->and($row['actor'])->toBe('Ana Guest')
+        ->and($row['old_summary'])->not->toContain(str_repeat('a', 64))
+        ->and($row['old_summary'])->not->toContain(str_repeat('b', 64))
+        ->and($row['new_summary'])->not->toContain('plain-secret');
 });
 
 test('menu service point qr and staff changes create audit events', function () {
@@ -156,8 +229,112 @@ test('order payment and table session actions create audit events', function () 
         SystemPermission::CancelOrders,
         SystemPermission::ManagePayments,
         SystemPermission::CloseTableSessions,
+        SystemPermission::ViewKitchen,
     ]);
 
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create(['status' => TableSessionStatus::Active]);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Ana',
+            'status' => TableSessionGuestStatus::Active,
+        ]);
+    $draftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create([
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now(),
+            'sent_by_guest_id' => $guest->id,
+        ]);
+    $draftOrderItem = DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($guest, 'guest')
+        ->for($menuItem)
+        ->create([
+            'item_name' => $menuItem->name,
+            'unit_price' => '18.00',
+            'total_price' => '18.00',
+        ]);
+
+    app(UpdateDraftOrderItemByWaiterAction::class)->handle(
+        draftOrderItem: $draftOrderItem,
+        editedBy: $manager,
+        quantity: 1,
+        selectedModifierOptions: [],
+        comment: 'No onions',
+    );
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $manager);
+    $orderItem = $order->items()->firstOrFail();
+    $department = KitchenDepartment::factory()
+        ->for($servicePoint->branch)
+        ->create([
+            'type' => KitchenDepartmentType::Kitchen,
+            'name' => 'Audit Kitchen',
+            'is_active' => true,
+        ]);
+    $ticket = KitchenTicket::factory()
+        ->for($order)
+        ->create([
+            'branch_id' => $order->branch_id,
+            'service_point_id' => $order->service_point_id,
+            'table_session_id' => $order->table_session_id,
+            'kitchen_department_id' => $department->id,
+            'department_type' => KitchenDepartmentType::Kitchen->value,
+            'department_name' => $department->name,
+        ]);
+    $ticketItem = KitchenTicketItem::factory()
+        ->for($ticket)
+        ->for($orderItem)
+        ->create([
+            'table_session_guest_id' => $orderItem->table_session_guest_id,
+            'menu_item_id' => $orderItem->menu_item_id,
+            'item_name' => $orderItem->item_name,
+            'quantity' => $orderItem->quantity,
+            'status' => KitchenTicketItemStatus::New,
+        ]);
+
+    app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+        item: $ticketItem,
+        status: KitchenTicketItemStatus::Ready,
+        user: $manager,
+        departmentTypes: [KitchenDepartmentType::Kitchen],
+        roleCodes: [],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    );
+
+    app(RecordManualPaymentAction::class)->recordTable(
+        tableSession: $tableSession,
+        recordedBy: $manager,
+        paymentMethod: ManualPaymentMethod::Cash,
+    );
+
+    app(ChangeOrderStatusAction::class)->handle(
+        order: $order,
+        newStatus: OrderStatus::Cancelled,
+        changedBy: $manager,
+        reason: 'Audit test cancellation',
+    );
+
+    app(CloseTableSessionAction::class)->handle($tableSession, $manager);
+
+    expect(expectPrompt71Audit(AuditLogAction::DraftOrderEditedByWaiter, 'draft_order_item', $draftOrderItem->id)->new_values['operation'])->toBe('waiter_item_updated')
+        ->and(expectPrompt71Audit(AuditLogAction::OrderConfirmed, 'order', $order->id)->new_values['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
+        ->and(expectPrompt71Audit(AuditLogAction::DepartmentItemReady, 'kitchen_ticket_item', $ticketItem->id)->new_values['status'])->toBe(KitchenTicketItemStatus::Ready->value)
+        ->and(expectPrompt71Audit(AuditLogAction::PaymentRecorded, 'manual_payment')->new_values['amount'])->toBe('18.00')
+        ->and(expectPrompt71Audit(AuditLogAction::OrderCancelled, 'order', $order->id)->new_values['reason'])->toBe('Audit test cancellation')
+        ->and(expectPrompt71Audit(AuditLogAction::TableSessionClosed, 'table_session', $tableSession->id)->new_values['status'])->toBe(TableSessionStatus::Closed->value);
+});
+
+test('waiter rejected drafts create audit events', function () {
+    [$organization, , , , $servicePoint, $menuItem, , $manager] = createPrompt71Context();
+    attachPrompt71Staff($manager, $organization, [
+        SystemPermission::ViewOrders,
+        SystemPermission::ConfirmOrders,
+    ]);
     $tableSession = TableSession::factory()
         ->forServicePoint($servicePoint)
         ->active()
@@ -185,27 +362,19 @@ test('order payment and table session actions create audit events', function () 
             'total_price' => '18.00',
         ]);
 
-    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $manager);
-
-    app(RecordManualPaymentAction::class)->recordTable(
-        tableSession: $tableSession,
-        recordedBy: $manager,
-        paymentMethod: ManualPaymentMethod::Cash,
+    app(RejectDraftOrderByWaiterAction::class)->handle(
+        draftOrder: $draftOrder,
+        rejectedBy: $manager,
+        reason: 'Out of stock',
     );
 
-    app(ChangeOrderStatusAction::class)->handle(
-        order: $order,
-        newStatus: OrderStatus::Cancelled,
-        changedBy: $manager,
-        reason: 'Audit test cancellation',
-    );
+    $auditLog = expectPrompt71Audit(AuditLogAction::DraftOrderRejected, 'draft_order', $draftOrder->id);
 
-    app(CloseTableSessionAction::class)->handle($tableSession, $manager);
-
-    expect(expectPrompt71Audit(AuditLogAction::OrderConfirmed, 'order', $order->id)->new_values['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
-        ->and(expectPrompt71Audit(AuditLogAction::PaymentRecorded, 'manual_payment')->new_values['amount'])->toBe('18.00')
-        ->and(expectPrompt71Audit(AuditLogAction::OrderCancelled, 'order', $order->id)->new_values['reason'])->toBe('Audit test cancellation')
-        ->and(expectPrompt71Audit(AuditLogAction::TableSessionClosed, 'table_session', $tableSession->id)->new_values['status'])->toBe(TableSessionStatus::Closed->value);
+    expect($auditLog->user_id)->toBe($manager->id)
+        ->and($auditLog->branch_id)->toBe($servicePoint->branch_id)
+        ->and($auditLog->new_values['status'])->toBe(DraftOrderStatus::Rejected->value)
+        ->and($auditLog->new_values['reason'])->toBe('Out of stock')
+        ->and($auditLog->created_at)->not->toBeNull();
 });
 
 function createPrompt71Context(): array

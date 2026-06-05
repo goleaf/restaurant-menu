@@ -4,16 +4,16 @@
     class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-    <div class="flex items-center justify-between gap-3">
-        <div class="min-w-0">
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.guests') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.title') }}</h2>
-        </div>
+        <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.guests') }}</p>
+                <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.title') }}</h2>
+            </div>
 
-        <x-ui.status-badge tone="muted" size="lg">
-            {{ count($guests) }}
-        </x-ui.status-badge>
-    </div>
+            <x-ui.status-badge tone="muted" size="lg">
+                {{ count($guests) }}
+            </x-ui.status-badge>
+        </div>
     </div>
 
     <div class="space-y-2 p-4">
@@ -25,7 +25,7 @@
 
                 <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2">
-                        <p class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $guest['guest_name'] }}</p>
+                        <x-ui.plain-text :text="$guest['guest_name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
 
                         @if ($guest['is_current'])
                             <x-ui.status-badge tone="success">

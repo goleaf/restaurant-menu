@@ -2,10 +2,15 @@
 
 namespace Database\Factories;
 
+use App\Enums\KitchenDepartmentType;
+use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
+use App\Models\KitchenDepartment;
+use App\Models\Menu;
 use App\Models\Organization;
+use App\Models\ServicePoint;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -52,6 +57,14 @@ class BranchFactory extends Factory
         ]);
     }
 
+    public function forBrand(Brand $brand): static
+    {
+        return $this->state(fn (): array => [
+            'organization_id' => $brand->organization_id,
+            'brand_id' => $brand->id,
+        ]);
+    }
+
     public function withDefaultSettings(): static
     {
         return $this->afterCreating(function (Branch $branch): void {
@@ -65,6 +78,55 @@ class BranchFactory extends Factory
                 $settings->forceFill(BranchSetting::defaults($branch));
                 $settings->save();
             }
+        });
+    }
+
+    public function withDepartments(int $count = 1): static
+    {
+        return $this->afterCreating(function (Branch $branch) use ($count): void {
+            $types = KitchenDepartmentType::cases();
+
+            for ($index = 0; $index < $count; $index++) {
+                $type = $types[$index % count($types)];
+
+                KitchenDepartment::factory()
+                    ->for($branch)
+                    ->create([
+                        'type' => $type,
+                        'name' => $type->label(),
+                        'sort_order' => ($index + 1) * 10,
+                    ]);
+            }
+        });
+    }
+
+    public function withAreaNodes(int $count = 1): static
+    {
+        return $this->afterCreating(function (Branch $branch) use ($count): void {
+            AreaNode::factory()
+                ->count($count)
+                ->for($branch)
+                ->create();
+        });
+    }
+
+    public function withServicePoints(int $count = 1): static
+    {
+        return $this->afterCreating(function (Branch $branch) use ($count): void {
+            ServicePoint::factory()
+                ->count($count)
+                ->for($branch)
+                ->create();
+        });
+    }
+
+    public function withMenus(int $count = 1): static
+    {
+        return $this->afterCreating(function (Branch $branch) use ($count): void {
+            Menu::factory()
+                ->count($count)
+                ->for($branch)
+                ->create();
         });
     }
 }

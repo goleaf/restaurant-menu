@@ -14,11 +14,11 @@ use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\DeleteDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\EnsureWaiterCanEditDraftOrderAction;
 use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Waiter\ReturnRejectedDraftOrderToDraftAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
-use App\Enums\ManualPaymentMethod;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
 use App\Models\DraftOrder;
@@ -30,16 +30,19 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Title('Table detail')]
 class TableDetail extends Component
 {
+    #[Locked]
     public int $tableSessionId;
 
     /**
@@ -70,6 +73,8 @@ class TableDetail extends Component
     public string $paymentNote = '';
 
     public string $tipsAmount = '0.00';
+
+    public string $closeTableConfirmation = '';
 
     /**
      * @var list<array{value: string, label: string, price: string}>
@@ -198,6 +203,17 @@ class TableDetail extends Component
         $this->resetValidation();
         $this->reviewFeedbackMessage = '';
 
+        if (! data_get($this->table, 'manual_order.can_add')) {
+            $this->addError('draft_edit', __('У вас нет права вручную добавлять позиции в этом филиале.'));
+
+            return;
+        }
+
+        $validatedInput = $this->validate($this->addingDraftItemRules());
+        $this->addingQuantity = (int) $validatedInput['addingQuantity'];
+        $this->addingComment = (string) ($validatedInput['addingComment'] ?? '');
+        $this->addingModifierOptions = $validatedInput['addingModifierOptions'] ?? [];
+
         $guest = $this->selectedAddingGuest();
         $menuItem = $this->selectedAddingMenuItem();
 
@@ -232,7 +248,7 @@ class TableDetail extends Component
         $this->refreshTable();
     }
 
-    public function editDraftItem(int $itemId): void
+    public function editDraftItem(int $itemId, EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder): void
     {
         $this->resetValidation();
         $this->reviewFeedbackMessage = '';
@@ -247,6 +263,14 @@ class TableDetail extends Component
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
             $this->addError('draft_edit', __('Позиция не найдена в этом черновике.'));
+
+            return;
+        }
+
+        try {
+            $ensureWaiterCanEditDraftOrder->handle($draftOrderItem->draftOrder, $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
 
             return;
         }
@@ -285,6 +309,11 @@ class TableDetail extends Component
         if ($this->editingItemId === null) {
             return;
         }
+
+        $validatedInput = $this->validate($this->editingDraftItemRules());
+        $this->editingQuantity = (int) $validatedInput['editingQuantity'];
+        $this->editingComment = (string) ($validatedInput['editingComment'] ?? '');
+        $this->editingModifierOptions = $validatedInput['editingModifierOptions'] ?? [];
 
         $draftOrderItem = DraftOrderItem::query()
             ->select(['id'])
@@ -405,11 +434,9 @@ class TableDetail extends Component
         $this->resetValidation();
         $this->reviewFeedbackMessage = '';
 
-        $validated = $this->validate([
-            'orderCancellationReason' => ['required', 'string', 'min:3', 'max:500'],
-        ], [
-            'orderCancellationReason.required' => __('Укажите причину отмены заказа.'),
-            'orderCancellationReason.min' => __('Причина отмены должна быть понятной для истории заказа.'),
+        $validated = $this->validate(RestaurantValidationRules::auditReason('orderCancellationReason'), [
+            'orderCancellationReason.required' => __('ui.confirmations.cancel_order.reason_required'),
+            'orderCancellationReason.min' => __('ui.confirmations.cancel_order.reason_min'),
         ]);
 
         $order = $this->currentOrder();
@@ -479,8 +506,13 @@ class TableDetail extends Component
             return;
         }
 
+        $validated = $this->validate(RestaurantValidationRules::waiterRejectionReason('rejectionReason'), [
+            'rejectionReason.required' => __('Укажите причину отклонения.'),
+            'rejectionReason.min' => __('Причина отклонения должна быть понятной для гостя.'),
+        ]);
+
         try {
-            $rejectDraftOrder->handle($draftOrder, $this->currentUser(), $this->rejectionReason);
+            $rejectDraftOrder->handle($draftOrder, $this->currentUser(), (string) $validated['rejectionReason']);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -521,14 +553,15 @@ class TableDetail extends Component
     {
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
+        $validated = $this->validate($this->manualPaymentRules(), $this->manualPaymentMessages());
 
         try {
             $recordManualPayment->recordTable(
                 tableSession: $this->currentTableSession(),
                 recordedBy: $this->currentUser(),
-                paymentMethod: $this->currentPaymentMethod(),
-                note: $this->paymentNote,
-                tipsAmount: $this->tipsAmount,
+                paymentMethod: (string) $validated['paymentMethod'],
+                note: (string) ($validated['paymentNote'] ?? ''),
+                tipsAmount: (string) $validated['tipsAmount'],
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -538,7 +571,7 @@ class TableDetail extends Component
 
         $this->paymentNote = '';
         $this->tipsAmount = '0.00';
-        $this->paymentFeedbackMessage = __('Оплата всего стола отмечена.');
+        $this->paymentFeedbackMessage = __('payments.messages.payment_recorded');
         $this->refreshTable();
     }
 
@@ -546,11 +579,12 @@ class TableDetail extends Component
     {
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
+        $validated = $this->validate($this->manualPaymentRules(), $this->manualPaymentMessages());
 
         $guest = $this->paymentGuestForCurrentTable($guestId);
 
         if (! $guest instanceof TableSessionGuest) {
-            $this->addError('manual_payment', __('Гость не найден в этой сессии.'));
+            $this->addError('manual_payment', __('payments.errors.guest_not_found'));
 
             return;
         }
@@ -560,9 +594,9 @@ class TableDetail extends Component
                 tableSession: $this->currentTableSession(),
                 guest: $guest,
                 recordedBy: $this->currentUser(),
-                paymentMethod: $this->currentPaymentMethod(),
-                note: $this->paymentNote,
-                tipsAmount: $this->tipsAmount,
+                paymentMethod: (string) $validated['paymentMethod'],
+                note: (string) ($validated['paymentNote'] ?? ''),
+                tipsAmount: (string) $validated['tipsAmount'],
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -572,7 +606,7 @@ class TableDetail extends Component
 
         $this->paymentNote = '';
         $this->tipsAmount = '0.00';
-        $this->paymentFeedbackMessage = __('Оплата гостя отмечена.');
+        $this->paymentFeedbackMessage = __('payments.messages.payment_recorded');
         $this->refreshTable();
     }
 
@@ -586,6 +620,15 @@ class TableDetail extends Component
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
 
+        if ((bool) data_get($this->table, 'session.close_requires_warning')) {
+            $this->validate([
+                'closeTableConfirmation' => ['required', 'string', 'in:CLOSE'],
+            ], [
+                'closeTableConfirmation.required' => __('payments.errors.close_confirmation_required'),
+                'closeTableConfirmation.in' => __('payments.errors.close_confirmation_invalid'),
+            ]);
+        }
+
         try {
             $closeTableSession->handle($this->currentTableSession(), $this->currentUser());
         } catch (ValidationException $exception) {
@@ -594,7 +637,9 @@ class TableDetail extends Component
             return;
         }
 
-        $this->paymentFeedbackMessage = __('Стол закрыт. Место свободно для следующих гостей.');
+        $this->closeTableConfirmation = '';
+        $this->paymentFeedbackMessage = __('payments.messages.session_closed');
+        Flux::modals()->close();
         $this->refreshTable();
     }
 
@@ -726,9 +771,56 @@ class TableDetail extends Component
             ->firstOrFail();
     }
 
-    private function currentPaymentMethod(): ManualPaymentMethod
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function addingDraftItemRules(): array
     {
-        return ManualPaymentMethod::tryFrom($this->paymentMethod) ?? ManualPaymentMethod::Cash;
+        return [
+            ...RestaurantValidationRules::quantity('addingQuantity'),
+            ...RestaurantValidationRules::guestComment('addingComment'),
+            ...RestaurantValidationRules::selectedModifierOptions('addingModifierOptions'),
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function editingDraftItemRules(): array
+    {
+        return [
+            ...RestaurantValidationRules::quantity('editingQuantity'),
+            ...RestaurantValidationRules::guestComment('editingComment'),
+            ...RestaurantValidationRules::selectedModifierOptions('editingModifierOptions'),
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function manualPaymentRules(): array
+    {
+        return [
+            ...RestaurantValidationRules::paymentMethod('paymentMethod'),
+            ...RestaurantValidationRules::paymentNote('paymentNote'),
+            ...RestaurantValidationRules::manualPaymentAmount('tipsAmount'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function manualPaymentMessages(): array
+    {
+        return [
+            'paymentMethod.required' => __('payments.errors.method_required'),
+            'paymentMethod.in' => __('payments.errors.method_required'),
+            'tipsAmount.required' => __('payments.errors.amount_required'),
+            'tipsAmount.numeric' => __('payments.errors.amount_invalid'),
+            'tipsAmount.min' => __('payments.errors.amount_invalid'),
+            'tipsAmount.max' => __('payments.errors.amount_invalid'),
+            'tipsAmount.decimal' => __('payments.errors.amount_invalid'),
+        ];
     }
 
     private function paymentGuestForCurrentTable(int $guestId): ?TableSessionGuest
@@ -755,6 +847,7 @@ class TableDetail extends Component
         return TableSessionGuest::query()
             ->select(['id'])
             ->whereKey($guestId)
+            ->where('table_session_id', $this->tableSessionId)
             ->first();
     }
 
@@ -766,10 +859,7 @@ class TableDetail extends Component
             return null;
         }
 
-        return MenuItem::query()
-            ->select(['id'])
-            ->whereKey($menuItemId)
-            ->first();
+        return $this->configuredMenuItem($menuItemId);
     }
 
     private function draftOrderItemForCurrentTable(int $itemId): ?DraftOrderItem

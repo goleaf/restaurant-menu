@@ -282,7 +282,7 @@
                                 <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-zinc-100 dark:bg-zinc-800">
                                     <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
                                 </div>
-                                <p class="font-medium">{{ __('No passkeys yet') }}</p>
+                                <p class="font-medium">{{ __('ui.empty.no_passkeys') }}</p>
                                 <flux:text class="mt-1">{{ __('Add a passkey to sign in without a password') }}</flux:text>
                             </div>
                         @endforelse
@@ -303,9 +303,9 @@
         >
             <div class="space-y-6">
                 <div class="space-y-2">
-                    <flux:heading size="lg">{{ __('Remove passkey') }}</flux:heading>
+                    <flux:heading size="lg">{{ __('ui.confirmations.delete_passkey.title') }}</flux:heading>
                     <flux:text>
-                        {{ __('Are you sure you want to remove the passkey ":name"? You will no longer be able to use it to sign in.', ['name' => $deletingPasskeyName]) }}
+                        {{ __('ui.confirmations.delete_passkey.description', ['name' => $deletingPasskeyName]) }}
                     </flux:text>
                 </div>
 
@@ -314,13 +314,13 @@
                         variant="outline"
                         wire:click="closeDeleteModal"
                     >
-                        {{ __('Cancel') }}
+                        {{ __('ui.actions.cancel') }}
                     </flux:button>
                     <flux:button
                         variant="danger"
                         wire:click="deletePasskey"
                     >
-                        {{ __('Remove passkey') }}
+                        {{ __('ui.actions.delete') }}
                     </flux:button>
                 </div>
             </div>

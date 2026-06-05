@@ -5,14 +5,17 @@ namespace App\Actions\Orders;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
+use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -31,9 +34,18 @@ class ChangeOrderStatusAction
     {
         return DB::transaction(function () use ($order, $newStatus, $changedBy, $reason, $metadata): Order {
             $order = $this->reloadOrder($order);
+            $previousStatus = $order->status;
+
+            if ($previousStatus === OrderStatus::Cancelled) {
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::OrderAlreadyCancelled,
+                    'order_status',
+                    __('Заказ уже отменён.'),
+                );
+            }
+
             $this->ensureCanChangeStatus($order, $newStatus, $changedBy);
 
-            $previousStatus = $order->status;
             $normalizedReason = $this->normalizeReason($reason);
 
             if ($previousStatus === $newStatus) {
@@ -172,13 +184,7 @@ class ChangeOrderStatusAction
 
     private function normalizeReason(?string $reason): ?string
     {
-        $normalizedReason = trim((string) $reason);
-
-        if ($normalizedReason === '') {
-            return null;
-        }
-
-        return mb_substr($normalizedReason, 0, 500);
+        return PlainText::optional($reason, 500);
     }
 
     /**

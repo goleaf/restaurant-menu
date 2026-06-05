@@ -2,15 +2,15 @@
     <div class="qr-print-toolbar">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
-            <h1 class="text-2xl font-semibold text-zinc-950">{{ __('Print QR sticker') }}</h1>
+            <h1 class="text-2xl font-semibold text-zinc-950">{{ __('qr.print.single_title') }}</h1>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
             <flux:button icon="arrow-left" :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode])" wire:navigate>
-                {{ __('QR page') }}
+                {{ __('qr.navigation.qr_page') }}
             </flux:button>
 
-            <flux:select wire:model.live="preset" :label="__('Label design')">
+            <flux:select wire:model.live="preset" :label="__('qr.print.label_design')">
                 @foreach ($this->presetOptions as $option)
                     <flux:select.option wire:key="single-qr-preset-{{ $option['value'] }}" value="{{ $option['value'] }}">
                         {{ __($option['label']) }}
@@ -18,24 +18,24 @@
                 @endforeach
             </flux:select>
 
-            <flux:switch wire:model.live="printTableNumber" :label="__('Print table number')" />
+            <flux:switch wire:model.live="printTableNumber" :label="__('qr.print.print_table_number')" />
 
             <flux:button icon="printer" variant="primary" type="button" x-on:click="window.print()">
-                {{ __('Print') }}
+                {{ __('qr.actions.print') }}
             </flux:button>
         </div>
     </div>
 
     @if ($printTableNumber)
         <div class="qr-print-warning">
-            {{ __('Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.') }}
+            {{ __('qr.print.table_number_warning') }}
         </div>
     @endif
 
     <section
         @class(['qr-sticker', $this->selectedPreset->cssClass()])
         data-preset="{{ $this->selectedPreset->value }}"
-        aria-label="{{ __('QR sticker preview') }}"
+        aria-label="{{ __('qr.labels.sticker_preview') }}"
     >
         <div class="qr-sticker-brand">
             @if ($this->restaurantLogoUrl)
@@ -45,15 +45,15 @@
             @endif
         </div>
 
-        <p class="qr-sticker-title">{{ __('Сканируйте, чтобы открыть меню') }}</p>
+        <p class="qr-sticker-title">{{ __('qr.print.sticker_title') }}</p>
 
-        <img src="{{ $this->qrImageDataUri }}" alt="{{ __('QR image') }}" class="qr-sticker-image">
+        <img src="{{ $this->qrImageDataUri }}" alt="{{ __('qr.labels.image') }}" class="qr-sticker-image">
 
         <div class="qr-sticker-code">{{ $qrCode->short_code }}</div>
 
         @if ($printTableNumber)
             <div class="qr-sticker-table-number">
-                {{ __('Стол') }}: {{ $this->tableLabel }}
+                {{ __('qr.labels.table') }}: {{ $this->tableLabel }}
             </div>
         @endif
     </section>

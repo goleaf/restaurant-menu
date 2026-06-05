@@ -21,8 +21,9 @@ class SetUserPermissionOverrideAction
         PermissionOverrideState $state,
         ?User $changedBy = null,
         ?int $organizationId = null,
+        ?string $reason = null,
     ): void {
-        DB::transaction(function () use ($user, $permission, $state, $changedBy, $organizationId): void {
+        DB::transaction(function () use ($user, $permission, $state, $changedBy, $organizationId, $reason): void {
             $previousState = $this->currentState($user, $permission);
             $enabled = $state->enabledValue();
 
@@ -53,6 +54,7 @@ class SetUserPermissionOverrideAction
                     'staff_user_id' => $user->id,
                     'permission_code' => $permission->code,
                     'state' => $state->value,
+                    'reason' => $this->normalizeReason($reason),
                 ],
             );
         });
@@ -72,5 +74,12 @@ class SetUserPermissionOverrideAction
         return (bool) $override->pivot->enabled
             ? PermissionOverrideState::Allow
             : PermissionOverrideState::Deny;
+    }
+
+    private function normalizeReason(?string $reason): ?string
+    {
+        $normalized = trim((string) $reason);
+
+        return $normalized === '' ? null : mb_substr($normalized, 0, 500);
     }
 }

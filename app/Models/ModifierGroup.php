@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order'])]
+#[Fillable(['name', 'is_required', 'min_select', 'max_select', 'sort_order'])]
 class ModifierGroup extends Model
 {
     /** @use HasFactory<ModifierGroupFactory> */

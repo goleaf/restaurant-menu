@@ -21,12 +21,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.print')]
-#[Title('Bulk QR print')]
 class BulkPrint extends Component
 {
     public Organization $organization;
@@ -112,8 +110,8 @@ class BulkPrint extends Component
         Flux::toast(
             variant: 'success',
             text: $qrCode->wasRecentlyCreated
-                ? __('QR created.')
-                : __('Active QR already exists.'),
+                ? __('qr.messages.created')
+                : __('qr.messages.active_exists'),
         );
     }
 
@@ -137,7 +135,7 @@ class BulkPrint extends Component
 
         unset($this->servicePoints, $this->printItems, $this->visibleMissingQrCount);
 
-        Flux::toast(variant: 'success', text: __('Missing QR codes created.'));
+        Flux::toast(variant: 'success', text: __('qr.messages.missing_created'));
     }
 
     /**
@@ -147,8 +145,8 @@ class BulkPrint extends Component
     public function areaOptions(): array
     {
         return array_merge(
-            [['value' => 'all', 'label' => __('All areas')]],
-            [['value' => 'none', 'label' => __('No zone')]],
+            [['value' => 'all', 'label' => __('qr.filters.all_areas')]],
+            [['value' => 'none', 'label' => __('qr.filters.no_zone')]],
             $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
         );
     }
@@ -299,7 +297,8 @@ class BulkPrint extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.qr.bulk-print');
+        return view('livewire.organizations.brands.branches.qr.bulk-print')
+            ->title(__('qr.print.bulk_title'));
     }
 
     private function authorizeRouteContext(): void

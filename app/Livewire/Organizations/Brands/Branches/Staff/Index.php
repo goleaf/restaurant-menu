@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Organizations\Brands\Branches\Staff;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddBranchStaffMemberAction;
+use App\Enums\AuditLogAction;
+use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -16,16 +19,15 @@ use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Branch staff')]
 class Index extends Component
 {
     public Organization $organization;
@@ -51,6 +53,8 @@ class Index extends Component
     public ?string $lastInviteCode = null;
 
     public bool $canManageStaff = false;
+
+    public string $staffDeactivationReason = '';
 
     /**
      * @var array<int, list<string>>
@@ -100,21 +104,21 @@ class Index extends Component
         $this->reset('manualName', 'manualEmail');
         unset($this->members);
 
-        Flux::toast(variant: 'success', text: __('Branch staff member added.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_created'));
     }
 
     public function createInviteLink(CreateInvitationAction $createInvitation): void
     {
         $this->createInvitation($createInvitation);
 
-        Flux::toast(variant: 'success', text: __('Invite link created.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
     public function createInviteCode(CreateInvitationAction $createInvitation): void
     {
         $this->createInvitation($createInvitation);
 
-        Flux::toast(variant: 'success', text: __('Invite code created.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
     public function activateMember(int $branchUserId): void
@@ -122,29 +126,59 @@ class Index extends Component
         $this->authorizeStaffManagement();
 
         $branchUser = $this->findBranchUser($branchUserId);
-        $branchUser->update([
+        $branchUser->forceFill([
             'status' => OrganizationUserStatus::Active,
             'assigned_at' => $branchUser->assigned_at ?? now(),
-        ]);
+        ])->save();
 
         unset($this->members);
+
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_reactivated'));
     }
 
-    public function deactivateMember(int $branchUserId): void
+    public function deactivateMember(int $branchUserId, RecordAuditLogAction $recordAuditLog): void
     {
         $this->authorizeStaffManagement();
+
+        $validated = $this->validate(RestaurantValidationRules::auditReason('staffDeactivationReason'), [
+            'staffDeactivationReason.required' => __('staff.errors.deactivation_reason_required'),
+            'staffDeactivationReason.min' => __('staff.errors.deactivation_reason_min'),
+        ]);
 
         $branchUser = $this->findBranchUser($branchUserId);
 
         if ($branchUser->user_id === $this->currentUser()->id) {
-            Flux::toast(variant: 'warning', text: __('You cannot deactivate yourself.'));
+            Flux::toast(variant: 'warning', text: __('staff.errors.self_deactivation_blocked'));
 
             return;
         }
 
-        $branchUser->update(['status' => OrganizationUserStatus::Suspended]);
+        $previousStatus = $branchUser->status;
+        $branchUser->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
 
+        $recordAuditLog->handle(
+            action: AuditLogAction::StaffDeactivated,
+            entityType: 'branch_user',
+            entityId: $branchUser->id,
+            actorUser: $this->currentUser(),
+            organizationId: $this->organization->id,
+            branchId: $this->branch->id,
+            oldValues: [
+                'staff_user_id' => $branchUser->user_id,
+                'status' => $previousStatus,
+            ],
+            newValues: [
+                'staff_user_id' => $branchUser->user_id,
+                'status' => OrganizationUserStatus::Suspended,
+                'reason' => (string) $validated['staffDeactivationReason'],
+            ],
+        );
+
+        $this->staffDeactivationReason = '';
         unset($this->members);
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
     }
 
     public function saveAreaAssignments(int $userId): void
@@ -165,7 +199,7 @@ class Index extends Component
         $validAreaIds = $this->areaNodes->pluck('id')->map(fn (int $areaNodeId): int => $areaNodeId)->values();
 
         if ($selectedAreaIds->diff($validAreaIds)->isNotEmpty()) {
-            $this->addError('areaAssignments.'.$userId, __('Selected zone is not available for this branch.'));
+            $this->addError('areaAssignments.'.$userId, __('staff.errors.zone_unavailable'));
 
             return;
         }
@@ -183,18 +217,19 @@ class Index extends Component
         }
 
         foreach ($selectedAreaIds as $areaNodeId) {
-            AreaNodeWaiter::query()->updateOrCreate(
-                [
-                    'area_node_id' => $areaNodeId,
-                    'user_id' => $userId,
-                ],
-                [
-                    'organization_id' => $this->organization->id,
-                    'branch_id' => $this->branch->id,
-                    'assigned_by_user_id' => $this->currentUser()->id,
-                    'assigned_at' => now(),
-                ],
-            );
+            $assignment = AreaNodeWaiter::query()
+                ->where('area_node_id', $areaNodeId)
+                ->where('user_id', $userId)
+                ->first() ?? new AreaNodeWaiter;
+
+            $assignment->forceFill([
+                'organization_id' => $this->organization->id,
+                'branch_id' => $this->branch->id,
+                'area_node_id' => $areaNodeId,
+                'user_id' => $userId,
+                'assigned_by_user_id' => $this->currentUser()->id,
+                'assigned_at' => now(),
+            ])->save();
         }
 
         $this->areaAssignments[$userId] = $selectedAreaIds
@@ -202,7 +237,7 @@ class Index extends Component
             ->values()
             ->all();
 
-        Flux::toast(variant: 'success', text: __('Waiter zones updated.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.waiter_zones_updated'));
     }
 
     /**
@@ -274,7 +309,32 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.staff.index');
+        return view('livewire.organizations.brands.branches.staff.index')
+            ->title(__('staff.branch_access'));
+    }
+
+    public function roleLabel(?Role $role): string
+    {
+        if (! $role instanceof Role) {
+            return '';
+        }
+
+        $roleCode = $role->code instanceof SystemRole
+            ? $role->code->value
+            : (string) $role->code;
+        $systemRole = SystemRole::tryFrom($roleCode);
+
+        return $systemRole?->localizedLabel() ?? (string) $role->name;
+    }
+
+    public function memberStatusLabel(OrganizationUserStatus $status): string
+    {
+        return __('staff.statuses.'.$status->value);
+    }
+
+    public function invitationStatusLabel(InvitationStatus $status): string
+    {
+        return __('staff.invitation_statuses.'.$status->value);
     }
 
     /**
@@ -282,11 +342,7 @@ class Index extends Component
      */
     private function manualStaffRules(): array
     {
-        return [
-            'manualName' => ['required', 'string', 'max:120'],
-            'manualEmail' => ['required', 'email', 'max:255'],
-            'manualRoleId' => ['required', 'integer', $this->assignableRoleRule()],
-        ];
+        return RestaurantValidationRules::manualStaff($this->assignableRoleRule());
     }
 
     /**
@@ -294,11 +350,7 @@ class Index extends Component
      */
     private function invitationRules(): array
     {
-        return [
-            'inviteEmail' => ['nullable', 'email', 'max:255'],
-            'invitePhone' => ['nullable', 'string', 'max:40'],
-            'inviteRoleId' => ['required', 'integer', $this->assignableRoleRule()],
-        ];
+        return RestaurantValidationRules::staffInvitation($this->assignableRoleRule());
     }
 
     private function assignableRoleRule(): mixed

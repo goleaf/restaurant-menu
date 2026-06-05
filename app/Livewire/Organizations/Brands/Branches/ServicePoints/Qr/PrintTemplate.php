@@ -16,12 +16,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.print')]
-#[Title('Print QR sticker')]
 class PrintTemplate extends Component
 {
     public Organization $organization;
@@ -111,7 +109,8 @@ class PrintTemplate extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.service-points.qr.print-template');
+        return view('livewire.organizations.brands.branches.service-points.qr.print-template')
+            ->title(__('qr.print.single_title'));
     }
 
     private function authorizeRouteContext(): void

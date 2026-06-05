@@ -2,6 +2,16 @@
 
 ## 2026-06-05
 
+### Prompt 127 - Print Friendly Kitchen Tickets
+
+- Added a browser print-friendly department ticket page at `GET /restaurant/departments/tickets/{kitchenTicket}/print`.
+- Added `App\Livewire\Departments\TicketPrint` and `App\Actions\Departments\BuildDepartmentTicketPrintAction` so print pages use eager-loaded ticket data and the same kitchen/bar department access rules.
+- Added a `Print` action to existing kitchen/bar ticket cards without changing item status flow or polling.
+- Added focused coverage in `tests/Feature/KitchenTicketPrintTest.php` for kitchen print output, bar print access, unauthenticated redirects, forbidden departments, and dashboard links.
+- Touched modules/files: department ticket print action, department print Livewire page/view, restaurant routes, shared department dashboard view, kitchen ticket print tests, README, AI context, smoke checklist, and next-step docs.
+- Limitations: browser print only; no hardware printer integration, PDF service, paid service, Redis, WebSocket, S3, Docker requirement, order flow change, schema change, or new kitchen/bar status was added.
+- Manual check: open kitchen or bar dashboard, open `Print` on a visible ticket, confirm branch/place/zone/order/items/modifiers/comments/time render, then print with the browser dialog.
+
 ### Prompt 333 - Token Security Rules
 
 - Added focused regression coverage for QR public tokens, QR short codes, guest tokens, staff invitation tokens, guest session invite tokens, revoked QR state, closed session invite state, staff-route separation, and CSV export token omissions.

@@ -114,6 +114,7 @@ test('superadmin sees expanded organization controls and counts', function () {
 
     Livewire::actingAs($superadmin)
         ->test(SuperadminDashboard::class)
+        ->set('organizationSuspendReason', 'Manual billing pause for account review.')
         ->call('suspendOrganization', $organization->id)
         ->assertSee('Activity suspended')
         ->call('activateOrganization', $organization->id)

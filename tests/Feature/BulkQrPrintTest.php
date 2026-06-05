@@ -131,7 +131,7 @@ test('bulk qr print offers and creates missing qr without duplicating active qr 
             'branch' => $branch,
         ])
         ->assertSee($missingServicePoint->name)
-        ->assertSee('Create QR')
+        ->assertSee(__('qr.actions.generate'))
         ->call('createQrForServicePoint', $missingServicePoint->id)
         ->assertSet('selectedServicePointIds', [$missingServicePoint->id]);
 

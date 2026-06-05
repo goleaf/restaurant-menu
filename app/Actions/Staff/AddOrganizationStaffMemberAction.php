@@ -38,21 +38,22 @@ class AddOrganizationStaffMemberAction
                 ->first();
 
             if ($membership instanceof OrganizationUser) {
-                $membership->update([
+                $membership->forceFill([
                     'role_id' => $replaceExistingMembershipRole ? $role->id : $membership->role_id,
                     'status' => OrganizationUserStatus::Active,
                     'joined_at' => $membership->joined_at ?? now(),
                     'invited_by_user_id' => $membership->invited_by_user_id ?? $assignedBy->id,
-                ]);
+                ])->save();
             } else {
-                OrganizationUser::query()->create([
+                $membership = new OrganizationUser;
+                $membership->forceFill([
                     'organization_id' => $organization->id,
                     'user_id' => $user->id,
                     'role_id' => $role->id,
                     'status' => OrganizationUserStatus::Active,
                     'joined_at' => now(),
                     'invited_by_user_id' => $assignedBy->id,
-                ]);
+                ])->save();
             }
 
             return $user;

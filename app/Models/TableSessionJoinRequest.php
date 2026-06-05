@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['table_session_id', 'guest_name', 'guest_token', 'status', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
+#[Fillable(['table_session_id', 'guest_name', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
 class TableSessionJoinRequest extends Model
 {
     /** @use HasFactory<TableSessionJoinRequestFactory> */

@@ -59,6 +59,66 @@ enum SystemPermission: string
         };
     }
 
+    public function uiLabelKey(): string
+    {
+        return match ($this) {
+            self::SendToKitchen => 'permissions.labels.send_to_departments',
+            self::ViewAuditLog => 'permissions.labels.view_order_history',
+            default => 'permissions.labels.'.$this->value,
+        };
+    }
+
+    public function uiDescriptionKey(): string
+    {
+        return 'permissions.descriptions.'.$this->value;
+    }
+
+    public function uiGroupKey(): string
+    {
+        return match ($this) {
+            self::ViewRestaurant,
+            self::EditRestaurant,
+            self::ManageSubscription,
+            self::ManageSettings => 'restaurant',
+
+            self::ManageBranches => 'branches',
+
+            self::ManageZones => 'zones',
+
+            self::ManageServicePoints,
+            self::CloseTableSessions => 'service_points',
+
+            self::GenerateQr => 'qr',
+
+            self::ManageMenu,
+            self::ChangePrices,
+            self::ChangeAvailability => 'menu',
+
+            self::ViewOrders,
+            self::ConfirmOrders,
+            self::EditPendingOrders,
+            self::CancelOrders => 'orders',
+
+            self::SendToKitchen,
+            self::ViewKitchen => 'departments',
+
+            self::ViewPayments,
+            self::ManagePayments => 'payments',
+
+            self::ViewReports,
+            self::ExportData => 'reports',
+
+            self::ManageStaff => 'staff',
+
+            self::ViewAuditLog => 'history',
+        };
+    }
+
+    public function uiGroupLabelKey(): string
+    {
+        return 'permissions.groups.'.$this->uiGroupKey();
+    }
+
     public static function resolveCode(self|string $permission): string
     {
         return $permission instanceof self ? $permission->value : $permission;
@@ -97,6 +157,27 @@ enum SystemPermission: string
             fn (self $permission): string => $permission->label(),
             self::cases(),
         );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function uiGroupOrder(): array
+    {
+        return [
+            'restaurant',
+            'branches',
+            'zones',
+            'service_points',
+            'qr',
+            'menu',
+            'orders',
+            'departments',
+            'payments',
+            'reports',
+            'staff',
+            'history',
+        ];
     }
 
     /**

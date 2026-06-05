@@ -4,6 +4,9 @@ namespace Database\Factories;
 
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
+use App\Models\DraftOrder;
+use App\Models\ManualPayment;
+use App\Models\Order;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -112,5 +115,46 @@ class TableSessionFactory extends Factory
             'started_at' => now()->subHours(2),
             'ended_at' => now(),
         ]);
+    }
+
+    public function withGuests(int $count = 1): static
+    {
+        return $this->afterCreating(function (TableSession $tableSession) use ($count): void {
+            TableSessionGuest::factory()
+                ->count($count)
+                ->for($tableSession)
+                ->active()
+                ->create();
+        });
+    }
+
+    public function withDraftOrders(int $count = 1): static
+    {
+        return $this->afterCreating(function (TableSession $tableSession) use ($count): void {
+            DraftOrder::factory()
+                ->count($count)
+                ->forTableSession($tableSession)
+                ->create();
+        });
+    }
+
+    public function withOrders(int $count = 1): static
+    {
+        return $this->afterCreating(function (TableSession $tableSession) use ($count): void {
+            Order::factory()
+                ->count($count)
+                ->forTableSession($tableSession)
+                ->create();
+        });
+    }
+
+    public function withPayments(int $count = 1): static
+    {
+        return $this->afterCreating(function (TableSession $tableSession) use ($count): void {
+            ManualPayment::factory()
+                ->count($count)
+                ->forTableSession($tableSession)
+                ->create();
+        });
     }
 }

@@ -2,6 +2,112 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 127 Print Friendly Kitchen Tickets - 2026-06-05
+
+Prompt 127 added browser print-friendly pages for existing kitchen/bar tickets without adding printer integrations, PDF services, paid services, schema changes, Redis, WebSockets, S3, Docker, or new order flow.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Shared-hosting-first deployment; no Redis, WebSocket, S3, Docker requirement, Stripe/PayPal, paid services, React/Vue SPA, external realtime service, hardware-printer integration, or paid PDF service.
+
+What changed:
+
+- Added `App\Actions\Departments\BuildDepartmentTicketPrintAction` to load one ticket with branch, service point, current area, department, and ordered ticket items for printing.
+- Added `App\Livewire\Departments\TicketPrint` with `resources/views/livewire/departments/ticket-print.blade.php`.
+- Added the authenticated route `GET /restaurant/departments/tickets/{kitchenTicket}/print` named `restaurant.departments.tickets.print`.
+- Added a `Print` button to the existing shared kitchen/bar ticket card in `resources/views/livewire/departments/dashboard.blade.php`.
+- Added `tests/Feature/KitchenTicketPrintTest.php` for kitchen output, bar access, unauthenticated redirect, forbidden department access, and dashboard links.
+- Restored `App\Models\BranchUser` writable fields during verification so branch-scoped staff assignments can still save organization, branch, role, status, assignment time, and assigned-by data.
+
+Current tables:
+
+- No tables or columns were added.
+- The print page reads existing `kitchen_tickets`, `kitchen_ticket_items`, `orders`, `branches`, `service_points`, `area_nodes`, `kitchen_departments`, `organization_users`, `branch_users`, `roles`, `permissions`, and `permission_role`.
+
+Current routes:
+
+- Existing kitchen dashboard: `GET /restaurant/kitchen/dashboard`.
+- Existing bar dashboard: `GET /restaurant/bar/dashboard`.
+- New ticket print page: `GET /restaurant/departments/tickets/{kitchenTicket}/print`.
+
+Current Livewire components:
+
+- Existing `App\Livewire\Kitchen\Dashboard`.
+- Existing `App\Livewire\Bar\Dashboard`.
+- Existing shared `App\Livewire\Departments\Dashboard`.
+- New `App\Livewire\Departments\TicketPrint`.
+
+Mandatory business rules:
+
+- Kitchen/bar tickets are printable only after waiter-confirmed orders are explicitly dispatched to kitchen/bar.
+- Printing a ticket must not create, edit, confirm, cancel, send, serve, or otherwise mutate orders, tickets, service points, QR codes, guests, or payments.
+- Print access must stay scoped to the same department visibility as kitchen/bar screens: superadmin bypass, kitchen roles/`view_kitchen`, bar roles/`view_orders`/`send_to_kitchen`, and active `branch_users` narrowing.
+- The template must show branch, service point, current zone, order number, department, time, item quantities, modifiers, comments, and guest names.
+- Browser print is the only supported output. Do not add hardware printer integrations, PDF services, external services, Redis, WebSockets, S3, Docker requirements, Stripe/PayPal, or paid services.
+
+Verification:
+
+- `php -l app/Actions/Departments/BuildDepartmentTicketPrintAction.php`
+- `php -l app/Livewire/Departments/TicketPrint.php`
+- `php -l tests/Feature/KitchenTicketPrintTest.php`
+- `vendor/bin/pint --format agent app/Models/BranchUser.php app/Actions/Departments/BuildDepartmentTicketPrintAction.php app/Livewire/Departments/TicketPrint.php tests/Feature/KitchenTicketPrintTest.php`
+- `php artisan test --compact tests/Feature/KitchenTicketPrintTest.php`
+- `php artisan test --compact tests/Feature/KitchenTicketPrintTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php`
+
+Next recommended prompt:
+
+- Use only the user's next explicit prompt. Historical queued candidates remain Prompt 126 waiter notification sound settings, Prompt 125 kitchen delay timers, Prompt 123 payment correction, and Prompt 122 order item void flow unless the user chooses another prompt.
+
+## Prompt 333 Token Security Rules - 2026-06-05
+
+Prompt 333 audited QR, guest, staff invitation, and guest session invite tokens without adding product routes or external services.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Shared-hosting-first deployment; no Redis, WebSocket, S3, Docker requirement, Stripe/PayPal, paid services, React/Vue SPA, or external realtime/storage service.
+
+What changed:
+
+- `CreateInvitationAction` now generates unique 64-character invite tokens and unique 8-character invite codes; provided invite tokens must also be 64-character alphanumeric values.
+- `Invitation` now exposes `canBeAccepted()`, `scopeAcceptable()`, and `findAcceptableByToken()` for the future staff invite acceptance flow. A usable staff invite token must be pending, unexpired, 64 characters, and alphanumeric.
+- `tests/Feature/TokenSecurityRulesTest.php` covers token shape and separation for QR public tokens, QR short codes, guest tokens, staff invitations, closed session invite tokens, revoked QR tokens, staff-route access, guest HTML, and CSV exports.
+- `tests/Feature/StaffInvitationTest.php` now asserts generated staff invite token/code length and no longer treats short fixture tokens as acceptable.
+
+Mandatory business rules:
+
+- `qr_codes.public_token` is the only public QR route credential. It must be random, long, non-incremental, and not derived from internal IDs.
+- `qr_codes.short_code` is staff lookup/print text only; never use it as authentication.
+- `guest_token` must never grant staff access and must not appear in rendered guest HTML, public URLs, CSV exports, or user-facing logs.
+- Staff invite acceptance must use `Invitation::findAcceptableByToken()` or an equivalent pending + unexpired + 64-character alphanumeric token check.
+- Revoked/disabled QR tokens, expired invite tokens, closed/cancelled table sessions, inactive service points, rejected/removed guests, and stale join requests must not create order access.
+- Do not log or export raw `public_token`, `guest_token`, `invite_token`, or `guest_invite_token`.
+
+Verification:
+
+- `php -l app/Actions/Invitations/CreateInvitationAction.php`
+- `php -l app/Models/Invitation.php`
+- `php -l tests/Feature/TokenSecurityRulesTest.php`
+- `php artisan test --compact tests/Feature/TokenSecurityRulesTest.php`
+- `php artisan test --compact tests/Feature/StaffInvitationTest.php`
+
+Known verification caveat:
+
+- A broader regression batch with older guest/session/QR/export/audit tests still has unrelated failures from existing text/status expectations in the dirty worktree. The new Prompt 333 focused tests passed.
+
+Next recommended prompt:
+
+- Use only the user's next explicit prompt. If returning to the existing queue, start with a fresh health check because the historical docs still contain rescue-mode next-prompt notes from Prompts 123/125/126.
+
 ## Rescue Mode Before Prompt 126 - 2026-06-05
 
 Prompt 126 waiter notification sound settings were not implemented. The pre-prompt health check found the project was already broken, so rescue mode restored branch-scoped staff assignment writes first.

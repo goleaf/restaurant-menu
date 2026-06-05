@@ -107,6 +107,9 @@ test('orders csv export includes selected branch orders only', function () {
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create();
+    $oldDraftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create();
     $otherDraftOrder = DraftOrder::factory()
         ->for($otherTableSession)
         ->create();
@@ -118,6 +121,16 @@ test('orders csv export includes selected branch orders only', function () {
         'status' => OrderStatus::Served,
         'confirmed_at' => CarbonImmutable::parse('2026-06-04 10:00:00'),
         'total_price' => '25.00',
+        'currency' => 'EUR',
+    ]);
+    $oldOrder = Order::factory()->create([
+        'branch_id' => $branch->id,
+        'service_point_id' => $servicePoint->id,
+        'table_session_id' => $tableSession->id,
+        'draft_order_id' => $oldDraftOrder->id,
+        'status' => OrderStatus::Served,
+        'confirmed_at' => CarbonImmutable::parse('2026-04-01 10:00:00'),
+        'total_price' => '11.00',
         'currency' => 'EUR',
     ]);
     $otherOrder = Order::factory()->create([
@@ -136,6 +149,14 @@ test('orders csv export includes selected branch orders only', function () {
             'item_name' => 'Margherita',
             'quantity' => 2,
             'total_price' => '25.00',
+        ]);
+    OrderItem::factory()
+        ->for($oldOrder)
+        ->create([
+            'guest_name' => 'Ben',
+            'item_name' => 'Old branch soup',
+            'quantity' => 1,
+            'total_price' => '11.00',
         ]);
     OrderItem::factory()
         ->for($otherOrder)
@@ -164,7 +185,25 @@ test('orders csv export includes selected branch orders only', function () {
         ->toContain(__('reports.statuses.orders.served'))
         ->toContain('Window table #7')
         ->toContain('Ana: Margherita x2 = 25.00')
+        ->not->toContain('Old branch soup')
         ->not->toContain('Other branch steak');
+});
+
+test('csv exports validate date ranges', function () {
+    [$organization, $branch] = createPrompt76ExportBranches();
+    $user = User::factory()->create(['name' => 'Date Range Exporter']);
+    attachPrompt76Exporter($user, $organization);
+
+    $this->actingAs($user)
+        ->from(route('restaurant.exports.index'))
+        ->get(route('restaurant.exports.download', [
+            'branch' => $branch,
+            'export' => DataExportType::Orders->value,
+            'date_from' => '2026-01-01',
+            'date_to' => '2026-03-10',
+        ]))
+        ->assertRedirect(route('restaurant.exports.index'))
+        ->assertSessionHasErrors('date_to');
 });
 
 test('payments menu and tables csv exports stream branch data', function () {
@@ -202,7 +241,20 @@ test('payments menu and tables csv exports stream branch data', function () {
         'payment_method' => ManualPaymentMethod::CardTerminal,
         'amount' => '42.00',
         'currency' => 'EUR',
+        'paid_at' => CarbonImmutable::parse('2026-06-04 11:00:00'),
         'note' => 'Terminal approved',
+    ]);
+    ManualPayment::factory()->create([
+        'branch_id' => $branch->id,
+        'service_point_id' => $servicePoint->id,
+        'table_session_id' => $tableSession->id,
+        'recorded_by_user_id' => $recorder->id,
+        'scope' => ManualPaymentScope::Table,
+        'payment_method' => ManualPaymentMethod::Cash,
+        'amount' => '9.00',
+        'currency' => 'EUR',
+        'paid_at' => CarbonImmutable::parse('2026-04-01 11:00:00'),
+        'note' => 'Old cash payment',
     ]);
 
     $menu = Menu::factory()
@@ -224,11 +276,17 @@ test('payments menu and tables csv exports stream branch data', function () {
             'is_available' => true,
         ]);
 
-    $paymentContent = $this->actingAs($user)
-        ->get(route('restaurant.exports.download', [$branch, DataExportType::Payments->value]))
-        ->assertOk()
-        ->assertDownload()
-        ->streamedContent();
+    Date::setTestNow(CarbonImmutable::parse('2026-06-04 12:34:56'));
+
+    try {
+        $paymentContent = $this->actingAs($user)
+            ->get(route('restaurant.exports.download', [$branch, DataExportType::Payments->value]))
+            ->assertOk()
+            ->assertDownload()
+            ->streamedContent();
+    } finally {
+        Date::setTestNow();
+    }
 
     expect($paymentContent)
         ->toContain(csvColumns([
@@ -239,7 +297,8 @@ test('payments menu and tables csv exports stream branch data', function () {
         ]))
         ->toContain(__('ui.payment_methods.card_terminal'))
         ->toContain('Cashier Kate')
-        ->toContain('Terminal approved');
+        ->toContain('Terminal approved')
+        ->not->toContain('Old cash payment');
 
     $menuContent = $this->actingAs($user)
         ->get(route('restaurant.exports.download', [$branch, DataExportType::Menu->value]))

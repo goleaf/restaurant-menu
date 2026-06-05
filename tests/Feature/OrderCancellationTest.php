@@ -99,7 +99,7 @@ test('waiter cancels order with required reason and guests see cancellation', fu
     ])
         ->assertSet('serviceStatusValue', 'cancelled')
         ->assertSet('cancellationReason', 'Guest asked to cancel after a long wait.')
-        ->assertSee('Заказ отменён.')
+        ->assertSee(__('guest.statuses.service.cancelled_order'))
         ->assertSee('Guest asked to cancel after a long wait.');
 
     Livewire::actingAs($chef)

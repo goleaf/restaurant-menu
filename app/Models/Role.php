@@ -49,7 +49,6 @@ class Role extends Model
     public function permissions(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class)
-            ->using(PermissionRole::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }

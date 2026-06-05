@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['branch_id', 'service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'status', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
+#[Fillable(['service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
 class TableSession extends Model
 {
     /** @use HasFactory<TableSessionFactory> */

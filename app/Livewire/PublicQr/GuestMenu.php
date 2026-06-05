@@ -6,25 +6,32 @@ use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
+use App\Enums\TableSessionGuestStatus;
 use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\MoneyFormatter;
+use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class GuestMenu extends Component
 {
+    #[Locked]
     public int $branchId;
 
+    #[Locked]
     public int $tableSessionId = 0;
 
+    #[Locked]
     public int $currentGuestId = 0;
 
+    #[Locked]
     public string $publicToken = '';
 
     public bool $guestCanAddItems = false;
@@ -170,7 +177,16 @@ class GuestMenu extends Component
         $this->feedbackMessage = '';
 
         if (! $this->branchCanAcceptOrders) {
-            $this->addError('guest', __('Сейчас закрыто. Заказы принимаем в часы работы ресторана.'));
+            $this->addError('guest', __('menu.guest.closed_error'));
+
+            return;
+        }
+
+        $tableSession = $this->currentTableSession();
+        $guest = $this->currentActiveGuest();
+
+        if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest) {
+            $this->addError('guest', __('menu.guest.active_guest_required'));
 
             return;
         }
@@ -183,18 +199,22 @@ class GuestMenu extends Component
             return;
         }
 
+        $this->itemComment = trim($this->itemComment);
+        $validated = $this->validate([
+            ...RestaurantValidationRules::guestComment('itemComment'),
+            ...RestaurantValidationRules::selectedModifierOptions('selectedModifierOptions'),
+        ]);
+        $this->itemComment = (string) ($validated['itemComment'] ?? '');
+        $this->selectedModifierOptions = $validated['selectedModifierOptions'] ?? [];
+
         if (! $this->validateModifierSelection($item)) {
             return;
         }
 
-        $this->itemComment = trim($this->itemComment);
-
-        $tableSession = $this->currentTableSession();
-        $guest = $this->currentActiveGuest();
         $menuItem = $this->menuItemFor($item);
 
-        if (! $tableSession instanceof TableSession || ! $guest instanceof TableSessionGuest || ! $menuItem instanceof MenuItem) {
-            $this->addError('guest', __('Только активный гость за этим столом может добавлять позиции.'));
+        if (! $menuItem instanceof MenuItem) {
+            $this->addError('guest', __('menu.guest.active_guest_required'));
 
             return;
         }
@@ -220,7 +240,7 @@ class GuestMenu extends Component
             'modifier_summary' => $this->selectedModifierSummary($item),
             'comment' => $draftOrderItem->comment,
         ];
-        $this->feedbackMessage = __('Позиция добавлена в общий заказ.');
+        $this->feedbackMessage = __('menu.guest.item_added');
 
         $this->closeItemSheet();
     }
@@ -341,18 +361,18 @@ class GuestMenu extends Component
             }
 
             if ($selectedCount < $minSelect) {
-                $this->addError($errorKey, __('Выберите вариант.'));
+                $this->addError($errorKey, __('menu.guest.required_modifier_missing'));
                 $isValid = false;
             }
 
             if ($maxSelect > 0 && $selectedCount > $maxSelect) {
-                $this->addError($errorKey, __('Выбрано слишком много вариантов.'));
+                $this->addError($errorKey, __('menu.guest.modifier_limit_exceeded'));
                 $isValid = false;
             }
         }
 
         if (mb_strlen($this->itemComment) > 500) {
-            $this->addError('itemComment', __('Комментарий слишком длинный.'));
+            $this->addError('itemComment', __('menu.guest.comment_too_long'));
             $isValid = false;
         }
 
@@ -551,6 +571,7 @@ class GuestMenu extends Component
             ->whereKey($this->currentGuestId)
             ->where('table_session_id', $this->tableSessionId)
             ->where('guest_token', $guestToken)
+            ->where('status', TableSessionGuestStatus::Active->value)
             ->first();
     }
 

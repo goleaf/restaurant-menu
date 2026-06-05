@@ -84,7 +84,7 @@ test('guest sees accepted cooking ready and served item statuses', function () {
         'pollingIntervalSeconds' => 1,
     ])
         ->assertSet('overallStatusLabel', 'Order accepted')
-        ->assertSet('itemStatuses.0.status_label', 'Order accepted')
+        ->assertSet('itemStatuses.0.status_label', 'Accepted')
         ->assertSeeText('Order accepted')
         ->assertSeeText('Суп дня');
 
@@ -134,7 +134,7 @@ test('guest sees whole table bill and paid statuses', function () {
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'bill')['state'])->toBe('current');
 
-    $tableSession->update(['status' => TableSessionStatus::Paid])->save();
+    $tableSession->forceFill(['status' => TableSessionStatus::Paid])->save();
 
     $component
         ->call('refreshOrderStatuses')

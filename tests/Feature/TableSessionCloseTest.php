@@ -56,8 +56,9 @@ test('staff with close table sessions permission can close an active session and
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->assertSet('table.session.can_close', true)
         ->assertSet('table.session.close_requires_warning', true)
+        ->set('closeTableConfirmation', 'CLOSE')
         ->call('closeTableSession')
-        ->assertSee('Стол закрыт. Место свободно для следующих гостей.');
+        ->assertSee(__('payments.messages.session_closed'));
 
     $closedSession = $tableSession->fresh();
 

@@ -16,6 +16,46 @@
         @endforeach
     </section>
 
+    @php
+        $productionSafetyReport = $this->productionSafetyReport;
+        $backupDownloadTitle = \App\Enums\DangerousAction::DownloadBackup->title();
+        $backupDownloadConsequence = \App\Enums\DangerousAction::DownloadBackup->consequence();
+        $backupDownloadConfirmationHelp = 'ui.confirmations.typed_confirmation_help';
+        $suspendOrganizationTitle = \App\Enums\DangerousAction::SuspendOrganization->title();
+        $suspendOrganizationConsequence = \App\Enums\DangerousAction::SuspendOrganization->consequence();
+        $suspendOrganizationRequiresReason = \App\Enums\DangerousAction::SuspendOrganization->requiresReason();
+    @endphp
+
+    <section class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+                <flux:heading size="lg">{{ __('System health') }}</flux:heading>
+                <p class="mt-2 max-w-3xl text-sm text-zinc-600 dark:text-zinc-300">
+                    {{ __('Production safety checks show only safe labels and warnings.') }}
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Environment') }}</span>
+                <flux:badge :color="$productionSafetyReport['is_production'] ? 'amber' : 'zinc'">
+                    {{ $productionSafetyReport['environment_label'] }}
+                </flux:badge>
+            </div>
+        </div>
+
+        <div class="mt-4 space-y-2">
+            @forelse ($productionSafetyReport['warnings'] as $warning)
+                <div wire:key="production-safety-warning-{{ $warning['code'] }}" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
+                    {{ __($warning['message']) }}
+                </div>
+            @empty
+                <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-900 dark:border-emerald-800/70 dark:bg-emerald-950/30 dark:text-emerald-100">
+                    {{ __('superadmin.empty.no_safety_warnings') }}
+                </p>
+            @endforelse
+        </div>
+    </section>
+
     <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/30">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -26,9 +66,24 @@
             </div>
 
             <div class="flex flex-col gap-2 sm:flex-row">
-                <flux:button icon="arrow-down-tray" variant="primary" :href="route('superadmin.backups.sqlite.download')">
-                    {{ __('Download SQLite') }}
-                </flux:button>
+                <x-dangerous-action-confirmation
+                    name="sqlite-backup-download"
+                    :title="$backupDownloadTitle"
+                    :consequence="$backupDownloadConsequence"
+                    confirm-action="downloadBackup"
+                    submit-target="downloadBackup"
+                    confirm-label="ui.actions.i_understand"
+                    confirmation-model="backupDownloadConfirmation"
+                    confirmation-text="BACKUP"
+                    confirmation-label="ui.confirmations.confirmation_text.label"
+                    :confirmation-help="$backupDownloadConfirmationHelp"
+                >
+                    <x-slot:trigger>
+                        <flux:button icon="arrow-down-tray" variant="primary" type="button">
+                            {{ __('Download SQLite') }}
+                        </flux:button>
+                    </x-slot:trigger>
+                </x-dangerous-action-confirmation>
 
                 <flux:button icon="archive-box" disabled>
                     {{ __('Media ZIP later') }}
@@ -160,17 +215,29 @@
                                 </flux:button>
 
                                 @if ($subscriptionIsActive)
-                                    <flux:button
-                                        icon="pause"
-                                        type="button"
-                                        size="sm"
-                                        variant="danger"
-                                        wire:click="suspendOrganization({{ $organization->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="suspendOrganization({{ $organization->id }})"
+                                    <x-dangerous-action-confirmation
+                                        name="suspend-organization-{{ $organization->id }}"
+                                        :title="$suspendOrganizationTitle"
+                                        :consequence="$suspendOrganizationConsequence"
+                                        confirm-action="suspendOrganization({{ $organization->id }})"
+                                        submit-target="suspendOrganization({{ $organization->id }})"
+                                        confirm-label="ui.actions.confirm"
+                                        reason-model="organizationSuspendReason"
+                                        reason-label="ui.confirmations.reason.label"
+                                        reason-placeholder="ui.confirmations.reason.placeholder"
+                                        :reason-required="$suspendOrganizationRequiresReason"
                                     >
-                                        {{ __('Suspend') }}
-                                    </flux:button>
+                                        <x-slot:trigger>
+                                            <flux:button
+                                                icon="pause"
+                                                type="button"
+                                                size="sm"
+                                                variant="danger"
+                                            >
+                                                {{ __('ui.actions.suspend') }}
+                                            </flux:button>
+                                        </x-slot:trigger>
+                                    </x-dangerous-action-confirmation>
                                 @else
                                     <flux:button
                                         icon="play"
@@ -188,7 +255,7 @@
                         </div>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No organizations yet.') }}</div>
+                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.empty.no_organizations') }}</div>
                 @endforelse
             </div>
 
@@ -211,7 +278,7 @@
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $brand->organization?->name ?? __('No organization') }}</p>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No brands yet.') }}</div>
+                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.empty.no_brands') }}</div>
                 @endforelse
             </div>
 
@@ -247,7 +314,7 @@
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $branch->city }}, {{ $branch->country }}</p>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No branches yet.') }}</div>
+                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.empty.no_branches') }}</div>
                 @endforelse
             </div>
 
@@ -273,7 +340,7 @@
                         </p>
                     </div>
                 @empty
-                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('No users yet.') }}</div>
+                    <div class="px-4 py-6 text-sm text-zinc-500 dark:text-zinc-400">{{ __('staff.empty.no_staff') }}</div>
                 @endforelse
             </div>
 

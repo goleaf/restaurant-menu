@@ -176,7 +176,7 @@ class CleanupInactiveTableSessionsAction
                 'last_activity_at' => $state['last_activity_at'],
             ];
 
-            $tableSession->fill([
+            $tableSession->forceFill([
                 'status' => TableSessionStatus::Cancelled,
                 'ended_at' => now(),
                 'metadata' => $metadata,

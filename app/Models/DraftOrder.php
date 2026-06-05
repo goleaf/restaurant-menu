@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
-#[Fillable(['table_session_id', 'status', 'sent_to_waiter_at', 'sent_by_guest_id', 'rejected_at', 'rejected_by_user_id', 'rejection_reason', 'converted_to_order_at', 'converted_by_user_id'])]
+#[Fillable(['table_session_id', 'sent_to_waiter_at', 'sent_by_guest_id', 'rejected_at', 'rejected_by_user_id', 'rejection_reason', 'converted_to_order_at', 'converted_by_user_id'])]
 class DraftOrder extends Model
 {
     /** @use HasFactory<DraftOrderFactory> */

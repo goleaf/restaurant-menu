@@ -45,7 +45,7 @@ class CloseTableSessionAction
                 $metadata['manually_closed_by_user_id'] = $closedBy->id;
             }
 
-            $tableSession->fill([
+            $tableSession->forceFill([
                 'status' => TableSessionStatus::Closed,
                 'ended_at' => now(),
                 'closed_by_user_id' => $closedBy->id,
@@ -140,7 +140,7 @@ class CloseTableSessionAction
     ): void {
         if (in_array($sessionStatus, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([
-                'table_session' => __('Эта сессия уже закрыта или отменена.'),
+                'table_session' => __('payments.errors.session_closed'),
             ]);
         }
 

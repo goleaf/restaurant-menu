@@ -19,6 +19,7 @@ use App\Models\Order;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\DraftOrderConfirmedNotification;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -47,11 +48,12 @@ class ConfirmDraftOrderByWaiterAction
 
             $previousStatus = $draftOrder->status;
             $currency = $draftOrder->tableSession?->branch?->currency ?? 'EUR';
-            $totalCents = $draftOrder->items->sum(
-                fn (DraftOrderItem $item): int => $this->decimalToCents($item->total_price),
-            );
+            $lineTotals = $draftOrder->items
+                ->mapWithKeys(fn (DraftOrderItem $item): array => [$item->id => $this->lineTotalCents($item)]);
+            $totalCents = $lineTotals->sum();
 
-            $order = Order::query()->create([
+            $order = new Order;
+            $order->forceFill([
                 'branch_id' => $draftOrder->tableSession->branch_id,
                 'service_point_id' => $draftOrder->tableSession->service_point_id,
                 'table_session_id' => $draftOrder->table_session_id,
@@ -67,12 +69,13 @@ class ConfirmDraftOrderByWaiterAction
                     'sent_to_kitchen' => false,
                     'sent_to_bar' => false,
                 ],
-            ]);
+            ])->save();
 
-            $draftOrder->items->each(function (DraftOrderItem $item) use ($order): void {
+            $draftOrder->items->each(function (DraftOrderItem $item) use ($order, $lineTotals): void {
                 $kitchenDepartment = $item->menuItem?->kitchenDepartment;
                 $guestNameSnapshot = $item->guest?->guest_name;
                 $modifiersSnapshot = $item->selected_modifiers ?? [];
+                $lineTotal = $this->formatCents((int) $lineTotals->get($item->id, 0));
 
                 $order->items()->create([
                     'table_session_guest_id' => $item->table_session_guest_id,
@@ -90,7 +93,7 @@ class ConfirmDraftOrderByWaiterAction
                     'unit_price' => $item->unit_price,
                     'unit_price_snapshot' => $item->unit_price,
                     'modifier_total' => $item->modifier_total,
-                    'total_price' => $item->total_price,
+                    'total_price' => $lineTotal,
                     'selected_modifiers' => $modifiersSnapshot,
                     'modifiers_snapshot' => $modifiersSnapshot,
                     'tax_snapshot' => [],
@@ -327,23 +330,29 @@ class ConfirmDraftOrderByWaiterAction
             ->firstOrFail();
     }
 
+    private function lineTotalCents(DraftOrderItem $item): int
+    {
+        $quantity = (int) $item->quantity;
+        $unitPriceCents = $this->decimalToCents($item->unit_price);
+        $modifierTotalCents = $this->decimalToCents($item->modifier_total);
+        $lineUnitTotalCents = $unitPriceCents + $modifierTotalCents;
+
+        if ($quantity < 1 || $unitPriceCents < 0 || $lineUnitTotalCents < 0) {
+            throw ValidationException::withMessages([
+                'draft_review' => __('Итоговая цена позиции не может быть отрицательной.'),
+            ]);
+        }
+
+        return $lineUnitTotalCents * $quantity;
+    }
+
     private function decimalToCents(string|int|float|null $amount): int
     {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
+        return MoneyFormatter::decimalToCents($amount);
     }
 
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 }

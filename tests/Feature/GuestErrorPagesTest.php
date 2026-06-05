@@ -121,7 +121,7 @@ test('guest error page is shown when invite link is stale', function () {
 
     Livewire::withQueryParams(['invite' => str_repeat('A', 64)])
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentInviteToken', str_repeat('A', 64))
+        ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Jonas')
         ->call('enterTable')
         ->assertSet('entryState', 'guest_invite_invalid')

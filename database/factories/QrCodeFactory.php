@@ -56,4 +56,11 @@ class QrCodeFactory extends Factory
             'revoked_at' => now(),
         ]);
     }
+
+    public function forServicePoint(ServicePoint $servicePoint): static
+    {
+        return $this->state(fn (): array => [
+            'service_point_id' => $servicePoint->id,
+        ]);
+    }
 }

@@ -22,12 +22,10 @@ class ManualPaymentFactory extends Factory
      */
     public function definition(): array
     {
-        $tableSession = TableSession::factory()->active()->create();
-
         return [
-            'branch_id' => $tableSession->branch_id,
-            'service_point_id' => $tableSession->service_point_id,
-            'table_session_id' => $tableSession->id,
+            'table_session_id' => TableSession::factory()->active(),
+            'branch_id' => fn (array $attributes): int => $this->tableSessionFor($attributes)->branch_id,
+            'service_point_id' => fn (array $attributes): int => $this->tableSessionFor($attributes)->service_point_id,
             'table_session_guest_id' => null,
             'recorded_by_user_id' => User::factory(),
             'scope' => ManualPaymentScope::Table,
@@ -76,5 +74,28 @@ class ManualPaymentFactory extends Factory
             'scope' => ManualPaymentScope::Guest,
             'guest_name' => $guest->guest_name,
         ]);
+    }
+
+    public function forTableSession(TableSession $tableSession): static
+    {
+        return $this->state(fn (): array => [
+            'branch_id' => $tableSession->branch_id,
+            'service_point_id' => $tableSession->service_point_id,
+            'table_session_id' => $tableSession->id,
+            'table_session_guest_id' => null,
+            'scope' => ManualPaymentScope::Table,
+            'guest_name' => null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function tableSessionFor(array $attributes): TableSession
+    {
+        return TableSession::query()
+            ->select(['id', 'branch_id', 'service_point_id'])
+            ->whereKey($attributes['table_session_id'])
+            ->firstOrFail();
     }
 }

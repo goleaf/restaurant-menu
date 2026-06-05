@@ -2,12 +2,15 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
+use App\Enums\AuditLogAction;
+use App\Enums\DangerousAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -48,6 +51,9 @@ test('qr admin page requires generate qr permission and shows qr details', funct
         ->assertSeeText($servicePoint->name)
         ->assertSeeText($qrCode->short_code)
         ->assertSeeText('Active')
+        ->assertSeeText(DangerousAction::DisableQr->title())
+        ->assertSeeText(DangerousAction::ReissueQr->title())
+        ->assertSeeText(DangerousAction::ReissueQr->consequence())
         ->assertSee($publicUrl)
         ->assertSee('data:image/svg+xml;base64', false)
         ->assertSeeText($qrCode->created_at->format('Y-m-d H:i'));
@@ -125,6 +131,7 @@ test('manager can disable qr and public route shows disabled message', function 
             'servicePoint' => $servicePoint,
             'qrCode' => $qrCode,
         ])
+        ->set('qrDisableReason', 'Printed sticker was placed at the wrong table.')
         ->call('disableQr')
         ->assertHasNoErrors()
         ->assertSee('Disabled');
@@ -133,10 +140,55 @@ test('manager can disable qr and public route shows disabled message', function 
 
     expect($qrCode->status)->toBe(QrCodeStatus::Disabled);
     expect($qrCode->active_service_point_id)->toBeNull();
+    expect(AuditLog::query()
+        ->where('action', AuditLogAction::QrDisabled->value)
+        ->where('entity_type', 'qr_code')
+        ->where('entity_id', $qrCode->id)
+        ->exists())->toBeTrue();
 
     $this->get(route('public.qr.show', ['token' => $qrCode->public_token], false))
         ->assertOk()
         ->assertSeeText('QR code is temporarily disabled');
+});
+
+test('manager must explain qr disable and type short code before reissue', function () {
+    [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt25QrContext();
+    grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
+
+    Livewire::actingAs($manager)
+        ->test(QrAdminShow::class, [
+            'organization' => $organization,
+            'brand' => $brand,
+            'branch' => $branch,
+            'servicePoint' => $servicePoint,
+            'qrCode' => $qrCode,
+        ])
+        ->call('disableQr')
+        ->assertHasErrors(['qrDisableReason']);
+
+    expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active);
+
+    Livewire::actingAs($manager)
+        ->test(QrAdminShow::class, [
+            'organization' => $organization,
+            'brand' => $brand,
+            'branch' => $branch,
+            'servicePoint' => $servicePoint,
+            'qrCode' => $qrCode,
+        ])
+        ->call('confirmReissue')
+        ->assertSet('confirmingReissue', true)
+        ->call('reissueQr')
+        ->assertHasErrors(['qrReissueConfirmation'])
+        ->set('qrReissueConfirmation', 'WRONG-CODE')
+        ->call('reissueQr')
+        ->assertHasErrors(['qrReissueConfirmation']);
+
+    expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active)
+        ->and(QrCode::query()
+            ->where('service_point_id', $servicePoint->id)
+            ->where('status', QrCodeStatus::Active->value)
+            ->count())->toBe(1);
 });
 
 test('manager can manually reissue qr after warning', function () {
@@ -155,7 +207,8 @@ test('manager can manually reissue qr after warning', function () {
         ])
         ->call('confirmReissue')
         ->assertSet('confirmingReissue', true)
-        ->assertSee('Reissuing this QR is dangerous.')
+        ->assertSee(DangerousAction::ReissueQr->consequence())
+        ->set('qrReissueConfirmation', $qrCode->short_code)
         ->call('reissueQr')
         ->assertRedirect();
 

@@ -20,11 +20,11 @@ class CreateStarterMenuAction
     public function handle(Branch $branch, array $data): array
     {
         return DB::transaction(function () use ($branch, $data): array {
-            $menu = $branch->menus()->create([
+            $menu = $branch->menus()->make([
                 'name' => $data['menu_name'],
-                'status' => MenuStatus::Active,
                 'sort_order' => 0,
             ]);
+            $menu->forceFill(['status' => MenuStatus::Active])->save();
 
             $category = $menu->categories()->create([
                 'name' => $data['category_name'],

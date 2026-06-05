@@ -5,16 +5,22 @@ namespace App\Actions\Payments;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\AuditLogAction;
+use App\Enums\BusinessRuleCode;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\ManualPayment;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\MoneyFormatter;
+use App\Support\PlainText;
+use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class RecordManualPaymentAction
@@ -81,7 +87,8 @@ class RecordManualPaymentAction
             $summary = $this->buildPaymentSummary->handle($tableSession);
             $breakdown = $this->paymentBreakdownCents($summary, $scope, $guest, $tipsAmount);
 
-            $manualPayment = ManualPayment::query()->create([
+            $manualPayment = new ManualPayment;
+            $manualPayment->forceFill([
                 'branch_id' => $tableSession->branch_id,
                 'service_point_id' => $tableSession->service_point_id,
                 'table_session_id' => $tableSession->id,
@@ -110,7 +117,7 @@ class RecordManualPaymentAction
                         'total_amount' => $this->formatCents($breakdown['amount_cents']),
                     ],
                 ],
-            ]);
+            ])->save();
 
             $this->syncSessionAndServicePointStatus(
                 tableSession: $tableSession,
@@ -168,25 +175,38 @@ class RecordManualPaymentAction
     private function ensureCanRecord(TableSession $tableSession, User $recordedBy): void
     {
         if (! $this->resolvePaymentAccess->canManage($recordedBy, (int) $tableSession->branch_id)) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('У вас нет права отмечать оплату для этого стола.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::BranchInaccessible,
+                'manual_payment',
+                __('payments.errors.permission_denied'),
+            );
         }
 
         if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('Это место сейчас недоступно. Оплату нельзя отметить.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::BranchInaccessible,
+                'manual_payment',
+                __('payments.errors.service_point_unavailable'),
+            );
+        }
+
+        if ($tableSession->status === TableSessionStatus::Paid) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::PaymentExceedsRemaining,
+                'manual_payment',
+                __('payments.messages.session_paid'),
+            );
         }
 
         if (in_array($tableSession->status, [
-            TableSessionStatus::Paid,
             TableSessionStatus::Closed,
             TableSessionStatus::Cancelled,
         ], true)) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('Эта сессия уже оплачена, закрыта или отменена.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::SessionClosed,
+                'manual_payment',
+                __('payments.errors.session_closed'),
+            );
         }
     }
 
@@ -201,15 +221,19 @@ class RecordManualPaymentAction
         string|int|float|null $tipsAmount,
     ): array {
         if ((bool) $summary['has_open_draft']) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('Сначала завершите текущий черновик заказа: подтвердите, отклоните или верните его гостям.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::DraftLocked,
+                'manual_payment',
+                __('payments.errors.open_draft'),
+            );
         }
 
         if (! (bool) $summary['has_payable_total']) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('У этого стола пока нет подтверждённых заказов для оплаты.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::PaymentExceedsRemaining,
+                'manual_payment',
+                __('payments.errors.no_confirmed_orders'),
+            );
         }
 
         $tipsCents = $this->normalizeTipsCents($tipsAmount, (bool) $summary['tips_enabled']);
@@ -221,18 +245,22 @@ class RecordManualPaymentAction
             $billCents = $remainingTotalCents;
         } else {
             if (! $guest instanceof TableSessionGuest) {
-                throw ValidationException::withMessages([
-                    'manual_payment' => __('Выберите гостя для отметки оплаты.'),
-                ]);
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::GuestNotActive,
+                    'manual_payment',
+                    __('payments.errors.guest_required'),
+                );
             }
 
             $balance = collect($summary['guest_balances'])
                 ->first(fn (array $guestBalance): bool => (int) $guestBalance['guest_id'] === $guest->id);
 
             if (! is_array($balance)) {
-                throw ValidationException::withMessages([
-                    'manual_payment' => __('Гость не найден в этой сессии.'),
-                ]);
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::GuestNotActive,
+                    'manual_payment',
+                    __('payments.errors.guest_not_found'),
+                );
             }
 
             $coveredSubtotalCents = min((int) $balance['remaining_subtotal_cents'], (int) $summary['remaining_subtotal_cents']);
@@ -241,9 +269,11 @@ class RecordManualPaymentAction
         }
 
         if ($billCents <= 0) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('Для этой оплаты нет остатка к оплате.'),
-            ]);
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::PaymentExceedsRemaining,
+                'manual_payment',
+                __('payments.errors.amount_exceeds_remaining'),
+            );
         }
 
         return [
@@ -286,7 +316,7 @@ class RecordManualPaymentAction
             $metadata['paid_at'] = now()->toISOString();
             $metadata['paid_by_user_id'] = $recordedBy->id;
 
-            $tableSession->fill([
+            $tableSession->forceFill([
                 'status' => TableSessionStatus::Paid,
                 'metadata' => $metadata,
             ])->save();
@@ -301,7 +331,7 @@ class RecordManualPaymentAction
         $metadata['last_manual_payment_at'] = now()->toISOString();
         $metadata['last_manual_payment_by_user_id'] = $recordedBy->id;
 
-        $tableSession->fill([
+        $tableSession->forceFill([
             'status' => TableSessionStatus::PaymentRequested,
             'metadata' => $metadata,
         ])->save();
@@ -313,9 +343,7 @@ class RecordManualPaymentAction
 
     private function normalizeNote(?string $note): ?string
     {
-        $normalized = trim((string) $note);
-
-        return $normalized === '' ? null : mb_substr($normalized, 0, 500);
+        return PlainText::optional($note, 500);
     }
 
     private function normalizePaymentMethod(ManualPaymentMethod|string $paymentMethod): ManualPaymentMethod
@@ -324,35 +352,26 @@ class RecordManualPaymentAction
             return $paymentMethod;
         }
 
-        $method = ManualPaymentMethod::tryFrom($paymentMethod);
+        $validated = Validator::make(
+            ['paymentMethod' => $paymentMethod],
+            RestaurantValidationRules::paymentMethod('paymentMethod'),
+            [
+                'paymentMethod.in' => __('payments.errors.method_required'),
+                'paymentMethod.required' => __('payments.errors.method_required'),
+            ],
+        )->validate();
 
-        if (! $method instanceof ManualPaymentMethod) {
-            throw ValidationException::withMessages([
-                'manual_payment' => __('Выберите понятный способ оплаты.'),
-            ]);
-        }
-
-        return $method;
+        return ManualPaymentMethod::from((string) $validated['paymentMethod']);
     }
 
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 
     private function decimalToCents(string|int|float|null $amount): int
     {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
+        return MoneyFormatter::decimalToCents($amount);
     }
 
     private function formatPercent(string|int|float|null $percent): string

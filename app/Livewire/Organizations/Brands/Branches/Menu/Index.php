@@ -22,6 +22,8 @@ use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\MoneyFormatter;
+use App\Support\PlainText;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
@@ -297,11 +299,11 @@ class Index extends Component
 
         $validated = $this->validate($this->menuRules());
 
-        $menu = $this->branch->menus()->create([
+        $menu = $this->branch->menus()->make([
             'name' => $validated['menuName'],
-            'status' => $validated['menuStatus'],
             'sort_order' => (int) $validated['menuSortOrder'],
         ]);
+        $menu->forceFill(['status' => $validated['menuStatus']])->save();
 
         $this->categoryMenuId = (string) $menu->id;
         $this->itemMenuId = (string) $menu->id;
@@ -346,11 +348,12 @@ class Index extends Component
 
         $validated = $this->validate($this->menuRules('editing'));
 
-        $this->findBranchMenu($this->editingMenuId)->update([
+        $menu = $this->findBranchMenu($this->editingMenuId);
+        $menu->fill([
             'name' => $validated['editingMenuName'],
-            'status' => $validated['editingMenuStatus'],
             'sort_order' => (int) $validated['editingMenuSortOrder'],
         ]);
+        $menu->forceFill(['status' => $validated['editingMenuStatus']])->save();
 
         $this->cancelMenuEditing();
         $this->forgetMenuComputed();
@@ -432,8 +435,8 @@ class Index extends Component
 
         $category = $menu->categories()->create([
             'parent_id' => $this->emptyStringToInt($validated['categoryParentId'] ?? null),
-            'name' => $validated['categoryName'],
-            'description' => $this->emptyStringToNull($validated['categoryDescription'] ?? null),
+            'name' => PlainText::required($validated['categoryName'], 160, squish: true),
+            'description' => PlainText::optional($validated['categoryDescription'] ?? null, 1000),
             'icon' => $this->emptyStringToNull($validated['categoryIcon'] ?? null),
             'sort_order' => (int) $validated['categorySortOrder'],
             'is_active' => (bool) $validated['categoryIsActive'],
@@ -486,8 +489,8 @@ class Index extends Component
         $validated = $this->validate($this->categoryRules('editing'));
 
         $this->findBranchCategory($this->editingCategoryId)->update([
-            'name' => $validated['editingCategoryName'],
-            'description' => $this->emptyStringToNull($validated['editingCategoryDescription'] ?? null),
+            'name' => PlainText::required($validated['editingCategoryName'], 160, squish: true),
+            'description' => PlainText::optional($validated['editingCategoryDescription'] ?? null, 1000),
             'icon' => $this->emptyStringToNull($validated['editingCategoryIcon'] ?? null),
             'sort_order' => (int) $validated['editingCategorySortOrder'],
             'is_active' => (bool) $validated['editingCategoryIsActive'],
@@ -646,9 +649,10 @@ class Index extends Component
 
         $item = $this->findBranchItem($itemId);
 
-        $this->validate([
-            'itemImages.'.$item->id => StoreLocalImageAction::validationRules(),
-        ]);
+        $this->validate(
+            RestaurantValidationRules::imageUpload('itemImages.'.$item->id),
+            StoreLocalImageAction::validationMessages('itemImages.'.$item->id),
+        );
 
         $file = $this->itemImages[$item->id] ?? null;
 
@@ -667,7 +671,7 @@ class Index extends Component
         unset($this->itemImages[$item->id]);
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Dish photo uploaded.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
     public function removeItemImage(int $itemId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -682,7 +686,7 @@ class Index extends Component
         unset($this->itemImages[$item->id]);
         $this->forgetMenuComputed();
 
-        Flux::toast(variant: 'success', text: __('Dish photo removed.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
     public function createKitchenDepartment(): void
@@ -1307,13 +1311,7 @@ class Index extends Component
      */
     private function menuRules(string $prefix = ''): array
     {
-        $fieldPrefix = $prefix === '' ? '' : $prefix;
-
-        return [
-            $fieldPrefix === '' ? 'menuName' : $fieldPrefix.'MenuName' => ['required', 'string', 'max:160'],
-            $fieldPrefix === '' ? 'menuStatus' : $fieldPrefix.'MenuStatus' => ['required', 'string', Rule::in(MenuStatus::values())],
-            $fieldPrefix === '' ? 'menuSortOrder' : $fieldPrefix.'MenuSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-        ];
+        return RestaurantValidationRules::menu($prefix);
     }
 
     /**
@@ -1322,13 +1320,7 @@ class Index extends Component
     private function categoryRules(string $prefix = ''): array
     {
         if ($prefix === 'editing') {
-            return [
-                'editingCategoryName' => ['required', 'string', 'max:160'],
-                'editingCategoryDescription' => ['nullable', 'string', 'max:1000'],
-                'editingCategoryIcon' => ['nullable', 'string', Rule::in(array_keys($this->iconOptions))],
-                'editingCategorySortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-                'editingCategoryIsActive' => ['boolean'],
-            ];
+            return RestaurantValidationRules::category('editing', array_keys($this->iconOptions));
         }
 
         $parentRules = ['nullable'];
@@ -1341,11 +1333,7 @@ class Index extends Component
         return [
             'categoryMenuId' => ['required', 'integer', $this->menuRule()],
             'categoryParentId' => $parentRules,
-            'categoryName' => ['required', 'string', 'max:160'],
-            'categoryDescription' => ['nullable', 'string', 'max:1000'],
-            'categoryIcon' => ['nullable', 'string', Rule::in(array_keys($this->iconOptions))],
-            'categorySortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-            'categoryIsActive' => ['boolean'],
+            ...RestaurantValidationRules::category(iconValues: array_keys($this->iconOptions)),
         ];
     }
 
@@ -1356,9 +1344,7 @@ class Index extends Component
     {
         return [
             'scheduleMenuId' => ['required', 'integer', $this->menuRule()],
-            'scheduleDayOfWeek' => ['required', 'integer', 'min:1', 'max:7'],
-            'scheduleStartsAt' => ['required', 'date_format:H:i'],
-            'scheduleEndsAt' => ['required', 'date_format:H:i'],
+            ...RestaurantValidationRules::menuSchedule(),
         ];
     }
 
@@ -1377,25 +1363,16 @@ class Index extends Component
             $menuField => ['required', 'integer', $this->menuRule()],
             $categoryField => ['required', 'integer', $this->categoryRule($menuId)],
             $departmentField => ['nullable'],
-            $fieldPrefix === '' ? 'itemName' : $fieldPrefix.'ItemName' => ['required', 'string', 'max:180'],
-            $fieldPrefix === '' ? 'itemDescription' : $fieldPrefix.'ItemDescription' => ['nullable', 'string', 'max:1200'],
-            $fieldPrefix === '' ? 'itemWeight' : $fieldPrefix.'ItemWeight' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            $fieldPrefix === '' ? 'itemVolume' : $fieldPrefix.'ItemVolume' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            $fieldPrefix === '' ? 'itemCalories' : $fieldPrefix.'ItemCalories' => ['nullable', 'integer', 'min:0', 'max:999999'],
-            $fieldPrefix === '' ? 'itemSortOrder' : $fieldPrefix.'ItemSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
+            ...RestaurantValidationRules::menuItem(
+                prefix: $fieldPrefix,
+                canChangePrices: $this->canChangePrices,
+                canChangeAvailability: $this->canChangeAvailability,
+            ),
         ];
 
         if ($departmentId !== '') {
             $rules[$departmentField][] = 'integer';
             $rules[$departmentField][] = $this->kitchenDepartmentRule();
-        }
-
-        if ($this->canChangePrices) {
-            $rules[$fieldPrefix === '' ? 'itemPrice' : $fieldPrefix.'ItemPrice'] = ['required', 'numeric', 'min:0', 'max:999999.99'];
-        }
-
-        if ($this->canChangeAvailability) {
-            $rules[$fieldPrefix === '' ? 'itemIsAvailable' : $fieldPrefix.'ItemIsAvailable'] = ['boolean'];
         }
 
         return $rules;
@@ -1419,12 +1396,10 @@ class Index extends Component
             $nameRules[3] = $nameRules[3]->ignore($this->editingDepartmentId);
         }
 
-        return [
-            $nameField => $nameRules,
-            $prefix === '' ? 'departmentType' : $prefix.'DepartmentType' => ['required', 'string', Rule::in(KitchenDepartmentType::values())],
-            $prefix === '' ? 'departmentSortOrder' : $prefix.'DepartmentSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-            $prefix === '' ? 'departmentIsActive' : $prefix.'DepartmentIsActive' => ['boolean'],
-        ];
+        $rules = RestaurantValidationRules::kitchenDepartment($prefix);
+        $rules[$nameField] = $nameRules;
+
+        return $rules;
     }
 
     /**
@@ -1432,23 +1407,7 @@ class Index extends Component
      */
     private function modifierGroupRules(string $prefix = ''): array
     {
-        if ($prefix === 'editing') {
-            return [
-                'editingModifierGroupName' => ['required', 'string', 'max:160'],
-                'editingModifierGroupIsRequired' => ['boolean'],
-                'editingModifierGroupMinSelect' => ['required', 'integer', 'min:0', 'max:50'],
-                'editingModifierGroupMaxSelect' => ['required', 'integer', 'min:0', 'max:50', 'gte:editingModifierGroupMinSelect'],
-                'editingModifierGroupSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-            ];
-        }
-
-        return [
-            'modifierGroupName' => ['required', 'string', 'max:160'],
-            'modifierGroupIsRequired' => ['boolean'],
-            'modifierGroupMinSelect' => ['required', 'integer', 'min:0', 'max:50'],
-            'modifierGroupMaxSelect' => ['required', 'integer', 'min:0', 'max:50', 'gte:modifierGroupMinSelect'],
-            'modifierGroupSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-        ];
+        return RestaurantValidationRules::modifierGroup($prefix);
     }
 
     /**
@@ -1457,21 +1416,14 @@ class Index extends Component
     private function modifierOptionRules(string $prefix = ''): array
     {
         $fieldPrefix = $prefix === '' ? '' : $prefix;
-        $rules = [
-            $fieldPrefix === '' ? 'modifierOptionName' : $fieldPrefix.'ModifierOptionName' => ['required', 'string', 'max:160'],
-            $fieldPrefix === '' ? 'modifierOptionSortOrder' : $fieldPrefix.'ModifierOptionSortOrder' => ['required', 'integer', 'min:0', 'max:9999'],
-        ];
+        $rules = RestaurantValidationRules::modifierOption(
+            prefix: $fieldPrefix,
+            canChangePrices: $this->canChangePrices,
+            canChangeAvailability: $this->canChangeAvailability,
+        );
 
         if ($fieldPrefix === '') {
             $rules['modifierOptionGroupId'] = ['required', 'integer', $this->modifierGroupRule()];
-        }
-
-        if ($this->canChangePrices) {
-            $rules[$fieldPrefix === '' ? 'modifierOptionPriceDelta' : $fieldPrefix.'ModifierOptionPriceDelta'] = ['required', 'numeric', 'min:-999999.99', 'max:999999.99'];
-        }
-
-        if ($this->canChangeAvailability) {
-            $rules[$fieldPrefix === '' ? 'modifierOptionIsAvailable' : $fieldPrefix.'ModifierOptionIsAvailable'] = ['boolean'];
         }
 
         return $rules;
@@ -1540,8 +1492,8 @@ class Index extends Component
             'menu_id' => (int) $validated[$prefix === '' ? 'itemMenuId' : $prefix.'ItemMenuId'],
             'category_id' => (int) $validated[$prefix === '' ? 'itemCategoryId' : $prefix.'ItemCategoryId'],
             'kitchen_department_id' => $this->resolveItemKitchenDepartmentId($validated[$prefix === '' ? 'itemKitchenDepartmentId' : $prefix.'ItemKitchenDepartmentId'] ?? null),
-            'name' => $validated[$prefix === '' ? 'itemName' : $prefix.'ItemName'],
-            'description' => $this->emptyStringToNull($validated[$prefix === '' ? 'itemDescription' : $prefix.'ItemDescription'] ?? null),
+            'name' => PlainText::required($validated[$prefix === '' ? 'itemName' : $prefix.'ItemName'], 180, squish: true),
+            'description' => PlainText::optional($validated[$prefix === '' ? 'itemDescription' : $prefix.'ItemDescription'] ?? null, 1200),
             'price' => $price,
             'weight' => $this->emptyStringToNull($validated[$prefix === '' ? 'itemWeight' : $prefix.'ItemWeight'] ?? null),
             'volume' => $this->emptyStringToNull($validated[$prefix === '' ? 'itemVolume' : $prefix.'ItemVolume'] ?? null),

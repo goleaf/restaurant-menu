@@ -184,7 +184,8 @@ class SendOrderToKitchenBarAction
         $tickets = new EloquentCollection;
 
         foreach ($this->departmentGroups($order) as $group) {
-            $ticket = KitchenTicket::query()->create([
+            $ticket = new KitchenTicket;
+            $ticket->forceFill([
                 'order_id' => $order->id,
                 'branch_id' => $order->branch_id,
                 'service_point_id' => $order->service_point_id,
@@ -198,7 +199,7 @@ class SendOrderToKitchenBarAction
                 'metadata' => [
                     'order_item_count' => $group['items']->count(),
                 ],
-            ]);
+            ])->save();
 
             $group['items']->each(function (OrderItem $item) use ($ticket): void {
                 $ticket->items()->create([

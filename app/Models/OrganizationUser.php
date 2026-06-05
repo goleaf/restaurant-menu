@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 #[Table('organization_users', incrementing: true)]
-#[Fillable(['organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id'])]
+#[Fillable(['user_id', 'joined_at', 'invited_by_user_id'])]
 class OrganizationUser extends Pivot
 {
     /** @use HasFactory<OrganizationUserFactory> */

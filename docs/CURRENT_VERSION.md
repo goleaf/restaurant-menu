@@ -20,6 +20,8 @@ One physical service point should have one active permanent QR code. The public 
 
 The URL must not contain organization ID, branch ID, service point ID, area ID, table number, or table name. Renaming a table or moving it to another area must not change the QR. Reissue is a manual dangerous action only.
 
+`public_token` is the only QR route credential. `short_code` is visible staff lookup/print text and must never authenticate the public QR route.
+
 ## Guest And Table Flow
 
 `table_session` is one seating/service lifecycle for a service point. It belongs to a branch and service point and can be created by a waiter or by the first guest, depending on branch settings.
@@ -27,6 +29,8 @@ The URL must not contain organization ID, branch ID, service point ID, area ID, 
 Guest entry does not create a user account. A guest scans QR, enters a required name, and receives a random `guest_token` stored in the browser cookie/session flow. Refresh should restore the guest while the session is valid.
 
 If there are already active guests at the table, a new guest creates a `table_session_join_request`. Current active guests see the request through Livewire polling and any active guest can approve or reject it. Guests are shown alphabetically.
+
+Guest tokens, staff invite tokens, and guest session invite tokens are bearer credentials. They must stay random, non-incremental, hidden from exports/logs/UI, and checked against QR/session/guest/invite status before any mutation.
 
 The table has a shared `draft_order`. Each draft item belongs to the guest who added it. All active guests see the shared draft, per-guest totals, and the table total. A guest can edit only their own draft items. After the draft is sent to the waiter, guest editing is blocked for that draft.
 
@@ -55,6 +59,7 @@ Runtime uses:
 - `SESSION_DRIVER=database`
 - `QUEUE_CONNECTION=database`
 - local public storage in `storage/app/public`
+- private `local` storage is not served through public storage routes
 - browser/Livewire polling instead of WebSockets
 
 Deployment notes are in `docs/DEPLOY_SHARED_HOSTING.md`. Main flow checks are in `docs/TEST_CHECKLIST.md`.
@@ -63,7 +68,11 @@ Deployment notes are in `docs/DEPLOY_SHARED_HOSTING.md`. Main flow checks are in
 
 - No Redis, WebSockets, S3, Docker-required setup, external queue, Push, SMS, Telegram API, Stripe, PayPal, online acquiring, or paid services.
 - No separate SPA; UI is Blade + Livewire.
-- Roles are fixed; permissions and user overrides are flexible.
+- Roles are fixed; permissions and user overrides are flexible. The staff permission UI must show grouped human labels/descriptions for directors, while raw technical keys are visible only to superadmin technical mode.
+- Error handling uses a shared `ApplicationErrorType` catalog, controlled expected business errors, safe translated HTTP error pages, and Laravel logs for unexpected exceptions.
+- User-entered guest, staff, menu, order, branch, reason, note, and notification text is plain text by default: normalize before storage, render escaped, preserve line breaks safely, and allow raw output only for audited generated QR SVG.
+- Route protection keeps public QR/guest routes GET-only, staff/admin/waiter/kitchen/bar/export/settings routes behind authenticated web sessions, backup routes behind `auth` plus `superadmin`, and export downloads behind server-side `export_data` branch access.
+- Token protection keeps QR public tokens, guest tokens, staff invitation tokens, and guest session invite tokens separated; staff invite acceptance must check pending status and future expiration.
 - SaaS subscription is a simple one-plan/manual-status model.
 - Guest users are not real user accounts.
 - QR PDF generation is not implemented; browser print templates exist.

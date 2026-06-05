@@ -32,7 +32,6 @@ class Permission extends Model
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class)
-            ->using(PermissionRole::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }
@@ -43,7 +42,6 @@ class Permission extends Model
     public function usersWithOverrides(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'permission_user_overrides')
-            ->using(PermissionUserOverride::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }

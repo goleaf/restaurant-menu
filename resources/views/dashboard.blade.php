@@ -1,38 +1,40 @@
-<x-layouts::app :title="__('Dashboard')">
+<x-layouts::app :title="__('ui.headers.dashboard.title')">
     <div data-layout="dashboard-overview" class="flex h-full w-full flex-1 flex-col gap-5">
         <header class="flex flex-col gap-2">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Workspace overview</p>
-            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">Dashboard</h1>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('layout.app_name') }}</p>
+            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('ui.headers.dashboard.title') }}</h1>
             <p class="max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
-                Choose the workspace for restaurant setup, operations, or platform administration.
+                {{ __('ui.headers.dashboard.description') }}
             </p>
         </header>
 
         <div class="grid gap-4 md:grid-cols-2">
             <a href="{{ route('onboarding.restaurant') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Quick start</p>
-                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Настроить ресторан</h2>
-                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Пошагово создать ресторан, столы, QR и первое меню.</p>
+                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.headers.dashboard.quick_start') }}</p>
+                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('navigation.onboarding') }}</h2>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{{ __('ui.headers.dashboard.setup_description') }}</p>
             </a>
 
             <a href="{{ route('restaurant.dashboard') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Restaurant staff</p>
-                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Restaurant dashboard</h2>
-                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Tables, QR, menu, waiter, kitchen, payments, reports, and exports.</p>
+                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.headers.dashboard.restaurant_staff') }}</p>
+                <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('navigation.restaurant_dashboard') }}</h2>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{{ __('ui.headers.dashboard.restaurant_staff_description') }}</p>
             </a>
 
             @if ($canAccessPlatformDashboard ?? false)
                 <a href="{{ route('superadmin.dashboard') }}" class="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700" wire:navigate>
-                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Platform staff</p>
-                    <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">Platform dashboard</h2>
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Organizations, subscriptions, users, backup access, and audit overview.</p>
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('ui.headers.dashboard.platform_staff') }}</p>
+                    <h2 class="mt-2 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('navigation.superadmin') }}</h2>
+                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{{ __('ui.headers.dashboard.platform_staff_description') }}</p>
                 </a>
             @endif
         </div>
 
         <div class="rounded-lg border border-dashed border-zinc-300 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <p class="text-sm text-zinc-600 dark:text-zinc-300">
-                Guest mobile UI starts from permanent QR links. The public fallback page is available at <a href="{{ route('guest.home') }}" class="font-medium underline underline-offset-4" wire:navigate>guest start</a>.
+                {{ __('Guest mobile UI starts from permanent QR links.') }}
+                {{ __('The public fallback page is available at') }}
+                <a href="{{ route('guest.home') }}" class="font-medium underline underline-offset-4" wire:navigate>{{ __('navigation.guest_area') }}</a>.
             </p>
         </div>
     </div>

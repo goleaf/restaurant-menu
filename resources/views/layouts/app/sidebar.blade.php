@@ -11,62 +11,62 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Workspaces')" class="grid">
+                <flux:sidebar.group :heading="__('navigation.workspaces')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Overview') }}
+                        {{ __('navigation.dashboard') }}
                     </flux:sidebar.item>
 
                     <flux:sidebar.item icon="building-office" :href="route('organizations.index')" :current="request()->routeIs('organizations.*')" wire:navigate>
-                        {{ __('Organizations') }}
+                        {{ __('navigation.organizations') }}
                     </flux:sidebar.item>
 
                     <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="request()->routeIs('onboarding.*')" wire:navigate>
-                        {{ __('Настроить ресторан') }}
+                        {{ __('navigation.onboarding') }}
                     </flux:sidebar.item>
 
                     <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="request()->routeIs('restaurant.dashboard')" wire:navigate>
-                        {{ __('Restaurant') }}
+                        {{ __('navigation.restaurant') }}
                     </flux:sidebar.item>
 
                     @if ($canAccessQrLookup ?? false)
                         <flux:sidebar.item icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="request()->routeIs('restaurant.qr-lookup.*')" wire:navigate>
-                            {{ __('QR lookup') }}
+                            {{ __('navigation.qr_codes') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessWaiterDashboard ?? false)
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="request()->routeIs('restaurant.waiter.*')" wire:navigate>
-                            {{ __('Waiter') }}
+                            {{ __('navigation.waiter') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessKitchenDashboard ?? false)
                         <flux:sidebar.item icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="request()->routeIs('restaurant.kitchen.*')" wire:navigate>
-                            {{ __('Kitchen') }}
+                            {{ __('navigation.kitchen') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessBarDashboard ?? false)
                         <flux:sidebar.item icon="beaker" :href="route('restaurant.bar.dashboard')" :current="request()->routeIs('restaurant.bar.*')" wire:navigate>
-                            {{ __('Bar') }}
+                            {{ __('navigation.bar') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessAuditLog ?? false)
                         <flux:sidebar.item icon="shield-check" :href="route('restaurant.audit-log.index')" :current="request()->routeIs('restaurant.audit-log.*')" wire:navigate>
-                            {{ __('Audit log') }}
+                            {{ __('navigation.audit_log') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessDataExports ?? false)
                         <flux:sidebar.item icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="request()->routeIs('restaurant.exports.*')" wire:navigate>
-                            {{ __('Exports') }}
+                            {{ __('navigation.exports') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessPlatformDashboard ?? false)
                         <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
-                            {{ __('Platform') }}
+                            {{ __('navigation.superadmin') }}
                         </flux:sidebar.item>
                     @endif
                 </flux:sidebar.group>
@@ -80,11 +80,11 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.item icon="home" :href="route('guest.home')" wire:navigate>
-                    {{ __('Guest area') }}
+                    {{ __('navigation.guest_area') }}
                 </flux:sidebar.item>
 
                 <flux:sidebar.item icon="layout-grid" :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>
-                    {{ __('Settings') }}
+                    {{ __('navigation.settings') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
@@ -126,7 +126,7 @@
 
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('Settings') }}
+                            {{ __('navigation.settings') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
 
@@ -141,7 +141,7 @@
                             class="w-full cursor-pointer"
                             data-test="logout-button"
                         >
-                            {{ __('Log out') }}
+                            {{ __('navigation.logout') }}
                         </flux:menu.item>
                     </form>
                 </flux:menu>

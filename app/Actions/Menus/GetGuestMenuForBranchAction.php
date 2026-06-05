@@ -384,8 +384,8 @@ class GetGuestMenuForBranchAction
         return [
             'is_configured' => (bool) ($firstAvailableStatus['is_configured'] ?? false),
             'is_available' => true,
-            'label' => __('Доступно сейчас'),
-            'detail' => __('Доступно меню: :count', ['count' => $availableMenuCount]),
+            'label' => __('menu.guest.available_now'),
+            'detail' => __('menu.guest.available_count', ['count' => $availableMenuCount]),
             'tone' => 'success',
             'next_available_at' => null,
             'available_until' => $firstAvailableStatus['available_until'] ?? null,
@@ -429,8 +429,8 @@ class GetGuestMenuForBranchAction
         return [
             'is_configured' => false,
             'is_available' => false,
-            'label' => __('Меню пока недоступно'),
-            'detail' => __('Активное меню ещё не настроено.'),
+            'label' => __('menu.guest.unavailable'),
+            'detail' => __('menu.guest.unavailable_description'),
             'tone' => 'muted',
             'next_available_at' => null,
             'available_until' => null,

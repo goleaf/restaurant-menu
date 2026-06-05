@@ -2,8 +2,10 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
@@ -14,6 +16,7 @@ use App\Models\DraftOrder;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\DraftOrderRejectedNotification;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -24,11 +27,12 @@ class RejectDraftOrderByWaiterAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $rejectedBy, string $reason): DraftOrder
     {
-        $reason = trim($reason);
+        $reason = PlainText::required($reason, 500);
 
         $draftOrder = DB::transaction(function () use ($draftOrder, $rejectedBy, $reason): DraftOrder {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
@@ -59,6 +63,22 @@ class RejectDraftOrderByWaiterAction
                 newStatus: DraftOrderStatus::Rejected,
                 statusType: 'draft_order',
                 reason: $reason,
+            );
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::DraftOrderRejected,
+                entityType: 'draft_order',
+                entityId: $draftOrder->id,
+                actorUser: $rejectedBy,
+                organizationId: $draftOrder->tableSession?->branch?->organization_id,
+                branchId: $draftOrder->tableSession?->branch_id,
+                oldValues: [
+                    'status' => $previousStatus,
+                ],
+                newValues: [
+                    'status' => DraftOrderStatus::Rejected,
+                    'reason' => $reason,
+                ],
             );
 
             return $draftOrder->refresh();

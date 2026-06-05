@@ -28,12 +28,16 @@ class GenerateQrCodeForServicePointAction
 
         for ($attempt = 1; $attempt <= 10; $attempt++) {
             try {
-                return $servicePoint->qrCodes()->create([
-                    'public_token' => Str::random(self::PUBLIC_TOKEN_LENGTH),
+                $qrCode = $servicePoint->qrCodes()->make([
                     'short_code' => $this->generateShortCode(),
+                ]);
+                $qrCode->forceFill([
+                    'public_token' => Str::random(self::PUBLIC_TOKEN_LENGTH),
                     'status' => QrCodeStatus::Active,
                     'created_by_user_id' => $createdBy?->id,
-                ]);
+                ])->save();
+
+                return $qrCode;
             } catch (QueryException $exception) {
                 $activeQrCode = $this->activeQrCodeFor($servicePoint);
 

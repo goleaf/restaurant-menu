@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['branch_id', 'parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'metadata'])]
+#[Fillable(['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'metadata'])]
 class AreaNode extends Model
 {
     /** @use HasFactory<AreaNodeFactory> */

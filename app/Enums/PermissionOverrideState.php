@@ -17,12 +17,26 @@ enum PermissionOverrideState: string
         };
     }
 
+    public function labelKey(): string
+    {
+        return 'permissions.actions.'.$this->value;
+    }
+
     public function summaryLabel(): string
     {
         return match ($this) {
             self::Default => 'Role default',
             self::Allow => 'Allowed by override',
             self::Deny => 'Denied by override',
+        };
+    }
+
+    public function summaryLabelKey(): string
+    {
+        return match ($this) {
+            self::Default => 'permissions.states.role_default',
+            self::Allow => 'permissions.states.allowed_by_override',
+            self::Deny => 'permissions.states.denied_by_override',
         };
     }
 

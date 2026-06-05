@@ -8,19 +8,19 @@
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Меню') }}</p>
+            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('menu.guest.title') }}</p>
             <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">
-                {{ $availableMenuCount > 1 ? __('Выбор меню') : ($guestMenu['menu']['name'] ?? __('Выбор блюд')) }}
+                {{ $availableMenuCount > 1 ? __('menu.guest.choose_menu') : ($guestMenu['menu']['name'] ?? __('menu.guest.choose_items')) }}
             </h2>
             @if ($availableMenuCount > 1)
                 <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">
-                    {{ __('Доступно меню: :count', ['count' => $availableMenuCount]) }}
+                    {{ __('menu.guest.available_count', ['count' => $availableMenuCount]) }}
                 </p>
             @endif
         </div>
 
         <div class="shrink-0">
-            <label for="guest-menu-language-{{ $branchId }}" class="sr-only">{{ __('Язык меню') }}</label>
+            <label for="guest-menu-language-{{ $branchId }}" class="sr-only">{{ __('menu.guest.language') }}</label>
             <select
                 id="guest-menu-language-{{ $branchId }}"
                 wire:model.live="language"
@@ -40,19 +40,19 @@
         <div class="p-4">
             <x-ui.empty-state
                 icon="book-open"
-                :heading="$guestMenu['availability']['label'] ?? __('Меню пока недоступно')"
+                :heading="$guestMenu['availability']['label'] ?? __('menu.guest.unavailable')"
                 :description="$guestMenu['availability']['detail'] ?? null"
             />
 
             @if ($unavailableMenus !== [])
                 <div class="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
-                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('Будет доступно позже') }}</p>
+                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('menu.guest.available_later') }}</p>
 
                     <div class="mt-3 grid gap-2">
                         @foreach ($unavailableMenus as $unavailableMenu)
                             <div wire:key="guest-menu-unavailable-empty-{{ $unavailableMenu['id'] }}" class="flex flex-col gap-1 text-sm text-amber-950 dark:text-amber-100">
                                 <span class="font-medium">{{ $unavailableMenu['name'] }}</span>
-                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('Расписание уточняется') }}</span>
+                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('menu.guest.schedule_unknown') }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -62,9 +62,9 @@
     @else
         <div class="p-4">
         @if (! $branchCanAcceptOrders)
-            <x-ui.alert tone="warning" class="mt-4" :heading="__('Сейчас закрыто')">
-                {{ $branchOpeningStatusMessage ?: __('Заказы принимаем в часы работы ресторана.') }}
-                <span class="mt-1 block">{{ __('Меню можно смотреть, но добавить позиции сейчас нельзя.') }}</span>
+            <x-ui.alert tone="warning" class="mt-4" :heading="__('menu.guest.closed_title')">
+                <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('menu.guest.closed_description')" />
+                <span class="mt-1 block">{{ __('menu.guest.browse_only') }}</span>
             </x-ui.alert>
         @endif
 
@@ -86,7 +86,7 @@
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $menu['name'] }}</h3>
                                 <x-ui.status-badge tone="success">
-                                    {{ $menu['availability']['label'] ?? __('Доступно сейчас') }}
+                                    {{ $menu['availability']['label'] ?? __('menu.guest.available_now') }}
                                 </x-ui.status-badge>
                             </div>
 
@@ -103,9 +103,7 @@
                         <div class="min-w-0 flex-1">
                             <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $category['name'] }}</h3>
 
-                            @if ($category['description'])
-                                <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $category['description'] }}</p>
-                            @endif
+                            <x-ui.plain-text :text="$category['description']" class="mt-1 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
                         </div>
                     </div>
 
@@ -123,7 +121,7 @@
                                         @if ($item['image_url'])
                                             <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" class="size-full object-cover">
                                         @else
-                                            <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('Фото') }}</span>
+                                            <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                                         @endif
                                     </div>
 
@@ -135,21 +133,19 @@
                                             </span>
                                         </div>
 
-                                        @if ($item['description'])
-                                            <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $item['description'] }}</p>
-                                        @endif
+                                        <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
 
                                         <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                                             @if ($item['weight'])
-                                                <span>{{ $item['weight'] }} {{ __('г') }}</span>
+                                                <span>{{ $item['weight'] }} {{ __('menu.guest.unit_grams') }}</span>
                                             @endif
 
                                             @if ($item['volume'])
-                                                <span>{{ $item['volume'] }} {{ __('л') }}</span>
+                                                <span>{{ $item['volume'] }} {{ __('menu.guest.unit_liters') }}</span>
                                             @endif
 
                                             @if ($item['calories'])
-                                                <span>{{ $item['calories'] }} {{ __('ккал') }}</span>
+                                                <span>{{ $item['calories'] }} {{ __('menu.guest.unit_kcal') }}</span>
                                             @endif
                                         </div>
 
@@ -158,7 +154,7 @@
                                                 <div class="grid gap-2">
                                                     <div>
                                                     <x-ui.status-badge tone="success">
-                                                        {{ __('Доступно') }}
+                                                        {{ __('menu.guest.available') }}
                                                     </x-ui.status-badge>
                                                     </div>
 
@@ -170,20 +166,20 @@
                                                         full-width
                                                         icon="plus"
                                                     >
-                                                        {{ __('Добавить') }}
+                                                        {{ __('menu.guest.add') }}
                                                     </x-ui.button>
                                                 </div>
                                             @elseif ($item['is_available'] && ! $branchCanAcceptOrders)
                                                 <x-ui.status-badge tone="warning">
-                                                    {{ __('Сейчас закрыто') }}
+                                                    {{ __('menu.guest.closed_title') }}
                                                 </x-ui.status-badge>
                                             @elseif ($item['is_available'])
                                                 <x-ui.status-badge tone="muted">
-                                                    {{ __('Недоступно') }}
+                                                    {{ __('menu.guest.unavailable') }}
                                                 </x-ui.status-badge>
                                             @else
                                                 <x-ui.status-badge tone="muted">
-                                                    {{ __('Нет в наличии') }}
+                                                    {{ __('menu.guest.out_of_stock') }}
                                                 </x-ui.status-badge>
                                             @endif
                                         </div>
@@ -191,7 +187,7 @@
                                         @if (isset($configuredItems[$item['id']]))
                                             <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100">
                                                 <div class="flex flex-wrap items-center justify-between gap-2">
-                                                    <span class="font-semibold">{{ __('Добавлено') }}</span>
+                                                    <span class="font-semibold">{{ __('menu.guest.added') }}</span>
                                                     <span class="font-semibold">{{ $configuredItems[$item['id']]['total_price'] }}</span>
                                                 </div>
 
@@ -201,9 +197,7 @@
                                                     </p>
                                                 @endif
 
-                                                @if ($configuredItems[$item['id']]['comment'])
-                                                    <p class="mt-1 text-xs leading-5">{{ $configuredItems[$item['id']]['comment'] }}</p>
-                                                @endif
+                                                <x-ui.plain-text :text="$configuredItems[$item['id']]['comment']" class="mt-1 block text-xs leading-5" />
                                             </div>
                                         @endif
                                     </div>
@@ -212,7 +206,7 @@
                         @empty
                             <x-ui.empty-state
                                 icon="cake"
-                                :heading="__('В этой категории пока нет блюд')"
+                                :heading="__('menu.guest.no_items_found')"
                             />
                         @endforelse
                     </div>
@@ -220,7 +214,7 @@
             @empty
                 <x-ui.empty-state
                     icon="book-open"
-                    :heading="__('Категории меню пока не настроены')"
+                    :heading="__('menu.guest.no_categories_found')"
                 />
             @endforelse
                     </div>
@@ -228,19 +222,19 @@
             @empty
                 <x-ui.empty-state
                     icon="book-open"
-                    :heading="__('Меню пока недоступно')"
+                    :heading="__('menu.guest.unavailable')"
                 />
             @endforelse
 
             @if ($unavailableMenus !== [])
                 <div class="rounded-lg border border-dashed border-amber-200 bg-amber-50 p-3 dark:border-amber-900/60 dark:bg-amber-950/20">
-                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('Будет доступно позже') }}</p>
+                    <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ __('menu.guest.available_later') }}</p>
 
                     <div class="mt-3 grid gap-2">
                         @foreach ($unavailableMenus as $unavailableMenu)
                             <div wire:key="guest-menu-unavailable-{{ $unavailableMenu['id'] }}" class="flex flex-col gap-1 text-sm text-amber-950 dark:text-amber-100">
                                 <span class="font-medium">{{ $unavailableMenu['name'] }}</span>
-                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('Расписание уточняется') }}</span>
+                                <span class="text-xs text-amber-800 dark:text-amber-200">{{ $unavailableMenu['availability']['detail'] ?? __('menu.guest.schedule_unknown') }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -259,18 +253,16 @@
                             @if ($selectedItem['image_url'])
                                 <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" class="size-full object-cover">
                             @else
-                                <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('Фото') }}</span>
+                                <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                             @endif
                         </div>
 
                         <div class="min-w-0">
-                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('Ваш выбор') }}</p>
+                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('menu.item_detail.title') }}</p>
                             <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $selectedItem['name'] }}</h3>
                             <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
 
-                            @if ($selectedItem['description'])
-                                <p class="mt-1 line-clamp-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $selectedItem['description'] }}</p>
-                            @endif
+                            <x-ui.plain-text :text="$selectedItem['description']" :preserve-lines="false" class="mt-1 line-clamp-2 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
                         </div>
                     </div>
 
@@ -278,7 +270,7 @@
                         type="button"
                         wire:click="closeItemSheet"
                         class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                        aria-label="{{ __('Закрыть') }}"
+                        aria-label="{{ __('menu.guest.close') }}"
                     >
                         <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
@@ -293,12 +285,18 @@
 
                             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                                 @if ($modifierGroup['is_required'])
-                                    <span>{{ __('Обязательно') }}</span>
+                                    <span>{{ __('menu.modifiers.required') }}</span>
                                 @else
-                                    <span>{{ __('По желанию') }}</span>
+                                    <span>{{ __('menu.modifiers.optional') }}</span>
                                 @endif
 
-                                <span>{{ __('Можно выбрать') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</span>
+                                @if ((int) $modifierGroup['min_select'] > 0)
+                                    <span>{{ __('menu.modifiers.choose_min', ['min' => $modifierGroup['min_select']]) }}</span>
+                                @endif
+
+                                @if ((int) $modifierGroup['max_select'] > 0)
+                                    <span>{{ __('menu.modifiers.choose_max', ['max' => $modifierGroup['max_select']]) }}</span>
+                                @endif
                             </div>
 
                             <div class="mt-3 grid gap-2">
@@ -316,13 +314,13 @@
                                     >
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">
-                                            {{ $modifierOption['formatted_price_delta'] }}
+                                            {{ __('menu.modifiers.price_delta', ['price' => $modifierOption['formatted_price_delta']]) }}
                                         </span>
                                     </button>
                                 @empty
                                     <x-ui.empty-state
                                         icon="adjustments-horizontal"
-                                        :heading="__('Нет доступных вариантов')"
+                                        :heading="__('menu.modifiers.no_options')"
                                     />
                                 @endforelse
                             </div>
@@ -334,16 +332,17 @@
                     @empty
                         <x-ui.empty-state
                             icon="adjustments-horizontal"
-                            :heading="__('Для этого блюда нет дополнительных настроек')"
+                            :heading="__('menu.guest.no_modifiers')"
                         />
                     @endforelse
 
                     <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Комментарий') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.guest.comment') }}</span>
                         <textarea
                             wire:model="itemComment"
                             rows="3"
                             maxlength="500"
+                            placeholder="{{ __('menu.guest.comment_placeholder') }}"
                             class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
                         ></textarea>
                         @error('itemComment')
@@ -362,8 +361,8 @@
                         size="lg"
                         full-width
                     >
-                        <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('Добавить') }} · {{ $selectedItemTotal }}</span>
-                        <span wire:loading wire:target="saveConfiguredItem">{{ __('Добавляем') }}</span>
+                        <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('menu.guest.add_for_price', ['price' => $selectedItemTotal]) }}</span>
+                        <span wire:loading wire:target="saveConfiguredItem">{{ __('menu.guest.adding') }}</span>
                     </x-ui.button>
                 </x-ui.mobile-bottom-actions>
             </div>

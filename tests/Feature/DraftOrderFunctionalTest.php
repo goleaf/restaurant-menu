@@ -23,6 +23,8 @@ use App\Models\DraftOrderItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Permission;
@@ -121,6 +123,86 @@ test('guest can update quantity comment and delete only own draft items', functi
                 'total' => '37.50',
             ],
         ]);
+});
+
+test('guest draft item prices are server calculated and keep price at add time', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $modifierGroup = ModifierGroup::factory()
+        ->for($context['branch'])
+        ->create([
+            'name' => 'Size',
+            'max_select' => 1,
+        ]);
+    $largeOption = ModifierOption::factory()
+        ->for($modifierGroup, 'modifierGroup')
+        ->create([
+            'name' => 'Large',
+            'price_delta' => '3.25',
+        ]);
+    $context['pizzaItem']->modifierGroups()->attach($modifierGroup->id);
+
+    $draftOrderItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [(string) $modifierGroup->id => [$largeOption->id]],
+        comment: null,
+        itemName: 'Frontend forged free pizza',
+    );
+
+    expect($draftOrderItem->item_name)->toBe('Pizza Margherita')
+        ->and($draftOrderItem->unit_price)->toBe('12.50')
+        ->and($draftOrderItem->modifier_total)->toBe('3.25')
+        ->and($draftOrderItem->total_price)->toBe('15.75');
+
+    $context['pizzaItem']->forceFill(['price' => '99.00'])->save();
+    $largeOption->forceFill(['price_delta' => '50.00'])->save();
+
+    $updatedItem = app(UpdateGuestDraftOrderItemAction::class)->handle(
+        draftOrderItem: $draftOrderItem,
+        guest: $context['ana'],
+        quantity: 2,
+        selectedModifierOptions: [(string) $modifierGroup->id => [$largeOption->id]],
+    );
+
+    expect($updatedItem->unit_price)->toBe('12.50')
+        ->and($updatedItem->modifier_total)->toBe('3.25')
+        ->and($updatedItem->total_price)->toBe('31.50');
+});
+
+test('server rejects negative menu or modifier totals for draft prices', function (): void {
+    $context = createPrompt354DraftOrderContext();
+
+    $context['pizzaItem']->forceFill(['price' => '-12.50'])->save();
+
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+            tableSession: $context['tableSession'],
+            guest: $context['ana'],
+            menuItem: $context['pizzaItem'],
+            selectedModifierOptions: [],
+        ),
+        'menu_item',
+    );
+
+    $context = createPrompt354DraftOrderContext();
+    $modifierGroup = ModifierGroup::factory()
+        ->for($context['branch'])
+        ->create(['max_select' => 1]);
+    $discountOption = ModifierOption::factory()
+        ->for($modifierGroup, 'modifierGroup')
+        ->create(['price_delta' => '-20.00']);
+    $context['pizzaItem']->modifierGroups()->attach($modifierGroup->id);
+
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+            tableSession: $context['tableSession'],
+            guest: $context['ana'],
+            menuItem: $context['pizzaItem'],
+            selectedModifierOptions: [(string) $modifierGroup->id => [$discountOption->id]],
+        ),
+        'selectedModifierOptions',
+    );
 });
 
 test('server-side guard forbids editing or deleting another guest draft item', function (): void {

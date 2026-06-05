@@ -121,6 +121,7 @@ test('owner can create update and delete branch', function () {
         ->set('editingTimezone', 'Europe/Vilnius')
         ->set('editingCurrency', 'EUR')
         ->set('editingIsActive', false)
+        ->set('branchSuspendReason', 'Temporarily closing this branch.')
         ->call('update')
         ->assertHasNoErrors()
         ->assertSee('Bella Pizza Kaunas Center')

@@ -52,14 +52,16 @@ class OpenTableSessionForServicePointAction
             }
 
             if (! $activeTableSession instanceof TableSession) {
-                $activeTableSession = $servicePoint->tableSessions()->create([
-                    'branch_id' => $servicePoint->branch_id,
-                    'opened_by_user_id' => $openedBy->id,
-                    'status' => TableSessionStatus::Active,
+                $activeTableSession = $servicePoint->tableSessions()->make([
                     'source' => TableSessionSource::WaiterOpened,
                     'started_at' => now(),
                     'metadata' => [],
                 ]);
+                $activeTableSession->forceFill([
+                    'branch_id' => $servicePoint->branch_id,
+                    'opened_by_user_id' => $openedBy->id,
+                    'status' => TableSessionStatus::Active,
+                ])->save();
             }
 
             $this->updateServicePointStatus->handle(

@@ -5,6 +5,7 @@ namespace App\Livewire\QrCodes;
 use App\Actions\QrCodes\DisableQrCodeAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
+use App\Enums\DangerousAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
@@ -15,12 +16,11 @@ use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('QR lookup')]
 class ShortCodeLookup extends Component
 {
     public string $shortCode = '';
@@ -28,6 +28,10 @@ class ShortCodeLookup extends Component
     public bool $searched = false;
 
     public bool $confirmingReissue = false;
+
+    public string $qrDisableReason = '';
+
+    public string $qrReissueConfirmation = '';
 
     public function mount(): void
     {
@@ -46,6 +50,8 @@ class ShortCodeLookup extends Component
 
         $this->searched = true;
         $this->confirmingReissue = false;
+        $this->qrDisableReason = '';
+        $this->qrReissueConfirmation = '';
 
         unset($this->qrCode);
     }
@@ -54,13 +60,26 @@ class ShortCodeLookup extends Component
     {
         $qrCode = $this->resolvedQrCodeOrAbort();
 
-        $disableQrCode->handle($qrCode);
+        $validated = $this->validate([
+            'qrDisableReason' => ['required', 'string', 'min:3', 'max:500'],
+        ], [
+            'qrDisableReason.required' => __('qr.validation.disable_reason_required'),
+            'qrDisableReason.min' => __('qr.validation.disable_reason_min'),
+        ]);
+
+        $disableQrCode->handle(
+            qrCode: $qrCode,
+            disabledBy: $this->currentUser(),
+            reason: (string) $validated['qrDisableReason'],
+        );
 
         $this->confirmingReissue = false;
+        $this->qrDisableReason = '';
 
         unset($this->qrCode);
 
-        Flux::toast(variant: 'success', text: __('QR disabled.'));
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('qr.messages.disabled'));
     }
 
     public function confirmReissue(): void
@@ -68,25 +87,37 @@ class ShortCodeLookup extends Component
         $this->resolvedQrCodeOrAbort();
 
         $this->confirmingReissue = true;
+        $this->qrReissueConfirmation = '';
     }
 
     public function cancelReissue(): void
     {
         $this->confirmingReissue = false;
+        $this->qrReissueConfirmation = '';
     }
 
     public function reissueQr(ReissueQrCodeForServicePointAction $reissueQrCode): void
     {
         $qrCode = $this->resolvedQrCodeOrAbort();
+
+        $this->validate([
+            'qrReissueConfirmation' => ['required', 'string', Rule::in([$qrCode->short_code])],
+        ], [
+            'qrReissueConfirmation.required' => __('qr.validation.reissue_confirmation_required'),
+            'qrReissueConfirmation.in' => __('qr.validation.reissue_confirmation_mismatch'),
+        ]);
+
         $newQrCode = $reissueQrCode->handle($qrCode, $this->currentUser());
 
         $this->shortCode = $newQrCode->short_code;
         $this->searched = true;
         $this->confirmingReissue = false;
+        $this->qrReissueConfirmation = '';
 
         unset($this->qrCode);
 
-        Flux::toast(variant: 'success', text: __('QR reissued.'));
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('qr.messages.reissued'));
     }
 
     #[Computed]
@@ -214,7 +245,13 @@ class ShortCodeLookup extends Component
 
     public function render(): View
     {
-        return view('livewire.qr-codes.short-code-lookup');
+        return view('livewire.qr-codes.short-code-lookup')
+            ->title(__('qr.lookup.title'));
+    }
+
+    public function dangerousAction(string $action): DangerousAction
+    {
+        return DangerousAction::from($action);
     }
 
     /**

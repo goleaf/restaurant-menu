@@ -59,11 +59,11 @@ Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, imp
 
 Latest memory refresh: 2026-06-05 after Prompt 333 token security rules. QR public tokens, guest tokens, join-request tokens, staff invitation tokens, and guest session invite tokens stay random 64-character credentials; `qr_codes.short_code` remains staff lookup/print text only; revoked QR tokens, closed session invite tokens, expired staff invitations, and guest tokens on staff routes are blocked by server-side state checks. CSV exports and audit summaries must not expose raw token fields.
 
-Latest memory refresh: 2026-06-05 after rescue mode before Prompt 126. Prompt 126 waiter notification sound settings were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored `BranchUser` mass-assignment fields for branch-scoped staff assignments, kept SQLite/database drivers intact, and left Prompt 126 as the next recommended feature prompt after a fresh health check.
+Previous memory refresh: 2026-06-05 after rescue mode before Prompt 126. Prompt 126 waiter notification sound settings were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored `BranchUser` mass-assignment fields for branch-scoped staff assignments, kept SQLite/database drivers intact, and left Prompt 126 as the next recommended feature prompt after a fresh health check.
 
 Previous memory refresh: 2026-06-05 after rescue mode before Prompt 125. Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored guest status translations and Public QR polling-locale propagation, kept SQLite/database drivers intact, and left Prompt 125 as pending/skipped unless explicitly requested again.
 
-Latest memory refresh: 2026-06-05 after Prompt 334 CSRF and route protection audit. Public guest routes are GET-only guest surfaces, staff/admin/department/export routes require authenticated web sessions, backup download requires superadmin, and the private local disk no longer registers unauthenticated temporary storage routes. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
+Previous memory refresh: 2026-06-05 after Prompt 334 CSRF and route protection audit. Public guest routes are GET-only guest surfaces, staff/admin/department/export routes require authenticated web sessions, backup download requires superadmin, and the private local disk no longer registers unauthenticated temporary storage routes. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
 
 Previous memory refresh: 2026-06-05 after Prompt 335 XSS protection audit. User-entered restaurant, guest, staff, menu, order, reason, note, branch-profile, and notification text is treated as plain text, normalized before storage where current write paths exist, and rendered through escaped Blade output.
 
@@ -1309,6 +1309,14 @@ The kitchen screen is available at:
 Access is allowed for superadmins, users with the fixed `head_chef` or `cook` role in an active organization membership, or users with the flexible `view_kitchen` permission. Active `branch_users` assignments limit the visible departments to assigned branches.
 
 The kitchen screen reads only dispatched `kitchen_tickets`, shows one selected department at a time, and refreshes with Livewire polling every 1 second. It uses large production cards sorted by oldest ticket first, with the current service point number/name, zone, timer, positions, modifiers, comments, and two large item actions: `Начать` (`in_progress`) and `Готово` (`ready`). It does not use WebSockets, Redis, S3, Docker, or paid services.
+
+Kitchen and bar staff can open a browser print-friendly ticket page from each visible ticket card:
+
+```text
+/restaurant/departments/tickets/{kitchenTicket}/print
+```
+
+The print page shows branch, service point, current zone, order number, department, ticket time, item quantities, modifiers, comments, and guest names. It uses normal browser printing only; there is no printer hardware integration, PDF service, paid service, Redis, WebSocket, S3, or Docker requirement. Access uses the same department visibility rules as the kitchen/bar screens.
 
 The bar screen is available at:
 

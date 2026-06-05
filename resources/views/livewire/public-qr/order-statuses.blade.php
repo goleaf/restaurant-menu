@@ -33,11 +33,17 @@
         <p class="pt-1">{{ $overallStatusDescription }}</p>
 
         @if ($draftStatusValue === 'rejected' && $rejectionReason)
-            <p class="pt-2 font-medium">{{ __('guest.table.reason') }}: {{ $rejectionReason }}</p>
+            <p class="pt-2 font-medium">
+                {{ __('guest.table.reason') }}:
+                <x-ui.plain-text :text="$rejectionReason" class="inline" />
+            </p>
         @endif
 
         @if ($serviceStatusValue === 'cancelled' && $cancellationReason)
-            <p class="pt-2 font-medium">{{ __('guest.table.reason') }}: {{ $cancellationReason }}</p>
+            <p class="pt-2 font-medium">
+                {{ __('guest.table.reason') }}:
+                <x-ui.plain-text :text="$cancellationReason" class="inline" />
+            </p>
         @endif
     </div>
 
@@ -83,7 +89,8 @@
                     <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $item['name'] }}</p>
                         <p class="pt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            {{ $item['guest_name'] }} · {{ __('guest.cart.quantity_short') }}: {{ $item['quantity'] }}
+                            <x-ui.plain-text :text="$item['guest_name']" class="inline" :preserve-lines="false" />
+                            {{ __('guest.cart.separator') }} {{ __('guest.cart.quantity_short') }}: {{ $item['quantity'] }}
                         </p>
                     </div>
 
@@ -103,7 +110,8 @@
 
                 @if ($item['comment'])
                     <p class="mt-2 rounded-md bg-white px-2 py-1.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                        {{ __('guest.cart.comment') }}: {{ $item['comment'] }}
+                        {{ __('guest.cart.comment') }}:
+                        <x-ui.plain-text :text="$item['comment']" class="inline" />
                     </p>
                 @endif
             </div>

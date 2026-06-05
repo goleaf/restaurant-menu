@@ -2,8 +2,11 @@
 
 namespace App\Livewire\Organizations\Staff;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddOrganizationStaffMemberAction;
+use App\Enums\AuditLogAction;
+use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -12,16 +15,15 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Organization staff')]
 class Index extends Component
 {
     public Organization $organization;
@@ -43,6 +45,8 @@ class Index extends Component
     public ?string $lastInviteCode = null;
 
     public bool $canManageStaff = false;
+
+    public string $staffDeactivationReason = '';
 
     public function mount(Organization $organization): void
     {
@@ -80,21 +84,21 @@ class Index extends Component
         $this->reset('manualName', 'manualEmail');
         unset($this->members);
 
-        Flux::toast(variant: 'success', text: __('Staff member added.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_created'));
     }
 
     public function createInviteLink(CreateInvitationAction $createInvitation): void
     {
         $this->createInvitation($createInvitation);
 
-        Flux::toast(variant: 'success', text: __('Invite link created.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
     public function createInviteCode(CreateInvitationAction $createInvitation): void
     {
         $this->createInvitation($createInvitation);
 
-        Flux::toast(variant: 'success', text: __('Invite code created.'));
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
     public function activateMember(int $membershipId): void
@@ -102,29 +106,58 @@ class Index extends Component
         $this->authorizeStaffManagement();
 
         $membership = $this->findMembership($membershipId);
-        $membership->update([
+        $membership->forceFill([
             'status' => OrganizationUserStatus::Active,
             'joined_at' => $membership->joined_at ?? now(),
-        ]);
+        ])->save();
 
         unset($this->members);
+
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_reactivated'));
     }
 
-    public function deactivateMember(int $membershipId): void
+    public function deactivateMember(int $membershipId, RecordAuditLogAction $recordAuditLog): void
     {
         $this->authorizeStaffManagement();
+
+        $validated = $this->validate(RestaurantValidationRules::auditReason('staffDeactivationReason'), [
+            'staffDeactivationReason.required' => __('staff.errors.deactivation_reason_required'),
+            'staffDeactivationReason.min' => __('staff.errors.deactivation_reason_min'),
+        ]);
 
         $membership = $this->findMembership($membershipId);
 
         if ($membership->user_id === $this->currentUser()->id) {
-            Flux::toast(variant: 'warning', text: __('You cannot deactivate yourself.'));
+            Flux::toast(variant: 'warning', text: __('staff.errors.self_deactivation_blocked'));
 
             return;
         }
 
-        $membership->update(['status' => OrganizationUserStatus::Suspended]);
+        $previousStatus = $membership->status;
+        $membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
 
+        $recordAuditLog->handle(
+            action: AuditLogAction::StaffDeactivated,
+            entityType: 'organization_user',
+            entityId: $membership->id,
+            actorUser: $this->currentUser(),
+            organizationId: $this->organization->id,
+            oldValues: [
+                'staff_user_id' => $membership->user_id,
+                'status' => $previousStatus,
+            ],
+            newValues: [
+                'staff_user_id' => $membership->user_id,
+                'status' => OrganizationUserStatus::Suspended,
+                'reason' => (string) $validated['staffDeactivationReason'],
+            ],
+        );
+
+        $this->staffDeactivationReason = '';
         unset($this->members);
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
     }
 
     /**
@@ -176,7 +209,32 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.staff.index');
+        return view('livewire.organizations.staff.index')
+            ->title(__('staff.organization_access'));
+    }
+
+    public function roleLabel(?Role $role): string
+    {
+        if (! $role instanceof Role) {
+            return '';
+        }
+
+        $roleCode = $role->code instanceof SystemRole
+            ? $role->code->value
+            : (string) $role->code;
+        $systemRole = SystemRole::tryFrom($roleCode);
+
+        return $systemRole?->localizedLabel() ?? (string) $role->name;
+    }
+
+    public function memberStatusLabel(OrganizationUserStatus $status): string
+    {
+        return __('staff.statuses.'.$status->value);
+    }
+
+    public function invitationStatusLabel(InvitationStatus $status): string
+    {
+        return __('staff.invitation_statuses.'.$status->value);
     }
 
     /**
@@ -184,11 +242,7 @@ class Index extends Component
      */
     private function manualStaffRules(): array
     {
-        return [
-            'manualName' => ['required', 'string', 'max:120'],
-            'manualEmail' => ['required', 'email', 'max:255'],
-            'manualRoleId' => ['required', 'integer', $this->assignableRoleRule()],
-        ];
+        return RestaurantValidationRules::manualStaff($this->assignableRoleRule());
     }
 
     /**
@@ -196,11 +250,7 @@ class Index extends Component
      */
     private function invitationRules(): array
     {
-        return [
-            'inviteEmail' => ['nullable', 'email', 'max:255'],
-            'invitePhone' => ['nullable', 'string', 'max:40'],
-            'inviteRoleId' => ['required', 'integer', $this->assignableRoleRule()],
-        ];
+        return RestaurantValidationRules::staffInvitation($this->assignableRoleRule());
     }
 
     private function assignableRoleRule(): mixed

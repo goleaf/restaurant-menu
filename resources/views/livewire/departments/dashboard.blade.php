@@ -78,7 +78,7 @@
 
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ $ticket['service_point_name'] }}</h2>
+                                    <x-ui.plain-text :text="$ticket['service_point_name']" class="block text-2xl font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                     <flux:badge :color="$ticket['work_status']['color']">{{ __($ticket['work_status']['label']) }}</flux:badge>
                                 </div>
 
@@ -91,6 +91,12 @@
                                 <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                                     {{ __('Created') }}: {{ $ticket['sent_at'] ?? __('time not set') }}
                                 </p>
+
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <flux:button icon="printer" size="sm" :href="route('restaurant.departments.tickets.print', $ticket['id'])" wire:navigate>
+                                        {{ __('Print') }}
+                                    </flux:button>
+                                </div>
                             </div>
                         </div>
 
@@ -112,12 +118,15 @@
 
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <h3 class="text-xl font-semibold text-zinc-950 dark:text-white">{{ $item['item_name'] }}</h3>
+                                            <x-ui.plain-text :text="$item['item_name']" class="block text-xl font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                             <flux:badge :color="$item['status_color']">{{ __($item['status_label']) }}</flux:badge>
                                         </div>
 
                                         @if ($item['guest_name'])
-                                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ __('Guest') }}: {{ $item['guest_name'] }}</p>
+                                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                                {{ __('Guest') }}:
+                                                <x-ui.plain-text :text="$item['guest_name']" class="inline" :preserve-lines="false" />
+                                            </p>
                                         @endif
                                     </div>
                                 </div>
@@ -134,7 +143,7 @@
 
                                 @if ($item['comment'])
                                     <p class="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-base font-medium text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                                        {{ $item['comment'] }}
+                                        <x-ui.plain-text :text="$item['comment']" class="inline" />
                                     </p>
                                 @endif
                             </div>

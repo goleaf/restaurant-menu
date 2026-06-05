@@ -58,9 +58,9 @@ class BulkCreateServicePointsAction
                 ];
             }
 
-            $servicePoints = $branch->servicePoints()->createMany(
-                $creatableRows
-                    ->map(fn (array $row): array => [
+            $servicePoints = $creatableRows
+                ->map(function (array $row) use ($branch, $data): ServicePoint {
+                    $servicePoint = $branch->servicePoints()->make([
                         'area_node_id' => $data['area_node_id'],
                         'type' => ServicePointType::from($data['type']),
                         'name' => $row['name'],
@@ -68,12 +68,13 @@ class BulkCreateServicePointsAction
                         'internal_code' => $row['code'],
                         'capacity' => $data['capacity'],
                         'icon' => $data['icon'],
-                        'status' => ServicePointStatus::Free,
                         'is_active' => $data['is_active'],
                         'metadata' => [],
-                    ])
-                    ->all(),
-            );
+                    ]);
+                    $servicePoint->forceFill(['status' => ServicePointStatus::Free])->save();
+
+                    return $servicePoint;
+                });
             $createdCount = $servicePoints->count();
 
             return [

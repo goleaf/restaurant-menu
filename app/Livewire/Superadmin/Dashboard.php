@@ -3,6 +3,7 @@
 namespace App\Livewire\Superadmin;
 
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
+use App\Actions\System\BuildProductionSafetyReportAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Models\Branch;
@@ -12,6 +13,7 @@ use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Flux\Flux;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -27,6 +29,10 @@ class Dashboard extends Component
 
     public string $cleanupMessage = '';
 
+    public string $organizationSuspendReason = '';
+
+    public string $backupDownloadConfirmation = '';
+
     /**
      * @return array{organizations: int, brands: int, branches: int, service_points: int, orders: int, users: int}
      */
@@ -41,6 +47,20 @@ class Dashboard extends Component
             'orders' => Order::query()->count(),
             'users' => User::query()->count(),
         ];
+    }
+
+    /**
+     * @return array{
+     *     environment: string,
+     *     environment_label: string,
+     *     is_production: bool,
+     *     warnings: list<array{code: string, message: string, severity: string}>
+     * }
+     */
+    #[Computed]
+    public function productionSafetyReport(): array
+    {
+        return app(BuildProductionSafetyReportAction::class)->handle();
     }
 
     /**
@@ -81,7 +101,11 @@ class Dashboard extends Component
         $this->authorizeSuperadmin();
 
         $organization = $this->findOrganization($organizationId);
-        $setOrganizationSubscriptionStatus->handle($organization, OrganizationSubscriptionStatus::Active);
+        $setOrganizationSubscriptionStatus->handle(
+            organization: $organization,
+            status: OrganizationSubscriptionStatus::Active,
+            changedBy: $this->currentUser(),
+        );
 
         unset($this->organizations);
 
@@ -94,11 +118,25 @@ class Dashboard extends Component
     ): void {
         $this->authorizeSuperadmin();
 
-        $organization = $this->findOrganization($organizationId);
-        $setOrganizationSubscriptionStatus->handle($organization, OrganizationSubscriptionStatus::Inactive);
+        $validated = $this->validate([
+            'organizationSuspendReason' => ['required', 'string', 'min:3', 'max:500'],
+        ], [
+            'organizationSuspendReason.required' => __('Explain why this organization is being suspended.'),
+            'organizationSuspendReason.min' => __('The suspension reason must be clear enough for the audit log.'),
+        ]);
 
+        $organization = $this->findOrganization($organizationId);
+        $setOrganizationSubscriptionStatus->handle(
+            organization: $organization,
+            status: OrganizationSubscriptionStatus::Inactive,
+            changedBy: $this->currentUser(),
+            reason: (string) $validated['organizationSuspendReason'],
+        );
+
+        $this->organizationSuspendReason = '';
         unset($this->organizations);
 
+        Flux::modals()->close();
         Flux::toast(variant: 'success', text: __('Organization suspended.'));
     }
 
@@ -110,6 +148,23 @@ class Dashboard extends Component
         $this->cleanupMessage = $this->cleanupSummary($result);
 
         Flux::toast(variant: 'success', text: __('Session cleanup finished.'));
+    }
+
+    public function downloadBackup(): RedirectResponse
+    {
+        $this->authorizeSuperadmin();
+
+        $this->validate([
+            'backupDownloadConfirmation' => ['required', 'string', 'in:BACKUP'],
+        ], [
+            'backupDownloadConfirmation.required' => __('ui.confirmations.download_backup.confirmation_required'),
+            'backupDownloadConfirmation.in' => __('ui.confirmations.download_backup.confirmation_match'),
+        ]);
+
+        $this->backupDownloadConfirmation = '';
+        Flux::modals()->close();
+
+        return redirect()->route('superadmin.backups.sqlite.download');
     }
 
     /**
@@ -169,11 +224,18 @@ class Dashboard extends Component
 
     private function authorizeSuperadmin(): void
     {
+        $this->currentUser();
+    }
+
+    private function currentUser(): User
+    {
         $user = Auth::user();
 
         if (! $user instanceof User || ! $user->isSuperadmin()) {
             abort(403);
         }
+
+        return $user;
     }
 
     /**

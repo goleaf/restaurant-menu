@@ -150,7 +150,7 @@
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-rose-900 dark:text-rose-100">{{ __('Ресторан временно закрыт') }}</p>
                                 <p class="mt-1 text-sm text-rose-800 dark:text-rose-200">
-                                    {{ $branch['temporary_closed_reason'] ?: __('Причина не указана.') }}
+                                    <x-ui.plain-text :text="$branch['temporary_closed_reason'] ?: __('Причина не указана.')" class="inline" />
                                     @if ($branch['temporary_closed_until_label'])
                                         · {{ __('Закрыто до') }} {{ $branch['temporary_closed_until_label'] }}
                                     @endif
@@ -198,7 +198,8 @@
                                         {{ $draft['items_count'] }} {{ __('items') }} · {{ $draft['total'] }}
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                                        {{ __('Sent by') }}: {{ $draft['sent_by_guest_name'] ?? __('Guest') }}
+                                        {{ __('Sent by') }}:
+                                        <x-ui.plain-text :text="$draft['sent_by_guest_name'] ?? __('Guest')" class="inline" :preserve-lines="false" />
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                         {{ __('Status') }}: {{ __($draft['status_label']) }}
@@ -212,7 +213,7 @@
                                     </flux:button>
                                 </article>
                             @empty
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No new guest drafts.') }}</p>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('waiter.dashboard.no_new_guest_drafts') }}</p>
                             @endforelse
                         </div>
                     </section>
@@ -226,7 +227,7 @@
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0">
                                             <p class="font-semibold text-zinc-950 dark:text-white">
-                                                {{ $waiterCall['service_point_name'] ?? __('Service point') }}
+                                                <x-ui.plain-text :text="$waiterCall['service_point_name'] ?? __('Service point')" class="inline" :preserve-lines="false" />
                                             </p>
                                             <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                                 {{ $waiterCall['area_name'] ?? __('No zone') }}
@@ -237,7 +238,8 @@
                                     </div>
 
                                     <p class="mt-2 text-zinc-500 dark:text-zinc-400">
-                                        {{ __('Guest') }}: {{ $waiterCall['guest_name'] ?? __('Guest') }}
+                                        {{ __('Guest') }}:
+                                        <x-ui.plain-text :text="$waiterCall['guest_name'] ?? __('Guest')" class="inline" :preserve-lines="false" />
                                     </p>
 
                                     <div class="mt-3 grid grid-cols-2 gap-2">
@@ -251,7 +253,7 @@
                                     </div>
                                 </article>
                             @empty
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No guest calls.') }}</p>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('waiter.dashboard.no_guest_calls') }}</p>
                             @endforelse
                         </div>
                     </section>
@@ -263,7 +265,7 @@
                             @forelse ($branch['bill_requests'] as $billRequest)
                                 <article wire:key="waiter-priority-bill-{{ $billRequest['id'] }}" class="rounded-md border border-sky-200 bg-white p-3 text-sm dark:border-sky-900/70 dark:bg-zinc-900">
                                     <p class="font-semibold text-zinc-950 dark:text-white">
-                                        {{ $billRequest['service_point_name'] ?? __('Service point') }}
+                                        <x-ui.plain-text :text="$billRequest['service_point_name'] ?? __('Service point')" class="inline" :preserve-lines="false" />
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                         {{ $billRequest['area_name'] ?? __('No zone') }}
@@ -277,7 +279,7 @@
                                     </flux:button>
                                 </article>
                             @empty
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No bill requests.') }}</p>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('waiter.dashboard.no_bill_requests') }}</p>
                             @endforelse
                         </div>
                     </section>
@@ -289,10 +291,11 @@
                             @forelse ($branch['ready_items'] as $readyItem)
                                 <article wire:key="waiter-ready-item-{{ $readyItem['id'] }}" class="rounded-md border border-emerald-200 bg-white p-3 text-sm dark:border-emerald-900/70 dark:bg-zinc-900">
                                     <p class="font-semibold text-zinc-950 dark:text-white">
-                                        {{ $readyItem['quantity'] }} x {{ $readyItem['item_name'] }}
+                                        {{ $readyItem['quantity'] }} x
+                                        <x-ui.plain-text :text="$readyItem['item_name']" class="inline" :preserve-lines="false" />
                                     </p>
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
-                                        {{ $readyItem['service_point_name'] ?? __('Service point') }}
+                                        <x-ui.plain-text :text="$readyItem['service_point_name'] ?? __('Service point')" class="inline" :preserve-lines="false" />
                                         @if ($readyItem['area_name'])
                                             · {{ $readyItem['area_name'] }}
                                         @endif
@@ -300,7 +303,7 @@
                                     <p class="mt-1 text-zinc-500 dark:text-zinc-400">
                                         {{ $readyItem['department_name'] ?? __('Department') }}
                                         @if ($readyItem['guest_name'])
-                                            · {{ $readyItem['guest_name'] }}
+                                            · <x-ui.plain-text :text="$readyItem['guest_name']" class="inline" :preserve-lines="false" />
                                         @endif
                                     </p>
 
@@ -309,7 +312,7 @@
                                     </flux:button>
                                 </article>
                             @empty
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No ready items.') }}</p>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('waiter.dashboard.no_ready_items') }}</p>
                             @endforelse
                         </div>
                     </section>
@@ -381,7 +384,7 @@
                                             @endif
 
                                             @if ($servicePoint['inactive_session_warning_count'] > 0)
-                                                <flux:badge color="amber">{{ __('No activity') }}</flux:badge>
+                                                <flux:badge color="amber">{{ __('ui.empty.no_activity') }}</flux:badge>
                                             @endif
 
                                             @if (! $servicePoint['is_active'])
@@ -442,7 +445,7 @@
                                                 </div>
                                             @empty
                                                 <div class="rounded-md bg-zinc-50 p-3 text-sm text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950/40 dark:text-zinc-400 dark:ring-zinc-800">
-                                                    {{ __('No open session') }}
+                                                    {{ __('waiter.dashboard.no_active_tables') }}
                                                 </div>
                                             @endforelse
                                         </div>
@@ -468,14 +471,14 @@
                         </section>
                     @empty
                         <div class="rounded-lg border border-dashed border-zinc-300 p-8 text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                            {{ __('No service points yet.') }}
+                            {{ __('ui.empty.no_service_points') }}
                         </div>
                     @endforelse
                 </div>
             </section>
         @empty
             <section class="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                {{ __('No branches are available for waiter order viewing.') }}
+                {{ __('waiter.dashboard.no_available_branches') }}
             </section>
         @endforelse
     </div>

@@ -20,6 +20,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -448,8 +449,8 @@ class Index extends Component
         Flux::toast(
             variant: 'success',
             text: $qrCode->wasRecentlyCreated
-                ? __('QR created.')
-                : __('Active QR already exists.'),
+                ? __('qr.messages.created')
+                : __('qr.messages.active_exists'),
         );
     }
 
@@ -699,9 +700,9 @@ class Index extends Component
     public function qrFilterOptions(): array
     {
         return [
-            'all' => __('All QR statuses'),
-            'with' => __('Has QR'),
-            'without' => __('No QR'),
+            'all' => __('qr.filters.all_statuses'),
+            'with' => __('qr.filters.has_qr'),
+            'without' => __('qr.labels.no_qr'),
         ];
     }
 
@@ -777,12 +778,7 @@ class Index extends Component
 
         return [
             $areaNodeField => $areaNodeRules,
-            $fieldPrefix === '' ? 'type' : $fieldPrefix.'Type' => ['required', 'string', Rule::in(ServicePointType::values())],
-            $fieldPrefix === '' ? 'icon' : $fieldPrefix.'Icon' => ['required', 'string', Rule::in(array_keys($this->iconOptionRows()))],
-            $fieldPrefix === '' ? 'name' : $fieldPrefix.'Name' => ['required', 'string', 'max:160'],
-            $fieldPrefix === '' ? 'displayNumber' : $fieldPrefix.'DisplayNumber' => ['nullable', 'string', 'max:80'],
-            $fieldPrefix === '' ? 'capacity' : $fieldPrefix.'Capacity' => ['required', 'integer', 'min:1', 'max:999'],
-            $fieldPrefix === '' ? 'isActive' : $fieldPrefix.'IsActive' => ['boolean'],
+            ...RestaurantValidationRules::servicePoint($fieldPrefix, array_keys($this->iconOptionRows())),
         ];
     }
 
@@ -800,11 +796,7 @@ class Index extends Component
 
         return [
             'bulkAreaNodeId' => $areaNodeRules,
-            'bulkType' => ['required', 'string', Rule::in(ServicePointType::values())],
-            'bulkPrefix' => ['required', 'string', 'max:20', 'regex:/\A[A-Za-z0-9_-]+\z/'],
-            'bulkFrom' => ['required', 'integer', 'min:1', 'max:9999'],
-            'bulkTo' => ['required', 'integer', 'min:1', 'max:9999', 'gte:bulkFrom'],
-            'bulkCapacity' => ['required', 'integer', 'min:1', 'max:999'],
+            ...RestaurantValidationRules::bulkServicePoint(),
         ];
     }
 

@@ -76,6 +76,30 @@ test('audit log index returns a paginated history page', function () {
         ->and($payload['logs']->hasMorePages())->toBeTrue();
 });
 
+test('application query code avoids raw sql and untrusted dynamic ordering', function () {
+    $violations = [];
+    $forbiddenPatterns = [
+        'raw SQL helper' => '/\bDB::(?:select|statement|raw|unprepared)\s*\(/',
+        'raw query builder clause' => '/->(?:selectRaw|whereRaw|orWhereRaw|havingRaw|orderByRaw|groupByRaw)\s*\(/',
+        'untrusted order column' => '/->(?:orderBy|latest|oldest)\s*\(\s*(?:request\(|\$request|\$this->(?:sort|order|direction|filters|query)|\$sort|\$order|\$column)/',
+        'unbounded model all' => '/[A-Z][A-Za-z0-9_\\\\]+::all\s*\(/',
+    ];
+
+    foreach (prompt336ProjectPhpFiles([app_path(), base_path('routes'), resource_path('views')]) as $file) {
+        $contents = file_get_contents($file);
+
+        expect($contents)->not->toBeFalse();
+
+        foreach ($forbiddenPatterns as $label => $pattern) {
+            if (preg_match($pattern, (string) $contents) === 1) {
+                $violations[] = $label.': '.str_replace(base_path().DIRECTORY_SEPARATOR, '', $file);
+            }
+        }
+    }
+
+    expect($violations)->toBeEmpty();
+});
+
 /**
  * @return list<string>
  */
@@ -97,4 +121,33 @@ function prompt83SuperadminUser(): User
     $user->roles()->syncWithoutDetachingOrFail([$role->id]);
 
     return $user;
+}
+
+/**
+ * @param  list<string>  $roots
+ * @return list<string>
+ */
+function prompt336ProjectPhpFiles(array $roots): array
+{
+    $files = [];
+
+    foreach ($roots as $root) {
+        if (! is_dir($root)) {
+            continue;
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            if ($file instanceof SplFileInfo && $file->isFile() && str_ends_with($file->getFilename(), '.php')) {
+                $files[] = $file->getPathname();
+            }
+        }
+    }
+
+    sort($files);
+
+    return $files;
 }

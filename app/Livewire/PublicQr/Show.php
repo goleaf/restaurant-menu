@@ -24,19 +24,20 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Models\TableSessionServicePoint;
+use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
 #[Layout('layouts.guest')]
-#[Title('Guest QR')]
 class Show extends Component
 {
+    #[Locked]
     public string $token = '';
 
     public string $state = 'not_found';
@@ -66,17 +67,21 @@ class Show extends Component
 
     public string $entryIssueCode = '';
 
+    #[Locked]
     public ?int $currentTableSessionId = null;
 
+    #[Locked]
     public ?int $currentGuestId = null;
 
+    #[Locked]
     public ?int $currentJoinRequestId = null;
 
     public bool $guestCanAddItems = false;
 
     public bool $guestCanViewTable = false;
 
-    public ?string $currentInviteToken = null;
+    #[Locked]
+    public bool $hasCurrentInviteToken = false;
 
     #[Url(as: 'lang')]
     public string $language = '';
@@ -101,6 +106,7 @@ class Show extends Component
     /**
      * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_address: string, branch_currency: string, default_language: string, default_language_label: string, default_currency: string, polling_interval_seconds: int, venue_name: string, public_description: string, logo_url: string|null, cover_image_url: string|null, phone: string|null, email: string|null, website_url: string|null, instagram_url: string|null, facebook_url: string|null, tiktok_url: string|null, has_contact_details: bool, opening_status_label: string, opening_status_detail: string, opening_status_tone: string, can_accept_orders: bool, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
      */
+    #[Locked]
     public array $landing = [
         'organization_name' => '',
         'brand_name' => '',
@@ -140,7 +146,7 @@ class Show extends Component
     public function mount(string $token): void
     {
         $this->token = $token;
-        $this->currentInviteToken = $this->inviteTokenFromRequest();
+        $this->setCurrentInviteToken($this->inviteTokenFromRequest());
         $this->languageOptions = SupportedLocale::labels();
         $requestedLanguage = request()->query('lang');
         $hasRequestedLanguage = is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage);
@@ -154,8 +160,8 @@ class Show extends Component
         if (! $qrCode instanceof QrCode) {
             $this->showError(
                 state: 'not_found',
-                title: __('QR code not found'),
-                message: __('Please ask the staff for a fresh QR code.'),
+                title: __('qr.errors.not_found.title'),
+                message: __('qr.errors.not_found.description'),
             );
 
             return;
@@ -164,8 +170,8 @@ class Show extends Component
         if ($qrCode->status === QrCodeStatus::Disabled) {
             $this->showError(
                 state: 'disabled',
-                title: __('QR code is temporarily disabled'),
-                message: __('Please ask the staff to help you with this place.'),
+                title: __('qr.errors.disabled.title'),
+                message: __('qr.errors.disabled.description'),
             );
 
             return;
@@ -174,8 +180,8 @@ class Show extends Component
         if ($qrCode->status === QrCodeStatus::Revoked) {
             $this->showError(
                 state: 'revoked',
-                title: __('QR code is no longer active'),
-                message: __('This QR code has been replaced. Please ask the staff for the current code.'),
+                title: __('qr.errors.revoked.title'),
+                message: __('qr.errors.revoked.description'),
             );
 
             return;
@@ -186,8 +192,8 @@ class Show extends Component
         if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             $this->showError(
                 state: 'inactive_service_point',
-                title: __('This place is temporarily unavailable'),
-                message: __('Please ask the staff before ordering from this place.'),
+                title: __('qr.errors.service_point_unavailable.title'),
+                message: __('qr.errors.service_point_unavailable.description'),
             );
 
             return;
@@ -234,7 +240,7 @@ class Show extends Component
 
         $this->state = 'ready';
         $this->title = $venueName;
-        $this->message = $this->currentInviteToken === null
+        $this->message = ! $this->hasCurrentInviteToken
             ? __('guest.table.enter_name')
             : __('guest.table.invite_request_name');
         $this->landing = [
@@ -330,9 +336,7 @@ class Show extends Component
             return;
         }
 
-        $validated = $this->validate([
-            'guestName' => ['required', 'string', 'min:2', 'max:80'],
-        ], [
+        $validated = $this->validate(RestaurantValidationRules::guestName('guestName'), [
             'guestName.required' => __('guest.table.enter_name_validation'),
             'guestName.min' => __('guest.table.guest_name_min'),
             'guestName.max' => __('guest.table.guest_name_max'),
@@ -346,8 +350,8 @@ class Show extends Component
         if (! $qrCode instanceof QrCode || $qrCode->status !== QrCodeStatus::Active) {
             $this->showError(
                 state: 'not_found',
-                title: __('QR code not found'),
-                message: __('Please ask the staff for a fresh QR code.'),
+                title: __('qr.errors.not_found.title'),
+                message: __('qr.errors.not_found.description'),
             );
 
             return;
@@ -358,14 +362,14 @@ class Show extends Component
         if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             $this->showError(
                 state: 'inactive_service_point',
-                title: __('This place is temporarily unavailable'),
-                message: __('Please ask the staff before ordering from this place.'),
+                title: __('qr.errors.service_point_unavailable.title'),
+                message: __('qr.errors.service_point_unavailable.description'),
             );
 
             return;
         }
 
-        if ($this->currentInviteToken !== null) {
+        if ($this->currentInviteToken() !== null) {
             $this->enterTableFromInvite(
                 servicePoint: $servicePoint,
                 qrCode: $qrCode,
@@ -558,7 +562,7 @@ class Show extends Component
         return view('livewire.public-qr.show', [
             'entryIssueCard' => $this->entryIssueCard(),
             'pageErrorCard' => $this->pageErrorCard(),
-        ]);
+        ])->title($this->state === 'ready' ? $this->title : __('qr.labels.guest_page_title'));
     }
 
     private function findQrCode(string $token): ?QrCode
@@ -724,11 +728,13 @@ class Show extends Component
         QrCode $qrCode,
         CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
     ): void {
-        if ($this->currentInviteToken === null || $this->preparedGuestName === null) {
+        $inviteToken = $this->currentInviteToken();
+
+        if ($inviteToken === null || $this->preparedGuestName === null) {
             return;
         }
 
-        $tableSession = $this->findTableSessionByInviteToken($servicePoint, $this->currentInviteToken);
+        $tableSession = $this->findTableSessionByInviteToken($servicePoint, $inviteToken);
 
         if (! $tableSession instanceof TableSession) {
             $this->entryState = 'guest_invite_invalid';
@@ -1127,6 +1133,39 @@ class Show extends Component
         }
 
         return $inviteToken;
+    }
+
+    private function setCurrentInviteToken(?string $inviteToken): void
+    {
+        if ($inviteToken === null) {
+            session()->forget($this->inviteTokenSessionKey());
+            $this->hasCurrentInviteToken = false;
+
+            return;
+        }
+
+        session()->put($this->inviteTokenSessionKey(), $inviteToken);
+        $this->hasCurrentInviteToken = true;
+    }
+
+    private function currentInviteToken(): ?string
+    {
+        if (! $this->hasCurrentInviteToken) {
+            return null;
+        }
+
+        $inviteToken = session($this->inviteTokenSessionKey());
+
+        if (! is_string($inviteToken) || strlen($inviteToken) !== 64 || ! ctype_alnum($inviteToken)) {
+            return null;
+        }
+
+        return $inviteToken;
+    }
+
+    private function inviteTokenSessionKey(): string
+    {
+        return 'guest_invites.'.substr(hash('sha256', $this->token), 0, 24).'.invite_token';
     }
 
     private function fillGuestInviteShareState(TableSession $tableSession): void
@@ -1541,11 +1580,11 @@ class Show extends Component
     private function kickerForPageErrorState(string $state): string
     {
         return match ($state) {
-            'not_found' => __('QR access'),
+            'not_found' => __('qr.labels.access'),
             'disabled',
-            'revoked' => __('QR access paused'),
+            'revoked' => __('qr.labels.access_paused'),
             'inactive_service_point' => __('guest.table.place_unavailable'),
-            'restaurant_unavailable' => __('Restaurant unavailable'),
+            'restaurant_unavailable' => __('guest.table.restaurant_unavailable'),
             default => __('guest.table.guest_access'),
         };
     }
@@ -1554,11 +1593,11 @@ class Show extends Component
     {
         return match ($state) {
             'not_found',
-            'revoked' => __('Show this screen to the staff so they can give you the correct QR.'),
+            'revoked' => __('qr.support.current_code'),
             'disabled',
             'inactive_service_point',
-            'restaurant_unavailable' => __('Show this screen to the staff. They can reopen access when the place is ready.'),
-            default => __('Show this screen to the staff if you need help.'),
+            'restaurant_unavailable' => __('qr.support.reopen_access'),
+            default => __('qr.support.help'),
         };
     }
 
@@ -1589,7 +1628,7 @@ class Show extends Component
             'guest_left' => __('guest.table.guest_left_title'),
             'invite_expired',
             'join_request_unavailable' => __('guest.table.invite_expired_title'),
-            'service_point_unavailable' => __('This place is temporarily unavailable'),
+            'service_point_unavailable' => __('qr.errors.service_point_unavailable.title'),
             'guest_created_sessions_disabled' => __('guest.table.ask_waiter_open_table_title'),
             'invite_unavailable' => __('guest.table.no_active_guest_approvers_title'),
             default => __('guest.table.guest_access_unavailable_title'),
@@ -1606,7 +1645,7 @@ class Show extends Component
             'guest_left' => __('guest.table.guest_entry_blocked_description'),
             'invite_expired',
             'join_request_unavailable' => __('guest.table.invite_expired_description'),
-            'service_point_unavailable' => __('Ordering from this place is paused until staff reopens it.'),
+            'service_point_unavailable' => __('qr.errors.service_point_unavailable.description'),
             'guest_created_sessions_disabled',
             'invite_unavailable' => __('guest.table.staff_help_description'),
             default => __('guest.table.staff_help'),
@@ -1620,8 +1659,10 @@ class Show extends Component
             'lang' => $this->language,
         ];
 
-        if (! $withoutInvite && $this->currentInviteToken !== null) {
-            $parameters['invite'] = $this->currentInviteToken;
+        $inviteToken = $this->currentInviteToken();
+
+        if (! $withoutInvite && $inviteToken !== null) {
+            $parameters['invite'] = $inviteToken;
         }
 
         return route('public.qr.show', $parameters);
@@ -1641,7 +1682,7 @@ class Show extends Component
             return;
         }
 
-        $this->message = $this->currentInviteToken === null
+        $this->message = ! $this->hasCurrentInviteToken
             ? __('guest.table.enter_name')
             : __('guest.table.invite_request_name');
     }

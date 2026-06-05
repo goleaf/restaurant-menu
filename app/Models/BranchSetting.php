@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'branch_id',
     'require_waiter_confirmation_for_orders',
     'allow_guest_created_sessions',
     'allow_waiter_opened_sessions',

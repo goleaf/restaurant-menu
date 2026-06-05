@@ -10,6 +10,7 @@ use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
@@ -149,9 +150,10 @@ class Index extends Component
 
         $brand = $this->findOrganizationBrand($brandId);
 
-        $this->validate([
-            'brandLogos.'.$brand->id => StoreLocalImageAction::validationRules(),
-        ]);
+        $this->validate(
+            RestaurantValidationRules::imageUpload('brandLogos.'.$brand->id),
+            StoreLocalImageAction::validationMessages('brandLogos.'.$brand->id),
+        );
 
         $file = $this->brandLogos[$brand->id] ?? null;
 
@@ -169,7 +171,7 @@ class Index extends Component
 
         unset($this->brandLogos[$brand->id], $this->brands);
 
-        Flux::toast(variant: 'success', text: __('Logo uploaded.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
     public function removeLogo(int $brandId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -183,7 +185,7 @@ class Index extends Component
 
         unset($this->brandLogos[$brand->id], $this->brands);
 
-        Flux::toast(variant: 'success', text: __('Logo removed.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
     /**
@@ -224,9 +226,10 @@ class Index extends Component
             $uniqueRule->ignore($ignoreBrandId);
         }
 
-        return [
-            $field => ['required', 'string', 'max:120', $uniqueRule],
-        ];
+        $rules = RestaurantValidationRules::brandName($field);
+        $rules[$field][] = $uniqueRule;
+
+        return $rules;
     }
 
     private function currentUser(): User

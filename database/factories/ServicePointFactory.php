@@ -4,9 +4,11 @@ namespace Database\Factories;
 
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
+use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\TableSession;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -62,6 +64,21 @@ class ServicePointFactory extends Factory
         ]);
     }
 
+    public function forBranch(Branch $branch): static
+    {
+        return $this->state(fn (): array => [
+            'branch_id' => $branch->id,
+        ]);
+    }
+
+    public function inAreaNode(AreaNode $areaNode): static
+    {
+        return $this->state(fn (): array => [
+            'branch_id' => $areaNode->branch_id,
+            'area_node_id' => $areaNode->id,
+        ]);
+    }
+
     public function withQr(): static
     {
         return $this->afterCreating(function (ServicePoint $servicePoint): void {
@@ -76,6 +93,20 @@ class ServicePointFactory extends Factory
     {
         return $this->afterCreating(function (ServicePoint $servicePoint): void {
             $servicePoint->qrCodes()->delete();
+        });
+    }
+
+    public function withActiveTableSession(): static
+    {
+        return $this->afterCreating(function (ServicePoint $servicePoint): void {
+            TableSession::factory()
+                ->forServicePoint($servicePoint)
+                ->active()
+                ->create();
+
+            $servicePoint->forceFill([
+                'status' => ServicePointStatus::Occupied,
+            ])->save();
         });
     }
 }

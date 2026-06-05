@@ -81,10 +81,10 @@
                 <div class="p-4">
                     <x-ui.empty-state
                         icon="squares-2x2"
-                        :heading="__('Зон пока нет')"
-                        :description="__('Начните с зала, террасы или VIP-зоны. Потом столы можно будет привязать к этим зонам.')"
+                        :heading="__('ui.empty.no_areas')"
+                        :description="__('areas.empty.no_areas_description')"
                     />
-                    <span class="sr-only">{{ __('No areas yet.') }}</span>
+                    <span class="sr-only">{{ __('ui.empty.no_areas') }}</span>
                 </div>
             @endforelse
         </div>

@@ -44,22 +44,28 @@
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="grid gap-2 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('Logo') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.logo') }}</span>
                         @if ($currentLogoUrl)
                             <img src="{{ $currentLogoUrl }}" alt="{{ $branch->publicDisplayName() }}" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                        @else
+                            <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.logo') }}</div>
                         @endif
-                        <input wire:model="publicLogo" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
+                        <input wire:model="publicLogo" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.logo') }}" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
+                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</span>
                         @error('publicLogo')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
                     </label>
 
                     <label class="grid gap-2 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('Cover image') }}</span>
+                        <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.image') }}</span>
                         @if ($currentCoverImageUrl)
                             <img src="{{ $currentCoverImageUrl }}" alt="{{ $branch->publicDisplayName() }}" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
+                        @else
+                            <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.image') }}</div>
                         @endif
-                        <input wire:model="coverImage" type="file" accept="image/png,image/jpeg,image/webp" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
+                        <input wire:model="coverImage" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.image') }}" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
+                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</span>
                         @error('coverImage')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
@@ -260,7 +266,7 @@
                 />
 
                 <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
-                    {{ __('Service charge and tips are manual offline billing values. No tax logic or online payment provider is connected.') }}
+                    {{ __('Service charge and tips are manual offline billing values. No tax logic or provider integration is connected.') }}
                 </p>
             </div>
 

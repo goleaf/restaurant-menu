@@ -33,8 +33,36 @@ class MoneyFormatter
 
     public static function decimalToCents(string|int|float|null $amount): int
     {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
+        if ($amount === null || $amount === '') {
+            return 0;
+        }
 
-        return (int) round(((float) $normalized) * 100);
+        $normalized = trim((string) $amount);
+
+        if (! preg_match('/^[+-]?\d+(?:[.,]\d+)?$/', $normalized)) {
+            $normalized = number_format((float) $amount, 2, '.', '');
+        }
+
+        $normalized = str_replace(',', '.', $normalized);
+        $negative = str_starts_with($normalized, '-');
+        $normalized = ltrim($normalized, '+-');
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        $fraction = str_pad($fraction, 3, '0');
+        $cents = ((int) $whole * 100) + (int) substr($fraction, 0, 2);
+
+        if ((int) $fraction[2] >= 5) {
+            $cents++;
+        }
+
+        return $negative ? -$cents : $cents;
+    }
+
+    public static function centsToDecimal(int $cents): string
+    {
+        $negative = $cents < 0;
+        $absoluteCents = abs($cents);
+        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
+
+        return $negative ? '-'.$formatted : $formatted;
     }
 }

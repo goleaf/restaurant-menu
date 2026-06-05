@@ -52,7 +52,7 @@
 
     @if (! $branchCanAcceptOrders)
         <x-ui.alert tone="warning" class="mt-4" :heading="__('guest.table.closed_title')">
-            {{ $branchOpeningStatusMessage ?: __('guest.table.closed_description') }}
+            <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
         </x-ui.alert>
     @endif
 
@@ -72,7 +72,7 @@
 
                         <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-                            <p class="truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestTotal['guest_name'] }}</p>
+                            <x-ui.plain-text :text="$guestTotal['guest_name']" class="block text-sm font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
 
                             @if ($guestTotal['is_current_guest'])
                                 <x-ui.status-badge tone="success">

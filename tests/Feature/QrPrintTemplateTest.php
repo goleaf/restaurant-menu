@@ -40,7 +40,7 @@ test('qr print page requires generate qr permission', function () {
     $this->actingAs($manager)
         ->get($url)
         ->assertOk()
-        ->assertSeeText('Сканируйте, чтобы открыть меню');
+        ->assertSeeText(__('qr.print.sticker_title'));
 });
 
 test('qr print template defaults to sticker without table number or area', function () {
@@ -53,12 +53,12 @@ test('qr print template defaults to sticker without table number or area', funct
         ->assertSee('data-page="qr-print-template"', false)
         ->assertSee('data-preset="minimal"', false)
         ->assertSeeText($brand->name)
-        ->assertSeeText('Сканируйте, чтобы открыть меню')
+        ->assertSeeText(__('qr.print.sticker_title'))
         ->assertSee('data:image/svg+xml;base64', false)
         ->assertSeeText($qrCode->short_code)
-        ->assertDontSeeText('Стол: 15')
+        ->assertDontSeeText(__('qr.labels.table').': 15')
         ->assertDontSeeText('Main Hall')
-        ->assertDontSeeText('Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.');
+        ->assertDontSeeText(__('qr.print.table_number_warning'));
 });
 
 test('qr print template offers design presets without printing mutable table text by default', function () {
@@ -81,7 +81,7 @@ test('qr print template offers design presets without printing mutable table tex
         ->assertSeeText('Bar')
         ->assertSeeText('Hotel')
         ->assertSeeText('Premium')
-        ->assertDontSee('Стол: 15');
+        ->assertDontSee(__('qr.labels.table').': 15');
 
     foreach (QrLabelPreset::cases() as $preset) {
         $component
@@ -90,7 +90,7 @@ test('qr print template offers design presets without printing mutable table tex
             ->assertSee('qr-sticker-preset-'.$preset->value, false)
             ->assertSee('data-preset="'.$preset->value.'"', false)
             ->assertSee($qrCode->short_code)
-            ->assertDontSee('Стол: 15');
+            ->assertDontSee(__('qr.labels.table').': 15');
     }
 });
 
@@ -101,8 +101,8 @@ test('qr print template can include table number with warning but still hides ar
     $this->actingAs($manager)
         ->get(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode).'?print_table_number=1')
         ->assertOk()
-        ->assertSeeText('Стол: 15')
-        ->assertSeeText('Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.')
+        ->assertSeeText(__('qr.labels.table').': 15')
+        ->assertSeeText(__('qr.print.table_number_warning'))
         ->assertDontSeeText('Main Hall');
 
     Livewire::actingAs($manager)
@@ -115,8 +115,8 @@ test('qr print template can include table number with warning but still hides ar
         ])
         ->assertSet('printTableNumber', false)
         ->set('printTableNumber', true)
-        ->assertSee('Стол: 15')
-        ->assertSee('Если вы потом переименуете или перенесёте стол, текст на наклейке может устареть.')
+        ->assertSee(__('qr.labels.table').': 15')
+        ->assertSee(__('qr.print.table_number_warning'))
         ->assertDontSee('Main Hall');
 });
 
@@ -132,7 +132,7 @@ test('qr admin page links to print template', function () {
             'servicePoint' => $servicePoint,
             'qrCode' => $qrCode,
         ])
-        ->assertSee('Print sticker')
+        ->assertSee(__('qr.actions.print'))
         ->assertSee(prompt26QrPrintUrl($organization, $brand, $branch, $servicePoint, $qrCode), false);
 });
 

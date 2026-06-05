@@ -13,11 +13,9 @@ class UpdateServicePointStatusAction
             ? $status
             : ServicePointStatus::from($status);
 
-        $servicePoint->fill([
+        $servicePoint->forceFill([
             'status' => $servicePointStatus,
-        ]);
-
-        $servicePoint->save();
+        ])->save();
 
         return $servicePoint;
     }

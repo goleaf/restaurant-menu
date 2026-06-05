@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['organization_id', 'name', 'logo_path'])]
+#[Fillable(['name', 'logo_path'])]
 class Brand extends Model
 {
     /** @use HasFactory<BrandFactory> */

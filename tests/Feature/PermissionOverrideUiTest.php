@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\DangerousAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -30,7 +31,51 @@ test('staff permission page requires manage staff permission', function () {
     $this->actingAs($manager)
         ->get(route('organizations.staff.permissions', [$organization, $staff]))
         ->assertOk()
-        ->assertSee('Permission overrides');
+        ->assertSee(__('staff.actions.update_permissions'));
+});
+
+test('staff permission page groups permissions with human labels and descriptions', function () {
+    [$manager, $organization] = createPrompt16Organization();
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Director);
+
+    Livewire::actingAs($manager)
+        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
+        ->assertSet('showTechnicalPermissionKeys', false)
+        ->assertSee(__('permissions.groups.restaurant'))
+        ->assertSee(__('permissions.groups.branches'))
+        ->assertSee(__('permissions.groups.zones'))
+        ->assertSee(__('permissions.groups.service_points'))
+        ->assertSee(__('permissions.groups.qr'))
+        ->assertSee(__('permissions.groups.menu'))
+        ->assertSee(__('permissions.groups.orders'))
+        ->assertSee(__('permissions.groups.departments'))
+        ->assertSee(__('permissions.groups.payments'))
+        ->assertSee(__('permissions.groups.reports'))
+        ->assertSee(__('permissions.groups.staff'))
+        ->assertSee(__('permissions.groups.history'))
+        ->assertSee(__('permissions.labels.manage_menu'))
+        ->assertSee(__('permissions.labels.change_prices'))
+        ->assertSee(__('permissions.labels.confirm_orders'))
+        ->assertSee(__('permissions.labels.send_to_departments'))
+        ->assertSee(__('permissions.labels.manage_payments'))
+        ->assertSee(__('permissions.labels.view_order_history'))
+        ->assertSee(__('permissions.descriptions.manage_service_points'))
+        ->assertSee(__('permissions.descriptions.manage_menu'))
+        ->assertDontSee(SystemPermission::ManageServicePoints->value)
+        ->assertDontSee(SystemPermission::ManageMenu->value);
+});
+
+test('superadmin can see technical permission keys in permission UI', function () {
+    [, $organization] = createPrompt16Organization();
+    $superadmin = createPrompt16StaffMember($organization, SystemRole::Superadmin);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
+
+    Livewire::actingAs($superadmin)
+        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
+        ->assertSet('showTechnicalPermissionKeys', true)
+        ->assertSee(SystemPermission::ManageServicePoints->value)
+        ->assertSee(SystemPermission::ManageMenu->value);
 });
 
 test('staff permission overrides can allow deny and return to default', function () {
@@ -45,7 +90,7 @@ test('staff permission overrides can allow deny and return to default', function
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
         ->call('setPermissionState', $viewOrders->id, 'allow')
-        ->assertSee('Allowed by override');
+        ->assertSee(__('permissions.states.allowed_by_override'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ViewOrders, $organization))->toBeTrue();
     expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $viewOrders->id)->firstOrFail()->pivot->enabled)->toBeTrue();
@@ -57,7 +102,7 @@ test('staff permission overrides can allow deny and return to default', function
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
         ->call('setPermissionState', $confirmOrders->id, 'deny')
-        ->assertSee('Denied by override');
+        ->assertSee(__('permissions.states.denied_by_override'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeFalse();
     expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $confirmOrders->id)->firstOrFail()->pivot->enabled)->toBeFalse();
@@ -65,7 +110,7 @@ test('staff permission overrides can allow deny and return to default', function
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
         ->call('setPermissionState', $confirmOrders->id, 'default')
-        ->assertSee('Role default');
+        ->assertSee(__('permissions.states.role_default'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
     expect($staff->fresh()->permissionOverrides()->where('permissions.id', $confirmOrders->id)->exists())->toBeFalse();
@@ -79,8 +124,22 @@ test('critical permission changes show a warning', function () {
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
+        ->set('criticalPermissionChangeReason', 'Temporary access reduction during audit.')
         ->call('setPermissionState', $manageStaff->id, 'deny')
-        ->assertSee('Critical permission changed');
+        ->assertSee(__('permissions.messages.critical_permission_changed'));
+});
+
+test('critical permission changes require a reason', function () {
+    [$manager, $organization] = createPrompt16Organization();
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Director);
+    $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
+
+    Livewire::actingAs($manager)
+        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
+        ->assertSee(DangerousAction::ChangeCriticalPermission->title())
+        ->call('setPermissionState', $manageStaff->id, 'deny')
+        ->assertHasErrors(['criticalPermissionChangeReason' => 'required']);
 });
 
 test('staff cannot edit their own permission overrides', function () {
@@ -90,9 +149,9 @@ test('staff cannot edit their own permission overrides', function () {
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $manager])
-        ->assertSee('Self-edit is disabled')
+        ->assertSee(__('permissions.messages.self_edit_disabled'))
         ->call('setPermissionState', $manageStaff->id, 'deny')
-        ->assertSee('Self-edit is disabled');
+        ->assertSee(__('permissions.messages.self_edit_disabled'));
 
     expect($manager->fresh()->permissionOverrides()->where('permissions.id', $manageStaff->id)->exists())->toBeFalse();
     expect($manager->fresh()->hasPermission(SystemPermission::ManageStaff, $organization))->toBeTrue();
@@ -114,8 +173,8 @@ test('superadmin staff member keeps full computed access', function () {
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $superadmin])
-        ->assertSee('Superadmin always has full access')
-        ->assertSee('Allowed');
+        ->assertSee(__('permissions.messages.superadmin_full_access'))
+        ->assertSee(__('permissions.states.allowed'));
 
     expect($superadmin->fresh()->hasPermission(SystemPermission::ExportData, $organization))->toBeTrue();
 });
@@ -135,12 +194,12 @@ function createPrompt16StaffMember(Organization $organization, SystemRole $role)
 
     $user->roles()->syncWithoutDetachingOrFail([$roleModel->id]);
 
-    OrganizationUser::query()->create([
-        'organization_id' => $organization->id,
-        'user_id' => $user->id,
-        'role_id' => $roleModel->id,
-        'status' => OrganizationUserStatus::Active,
-        'joined_at' => now(),
+    $organization->users()->syncWithoutDetachingOrFail([
+        $user->id => [
+            'role_id' => $roleModel->id,
+            'status' => OrganizationUserStatus::Active,
+            'joined_at' => now(),
+        ],
     ]);
 
     return $user;

@@ -171,7 +171,7 @@ test('first vertical slice works from registration to closed table session', fun
     Livewire::withQueryParams(['invite' => $inviteToken])
         ->withCookie($cookieName, str_repeat('x', 64))
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentInviteToken', $inviteToken)
+        ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Boris')
         ->call('enterTable')
         ->assertHasNoErrors()

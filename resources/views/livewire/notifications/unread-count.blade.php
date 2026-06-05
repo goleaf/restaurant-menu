@@ -8,7 +8,7 @@
                 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100' => $unreadCount > 0,
                 'border-zinc-200 bg-white text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300' => $unreadCount === 0,
             ])
-            title="{{ $unreadCount > 0 ? __('Mark notifications as read') : __('No unread notifications') }}"
+            title="{{ $unreadCount > 0 ? __('Mark notifications as read') : __('ui.empty.no_notifications') }}"
             aria-label="{{ __('Unread notifications') }}"
         >
             <flux:icon.bell class="size-4" />
@@ -38,7 +38,7 @@
 
             @if ($unreadCount === 0)
                 <p class="mt-3 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                    {{ __('No unread notifications') }}
+                    {{ __('ui.empty.no_notifications') }}
                 </p>
             @else
                 <div class="mt-3 space-y-2">
@@ -56,12 +56,12 @@
                         >
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <p class="text-xs font-semibold text-zinc-950 dark:text-white">{{ $notification['title'] }}</p>
-                                    <p class="mt-1 text-xs leading-5 text-zinc-700 dark:text-zinc-200">{{ $notification['body'] }}</p>
+                                    <x-ui.plain-text :text="$notification['title']" class="block text-xs font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
+                                    <x-ui.plain-text :text="$notification['body']" class="mt-1 block text-xs leading-5 text-zinc-700 dark:text-zinc-200" />
 
                                     @if ($notification['meta'] || $notification['created_label'])
                                         <p class="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                            {{ $notification['meta'] }}
+                                            <x-ui.plain-text :text="$notification['meta']" class="inline" :preserve-lines="false" />
 
                                             @if ($notification['meta'] && $notification['created_label'])
                                                 ·
@@ -85,7 +85,7 @@
                         </article>
                     @empty
                         <p class="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                            {{ __('No unread notifications') }}
+                            {{ __('ui.empty.no_notifications') }}
                         </p>
                     @endforelse
                 </div>

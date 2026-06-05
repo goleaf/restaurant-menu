@@ -738,7 +738,6 @@ function createGuestMenuDisplayContext(string $defaultLanguage = 'en'): array
             'city' => 'Vilnius',
             'country' => 'Lithuania',
             'currency' => 'EUR',
-            'language' => 'en',
         ]);
     BranchSetting::factory()->for($branch)->create(['default_language' => $defaultLanguage]);
     $servicePoint = ServicePoint::factory()

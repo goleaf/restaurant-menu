@@ -1,4 +1,10 @@
 <section data-page="branch-staff" class="flex h-full w-full flex-1 flex-col gap-6">
+    @php
+        $deactivateStaffTitle = \App\Enums\DangerousAction::DeactivateStaff->title();
+        $deactivateStaffConsequence = \App\Enums\DangerousAction::DeactivateStaff->consequence();
+        $deactivateStaffRequiresReason = \App\Enums\DangerousAction::DeactivateStaff->requiresReason();
+    @endphp
+
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
             {{ __('Branches') }}
@@ -6,23 +12,23 @@
 
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
-            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('Branch staff') }}</h1>
+            <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('staff.branch_access') }}</h1>
         </div>
     </header>
 
     <div class="grid gap-4 xl:grid-cols-2">
         <form wire:submit="addManualStaffMember" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-4">
-                <flux:heading size="lg">{{ __('Add branch staff manually') }}</flux:heading>
+                <flux:heading size="lg">{{ __('staff.create_manual') }}</flux:heading>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <flux:input wire:model="manualName" :label="__('Name')" type="text" required maxlength="120" />
                     <flux:input wire:model="manualEmail" :label="__('Email')" type="email" required maxlength="255" />
 
-                    <flux:select wire:model="manualRoleId" :label="__('Role')" required>
+                    <flux:select wire:model="manualRoleId" :label="__('staff.role')" required>
                         @foreach ($this->roles as $role)
                             <flux:select.option wire:key="branch-manual-role-{{ $role->id }}" value="{{ $role->id }}">
-                                {{ $role->name }}
+                                {{ $this->roleLabel($role) }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
@@ -30,7 +36,7 @@
 
                 <div class="flex justify-end">
                     <flux:button icon="user-plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="addManualStaffMember">
-                        {{ __('Add staff') }}
+                        {{ __('staff.add') }}
                     </flux:button>
                 </div>
             </div>
@@ -38,16 +44,16 @@
 
         <form wire:submit="createInviteLink" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-4">
-                <flux:heading size="lg">{{ __('Create branch invitation') }}</flux:heading>
+                <flux:heading size="lg">{{ __('staff.invite') }}</flux:heading>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <flux:input wire:model="inviteEmail" :label="__('Email')" type="email" maxlength="255" />
                     <flux:input wire:model="invitePhone" :label="__('Phone')" type="text" maxlength="40" />
 
-                    <flux:select wire:model="inviteRoleId" :label="__('Role')" required>
+                    <flux:select wire:model="inviteRoleId" :label="__('staff.role')" required>
                         @foreach ($this->roles as $role)
                             <flux:select.option wire:key="branch-invite-role-{{ $role->id }}" value="{{ $role->id }}">
-                                {{ $role->name }}
+                                {{ $this->roleLabel($role) }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
@@ -55,23 +61,23 @@
 
                 <div class="flex flex-wrap justify-end gap-2">
                     <flux:button icon="link" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createInviteLink">
-                        {{ __('Create invite link') }}
+                        {{ __('staff.invite_link') }}
                     </flux:button>
 
                     <flux:button icon="key" type="button" wire:click="createInviteCode" wire:loading.attr="disabled" wire:target="createInviteCode">
-                        {{ __('Create invite code') }}
+                        {{ __('staff.invite_code') }}
                     </flux:button>
                 </div>
 
                 @if ($lastInviteLink || $lastInviteCode)
                     <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950">
                         @if ($lastInviteLink)
-                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('Invite link') }}</p>
+                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('staff.invite_link') }}</p>
                             <p class="mt-1 break-all text-zinc-600 dark:text-zinc-300">{{ $lastInviteLink }}</p>
                         @endif
 
                         @if ($lastInviteCode)
-                            <p class="mt-3 font-medium text-zinc-950 dark:text-white">{{ __('Invite code') }}</p>
+                            <p class="mt-3 font-medium text-zinc-950 dark:text-white">{{ __('staff.invite_code') }}</p>
                             <p class="mt-1 break-all text-zinc-600 dark:text-zinc-300">{{ $lastInviteCode }}</p>
                         @endif
                     </div>
@@ -82,7 +88,7 @@
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('Branch staff members') }}</flux:heading>
+            <flux:heading size="lg">{{ __('staff.list') }}</flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -93,28 +99,43 @@
                             <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $member->user->name }}</h2>
 
                             @if ($member->status->value === 'active')
-                                <flux:badge color="green">{{ __('Active') }}</flux:badge>
+                                <flux:badge color="green">{{ $this->memberStatusLabel($member->status) }}</flux:badge>
                             @else
-                                <flux:badge color="zinc">{{ __('Inactive') }}</flux:badge>
+                                <flux:badge color="zinc">{{ $this->memberStatusLabel($member->status) }}</flux:badge>
                             @endif
                         </div>
 
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member->user->email }}</p>
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member->role->name }}</p>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $this->roleLabel($member->role) }}</p>
                     </div>
 
                     <div class="flex flex-wrap gap-2 md:justify-end">
                         <flux:button icon="shield-check" type="button" :href="route('organizations.staff.permissions', [$organization, $member->user])" wire:navigate>
-                            {{ __('Permissions') }}
+                            {{ __('staff.actions.update_permissions') }}
                         </flux:button>
 
                         @if ($member->status->value === 'active')
-                            <flux:button icon="pause" type="button" wire:click="deactivateMember({{ $member->id }})">
-                                {{ __('Deactivate') }}
-                            </flux:button>
+                            <x-dangerous-action-confirmation
+                                name="deactivate-branch-staff-{{ $member->id }}"
+                                :title="$deactivateStaffTitle"
+                                :consequence="$deactivateStaffConsequence"
+                                confirm-action="deactivateMember({{ $member->id }})"
+                                submit-target="deactivateMember({{ $member->id }})"
+                                confirm-label="ui.actions.confirm"
+                                reason-model="staffDeactivationReason"
+                                :reason-label="__('staff.forms.deactivation_reason')"
+                                :reason-placeholder="__('staff.forms.deactivation_reason_branch_placeholder')"
+                                :reason-required="$deactivateStaffRequiresReason"
+                            >
+                                <x-slot:trigger>
+                                    <flux:button icon="pause" type="button">
+                                        {{ __('staff.deactivate') }}
+                                    </flux:button>
+                                </x-slot:trigger>
+                            </x-dangerous-action-confirmation>
                         @else
                             <flux:button icon="play" variant="primary" type="button" wire:click="activateMember({{ $member->id }})">
-                                {{ __('Activate') }}
+                                {{ __('staff.reactivate') }}
                             </flux:button>
                         @endif
                     </div>
@@ -127,9 +148,9 @@
                         >
                             <div class="rounded-md bg-zinc-50 p-3 ring-1 ring-zinc-200 dark:bg-zinc-950/40 dark:ring-zinc-800">
                                 <div class="flex flex-col gap-1">
-                                    <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Waiter zones') }}</p>
+                                    <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('staff.waiter_zones') }}</p>
                                     <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ __('Choose the branch zones this waiter should see first on the waiter dashboard.') }}
+                                        {{ __('staff.waiter_zones_hint') }}
                                     </p>
                                 </div>
 
@@ -145,7 +166,7 @@
                                             <span>{{ $areaNode->name }}</span>
                                         </label>
                                     @empty
-                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('No active zones yet.') }}</p>
+                                        <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.empty.no_areas') }}</p>
                                     @endforelse
                                 </div>
 
@@ -160,7 +181,7 @@
                                         wire:loading.attr="disabled"
                                         wire:target="saveAreaAssignments({{ $member->user_id }})"
                                     >
-                                        {{ __('Save zones') }}
+                                        {{ __('staff.save_zones') }}
                                     </flux:button>
                                 </div>
                             </div>
@@ -169,7 +190,7 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No branch staff members yet.') }}
+                    {{ __('staff.empty.no_branch_staff') }}
                 </div>
             @endforelse
         </div>
@@ -177,24 +198,24 @@
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('Branch invitations') }}</flux:heading>
+            <flux:heading size="lg">{{ __('staff.branch_invitations') }}</flux:heading>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($this->invitations as $invitation)
                 <div wire:key="branch-invitation-{{ $invitation->id }}" class="px-4 py-4">
                     <div class="flex flex-wrap items-center gap-2">
-                        <p class="font-medium text-zinc-950 dark:text-white">{{ $invitation->role->name }}</p>
-                        <flux:badge>{{ __(str($invitation->status->value)->headline()->toString()) }}</flux:badge>
+                        <p class="font-medium text-zinc-950 dark:text-white">{{ $this->roleLabel($invitation->role) }}</p>
+                        <flux:badge>{{ $this->invitationStatusLabel($invitation->status) }}</flux:badge>
                     </div>
 
-                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation->email ?: __('No email') }} / {{ $invitation->phone ?: __('No phone') }}</p>
-                    <p class="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('Invite link') }}: {{ $invitation->inviteLink() }}</p>
-                    <p class="mt-1 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('Invite code') }}: {{ $invitation->invite_code }}</p>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation->email ?: __('staff.no_email') }} / {{ $invitation->phone ?: __('staff.no_phone') }}</p>
+                    <p class="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('staff.invite_link') }}: {{ $invitation->inviteLink() }}</p>
+                    <p class="mt-1 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('staff.invite_code') }}: {{ $invitation->invite_code }}</p>
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('No branch invitations yet.') }}
+                    {{ __('staff.empty.no_branch_invitations') }}
                 </div>
             @endforelse
         </div>

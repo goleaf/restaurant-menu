@@ -25,13 +25,15 @@ class ApproveTableSessionJoinRequestAction
 
             $tableSession = $joinRequest->tableSession;
 
-            $guest = $tableSession->guests()->create([
+            $guest = $tableSession->guests()->make([
                 'guest_name' => $joinRequest->guest_name,
-                'guest_token' => $joinRequest->guest_token,
-                'status' => TableSessionGuestStatus::Active,
                 'joined_at' => now(),
                 'metadata' => [],
             ]);
+            $guest->forceFill([
+                'guest_token' => $joinRequest->guest_token,
+                'status' => TableSessionGuestStatus::Active,
+            ])->save();
 
             $joinRequest
                 ->forceFill([

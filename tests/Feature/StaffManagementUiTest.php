@@ -48,7 +48,7 @@ test('organization staff page requires manage staff permission', function () {
     $this->actingAs($manager)
         ->get(route('organizations.staff.index', $organization))
         ->assertOk()
-        ->assertSee('Organization staff');
+        ->assertSee(__('staff.organization_access'));
 });
 
 test('branch staff page requires manage staff permission', function () {
@@ -64,7 +64,7 @@ test('branch staff page requires manage staff permission', function () {
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.staff.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee('Branch staff');
+        ->assertSee(__('staff.branch_access'));
 });
 
 test('organization staff page can manually add and toggle a staff member', function () {
@@ -93,6 +93,7 @@ test('organization staff page can manually add and toggle a staff member', funct
 
     Livewire::actingAs($manager)
         ->test(OrganizationStaffIndex::class, ['organization' => $organization])
+        ->set('staffDeactivationReason', 'No longer works this venue.')
         ->call('deactivateMember', $membership->id);
 
     expect($membership->fresh()->status)->toBe(OrganizationUserStatus::Suspended);
@@ -115,9 +116,9 @@ test('organization staff page can create invite link and invite code', function 
         ->set('invitePhone', '+37060000001')
         ->set('inviteRoleId', $role->id)
         ->call('createInviteLink')
-        ->assertSee('Invite link')
+        ->assertSee(__('staff.invite_link'))
         ->call('createInviteCode')
-        ->assertSee('Invite code');
+        ->assertSee(__('staff.invite_code'));
 
     $invitation = Invitation::query()
         ->where('organization_id', $organization->id)
@@ -172,6 +173,7 @@ test('branch staff page can manually add and toggle a branch staff member', func
 
     Livewire::actingAs($manager)
         ->test(BranchStaffIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->set('staffDeactivationReason', 'Moved to another branch.')
         ->call('deactivateMember', $branchUser->id);
 
     expect($branchUser->fresh()->status)->toBe(OrganizationUserStatus::Suspended);
@@ -195,9 +197,9 @@ test('branch staff page can create branch scoped invite link and code', function
         ->set('invitePhone', '+37060000002')
         ->set('inviteRoleId', $role->id)
         ->call('createInviteLink')
-        ->assertSee('Invite link')
+        ->assertSee(__('staff.invite_link'))
         ->call('createInviteCode')
-        ->assertSee('Invite code');
+        ->assertSee(__('staff.invite_code'));
 
     $invitation = Invitation::query()
         ->where('organization_id', $organization->id)

@@ -57,7 +57,6 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function organizations(): BelongsToMany
     {
         return $this->belongsToMany(Organization::class, 'organization_users')
-            ->using(OrganizationUser::class)
             ->withPivot(['role_id', 'status', 'joined_at', 'invited_by_user_id'])
             ->withTimestamps();
     }
@@ -155,7 +154,6 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function permissionOverrides(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'permission_user_overrides')
-            ->using(PermissionUserOverride::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }

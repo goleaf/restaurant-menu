@@ -1,7 +1,6 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
-use App\Actions\Subscriptions\EnsureOrganizationSubscriptionAction;
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
 use App\Enums\OrganizationSubscriptionPaymentStatus;
 use App\Enums\OrganizationSubscriptionStatus;
@@ -54,6 +53,7 @@ test('superadmin can deactivate and activate organization subscription', functio
         ->test(SuperadminDashboard::class)
         ->assertSee('Manual Billing Group')
         ->assertSee('Active')
+        ->set('organizationSuspendReason', 'Manual billing pause for subscription test.')
         ->call('suspendOrganization', $organization->id)
         ->assertSee('Inactive');
 
@@ -73,7 +73,7 @@ test('ordinary user cannot access inactive organization from restaurant workspac
     $owner = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Paused Restaurant Group']);
 
-    (new SetOrganizationSubscriptionStatusAction(new EnsureOrganizationSubscriptionAction))
+    app(SetOrganizationSubscriptionStatusAction::class)
         ->handle($organization, OrganizationSubscriptionStatus::Inactive);
 
     Livewire::actingAs($owner)

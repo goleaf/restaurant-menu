@@ -33,7 +33,8 @@ class CreateOrderStatusLogAction
         $context = $this->resolveContext($order, $draftOrder);
         $actor = $this->resolveActor($actorUser, $actorGuest);
 
-        return OrderStatusLog::query()->create([
+        $log = new OrderStatusLog;
+        $log->forceFill([
             'branch_id' => $context['branch_id'],
             'service_point_id' => $context['service_point_id'],
             'table_session_id' => $context['table_session_id'],
@@ -50,7 +51,9 @@ class CreateOrderStatusLogAction
             'reason' => $reason,
             'metadata' => $metadata,
             'occurred_at' => $occurredAt ?? now(),
-        ]);
+        ])->save();
+
+        return $log;
     }
 
     /**

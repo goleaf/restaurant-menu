@@ -26,7 +26,7 @@
 
         <div class="min-w-0">
             @if ($heading)
-                <p class="font-semibold">{{ $heading }}</p>
+                <p class="font-semibold">{{ __($heading) }}</p>
             @endif
 
             <div @class(['font-medium' => ! $heading])>

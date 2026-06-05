@@ -14,24 +14,24 @@ enum QrLabelPreset: string
     public function label(): string
     {
         return match ($this) {
-            self::Minimal => 'Minimal',
-            self::Classic => 'Classic',
-            self::Restaurant => 'Restaurant',
-            self::Bar => 'Bar',
-            self::Hotel => 'Hotel',
-            self::Premium => 'Premium',
+            self::Minimal => 'qr.print.presets.minimal.label',
+            self::Classic => 'qr.print.presets.classic.label',
+            self::Restaurant => 'qr.print.presets.restaurant.label',
+            self::Bar => 'qr.print.presets.bar.label',
+            self::Hotel => 'qr.print.presets.hotel.label',
+            self::Premium => 'qr.print.presets.premium.label',
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::Minimal => 'Clean black and white label for any venue.',
-            self::Classic => 'Traditional framed label for table stickers.',
-            self::Restaurant => 'Warm restaurant accent for dining rooms.',
-            self::Bar => 'Compact bar-style label for counters and seats.',
-            self::Hotel => 'Calm hotel-style label for rooms and service areas.',
-            self::Premium => 'High-contrast premium label with a refined accent.',
+            self::Minimal => 'qr.print.presets.minimal.description',
+            self::Classic => 'qr.print.presets.classic.description',
+            self::Restaurant => 'qr.print.presets.restaurant.description',
+            self::Bar => 'qr.print.presets.bar.description',
+            self::Hotel => 'qr.print.presets.hotel.description',
+            self::Premium => 'qr.print.presets.premium.description',
         };
     }
 

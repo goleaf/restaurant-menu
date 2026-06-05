@@ -17,6 +17,7 @@ use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
@@ -71,6 +72,8 @@ class Index extends Component
     public string $editingCurrency = '';
 
     public bool $editingIsActive = true;
+
+    public string $branchSuspendReason = '';
 
     public ?int $deletingBranchId = null;
 
@@ -153,6 +156,7 @@ class Index extends Component
         $this->editingTimezone = $branch->timezone;
         $this->editingCurrency = $branch->currency;
         $this->editingIsActive = $branch->is_active;
+        $this->branchSuspendReason = '';
         $this->deletingBranchId = null;
     }
 
@@ -166,6 +170,7 @@ class Index extends Component
             'editingCountry',
             'editingTimezone',
             'editingCurrency',
+            'branchSuspendReason',
         );
 
         $this->editingIsActive = true;
@@ -181,11 +186,24 @@ class Index extends Component
 
         $this->editingCurrency = SupportedCurrency::clean($this->editingCurrency);
 
+        $branch = $this->findBrandBranch($this->editingBranchId);
         $validated = $this->validate($this->branchRules('editing', $this->editingBranchId));
+        $reason = null;
+
+        if ($branch->is_active && ! (bool) $validated['editingIsActive']) {
+            $reasonValidation = $this->validate(RestaurantValidationRules::auditReason('branchSuspendReason'), [
+                'branchSuspendReason.required' => __('Explain why this branch is being suspended.'),
+                'branchSuspendReason.min' => __('The suspension reason must be clear enough for the audit log.'),
+            ]);
+
+            $reason = (string) $reasonValidation['branchSuspendReason'];
+        }
 
         $updateBranch->handle(
-            $this->findBrandBranch($this->editingBranchId),
+            $branch,
             $this->branchPayload($validated, 'editing'),
+            $this->currentUser(),
+            $reason,
         );
 
         $this->cancelEditing();
@@ -231,9 +249,10 @@ class Index extends Component
 
         $branch = $this->findBrandBranch($branchId);
 
-        $this->validate([
-            'branchLogos.'.$branch->id => StoreLocalImageAction::validationRules(),
-        ]);
+        $this->validate(
+            RestaurantValidationRules::imageUpload('branchLogos.'.$branch->id),
+            StoreLocalImageAction::validationMessages('branchLogos.'.$branch->id),
+        );
 
         $file = $this->branchLogos[$branch->id] ?? null;
 
@@ -251,7 +270,7 @@ class Index extends Component
 
         unset($this->branchLogos[$branch->id], $this->branches);
 
-        Flux::toast(variant: 'success', text: __('Logo uploaded.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
     public function removeLogo(int $branchId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
@@ -265,7 +284,7 @@ class Index extends Component
 
         unset($this->branchLogos[$branch->id], $this->branches);
 
-        Flux::toast(variant: 'success', text: __('Logo removed.'));
+        Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
     /**
@@ -379,15 +398,10 @@ class Index extends Component
             $uniqueRule->ignore($ignoreBranchId);
         }
 
-        return [
-            $nameField => ['required', 'string', 'max:160', $uniqueRule],
-            $fieldPrefix === '' ? 'address' : $fieldPrefix.'Address' => ['required', 'string', 'max:255'],
-            $fieldPrefix === '' ? 'city' : $fieldPrefix.'City' => ['required', 'string', 'max:120'],
-            $fieldPrefix === '' ? 'country' : $fieldPrefix.'Country' => ['required', 'string', 'max:120'],
-            $fieldPrefix === '' ? 'timezone' : $fieldPrefix.'Timezone' => ['required', 'timezone', 'max:64'],
-            $fieldPrefix === '' ? 'currency' : $fieldPrefix.'Currency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
-            $fieldPrefix === '' ? 'isActive' : $fieldPrefix.'IsActive' => ['boolean'],
-        ];
+        $rules = RestaurantValidationRules::branchBase($fieldPrefix);
+        $rules[$nameField][] = $uniqueRule;
+
+        return $rules;
     }
 
     /**
@@ -479,43 +493,43 @@ class Index extends Component
             ],
             [
                 'number' => 4,
-                'label' => __('Сгенерировать QR'),
+                'label' => __('qr.setup.generate.title'),
                 'description' => $qrCount > 0
-                    ? trans_choice('{1} :count QR уже готов|[2,*] :count QR уже готовы', $qrCount, ['count' => $qrCount])
-                    : __('Создайте постоянный QR для каждого стола.'),
+                    ? trans_choice('qr.setup.generate.ready_count', $qrCount, ['count' => $qrCount])
+                    : __('qr.setup.generate.description'),
                 'icon' => 'qr-code',
                 'href' => $this->canGenerateQr && $servicePointCount > 0
                     ? route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $branch])
                     : null,
-                'button_label' => __('QR'),
+                'button_label' => __('qr.labels.qr'),
                 'is_done' => $qrCount > 0,
                 'is_available' => $this->canGenerateQr && $servicePointCount > 0,
             ],
             [
                 'number' => 5,
-                'label' => __('Напечатать QR'),
+                'label' => __('qr.setup.print.title'),
                 'description' => $qrCount > 0
-                    ? __('Откройте страницу печати наклеек.')
-                    : __('Печать появится после создания QR.'),
+                    ? __('qr.setup.print.description')
+                    : __('qr.setup.print.unavailable_description'),
                 'icon' => 'printer',
                 'href' => $this->canGenerateQr && $qrCount > 0
                     ? route('organizations.brands.branches.qr.print', [$this->organization, $this->brand, $branch])
                     : null,
-                'button_label' => __('Печать'),
+                'button_label' => __('qr.actions.print'),
                 'is_done' => $qrCount > 0,
                 'is_available' => $this->canGenerateQr && $qrCount > 0,
             ],
             [
                 'number' => 6,
-                'label' => __('Открыть гостевое меню'),
+                'label' => __('qr.setup.guest_menu.title'),
                 'description' => $firstActiveQrCode instanceof QrCode
-                    ? __('Проверьте экран, который увидит гость.')
-                    : __('Гостевой экран откроется после QR.'),
+                    ? __('qr.setup.guest_menu.description')
+                    : __('qr.setup.guest_menu.unavailable_description'),
                 'icon' => 'book-open',
                 'href' => $firstActiveQrCode instanceof QrCode
                     ? route('public.qr.show', ['token' => $firstActiveQrCode->public_token])
                     : null,
-                'button_label' => __('Открыть'),
+                'button_label' => __('qr.actions.open_guest_url'),
                 'is_done' => $firstActiveQrCode instanceof QrCode,
                 'is_available' => $firstActiveQrCode instanceof QrCode,
             ],

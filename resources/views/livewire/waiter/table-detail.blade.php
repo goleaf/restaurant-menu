@@ -3,6 +3,16 @@
     wire:poll.visible.1s="refreshTable"
     class="flex h-full w-full flex-1 flex-col gap-6"
 >
+    @php
+        $closeTableDangerousTitle = \App\Enums\DangerousAction::CloseTableWithUnpaidAmount->title();
+        $closeTableDangerousConsequence = \App\Enums\DangerousAction::CloseTableWithUnpaidAmount->consequence();
+        $paymentDangerousTitle = \App\Enums\DangerousAction::PaymentCorrection->title();
+        $paymentDangerousConsequence = \App\Enums\DangerousAction::PaymentCorrection->consequence();
+        $cancelOrderDangerousTitle = \App\Enums\DangerousAction::CancelOrder->title();
+        $cancelOrderDangerousConsequence = \App\Enums\DangerousAction::CancelOrder->consequence();
+        $cancelOrderRequiresReason = \App\Enums\DangerousAction::CancelOrder->requiresReason();
+    @endphp
+
     <header class="flex flex-col gap-3">
         <div>
             <flux:button icon="arrow-left" :href="route('restaurant.waiter.dashboard')" wire:navigate>
@@ -65,7 +75,7 @@
                         <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                             <div>
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ $guestSection['guest_name'] }}</h3>
+                                    <x-ui.plain-text :text="$guestSection['guest_name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
                                     <flux:badge :color="$guestSection['is_ready'] ? 'green' : 'zinc'">
                                         {{ $guestSection['is_ready'] ? __('Ready') : __('Not ready') }}
                                     </flux:badge>
@@ -82,7 +92,8 @@
                                     <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                                         <div class="min-w-0">
                                             <p class="font-medium text-zinc-950 dark:text-white">
-                                                {{ $item['quantity'] }} x {{ $item['item_name'] }}
+                                                {{ $item['quantity'] }} x
+                                                <x-ui.plain-text :text="$item['item_name']" class="inline" :preserve-lines="false" />
                                             </p>
                                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                                 {{ __('Unit') }}: {{ $item['unit_total_price'] }}
@@ -108,7 +119,8 @@
 
                                     @if ($item['comment'])
                                         <p class="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
-                                            {{ __('Comment') }}: {{ $item['comment'] }}
+                                            {{ __('Comment') }}:
+                                            <x-ui.plain-text :text="$item['comment']" class="inline" />
                                         </p>
                                     @endif
 
@@ -139,14 +151,14 @@
                                 </article>
                             @empty
                                 <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                                    {{ __('No positions yet.') }}
+                                    {{ __('ui.empty.no_orders') }}
                                 </p>
                             @endforelse
                         </div>
                     </section>
                 @empty
                     <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                        {{ __('No guests yet.') }}
+                        {{ __('ui.empty.no_guests') }}
                     </div>
                 @endforelse
             </div>
@@ -229,7 +241,9 @@
                 @if (data_get($table, 'draft.sent_by_guest_name'))
                     <div>
                         <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Sent by') }}</dt>
-                        <dd class="mt-1 font-medium text-zinc-950 dark:text-white">{{ data_get($table, 'draft.sent_by_guest_name') }}</dd>
+                        <dd class="mt-1 font-medium text-zinc-950 dark:text-white">
+                            <x-ui.plain-text :text="data_get($table, 'draft.sent_by_guest_name')" class="inline" :preserve-lines="false" />
+                        </dd>
                     </div>
                 @endif
 
@@ -359,103 +373,127 @@
 
             @if (data_get($table, 'session.can_close'))
                 <div id="close-table" class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Close table session') }}</h3>
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('payments.close_session') }}</h3>
 
                     @if (data_get($table, 'session.close_requires_warning'))
                         <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-                            {{ __('Manual close blocks guests from ordering and frees this place. Old orders stay saved.') }}
+                            {{ __('payments.close_session_warning') }}
                         </p>
                     @else
                         <p class="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-                            {{ __('Close the paid session and make this place available for the next guests.') }}
+                            {{ __('payments.close_session_warning') }}
                         </p>
                     @endif
 
-                    <flux:button
-                        icon="check"
-                        type="button"
-                        class="mt-3 w-full"
-                        wire:click="closeTableSession"
-                        wire:loading.attr="disabled"
-                        wire:target="closeTableSession"
+                    @php
+                        $closeTableRequiresWarning = (bool) data_get($table, 'session.close_requires_warning');
+                        $closeTableTitle = $closeTableRequiresWarning ? $closeTableDangerousTitle : 'ui.confirmations.danger.title';
+                        $closeTableConsequence = $closeTableRequiresWarning
+                            ? $closeTableDangerousConsequence
+                            : 'ui.confirmations.danger.description';
+                        $closeTableConfirmationModel = $closeTableRequiresWarning ? 'closeTableConfirmation' : null;
+                        $closeTableConfirmationHelp = 'ui.confirmations.close_unpaid_session.confirmation_help';
+                    @endphp
+
+                    <x-dangerous-action-confirmation
+                        name="close-table-session"
+                        :title="$closeTableTitle"
+                        :consequence="$closeTableConsequence"
+                        confirm-action="closeTableSession"
+                        submit-target="closeTableSession"
+                        confirm-label="ui.actions.i_understand"
+                        loading-label="ui.actions.closing"
+                        :confirmation-model="$closeTableConfirmationModel"
+                        confirmation-text="CLOSE"
+                        :confirmation-help="$closeTableConfirmationHelp"
                     >
-                        <span wire:loading.remove wire:target="closeTableSession">{{ __('Close table') }}</span>
-                        <span wire:loading wire:target="closeTableSession">{{ __('Closing') }}</span>
-                    </flux:button>
+                        <x-slot:trigger>
+                            <flux:button icon="check" type="button" class="mt-3 w-full">
+                                {{ __('payments.close_session') }}
+                            </flux:button>
+                        </x-slot:trigger>
+                    </x-dangerous-action-confirmation>
                 </div>
             @endif
 
             @if (data_get($table, 'payment.can_view'))
                 <div class="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Payments') }}</h3>
+                    <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('payments.title') }}</h3>
 
                     @error('manual_payment')
                         <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
                     @enderror
 
-                    <dl class="mt-4 grid gap-3 text-sm">
+                    <p class="mt-4 text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.summary') }}</p>
+
+                    <dl class="mt-2 grid gap-3 text-sm">
                         <div class="flex items-center justify-between gap-3">
-                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Confirmed orders') }}</dt>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.table_total') }}</dt>
                             <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.confirmed_total') }}</dd>
                         </div>
 
                         @if (data_get($table, 'payment.service_charge_enabled'))
                             <div class="flex items-center justify-between gap-3">
                                 <dt class="text-zinc-500 dark:text-zinc-400">
-                                    {{ __('Service charge') }} · {{ data_get($table, 'payment.service_charge_percent') }}%
+                                    {{ __('payments.service_charge') }} · {{ data_get($table, 'payment.service_charge_percent') }}%
                                 </dt>
                                 <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.service_charge_total') }}</dd>
                             </div>
                         @endif
 
                         <div class="flex items-center justify-between gap-3">
-                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Paid') }}</dt>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.total_paid') }}</dt>
                             <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.paid_total') }}</dd>
                         </div>
 
                         @if (data_get($table, 'payment.tips_enabled'))
                             <div class="flex items-center justify-between gap-3">
-                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Tips recorded') }}</dt>
+                                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.tips_recorded') }}</dt>
                                 <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.tips_paid_total') }}</dd>
                             </div>
                         @endif
 
                         <div class="flex items-center justify-between gap-3">
-                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Remaining') }}</dt>
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.remaining') }}</dt>
                             <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($table, 'payment.remaining_total') }}</dd>
                         </div>
                     </dl>
 
                     @if (data_get($table, 'payment.unpaid_guests_count', 0) > 0)
                         <div class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-                            <p class="font-medium">{{ __('Unpaid guests') }}: {{ data_get($table, 'payment.unpaid_guests_count') }}</p>
+                            <p class="font-medium">{{ __('payments.unpaid') }}: {{ data_get($table, 'payment.unpaid_guests_count') }}</p>
                             <div class="mt-2 flex flex-wrap gap-2">
                                 @foreach (data_get($table, 'payment.unpaid_guests', []) as $unpaidGuest)
                                     <flux:badge wire:key="unpaid-guest-{{ $unpaidGuest['guest_id'] }}" color="amber">
-                                        {{ $unpaidGuest['guest_name'] }} · {{ $unpaidGuest['remaining'] }}
+                                        <x-ui.plain-text :text="$unpaidGuest['guest_name']" class="inline" :preserve-lines="false" />
+                                        · {{ $unpaidGuest['remaining'] }}
                                     </flux:badge>
                                 @endforeach
                             </div>
                         </div>
                     @elseif (data_get($table, 'payment.is_fully_paid'))
                         <p class="mt-3 rounded-md bg-lime-50 px-3 py-2 text-sm font-medium text-lime-800 dark:bg-lime-950/40 dark:text-lime-100">
-                            {{ __('All guests are paid.') }}
+                            {{ __('payments.fully_paid') }}
+                        </p>
+                    @elseif ((int) data_get($table, 'payment.paid_total_cents', 0) > 0)
+                        <p class="mt-3 rounded-md bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                            {{ __('payments.partially_paid') }}
                         </p>
                     @endif
 
                     @if (data_get($table, 'payment.has_open_draft'))
                         <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-                            {{ __('Finish the current draft before marking payment.') }}
+                            {{ __('payments.errors.open_draft') }}
                         </p>
                     @elseif (! data_get($table, 'payment.has_payable_total'))
                         <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                            {{ __('No confirmed orders to pay yet.') }}
+                            {{ __('payments.errors.no_confirmed_orders') }}
                         </p>
                     @endif
 
                     @if (data_get($table, 'payment.can_manage'))
                         <div class="mt-4 space-y-3">
-                            <flux:select wire:model="paymentMethod" :label="__('Payment method')">
+                            <flux:select wire:model="paymentMethod" :label="__('payments.forms.method')">
                                 @foreach (data_get($table, 'payment.payment_methods', []) as $paymentMethodOption)
                                     <flux:select.option wire:key="payment-method-{{ $paymentMethodOption['value'] }}" value="{{ $paymentMethodOption['value'] }}">
                                         {{ __($paymentMethodOption['label']) }}
@@ -464,7 +502,7 @@
                             </flux:select>
 
                             <label class="grid gap-1 text-sm">
-                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Note') }}</span>
+                                <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('payments.forms.note') }}</span>
                                 <textarea
                                     wire:model="paymentNote"
                                     rows="2"
@@ -476,7 +514,7 @@
                             @if (data_get($table, 'payment.tips_enabled'))
                                 <flux:input
                                     wire:model="tipsAmount"
-                                    :label="__('Tips amount')"
+                                    :label="__('payments.forms.amount')"
                                     type="number"
                                     min="0"
                                     step="0.01"
@@ -488,73 +526,79 @@
                             @endif
 
                             @if (data_get($table, 'payment.can_record_table_payment'))
-                                <flux:button
-                                    icon="banknotes"
-                                    variant="primary"
-                                    type="button"
-                                    class="w-full"
-                                    wire:click="recordTablePayment"
-                                    wire:loading.attr="disabled"
-                                    wire:target="recordTablePayment"
+                                <x-dangerous-action-confirmation
+                                    name="record-table-payment"
+                                    :title="$paymentDangerousTitle"
+                                    :consequence="$paymentDangerousConsequence"
+                                    confirm-action="recordTablePayment"
+                                    submit-target="recordTablePayment"
+                                    confirm-label="ui.actions.confirm"
+                                    loading-label="ui.actions.saving"
                                 >
-                                    <span wire:loading.remove wire:target="recordTablePayment">{{ __('Mark whole table paid') }} · {{ data_get($table, 'payment.remaining_total') }}</span>
-                                    <span wire:loading wire:target="recordTablePayment">{{ __('Saving') }}</span>
-                                </flux:button>
+                                    <x-slot:trigger>
+                                        <flux:button icon="banknotes" variant="primary" type="button" class="w-full">
+                                            {{ __('payments.pay_whole_table') }} · {{ data_get($table, 'payment.remaining_total') }}
+                                        </flux:button>
+                                    </x-slot:trigger>
+                                </x-dangerous-action-confirmation>
                             @endif
 
                         </div>
                     @endif
 
                     <div class="mt-4 space-y-2">
-                        <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Guests') }}</p>
+                        <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.forms.guest') }}</p>
 
                         @forelse (data_get($table, 'payment.guest_balances', []) as $guestBalance)
                             <article wire:key="payment-guest-{{ $guestBalance['guest_id'] }}" class="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
-                                        <p class="font-medium text-zinc-950 dark:text-white">{{ $guestBalance['guest_name'] }}</p>
+                                        <x-ui.plain-text :text="$guestBalance['guest_name']" class="block font-medium text-zinc-950 dark:text-white" :preserve-lines="false" />
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ __('Due') }}: {{ $guestBalance['due'] }}
-                                            · {{ __('Paid') }}: {{ $guestBalance['paid'] }}
+                                            {{ __('payments.guest_total') }}: {{ $guestBalance['due'] }}
+                                            · {{ __('payments.guest_paid') }}: {{ $guestBalance['paid'] }}
                                         </p>
                                     </div>
 
                                     <flux:badge :color="$guestBalance['is_paid'] ? 'lime' : 'zinc'">
-                                        {{ $guestBalance['is_paid'] ? __('Paid') : $guestBalance['remaining'] }}
+                                        {{ $guestBalance['is_paid'] ? __('payments.paid') : __('payments.guest_remaining').': '.$guestBalance['remaining'] }}
                                     </flux:badge>
                                 </div>
 
                                 @if ($guestBalance['covered_by_table_payment'])
                                     <p class="mt-2 text-xs text-lime-700 dark:text-lime-300">
-                                        {{ __('Covered by whole-table payment.') }}
+                                        {{ __('payments.covered_by_table_payment') }}
                                     </p>
                                 @endif
 
                                 @if ($guestBalance['can_record_payment'])
-                                    <flux:button
-                                        size="sm"
-                                        icon="banknotes"
-                                        type="button"
-                                        class="mt-3 w-full"
-                                        wire:click="recordGuestPayment({{ $guestBalance['guest_id'] }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})"
+                                    <x-dangerous-action-confirmation
+                                        name="record-guest-payment-{{ $guestBalance['guest_id'] }}"
+                                        :title="$paymentDangerousTitle"
+                                        :consequence="$paymentDangerousConsequence"
+                                        confirm-action="recordGuestPayment({{ $guestBalance['guest_id'] }})"
+                                        submit-target="recordGuestPayment({{ $guestBalance['guest_id'] }})"
+                                        confirm-label="ui.actions.confirm"
+                                        loading-label="ui.actions.saving"
                                     >
-                                        <span wire:loading.remove wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})">{{ __('Mark guest paid') }} · {{ $guestBalance['remaining'] }}</span>
-                                        <span wire:loading wire:target="recordGuestPayment({{ $guestBalance['guest_id'] }})">{{ __('Saving') }}</span>
-                                    </flux:button>
+                                        <x-slot:trigger>
+                                            <flux:button size="sm" icon="banknotes" type="button" class="mt-3 w-full">
+                                                {{ __('payments.pay_guest') }} · {{ $guestBalance['remaining'] }}
+                                            </flux:button>
+                                        </x-slot:trigger>
+                                    </x-dangerous-action-confirmation>
                                 @endif
                             </article>
                         @empty
                             <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                                {{ __('No guests with confirmed totals yet.') }}
+                                {{ __('payments.no_guest_totals') }}
                             </p>
                         @endforelse
                     </div>
 
                     @if (data_get($table, 'payment.payments'))
                         <div class="mt-4 space-y-2">
-                            <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('Payment history') }}</p>
+                            <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.payment_history') }}</p>
 
                             @foreach (data_get($table, 'payment.payments', []) as $payment)
                                 <div wire:key="manual-payment-{{ $payment['id'] }}" class="rounded-md bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-800">
@@ -566,14 +610,14 @@
                                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                                 {{ __($payment['scope_label']) }}
                                                 @if ($payment['guest_name'])
-                                                    · {{ $payment['guest_name'] }}
+                                                    · <x-ui.plain-text :text="$payment['guest_name']" class="inline" :preserve-lines="false" />
                                                 @endif
                                             </p>
                                             @if ($payment['service_charge_amount'] !== '0.00 '.data_get($table, 'payment.currency', 'EUR') || $payment['tips_amount'] !== '0.00 '.data_get($table, 'payment.currency', 'EUR'))
                                                 <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                    {{ __('Subtotal') }}: {{ $payment['covered_subtotal'] }}
-                                                    · {{ __('Service charge') }}: {{ $payment['service_charge_amount'] }}
-                                                    · {{ __('Tips') }}: {{ $payment['tips_amount'] }}
+                                                    {{ __('payments.subtotal') }}: {{ $payment['covered_subtotal'] }}
+                                                    · {{ __('payments.service_charge') }}: {{ $payment['service_charge_amount'] }}
+                                                    · {{ __('payments.tips') }}: {{ $payment['tips_amount'] }}
                                                 </p>
                                             @endif
                                         </div>
@@ -584,10 +628,10 @@
                                     @if ($payment['recorded_by_name'] || $payment['note'])
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                             @if ($payment['recorded_by_name'])
-                                                {{ __('By') }}: {{ $payment['recorded_by_name'] }}
+                                                {{ __('payments.recorded_by') }}: {{ $payment['recorded_by_name'] }}
                                             @endif
                                             @if ($payment['note'])
-                                                · {{ $payment['note'] }}
+                                                · <x-ui.plain-text :text="$payment['note']" class="inline" />
                                             @endif
                                         </p>
                                     @endif
@@ -684,7 +728,7 @@
 
                             @if ($addableMenuItems === [])
                                 <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                                    {{ __('No available dishes in the active menu.') }}
+                                    {{ __('menu.empty.no_items') }}
                                 </p>
                             @endif
 
@@ -825,7 +869,7 @@
                 @if (data_get($table, 'draft.rejection_reason'))
                     <div class="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
                         <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('Rejected reason') }}</p>
-                        <p class="mt-1 text-sm leading-5 text-zinc-700 dark:text-zinc-200">{{ data_get($table, 'draft.rejection_reason') }}</p>
+                        <x-ui.plain-text :text="data_get($table, 'draft.rejection_reason')" class="mt-1 block text-sm leading-5 text-zinc-700 dark:text-zinc-200" />
 
                         @if (data_get($table, 'draft.rejected_by_user_name'))
                             <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -864,7 +908,10 @@
                             <p class="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
                                 {{ __('Order cancelled.') }}
                                 @if (data_get($table, 'draft.cancellation_reason'))
-                                    <span class="block pt-1 font-normal">{{ __('Reason') }}: {{ data_get($table, 'draft.cancellation_reason') }}</span>
+                                    <span class="block pt-1 font-normal">
+                                        {{ __('Reason') }}:
+                                        <x-ui.plain-text :text="data_get($table, 'draft.cancellation_reason')" class="inline" />
+                                    </span>
                                 @endif
                             </p>
                         @elseif (in_array(data_get($table, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
@@ -895,12 +942,13 @@
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="font-medium text-zinc-950 dark:text-white">
-                                                    {{ $ticketItem['quantity'] }} x {{ $ticketItem['item_name'] }}
+                                                    {{ $ticketItem['quantity'] }} x
+                                                    <x-ui.plain-text :text="$ticketItem['item_name']" class="inline" :preserve-lines="false" />
                                                 </p>
                                                 <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                                     {{ $ticketItem['department_name'] }}
                                                     @if ($ticketItem['guest_name'])
-                                                        · {{ $ticketItem['guest_name'] }}
+                                                        · <x-ui.plain-text :text="$ticketItem['guest_name']" class="inline" :preserve-lines="false" />
                                                     @endif
                                                 </p>
                                             </div>
@@ -922,7 +970,8 @@
 
                                         @if ($ticketItem['comment'])
                                             <p class="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                                                {{ __('Comment') }}: {{ $ticketItem['comment'] }}
+                                                {{ __('Comment') }}:
+                                                <x-ui.plain-text :text="$ticketItem['comment']" class="inline" />
                                             </p>
                                         @endif
 
@@ -966,7 +1015,7 @@
 
                         @if (data_get($table, 'draft.can_cancel'))
                             <div class="mt-4 space-y-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                                <h4 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Cancel order') }}</h4>
+                                <h4 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('orders.actions.cancel') }}</h4>
 
                                 @if (data_get($table, 'draft.has_ready_or_served_warning'))
                                     <p class="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
@@ -974,29 +1023,25 @@
                                     </p>
                                 @endif
 
-                                <label class="grid gap-1 text-sm">
-                                    <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('Cancellation reason') }}</span>
-                                    <textarea
-                                        wire:model="orderCancellationReason"
-                                        rows="3"
-                                        maxlength="500"
-                                        class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                                        placeholder="{{ __('Explain why this order is cancelled.') }}"
-                                    ></textarea>
-                                </label>
-
-                                <flux:button
-                                    icon="x-mark"
-                                    variant="danger"
-                                    type="button"
-                                    class="w-full"
-                                    wire:click="cancelOrder"
-                                    wire:loading.attr="disabled"
-                                    wire:target="cancelOrder"
+                                <x-dangerous-action-confirmation
+                                    name="cancel-current-order"
+                                    :title="$cancelOrderDangerousTitle"
+                                    :consequence="$cancelOrderDangerousConsequence"
+                                    confirm-action="cancelOrder"
+                                    submit-target="cancelOrder"
+                                    confirm-label="ui.actions.confirm"
+                                    loading-label="ui.actions.working"
+                                    reason-model="orderCancellationReason"
+                                    reason-label="ui.confirmations.reason.label"
+                                    reason-placeholder="ui.confirmations.reason.placeholder"
+                                    :reason-required="$cancelOrderRequiresReason"
                                 >
-                                    <span wire:loading.remove wire:target="cancelOrder">{{ __('Cancel order') }}</span>
-                                    <span wire:loading wire:target="cancelOrder">{{ __('Cancelling') }}</span>
-                                </flux:button>
+                                    <x-slot:trigger>
+                                        <flux:button icon="x-mark" variant="danger" type="button" class="w-full">
+                                            {{ __('orders.actions.cancel') }}
+                                        </flux:button>
+                                    </x-slot:trigger>
+                                </x-dangerous-action-confirmation>
                             </div>
                         @endif
                     </div>
@@ -1074,7 +1119,7 @@
                         </fieldset>
                     @empty
                         <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                            {{ __('No modifiers are available for this position.') }}
+                            {{ __('menu.empty.no_options') }}
                         </p>
                     @endforelse
 

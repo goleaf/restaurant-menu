@@ -1,0 +1,433 @@
+<?php
+
+use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
+use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Orders\ChangeOrderStatusAction;
+use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Payments\RecordManualPaymentAction;
+use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\EnsureWaiterCanEditDraftOrderAction;
+use App\Enums\ApplicationErrorType;
+use App\Enums\BusinessRuleCode;
+use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
+use App\Enums\ManualPaymentMethod;
+use App\Enums\MenuStatus;
+use App\Enums\OrderStatus;
+use App\Enums\OrganizationUserStatus;
+use App\Enums\ServicePointStatus;
+use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
+use App\Enums\TableSessionGuestStatus;
+use App\Enums\TableSessionStatus;
+use App\Models\AreaNode;
+use App\Models\Branch;
+use App\Models\BranchUser;
+use App\Models\Brand;
+use App\Models\DraftOrder;
+use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
+use App\Models\Menu;
+use App\Models\MenuCategory;
+use App\Models\MenuItem;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
+use App\Models\Order;
+use App\Models\OrganizationUser;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
+use App\Models\TableSessionGuest;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Contracts\Debug\ShouldntReport;
+use Illuminate\Validation\ValidationException;
+
+beforeEach(function () {
+    $this->seed(SystemPermissionsSeeder::class);
+});
+
+test('business rule codes cover expected domain denials', function () {
+    $codeClass = 'App\\Enums\\BusinessRuleCode';
+
+    expect(enum_exists($codeClass))->toBeTrue()
+        ->and($codeClass::values())->toBe([
+            'session_closed',
+            'draft_locked',
+            'guest_not_active',
+            'guest_not_approved',
+            'order_already_cancelled',
+            'department_already_ready',
+            'payment_exceeds_remaining',
+            'qr_disabled',
+            'branch_inaccessible',
+            'item_unavailable',
+            'required_modifier_missing',
+        ]);
+});
+
+test('business rule violation is validation safe and not reportable', function () {
+    $codeClass = 'App\\Enums\\BusinessRuleCode';
+    $exceptionClass = 'App\\Exceptions\\BusinessRuleViolation';
+    $resultClass = 'App\\Support\\BusinessRules\\BusinessRuleResult';
+
+    expect(class_exists($exceptionClass))->toBeTrue()
+        ->and(class_exists($resultClass))->toBeTrue();
+
+    $exception = $exceptionClass::for($codeClass::SessionClosed, 'draft_edit');
+
+    expect($exception)->toBeInstanceOf(ValidationException::class)
+        ->and($exception)->toBeInstanceOf(ShouldntReport::class)
+        ->and($exception->businessRule())->toBe($codeClass::SessionClosed)
+        ->and($exception->errorType())->toBe(ApplicationErrorType::SessionClosed)
+        ->and($exception->errors()['draft_edit'][0])->toBe(__('Нельзя выполнить действие для закрытого стола.'))
+        ->and($exception->errors()['draft_edit'][0])->not->toContain('SessionClosed')
+        ->and($exception->errors()['draft_edit'][0])->not->toContain('session_closed');
+});
+
+test('closed session draft edit returns controlled business rule error', function () {
+    [$draftOrder, $waiter] = createBusinessRuleClosedDraftScenario();
+
+    try {
+        app(EnsureWaiterCanEditDraftOrderAction::class)->handle($draftOrder, $waiter);
+        $this->fail('Expected closed session to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule()->value)->toBe('session_closed')
+            ->and($exception->errors()['draft_edit'][0])->toBe(__('Нельзя редактировать заказ для закрытого стола.'));
+    }
+});
+
+test('required modifier missing returns controlled business rule error', function () {
+    $menuItem = createBusinessRuleMenuItem();
+    $modifierGroup = ModifierGroup::factory()
+        ->for($menuItem->menu->branch)
+        ->create([
+            'name' => 'Required side',
+            'is_required' => true,
+            'min_select' => 1,
+            'max_select' => 1,
+        ]);
+    ModifierOption::factory()
+        ->for($modifierGroup)
+        ->create(['name' => 'Rice', 'is_available' => true]);
+    $menuItem->modifierGroups()->syncWithoutDetaching([$modifierGroup->id]);
+
+    try {
+        app(BuildDraftOrderItemModifierSnapshots::class)->snapshotsFor(
+            app(BuildDraftOrderItemModifierSnapshots::class)->groupsFor($menuItem),
+            [],
+        );
+        $this->fail('Expected required modifier to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::RequiredModifierMissing)
+            ->and($exception->errors()['selectedModifierOptions.'.$modifierGroup->id][0])->toBe(__('Выберите вариант.'));
+    }
+});
+
+test('already cancelled order returns controlled business rule error', function () {
+    [$organization, $branch] = createBusinessRuleBranch();
+    $order = Order::factory()
+        ->create([
+            'branch_id' => $branch->id,
+            'status' => OrderStatus::Cancelled,
+        ]);
+    $waiter = User::factory()->create();
+    attachBusinessRuleStaff($waiter, $organization, SystemRole::Waiter, [SystemPermission::CancelOrders]);
+
+    try {
+        app(ChangeOrderStatusAction::class)->handle(
+            order: $order,
+            newStatus: OrderStatus::Cancelled,
+            changedBy: $waiter,
+            reason: 'Already cancelled test.',
+        );
+        $this->fail('Expected already-cancelled order to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::OrderAlreadyCancelled)
+            ->and($exception->errors()['order_status'][0])->toBe(__('Заказ уже отменён.'));
+    }
+});
+
+test('department item already ready returns controlled business rule error', function () {
+    [$organization, $branch] = createBusinessRuleBranch();
+    $department = KitchenDepartment::factory()
+        ->for($branch)
+        ->create([
+            'type' => KitchenDepartmentType::Kitchen,
+            'name' => 'Business Rule Kitchen',
+        ]);
+    $order = Order::factory()->create(['branch_id' => $branch->id]);
+    $ticket = KitchenTicket::factory()
+        ->for($order)
+        ->create([
+            'branch_id' => $branch->id,
+            'service_point_id' => $order->service_point_id,
+            'table_session_id' => $order->table_session_id,
+            'kitchen_department_id' => $department->id,
+            'department_type' => KitchenDepartmentType::Kitchen,
+        ]);
+    $item = KitchenTicketItem::factory()
+        ->for($ticket, 'kitchenTicket')
+        ->create(['status' => KitchenTicketItemStatus::Ready]);
+    $chef = User::factory()->create();
+    attachBusinessRuleStaff($chef, $organization, SystemRole::HeadChef);
+
+    try {
+        app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+            item: $item,
+            status: KitchenTicketItemStatus::Ready,
+            user: $chef,
+            departmentTypes: [KitchenDepartmentType::Kitchen],
+            roleCodes: [SystemRole::HeadChef],
+            permissionCodes: [SystemPermission::ViewKitchen],
+        );
+        $this->fail('Expected ready ticket item to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::DepartmentAlreadyReady)
+            ->and($exception->errors()['ticket_item_status'][0])->toBe(__('Позиция уже отмечена готовой.'));
+    }
+});
+
+test('pending guest waiter item add returns controlled business rule error', function () {
+    [, , $draftOrder, $guest, $menuItem, $waiter] = createBusinessRuleEditableDraftScenario(
+        guestStatus: TableSessionGuestStatus::PendingApproval,
+    );
+
+    try {
+        app(AddDraftOrderItemByWaiterAction::class)->handle(
+            draftOrder: $draftOrder,
+            guest: $guest,
+            menuItem: $menuItem,
+            editedBy: $waiter,
+            quantity: 1,
+            selectedModifierOptions: [],
+        );
+        $this->fail('Expected pending guest to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::GuestNotApproved)
+            ->and($exception->errors()['addingGuestId'][0])->toBe(__('Гость ещё не подтверждён для этого стола.'));
+    }
+});
+
+test('unavailable menu item waiter add returns controlled business rule error', function () {
+    [, , $draftOrder, $guest, $menuItem, $waiter] = createBusinessRuleEditableDraftScenario();
+    $menuItem->forceFill(['is_available' => false])->save();
+
+    try {
+        app(AddDraftOrderItemByWaiterAction::class)->handle(
+            draftOrder: $draftOrder,
+            guest: $guest,
+            menuItem: $menuItem,
+            editedBy: $waiter,
+            quantity: 1,
+            selectedModifierOptions: [],
+        );
+        $this->fail('Expected unavailable item to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::ItemUnavailable)
+            ->and($exception->errors()['addingMenuItemId'][0])->toBe(__('Это блюдо сейчас недоступно для этого филиала.'));
+    }
+});
+
+test('payment branch access denial returns controlled business rule error', function () {
+    [, , $tableSession] = createBusinessRulePaymentSession();
+    $user = User::factory()->create();
+
+    try {
+        app(RecordManualPaymentAction::class)->recordTable(
+            tableSession: $tableSession,
+            recordedBy: $user,
+            paymentMethod: ManualPaymentMethod::Cash,
+        );
+        $this->fail('Expected inaccessible branch payment to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::BranchInaccessible)
+            ->and($exception->errors()['manual_payment'][0])->toBe(__('У вас нет права отмечать оплату для этого стола.'));
+    }
+});
+
+test('paid session manual payment returns controlled business rule error', function () {
+    [$organization, , $tableSession] = createBusinessRulePaymentSession(TableSessionStatus::Paid);
+    $manager = User::factory()->create();
+    attachBusinessRuleStaff($manager, $organization, SystemRole::RestaurantAdmin, [SystemPermission::ManagePayments]);
+
+    try {
+        app(RecordManualPaymentAction::class)->recordTable(
+            tableSession: $tableSession,
+            recordedBy: $manager,
+            paymentMethod: ManualPaymentMethod::Cash,
+        );
+        $this->fail('Expected paid session payment to return a business rule violation.');
+    } catch (Throwable $exception) {
+        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::PaymentExceedsRemaining)
+            ->and($exception->errors()['manual_payment'][0])->toBe(__('Эта сессия уже оплачена.'));
+    }
+});
+
+function createBusinessRuleClosedDraftScenario(): array
+{
+    [$organization, $branch] = createBusinessRuleBranch();
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Business Rule Hall']);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->for($areaNode)
+        ->create([
+            'name' => 'Closed session table',
+            'status' => ServicePointStatus::Free,
+        ]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->create(['status' => TableSessionStatus::Closed]);
+    $draftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create(['status' => DraftOrderStatus::SentToWaiter]);
+    $waiter = User::factory()->create();
+    attachBusinessRuleStaff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ConfirmOrders], $branch);
+
+    return [$draftOrder, $waiter];
+}
+
+function createBusinessRuleEditableDraftScenario(TableSessionGuestStatus $guestStatus = TableSessionGuestStatus::Active): array
+{
+    [$organization, $branch] = createBusinessRuleBranch();
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Business Rule Active Hall']);
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->for($areaNode)
+        ->create([
+            'name' => 'Editable draft table',
+            'status' => ServicePointStatus::Occupied,
+        ]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->create(['status' => TableSessionStatus::Active]);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create(['status' => $guestStatus]);
+    $draftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create(['status' => DraftOrderStatus::SentToWaiter]);
+    $menu = Menu::factory()
+        ->for($branch)
+        ->create(['status' => MenuStatus::Active]);
+    $category = MenuCategory::factory()
+        ->for($menu)
+        ->create(['is_active' => true]);
+    $menuItem = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create(['is_available' => true]);
+    $waiter = User::factory()->create();
+    attachBusinessRuleStaff(
+        $waiter,
+        $organization,
+        SystemRole::Waiter,
+        [SystemPermission::ConfirmOrders, SystemPermission::EditPendingOrders],
+        $branch,
+    );
+
+    return [$organization, $branch, $draftOrder, $guest, $menuItem, $waiter];
+}
+
+function createBusinessRulePaymentSession(TableSessionStatus $status = TableSessionStatus::PaymentRequested): array
+{
+    [$organization, $branch] = createBusinessRuleBranch();
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Business Rule Payment Table',
+            'status' => ServicePointStatus::PaymentRequested,
+            'is_active' => true,
+        ]);
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->create(['status' => $status]);
+
+    return [$organization, $branch, $tableSession];
+}
+
+function createBusinessRuleBranch(): array
+{
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Business Rule Group']);
+    $brand = Brand::factory()
+        ->for($organization)
+        ->create(['name' => 'Business Rule Brand']);
+    $branch = Branch::factory()
+        ->for($organization)
+        ->for($brand)
+        ->create(['name' => 'Business Rule Branch']);
+
+    return [$organization, $branch, $owner];
+}
+
+function createBusinessRuleMenuItem(): MenuItem
+{
+    [, $branch] = createBusinessRuleBranch();
+    $menu = Menu::factory()
+        ->for($branch)
+        ->create(['status' => MenuStatus::Active]);
+    $category = MenuCategory::factory()
+        ->for($menu)
+        ->create(['is_active' => true]);
+
+    return MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create(['is_available' => true]);
+}
+
+function attachBusinessRuleStaff(
+    User $user,
+    $organization,
+    SystemRole $roleCode,
+    array $permissions = [],
+    ?Branch $branch = null,
+): Role {
+    $role = Role::query()
+        ->where('code', $roleCode->value)
+        ->firstOrFail();
+
+    $user->roles()->syncWithoutDetachingOrFail([$role->id]);
+
+    foreach ($permissions as $permission) {
+        $role->permissions()->updateExistingPivot(
+            Permission::query()->where('code', $permission->value)->firstOrFail()->id,
+            ['enabled' => true],
+        );
+    }
+
+    OrganizationUser::query()->create([
+        'organization_id' => $organization->id,
+        'user_id' => $user->id,
+        'role_id' => $role->id,
+        'status' => OrganizationUserStatus::Active,
+        'joined_at' => now(),
+        'invited_by_user_id' => null,
+    ]);
+
+    if ($branch instanceof Branch) {
+        BranchUser::query()->create([
+            'organization_id' => $organization->id,
+            'branch_id' => $branch->id,
+            'user_id' => $user->id,
+            'role_id' => $role->id,
+            'status' => OrganizationUserStatus::Active,
+            'assigned_at' => now(),
+            'assigned_by_user_id' => null,
+        ]);
+    }
+
+    return $role;
+}

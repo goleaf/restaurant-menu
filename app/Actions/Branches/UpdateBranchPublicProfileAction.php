@@ -3,6 +3,7 @@
 namespace App\Actions\Branches;
 
 use App\Models\Branch;
+use App\Support\PlainText;
 
 class UpdateBranchPublicProfileAction
 {
@@ -23,14 +24,14 @@ class UpdateBranchPublicProfileAction
     public function handle(Branch $branch, array $data): Branch
     {
         $branch->fill([
-            'public_name' => $this->nullableString($data['public_name']),
-            'public_description' => $this->nullableString($data['public_description']),
-            'phone' => $this->nullableString($data['phone']),
-            'email' => $this->nullableString($data['email']),
-            'website_url' => $this->nullableString($data['website_url']),
-            'instagram_url' => $this->nullableString($data['instagram_url']),
-            'facebook_url' => $this->nullableString($data['facebook_url']),
-            'tiktok_url' => $this->nullableString($data['tiktok_url']),
+            'public_name' => $this->nullableString($data['public_name'], 160, squish: true),
+            'public_description' => $this->nullableString($data['public_description'], 1200),
+            'phone' => $this->nullableString($data['phone'], 80, squish: true),
+            'email' => $this->nullableString($data['email'], 255, squish: true),
+            'website_url' => $this->nullableString($data['website_url'], 2048, squish: true),
+            'instagram_url' => $this->nullableString($data['instagram_url'], 2048, squish: true),
+            'facebook_url' => $this->nullableString($data['facebook_url'], 2048, squish: true),
+            'tiktok_url' => $this->nullableString($data['tiktok_url'], 2048, squish: true),
         ]);
 
         if (array_key_exists('logo_path', $data)) {
@@ -46,10 +47,8 @@ class UpdateBranchPublicProfileAction
         return $branch->refresh();
     }
 
-    private function nullableString(?string $value): ?string
+    private function nullableString(?string $value, int $maxLength, bool $squish = false): ?string
     {
-        $value = str((string) $value)->squish()->toString();
-
-        return $value === '' ? null : $value;
+        return PlainText::optional($value, $maxLength, $squish);
     }
 }

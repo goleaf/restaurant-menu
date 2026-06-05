@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\DraftOrderStatus;
 use App\Models\DraftOrder;
+use App\Models\DraftOrderItem;
 use App\Models\TableSession;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -85,5 +86,22 @@ class DraftOrderFactory extends Factory
             'rejection_reason' => null,
             'converted_to_order_at' => now(),
         ]);
+    }
+
+    public function forTableSession(TableSession $tableSession): static
+    {
+        return $this->state(fn (): array => [
+            'table_session_id' => $tableSession->id,
+        ]);
+    }
+
+    public function withItems(int $count = 1): static
+    {
+        return $this->afterCreating(function (DraftOrder $draftOrder) use ($count): void {
+            DraftOrderItem::factory()
+                ->count($count)
+                ->for($draftOrder)
+                ->create();
+        });
     }
 }

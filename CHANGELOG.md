@@ -2,6 +2,17 @@
 
 ## 2026-06-05
 
+### Prompt 124 - Guest Order Status Screen
+
+- Improved the public QR guest order status block with guest-friendly labels for draft, sent to waiter, waiter review, accepted, cooking, ready, served, bill requested, and paid states.
+- Added a table-level progress timeline and an independently polling per-position status list.
+- Draft positions now show readable guest labels such as `В черновике`, `Ждёт официанта`, and `Официант проверяет`.
+- Confirmed order positions now derive readable labels from order and kitchen ticket item state, including accepted, cooking, ready, served, cancelled, bill requested, and paid.
+- Preserved the existing isolated Livewire polling block; no WebSocket, Redis, queue worker change, new route, or new table was added.
+- Touched modules/files: `App\Livewire\PublicQr\OrderStatuses`, guest order statuses Blade view, `tests/Feature/GuestOrderStatusScreenTest.php`, README, AI context, smoke checklist, and next-step docs.
+- Limitations: this step does not change waiter confirmation, kitchen/bar dispatch, payment correction, item voiding, notifications, schema, QR rules, or order lifecycle rules.
+- Manual check: open an active guest QR table, add a draft item, send it to the waiter, move it through waiter review/confirmation/kitchen ready/served, request bill, mark paid, and confirm the guest status block shows friendly text without full-page refresh.
+
 ### Bugfix - Restore Project Before Prompt 123
 
 - Prompt 123 was not implemented because the pre-prompt health check found the project was already broken.

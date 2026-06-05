@@ -9,61 +9,108 @@
             <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('Что с заказом') }}</h2>
         </div>
 
-        @if ($draftStatusLabel)
-            <span class="rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                {{ $draftStatusLabel }}
-            </span>
+        <span @class([
+            'shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold',
+            'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-100' => $overallStatusTone === 'emerald',
+            'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-100' => $overallStatusTone === 'amber',
+            'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-100' => $overallStatusTone === 'sky',
+            'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-100' => $overallStatusTone === 'red',
+            'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200' => $overallStatusTone === 'zinc',
+        ])>
+            {{ $overallStatusLabel }}
+        </span>
+    </div>
+
+    <div @class([
+        'mt-4 rounded-lg px-3 py-3 text-sm',
+        'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $overallStatusTone === 'emerald',
+        'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => $overallStatusTone === 'amber',
+        'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $overallStatusTone === 'sky',
+        'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-100' => $overallStatusTone === 'red',
+        'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $overallStatusTone === 'zinc',
+    ])>
+        <p class="font-semibold">{{ __('Статус заказа') }}: {{ $overallStatusLabel }}</p>
+        <p class="pt-1">{{ $overallStatusDescription }}</p>
+
+        @if ($draftStatusValue === 'rejected' && $rejectionReason)
+            <p class="pt-2 font-medium">{{ __('Причина') }}: {{ $rejectionReason }}</p>
+        @endif
+
+        @if ($serviceStatusValue === 'cancelled' && $cancellationReason)
+            <p class="pt-2 font-medium">{{ __('Причина') }}: {{ $cancellationReason }}</p>
         @endif
     </div>
 
-    @if ($draftStatusValue === 'rejected')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
-            {{ __('Официант отклонил черновик.') }}
-            @if ($rejectionReason)
-                <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $rejectionReason }}</span>
-            @endif
-        </p>
-    @elseif ($serviceStatusValue !== '')
-        <p @class([
-            'mt-4 rounded-lg px-3 py-2 text-sm font-medium',
-            'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $serviceStatusTone === 'emerald',
-            'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => $serviceStatusTone === 'amber',
-            'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $serviceStatusTone === 'sky',
-            'bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-100' => $serviceStatusTone === 'red',
-            'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $serviceStatusTone === 'zinc',
-        ])>
-            {{ __('Статус заказа') }}: {{ $serviceStatusLabel }}
+    <div class="mt-4 space-y-2">
+        @foreach ($guestSteps as $step)
+            <div class="flex items-start gap-3">
+                <span @class([
+                    'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
+                    'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $step['state'] === 'done',
+                    'border-sky-200 bg-sky-50 text-sky-700 ring-2 ring-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100 dark:ring-sky-950' => $step['state'] === 'current',
+                    'border-zinc-200 bg-white text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500' => $step['state'] === 'pending',
+                ])>
+                    @if ($step['state'] === 'done')
+                        ✓
+                    @else
+                        {{ $loop->iteration }}
+                    @endif
+                </span>
 
-            @if ($serviceStatusValue === 'cancelled')
-                <span class="block pt-1 font-normal">{{ __('Заказ отменён.') }}</span>
-                @if ($cancellationReason)
-                    <span class="block pt-1 font-normal">{{ __('Причина') }}: {{ $cancellationReason }}</span>
+                <div class="min-w-0 flex-1">
+                    <p @class([
+                        'text-sm font-semibold leading-tight',
+                        'text-zinc-950 dark:text-white' => $step['state'] !== 'pending',
+                        'text-zinc-500 dark:text-zinc-400' => $step['state'] === 'pending',
+                    ])>
+                        {{ $step['label'] }}
+                    </p>
+                    <p class="pt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ $step['description'] }}</p>
+                </div>
+            </div>
+        @endforeach
+    </div>
+
+    <div class="mt-5 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+        <div class="flex items-center justify-between gap-3">
+            <h3 class="text-sm font-semibold text-zinc-950 dark:text-white">{{ __('Позиции') }}</h3>
+            <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Обновляется автоматически') }}</span>
+        </div>
+
+        @forelse ($itemStatuses as $item)
+            <div class="mt-3 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-3 dark:border-zinc-800 dark:bg-zinc-950/50">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $item['name'] }}</p>
+                        <p class="pt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            {{ $item['guest_name'] }} · {{ __('Кол-во') }}: {{ $item['quantity'] }}
+                        </p>
+                    </div>
+
+                    <span @class([
+                        'shrink-0 rounded-md px-2 py-1 text-xs font-semibold',
+                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-100' => $item['tone'] === 'emerald',
+                        'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-100' => $item['tone'] === 'amber',
+                        'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-100' => $item['tone'] === 'sky',
+                        'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100' => $item['tone'] === 'red',
+                        'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-100' => $item['tone'] === 'zinc',
+                    ])>
+                        {{ $item['status_label'] }}
+                    </span>
+                </div>
+
+                <p class="pt-2 text-xs text-zinc-600 dark:text-zinc-300">{{ $item['status_description'] }}</p>
+
+                @if ($item['comment'])
+                    <p class="mt-2 rounded-md bg-white px-2 py-1.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                        {{ __('Комментарий') }}: {{ $item['comment'] }}
+                    </p>
                 @endif
-            @elseif ($serviceStatusValue === 'accepted' && $orderStatusValue === 'sent_to_kitchen_bar')
-                <span class="block pt-1 font-normal">{{ __('Заказ принят. Кухня и бар получили позиции.') }}</span>
-            @endif
-        </p>
-    @elseif ($draftStatusValue === 'converted_to_order')
-        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
-            {{ __('Официант подтвердил заказ. Изменения сейчас недоступны.') }}
-        </p>
-    @elseif ($draftStatusValue && $draftStatusValue !== 'draft')
-        <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-            {{ __('Черновик отправлен официанту. Изменения сейчас недоступны.') }}
-        </p>
-    @else
-        <p class="mt-4 rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950 dark:text-zinc-300">
-            {{ __('Можно выбирать позиции. Перед кухней или баром заказ подтвердит официант.') }}
-        </p>
-    @endif
-
-    @if ($tableSessionStatusValue === 'payment_requested')
-        <p class="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
-            {{ __('Счёт уже запрошен.') }}
-        </p>
-    @elseif (in_array($tableSessionStatusValue, ['paid', 'closed', 'cancelled'], true))
-        <p class="mt-3 rounded-lg bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700 dark:bg-zinc-950/60 dark:text-zinc-100">
-            {{ __('Эта посадка завершена.') }}
-        </p>
-    @endif
+            </div>
+        @empty
+            <p class="mt-3 rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-950/50 dark:text-zinc-300">
+                {{ __('Пока позиций нет. Когда гости добавят блюда, здесь появятся их статусы.') }}
+            </p>
+        @endforelse
+    </div>
 </section>

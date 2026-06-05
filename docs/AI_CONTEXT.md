@@ -2,6 +2,70 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Prompt 124 Guest Order Status Screen - 2026-06-05
+
+Prompt 124 improved the existing public QR guest order status screen without changing schema, routes, waiter confirmation, kitchen/bar dispatch, payments, QR rules, or infrastructure.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+
+What changed:
+
+- `App\Livewire\PublicQr\OrderStatuses` now prepares guest-friendly status payloads for the existing isolated polling block.
+- The component exposes `overallStatus*`, `guestSteps`, and `itemStatuses` while preserving the older status fields used by existing flows.
+- `resources/views/livewire/public-qr/order-statuses.blade.php` now renders a mobile-friendly table status summary, status timeline, and per-position statuses.
+- `tests/Feature/GuestOrderStatusScreenTest.php` covers draft/sent/waiter-review statuses, accepted/cooking/ready/served item states, and bill requested/paid table states.
+
+Current tables:
+
+- No new tables or columns were added.
+- Prompt 124 reads existing `table_sessions`, `draft_orders`, `draft_order_items`, `orders`, `order_items`, `kitchen_tickets`, and `kitchen_ticket_items`.
+- Guest identity remains in `table_session_guests`; guests are not `users`.
+
+Current routes:
+
+- No routes were added or changed.
+- Public guest entry remains `GET /q/{token}`.
+- The guest order status block is embedded in the existing public QR/table Livewire UI.
+- Waiter route remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Kitchen and bar routes remain `GET /restaurant/kitchen` and `GET /restaurant/bar`.
+
+Current Livewire components:
+
+- `App\Livewire\PublicQr\Show` still owns the public QR landing/table shell.
+- `App\Livewire\PublicQr\OrderStatuses` is the isolated polling block for guest order/table status.
+- Related guest polling blocks remain `TableGuests`, `JoinRequests`, `Notifications`, `DraftOrder`, and `DraftTotals`.
+- No WebSocket/Reverb/Pusher channel was added; polling remains Livewire-based.
+
+Mandatory business rules:
+
+- Guests must not see technical enum/status keys.
+- The guest UI must show clear status text for draft, sent to waiter, waiter review, accepted, cooking, ready, served, bill requested, and paid.
+- Per-position statuses must come from existing draft/order/kitchen-ticket state and must not change kitchen/bar visibility rules.
+- Waiter confirmation is still required before kitchen/bar sees an order.
+- Cancelled orders stay as status/history and keep the cancellation reason visible to guests.
+- Permanent QR identity is unchanged by order/session/payment status.
+
+Shared-hosting constraints:
+
+- Keep SQLite, database cache, database sessions, database queue, local storage, and Livewire polling.
+- Keep polling queries bounded and selected; do not query from Blade.
+- Do not add Redis, WebSockets, S3, Docker, paid services, Stripe, PayPal, external notifications, or external APIs.
+
+Verification:
+
+- `vendor/bin/pint --format agent app/Livewire/PublicQr/OrderStatuses.php tests/Feature/GuestOrderStatusScreenTest.php`
+- `php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/RepeatOrdersTest.php tests/Feature/OrderCancellationTest.php`
+
+Next recommended prompt:
+
+- Prompt 123 - Payment correction remains pending/skipped unless the user explicitly asks to return to it. Otherwise wait for the next explicit prompt and start with a fresh context/health check.
+
 ## Rescue Mode Before Prompt 123 - 2026-06-05
 
 Prompt 123 was not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored the waiter table detail/payment flow after the focused regression suite hit a compiled Blade parse error: `syntax error, unexpected token "endif"` in the waiter table detail view cache. The current source view was validated, stale compiled views were cleared, and the focused suite passed again.

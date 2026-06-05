@@ -47,7 +47,24 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-05 after rescue mode before Prompt 123. Prompt 123 manual payment correction was not implemented because the pre-prompt health check found a stale compiled Blade parse error on waiter table detail. Compiled views were cleared, the manual payment/order cancellation regression suite is green again, and Prompt 123 remains the next recommended prompt after a fresh health check.
+Latest memory refresh: 2026-06-05 after Prompt 124 guest order status screen. The public QR table now shows a guest-friendly status timeline, whole-table status, and per-position status labels for draft, waiter review, accepted, cooking, ready, served, bill requested, and paid states through the existing isolated Livewire polling block. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
+
+## Guest Order Status Screen
+
+Prompt 124 improves the existing guest order status block without changing the order flow.
+
+- Guests see friendly status text instead of enum values.
+- The status block polls independently through Livewire and does not refresh the whole page.
+- The table-level timeline covers draft, sent to waiter, waiter review, accepted, cooking, ready, served, bill requested, and paid states.
+- Draft positions show whether they are still editable, waiting for the waiter, or under waiter review.
+- Confirmed order positions show accepted, cooking, ready, served, cancelled, bill requested, or paid labels from order and kitchen ticket state.
+- Existing waiter confirmation remains mandatory before kitchen/bar sees an order.
+
+Focused Prompt 124 command:
+
+```bash
+php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/RepeatOrdersTest.php tests/Feature/OrderCancellationTest.php
+```
 
 Previous memory refresh: 2026-06-05 after rescue mode before Prompt 122. The waiter table detail component now imports Flux before calling `Flux::modals()`, restoring the manual payment/table close regression suite. Prompt 122 order item void flow was not implemented during rescue mode.
 

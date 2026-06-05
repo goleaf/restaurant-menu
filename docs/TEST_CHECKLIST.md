@@ -13,6 +13,44 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Prompt 124 Guest Order Status Screen Results
+
+Programmatic coverage was added for the existing public QR guest order status
+block. The feature currently verifies:
+
+- guests see friendly draft, sent-to-waiter, and waiter-review labels;
+- draft positions show readable per-item labels;
+- confirmed order positions show accepted, cooking, ready, and served labels
+  from existing order and kitchen ticket item state;
+- whole-table payment states show `Счёт запрошен` and `Оплачено`;
+- the existing isolated Livewire polling block remains in place.
+
+Focused command:
+
+```bash
+php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php
+```
+
+Related regression command:
+
+```bash
+php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/GuestTablePageShellTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/RepeatOrdersTest.php tests/Feature/OrderCancellationTest.php
+```
+
+Manual check:
+
+1. Open an active public QR guest table.
+2. Add at least one draft item and confirm the status block shows `Вы выбираете`
+   and `В черновике`.
+3. Send the draft to the waiter and confirm guests see `Отправлено официанту`
+   and item status `Ждёт официанта`.
+4. Move the draft through waiter review and confirmation.
+5. Send the order to kitchen/bar, mark one item ready, then mark it served.
+6. Confirm the guest block shows friendly accepted, cooking, ready, and served
+   labels without a full-page refresh.
+7. Request the bill and record payment manually; confirm the whole-table status
+   shows `Счёт запрошен` and then `Оплачено`.
+
 ## Rescue Mode Before Prompt 123 Results
 
 The pre-Prompt 123 health check found the waiter table detail/payment flow was

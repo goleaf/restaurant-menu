@@ -4,11 +4,17 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after rescue mode before Prompt 123.
+Last memory refresh: 2026-06-05 after Prompt 124 guest order status screen.
 
 ## Next Recommended Prompt
 
 Prompt 123 - Payment correction.
+
+Prompt 124 is complete. The guest order status block now shows a friendly
+timeline, whole-table status, and per-position status labels through the
+existing isolated Livewire polling component. Do not add more status states,
+order lifecycle changes, or payment correction behavior unless a future prompt
+explicitly asks for them.
 
 Rescue mode ran before Prompt 123 because the project was already broken by a
 compiled waiter table detail Blade parse error. The rescue fix cleared stale
@@ -58,6 +64,7 @@ new prompt. The update was documentation-only and did not add product behavior.
 If the next prompt touches table sessions, waiter dashboard, cleanup, payments,
 or orders, first verify:
 
+- `tests/Feature/GuestOrderStatusScreenTest.php`;
 - `tests/Feature/TableSessionMergeTest.php`;
 - `tests/Feature/TableSessionTransferTest.php`;
 - `tests/Feature/SessionInactivityCleanupTest.php`;
@@ -98,6 +105,11 @@ Risky areas:
 - Do not delete cancelled orders or order items; cancellation must keep
   `order_status_logs`, `audit_logs`, and guest-facing reason history.
 - Do not let kitchen/bar staff continue ticket work for cancelled orders.
+- Do not show technical enum values or status keys in the public guest order
+  status UI.
+- Keep guest order status polling isolated in
+  `App\Livewire\PublicQr\OrderStatuses`; do not refresh the whole QR table page
+  for status changes.
 - Do not move a table session to a non-free, inactive, cross-branch, pending,
   active, or payment-requested service point.
 - Already-entered guests should follow the transferred `table_session`; fresh

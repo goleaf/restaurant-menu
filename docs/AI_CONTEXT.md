@@ -2,6 +2,63 @@
 
 This file is the working memory for coding agents. Read it before each prompt and update it after each completed step.
 
+## Rescue Mode Before Prompt 126 - 2026-06-05
+
+Prompt 126 waiter notification sound settings were not implemented. The pre-prompt health check found the project was already broken, so rescue mode restored branch-scoped staff assignment writes first.
+
+Current stack:
+
+- Laravel 13.13, PHP 8.5, Fortify, Boost, MCP.
+- Livewire 4.3 + Blade + Flux UI Free.
+- SQLite only.
+- Database cache, database sessions, database queue.
+- Local public storage in `storage/app/public`.
+- Shared-hosting-first deployment; no Redis, WebSocket, S3, Docker requirement, Stripe/PayPal, paid services, React/Vue SPA, or external realtime/storage service.
+
+What was restored:
+
+- `App\Models\BranchUser` now again allows the existing branch-assignment fields in mass assignment: `organization_id`, `branch_id`, `user_id`, `role_id`, `status`, `assigned_at`, and `assigned_by_user_id`.
+- Existing waiter/kitchen branch assignment tests can again create active branch assignments without SQLite `NOT NULL` failures.
+- Prompt 126 remains pending; no waiter notification sound settings, local audio asset, browser local-storage setting UI, mute mode, schema, or new infrastructure was added.
+
+Current tables:
+
+- No new tables or columns were added in rescue mode.
+- The restored check uses existing staff/access tables: `branch_users`, `organization_users`, `roles`, `permissions`, `permission_role`, and the existing branch/order/session tables used by waiter and kitchen dashboards.
+
+Current routes:
+
+- No routes were added or changed in rescue mode.
+- Waiter dashboard remains `GET /restaurant/waiter`.
+- Waiter detail remains `GET /restaurant/waiter/tables/{tableSession}`.
+- Kitchen and bar dashboards remain `GET /restaurant/kitchen` and `GET /restaurant/bar`.
+
+Current Livewire components:
+
+- No Livewire component was changed in rescue mode.
+- The health check covered `App\Livewire\Waiter\Dashboard`, `App\Livewire\Waiter\TableDetail`, `App\Livewire\Kitchen\Dashboard`, `App\Livewire\Bar\Dashboard`, and public QR status components.
+
+Mandatory business rules:
+
+- Branch staff assignments must keep organization, branch, role, status, assigned-at, and assigned-by fields writable through existing Actions/factories.
+- Staff branch filtering must continue to narrow waiter/kitchen dashboards to active assigned branches when branch assignments exist.
+- Superadmin bypass and permission checks must not be loosened by rescue fixes.
+- Realtime remains Livewire polling only; no Redis, WebSocket, push provider, SMS, Telegram API, or paid notification service.
+
+Verification:
+
+- `php artisan migrate --no-interaction`
+- `php artisan route:list --except-vendor`
+- `php artisan config:show database.default`
+- `php artisan config:show cache.default`
+- `php artisan config:show session.driver`
+- `php artisan config:show queue.default`
+- `php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/WaiterDashboardTest.php tests/Feature/WaiterTableDetailTest.php tests/Feature/LayoutZonesTest.php`
+
+Next recommended prompt:
+
+- Prompt 126 - Waiter notification sound settings. Start it only after a fresh context and health check. Store settings at user or browser local-storage level, use only local sound files, and keep browser autoplay restrictions visible in the UI.
+
 ## Rescue Mode Before Prompt 125 - 2026-06-05
 
 Prompt 125 kitchen delay timers were not implemented. The pre-prompt health check found the project was already broken, so rescue mode restored the existing guest/waiter/kitchen status flow first.

@@ -4,11 +4,31 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after rescue mode before Prompt 125.
+Last memory refresh: 2026-06-05 after rescue mode before Prompt 126.
 
 ## Next Recommended Prompt
 
-Prompt 125 - Kitchen delay timers.
+Prompt 126 - Waiter notification sound settings.
+
+Prompt 126 was requested, but it was paused because the pre-prompt health check
+found the project was already broken. Rescue mode restored branch staff
+assignment mass-assignment fields first.
+
+When Prompt 126 is started again, keep the step small:
+
+- add a simple waiter dashboard sound settings UI;
+- allow sound on/off, mute mode, and choosing from local sound options;
+- store settings at user level or browser `localStorage`, choosing the lighter
+  approach that matches current code;
+- trigger sounds only for existing waiter dashboard events: new draft/order,
+  waiter call, bill request, and ready item;
+- show a clear browser-autoplay hint because sound may be blocked before the
+  first user interaction;
+- do not add external sound services, push providers, Redis, WebSockets, S3,
+  Docker, paid services, or new realtime infrastructure.
+
+Prompt 125 - Kitchen delay timers remains skipped/pending unless the user
+explicitly asks to return to it.
 
 Prompt 125 was requested, but it was paused because the pre-prompt health check
 found the project was already broken. Rescue mode restored guest status

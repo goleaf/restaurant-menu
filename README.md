@@ -57,7 +57,11 @@ docs/NEXT_STEPS.md
 
 Read `docs/AI_CONTEXT.md` before every prompt. It records the current stack, implemented areas, tables, routes, Livewire components, mandatory business rules, shared-hosting constraints, forbidden infrastructure, and the next recommended prompt. Read `docs/SECURITY_RULES.md` before auth, guest, staff, token, export, backup, upload, or branch-access work. Read `docs/ERROR_HANDLING.md` before changing validation, business-rule errors, exception handling, error pages, logs, or user-facing error copy. `docs/TEST_CHECKLIST.md` keeps the manual and focused regression flow. `docs/NEXT_STEPS.md` keeps scoped future prompts that must be implemented only when explicitly requested.
 
-Latest memory refresh: 2026-06-05 after rescue mode before Prompt 125. Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored guest status translations and Public QR polling-locale propagation, kept SQLite/database drivers intact, and left Prompt 125 as the next recommended feature prompt after a fresh health check.
+Latest memory refresh: 2026-06-05 after Prompt 333 token security rules. QR public tokens, guest tokens, join-request tokens, staff invitation tokens, and guest session invite tokens stay random 64-character credentials; `qr_codes.short_code` remains staff lookup/print text only; revoked QR tokens, closed session invite tokens, expired staff invitations, and guest tokens on staff routes are blocked by server-side state checks. CSV exports and audit summaries must not expose raw token fields.
+
+Latest memory refresh: 2026-06-05 after rescue mode before Prompt 126. Prompt 126 waiter notification sound settings were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored `BranchUser` mass-assignment fields for branch-scoped staff assignments, kept SQLite/database drivers intact, and left Prompt 126 as the next recommended feature prompt after a fresh health check.
+
+Previous memory refresh: 2026-06-05 after rescue mode before Prompt 125. Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken. Rescue mode restored guest status translations and Public QR polling-locale propagation, kept SQLite/database drivers intact, and left Prompt 125 as pending/skipped unless explicitly requested again.
 
 Latest memory refresh: 2026-06-05 after Prompt 334 CSRF and route protection audit. Public guest routes are GET-only guest surfaces, staff/admin/department/export routes require authenticated web sessions, backup download requires superadmin, and the private local disk no longer registers unauthenticated temporary storage routes. Prompt 123 manual payment correction remains pending/skipped unless explicitly requested again.
 
@@ -66,6 +70,23 @@ Previous memory refresh: 2026-06-05 after Prompt 335 XSS protection audit. User-
 Previous memory refresh: 2026-06-05 after Prompt 343 error handling strategy. The app now has a shared `ApplicationErrorType` catalog, mapped business-rule errors, controlled JSON for expected business errors, safe translated HTTP error pages, and exception handler context for unexpected logs.
 
 Previous memory refresh: 2026-06-05 after Prompt 124 guest order status screen. The public QR table now shows a guest-friendly status timeline, whole-table status, and per-position status labels for draft, waiter review, accepted, cooking, ready, served, bill requested, and paid states through the existing isolated Livewire polling block.
+
+## Token Security Rules
+
+Prompt 333 keeps token families separate and status-checked.
+
+- QR public URLs use random 64-character `qr_codes.public_token` values at `/q/{public_token}` and never internal IDs.
+- `qr_codes.short_code` is visible to staff for lookup, stickers, and print templates, but it is not accepted as a public QR security token.
+- `guest_token` values stay hidden from URLs, rendered HTML, staff auth, ordinary exports, and user-facing logs; they only restore guest/table-session state after server-side branch/session/guest status checks.
+- Staff invitation acceptance must use `Invitation::findAcceptableByToken()` or the same rule: 64-character alphanumeric token, pending status, and future `expires_at`.
+- Guest table invite links use `table_sessions.guest_invite_token`, and closed/cancelled sessions cannot create join requests or ordering access.
+- Audit and CSV export surfaces must redact or omit `public_token`, `guest_token`, `invite_token`, and `guest_invite_token`.
+
+Focused Prompt 333 command:
+
+```bash
+php artisan test --compact tests/Feature/TokenSecurityRulesTest.php tests/Feature/StaffInvitationTest.php
+```
 
 ## XSS Protection Audit
 

@@ -2,6 +2,30 @@
 
 ## 2026-06-05
 
+### Prompt 333 - Token Security Rules
+
+- Added focused regression coverage for QR public tokens, QR short codes, guest tokens, staff invitation tokens, guest session invite tokens, revoked QR state, closed session invite state, staff-route separation, and CSV export token omissions.
+- Added `Invitation::canBeAccepted()`, `Invitation::scopeAcceptable()`, and `Invitation::findAcceptableByToken()` so staff invite acceptance must check token shape, pending status, and expiration in one backend contract.
+- Hardened staff invitation creation so generated invite tokens/codes are unique, and provided invite tokens must be 64-character alphanumeric values.
+- Confirmed `short_code` remains a staff lookup/print code only and is not accepted as a public QR route credential.
+- Confirmed `guest_token` stays hidden from rendered guest HTML, cannot authenticate staff routes, and is omitted from branch CSV exports.
+- Limitations: no staff invitation acceptance route, new product flow, token migration, Redis, WebSocket, S3, Docker requirement, paid service, Stripe/PayPal, training mode, pilot issue log, live launch checklist, safe mode module, or item-level operational status was added.
+
+### Bugfix - Restore Project Before Prompt 126
+
+- Prompt 126 waiter notification sound settings were not implemented because the pre-prompt health check found the project was already broken.
+- Restored `BranchUser` mass-assignment fields so branch staff assignments can save `organization_id`, `branch_id`, `role_id`, `status`, `assigned_at`, and `assigned_by_user_id`.
+- Verified the waiter/kitchen/bar/guest status regression suite now passes again.
+- Touched modules/files: `App\Models\BranchUser`, README, AI context, smoke checklist, and next-step docs.
+- Limitations: no waiter notification sound settings, local audio files, browser local-storage UI, mute mode, schema, Redis, WebSocket, S3, Docker, Stripe/PayPal, or paid service was added in rescue mode.
+- Manual check: assign a waiter/cook to a branch, open waiter and kitchen dashboards, and confirm branch assignment filtering works.
+
+### Docs - Daily Project Memory Update Before Prompt 126
+
+- Refreshed README, AI context, smoke checklist, and next-step notes after rescue mode.
+- Confirmed the project remains Laravel + Livewire + Blade on SQLite with database cache/session/queue, local storage, and no Redis/WebSockets/S3/Docker or paid services.
+- Confirmed Prompt 126 remains the next recommended prompt and must start with a fresh health check.
+
 ### Bugfix - Restore Project Before Prompt 125
 
 - Prompt 125 kitchen delay timers were not implemented because the pre-prompt health check found the project was already broken.

@@ -13,6 +13,28 @@ SQLite setup.
 - Do not commit `.env`, `database/database.sqlite`, local uploads, backups,
   `vendor`, or `node_modules`.
 
+## Rescue Mode Before Prompt 126 Results
+
+Prompt 126 waiter notification sound settings were not implemented because the
+health check found an existing regression in branch-scoped staff assignments.
+
+Programmatic checks restored and passed:
+
+```bash
+php artisan migrate --no-interaction
+php artisan route:list --except-vendor
+php artisan test --compact tests/Feature/GuestOrderStatusScreenTest.php tests/Feature/KitchenScreenTest.php tests/Feature/BarDepartmentScreenTest.php tests/Feature/ReadyItemsToWaiterTest.php tests/Feature/WaiterDashboardTest.php tests/Feature/WaiterTableDetailTest.php tests/Feature/LayoutZonesTest.php
+```
+
+Manual check:
+
+1. Assign a waiter or cook to one branch through the current branch staff flow.
+2. Confirm `branch_users` stores organization, branch, role, status,
+   assignment time, and assigned-by data.
+3. Open waiter, kitchen, and bar dashboards.
+4. Confirm active branch assignments filter visible branches/departments
+   without SQLite `NOT NULL` errors.
+
 ## Rescue Mode Before Prompt 125 Results
 
 Prompt 125 kitchen delay timers were not implemented because the health check

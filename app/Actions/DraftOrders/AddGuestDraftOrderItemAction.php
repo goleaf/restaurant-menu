@@ -223,7 +223,6 @@ class AddGuestDraftOrderItemAction
                 DraftOrderStatus::Draft->value,
                 DraftOrderStatus::SentToWaiter->value,
                 DraftOrderStatus::WaiterReview->value,
-                DraftOrderStatus::Rejected->value,
             ])
             ->latest('id')
             ->first();

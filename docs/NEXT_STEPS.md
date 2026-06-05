@@ -4,7 +4,30 @@ This file is a small queue for future prompts. It is not permission to implement
 anything automatically. Use it only after reading `README.md`, `CHANGELOG.md`,
 `docs/AI_CONTEXT.md`, and `docs/TEST_CHECKLIST.md`.
 
-Last memory refresh: 2026-06-05 after Prompt 333 token security rules.
+Last memory refresh: 2026-06-05 after Prompt 469 database architecture audit.
+
+Prompt 469 is complete as a verification/audit pass. Current schema is
+documented in `docs/SCHEMA_SNAPSHOT.md`; migration findings are documented in
+`docs/MIGRATION_AUDIT.md`.
+
+Future database work must preserve the SQLite/shared-hosting baseline and must
+not add duplicate alias tables. Treat these as the confirmed schema follow-ups,
+but implement them only after an explicit prompt:
+
+- replace item-level kitchen/bar readiness with an
+  `order_department_readiness` design that moves operational readiness out of
+  `kitchen_ticket_items.status`;
+- add dedicated `menu_item_variants` only if the product needs size/SKU/variant
+  pricing beyond the current modifier group/option model;
+- add a local `media` registry table only if media ownership metadata,
+  replacement history, cleanup queues, or ZIP backup needs database metadata;
+- add payment correction history only with a focused manual payment correction
+  feature; current payments remain `manual_payments`.
+
+Do not create generic duplicate tables named `role_permissions`,
+`user_permission_overrides`, `departments`, or `payments`; current canonical
+tables are `permission_role`, `permission_user_overrides`,
+`kitchen_departments`, and `manual_payments`.
 
 ## Next Recommended Prompt
 

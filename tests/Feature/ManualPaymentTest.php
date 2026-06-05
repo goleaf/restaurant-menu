@@ -363,6 +363,9 @@ function attachPrompt67PaymentViewer(User $user, Organization $organization): Ro
     $viewPayments = Permission::query()
         ->where('code', SystemPermission::ViewPayments->value)
         ->firstOrFail();
+    $managePayments = Permission::query()
+        ->where('code', SystemPermission::ManagePayments->value)
+        ->firstOrFail();
 
     $role->permissions()->updateExistingPivot($viewPayments->id, ['enabled' => true]);
 
@@ -373,6 +376,9 @@ function attachPrompt67PaymentViewer(User $user, Organization $organization): Ro
             'joined_at' => now(),
             'invited_by_user_id' => null,
         ],
+    ]);
+    $user->permissionOverrides()->syncWithoutDetaching([
+        $managePayments->id => ['enabled' => false],
     ]);
 
     return $role;

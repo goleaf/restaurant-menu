@@ -65,6 +65,74 @@ class BranchFactory extends Factory
         ]);
     }
 
+    public function bellaPizzaOldTown(Brand $brand): static
+    {
+        return $this->demoBranch($brand, [
+            'name' => 'Bella Pizza Old Town',
+            'public_name' => 'Bella Pizza Old Town',
+            'public_description' => 'Classic pizza restaurant in the demo old town branch.',
+            'address' => 'Pilies g. 10',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 10001',
+            'email' => 'old-town@bella-pizza.demo.test',
+            'website_url' => 'https://bella-pizza.demo.test/old-town',
+        ]);
+    }
+
+    public function bellaPizzaTerrace(Brand $brand): static
+    {
+        return $this->demoBranch($brand, [
+            'name' => 'Bella Pizza Terrace',
+            'public_name' => 'Bella Pizza Terrace',
+            'public_description' => 'Open-air pizza terrace for QR ordering and table service checks.',
+            'address' => 'Gedimino pr. 20',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 10002',
+            'email' => 'terrace@bella-pizza.demo.test',
+            'website_url' => 'https://bella-pizza.demo.test/terrace',
+        ]);
+    }
+
+    public function sushiMasterCenter(Brand $brand): static
+    {
+        return $this->demoBranch($brand, [
+            'name' => 'Sushi Master Center',
+            'public_name' => 'Sushi Master Center',
+            'public_description' => 'Compact sushi branch for kitchen department and pickup flow checks.',
+            'address' => 'Konstitucijos pr. 12',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 20001',
+            'email' => 'center@sushi-master.demo.test',
+            'website_url' => 'https://sushi-master.demo.test/center',
+        ]);
+    }
+
+    public function coffeeBarSmallHall(Brand $brand): static
+    {
+        return $this->demoBranch($brand, [
+            'name' => 'Coffee Bar Small Hall',
+            'public_name' => 'Coffee Bar Small Hall',
+            'public_description' => 'Small coffee bar branch for bar seats and quick payment checks.',
+            'address' => 'Vokieciu g. 5',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 30001',
+            'email' => 'small-hall@coffee-bar.demo.test',
+            'website_url' => 'https://coffee-bar.demo.test/small-hall',
+        ]);
+    }
+
     public function withDefaultSettings(): static
     {
         return $this->afterCreating(function (Branch $branch): void {
@@ -128,5 +196,23 @@ class BranchFactory extends Factory
                 ->for($branch)
                 ->create();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function demoBranch(Brand $brand, array $attributes): static
+    {
+        return $this
+            ->forBrand($brand)
+            ->active()
+            ->state(fn (): array => [
+                ...$attributes,
+                'logo_path' => null,
+                'cover_image_path' => null,
+                'instagram_url' => null,
+                'facebook_url' => null,
+                'tiktok_url' => null,
+            ]);
     }
 }

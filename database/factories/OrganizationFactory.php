@@ -27,6 +27,15 @@ class OrganizationFactory extends Factory
         ];
     }
 
+    public function demoFoodGroup(User $owner): static
+    {
+        return $this->state(fn (): array => [
+            'owner_user_id' => $owner->id,
+            'name' => 'Demo Food Group',
+            'logo_path' => null,
+        ]);
+    }
+
     public function withBrands(int $count = 1): static
     {
         return $this->afterCreating(function (Organization $organization) use ($count): void {

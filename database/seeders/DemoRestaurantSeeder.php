@@ -3,11 +3,8 @@
 namespace Database\Seeders;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
-use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\EnsureBranchSettingsAction;
-use App\Actions\Brands\CreateBrandAction;
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
-use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Enums\AreaNodeType;
@@ -19,6 +16,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\KitchenDepartment;
@@ -43,9 +41,9 @@ class DemoRestaurantSeeder extends Seeder
 {
     private const ORGANIZATION_NAME = 'Demo Food Group';
 
-    private const BRAND_NAME = 'Bella Pizza';
+    private const PRIMARY_BRANCH_KEY = 'bella_pizza_old_town';
 
-    private const BRANCH_NAME = 'Demo Old Town';
+    private const LEGACY_PRIMARY_BRANCH_NAME = 'Demo Old Town';
 
     /**
      * Run the database seeds.
@@ -64,82 +62,173 @@ class DemoRestaurantSeeder extends Seeder
 
             $owner = $this->demoUser('Demo Owner', 'owner@demo.test', SystemRole::Owner);
             $organization = $this->demoOrganization($owner);
-            $brand = $this->demoBrand($organization);
-            $branch = $this->demoBranch($brand);
+            $brands = $this->demoBrands($organization);
+            $branches = $this->demoBranches($brands);
 
-            app(EnsureBranchSettingsAction::class)->handle($branch);
-            app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
+            foreach ($branches as $branch) {
+                $this->ensureBranchSetup($branch);
+            }
 
-            $this->seedStaff($organization, $branch, $owner);
+            $this->seedStaff($organization, $branches, $owner);
 
-            $areas = $this->seedAreas($branch);
-            $servicePoints = $this->seedServicePoints($branch, $areas);
+            $primaryBranch = $branches[self::PRIMARY_BRANCH_KEY];
+
+            $areas = $this->seedAreas($primaryBranch);
+            $servicePoints = $this->seedServicePoints($primaryBranch, $areas);
             $this->seedQrCodes($servicePoints, $owner);
-            $this->seedMenu($branch);
+            $this->seedMenu($primaryBranch);
         });
     }
 
     private function demoOrganization(User $owner): Organization
     {
-        $organization = Organization::query()
+        $organization = Organization::withTrashed()
             ->where('name', self::ORGANIZATION_NAME)
             ->first();
 
-        if (! $organization instanceof Organization) {
-            return app(CreateOrganizationAction::class)->handle($owner, [
-                'name' => self::ORGANIZATION_NAME,
-            ]);
-        }
+        $attributes = Organization::factory()
+            ->demoFoodGroup($owner)
+            ->make()
+            ->getAttributes();
 
-        $organization->update([
-            'owner_user_id' => $owner->id,
-        ]);
+        if ($organization instanceof Organization) {
+            if ($organization->trashed()) {
+                $organization->restore();
+            }
+
+            $organization->forceFill($attributes)->save();
+        } else {
+            $organization = Organization::factory()
+                ->demoFoodGroup($owner)
+                ->create();
+        }
 
         $this->ensureOrganizationMembership($organization, $owner, SystemRole::Owner, null);
 
-        return $organization;
+        return $organization->refresh();
     }
 
-    private function demoBrand(Organization $organization): Brand
+    /**
+     * @return array{bella_pizza: Brand, sushi_master: Brand, coffee_bar_demo: Brand}
+     */
+    private function demoBrands(Organization $organization): array
     {
-        $brand = Brand::query()
+        return [
+            'bella_pizza' => $this->demoBrand($organization, 'bellaPizza'),
+            'sushi_master' => $this->demoBrand($organization, 'sushiMaster'),
+            'coffee_bar_demo' => $this->demoBrand($organization, 'coffeeBarDemo'),
+        ];
+    }
+
+    private function demoBrand(Organization $organization, string $factoryState): Brand
+    {
+        $factory = Brand::factory()
+            ->for($organization)
+            ->{$factoryState}();
+        $attributes = $factory->make()->getAttributes();
+        $name = (string) $attributes['name'];
+
+        $brand = Brand::withTrashed()
             ->where('organization_id', $organization->id)
-            ->where('name', self::BRAND_NAME)
+            ->where('name', $name)
             ->first();
 
         if ($brand instanceof Brand) {
-            return $brand;
+            if ($brand->trashed()) {
+                $brand->restore();
+            }
+
+            $brand->forceFill($attributes)->save();
+
+            return $brand->refresh();
         }
 
-        return app(CreateBrandAction::class)->handle($organization, [
-            'name' => self::BRAND_NAME,
-        ]);
+        return Brand::factory()
+            ->for($organization)
+            ->{$factoryState}()
+            ->create();
     }
 
-    private function demoBranch(Brand $brand): Branch
+    /**
+     * @param  array{bella_pizza: Brand, sushi_master: Brand, coffee_bar_demo: Brand}  $brands
+     * @return array{
+     *     bella_pizza_old_town: Branch,
+     *     bella_pizza_terrace: Branch,
+     *     sushi_master_center: Branch,
+     *     coffee_bar_small_hall: Branch
+     * }
+     */
+    private function demoBranches(array $brands): array
     {
-        $branch = Branch::query()
+        return [
+            'bella_pizza_old_town' => $this->demoBranch(
+                $brands['bella_pizza'],
+                'bellaPizzaOldTown',
+                self::LEGACY_PRIMARY_BRANCH_NAME,
+            ),
+            'bella_pizza_terrace' => $this->demoBranch($brands['bella_pizza'], 'bellaPizzaTerrace'),
+            'sushi_master_center' => $this->demoBranch($brands['sushi_master'], 'sushiMasterCenter'),
+            'coffee_bar_small_hall' => $this->demoBranch($brands['coffee_bar_demo'], 'coffeeBarSmallHall'),
+        ];
+    }
+
+    private function demoBranch(Brand $brand, string $factoryState, ?string $legacyName = null): Branch
+    {
+        $factory = Branch::factory()->{$factoryState}($brand);
+        $attributes = $factory->make()->getAttributes();
+        $name = (string) $attributes['name'];
+
+        $branch = Branch::withTrashed()
             ->where('brand_id', $brand->id)
-            ->where('name', self::BRANCH_NAME)
+            ->where('name', $name)
             ->first();
 
-        $data = [
-            'name' => self::BRANCH_NAME,
-            'address' => 'Pilies g. 10',
-            'city' => 'Vilnius',
-            'country' => 'Lithuania',
-            'timezone' => 'Europe/Vilnius',
-            'currency' => 'EUR',
-            'is_active' => true,
-        ];
-
-        if ($branch instanceof Branch) {
-            $branch->update($data);
-
-            return $branch;
+        if (! $branch instanceof Branch && $legacyName !== null) {
+            $branch = Branch::withTrashed()
+                ->where('brand_id', $brand->id)
+                ->where('name', $legacyName)
+                ->first();
         }
 
-        return app(CreateBranchAction::class)->handle($brand, $data);
+        if ($branch instanceof Branch) {
+            if ($branch->trashed()) {
+                $branch->restore();
+            }
+
+            $branch->forceFill($attributes)->save();
+            $this->deleteLegacyBranchDuplicates($brand, $branch, $legacyName);
+
+            return $branch->refresh();
+        }
+
+        $branch = Branch::factory()
+            ->{$factoryState}($brand)
+            ->create();
+
+        $this->deleteLegacyBranchDuplicates($brand, $branch, $legacyName);
+
+        return $branch;
+    }
+
+    private function deleteLegacyBranchDuplicates(Brand $brand, Branch $branch, ?string $legacyName): void
+    {
+        if ($legacyName === null) {
+            return;
+        }
+
+        Branch::query()
+            ->where('brand_id', $brand->id)
+            ->where('name', $legacyName)
+            ->whereKeyNot($branch->id)
+            ->delete();
+    }
+
+    private function ensureBranchSetup(Branch $branch): void
+    {
+        $settings = app(EnsureBranchSettingsAction::class)->handle($branch);
+        $settings->forceFill(BranchSetting::defaults($branch))->save();
+
+        app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
     }
 
     private function demoUser(string $name, string $email, SystemRole $role): User
@@ -171,7 +260,15 @@ class DemoRestaurantSeeder extends Seeder
         return $user->refresh();
     }
 
-    private function seedStaff(Organization $organization, Branch $branch, User $owner): void
+    /**
+     * @param  array{
+     *     bella_pizza_old_town: Branch,
+     *     bella_pizza_terrace: Branch,
+     *     sushi_master_center: Branch,
+     *     coffee_bar_small_hall: Branch
+     * }  $branches
+     */
+    private function seedStaff(Organization $organization, array $branches, User $owner): void
     {
         $director = $this->demoUser('Demo Director', 'director@demo.test', SystemRole::Director);
         $admin = $this->demoUser('Demo Restaurant Admin', 'admin@demo.test', SystemRole::RestaurantAdmin);
@@ -184,25 +281,75 @@ class DemoRestaurantSeeder extends Seeder
         $accountant = $this->demoUser('Demo Accountant', 'accountant@demo.test', SystemRole::Accountant);
         $marketer = $this->demoUser('Demo Marketer', 'marketer@demo.test', SystemRole::Marketer);
 
+        $allBranches = array_values($branches);
+
         $assignments = [
-            [$owner, SystemRole::Owner, null, $owner, []],
-            [$director, SystemRole::Director, $owner, $owner, []],
-            [$admin, SystemRole::RestaurantAdmin, $director, $director, []],
-            [$manager, SystemRole::ShiftManager, $admin, $admin, []],
-            [$waiter, SystemRole::Waiter, $manager, $manager, []],
-            [$headChef, SystemRole::HeadChef, $manager, $manager, []],
-            [$cook, SystemRole::Cook, $headChef, $headChef, []],
-            [$bartender, SystemRole::Bartender, $manager, $manager, []],
-            [$cashier, SystemRole::Cashier, $manager, $manager, []],
-            [$accountant, SystemRole::Accountant, $director, $director, []],
-            [$marketer, SystemRole::Marketer, $admin, $admin, []],
+            [$owner, SystemRole::Owner, null, $owner, [], $allBranches],
+            [$director, SystemRole::Director, $owner, $owner, [], $allBranches],
+            [$admin, SystemRole::RestaurantAdmin, $director, $director, [], $allBranches],
+            [$manager, SystemRole::ShiftManager, $admin, $admin, [], $allBranches],
+            [
+                $waiter,
+                SystemRole::Waiter,
+                $manager,
+                $manager,
+                [],
+                $this->branchSubset($branches, ['bella_pizza_old_town', 'bella_pizza_terrace']),
+            ],
+            [
+                $headChef,
+                SystemRole::HeadChef,
+                $manager,
+                $manager,
+                [],
+                $this->branchSubset($branches, ['bella_pizza_old_town', 'bella_pizza_terrace', 'sushi_master_center']),
+            ],
+            [
+                $cook,
+                SystemRole::Cook,
+                $headChef,
+                $headChef,
+                [],
+                $this->branchSubset($branches, ['bella_pizza_old_town', 'sushi_master_center']),
+            ],
+            [
+                $bartender,
+                SystemRole::Bartender,
+                $manager,
+                $manager,
+                [],
+                $this->branchSubset($branches, ['bella_pizza_terrace', 'coffee_bar_small_hall']),
+            ],
+            [
+                $cashier,
+                SystemRole::Cashier,
+                $manager,
+                $manager,
+                [],
+                $this->branchSubset($branches, ['bella_pizza_old_town', 'coffee_bar_small_hall']),
+            ],
+            [$accountant, SystemRole::Accountant, $director, $director, [], $allBranches],
+            [$marketer, SystemRole::Marketer, $admin, $admin, [], $allBranches],
         ];
 
-        foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $permissions]) {
+        foreach ($assignments as [$user, $role, $invitedBy, $assignedBy, $permissions, $assignedBranches]) {
             $this->ensureOrganizationMembership($organization, $user, $role, $invitedBy);
-            $this->ensureBranchAssignment($organization, $branch, $user, $role, $assignedBy);
+            $this->syncBranchAssignments($organization, $user, $role, $assignedBy, $assignedBranches);
             $this->syncPermissions($user, $permissions);
         }
+    }
+
+    /**
+     * @param  array<string, Branch>  $branches
+     * @param  list<string>  $keys
+     * @return list<Branch>
+     */
+    private function branchSubset(array $branches, array $keys): array
+    {
+        return array_map(
+            fn (string $key): Branch => $branches[$key],
+            $keys,
+        );
     }
 
     /**
@@ -650,6 +797,40 @@ class DemoRestaurantSeeder extends Seeder
         ])->save();
     }
 
+    /**
+     * @param  list<Branch>  $branches
+     */
+    private function syncBranchAssignments(
+        Organization $organization,
+        User $user,
+        SystemRole $role,
+        User $assignedBy,
+        array $branches,
+    ): void {
+        $branchIds = array_map(
+            fn (Branch $branch): int => (int) $branch->id,
+            $branches,
+        );
+
+        foreach ($branches as $branch) {
+            $this->ensureBranchAssignment($organization, $branch, $user, $role, $assignedBy);
+        }
+
+        $staleAssignments = BranchUser::query()
+            ->where('organization_id', $organization->id)
+            ->where('user_id', $user->id);
+
+        if ($branchIds === []) {
+            $staleAssignments->delete();
+
+            return;
+        }
+
+        $staleAssignments
+            ->whereNotIn('branch_id', $branchIds)
+            ->delete();
+    }
+
     private function ensureBranchAssignment(
         Organization $organization,
         Branch $branch,
@@ -658,6 +839,7 @@ class DemoRestaurantSeeder extends Seeder
         User $assignedBy,
     ): void {
         $assignment = BranchUser::query()
+            ->where('organization_id', $organization->id)
             ->where('branch_id', $branch->id)
             ->where('user_id', $user->id)
             ->first() ?? new BranchUser;

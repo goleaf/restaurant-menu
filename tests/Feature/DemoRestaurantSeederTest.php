@@ -31,7 +31,7 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
         ->firstOrFail();
     $branch = Branch::query()
         ->where('brand_id', $brand->id)
-        ->where('name', 'Demo Old Town')
+        ->where('name', 'Bella Pizza Old Town')
         ->firstOrFail();
 
     expect($branch->settings()->exists())->toBeTrue()
@@ -85,13 +85,17 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
             ->where('user_id', $user->id)
             ->where('status', 'active')
             ->exists())->toBeTrue()
-            ->and(BranchUser::query()
-                ->where('branch_id', $branch->id)
-                ->where('user_id', $user->id)
-                ->where('status', 'active')
-                ->exists())->toBeTrue()
-            ->and($user->canAccessOrganization($organization))->toBeTrue()
-            ->and($user->canAccessBranch($branch, $organization))->toBeTrue();
+            ->and($user->canAccessOrganization($organization))->toBeTrue();
+
+        $expectedBranchNames = demoBranchAssignments()[$email] ?? [];
+        $primaryBranchIsAssigned = in_array($branch->name, $expectedBranchNames, true);
+
+        expect(BranchUser::query()
+            ->where('branch_id', $branch->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->exists())->toBe($primaryBranchIsAssigned)
+            ->and($user->canAccessBranch($branch, $organization))->toBe($primaryBranchIsAssigned);
     }
 
     foreach (demoRestaurantUsers() as $email => $identity) {
@@ -105,12 +109,17 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
             ->where('organization_id', $organization->id)
             ->where('user_id', $user->id)
             ->whereHas('role', fn ($query) => $query->where('code', $identity['role']->value))
-            ->exists())->toBeTrue()
-            ->and(BranchUser::query()
-                ->where('branch_id', $branch->id)
-                ->where('user_id', $user->id)
-                ->whereHas('role', fn ($query) => $query->where('code', $identity['role']->value))
-                ->exists())->toBeTrue();
+            ->exists())->toBeTrue();
+
+        if (! in_array($branch->name, demoBranchAssignments()[$email], true)) {
+            continue;
+        }
+
+        expect(BranchUser::query()
+            ->where('branch_id', $branch->id)
+            ->where('user_id', $user->id)
+            ->whereHas('role', fn ($query) => $query->where('code', $identity['role']->value))
+            ->exists())->toBeTrue();
     }
 
     $waiter = User::query()->where('email', 'waiter@demo.test')->firstOrFail();
@@ -140,7 +149,85 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
     $this->get(route('public.qr.show', ['token' => $qrCode->public_token]))
         ->assertSuccessful()
         ->assertSee('Bella Pizza')
-        ->assertSee('Demo Old Town');
+        ->assertSee('Bella Pizza Old Town');
+});
+
+test('demo restaurant seeder creates the complete organization brand branch hierarchy', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organization = Organization::query()
+        ->where('name', 'Demo Food Group')
+        ->firstOrFail();
+
+    $brands = Brand::query()
+        ->where('organization_id', $organization->id)
+        ->with('branches.settings')
+        ->orderBy('name')
+        ->get();
+
+    expect($brands->pluck('name')->all())->toEqualCanonicalizing([
+        'Bella Pizza',
+        'Coffee Bar Demo',
+        'Sushi Master',
+    ]);
+
+    $branches = Branch::query()
+        ->where('organization_id', $organization->id)
+        ->with(['brand', 'settings'])
+        ->orderBy('name')
+        ->get()
+        ->keyBy('name');
+
+    expect($branches->keys()->all())->toEqualCanonicalizing(array_keys(demoBranchProfiles()));
+
+    foreach (demoBranchProfiles() as $branchName => $profile) {
+        $branch = $branches->get($branchName);
+
+        expect($branch)->toBeInstanceOf(Branch::class)
+            ->and($branch->brand->name)->toBe($profile['brand'])
+            ->and($branch->organization_id)->toBe($organization->id)
+            ->and($branch->public_name)->toBe($profile['public_name'])
+            ->and($branch->address)->toBe($profile['address'])
+            ->and($branch->city)->toBe($profile['city'])
+            ->and($branch->country)->toBe($profile['country'])
+            ->and($branch->timezone)->toBe($profile['timezone'])
+            ->and($branch->currency)->toBe($profile['currency'])
+            ->and($branch->phone)->toBe($profile['phone'])
+            ->and($branch->email)->toBe($profile['email'])
+            ->and($branch->website_url)->toBe($profile['website_url'])
+            ->and($branch->public_description)->toBe($profile['public_description'])
+            ->and($branch->is_active)->toBeTrue()
+            ->and($branch->settings)->not->toBeNull()
+            ->and($branch->settings->default_language)->toBe('en')
+            ->and($branch->settings->default_currency)->toBe($profile['currency']);
+    }
+});
+
+test('demo staff users are assigned to all or selected demo branches', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organization = Organization::query()
+        ->where('name', 'Demo Food Group')
+        ->firstOrFail();
+    $branches = Branch::query()
+        ->where('organization_id', $organization->id)
+        ->orderBy('name')
+        ->get()
+        ->keyBy('name');
+
+    foreach (demoBranchAssignments() as $email => $branchNames) {
+        $user = User::query()->where('email', $email)->firstOrFail();
+
+        expect(demoAssignedBranchNames($organization, $user))->toEqualCanonicalizing($branchNames);
+
+        foreach ($branchNames as $branchName) {
+            expect($user->canAccessBranch($branches->get($branchName), $organization))->toBeTrue();
+        }
+    }
+
+    $waiter = User::query()->where('email', 'waiter@demo.test')->firstOrFail();
+    expect($waiter->canAccessBranch($branches->get('Sushi Master Center'), $organization))->toBeFalse()
+        ->and($waiter->canAccessBranch($branches->get('Coffee Bar Small Hall'), $organization))->toBeFalse();
 });
 
 test('demo restaurant seeder is idempotent', function () {
@@ -156,7 +243,7 @@ test('demo restaurant seeder is idempotent', function () {
         ->firstOrFail();
     $branch = Branch::query()
         ->where('brand_id', $brand->id)
-        ->where('name', 'Demo Old Town')
+        ->where('name', 'Bella Pizza Old Town')
         ->firstOrFail();
     $menu = Menu::query()
         ->where('branch_id', $branch->id)
@@ -169,7 +256,9 @@ test('demo restaurant seeder is idempotent', function () {
 
     expect(Organization::query()->where('name', 'Demo Food Group')->count())->toBe(1)
         ->and(Brand::query()->where('organization_id', $organization->id)->where('name', 'Bella Pizza')->count())->toBe(1)
-        ->and(Branch::query()->where('brand_id', $brand->id)->where('name', 'Demo Old Town')->count())->toBe(1)
+        ->and(Brand::query()->where('organization_id', $organization->id)->count())->toBe(3)
+        ->and(Branch::query()->where('organization_id', $organization->id)->count())->toBe(4)
+        ->and(Branch::query()->where('brand_id', $brand->id)->where('name', 'Bella Pizza Old Town')->count())->toBe(1)
         ->and(AreaNode::query()->where('branch_id', $branch->id)->count())->toBe(3)
         ->and(ServicePoint::query()->where('branch_id', $branch->id)->count())->toBe(7)
         ->and(QrCode::query()
@@ -181,7 +270,7 @@ test('demo restaurant seeder is idempotent', function () {
         ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7)
         ->and(User::query()->whereIn('email', array_keys(demoRestaurantUsers()))->count())->toBe(count(demoRestaurantUsers()))
         ->and(OrganizationUser::query()->where('organization_id', $organization->id)->count())->toBe(count(demoRestaurantUsers()) - 1)
-        ->and(BranchUser::query()->where('branch_id', $branch->id)->count())->toBe(count(demoRestaurantUsers()) - 1);
+        ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount());
 });
 
 /**
@@ -203,4 +292,118 @@ function demoRestaurantUsers(): array
         'accountant@demo.test' => ['name' => 'Demo Accountant', 'role' => SystemRole::Accountant],
         'marketer@demo.test' => ['name' => 'Demo Marketer', 'role' => SystemRole::Marketer],
     ];
+}
+
+/**
+ * @return array<string, array{
+ *     brand: string,
+ *     public_name: string,
+ *     address: string,
+ *     city: string,
+ *     country: string,
+ *     timezone: string,
+ *     currency: string,
+ *     phone: string,
+ *     email: string,
+ *     website_url: string,
+ *     public_description: string
+ * }>
+ */
+function demoBranchProfiles(): array
+{
+    return [
+        'Bella Pizza Old Town' => [
+            'brand' => 'Bella Pizza',
+            'public_name' => 'Bella Pizza Old Town',
+            'address' => 'Pilies g. 10',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 10001',
+            'email' => 'old-town@bella-pizza.demo.test',
+            'website_url' => 'https://bella-pizza.demo.test/old-town',
+            'public_description' => 'Classic pizza restaurant in the demo old town branch.',
+        ],
+        'Bella Pizza Terrace' => [
+            'brand' => 'Bella Pizza',
+            'public_name' => 'Bella Pizza Terrace',
+            'address' => 'Gedimino pr. 20',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 10002',
+            'email' => 'terrace@bella-pizza.demo.test',
+            'website_url' => 'https://bella-pizza.demo.test/terrace',
+            'public_description' => 'Open-air pizza terrace for QR ordering and table service checks.',
+        ],
+        'Sushi Master Center' => [
+            'brand' => 'Sushi Master',
+            'public_name' => 'Sushi Master Center',
+            'address' => 'Konstitucijos pr. 12',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 20001',
+            'email' => 'center@sushi-master.demo.test',
+            'website_url' => 'https://sushi-master.demo.test/center',
+            'public_description' => 'Compact sushi branch for kitchen department and pickup flow checks.',
+        ],
+        'Coffee Bar Small Hall' => [
+            'brand' => 'Coffee Bar Demo',
+            'public_name' => 'Coffee Bar Small Hall',
+            'address' => 'Vokieciu g. 5',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'phone' => '+370 600 30001',
+            'email' => 'small-hall@coffee-bar.demo.test',
+            'website_url' => 'https://coffee-bar.demo.test/small-hall',
+            'public_description' => 'Small coffee bar branch for bar seats and quick payment checks.',
+        ],
+    ];
+}
+
+/**
+ * @return array<string, list<string>>
+ */
+function demoBranchAssignments(): array
+{
+    $allBranches = array_keys(demoBranchProfiles());
+
+    return [
+        'owner@demo.test' => $allBranches,
+        'director@demo.test' => $allBranches,
+        'admin@demo.test' => $allBranches,
+        'manager@demo.test' => $allBranches,
+        'waiter@demo.test' => ['Bella Pizza Old Town', 'Bella Pizza Terrace'],
+        'chef@demo.test' => ['Bella Pizza Old Town', 'Bella Pizza Terrace', 'Sushi Master Center'],
+        'cook@demo.test' => ['Bella Pizza Old Town', 'Sushi Master Center'],
+        'bartender@demo.test' => ['Bella Pizza Terrace', 'Coffee Bar Small Hall'],
+        'cashier@demo.test' => ['Bella Pizza Old Town', 'Coffee Bar Small Hall'],
+        'accountant@demo.test' => $allBranches,
+        'marketer@demo.test' => $allBranches,
+    ];
+}
+
+function demoExpectedBranchAssignmentCount(): int
+{
+    return collect(demoBranchAssignments())->sum(fn (array $branchNames): int => count($branchNames));
+}
+
+/**
+ * @return list<string>
+ */
+function demoAssignedBranchNames(Organization $organization, User $user): array
+{
+    return BranchUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $user->id)
+        ->with('branch:id,name')
+        ->get()
+        ->map(fn (BranchUser $assignment): string => $assignment->branch->name)
+        ->all();
 }

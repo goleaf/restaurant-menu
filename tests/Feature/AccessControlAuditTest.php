@@ -246,7 +246,8 @@ function prompt96GrantRolePermissions(Role $role, array $permissions): void
 
 function prompt96AssignUserToBranch(User $user, Organization $organization, Branch $branch, Role $role): void
 {
-    BranchUser::query()->create([
+    $branchUser = new BranchUser;
+    $branchUser->forceFill([
         'organization_id' => $organization->id,
         'branch_id' => $branch->id,
         'user_id' => $user->id,
@@ -254,7 +255,7 @@ function prompt96AssignUserToBranch(User $user, Organization $organization, Bran
         'status' => OrganizationUserStatus::Active,
         'assigned_at' => now(),
         'assigned_by_user_id' => null,
-    ]);
+    ])->save();
 }
 
 function prompt96Superadmin(): User

@@ -80,14 +80,15 @@ test('waiter dashboard filters to assigned zones and can show all zones', functi
     $mainHall = AreaNode::factory()->for($branch)->create(['name' => 'Assigned Hall']);
     $terrace = AreaNode::factory()->for($branch)->create(['name' => 'Hidden Terrace']);
 
-    AreaNodeWaiter::query()->create([
+    $assignment = new AreaNodeWaiter;
+    $assignment->forceFill([
         'organization_id' => $organization->id,
         'branch_id' => $branch->id,
         'area_node_id' => $mainHall->id,
         'user_id' => $waiter->id,
         'assigned_by_user_id' => $manager->id,
         'assigned_at' => now(),
-    ]);
+    ])->save();
 
     ServicePoint::factory()
         ->for($branch)

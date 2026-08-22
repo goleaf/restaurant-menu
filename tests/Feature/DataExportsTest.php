@@ -401,7 +401,8 @@ function attachPrompt76Exporter(User $user, Organization $organization, ?Branch 
     ]);
 
     if ($branch instanceof Branch) {
-        BranchUser::query()->create([
+        $branchUser = new BranchUser;
+        $branchUser->forceFill([
             'organization_id' => $organization->id,
             'branch_id' => $branch->id,
             'user_id' => $user->id,
@@ -409,7 +410,7 @@ function attachPrompt76Exporter(User $user, Organization $organization, ?Branch 
             'status' => OrganizationUserStatus::Active->value,
             'assigned_at' => now(),
             'assigned_by_user_id' => null,
-        ]);
+        ])->save();
     }
 
     return $role;

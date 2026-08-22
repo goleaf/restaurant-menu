@@ -12,6 +12,7 @@ use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
 use App\Livewire\PublicQr\GuestMenu;
+use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -265,16 +266,18 @@ function createPrompt104MenuContext(string $menuName = 'Prompt 104 Menu', bool $
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => 'Prompt 104 Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 104 Brand']);
-    $branch = $brand->branches()->create([
-        'organization_id' => $organization->id,
-        'name' => 'Prompt 104 Branch',
-        'address' => 'Schedule Street 1',
-        'city' => 'Vilnius',
-        'country' => 'Lithuania',
-        'timezone' => 'Europe/Vilnius',
-        'currency' => 'EUR',
-        'is_active' => true,
-    ]);
+    $branch = Branch::factory()
+        ->for($organization)
+        ->for($brand)
+        ->create([
+            'name' => 'Prompt 104 Branch',
+            'address' => 'Schedule Street 1',
+            'city' => 'Vilnius',
+            'country' => 'Lithuania',
+            'timezone' => 'Europe/Vilnius',
+            'currency' => 'EUR',
+            'is_active' => true,
+        ]);
     $menu = Menu::factory()
         ->for($branch)
         ->create([

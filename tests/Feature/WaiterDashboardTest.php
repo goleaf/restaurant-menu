@@ -119,7 +119,8 @@ test('waiter dashboard limits branches to active branch assignments when present
     $waiter = User::factory()->create();
     $waiterRole = attachPrompt52Waiter($waiter, $organization);
 
-    BranchUser::query()->create([
+    $branchUser = new BranchUser;
+    $branchUser->forceFill([
         'organization_id' => $organization->id,
         'branch_id' => $firstBranch->id,
         'user_id' => $waiter->id,
@@ -127,7 +128,7 @@ test('waiter dashboard limits branches to active branch assignments when present
         'status' => OrganizationUserStatus::Active,
         'assigned_at' => now(),
         'assigned_by_user_id' => null,
-    ]);
+    ])->save();
 
     ServicePoint::factory()->for($firstBranch)->create(['name' => 'Assigned table']);
     ServicePoint::factory()->for($secondBranch)->create(['name' => 'Hidden table']);

@@ -89,7 +89,8 @@ test('waiter table detail respects active branch assignments', function () {
     $waiter = User::factory()->create();
     $waiterRole = attachPrompt53Waiter($waiter, $organization);
 
-    BranchUser::query()->create([
+    $branchUser = new BranchUser;
+    $branchUser->forceFill([
         'organization_id' => $organization->id,
         'branch_id' => $assignedBranch->id,
         'user_id' => $waiter->id,
@@ -97,7 +98,7 @@ test('waiter table detail respects active branch assignments', function () {
         'status' => OrganizationUserStatus::Active,
         'assigned_at' => now(),
         'assigned_by_user_id' => null,
-    ]);
+    ])->save();
 
     $assignedServicePoint = ServicePoint::factory()->for($assignedBranch)->create(['name' => 'Assigned table detail']);
     $hiddenServicePoint = ServicePoint::factory()->for($otherBranch)->create(['name' => 'Hidden table detail']);

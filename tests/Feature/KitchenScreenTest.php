@@ -128,7 +128,8 @@ test('active branch assignment limits kitchen departments', function () {
     $cook = User::factory()->create(['name' => 'Prompt 61 Cook']);
     $role = attachPrompt61Staff($cook, $organization, SystemRole::Cook);
 
-    BranchUser::query()->create([
+    $branchUser = new BranchUser;
+    $branchUser->forceFill([
         'organization_id' => $organization->id,
         'branch_id' => $kitchen->branch_id,
         'user_id' => $cook->id,
@@ -136,7 +137,7 @@ test('active branch assignment limits kitchen departments', function () {
         'status' => OrganizationUserStatus::Active->value,
         'assigned_at' => now(),
         'assigned_by_user_id' => null,
-    ]);
+    ])->save();
 
     $component = Livewire::actingAs($cook)
         ->test(KitchenDashboard::class)

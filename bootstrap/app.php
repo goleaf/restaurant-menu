@@ -7,7 +7,9 @@ use App\Http\Middleware\SetInterfaceLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,6 +26,15 @@ return Application::configure(basePath: dirname(__DIR__))
             'demo-login' => EnsureDemoLoginIsEnabled::class,
             'superadmin' => EnsureUserIsSuperadmin::class,
         ]);
+
+        $middleware->prependToPriorityList(
+            before: ThrottleRequests::class,
+            prepend: PreventRequestForgery::class,
+        );
+        $middleware->prependToPriorityList(
+            before: PreventRequestForgery::class,
+            prepend: EnsureDemoLoginIsEnabled::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontReportDuplicates();

@@ -102,16 +102,30 @@ test('missing or mismatched demo identities are not authenticated', function ():
 test('disabled and production demo login routes are hidden', function (): void {
     config()->set('demo-login.enabled', false);
 
-    $this->get('/demo-login')->assertNotFound();
+    foreach (range(1, 21) as $attempt) {
+        $this->get('/demo-login')->assertNotFound();
+    }
+
     $this->post('/demo-login/waiter')->assertNotFound();
 
     config()->set('demo-login.enabled', true);
     $this->app->detectEnvironment(fn (): string => 'production');
 
-    $this->get('/demo-login')->assertNotFound();
-    $this->withHeader('Sec-Fetch-Site', 'same-origin')
-        ->post('/demo-login/waiter')
-        ->assertNotFound();
+    foreach (range(1, 21) as $attempt) {
+        $this->get('/demo-login')->assertNotFound();
+    }
+
+    $this->post('/demo-login/waiter')->assertNotFound();
+});
+
+test('enabled non-production demo login post retains csrf protection', function (): void {
+    config()->set('demo-login.enabled', true);
+    $this->app->detectEnvironment(fn (): string => 'demo');
+
+    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
+        ->assertStatus(419);
+
+    $this->assertGuest();
 });
 
 test('enabled demo login page lists all roles without exposing the password', function (): void {

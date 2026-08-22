@@ -32,10 +32,24 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Models\WaiterCall;
+use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+
+test('demo account catalogue matches the seeded identity contract', function (): void {
+    $catalogue = collect(DemoAccountCatalog::all())
+        ->mapWithKeys(fn (array $account): array => [
+            $account['email'] => [
+                'name' => $account['name'],
+                'role' => $account['role'],
+            ],
+        ])
+        ->all();
+
+    expect($catalogue)->toBe(demoRestaurantUsers());
+});
 
 test('demo restaurant seeder creates a runnable demo restaurant', function () {
     $this->seed(DemoRestaurantSeeder::class);

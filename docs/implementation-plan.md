@@ -78,7 +78,8 @@ Requirements: `livewire-001`, `blade-001`, `tailwind-001`, `i18n-001`, `ui-*`.
 Status: **verified**.
 
 - Pint passed; Larastan level 8 reported 0 errors; 558 PHP files passed syntax checks.
-- Sequential and parallel Pest both passed 683 tests with 20,457 assertions; 9 skips are only disabled passkey/2FA feature gates.
+- Sequential and parallel Pest both passed 686 tests with 20,469 assertions; 9 skips are only disabled passkey/2FA feature gates.
+- Numeric performance regressions cap audit history at 10 queries independent of page-row volume, guest menu at 15 cold / 2 warm and waiter dashboard at 40.
 - Xdebug coverage passed at 90.4%.
 - Composer/npm audits, translation scan/audit, production build, fresh migration/seeding, cache builds and HTTP smoke passed.
 - Chromium Lighthouse scored 100/100/100/100 on public, login and authenticated dashboard samples; no checked viewport overflowed.

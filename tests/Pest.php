@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /*
@@ -21,3 +22,20 @@ pest()->extend(TestCase::class)
 beforeEach(function (): void {
     app()->setLocale((string) config('app.locale', 'en'));
 });
+
+function countDatabaseQueries(Closure $operation): int
+{
+    $connection = DB::connection();
+
+    $connection->flushQueryLog();
+    $connection->enableQueryLog();
+
+    try {
+        $operation();
+
+        return count($connection->getQueryLog());
+    } finally {
+        $connection->disableQueryLog();
+        $connection->flushQueryLog();
+    }
+}

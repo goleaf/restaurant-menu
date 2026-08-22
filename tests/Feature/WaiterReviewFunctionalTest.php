@@ -89,6 +89,21 @@ test('waiter sees sent draft in dashboard and can open it for review', function 
         ->and($tableDetail['table']['current_draft_total'])->toBe('14.00 EUR');
 });
 
+test('waiter dashboard query count stays within its eager loaded budget', function () {
+    $context = createPrompt355WaiterReviewContext();
+    $waiter = createPrompt355Waiter($context['organization']);
+    $dashboard = null;
+
+    $waiter->unsetRelation('roles');
+    $queryCount = countDatabaseQueries(function () use (&$dashboard, $waiter): void {
+        $dashboard = app(BuildWaiterDashboardAction::class)->handle($waiter);
+    });
+
+    expect($queryCount)->toBeLessThanOrEqual(40)
+        ->and($dashboard)->toBeArray()
+        ->and($dashboard['new_draft_count'])->toBe(1);
+});
+
 test('waiter edits sent draft before order creation and activity log records edit operations', function () {
     $context = createPrompt355WaiterReviewContext();
     $waiter = createPrompt355Waiter($context['organization']);

@@ -76,6 +76,35 @@ test('audit log index returns a paginated history page', function () {
         ->and($payload['logs']->hasMorePages())->toBeTrue();
 });
 
+test('audit log pagination query count stays constant as history grows', function () {
+    $superadmin = prompt83SuperadminUser();
+
+    AuditLog::factory()->count(12)->create([
+        'organization_id' => null,
+        'branch_id' => null,
+        'user_id' => $superadmin->id,
+    ]);
+
+    $superadmin->unsetRelation('roles');
+    $initialQueryCount = countDatabaseQueries(
+        fn () => app(BuildAuditLogIndexAction::class)->handle($superadmin, 10),
+    );
+
+    AuditLog::factory()->count(40)->create([
+        'organization_id' => null,
+        'branch_id' => null,
+        'user_id' => $superadmin->id,
+    ]);
+
+    $superadmin->unsetRelation('roles');
+    $grownQueryCount = countDatabaseQueries(
+        fn () => app(BuildAuditLogIndexAction::class)->handle($superadmin, 10),
+    );
+
+    expect($initialQueryCount)->toBeLessThanOrEqual(10)
+        ->and($grownQueryCount)->toBe($initialQueryCount);
+});
+
 test('application query code avoids raw sql and untrusted dynamic ordering', function () {
     $violations = [];
     $forbiddenPatterns = [

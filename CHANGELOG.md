@@ -28,7 +28,8 @@
 
 - Completed 41 factories for all 41 first-party models with valid defaults and 105 explicit state/relationship helpers; there are no exemptions.
 - Added `DemoOperationalStateSeeder` and a safe seven-seeder hierarchy covering empty, live, payment-requested, completed, ticket, waiter-call, payment and audit workflows; demo seeding remains production-blocked and idempotent.
-- Final sequential and parallel Pest runs pass 683 tests with 20,457 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Application coverage is 90.4%, Larastan level 8 reports zero errors and 558 PHP files pass syntax checks.
+- Final sequential and parallel Pest runs pass 686 tests with 20,469 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Application coverage is 90.4%, Larastan level 8 reports zero errors and 558 PHP files pass syntax checks.
+- Added executable query budgets: audit pagination remains at 10 queries as history grows from 12 to 52 rows, the guest menu drops from 15 cold-cache queries to 2 warm-cache queries, and the eager-loaded waiter dashboard is capped at 40 queries for its complete operational graph.
 - Isolated SQLite completed 66 migrations in 0.52 s, default seeding in 0.22 s and two demo runs in 3.75 s / 6.83 s. EN/LT/RU contain 2,026 semantic keys each with zero audit issues.
 
 ### Deployment and compatibility

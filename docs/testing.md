@@ -21,9 +21,10 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 | `vendor/bin/pint --format agent` | passed |
 | `vendor/bin/phpstan analyse --memory-limit=1G` | Larastan level 8, 0 errors |
 | PHP syntax loop over `app bootstrap config database routes tests` | 558 files, 0 errors |
-| `php artisan test --compact` | 683 tests; 674 passed; 9 skipped; 20,457 assertions; 59.490 s |
-| `php artisan test --parallel --compact` | same counts; 17.060 s |
-| `php -d 'zend_extension=/Applications/Herd.app/Contents/Resources/xdebug/xdebug-85-arm64.so' -d xdebug.mode=coverage ./vendor/bin/pest --compact --coverage` | same counts; 90.4% total; 210.685 s |
+| `php artisan test --compact tests/Feature/SqlitePerformanceGuardrailsTest.php tests/Feature/GuestMenuDisplayTest.php tests/Feature/WaiterReviewFunctionalTest.php` | 26 passed; 737 assertions; 1.757 s |
+| `php artisan test --compact` | 686 tests; 677 passed; 9 skipped; 20,469 assertions; 60.143 s |
+| `php artisan test --parallel --compact` | same counts; 16.929 s |
+| `php -d 'zend_extension=/Applications/Herd.app/Contents/Resources/xdebug/xdebug-85-arm64.so' -d xdebug.mode=coverage ./vendor/bin/pest --compact --coverage` | same counts; 90.4% total; 213.619 s |
 | isolated `php artisan migrate:fresh --force --no-interaction` | 66 migrations; 0.52 s |
 | isolated `php artisan db:seed --force --no-interaction` | passed; 0.22 s |
 | two isolated `DemoRestaurantSeeder` runs | passed; 3.75 s then 6.83 s |

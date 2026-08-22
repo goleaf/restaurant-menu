@@ -5,9 +5,9 @@ The complete modernization diff was reviewed against the 48 canonical requiremen
 ## Review outcome
 
 - **Security:** invitation credentials are digest-only, atomic and throttled; scoped policies reject cross-tenant/direct-action access; backup/payment/file boundaries are transactional or compensating. A final browser/security review caught and fixed bearer invitation URLs entering a global Livewire offline snapshot; the guest/auth connectivity indicator is now client-only and a regression test prevents recurrence.
-- **Correctness:** PHP 8.5 syntax, Larastan level 8, 683 Pest tests, 66 fresh migrations, default/demo seeding and EN/LT/RU parity pass on the final tree.
+- **Correctness:** PHP 8.5 syntax, Larastan level 8, 686 Pest tests, 66 fresh migrations, default/demo seeding and EN/LT/RU parity pass on the final tree.
 - **Architecture:** routes/controllers/Livewire remain thin, Actions own use cases, Blade is presentation-only, all 42 Livewire components are class/view pairs and all 41 models have factories.
-- **Performance:** growing reads are bounded/eager-loaded, SQLite race-sensitive writes are serialized, cache/query budgets pass, and isolated polling avoids unrelated blocking.
+- **Performance:** growing reads are bounded/eager-loaded, SQLite race-sensitive writes are serialized, numeric audit/menu/waiter query budgets pass, and isolated polling avoids unrelated blocking.
 - **Interface:** CSS-first Tailwind tokens, semantic HTML, focus/touch/reduced-motion/forced-colors behavior and responsive overflow were checked in isolated Chromium; sampled Lighthouse reports are 100/100/100/100.
 - **Operations:** no new worker, cron, Redis, WebSocket, S3, Docker or SSH runtime dependency was introduced; caches/routes/views build and local Herd HTTP smoke passes.
 

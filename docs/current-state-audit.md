@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 683 tests, with only 9 intentional feature-gated skips. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 686 tests, with only 9 intentional feature-gated skips. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -38,7 +38,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | File replacement could diverge from DB | Persistence-first replacement with new-file compensation and lifecycle tests. |
 | 94 Blade PHP directives/model/presentation calls | Removed; executable architecture scan blocks PHP blocks, models, Actions, Services, Illuminate/facades and container/auth/config/session access. |
 | Two Livewire route SFCs | Converted to `Guest\\Home` and `Restaurant\\Dashboard` classes with separate views; SFC/Volt scan passes. |
-| Unbounded lists/N+1 candidates | Bounded pagination/queries, selected/eager relations and query-budget coverage added. |
+| Unbounded lists/N+1 candidates | Bounded pagination/queries, selected/eager relations and executable budgets added: audit 10 constant, guest menu 15 cold / 2 warm, waiter dashboard at most 40. |
 | Float and duplicated money conversions | Decimal/minor-unit-safe formatting and domain arithmetic centralized and tested. |
 | Locale-sensitive cache keys | Cache ownership and invalidation now include the relevant branch/locale context; separation tests pass. |
 | 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; architecture scan passes. |
@@ -50,7 +50,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
 - 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 106 Blade templates and 121 PHP test files.
-- 683 tests, 20,457 assertions, 90.4% application coverage, 0 static-analysis errors and 0 dependency advisories.
+- 686 tests, 20,469 assertions, 90.4% application coverage, 0 static-analysis errors and 0 dependency advisories.
 - 2,026 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
 - Production CSS 291.67 kB / 37.83 kB gzip; application JS remains 0.00 kB.
 

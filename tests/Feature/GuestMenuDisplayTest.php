@@ -126,6 +126,26 @@ test('guest menu component uses cached active menu payload', function () {
     expect($qrCode->public_token)->not->toBeEmpty();
 });
 
+test('guest menu cold and warm cache query counts stay bounded', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    createGuestMenuRows($branch);
+
+    $action = app(GetGuestMenuForBranchAction::class);
+    $cache = Cache::store(GetGuestMenuForBranchAction::cacheStore());
+    $cache->forget(GetGuestMenuForBranchAction::cacheKey($branch->id, 'en'));
+
+    $coldQueryCount = countDatabaseQueries(
+        fn () => $action->handle($branch->id, 'en'),
+    );
+    $warmQueryCount = countDatabaseQueries(
+        fn () => $action->handle($branch->id, 'en'),
+    );
+
+    expect($coldQueryCount)->toBeLessThanOrEqual(15)
+        ->and($warmQueryCount)->toBeLessThanOrEqual(2)
+        ->and($warmQueryCount)->toBeLessThan($coldQueryCount);
+});
+
 test('guest menu uses selected language translations with default fallback', function () {
     [$qrCode, $branch] = createGuestMenuDisplayContext('en');
     [$menu, $category, $availableItem, $unavailableItem] = createGuestMenuRows($branch);

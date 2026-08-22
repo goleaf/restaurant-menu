@@ -401,6 +401,7 @@
     "invitations.account.create_description": "Enter your details to join the restaurant team with this access.",
     "invitations.account.create_title": "Create your account",
     "invitations.account.email_locked": "This invitation is restricted to this email address.",
+    "invitations.account.invite_only": "Account creation is available only through a staff invitation.",
     "invitations.actions.accept": "Accept invitation",
     "invitations.actions.create_account_and_accept": "Create account and accept",
     "invitations.branch": "Branch",

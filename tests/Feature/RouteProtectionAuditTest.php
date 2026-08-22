@@ -70,9 +70,20 @@ test('auth routes stay inside the web session middleware group', function (strin
     'password.update',
     'password.confirm',
     'password.confirm.store',
-    'register',
-    'register.store',
 ]);
+
+test('account creation is exposed only through the invitation session boundary', function (): void {
+    expect(prompt334RouteByName('register'))->toBeNull()
+        ->and(prompt334RouteByName('register.store'))->toBeNull();
+
+    $inviteRegistration = prompt334RouteByName('invitations.register');
+
+    expect($inviteRegistration)->not->toBeNull()
+        ->and(prompt334RouteMethods($inviteRegistration))->toContain('POST')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('web')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('guest')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('throttle:staff-invitations');
+});
 
 test('download routes have the required access middleware boundary', function (): void {
     $exportRoute = prompt334RouteByName('restaurant.exports.download');

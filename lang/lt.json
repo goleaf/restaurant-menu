@@ -401,6 +401,7 @@
     "invitations.account.create_description": "Įveskite savo duomenis, kad prisijungtumėte prie restorano komandos su šia prieiga.",
     "invitations.account.create_title": "Susikurkite paskyrą",
     "invitations.account.email_locked": "Šis kvietimas susietas su šiuo el. pašto adresu.",
+    "invitations.account.invite_only": "Paskyrą galima sukurti tik gavus darbuotojo kvietimą.",
     "invitations.actions.accept": "Priimti kvietimą",
     "invitations.actions.create_account_and_accept": "Susikurti paskyrą ir priimti",
     "invitations.branch": "Filialas",

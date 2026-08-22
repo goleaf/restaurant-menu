@@ -33,7 +33,7 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 | `npm audit --audit-level=low` / `npm run build` | zero advisories / passed |
 | config, route and view cache builds | passed; 64 routes; followed by `optimize:clear` |
 
-The nine skips are intentional feature gates for passkey/2FA behavior because `config('fortify.features')` currently enables only registration and password reset. They do not hide an enabled workflow failure.
+The gated skips are intentional passkey/2FA feature boundaries because `config('fortify.features')` currently enables only password reset. Public registration is intentionally disabled and covered by negative route tests; invited account creation is covered by invitation acceptance tests.
 
 ## Automated architecture boundaries
 

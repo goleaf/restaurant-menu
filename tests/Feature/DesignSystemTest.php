@@ -130,7 +130,7 @@ test('area icon safely falls back when persisted icon is unsupported', function 
 });
 
 test('authentication forms do not force focus before the user chooses a field', function () {
-    foreach ([route('login'), route('register'), route('password.request')] as $url) {
+    foreach ([route('login'), route('password.request')] as $url) {
         $this->get($url)
             ->assertOk()
             ->assertDontSee('autofocus', false);

@@ -401,6 +401,7 @@
     "invitations.account.create_description": "Введите свои данные, чтобы присоединиться к команде ресторана с этим доступом.",
     "invitations.account.create_title": "Создайте аккаунт",
     "invitations.account.email_locked": "Это приглашение привязано к указанному адресу электронной почты.",
+    "invitations.account.invite_only": "Создать аккаунт можно только по приглашению сотрудника.",
     "invitations.actions.accept": "Принять приглашение",
     "invitations.actions.create_account_and_accept": "Создать аккаунт и принять",
     "invitations.branch": "Филиал",

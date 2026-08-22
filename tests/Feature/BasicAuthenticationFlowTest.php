@@ -6,16 +6,18 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-test('only basic fortify features are enabled for this stage', function () {
+test('public registration is disabled while password reset remains enabled', function () {
     expect(config('fortify.features'))
-        ->toContain(Features::registration())
         ->toContain(Features::resetPasswords())
+        ->not->toContain(Features::registration())
         ->not->toContain(Features::emailVerification())
         ->not->toContain(Features::twoFactorAuthentication())
         ->not->toContain(Features::passkeys());
 
     expect(Route::has('login'))->toBeTrue();
-    expect(Route::has('register'))->toBeTrue();
+    expect(Route::has('register'))->toBeFalse();
+    expect(Route::has('register.store'))->toBeFalse();
+    expect(Route::has('invitations.register'))->toBeTrue();
     expect(Route::has('logout'))->toBeTrue();
     expect(Route::has('password.request'))->toBeTrue();
     expect(Route::has('password.reset'))->toBeTrue();
@@ -33,15 +35,13 @@ test('dashboard zones require authentication', function (string $routeName) {
     'superadmin' => 'superadmin.dashboard',
 ]);
 
-test('registered users can access restaurant zones but not platform zones', function () {
-    $this->post(route('register.store'), [
+test('authenticated users can access restaurant zones but not platform zones', function () {
+    $user = User::factory()->create([
         'name' => 'Basic User',
         'email' => 'basic@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ]);
 
-    $this->assertAuthenticated();
+    $this->actingAs($user);
 
     $this->get(route('dashboard'))->assertOk();
     $this->get(route('restaurant.dashboard'))->assertOk();

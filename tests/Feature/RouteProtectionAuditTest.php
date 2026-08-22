@@ -117,6 +117,27 @@ test('first party web route file does not disable csrf protection', function ():
         ->and(prompt334RouteByName('default-livewire.update')?->gatherMiddleware())->toContain('web');
 });
 
+test('demo login routes keep their public authentication boundary', function (): void {
+    $indexRoute = prompt334RouteByName('demo-login.index');
+    $authenticateRoute = prompt334RouteByName('demo-login.authenticate');
+
+    expect($indexRoute)->not->toBeNull()
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('web')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('demo-login')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('guest')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('throttle:demo-login')
+        ->and(prompt334RouteMiddleware($indexRoute))->not->toContain('auth')
+        ->and(prompt334RouteMethods($indexRoute))->toContain('GET');
+
+    expect($authenticateRoute)->not->toBeNull()
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('web')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('demo-login')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('guest')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('throttle:demo-login')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->not->toContain('auth')
+        ->and(prompt334RouteMethods($authenticateRoute))->toContain('POST');
+});
+
 /**
  * @param  list<string>  $names
  * @return Collection<int, Route>

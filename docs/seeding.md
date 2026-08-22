@@ -20,6 +20,12 @@ Meaningful states cover workflow values actually used by each model: active/inac
 
 Demo data is fictitious and covers every meaningful staff role, ownership/non-ownership, current/historical workflow states, localized menu data, empty/normal/heavy presentation cases and local file fixtures. No seeded capability depends on the internet.
 
+## Canonical demo identities
+
+`App\Support\DemoLogin\DemoAccountCatalog` is the single identity map shared by `DemoRestaurantSeeder` and the opt-in demo-login surface. It defines one deterministic fictitious name and email for each of the 12 `SystemRole` cases in canonical enum order; it contains no password or persistence logic. Seeder parity coverage proves that every generated demo account matches this catalogue and its assigned role.
+
+`DemoRestaurantSeeder` remains idempotent, refuses production and uses natural keys without truncating unrestricted data. `DatabaseSeeder` wiring is unchanged: demo restaurant data is still an explicit operator action, not an implicit default seed. The shared seed password remains a non-production operator/testing detail and is never exposed by the role-selection page.
+
 ## Coverage matrix
 
 | Model group | Factory | Meaningful state examples | Seeder coverage | Tests |
@@ -36,6 +42,6 @@ Demo data is fictitious and covers every meaningful staff role, ownership/non-ow
 
 - 41 first-party Eloquent models, 41 factories and 105 explicit state/relationship helpers; no exemptions.
 - Seven seeders including the orchestrator and operational demo layer.
-- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards pass in the 693-test suite.
-- Fresh isolated SQLite completed all 66 migrations and `DatabaseSeeder`; `DemoRestaurantSeeder` then passed twice in 3.61 s and 6.67 s. Demo area/service-point icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
+- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards passed in the final sequential suite: 737 total tests, 728 passed, 9 skipped and 21,006 assertions.
+- Fresh isolated SQLite completed all 66 migrations and `DatabaseSeeder`; `DemoRestaurantSeeder` then passed twice in 3.582 s and 6.660 s and left exactly 12 catalogue users. Demo area/service-point icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
 - Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data.

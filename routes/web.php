@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\DataExportType;
+use App\Enums\SystemRole;
+use App\Http\Controllers\Auth\LoginAsDemoRoleController;
+use App\Http\Controllers\Auth\ShowDemoLoginController;
 use App\Http\Controllers\Invitations\AcceptInvitationController;
 use App\Http\Controllers\Invitations\RegisterInvitationController;
 use App\Http\Controllers\Invitations\ShowInvitationController;
@@ -52,6 +55,16 @@ Route::middleware(['web'])
         Route::livewire('{token}', PublicQrShow::class)
             ->where('token', '[A-Za-z0-9]+')
             ->name('show');
+    });
+
+Route::middleware(['demo-login', 'guest', 'throttle:demo-login'])
+    ->prefix('demo-login')
+    ->name('demo-login.')
+    ->group(function (): void {
+        Route::get('/', ShowDemoLoginController::class)->name('index');
+        Route::post('{role}', LoginAsDemoRoleController::class)
+            ->whereIn('role', SystemRole::values())
+            ->name('authenticate');
     });
 
 Route::middleware(['auth'])->group(function () {

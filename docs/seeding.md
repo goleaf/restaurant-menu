@@ -20,6 +20,12 @@ Meaningful states cover workflow values actually used by each model: active/inac
 
 Demo data is fictitious and covers every meaningful staff role, ownership/non-ownership, current/historical workflow states, localized menu data, empty/normal/heavy presentation cases and local file fixtures. No seeded capability depends on the internet.
 
+## Canonical demo identities
+
+`App\Support\DemoLogin\DemoAccountCatalog` is the single identity map shared by `DemoRestaurantSeeder` and the opt-in demo-login surface. It defines one deterministic fictitious name and email for each of the 12 `SystemRole` cases in canonical enum order; it contains no password or persistence logic. Seeder parity coverage proves that every generated demo account matches this catalogue and its assigned role.
+
+`DemoRestaurantSeeder` remains idempotent, refuses production and uses natural keys without truncating unrestricted data. `DatabaseSeeder` wiring is unchanged: demo restaurant data is still an explicit operator action, not an implicit default seed. The shared seed password remains a non-production operator/testing detail and is never exposed by the role-selection page.
+
 ## Coverage matrix
 
 | Model group | Factory | Meaningful state examples | Seeder coverage | Tests |

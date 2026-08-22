@@ -2,6 +2,16 @@
 
 ## 2026-08-22 — production-grade modernization
 
+### Added
+
+- Added an explicitly enabled, non-production-only demo login page that presents all 12 seeded system roles in canonical order and enters each prepared workspace through a one-click CSRF-protected POST.
+- Centralized deterministic role identities in `DemoAccountCatalog`, shared by demo seeding and availability/authentication checks so missing or mismatched accounts stay disabled.
+
+### Security
+
+- Hard-denied demo GET and POST routes in production and while disabled, kept them guest-only behind a shared per-IP limiter, revalidated the canonical email-role assignment and regenerated the session after login.
+- Kept reusable passwords out of the demo page and added private/no-store, no-referrer and noindex response controls; final all-role browser acceptance remains a release gate.
+
 ### UI/UX implementation addendum
 
 - Reframed the public entry, guest orientation and authenticated dashboards around one visible next action, role-specific context and progressive disclosure instead of equal-weight card galleries.
@@ -18,7 +28,7 @@
 
 ### Architecture, security and data
 
-- Established 48 stable canonical requirements, a complete compliance matrix, architecture/domain/data/security/frontend/runtime documentation and three ADRs; all 56 first-party Markdown files were normalized and reviewed again after implementation.
+- Established 49 stable canonical requirements, a complete compliance matrix, architecture/domain/data/security/frontend/runtime documentation and three ADRs; all 56 first-party Markdown files were normalized and reviewed again after implementation.
 - Added aggregate policies, scoped nested bindings, strict local/test Eloquent behavior, explicit dependency injection and executable Blade/Livewire/service-locator architecture checks.
 - Replaced plaintext staff invitation credentials with digest-at-rest, expiring/revocable, recipient-bound and atomically single-use acceptance protected by rate limiting.
 - Serialized SQLite payment balance checks against concurrent overpayment, introduced persistence/file compensation and replaced live-database streaming with a private consistent online SQLite snapshot protected by recent password, typed confirmation and audited reason.

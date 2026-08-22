@@ -35,6 +35,21 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 
 The gated skips are intentional passkey/2FA feature boundaries because `config('fortify.features')` currently enables only password reset. Public registration is intentionally disabled and covered by negative route tests; invited account creation is covered by invitation acceptance tests.
 
+## Demo-login targeted evidence
+
+The current demo-login slice has separate targeted evidence and does not replace the historical full-suite results above:
+
+| Check | Observed result |
+|---|---|
+| `php artisan test --compact tests/Feature/DemoLoginTest.php tests/Feature/RouteProtectionAuditTest.php` | 77 tests passed; 358 assertions |
+| demo page query budget | exactly 2 Eloquent queries with two matching users; all 12 roles remain in canonical order |
+| disabled and production boundary | 21 repeated GET probes remain 404 in each state; guarded requests do not consume the demo throttle |
+| CSRF and throttle regressions | demo POST without a token and logout POST without a token return 419; request 21 after 20 successful demo GETs returns 429 |
+| `php artisan translations:scan --json` | 421 files; 1,505 semantic keys used; 0 missing, legacy or phrase keys |
+| `php artisan translations:audit` | 6,168 semantic entries; 0 critical issues |
+
+Final browser acceptance is still pending the final Task 8 gate. It must exercise every available role through selection, login and destination; EN/LT/RU content; keyboard operation and visible focus; 320 px mobile layout without horizontal overflow; and browser console/network inspection in disposable isolated profiles. These browser checks are acceptance criteria, not yet observed evidence for this slice.
+
 ## Automated architecture boundaries
 
 `ProjectCleanupConsistencyTest` and related repository tests prohibit route SFC/Volt, Blade PHP blocks, Blade model/Action/Service/Illuminate/facade/container/auth/config/session access, application service locators, hardcoded Livewire page titles/action errors, debug stubs, forbidden runtime packages and legacy translation keys. XSS, token, route, tenant, file, money, cache and query tests enforce the corresponding requirement families. Invitation tests also prove bearer tokens never appear in rendered Livewire snapshots.

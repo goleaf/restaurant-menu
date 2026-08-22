@@ -10,6 +10,19 @@ use Illuminate\View\Component;
 
 final class ServicePointIcon extends Component
 {
+    /** @var list<string> */
+    private const SUPPORTED_ICONS = [
+        'squares-2x2',
+        'beaker',
+        'sparkles',
+        'home',
+        'bookmark',
+        'sun',
+        'building-office-2',
+        'shopping-bag',
+        'truck',
+    ];
+
     public readonly string $resolvedIcon;
 
     public readonly string $toneClasses;
@@ -21,18 +34,19 @@ final class ServicePointIcon extends Component
         public readonly bool $active = true,
     ) {
         $typeValue = $type instanceof BackedEnum ? (string) $type->value : (string) $type;
-        $this->resolvedIcon = $icon ?: match ($typeValue) {
+        $fallbackIcon = match ($typeValue) {
             'table' => 'squares-2x2',
             'bar_seat' => 'beaker',
             'vip_table' => 'sparkles',
             'room' => 'home',
-            'booth' => 'rectangle-group',
+            'booth' => 'bookmark',
             'sunbed' => 'sun',
-            'hotel_room' => 'building-office',
+            'hotel_room' => 'building-office-2',
             'pickup_window' => 'shopping-bag',
             'delivery_point' => 'truck',
             default => 'bookmark',
         };
+        $this->resolvedIcon = in_array($icon, self::SUPPORTED_ICONS, true) ? $icon : $fallbackIcon;
         $this->toneClasses = match ($typeValue) {
             'bar_seat' => 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-100',
             'vip_table' => 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-100',

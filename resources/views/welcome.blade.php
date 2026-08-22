@@ -1,61 +1,63 @@
 <x-layouts::guest :title="__('ui.views.welcome.restaurant_menu_saas')">
-    <main data-page="public-entry" class="min-h-svh bg-stone-50 text-zinc-950 dark:bg-zinc-950 dark:text-white">
-        <section class="mx-auto flex min-h-svh w-full max-w-5xl flex-col justify-between gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main id="main-content" tabindex="-1" data-page="public-entry" class="min-h-svh bg-stone-50 text-zinc-950 dark:bg-zinc-950 dark:text-white">
+        <section class="mx-auto grid min-h-svh w-full max-w-6xl grid-rows-[auto_1fr_auto] gap-10 px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
             <header class="flex items-center justify-between gap-4">
-                <a href="{{ route('home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
+                <a href="{{ route('home') }}" class="-m-2 flex min-h-touch items-center gap-2 rounded-control p-2 font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus" wire:navigate>
                     <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
                     <span>{{ __('layout.app_name') }}</span>
                 </a>
 
-                <a
-                    href="{{ route('login') }}"
-                    class="inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 px-3 text-sm font-medium text-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
-                    wire:navigate
-                >
-                    {{ __('ui.views.welcome.staff_login') }}
-                </a>
+                <flux:button class="hidden min-h-touch sm:inline-flex" :href="route('login')" wire:navigate>{{ __('ui.views.welcome.staff_login') }}</flux:button>
             </header>
 
-            <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                <div class="flex flex-col gap-5">
-                    <p class="text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ __('ui.views.welcome.shared_hosting_restaurant_platform') }}</p>
-                    <h1 class="max-w-2xl text-3xl font-semibold leading-tight sm:text-4xl">
+            <div class="grid self-center gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)] lg:items-center lg:gap-14">
+                <div class="flex flex-col items-start gap-5">
+                    <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">{{ __('ui.views.welcome.shared_hosting_restaurant_platform') }}</p>
+                    <h1 class="max-w-3xl text-balance text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
                         {{ __('ui.views.welcome.qr_ordering_waiter_flow_kitchen_screens_and_restaurant_das') }}
                     </h1>
-                    <p class="max-w-xl text-base leading-7 text-zinc-600 dark:text-zinc-300">
+                    <p class="max-w-2xl text-base leading-7 text-zinc-600 dark:text-zinc-300 sm:text-lg">
                         {{ __('ui.views.welcome.guests_normally_start_from_a_permanent_qr_link_staff_can_m') }}
                     </p>
-                </div>
 
-                <div class="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                    <div class="flex flex-col gap-3">
-                        <a
-                            href="{{ route('guest.home') }}"
-                            class="flex min-h-12 items-center justify-between rounded-lg border border-zinc-200 px-4 text-sm font-medium dark:border-zinc-800"
-                            wire:navigate
-                        >
-                            <span>{{ __('ui.views.welcome.guest_start') }}</span>
-                            <span aria-hidden="true">-></span>
-                        </a>
-                        <a
-                            href="{{ route('restaurant.dashboard') }}"
-                            class="flex min-h-12 items-center justify-between rounded-lg border border-zinc-200 px-4 text-sm font-medium dark:border-zinc-800"
-                            wire:navigate
-                        >
-                            <span>{{ __('navigation.restaurant_dashboard') }}</span>
-                            <span aria-hidden="true">-></span>
-                        </a>
-                        <a
-                            href="{{ route('superadmin.dashboard') }}"
-                            class="flex min-h-12 items-center justify-between rounded-lg border border-zinc-200 px-4 text-sm font-medium dark:border-zinc-800"
-                            wire:navigate
-                        >
-                            <span>{{ __('ui.superadmin.dashboard.platform_dashboard') }}</span>
-                            <span aria-hidden="true">-></span>
-                        </a>
+                    <div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                        <flux:button class="min-h-touch" data-primary-action="staff-login" variant="primary" icon-trailing="arrow-right" :href="route('login')" wire:navigate>
+                            {{ __('ui.views.welcome.staff_login') }}
+                        </flux:button>
+                        <flux:button class="min-h-touch" icon="qr-code" :href="route('guest.home')" wire:navigate>
+                            {{ __('ui.views.welcome.guest_start') }}
+                        </flux:button>
                     </div>
                 </div>
+
+                <ol class="overflow-hidden rounded-card border border-border-subtle bg-surface shadow-card">
+                    <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-3 border-b border-border-subtle p-4 sm:p-5">
+                        <span class="font-semibold tabular-nums text-brand-700 dark:text-brand-300" aria-hidden="true">01</span>
+                        <div>
+                            <h2 class="font-semibold text-text-primary">{{ __('ui.views.welcome.steps.guest.title') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('ui.views.welcome.steps.guest.description') }}</p>
+                        </div>
+                    </li>
+                    <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-3 border-b border-border-subtle p-4 sm:p-5">
+                        <span class="font-semibold tabular-nums text-brand-700 dark:text-brand-300" aria-hidden="true">02</span>
+                        <div>
+                            <h2 class="font-semibold text-text-primary">{{ __('ui.views.welcome.steps.staff.title') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('ui.views.welcome.steps.staff.description') }}</p>
+                        </div>
+                    </li>
+                    <li class="grid grid-cols-[3rem_minmax(0,1fr)] gap-3 p-4 sm:p-5">
+                        <span class="font-semibold tabular-nums text-brand-700 dark:text-brand-300" aria-hidden="true">03</span>
+                        <div>
+                            <h2 class="font-semibold text-text-primary">{{ __('ui.views.welcome.steps.kitchen.title') }}</h2>
+                            <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('ui.views.welcome.steps.kitchen.description') }}</p>
+                        </div>
+                    </li>
+                </ol>
             </div>
+
+            <footer class="border-t border-border-subtle py-4 text-sm text-text-muted">
+                {{ __('ui.views.welcome.no_app_required') }}
+            </footer>
         </section>
     </main>
 </x-layouts::guest>

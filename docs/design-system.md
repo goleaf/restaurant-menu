@@ -29,4 +29,6 @@ Colors may use OKLCH when contrast is verified. Status always combines words/ico
 - Destructive operations are visually distinct, require confirmation where appropriate and never depend on color alone.
 - Print-only QR/ticket layouts have isolated, deterministic print styles.
 
+Related operational counts use the shared `x-ui.metric-strip` definition list instead of independent oversized cards. Values render in two columns on small screens and six where space permits. Active waiter branches open by default; inactive branches use native `details`/`summary` disclosure. Confirmations use Flux modal primitives, focus the safe cancel action for dangerous operations and restore focus to the trigger on close.
+
 Visual acceptance and browser widths are defined in [`accessibility.md`](accessibility.md) and [`tailwind.md`](tailwind.md).

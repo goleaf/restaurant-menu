@@ -15,7 +15,6 @@
                 :value="old('email')"
                 type="email"
                 required
-                autofocus
                 autocomplete="email"
                 :placeholder="__('fields.placeholders.email_example')"
             />

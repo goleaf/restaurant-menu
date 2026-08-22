@@ -6,14 +6,15 @@
 
 1. [`requirements.md`](requirements.md) — canonical functional and non-functional requirements.
 2. [`compliance-matrix.md`](compliance-matrix.md) — implementation, schema, localization, seeding, tests, commands, and status for every requirement.
-3. [`architecture.md`](architecture.md), [`domain-model.md`](domain-model.md), [`data-model.md`](data-model.md) — system boundaries and persistent model.
-4. [`security.md`](security.md), [`authorization.md`](authorization.md) — trust boundaries and access model.
-5. [`frontend.md`](frontend.md), [`livewire.md`](livewire.md), [`tailwind.md`](tailwind.md), [`design-system.md`](design-system.md), [`accessibility.md`](accessibility.md) — interface contracts.
-6. [`localization.md`](localization.md), [`testing.md`](testing.md), [`seeding.md`](seeding.md) — contribution workflows.
-7. [`performance.md`](performance.md), [`caching.md`](caching.md), [`integrations.md`](integrations.md) — runtime behaviour.
-8. [`deployment.md`](deployment.md), [`operations.md`](operations.md) — shared-hosting delivery and operation.
-9. [`current-state-audit.md`](current-state-audit.md), [`implementation-plan.md`](implementation-plan.md), [`code-review.md`](code-review.md), [`known-limitations.md`](known-limitations.md) — modernization evidence.
-10. [`decisions/`](decisions/) — accepted architecture decisions.
+3. Root [`PRODUCT.md`](../PRODUCT.md) and [`DESIGN.md`](../DESIGN.md) — product/design context and anti-reference contract for interface work; neither redefines active requirements.
+4. [`architecture.md`](architecture.md), [`domain-model.md`](domain-model.md), [`data-model.md`](data-model.md) — system boundaries and persistent model.
+5. [`security.md`](security.md), [`authorization.md`](authorization.md) — trust boundaries and access model.
+6. [`frontend.md`](frontend.md), [`livewire.md`](livewire.md), [`tailwind.md`](tailwind.md), [`design-system.md`](design-system.md), [`accessibility.md`](accessibility.md) — interface contracts.
+7. [`localization.md`](localization.md), [`testing.md`](testing.md), [`seeding.md`](seeding.md) — contribution workflows.
+8. [`performance.md`](performance.md), [`caching.md`](caching.md), [`integrations.md`](integrations.md) — runtime behaviour.
+9. [`deployment.md`](deployment.md), [`operations.md`](operations.md) — shared-hosting delivery and operation.
+10. [`current-state-audit.md`](current-state-audit.md), [`implementation-plan.md`](implementation-plan.md), [`code-review.md`](code-review.md), [`known-limitations.md`](known-limitations.md) — modernization evidence.
+11. [`decisions/`](decisions/) — accepted architecture decisions.
 
 ## Requirement views
 

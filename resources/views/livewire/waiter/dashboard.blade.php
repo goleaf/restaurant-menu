@@ -47,7 +47,7 @@
                     type="button"
                     wire:click="setZoneScope('mine')"
                     @class([
-                        'px-3 py-2',
+                        'min-h-touch px-3 py-2',
                         'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950' => $zoneScope === 'mine',
                         'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800' => $zoneScope !== 'mine',
                     ])
@@ -59,7 +59,7 @@
                     type="button"
                     wire:click="setZoneScope('all')"
                     @class([
-                        'border-s border-zinc-200 px-3 py-2 dark:border-zinc-800',
+                        'min-h-touch border-s border-zinc-200 px-3 py-2 dark:border-zinc-800',
                         'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950' => $zoneScope === 'all',
                         'text-zinc-600 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800' => $zoneScope !== 'all',
                     ])
@@ -90,47 +90,29 @@
         </div>
     @endif
 
-    <section class="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.dashboard.places') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $servicePointCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.dashboard.open_sessions') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $activeSessionCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-900/70 dark:bg-rose-950/30">
-            <p class="text-sm text-rose-700 dark:text-rose-200">{{ __('ui.waiter.dashboard.new_orders') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-rose-950 dark:text-rose-100">{{ $newDraftCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900/70 dark:bg-orange-950/30">
-            <p class="text-sm text-orange-700 dark:text-orange-200">{{ __('ui.waiter.dashboard.guest_calls') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-orange-950 dark:text-orange-100">{{ $waiterCallCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-sky-200 bg-sky-50 p-4 dark:border-sky-900/70 dark:bg-sky-950/30">
-            <p class="text-sm text-sky-700 dark:text-sky-200">{{ __('ui.waiter.dashboard.bill_requests') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-sky-950 dark:text-sky-100">{{ $billRequestCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/70 dark:bg-emerald-950/30">
-            <p class="text-sm text-emerald-700 dark:text-emerald-200">{{ __('ui.waiter.dashboard.ready_items') }}</p>
-            <p class="mt-2 text-2xl font-semibold text-emerald-950 dark:text-emerald-100">{{ $readyItemCount }}</p>
-        </div>
-    </section>
+    <x-ui.metric-strip :items="[
+        ['label' => 'ui.waiter.dashboard.places', 'value' => $servicePointCount],
+        ['label' => 'ui.waiter.dashboard.open_sessions', 'value' => $activeSessionCount],
+        ['label' => 'ui.waiter.dashboard.new_orders', 'value' => $newDraftCount, 'tone' => $newDraftCount > 0 ? 'danger' : 'neutral'],
+        ['label' => 'ui.waiter.dashboard.guest_calls', 'value' => $waiterCallCount, 'tone' => $waiterCallCount > 0 ? 'warning' : 'neutral'],
+        ['label' => 'ui.waiter.dashboard.bill_requests', 'value' => $billRequestCount, 'tone' => $billRequestCount > 0 ? 'information' : 'neutral'],
+        ['label' => 'ui.waiter.dashboard.ready_items', 'value' => $readyItemCount, 'tone' => $readyItemCount > 0 ? 'success' : 'neutral'],
+    ]" />
 
     <div class="flex flex-col gap-5">
         @forelse ($branches as $branch)
-            <section wire:key="waiter-branch-{{ $branch['id'] }}" class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-4 dark:border-zinc-800 xl:flex-row xl:items-center xl:justify-between">
+            <details
+                wire:key="waiter-branch-{{ $branch['id'] }}"
+                data-branch-activity="{{ $branch['has_activity'] ? 'active' : 'idle' }}"
+                @if ($branch['has_activity']) open @endif
+                class="group overflow-hidden rounded-card border border-zinc-200 bg-white shadow-card dark:border-zinc-800 dark:bg-zinc-900"
+            >
+                <summary class="flex min-h-touch cursor-pointer list-none flex-col gap-3 px-4 py-4 marker:hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus xl:flex-row xl:items-center xl:justify-between [&::-webkit-details-marker]:hidden">
                     <div class="min-w-0">
-                        <p class="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                        <p class="break-words text-sm text-zinc-500 dark:text-zinc-400">
                             {{ $branch['organization_name'] }} / {{ $branch['brand_name'] }}
                         </p>
-                        <h2 class="mt-1 truncate text-lg font-semibold text-zinc-950 dark:text-white">{{ $branch['name'] }}</h2>
+                        <h2 class="mt-1 break-words text-lg font-semibold text-zinc-950 dark:text-white">{{ $branch['name'] }}</h2>
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $branch['city'] ?: __('ui.waiter.dashboard.city_not_set') }}</p>
                     </div>
 
@@ -141,8 +123,9 @@
                         <flux:badge :color="$branch['waiter_call_count'] > 0 ? 'orange' : 'zinc'">{{ __('ui.waiter.dashboard.calls') }}: {{ $branch['waiter_call_count'] }}</flux:badge>
                         <flux:badge :color="$branch['bill_request_count'] > 0 ? 'blue' : 'zinc'">{{ __('ui.waiter.dashboard.bills') }}: {{ $branch['bill_request_count'] }}</flux:badge>
                         <flux:badge :color="$branch['ready_item_count'] > 0 ? 'emerald' : 'zinc'">{{ __('guest.statuses.items.ready') }}: {{ $branch['ready_item_count'] }}</flux:badge>
+                        <flux:icon name="chevron-down" class="size-5 self-center transition group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
                     </div>
-                </div>
+                </summary>
 
                 @if ($branch['temporary_closure_active'])
                     <div class="border-b border-rose-200 bg-rose-50 px-4 py-4 dark:border-rose-900/70 dark:bg-rose-950/30">
@@ -158,6 +141,7 @@
                             </div>
 
                             <flux:button
+                                class="min-h-touch"
                                 size="sm"
                                 icon="check"
                                 type="button"
@@ -176,7 +160,7 @@
                     <div class="border-b border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-100">
                         <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                             <p>{{ __("ui.waiter.dashboard.showing_only_this_waiter_s_assigned_zones") }}</p>
-                            <button type="button" class="text-start font-semibold underline-offset-4 hover:underline md:text-end" wire:click="setZoneScope('all')">
+                            <button type="button" class="min-h-touch text-start font-semibold underline-offset-4 hover:underline md:text-end" wire:click="setZoneScope('all')">
                                 {{ __('ui.waiter.dashboard.show_all_zones') }}
                             </button>
                         </div>
@@ -208,7 +192,7 @@
                                         {{ $draft['sent_at'] ?? __('ui.departments.dashboard.time_not_set') }}
                                     </p>
 
-                                    <flux:button class="mt-3 w-full" size="sm" icon="eye" :href="route('restaurant.waiter.tables.show', $draft['table_session_id'])" wire:navigate>
+                                    <flux:button class="mt-3 min-h-touch w-full" size="sm" icon="eye" :href="route('restaurant.waiter.tables.show', $draft['table_session_id'])" wire:navigate>
                                         {{ __('ui.organizations.brands.branches.service_points.index.open_table') }}
                                     </flux:button>
                                 </article>
@@ -243,11 +227,11 @@
                                     </p>
 
                                     <div class="mt-3 grid grid-cols-2 gap-2">
-                                        <flux:button size="sm" icon="check" wire:click="markWaiterCallHandled({{ $waiterCall['id'] }})" wire:loading.attr="disabled" wire:target="markWaiterCallHandled({{ $waiterCall['id'] }})">
+                                        <flux:button class="min-h-touch" size="sm" icon="check" wire:click="markWaiterCallHandled({{ $waiterCall['id'] }})" wire:loading.attr="disabled" wire:target="markWaiterCallHandled({{ $waiterCall['id'] }})">
                                             {{ __('ui.waiter.dashboard.done') }}
                                         </flux:button>
 
-                                        <flux:button size="sm" icon="eye" :href="$waiterCall['detail_url']" wire:navigate>
+                                        <flux:button class="min-h-touch" size="sm" icon="eye" :href="$waiterCall['detail_url']" wire:navigate>
                                             {{ __('menu.guest.details') }}
                                         </flux:button>
                                     </div>
@@ -274,7 +258,7 @@
                                         {{ __('guest.cart.other_guests') }}: {{ $billRequest['active_guest_count'] }}
                                     </p>
 
-                                    <flux:button class="mt-3 w-full" size="sm" icon="eye" :href="$billRequest['detail_url']" wire:navigate>
+                                    <flux:button class="mt-3 min-h-touch w-full" size="sm" icon="eye" :href="$billRequest['detail_url']" wire:navigate>
                                         {{ __('ui.waiter.dashboard.open_bill') }}
                                     </flux:button>
                                 </article>
@@ -307,7 +291,7 @@
                                         @endif
                                     </p>
 
-                                    <flux:button class="mt-3 w-full" size="sm" icon="eye" :href="$readyItem['detail_url']" wire:navigate>
+                                    <flux:button class="mt-3 min-h-touch w-full" size="sm" icon="eye" :href="$readyItem['detail_url']" wire:navigate>
                                         {{ __('ui.waiter.dashboard.mark_served') }}
                                     </flux:button>
                                 </article>
@@ -346,17 +330,17 @@
                                     <article
                                         wire:key="waiter-service-point-{{ $servicePoint['id'] }}"
                                         @class([
-                                            'min-h-44 rounded-lg border border-l-4 bg-white p-4 shadow-sm dark:bg-zinc-900',
+                                            'min-h-44 rounded-lg border bg-white p-4 shadow-sm dark:bg-zinc-900',
                                             'border-zinc-200 dark:border-zinc-800' => ! $servicePoint['has_priority'],
-                                            'border-rose-200 border-l-rose-500 bg-rose-50/70 dark:border-rose-900/70 dark:bg-rose-950/20' => $servicePoint['new_draft_count'] > 0,
-                                            'border-orange-200 border-l-orange-500 bg-orange-50/70 dark:border-orange-900/70 dark:bg-orange-950/20' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] > 0,
-                                            'border-sky-200 border-l-sky-500 bg-sky-50/70 dark:border-sky-900/70 dark:bg-sky-950/20' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] === 0 && $servicePoint['bill_request_count'] > 0,
-                                            'border-emerald-200 border-l-emerald-500 bg-emerald-50/70 dark:border-emerald-900/70 dark:bg-emerald-950/20' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] === 0 && $servicePoint['bill_request_count'] === 0 && $servicePoint['ready_item_count'] > 0,
+                                            'border-rose-400 bg-rose-50/70 ring-1 ring-rose-200 dark:border-rose-700 dark:bg-rose-950/20 dark:ring-rose-900' => $servicePoint['new_draft_count'] > 0,
+                                            'border-orange-400 bg-orange-50/70 ring-1 ring-orange-200 dark:border-orange-700 dark:bg-orange-950/20 dark:ring-orange-900' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] > 0,
+                                            'border-sky-400 bg-sky-50/70 ring-1 ring-sky-200 dark:border-sky-700 dark:bg-sky-950/20 dark:ring-sky-900' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] === 0 && $servicePoint['bill_request_count'] > 0,
+                                            'border-emerald-400 bg-emerald-50/70 ring-1 ring-emerald-200 dark:border-emerald-700 dark:bg-emerald-950/20 dark:ring-emerald-900' => $servicePoint['new_draft_count'] === 0 && $servicePoint['waiter_call_count'] === 0 && $servicePoint['bill_request_count'] === 0 && $servicePoint['ready_item_count'] > 0,
                                         ])
                                     >
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
-                                                <p class="truncate text-lg font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</p>
+                                                <p class="break-words text-lg font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</p>
                                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                                     {{ __('qr.labels.number') }}: {{ $servicePoint['display_number'] ?: __('qr.labels.not_set') }}
                                                     · {{ __('reports.csv.capacity') }}: {{ $servicePoint['capacity'] }}
@@ -432,12 +416,12 @@
                                                         'mt-3 grid gap-2',
                                                         'grid-cols-2' => $session['can_close'],
                                                     ])>
-                                                        <flux:button size="sm" icon="eye" :href="$session['detail_url']" wire:navigate>
+                                                        <flux:button class="min-h-touch" size="sm" icon="eye" :href="$session['detail_url']" wire:navigate>
                                                             {{ __('menu.guest.details') }}
                                                         </flux:button>
 
                                                         @if ($session['can_close'])
-                                                            <flux:button size="sm" variant="danger" :href="$session['detail_url'].'#close-table'" wire:navigate>
+                                                            <flux:button class="min-h-touch" size="sm" variant="danger" :href="$session['detail_url'].'#close-table'" wire:navigate>
                                                                 {{ __('ui.waiter.dashboard.close_table') }}
                                                             </flux:button>
                                                         @endif
@@ -453,6 +437,7 @@
                                         <div class="mt-4 flex flex-wrap gap-2">
                                             @if ($servicePoint['can_open_table'])
                                                 <flux:button
+                                                    class="min-h-touch"
                                                     icon="play"
                                                     variant="primary"
                                                     type="button"
@@ -475,7 +460,7 @@
                         </div>
                     @endforelse
                 </div>
-            </section>
+            </details>
         @empty
             <section class="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
                 {{ __('waiter.dashboard.no_available_branches') }}

@@ -113,7 +113,7 @@
                                 <div class="grid grid-cols-[5.5rem_1fr] gap-3 p-3">
                                     <div class="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                                         @if ($item['image_url'])
-                                            <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" class="size-full object-cover">
+                                            <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="176" height="176" loading="lazy" decoding="async" class="size-full object-cover">
                                         @else
                                             <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                                         @endif
@@ -240,12 +240,12 @@
 
     @if ($selectedItem !== null)
         <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
-            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
+            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-dialog bg-white p-4 shadow-elevated dark:bg-zinc-950 sm:rounded-dialog">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex min-w-0 items-start gap-3">
                         <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                             @if ($selectedItem['image_url'])
-                                <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" class="size-full object-cover">
+                                <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" width="64" height="64" decoding="async" class="size-full object-cover">
                             @else
                                 <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                             @endif

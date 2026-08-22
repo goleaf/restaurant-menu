@@ -5,7 +5,7 @@
 
     <x-settings.layout :heading="__('layout.profile')" :subheading="__('ui.settings.profile.update_your_name_and_email_address')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
-            <flux:input wire:model="name" :label="__('reports.csv.name')" type="text" required autofocus autocomplete="name" />
+            <flux:input wire:model="name" :label="__('reports.csv.name')" type="text" required autocomplete="name" />
 
             <div>
                 <flux:input wire:model="email" :label="__('ui.auth.reset_password.email')" type="email" required autocomplete="email" />

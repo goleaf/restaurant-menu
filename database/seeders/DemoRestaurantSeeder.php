@@ -375,9 +375,9 @@ class DemoRestaurantSeeder extends Seeder
     private function seedAreas(Branch $branch): array
     {
         return [
-            'main' => $this->area($branch, 'Главный зал', AreaNodeType::Hall, 'layout-grid', 10),
+            'main' => $this->area($branch, 'Главный зал', AreaNodeType::Hall, 'squares-2x2', 10),
             'terrace' => $this->area($branch, 'Терраса', AreaNodeType::Terrace, 'sun', 20),
-            'bar' => $this->area($branch, 'Бар', AreaNodeType::BarArea, 'martini', 30),
+            'bar' => $this->area($branch, 'Бар', AreaNodeType::BarArea, 'beaker', 30),
         ];
     }
 
@@ -429,7 +429,7 @@ class DemoRestaurantSeeder extends Seeder
                 'display_number' => '1',
                 'internal_code' => 'DEMO-OLD-TOWN-TABLE-1',
                 'capacity' => 4,
-                'icon' => 'square',
+                'icon' => 'squares-2x2',
                 'position_x' => 20,
                 'position_y' => 20,
             ],
@@ -440,7 +440,7 @@ class DemoRestaurantSeeder extends Seeder
                 'display_number' => '2',
                 'internal_code' => 'DEMO-OLD-TOWN-TABLE-2',
                 'capacity' => 4,
-                'icon' => 'square',
+                'icon' => 'squares-2x2',
                 'position_x' => 45,
                 'position_y' => 20,
             ],
@@ -451,7 +451,7 @@ class DemoRestaurantSeeder extends Seeder
                 'display_number' => '3',
                 'internal_code' => 'DEMO-OLD-TOWN-TABLE-3',
                 'capacity' => 6,
-                'icon' => 'square',
+                'icon' => 'squares-2x2',
                 'position_x' => 70,
                 'position_y' => 20,
             ],
@@ -484,7 +484,7 @@ class DemoRestaurantSeeder extends Seeder
                 'display_number' => 'B1',
                 'internal_code' => 'DEMO-OLD-TOWN-BAR-1',
                 'capacity' => 1,
-                'icon' => 'martini',
+                'icon' => 'beaker',
                 'position_x' => 75,
                 'position_y' => 65,
             ],
@@ -495,7 +495,7 @@ class DemoRestaurantSeeder extends Seeder
                 'display_number' => 'B2',
                 'internal_code' => 'DEMO-OLD-TOWN-BAR-2',
                 'capacity' => 1,
-                'icon' => 'martini',
+                'icon' => 'beaker',
                 'position_x' => 85,
                 'position_y' => 65,
             ],
@@ -589,9 +589,9 @@ class DemoRestaurantSeeder extends Seeder
             ])
             ->pluck('id', 'type');
 
-        $pizza = $this->category($menu, 'Пицца', 'Классическая пицца для быстрого demo-заказа.', 'pizza', 10);
-        $drinks = $this->category($menu, 'Напитки', 'Горячие и холодные напитки.', 'cup-soda', 20);
-        $desserts = $this->category($menu, 'Десерты', 'Сладкое завершение заказа.', 'cake-slice', 30);
+        $pizza = $this->category($menu, 'Пицца', 'Классическая пицца для быстрого demo-заказа.', 'fire', 10);
+        $drinks = $this->category($menu, 'Напитки', 'Горячие и холодные напитки.', 'beaker', 20);
+        $desserts = $this->category($menu, 'Десерты', 'Сладкое завершение заказа.', 'cake', 30);
 
         $this->item($menu, $pizza, $departments->get(KitchenDepartmentType::Kitchen->value), [
             'name' => 'Маргарита',

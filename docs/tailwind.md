@@ -22,9 +22,9 @@ The theme defines brand scale, canvas/surface/border/text, success/warning/dange
 
 ## Final responsive/build evidence
 
-- Production build: CSS 291.67 kB / 37.83 kB gzip; application JS 0.00 kB; Vite 8.2.2 completed in 529 ms on the final run.
-- Public page has no horizontal overflow at emulated touch widths 360 and 430 CSS px or desktop 768/1024/1280/1536 checks.
-- Authenticated dashboard has no overflow at 500/768/1024/1440 CSS px; mobile and desktop landmarks/navigation remain keyboard accessible.
-- Public, login and authenticated dashboard Lighthouse samples scored 100 in all reported categories; no browser console warnings/errors remained.
+- Production build: CSS 296.74 kB / 38.98 kB gzip; application JS 0.00 kB; Vite 8.2.2 completed in 781 ms on the final run.
+- Public entry has no horizontal overflow at 360/390/430/768/1024/1440/1920 CSS px. Waiter checks covered 390/768/1024/1440; service points covered 390/768/1440.
+- Operational metrics use two columns on small touch screens and six on desktop. Checked waiter and service-point controls meet the practical touch-target contract at 390 CSS px.
+- Public, waiter and service-point mobile Lighthouse samples scored 100 in every reported category; final console inspection found no errors or issues.
 
 Component principles and token roles are in [`design-system.md`](design-system.md). Physical-device and non-Chromium evidence limits are recorded in [`known-limitations.md`](known-limitations.md).

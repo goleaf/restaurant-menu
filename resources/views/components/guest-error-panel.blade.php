@@ -13,6 +13,8 @@
                     <img
                         src="{{ $logoUrl }}"
                         alt="{{ $venueName }}"
+                        width="56"
+                        height="56"
                         class="size-14 rounded-lg border border-white/80 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
                     >
                 @else

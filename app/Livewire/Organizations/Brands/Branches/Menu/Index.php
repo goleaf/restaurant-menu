@@ -476,7 +476,7 @@ class Index extends Component
         $this->editingCategoryId = $category->id;
         $this->editingCategoryName = $category->name;
         $this->editingCategoryDescription = $category->description ?? '';
-        $this->editingCategoryIcon = $category->icon ?? 'bookmark';
+        $this->editingCategoryIcon = $this->supportedCategoryIcon($category->icon);
         $this->editingCategorySortOrder = $category->sort_order;
         $this->editingCategoryIsActive = $category->is_active;
         $this->cancelMenuEditing();
@@ -1405,12 +1405,19 @@ class Index extends Component
     {
         return [
             'id' => $category->id,
-            'icon' => $category->icon ?? 'bookmark',
+            'icon' => $this->supportedCategoryIcon($category->icon),
             'name' => $category->name,
             'is_active' => $category->is_active,
             'description' => $category->description,
             'sort_order' => $category->sort_order,
         ];
+    }
+
+    private function supportedCategoryIcon(?string $icon): string
+    {
+        return $icon !== null && array_key_exists($icon, $this->iconOptions())
+            ? $icon
+            : 'bookmark';
     }
 
     /**

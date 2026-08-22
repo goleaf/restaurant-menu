@@ -36,8 +36,8 @@
             </div>
 
             <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
-                <flux:input wire:model="name" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" required maxlength="160" />
-                <flux:input wire:model="displayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" maxlength="80" />
+                <flux:input wire:model="name" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" autocomplete="off" required maxlength="160" />
+                <flux:input wire:model="displayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" autocomplete="off" maxlength="80" />
 
                 <flux:select wire:model="type" :label="__('ui.organizations.brands.branches.service_points.index.tip_mesta')">
                     @foreach ($servicePointTypeOptions as $value => $label)
@@ -93,7 +93,7 @@
                         @endforeach
                     </flux:select>
 
-                    <flux:input wire:model.live="bulkPrefix" :label="__('ui.organizations.brands.branches.service_points.index.prefix')" type="text" required maxlength="20" :placeholder="__('fields.placeholders.service_point_prefix_example')" />
+                    <flux:input wire:model.live="bulkPrefix" :label="__('ui.organizations.brands.branches.service_points.index.prefix')" type="text" autocomplete="off" required maxlength="20" :placeholder="__('fields.placeholders.service_point_prefix_example')" />
                     <flux:input wire:model.live="bulkFrom" :label="__('ui.organizations.brands.branches.service_points.index.from')" type="number" required min="1" max="9999" />
                     <flux:input wire:model.live="bulkTo" :label="__('ui.organizations.brands.branches.service_points.index.to')" type="number" required min="1" max="9999" />
                     <flux:input wire:model.live="bulkCapacity" :label="__('ui.organizations.brands.branches.service_points.index.skolko_gostei')" type="number" required min="1" max="999" />
@@ -259,15 +259,15 @@
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     @if ($canOpenTable)
                                         @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
-                                            <flux:button size="sm" icon="check" type="button" disabled>
+                                            <flux:button size="sm" icon="check" type="button" class="min-h-touch" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                             </flux:button>
                                         @elseif ($servicePoint['is_active'])
-                                            <flux:button size="sm" icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
+                                            <flux:button size="sm" icon="play" variant="primary" type="button" class="min-h-touch" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                                 {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                             </flux:button>
                                         @else
-                                            <flux:button size="sm" icon="lock-closed" type="button" disabled>
+                                            <flux:button size="sm" icon="lock-closed" type="button" class="min-h-touch" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.mesto_vykliuceno') }}
                                             </flux:button>
                                         @endif
@@ -278,20 +278,21 @@
                                             <flux:button
                                                 size="sm"
                                                 icon="qr-code"
+                                                class="min-h-touch"
                                                 :href="$servicePoint['qr_show_url']"
                                                 wire:navigate
                                             >
                                                 {{ __('qr.actions.show') }}
                                             </flux:button>
                                         @else
-                                            <flux:button size="sm" icon="qr-code" type="button" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
+                                            <flux:button size="sm" icon="qr-code" type="button" class="min-h-touch" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
                                                 {{ __('qr.actions.generate') }}
                                             </flux:button>
                                         @endif
                                     @endif
 
                                     @if ($canManageServicePoints)
-                                        <flux:button size="sm" icon="pencil" type="button" wire:click="startEditingFromBoard({{ $servicePoint['id'] }})">
+                                        <flux:button size="sm" icon="pencil" type="button" class="min-h-touch" wire:click="startEditingFromBoard({{ $servicePoint['id'] }})">
                                             {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                         </flux:button>
                                     @endif
@@ -323,12 +324,13 @@
                 </flux:heading>
 
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <flux:input :label="__('ui.organizations.brands.branches.service_points.index.filial')" type="text" :value="$branchName" disabled />
+                    <flux:input id="service-point-branch-context" name="servicePointBranchContext" :label="__('ui.organizations.brands.branches.service_points.index.filial')" type="text" autocomplete="off" :value="$branchName" disabled />
 
                     <flux:input
                         wire:model.live.debounce.300ms="servicePointSearch"
                         :label="__('ui.organizations.brands.branches.service_points.index.poisk')"
                         type="search"
+                        autocomplete="off"
                         maxlength="160"
                         :placeholder="__('qr.placeholders.service_point_search')"
                     />
@@ -386,8 +388,8 @@
                 <div wire:key="service-point-{{ $servicePoint['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingServicePointId === $servicePoint['id'])
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
-                            <flux:input wire:model="editingName" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" required maxlength="160" />
-                            <flux:input wire:model="editingDisplayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" maxlength="80" />
+                            <flux:input wire:model="editingName" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" autocomplete="off" required maxlength="160" />
+                            <flux:input wire:model="editingDisplayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" autocomplete="off" maxlength="80" />
 
                             <flux:select wire:model="editingType" :label="__('ui.organizations.brands.branches.service_points.index.tip_mesta')">
                                 @foreach ($servicePointTypeOptions as $value => $label)

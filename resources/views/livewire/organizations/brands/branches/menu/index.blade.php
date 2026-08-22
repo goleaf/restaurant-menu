@@ -550,7 +550,7 @@
                                             <div class="grid gap-3 md:grid-cols-[64px_1fr_auto] md:items-start">
                                                 <div class="flex size-16 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
                                                     @if ($item['has_image'])
-                                                        <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" class="size-full object-cover">
+                                                        <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="64" height="64" loading="lazy" decoding="async" class="size-full object-cover">
                                                     @else
                                                         <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.image') }}</span>
                                                     @endif

@@ -20,4 +20,4 @@ Blade and PHP may not hardcode new user-facing messages. Enum/store values remai
 
 The audit enforces valid JSON, complete key parity and placeholder parity. Tests render critical routes in all locales, exercise fallback behavior, localized validation and notifications, and assert that raw keys do not appear in normal paths. Translated text expansion is included in the responsive browser matrix.
 
-Final evidence on 2026-08-22: 2,026 semantic keys in each locale, 6,078 total entries, no missing/invalid/bad/legacy/phrase-style keys and zero critical audit issues. `docs/TRANSLATION_KEY_MAP.md` remains a namespace reference; this file is the canonical policy.
+Final evidence on 2026-08-22: 2,039 semantic keys in each locale, 6,117 total entries, no missing/invalid/bad/legacy/phrase-style keys and zero critical audit issues. The scanner inspected 413 first-party files, found 1,495 used semantic keys and no missing or phrase-style calls. `docs/TRANSLATION_KEY_MAP.md` remains a namespace reference; this file is the canonical policy.

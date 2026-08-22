@@ -2,8 +2,8 @@
     {{ $trigger }}
 </flux:modal.trigger>
 
-<flux:modal name="{{ $name }}" class="md:w-[32rem]" :dismissible="false" :closable="false">
-    <x-modal-close-button />
+<flux:modal name="{{ $name }}" class="md:w-[32rem]" :dismissible="false" :closable="false" focusable>
+    <x-modal-close-button autofocus />
 
     <div class="space-y-5">
         <div class="space-y-2">

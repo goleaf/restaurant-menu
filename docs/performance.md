@@ -6,12 +6,12 @@ Performance changes are evidence-driven. Query-budget and cache-separation tests
 
 | Measurement | Baseline | Final | Interpretation |
 |---|---:|---:|---|
-| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 686 tests / 60.143 s sequential; 16.929 s parallel, all applicable passing | test volume and coverage increased; wall time is not an application latency benchmark |
-| Application coverage | unavailable | 90.4% | process-only Herd PHP 8.5 Xdebug collection |
-| CSS | 282.03 kB / 36.41 kB gzip | 291.67 kB / 37.83 kB gzip | +9.64 kB raw / +1.42 kB gzip for Flux/Tailwind semantic tokens and UI fixes |
+| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 693 tests / 61.058 s sequential; 17.406 s parallel, all applicable passing | test volume increased; wall time is not an application latency benchmark |
+| Application coverage | unavailable | last verified 90.4% before the UI slice; fresh final collection unavailable | current PHP CLI has no Xdebug/PCOV; this is not presented as fresh proof |
+| CSS | 282.03 kB / 36.41 kB gzip | 296.74 kB / 38.98 kB gzip | +14.71 kB raw / +2.57 kB gzip for Flux/Tailwind tokens and complete UI states |
 | Application JS | 0.00 kB | 0.00 kB | no SPA/request library introduced |
-| Public page trace | not captured | LCP 104 ms; TTFB 44 ms; render delay 59 ms; CLS 0 | local Herd desktop trace, not production monitoring |
-| Lighthouse | not captured | 100/100/100/100 on public, login and authenticated dashboard samples | performance/accessibility/best-practice/SEO categories as applicable to the used audit mode |
+| Public mobile trace | LCP 107 ms; TTFB 47 ms; CLS 0 before the UI slice | LCP 140 ms; TTFB 37 ms; render delay 103 ms; CLS 0 | local Herd, no throttle; small-run variance is not production monitoring |
+| Lighthouse | not captured | 100/100/100/100 on public, waiter and service-point mobile samples | accessibility/best-practice/SEO/agentic categories from the used audit mode |
 | HTTP smoke | not captured | `/` 200 in 0.166 s; protected dashboard 302 to login | local warm Herd request |
 
 ## Executable query budgets

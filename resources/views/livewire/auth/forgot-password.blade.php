@@ -14,7 +14,6 @@
                 :label="__('ui.auth.forgot_password.email_address')"
                 type="email"
                 required
-                autofocus
                 :placeholder="__('fields.placeholders.email_example')"
             />
 

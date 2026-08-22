@@ -54,6 +54,22 @@ test('menu page requires manage menu permission', function () {
         ->assertSee('Menu');
 });
 
+test('menu page safely falls back from unsupported persisted category icons', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create(['name' => 'Legacy Menu']);
+    $category = MenuCategory::factory()->for($menu)->create([
+        'name' => 'Legacy Category',
+        'icon' => 'pizza',
+    ]);
+
+    Livewire::actingAs($manager)
+        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->assertSee('Legacy Category')
+        ->call('startEditingCategory', $category->id)
+        ->assertSet('editingCategoryIcon', 'bookmark');
+});
+
 test('branch list shows menu link to users with manage menu permission', function () {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch('Food Group', 'Bella Brand');
     $menuRoute = route('organizations.brands.branches.menu.index', [$organization, $brand, $branch]);

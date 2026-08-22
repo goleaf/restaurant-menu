@@ -14,7 +14,6 @@
                 :value="old('name')"
                 type="text"
                 required
-                autofocus
                 autocomplete="name"
                 :placeholder="__('ui.auth.register.full_name')"
             />

@@ -36,27 +36,12 @@
         </div>
     @endif
 
-    <section class="grid gap-3 md:grid-cols-4">
-        <div class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.tickets') }}</p>
-            <p class="mt-2 text-3xl font-semibold text-zinc-950 dark:text-white">{{ $ticketCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-rose-200 bg-rose-50 p-4 shadow-sm dark:border-rose-900/60 dark:bg-rose-950/30">
-            <p class="text-sm text-rose-700 dark:text-rose-200">{{ __('ui.departments.dashboard.new') }}</p>
-            <p class="mt-2 text-3xl font-semibold text-rose-950 dark:text-rose-100">{{ $newItemCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30">
-            <p class="text-sm text-amber-700 dark:text-amber-200">{{ __('reports.statuses.orders.in_progress') }}</p>
-            <p class="mt-2 text-3xl font-semibold text-amber-950 dark:text-amber-100">{{ $inProgressItemCount }}</p>
-        </div>
-
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 shadow-sm dark:border-emerald-900/60 dark:bg-emerald-950/30">
-            <p class="text-sm text-emerald-700 dark:text-emerald-200">{{ __('guest.statuses.items.ready') }}</p>
-            <p class="mt-2 text-3xl font-semibold text-emerald-950 dark:text-emerald-100">{{ $readyItemCount }}</p>
-        </div>
-    </section>
+    <x-ui.metric-strip :items="[
+        ['label' => 'ui.departments.dashboard.tickets', 'value' => $ticketCount],
+        ['label' => 'ui.departments.dashboard.new', 'value' => $newItemCount, 'tone' => $newItemCount > 0 ? 'danger' : 'neutral'],
+        ['label' => 'reports.statuses.orders.in_progress', 'value' => $inProgressItemCount, 'tone' => $inProgressItemCount > 0 ? 'warning' : 'neutral'],
+        ['label' => 'guest.statuses.items.ready', 'value' => $readyItemCount, 'tone' => $readyItemCount > 0 ? 'success' : 'neutral'],
+    ]" />
 
     <div class="grid gap-5 2xl:grid-cols-2">
         @forelse ($presentedTickets as $ticket)

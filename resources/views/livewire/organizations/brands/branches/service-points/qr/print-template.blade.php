@@ -39,7 +39,7 @@
     >
         <div class="qr-sticker-brand">
             @if ($restaurantLogoUrl)
-                <img src="{{ $restaurantLogoUrl }}" alt="{{ $brandName }}" class="qr-sticker-logo">
+                <img src="{{ $restaurantLogoUrl }}" alt="{{ $brandName }}" width="208" height="48" class="qr-sticker-logo">
             @else
                 <div class="qr-sticker-logotype">{{ $brandName }}</div>
             @endif
@@ -47,7 +47,7 @@
 
         <p class="qr-sticker-title">{{ __('qr.print.sticker_title') }}</p>
 
-        <img src="{{ $qrImageDataUri }}" alt="{{ __('qr.labels.image') }}" class="qr-sticker-image">
+        <img src="{{ $qrImageDataUri }}" alt="{{ __('qr.labels.image') }}" width="720" height="720" class="qr-sticker-image">
 
         <div class="qr-sticker-code">{{ $qrShortCode }}</div>
 

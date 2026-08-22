@@ -1,65 +1,51 @@
-<div x-data="{ open: false }" {{ $attributes->class('inline-flex') }}>
-    @isset($trigger)
-        <div x-on:click="open = true">
+<div {{ $attributes->class('inline-flex') }}>
+    <flux:modal.trigger :name="$modalId">
+        @isset($trigger)
             {{ $trigger }}
-        </div>
-    @else
-        <x-ui.danger-button :label="$triggerLabel" :icon="$triggerIcon" x-on:click="open = true" />
-    @endisset
+        @else
+            <x-ui.danger-button :label="$triggerLabel" :icon="$triggerIcon" />
+        @endisset
+    </flux:modal.trigger>
 
-    <div
-        x-cloak
-        x-show="open"
-        x-on:keydown.escape.window="open = false"
-        x-transition.opacity
-        class="fixed inset-0 z-50 flex min-h-svh items-end justify-center bg-zinc-950/50 px-4 py-4 sm:items-center"
-    >
-        <button
-            type="button"
-            class="absolute inset-0 cursor-default"
-            aria-label="{{ __($cancelLabel) }}"
-            x-on:click="open = false"
-        ></button>
+    <flux:modal :name="$modalId" class="max-w-md" :dismissible="false" :closable="false" focusable>
+        <x-modal-close-button :label="$cancelLabel" autofocus />
 
-        <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="{{ $modalId }}-title"
-            aria-describedby="{{ $modalId }}-description"
-            class="relative w-full max-w-md rounded-lg border border-zinc-200 bg-white p-5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-        >
+        <div class="space-y-5 pe-8">
             <div class="flex gap-3">
-                <div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-100">
+                <div class="flex size-11 shrink-0 items-center justify-center rounded-control bg-danger-surface text-danger">
                     <flux:icon :name="$confirmIcon" variant="mini" class="size-5" />
                 </div>
 
                 <div class="min-w-0">
-                    <h2 id="{{ $modalId }}-title" class="text-lg font-semibold text-zinc-950 dark:text-white">
-                        {{ __($title) }}
-                    </h2>
-
-                    <p id="{{ $modalId }}-description" class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-                        {{ __($description) }}
-                    </p>
+                    <flux:heading size="lg">{{ __($title) }}</flux:heading>
+                    <flux:text class="mt-2 leading-6">{{ __($description) }}</flux:text>
                 </div>
             </div>
 
             <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <x-ui.secondary-button :label="$cancelLabel" size="md" x-on:click="open = false" />
+                <flux:modal.close>
+                    <flux:button type="button">{{ __($cancelLabel) }}</flux:button>
+                </flux:modal.close>
 
                 @isset($confirm)
                     {{ $confirm }}
                 @else
-                    <x-ui.danger-button
-                        :label="$confirmLabel"
-                        :icon="$confirmIcon"
-                        size="md"
-                        x-on:click="open = false"
-                        @if ($confirmAction) wire:click="{{ $confirmAction }}" @endif
-                        @if ($resolvedConfirmTarget) wire:loading.attr="disabled" wire:target="{{ $resolvedConfirmTarget }}" @endif
-                    />
+                    <flux:modal.close>
+                        @if ($confirmAction && $resolvedConfirmTarget)
+                            <x-ui.danger-button
+                                :label="$confirmLabel"
+                                :icon="$confirmIcon"
+                                size="md"
+                                wire:click="{{ $confirmAction }}"
+                                wire:loading.attr="disabled"
+                                wire:target="{{ $resolvedConfirmTarget }}"
+                            />
+                        @else
+                            <x-ui.danger-button :label="$confirmLabel" :icon="$confirmIcon" size="md" />
+                        @endif
+                    </flux:modal.close>
                 @endisset
             </div>
-        </section>
-    </div>
+        </div>
+    </flux:modal>
 </div>

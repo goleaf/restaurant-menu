@@ -14,10 +14,19 @@ class Home extends Component
     public function render(): View
     {
         return view('livewire.guest.home', [
-            'featureKeys' => [
-                'ui.pages.guest.home.permanent_qr',
-                'ui.pages.guest.home.table_session',
-                'ui.pages.guest.home.shared_cart',
+            'journeySteps' => [
+                [
+                    'title' => 'ui.pages.guest.home.permanent_qr',
+                    'description' => 'ui.pages.guest.home.permanent_qr_description',
+                ],
+                [
+                    'title' => 'ui.pages.guest.home.table_session',
+                    'description' => 'ui.pages.guest.home.table_session_description',
+                ],
+                [
+                    'title' => 'ui.pages.guest.home.shared_cart',
+                    'description' => 'ui.pages.guest.home.shared_cart_description',
+                ],
             ],
         ]);
     }

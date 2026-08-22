@@ -66,37 +66,13 @@
                 </div>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.active_tables') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['active_tables_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.new_orders_to_waiter') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['new_orders_to_waiter_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.cooking_orders') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['cooking_orders_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.ready_positions') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">{{ $dashboard['metrics']['ready_positions_count'] }}</p>
-                </div>
-
-                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-                    <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.revenue.net_total') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-zinc-950 dark:text-white">
-                        {{ $dashboard['metrics']['orders_today_total'] ?? '—' }}
-                    </p>
-                    @unless ($dashboard['can_view_reports'])
-                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('reports.access_required') }}</p>
-                    @endunless
-                </div>
-            </div>
+            <x-ui.metric-strip :items="[
+                ['label' => 'reports.active_tables', 'value' => $dashboard['metrics']['active_tables_count']],
+                ['label' => 'reports.new_orders_to_waiter', 'value' => $dashboard['metrics']['new_orders_to_waiter_count'], 'tone' => $dashboard['metrics']['new_orders_to_waiter_count'] > 0 ? 'danger' : 'neutral'],
+                ['label' => 'reports.cooking_orders', 'value' => $dashboard['metrics']['cooking_orders_count'], 'tone' => $dashboard['metrics']['cooking_orders_count'] > 0 ? 'warning' : 'neutral'],
+                ['label' => 'reports.ready_positions', 'value' => $dashboard['metrics']['ready_positions_count'], 'tone' => $dashboard['metrics']['ready_positions_count'] > 0 ? 'success' : 'neutral'],
+                ['label' => 'reports.revenue.net_total', 'value' => $dashboard['metrics']['orders_today_total'] ?? '—', 'description' => $dashboard['can_view_reports'] ? null : 'reports.access_required'],
+            ]" />
 
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
                 <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -124,22 +100,34 @@
                     <h3 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('reports.quick_actions.title') }}</h3>
                     <div class="mt-3 grid gap-2">
                         @foreach ($dashboard['quick_actions'] as $action)
-                            <div wire:key="dashboard-action-{{ $action['label'] }}" class="flex items-center justify-between gap-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-                                <div class="min-w-0">
-                                    <p class="truncate text-sm font-medium text-zinc-950 dark:text-white">{{ __($action['label']) }}</p>
-                                    <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ __($action['description']) }}</p>
-                                </div>
-
-                                @if ($action['is_available'] && $action['href'] !== null)
-                                    <flux:button :icon="$action['icon']" size="sm" :href="$action['href']" wire:navigate>
-                                        {{ __('ui.actions.open') }}
-                                    </flux:button>
-                                @else
-                                    <button type="button" disabled class="inline-flex h-8 items-center rounded-md border border-zinc-200 px-3 text-xs font-medium text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
+                            @if ($action['is_available'] && $action['href'] !== null)
+                                <a
+                                    wire:key="dashboard-action-{{ $action['label'] }}"
+                                    data-quick-action-link
+                                    href="{{ $action['href'] }}"
+                                    class="group flex min-h-touch items-center gap-3 rounded-control border border-zinc-200 p-3 transition hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus dark:border-zinc-800 dark:hover:border-brand-700 dark:hover:bg-brand-950"
+                                    wire:navigate
+                                >
+                                    <span class="flex size-9 shrink-0 items-center justify-center rounded-control bg-zinc-100 text-zinc-600 group-hover:bg-brand-100 group-hover:text-brand-800 dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-brand-900 dark:group-hover:text-brand-100" aria-hidden="true">
+                                        <flux:icon :name="$action['icon']" class="size-4" />
+                                    </span>
+                                    <span class="min-w-0 flex-1">
+                                        <span class="block text-sm font-medium text-zinc-950 dark:text-white">{{ __($action['label']) }}</span>
+                                        <span class="block text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ __($action['description']) }}</span>
+                                    </span>
+                                    <flux:icon name="chevron-right" class="size-4 shrink-0 text-zinc-400 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none rtl:rotate-180" aria-hidden="true" />
+                                </a>
+                            @else
+                                <div wire:key="dashboard-action-{{ $action['label'] }}" class="flex items-center justify-between gap-3 rounded-control border border-zinc-200 p-3 opacity-70 dark:border-zinc-800">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-medium text-zinc-950 dark:text-white">{{ __($action['label']) }}</p>
+                                        <p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ __($action['description']) }}</p>
+                                    </div>
+                                    <span class="inline-flex min-h-8 items-center rounded-control border border-zinc-200 px-3 text-xs font-medium text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                                         {{ __('ui.pages.restaurant.dashboard.no_access') }}
-                                    </button>
-                                @endif
-                            </div>
+                                    </span>
+                                </div>
+                            @endif
                         @endforeach
                     </div>
                 </div>

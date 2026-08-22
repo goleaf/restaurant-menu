@@ -210,7 +210,7 @@ test('public entry pages no longer contain starter placeholders', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertSee('data-page="public-entry"', false)
-        ->assertSee('Shared-hosting restaurant platform')
+        ->assertSee(__('ui.views.welcome.shared_hosting_restaurant_platform'))
         ->assertDontSee('Guest placeholder')
         ->assertDontSee('not implemented yet');
 
@@ -220,4 +220,49 @@ test('public entry pages no longer contain starter placeholders', function () {
         ->assertSee('Scan a table QR code')
         ->assertDontSee('Public guest area placeholder')
         ->assertDontSee('Placeholder');
+});
+
+test('first party views avoid known responsive and visual anti patterns', function () {
+    $forbiddenPatterns = [
+        'truncated page heading' => '/<h1\b[^>]*\btruncate\b[^>]*>/i',
+        'colored side stripe' => '/\bborder-(?:l|r|s|e)-(?:[2-9]|\[[^]]+\])\b/i',
+        'forced initial dark theme' => '/<html\b[^>]*\bclass=["\'][^"\']*\bdark\b[^"\']*["\']/i',
+        'oversized modal radius' => '/\brounded-(?:t-)?(?:2xl|3xl)\b/i',
+    ];
+
+    $matchingPaths = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.blade.php'))
+        ->mapWithKeys(function (SplFileInfo $file) use ($forbiddenPatterns): array {
+            $contents = File::get($file->getPathname());
+            $matches = collect($forbiddenPatterns)
+                ->filter(fn (string $pattern): bool => preg_match($pattern, $contents) === 1)
+                ->keys()
+                ->values()
+                ->all();
+
+            if ($matches === []) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => $matches];
+        });
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
+test('first party content images reserve their rendered aspect ratio', function () {
+    $imagesWithoutDimensions = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.blade.php'))
+        ->flatMap(function (SplFileInfo $file): array {
+            preg_match_all('/<img\b[^>]*>/is', File::get($file->getPathname()), $matches);
+
+            return collect($matches[0])
+                ->filter(fn (string $tag): bool => preg_match('/\bwidth\s*=/', $tag) !== 1 || preg_match('/\bheight\s*=/', $tag) !== 1)
+                ->map(fn (): string => str_replace(base_path().'/', '', $file->getPathname()))
+                ->all();
+        })
+        ->unique()
+        ->values();
+
+    expect($imagesWithoutDimensions->all())->toBe([]);
 });

@@ -18,7 +18,7 @@
                 </span>
             @endif
 
-            <h1 class="truncate text-2xl font-semibold text-zinc-950 dark:text-white">{{ __($title) }}</h1>
+            <h1 class="min-w-0 text-balance text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ __($title) }}</h1>
         </div>
 
         @if ($description)

@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 686 tests, with only 9 intentional feature-gated skips. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 693 tests, with only 9 intentional feature-gated skips. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -45,18 +45,20 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | No strict Eloquent/static analysis | Strict local/test Eloquent enabled; Larastan level 8 added and final analysis reports 0 errors. |
 | Historical migrations use model backfills | Historical files preserved; new correction is forward-only/reversible; all 66 migrations pass from zero. |
 | Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
+| Generic equal-weight dashboard/card hierarchy and over-expanded waiter branches | Public, guest, restaurant, waiter and department surfaces now expose one primary path, compact related metrics and native progressive disclosure; responsive/browser regressions pass. |
+| Persisted legacy area/service-point icon names could address missing dynamic Flux components and return HTTP 500 | Both presentation components enforce explicit supported-icon lists with type-safe fallback; demo values are corrected and regressions cover legacy records. |
 
 ## Final state
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
-- 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 106 Blade templates and 121 PHP test files.
-- 686 tests, 20,469 assertions, 90.4% application coverage, 0 static-analysis errors and 0 dependency advisories.
-- 2,026 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
-- Production CSS 291.67 kB / 37.83 kB gzip; application JS remains 0.00 kB.
+- 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 107 Blade templates and 121 PHP test files.
+- 693 tests, 20,593 assertions, 0 static-analysis errors and 0 dependency advisories. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
+- 2,039 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
+- Production CSS 296.74 kB / 38.98 kB gzip; application JS remains 0.00 kB.
 
 ## First-party Markdown inventory
 
-All 56 files were read twice: before implementation and during final synchronization. `Canonical` means the file defines current truth; `pointer` preserves an old path without duplicating requirements; `history` is intentionally chronological and may describe obsolete past states as dated history.
+All 58 files were reviewed during the modernization and UI synchronization passes. `Canonical` means the file defines current truth; `pointer` preserves an old path without duplicating requirements; `history` is intentionally chronological and may describe obsolete past states as dated history.
 
 | Path | Purpose / owner | Status, conflict, history, requirement gap | Final action |
 |---|---|---|---|
@@ -66,6 +68,8 @@ All 56 files were read twice: before implementation and during final synchroniza
 | `CHANGELOG.md` | chronology / maintainers | history; old limitations remain dated, not active | preserved; modernization entry prepended |
 | `CLAUDE.md` | agent entry | duplicate of old rules | rewritten as pointer |
 | `GEMINI.md` | agent entry | duplicate of old rules | rewritten as pointer |
+| `PRODUCT.md` | user/product/design context | canonical design supplement; requirement behavior remains in `docs/requirements.md` | created and synchronized |
+| `DESIGN.md` | visual system and anti-reference contract | canonical design supplement; implementation source remains `app.css` | created and synchronized |
 | `docs/index.md` | documentation map / maintainers | canonical, current | created and preserved |
 | `docs/requirements.md` | active requirements / product+engineering | canonical; 48 stable IDs, no unimplemented active row | created and synchronized |
 | `docs/product-requirements.md` | product summary / product | canonical supplement | created and preserved |

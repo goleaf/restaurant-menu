@@ -46,7 +46,7 @@
                     <label class="grid gap-2 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.logo') }}</span>
                         @if ($currentLogoUrl)
-                            <img src="{{ $currentLogoUrl }}" alt="{{ $publicDisplayName }}" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                            <img src="{{ $currentLogoUrl }}" alt="{{ $publicDisplayName }}" width="80" height="80" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
                         @else
                             <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.logo') }}</div>
                         @endif
@@ -59,7 +59,7 @@
                     <label class="grid gap-2 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.image') }}</span>
                         @if ($currentCoverImageUrl)
-                            <img src="{{ $currentCoverImageUrl }}" alt="{{ $publicDisplayName }}" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
+                            <img src="{{ $currentCoverImageUrl }}" alt="{{ $publicDisplayName }}" width="640" height="160" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
                         @else
                             <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.image') }}</div>
                         @endif

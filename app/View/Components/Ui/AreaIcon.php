@@ -10,6 +10,22 @@ use Illuminate\View\Component;
 
 final class AreaIcon extends Component
 {
+    /** @var list<string> */
+    private const SUPPORTED_ICONS = [
+        'folder',
+        'building-office',
+        'squares-2x2',
+        'sun',
+        'sparkles',
+        'beaker',
+        'cake',
+        'home',
+        'building-office-2',
+        'shopping-bag',
+        'truck',
+        'bookmark',
+    ];
+
     public readonly string $resolvedIcon;
 
     public readonly string $toneClasses;
@@ -21,20 +37,21 @@ final class AreaIcon extends Component
         public readonly bool $active = true,
     ) {
         $typeValue = $type instanceof BackedEnum ? (string) $type->value : (string) $type;
-        $this->resolvedIcon = $icon ?: match ($typeValue) {
+        $fallbackIcon = match ($typeValue) {
             'group' => 'folder',
             'floor' => 'building-office',
             'hall' => 'squares-2x2',
             'terrace' => 'sun',
             'vip_room' => 'sparkles',
             'bar_area' => 'beaker',
-            'banquet_hall' => 'building-storefront',
+            'banquet_hall' => 'cake',
             'room' => 'home',
-            'hotel_area' => 'building-office',
+            'hotel_area' => 'building-office-2',
             'pickup_area' => 'shopping-bag',
             'delivery_area' => 'truck',
             default => 'bookmark',
         };
+        $this->resolvedIcon = in_array($icon, self::SUPPORTED_ICONS, true) ? $icon : $fallbackIcon;
         $this->toneClasses = match ($typeValue) {
             'terrace' => 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-100',
             'vip_room', 'banquet_hall' => 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-100',

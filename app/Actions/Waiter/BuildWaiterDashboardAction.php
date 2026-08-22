@@ -451,6 +451,12 @@ class BuildWaiterDashboardAction
             'waiter_call_count' => count($waiterCalls),
             'bill_request_count' => count($billRequests),
             'ready_item_count' => count($readyItems),
+            'has_activity' => count($sessions) > 0
+                || count($drafts) > 0
+                || count($waiterCalls) > 0
+                || count($billRequests) > 0
+                || count($readyItems) > 0
+                || $this->temporaryClosureIsActive($branch),
             'service_points' => $servicePointPayloads->all(),
             'service_point_zones' => $this->servicePointZonePayloads($servicePointPayloads, $assignedAreaNodeIds),
             'drafts' => $drafts

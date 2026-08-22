@@ -15,7 +15,7 @@
                 <p class="truncate text-sm font-medium text-zinc-500 dark:text-zinc-400">
                     {{ data_get($table, 'branch.organization_name') }} / {{ data_get($table, 'branch.brand_name') }} / {{ data_get($table, 'branch.name') }}
                 </p>
-                <h1 class="mt-1 truncate text-2xl font-semibold text-zinc-950 dark:text-white">
+                <h1 class="mt-1 min-w-0 break-words text-balance text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">
                     {{ data_get($table, 'service_point.name') }}
                 </h1>
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
@@ -1027,7 +1027,7 @@
 
     @if ($editingItemId !== null)
         <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
-            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl dark:bg-zinc-950 sm:rounded-2xl">
+            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-dialog bg-white p-4 shadow-elevated dark:bg-zinc-950 sm:rounded-dialog">
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('ui.waiter.table_detail.waiter_edit') }}</p>

@@ -103,6 +103,8 @@
                 <img
                     src="{{ $qrImageDataUri }}"
                     alt="{{ __('qr.labels.image') }}"
+                    width="720"
+                    height="720"
                     class="aspect-square w-full max-w-72 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800"
                 >
 

@@ -11,8 +11,10 @@ test('guest interface start page is public and mobile first', function () {
         ->assertSee('data-layout="guest"', false)
         ->assertSee('x-on:offline.window', false)
         ->assertSee('role="status"', false)
-        ->assertSee('Guest interface')
+        ->assertSee('Guest ordering')
         ->assertSee('Scan a table QR code')
+        ->assertSee('<ol', false)
+        ->assertSee('data-journey-step="1"', false)
         ->assertSee('min-h-svh');
 });
 

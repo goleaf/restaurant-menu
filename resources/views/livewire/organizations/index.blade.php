@@ -39,7 +39,7 @@
                             <div class="flex gap-3">
                                 <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
                                     @if ($organization['logo_url'])
-                                        <img src="{{ $organization['logo_url'] }}" alt="{{ $organization['name'] }}" class="size-full object-contain">
+                                        <img src="{{ $organization['logo_url'] }}" alt="{{ $organization['name'] }}" width="48" height="48" loading="lazy" decoding="async" class="size-full object-contain">
                                     @else
                                         <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.logo') }}</span>
                                     @endif

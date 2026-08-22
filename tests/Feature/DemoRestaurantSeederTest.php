@@ -54,7 +54,9 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
 
     expect($branch->settings()->exists())->toBeTrue()
         ->and(AreaNode::query()->where('branch_id', $branch->id)->count())->toBe(3)
+        ->and(AreaNode::query()->where('branch_id', $branch->id)->whereIn('icon', ['layout-grid', 'martini'])->doesntExist())->toBeTrue()
         ->and(ServicePoint::query()->where('branch_id', $branch->id)->count())->toBe(7)
+        ->and(ServicePoint::query()->where('branch_id', $branch->id)->whereIn('icon', ['square', 'martini'])->doesntExist())->toBeTrue()
         ->and(Menu::query()->where('branch_id', $branch->id)->where('name', 'Bella Pizza Demo Menu')->count())->toBe(1);
 
     $servicePointIds = ServicePoint::query()
@@ -73,6 +75,7 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
         ->firstOrFail();
 
     expect(MenuCategory::query()->where('menu_id', $menu->id)->count())->toBe(3)
+        ->and(MenuCategory::query()->where('menu_id', $menu->id)->whereIn('icon', ['pizza', 'cup-soda', 'cake-slice'])->doesntExist())->toBeTrue()
         ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7);
 
     foreach (demoRestaurantUsers() as $email => $identity) {

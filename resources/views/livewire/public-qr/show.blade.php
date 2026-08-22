@@ -1,5 +1,5 @@
 <div class="min-h-svh">
-    <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/90">
+    <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div class="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
             <a href="{{ route('guest.home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
                 <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
@@ -29,7 +29,7 @@
         </div>
     </header>
 
-    <main class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">
+    <main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">
         @if ($state === 'ready')
             @if ($currentGuestId && $guestCanViewTable && $currentTableSessionId)
                 <section data-page="guest-table-shell" class="flex flex-col gap-4">
@@ -52,6 +52,8 @@
                                 <img
                                     src="{{ $landing['logo_url'] }}"
                                     alt="{{ $landing['venue_name'] }}"
+                                    width="56"
+                                    height="56"
                                     class="size-14 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950"
                                 >
                             @else
@@ -329,6 +331,9 @@
                                 <img
                                     src="{{ $landing['cover_image_url'] }}"
                                     alt="{{ $landing['venue_name'] }}"
+                                    width="960"
+                                    height="288"
+                                    fetchpriority="high"
                                     class="h-36 w-full object-cover"
                                 >
                             @else
@@ -340,6 +345,8 @@
                                     <img
                                         src="{{ $landing['logo_url'] }}"
                                         alt="{{ $landing['venue_name'] }}"
+                                        width="80"
+                                        height="80"
                                         class="size-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
                                     >
                                 @else

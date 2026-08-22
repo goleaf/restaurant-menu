@@ -39,6 +39,7 @@ test('demo login is available when it is enabled outside production', function (
 
 test('page data lists every role in canonical order with two bounded queries', function (): void {
     createDemoLoginAccount(SystemRole::Waiter);
+    createDemoLoginAccount(SystemRole::Cook, SystemRole::Waiter);
 
     $accounts = [];
     $queryCount = countDatabaseQueries(function () use (&$accounts): void {

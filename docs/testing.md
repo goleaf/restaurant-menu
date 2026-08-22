@@ -42,7 +42,7 @@ The current demo-login slice has separate targeted evidence and does not replace
 | Check | Observed result |
 |---|---|
 | `php artisan test --compact tests/Feature/DemoLoginTest.php tests/Feature/RouteProtectionAuditTest.php` | 77 tests passed; 358 assertions |
-| demo page query budget | exactly 2 Eloquent queries with two matching users; all 12 roles remain in canonical order |
+| demo page query budget | exactly 2 Eloquent queries with two catalog users (one matching and one role-mismatched); all 12 roles remain in canonical order |
 | disabled and production boundary | 21 repeated GET probes remain 404 in each state; guarded requests do not consume the demo throttle |
 | CSRF and throttle regressions | demo POST without a token and logout POST without a token return 419; request 21 after 20 successful demo GETs returns 429 |
 | `php artisan translations:scan --json` | 421 files; 1,505 semantic keys used; 0 missing, legacy or phrase keys |

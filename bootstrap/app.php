@@ -4,12 +4,12 @@ use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\SetInterfaceLocale;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
-use Illuminate\Routing\Middleware\ThrottleRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->prependToPriorityList(
-            before: ThrottleRequests::class,
+            before: AuthenticatesRequests::class,
             prepend: PreventRequestForgery::class,
         );
         $middleware->prependToPriorityList(

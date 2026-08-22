@@ -128,6 +128,14 @@ test('enabled non-production demo login post retains csrf protection', function 
     $this->assertGuest();
 });
 
+test('demo middleware priority preserves csrf before authenticated web routes', function (): void {
+    $this->app->detectEnvironment(fn (): string => 'demo');
+
+    $this->post(route('logout'))->assertStatus(419);
+
+    $this->assertGuest();
+});
+
 test('enabled demo login page lists all roles without exposing the password', function (): void {
     config()->set('demo-login.enabled', true);
     createDemoLoginAccount(SystemRole::Waiter);

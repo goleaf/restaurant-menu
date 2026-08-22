@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-08-22 — production-grade modernization
+
+### Runtime and dependencies
+
+- Raised the supported runtime to PHP `>=8.5.0 <8.6.0` and locked Laravel 13.26.1, Livewire 4.4.1, Flux UI Free 2.17.0, Tailwind/plugin 4.3.3, Laravel Vite plugin 3.2.0, Vite 8.2.2, Pest 4.7.8 / PHPUnit 12.5.33, Pint 1.30.5, Larastan 3.10.0 and Boost 2.5.5.
+- Resolved all 17 baseline Composer advisories and all four baseline npm findings; retained stable Pest 4 as the intentional primary test framework.
+- Normalized Herd development scripts so they do not start a duplicate PHP server or mandatory queue worker.
+
+### Architecture, security and data
+
+- Established 48 stable canonical requirements, a complete compliance matrix, architecture/domain/data/security/frontend/runtime documentation and three ADRs; all 56 first-party Markdown files were normalized and reviewed again after implementation.
+- Added aggregate policies, scoped nested bindings, strict local/test Eloquent behavior, explicit dependency injection and executable Blade/Livewire/service-locator architecture checks.
+- Replaced plaintext staff invitation credentials with digest-at-rest, expiring/revocable, recipient-bound and atomically single-use acceptance protected by rate limiting.
+- Serialized SQLite payment balance checks against concurrent overpayment, introduced persistence/file compensation and replaced live-database streaming with a private consistent online SQLite snapshot protected by recent password, typed confirmation and audited reason.
+- Added one reversible forward invitation migration; the complete 66-migration chain passes from zero without rewriting historical deployed migrations.
+
+### Livewire, Blade, Tailwind and accessibility
+
+- Converted route single-file components to normal classes and finished with 42 class-based Livewire components plus separate views; no Volt/SFC remains.
+- Removed every first-party Blade PHP block and direct model/Action/Service/Illuminate/facade/container/auth/config/session access; presentation now receives prepared escaped/localized data.
+- Applied typed/locked public state, `Computed`, `Url`, `Layout`, isolated polling and localized polite offline status regions. `wire:offline` is restricted to bearer-free authenticated pages; guest/auth pages use a client-only equivalent so invitation/reset URLs never enter Livewire snapshots. Destructive Flux dialogs and password toggles have semantic EN/LT/RU accessible names.
+- Migrated to CSS-first Tailwind sources and an OKLCH semantic token system with focus, touch, reduced-motion and forced-colors support. Final CSS is 291.67 kB / 37.83 kB gzip; application JS remains 0.00 kB.
+- Browser-verified public/auth/dashboard/settings flows, locale persistence, password confirmation, logout/login/delete, offline/online state, responsive overflow and modal semantics in an isolated Chrome context. Representative Lighthouse samples scored 100 in every reported category with no console warnings/errors.
+
+### Factories, seeders and tests
+
+- Completed 41 factories for all 41 first-party models with valid defaults and 105 explicit state/relationship helpers; there are no exemptions.
+- Added `DemoOperationalStateSeeder` and a safe seven-seeder hierarchy covering empty, live, payment-requested, completed, ticket, waiter-call, payment and audit workflows; demo seeding remains production-blocked and idempotent.
+- Final sequential and parallel Pest runs pass 683 tests with 20,457 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Application coverage is 90.4%, Larastan level 8 reports zero errors and 558 PHP files pass syntax checks.
+- Isolated SQLite completed 66 migrations in 0.52 s, default seeding in 0.22 s and two demo runs in 3.75 s / 6.83 s. EN/LT/RU contain 2,026 semantic keys each with zero audit issues.
+
+### Deployment and compatibility
+
+- Production requires PHP 8.5, locked Composer/npm dependencies, built Vite assets, forward migrations, writable SQLite/storage/cache paths, HTTPS secure sessions and `APP_DEBUG=false`.
+- Core workflows continue to require no Redis, WebSocket, S3, Docker, supervisor, persistent worker, cron or SSH-only runtime. Passkeys and 2FA remain explicitly disabled feature gates; no existing public/API contract was silently enabled.
+- Physical assistive-technology/device and non-Chromium browser evidence remain environmental limitations; no in-scope implementation, dependency, test, static-analysis, migration, seed or browser-console defect is deferred.
+
 ## 2026-06-05
 
 ### Prompt 127 - Print Friendly Kitchen Tickets

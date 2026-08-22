@@ -65,7 +65,7 @@ test('owner can enable and disable temporary closed mode from branch settings', 
         ->set('temporaryClosedUntil', '2026-06-04T18:00')
         ->call('save')
         ->assertHasNoErrors()
-        ->assertSee('Ресторан временно закрыт')
+        ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSee('Settings saved.');
 
     $branch->refresh();
@@ -108,15 +108,15 @@ test('temporary closed mode has priority over opening hours and can expire', fun
 
     expect($status['is_open'])->toBeFalse()
         ->and($status['can_accept_orders'])->toBeFalse()
-        ->and($status['label'])->toBe('Ресторан временно закрыт')
+        ->and($status['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->and($status['detail'])->toContain('Кухня закрыта')
-        ->and($status['detail'])->toContain('до 18:00');
+        ->and($status['detail'])->toContain(__('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => '18:00']));
 
     $expiredStatus = app(GetBranchOpeningStatusAction::class)->handle($branch->fresh(), Carbon::parse('2026-06-04 18:01:00', 'Europe/Vilnius'));
 
     expect($expiredStatus['is_open'])->toBeTrue()
         ->and($expiredStatus['can_accept_orders'])->toBeTrue()
-        ->and($expiredStatus['label'])->toBe('Сейчас открыто');
+        ->and($expiredStatus['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto'));
 });
 
 test('public qr opens during temporary closed mode and guest can view menu without ordering', function () {
@@ -125,16 +125,16 @@ test('public qr opens during temporary closed mode and guest can view menu witho
     [$qrCode] = createPrompt103GuestContext(withActiveSession: false);
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('landing.opening_status_label', 'Ресторан временно закрыт')
+        ->assertSet('landing.opening_status_label', __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSet('landing.can_accept_orders', false)
-        ->assertSee('Ресторан временно закрыт')
+        ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSee('Технические работы')
         ->set('guestName', 'Ana')
         ->call('enterTable')
         ->assertSet('guestCanViewTable', true)
         ->assertSet('guestCanAddItems', false)
-        ->assertSee('Меню')
-        ->assertSee('Заказы принимаем после открытия ресторана.');
+        ->assertSee(__('menu.guest.title'))
+        ->assertSee(__('guest.table.orders_after_opening'));
 });
 
 test('temporary closed mode blocks guest draft item creation and sending draft to waiter', function () {
@@ -147,7 +147,7 @@ test('temporary closed mode blocks guest draft item creation and sending draft t
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, 'Ресторан временно закрыт');
+    ))->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -159,7 +159,7 @@ test('temporary closed mode blocks guest draft item creation and sending draft t
         ->create(['item_name' => 'Margherita']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, 'Ресторан временно закрыт');
+        ->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
     expect($branch->fresh()->is_temporarily_closed)->toBeTrue();
@@ -180,13 +180,13 @@ test('waiter can disable temporary closed mode from dashboard', function () {
 
     Livewire::actingAs($waiter)
         ->test(WaiterDashboard::class)
-        ->assertSee('Ресторан временно закрыт')
+        ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSee('Ресторан закрыт сегодня')
-        ->assertSee('Открыть заказы')
+        ->assertSee(__('ui.waiter.dashboard.otkryt_zakazy'))
         ->call('disableTemporaryClosure', $branch->id)
         ->assertHasNoErrors()
-        ->assertSee('Ресторан снова открыт для заказов.')
-        ->assertDontSee('Открыть заказы');
+        ->assertSee(__('ui.livewire.waiter.dashboard.restoran_snova_otkryt_dlia_zakazov'))
+        ->assertDontSee(__('ui.waiter.dashboard.otkryt_zakazy'));
 
     $branch->refresh();
 
@@ -200,7 +200,7 @@ function createPrompt103Branch(bool $withOwner = true): array
     $owner = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Prompt 103 Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 103 Brand']);
-    $branch = (new CreateBranchAction)->handle($brand, [
+    $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Prompt 103 Branch',
         'address' => 'Pilies 1',
         'city' => 'Vilnius',

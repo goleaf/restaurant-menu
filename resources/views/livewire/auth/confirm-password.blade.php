@@ -5,7 +5,7 @@
             :description="__('ui.auth.confirm_password.this_is_a_secure_area_of_the_application_please_co')"
         />
 
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
         <form method="POST" action="{{ route('password.confirm.store') }}" class="flex flex-col gap-6">
             @csrf

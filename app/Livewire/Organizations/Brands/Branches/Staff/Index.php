@@ -197,7 +197,7 @@ class Index extends Component
             ->filter(fn (int $areaNodeId): bool => $areaNodeId > 0)
             ->unique()
             ->values();
-        $validAreaIds = $this->areaNodes->pluck('id')->map(fn (int $areaNodeId): int => $areaNodeId)->values();
+        $validAreaIds = $this->areaNodes()->pluck('id')->map(fn (int $areaNodeId): int => $areaNodeId)->values();
 
         if ($selectedAreaIds->diff($validAreaIds)->isNotEmpty()) {
             $this->addError('areaAssignments.'.$userId, __('staff.errors.zone_unavailable'));
@@ -303,37 +303,61 @@ class Index extends Component
             ->get();
     }
 
-    public function memberIsWaiter(BranchUser $member): bool
+    private function memberIsWaiter(BranchUser $member): bool
     {
         return $member->role?->code === SystemRole::Waiter;
     }
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.staff.index')
+        return view('livewire.organizations.brands.branches.staff.index', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'roleOptions' => $this->roles()
+                ->map(fn (Role $role): array => ['id' => $role->id, 'label' => $this->roleLabel($role)])
+                ->all(),
+            'memberRows' => $this->members()
+                ->map(fn (BranchUser $member): array => [
+                    'id' => $member->id,
+                    'user_id' => $member->user_id,
+                    'user_name' => $member->user->name,
+                    'user_email' => $member->user->email,
+                    'is_active' => $member->status === OrganizationUserStatus::Active,
+                    'is_waiter' => $this->memberIsWaiter($member),
+                    'localized_status' => $this->memberStatusLabel($member->status),
+                    'role_label' => $this->roleLabel($member->role),
+                ])
+                ->all(),
+            'areaNodeOptions' => $this->areaNodes()
+                ->map(fn (AreaNode $areaNode): array => ['id' => $areaNode->id, 'name' => $areaNode->name])
+                ->all(),
+            'invitationRows' => $this->invitations()
+                ->map(fn (Invitation $invitation): array => [
+                    'id' => $invitation->id,
+                    'role_label' => $this->roleLabel($invitation->role),
+                    'localized_status' => $this->invitationStatusLabel($invitation->status),
+                    'email' => $invitation->email,
+                    'phone' => $invitation->phone,
+                ])
+                ->all(),
+        ])
             ->title(__('staff.branch_access'));
     }
 
-    public function roleLabel(?Role $role): string
+    private function roleLabel(?Role $role): string
     {
         if (! $role instanceof Role) {
             return '';
         }
 
-        $roleCode = $role->code instanceof SystemRole
-            ? $role->code->value
-            : (string) $role->code;
-        $systemRole = SystemRole::tryFrom($roleCode);
-
-        return $systemRole?->localizedLabel() ?? (string) $role->name;
+        return $role->code->localizedLabel();
     }
 
-    public function memberStatusLabel(OrganizationUserStatus $status): string
+    private function memberStatusLabel(OrganizationUserStatus $status): string
     {
         return __(sprintf('staff.statuses.%s', $status->value));
     }
 
-    public function invitationStatusLabel(InvitationStatus $status): string
+    private function invitationStatusLabel(InvitationStatus $status): string
     {
         return __(sprintf('staff.invitation_statuses.%s', $status->value));
     }

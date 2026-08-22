@@ -4,7 +4,7 @@
             <header class="flex items-center justify-between gap-4">
                 <a href="{{ route('home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
                     <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
-                    <span>{{ config('app.name', 'Laravel') }}</span>
+                    <span>{{ __('layout.app_name') }}</span>
                 </a>
 
                 <a

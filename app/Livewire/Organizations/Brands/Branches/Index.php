@@ -29,11 +29,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Title('Branches')]
 class Index extends Component
 {
     use WithFileUploads;
@@ -355,7 +353,23 @@ class Index extends Component
 
     /**
      * @return list<array{
-     *     branch: Branch,
+     *     branch: array{
+     *         id: int,
+     *         name: string,
+     *         is_active: bool,
+     *         address: string,
+     *         city: string,
+     *         country: string,
+     *         timezone: string,
+     *         currency_label: string,
+     *         logo_url: string|null,
+     *         areas_url: string,
+     *         menu_url: string,
+     *         service_points_url: string,
+     *         print_url: string,
+     *         staff_url: string,
+     *         settings_url: string
+     *     },
      *     counts: array{areas: int, service_points: int, qr_codes: int},
      *     steps: list<array{
      *         number: int,
@@ -372,9 +386,25 @@ class Index extends Component
     #[Computed]
     public function branchSetupGuides(): array
     {
-        return $this->branches
+        return $this->branches()
             ->map(fn (Branch $branch): array => [
-                'branch' => $branch,
+                'branch' => [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                    'is_active' => $branch->is_active,
+                    'address' => $branch->address,
+                    'city' => $branch->city,
+                    'country' => $branch->country,
+                    'timezone' => $branch->timezone,
+                    'currency_label' => $this->currencyOptions[$branch->currency] ?? $branch->currency,
+                    'logo_url' => $branch->logoUrl(),
+                    'areas_url' => route('organizations.brands.branches.areas.index', [$this->organization, $this->brand, $branch]),
+                    'menu_url' => route('organizations.brands.branches.menu.index', [$this->organization, $this->brand, $branch]),
+                    'service_points_url' => route('organizations.brands.branches.service-points.index', [$this->organization, $this->brand, $branch]),
+                    'print_url' => route('organizations.brands.branches.qr.print', [$this->organization, $this->brand, $branch]),
+                    'staff_url' => route('organizations.brands.branches.staff.index', [$this->organization, $this->brand, $branch]),
+                    'settings_url' => route('organizations.brands.branches.settings.index', [$this->organization, $this->brand, $branch]),
+                ],
                 'counts' => [
                     'areas' => (int) ($branch->setup_active_area_nodes_count ?? 0),
                     'service_points' => (int) ($branch->setup_active_service_points_count ?? 0),
@@ -388,7 +418,11 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.index');
+        return view('livewire.organizations.brands.branches.index', [
+            'branchSetupGuides' => $this->branchSetupGuides(),
+            'brandsUrl' => route('organizations.brands.index', $this->organization),
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name,
+        ])->title(__('navigation.branches'));
     }
 
     /**

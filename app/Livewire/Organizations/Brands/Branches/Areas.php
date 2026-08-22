@@ -23,10 +23,8 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Branch areas')]
 class Areas extends Component
 {
     public Organization $organization;
@@ -256,7 +254,7 @@ class Areas extends Component
     #[Computed]
     public function treeNodes(): array
     {
-        return $this->buildTree($this->areaNodes);
+        return $this->buildTree($this->areaNodes());
     }
 
     /**
@@ -296,7 +294,7 @@ class Areas extends Component
     /**
      * @return list<array{value: string, label: string}>
      */
-    public function parentOptions(?int $excludingAreaNodeId = null): array
+    private function parentOptions(?int $excludingAreaNodeId = null): array
     {
         $blockedIds = $excludingAreaNodeId === null
             ? collect()
@@ -304,13 +302,21 @@ class Areas extends Component
 
         return array_merge(
             [['value' => '', 'label' => __('ui.livewire.organizations.brands.branches.areas.top_level')]],
-            $this->flattenParentOptions($this->treeNodes, $blockedIds),
+            $this->flattenParentOptions($this->treeNodes(), $blockedIds),
         );
     }
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.areas');
+        return view('livewire.organizations.brands.branches.areas', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'quickCreateOptions' => $this->quickCreateOptions(),
+            'areaTypeOptions' => $this->areaTypeOptions(),
+            'iconOptions' => $this->iconOptions(),
+            'parentOptions' => $this->parentOptions(),
+            'editingParentOptions' => $this->parentOptions($this->editingAreaNodeId),
+            'treeNodes' => $this->treeNodes(),
+        ])->title(__('ui.organizations.brands.branches.areas.zony_restorana'));
     }
 
     /**
@@ -381,10 +387,10 @@ class Areas extends Component
      */
     private function buildTree(EloquentCollection $nodes, ?int $parentId = null, int $depth = 0): array
     {
-        return $nodes
-            ->where('parent_id', $parentId)
-            ->values()
-            ->map(fn (AreaNode $node): array => [
+        $tree = [];
+
+        foreach ($nodes->where('parent_id', $parentId) as $node) {
+            $tree[] = [
                 'id' => $node->id,
                 'name' => $node->name,
                 'type' => $node->type->value,
@@ -394,12 +400,14 @@ class Areas extends Component
                 'is_active' => $node->is_active,
                 'depth' => $depth,
                 'children' => $this->buildTree($nodes, $node->id, $depth + 1),
-            ])
-            ->all();
+            ];
+        }
+
+        return $tree;
     }
 
     /**
-     * @param  list<array{id: int, name: string, children: list<array>}>  $nodes
+     * @param  list<array{id: int, name: string, depth: int, children: list<array>}>  $nodes
      * @param  Collection<int, int>  $blockedIds
      * @return list<array{value: string, label: string}>
      */
@@ -411,7 +419,7 @@ class Areas extends Component
             if (! $blockedIds->contains($node['id'])) {
                 $options[] = [
                     'value' => (string) $node['id'],
-                    'label' => str_repeat('— ', (int) ($node['depth'] ?? 0)).$node['name'],
+                    'label' => str_repeat('— ', $node['depth']).$node['name'],
                 ];
             }
 
@@ -427,7 +435,7 @@ class Areas extends Component
     private function blockedParentIds(int $areaNodeId): Collection
     {
         return collect([$areaNodeId])
-            ->merge($this->descendantIds($this->areaNodes, $areaNodeId))
+            ->merge($this->descendantIds($this->areaNodes(), $areaNodeId))
             ->values();
     }
 

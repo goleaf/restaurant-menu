@@ -1,5 +1,5 @@
 # Migration audit
 
-The 2026-08-22 baseline contains 65 migrations targeting SQLite, 48 current application/framework tables, foreign keys/indexes and no views, triggers or stored routines. Important workflow entities use soft deletion and order items carry historical snapshots.
+The final 2026-08-22 chain contains 66 migrations targeting SQLite. The added forward migration secures invitation credentials/acceptance without deleting existing data. The schema retains foreign keys/indexes, soft-deleted history and immutable order snapshots; no view, trigger or stored routine dependency was introduced.
 
-Historical migrations include model-based backfills and therefore present drift risk, but deployed migration files are not rewritten. Corrections use forward-only migrations with expand/backfill/verify/switch/contract where necessary. Fresh test migration, representative upgrade, foreign-key/unique checks and fresh seed are mandatory. The canonical schema contract is [`data-model.md`](data-model.md).
+Historical migrations include model-based backfills and therefore present drift risk, but deployed migration files were not rewritten. Isolated fresh migration completed all 66 files in 0.52 seconds, followed by default and twice-demo seeds. The canonical schema contract is [`data-model.md`](data-model.md).

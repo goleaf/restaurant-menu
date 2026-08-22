@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
@@ -35,6 +37,16 @@ use Livewire\Component;
 #[Isolate]
 class DraftOrder extends Component
 {
+    private ToggleTableSessionGuestReadyAction $toggleGuestReady;
+
+    private SendDraftOrderToWaiterAction $sendDraftOrderToWaiter;
+
+    private UpdateGuestDraftOrderItemAction $updateGuestDraftOrderItem;
+
+    private DeleteGuestDraftOrderItemAction $deleteGuestDraftOrderItem;
+
+    private BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -142,7 +154,7 @@ class DraftOrder extends Component
     public string $editingComment = '';
 
     /**
-     * @var array<string, list<int>>
+     * @var array<int, list<int>>
      */
     public array $editingModifierOptions = [];
 
@@ -150,6 +162,20 @@ class DraftOrder extends Component
      * @var list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}>
      */
     public array $editingModifierGroups = [];
+
+    public function boot(
+        ToggleTableSessionGuestReadyAction $toggleGuestReady,
+        SendDraftOrderToWaiterAction $sendDraftOrderToWaiter,
+        UpdateGuestDraftOrderItemAction $updateGuestDraftOrderItem,
+        DeleteGuestDraftOrderItemAction $deleteGuestDraftOrderItem,
+        BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
+    ): void {
+        $this->toggleGuestReady = $toggleGuestReady;
+        $this->sendDraftOrderToWaiter = $sendDraftOrderToWaiter;
+        $this->updateGuestDraftOrderItem = $updateGuestDraftOrderItem;
+        $this->deleteGuestDraftOrderItem = $deleteGuestDraftOrderItem;
+        $this->buildModifierSnapshots = $buildModifierSnapshots;
+    }
 
     public function mount(
         int $tableSessionId,
@@ -186,7 +212,7 @@ class DraftOrder extends Component
 
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder($this->showStatuses);
-        $draftItems = $draftOrder?->items ?? collect();
+        $draftItems = $draftOrder instanceof DraftOrderModel ? $draftOrder->items : collect();
         $loadsTotals = $this->showTotals || $this->showControls;
         $tableSession = $this->showControls || $this->showStatuses ? $this->tableSessionForBillState() : null;
         $guestSections = [];
@@ -281,7 +307,7 @@ class DraftOrder extends Component
                 $unitTotalCents = max(0, self::decimalToCents($item->unit_price) + self::decimalToCents($item->modifier_total));
                 $totalCents += $itemTotalCents;
                 $guestId = (int) $item->table_session_guest_id;
-                $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
+                $guestName = $item->guest->guest_name;
 
                 if (! isset($guestSections[$guestId])) {
                     $guestSections[$guestId] = [
@@ -374,7 +400,7 @@ class DraftOrder extends Component
         }
 
         try {
-            $guest = app(ToggleTableSessionGuestReadyAction::class)->handle($guest);
+            $guest = $this->toggleGuestReady->handle($guest);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -447,7 +473,7 @@ class DraftOrder extends Component
         }
 
         try {
-            app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest);
+            $this->sendDraftOrderToWaiter->handle($draftOrder, $guest);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -486,7 +512,7 @@ class DraftOrder extends Component
             return;
         }
 
-        if ($draftOrderItem->draftOrder?->status !== DraftOrderStatus::Draft) {
+        if ($draftOrderItem->draftOrder->status !== DraftOrderStatus::Draft) {
             $this->addError('draft_order', __('guest.cart.draft_locked'));
 
             return;
@@ -535,7 +561,7 @@ class DraftOrder extends Component
         $selected = $this->selectedEditingOptionIdsForGroup($modifierGroupId);
 
         if (in_array($modifierOptionId, $selected, true)) {
-            $this->editingModifierOptions[(string) $modifierGroupId] = array_values(array_filter(
+            $this->editingModifierOptions[$modifierGroupId] = array_values(array_filter(
                 $selected,
                 fn (int $selectedOptionId): bool => $selectedOptionId !== $modifierOptionId,
             ));
@@ -551,7 +577,7 @@ class DraftOrder extends Component
         }
 
         if ($maxSelect === 1) {
-            $this->editingModifierOptions[(string) $modifierGroupId] = [$modifierOptionId];
+            $this->editingModifierOptions[$modifierGroupId] = [$modifierOptionId];
             $this->refreshEditingItemTotal();
 
             return;
@@ -562,7 +588,7 @@ class DraftOrder extends Component
         }
 
         $selected[] = $modifierOptionId;
-        $this->editingModifierOptions[(string) $modifierGroupId] = array_values($selected);
+        $this->editingModifierOptions[$modifierGroupId] = $selected;
         $this->refreshEditingItemTotal();
     }
 
@@ -590,7 +616,7 @@ class DraftOrder extends Component
         }
 
         try {
-            app(UpdateGuestDraftOrderItemAction::class)->handle(
+            $this->updateGuestDraftOrderItem->handle(
                 draftOrderItem: $draftOrderItem,
                 guest: $guest,
                 quantity: (int) $this->editingQuantity,
@@ -623,7 +649,7 @@ class DraftOrder extends Component
         }
 
         try {
-            app(DeleteGuestDraftOrderItemAction::class)->handle($draftOrderItem, $guest);
+            $this->deleteGuestDraftOrderItem->handle($draftOrderItem, $guest);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -798,7 +824,9 @@ class DraftOrder extends Component
 
                 return [
                     'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('guest.table.guest'),
+                    'guest_name' => $firstItem->table_session_guest_id === null
+                        ? ($firstItem->historicalGuestName() ?? (string) __('guest.table.guest'))
+                        : $firstItem->guest->guest_name,
                     'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
                 ];
             })
@@ -870,9 +898,7 @@ class DraftOrder extends Component
 
     private function ticketItemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
     {
-        return $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        return $item->status;
     }
 
     private function draftOrderForSending(): ?DraftOrderModel
@@ -948,7 +974,7 @@ class DraftOrder extends Component
             ->first();
 
         if (! $draftOrderItem instanceof DraftOrderItem
-            || $draftOrderItem->draftOrder?->table_session_id !== $this->tableSessionId) {
+            || $draftOrderItem->draftOrder->table_session_id !== $this->tableSessionId) {
             return null;
         }
 
@@ -988,7 +1014,7 @@ class DraftOrder extends Component
             return [];
         }
 
-        return app(BuildDraftOrderItemModifierSnapshots::class)
+        return $this->buildModifierSnapshots
             ->groupsFor($menuItem)
             ->map(fn ($modifierGroup): array => [
                 'id' => $modifierGroup->id,
@@ -1011,13 +1037,15 @@ class DraftOrder extends Component
 
     /**
      * @param  list<array{id: int, options: list<array{id: int}>}>  $modifierGroups
-     * @return array<string, list<int>>
+     * @return array<int, list<int>>
      */
     private function modifierOptionsFromSnapshots(mixed $selectedModifiers, array $modifierGroups): array
     {
-        $selectedOptions = collect($modifierGroups)
-            ->mapWithKeys(fn (array $modifierGroup): array => [(string) $modifierGroup['id'] => []])
-            ->all();
+        $selectedOptions = [];
+
+        foreach ($modifierGroups as $modifierGroup) {
+            $selectedOptions[$modifierGroup['id']] = [];
+        }
 
         if (! is_array($selectedModifiers)) {
             return $selectedOptions;
@@ -1050,12 +1078,14 @@ class DraftOrder extends Component
                 return;
             }
 
-            $selectedOptions[(string) $groupId][] = $optionId;
+            $selectedOptions[$groupId][] = $optionId;
         });
 
-        return collect($selectedOptions)
-            ->map(fn (array $optionIds): array => collect($optionIds)->unique()->values()->all())
-            ->all();
+        foreach ($selectedOptions as $groupId => $optionIds) {
+            $selectedOptions[$groupId] = array_values(array_unique($optionIds));
+        }
+
+        return $selectedOptions;
     }
 
     /**
@@ -1103,7 +1133,7 @@ class DraftOrder extends Component
             ->map(fn (mixed $optionId): int => (int) $optionId)
             ->all();
 
-        return collect($this->editingModifierOptions[(string) $modifierGroupId] ?? [])
+        return collect($this->editingModifierOptions[$modifierGroupId] ?? [])
             ->map(fn (mixed $optionId): int => (int) $optionId)
             ->filter(fn (int $optionId): bool => in_array($optionId, $availableOptionIds, true))
             ->unique()

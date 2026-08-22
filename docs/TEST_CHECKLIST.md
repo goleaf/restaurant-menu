@@ -15,3 +15,7 @@ Use a disposable isolated Chrome profile. Record URL, viewport, actor/data fixtu
 - Lifecycle: repeated `wire:navigate`, no duplicated listeners/timers, precise loading/offline/dirty states, no browser console errors.
 
 Historical prompt-by-prompt smoke notes were consolidated into the root [`CHANGELOG.md`](../CHANGELOG.md). Current automated gates are in [`testing.md`](testing.md).
+
+## 2026-08-22 executed browser evidence
+
+Using disposable isolated Chrome context `restaurant-menu-modernization-20260822`: public/login/authenticated dashboard Lighthouse samples scored 100 in every reported category; 360/430 touch emulation and 500/768/1024/1280/1440/1536 representative checks showed no page-level overflow on sampled public/authenticated layouts; registration, password confirmation, EN→RU persistence, logout/login, modal focus/name, account deletion and both guest/auth client-only and authenticated `wire:offline` status regions succeeded; preserved console inspection contained no warnings or errors. Physical screen-reader/device and non-Chromium coverage remains in [`known-limitations.md`](known-limitations.md).

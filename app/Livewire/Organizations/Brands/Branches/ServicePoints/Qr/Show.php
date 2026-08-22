@@ -26,6 +26,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Show extends Component
 {
+    private QrCodeSvgRenderer $qrCodeSvgRenderer;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -41,6 +43,11 @@ class Show extends Component
     public string $qrDisableReason = '';
 
     public string $qrReissueConfirmation = '';
+
+    public function boot(QrCodeSvgRenderer $qrCodeSvgRenderer): void
+    {
+        $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
+    }
 
     public function mount(
         Organization $organization,
@@ -131,7 +138,7 @@ class Show extends Component
     {
         $this->authorizeQrManagement();
 
-        $svg = $qrCodeSvgRenderer->render($this->publicUrl);
+        $svg = $qrCodeSvgRenderer->render($this->publicUrl());
         $filename = strtolower($this->qrCode->short_code).'.svg';
 
         return response()->streamDownload(
@@ -152,7 +159,7 @@ class Show extends Component
     #[Computed]
     public function qrImageDataUri(): string
     {
-        $svg = app(QrCodeSvgRenderer::class)->render($this->publicUrl);
+        $svg = $this->qrCodeSvgRenderer->render($this->publicUrl());
 
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
@@ -169,7 +176,39 @@ class Show extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.service-points.qr.show')
+        $publicUrl = $this->publicUrl();
+
+        return view('livewire.organizations.brands.branches.service-points.qr.show', [
+            'servicePointsUrl' => route('organizations.brands.branches.service-points.index', [
+                $this->organization,
+                $this->brand,
+                $this->branch,
+            ]),
+            'printUrl' => route('organizations.brands.branches.service-points.qr.print', [
+                $this->organization,
+                $this->brand,
+                $this->branch,
+                $this->servicePoint,
+                $this->qrCode,
+            ]),
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'branchName' => $this->branch->name,
+            'branchLocation' => collect([$this->branch->city, $this->branch->country])->filter()->join(', '),
+            'areaName' => $this->servicePoint->area_node_id === null
+                ? __('qr.labels.no_zone')
+                : $this->servicePoint->areaNode->name,
+            'servicePointName' => $this->servicePoint->name,
+            'servicePointTypeLabel' => __($this->servicePoint->type->label()),
+            'servicePointDisplayNumber' => $this->servicePoint->display_number ?: __('qr.labels.not_set'),
+            'qrCodeId' => $this->qrCode->id,
+            'qrShortCode' => $this->qrCode->short_code,
+            'qrLocalizedStatus' => __($this->qrCode->status->label()),
+            'qrStatusColor' => $this->statusColor(),
+            'qrCreatedAt' => $this->qrCode->created_at?->format('Y-m-d H:i'),
+            'qrIsActive' => $this->qrCode->status === QrCodeStatus::Active,
+            'publicUrl' => $publicUrl,
+            'qrImageDataUri' => $this->qrImageDataUri(),
+        ])
             ->title(__('qr.labels.title'));
     }
 

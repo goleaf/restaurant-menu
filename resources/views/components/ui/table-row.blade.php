@@ -1,14 +1,3 @@
-@props([
-    'title',
-    'subtitle' => null,
-    'meta' => null,
-    'href' => null,
-])
-
-@php
-    $rowClasses = 'grid min-h-16 gap-3 border-b border-zinc-200 px-4 py-3 text-sm last:border-b-0 dark:border-zinc-800 md:grid-cols-[minmax(0,1fr)_auto] md:items-center';
-@endphp
-
 @if ($href)
     <a href="{{ $href }}" {{ $attributes->class([$rowClasses, 'transition hover:bg-zinc-50 dark:hover:bg-zinc-900/70']) }}>
         <div class="flex min-w-0 items-center gap-3">

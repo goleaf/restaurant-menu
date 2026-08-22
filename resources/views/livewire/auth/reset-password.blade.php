@@ -3,17 +3,17 @@
         <x-auth-header :title="__('ui.auth.reset_password.reset_password')" :description="__('ui.auth.reset_password.please_enter_your_new_password_below')" />
 
         <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
         <form method="POST" action="{{ route('password.update') }}" class="flex flex-col gap-6">
             @csrf
             <!-- Token -->
-            <input type="hidden" name="token" value="{{ request()->route('token') }}">
+            <input type="hidden" name="token" value="{{ $resetToken }}">
 
             <!-- Email Address -->
             <flux:input
                 name="email"
-                value="{{ request('email') }}"
+                value="{{ $resetEmail }}"
                 :label="__('ui.auth.reset_password.email')"
                 type="email"
                 required
@@ -28,7 +28,7 @@
                 required
                 autocomplete="new-password"
                 :placeholder="__('ui.auth.confirm_password.password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $passwordRules }}"
                 viewable
             />
 
@@ -40,7 +40,7 @@
                 required
                 autocomplete="new-password"
                 :placeholder="__('ui.auth.confirm_password.confirm_password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $passwordRules }}"
                 viewable
             />
 

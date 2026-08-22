@@ -93,7 +93,7 @@ test('branch setting can disable guest invite links', function () {
         ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->call('createGuestInviteLink')
         ->assertSet('guestInviteUrl', '')
-        ->assertSeeText('Приглашения гостей по ссылке отключены для этого филиала.');
+        ->assertSeeText(__('ui.actions.tablesessions.createguestinvitelinkaction.priglaseniia_gostei_po'));
 
     expect($tableSession->fresh()->guest_invite_token)->toBeNull();
 });

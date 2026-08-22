@@ -1,14 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\WaiterCallStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\WaiterCallFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property WaiterCallStatus $status
+ * @property CarbonInterface $requested_at
+ * @property-read ServicePoint $servicePoint
+ * @property-read TableSessionGuest|null $requestedByGuest
+ */
 #[Fillable(['service_point_id', 'active_service_point_id', 'table_session_id', 'requested_by_guest_id', 'requested_at', 'handled_at', 'handled_by_user_id', 'metadata'])]
 class WaiterCall extends Model
 {
@@ -25,9 +34,7 @@ class WaiterCall extends Model
     protected static function booted(): void
     {
         static::saving(function (WaiterCall $waiterCall): void {
-            $status = $waiterCall->status instanceof WaiterCallStatus
-                ? $waiterCall->status
-                : WaiterCallStatus::from($waiterCall->status ?? WaiterCallStatus::Pending->value);
+            $status = $waiterCall->status;
 
             $waiterCall->active_service_point_id = $status === WaiterCallStatus::Pending
                 ? $waiterCall->service_point_id

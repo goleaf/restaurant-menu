@@ -4,19 +4,19 @@
             <flux:input wire:model="editingName" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
 
             <flux:select wire:model="editingType" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
-                @foreach ($this->areaTypeOptions as $value => $label)
+                @foreach ($areaTypeOptions as $value => $label)
                     <flux:select.option wire:key="editing-area-type-{{ $node['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model="editingIcon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
-                @foreach ($this->iconOptions as $value => $label)
+                @foreach ($iconOptions as $value => $label)
                     <flux:select.option wire:key="editing-area-icon-{{ $node['id'] }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model="editingParentId" :label="__('ui.organizations.brands.branches.area_node_row.gde_naxoditsia')">
-                @foreach ($this->parentOptions($editingAreaNodeId) as $option)
+                @foreach ($editingParentOptions as $option)
                     <flux:select.option wire:key="editing-area-parent-{{ $node['id'] }}-{{ $option['value'] === '' ? 'top' : $option['value'] }}" value="{{ $option['value'] }}">
                         {{ $option['label'] }}
                     </flux:select.option>

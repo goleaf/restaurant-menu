@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Waiter;
 
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
@@ -15,12 +17,12 @@ use App\Models\WaiterCall;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Waiter dashboard')]
 class Dashboard extends Component
 {
+    private BuildWaiterDashboardAction $buildWaiterDashboard;
+
     /**
      * @var list<array<string, mixed>>
      */
@@ -54,6 +56,11 @@ class Dashboard extends Component
 
     public string $zoneScope = 'mine';
 
+    public function boot(BuildWaiterDashboardAction $buildWaiterDashboard): void
+    {
+        $this->buildWaiterDashboard = $buildWaiterDashboard;
+    }
+
     public function mount(): void
     {
         $this->refreshDashboard();
@@ -65,7 +72,7 @@ class Dashboard extends Component
 
     public function refreshDashboard(): void
     {
-        $payload = app(BuildWaiterDashboardAction::class)->handle($this->currentUser(), $this->normalizedZoneScope());
+        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope());
 
         if (! $payload['has_access']) {
             abort(403);
@@ -189,7 +196,8 @@ class Dashboard extends Component
 
     public function render(): View
     {
-        return view('livewire.waiter.dashboard');
+        return view('livewire.waiter.dashboard')
+            ->title(__('ui.waiter.dashboard.waiter_dashboard'));
     }
 
     private function currentUser(): User

@@ -28,6 +28,10 @@ use Livewire\Component;
 #[Isolate]
 class DraftTotals extends Component
 {
+    private ToggleTableSessionGuestReadyAction $toggleGuestReady;
+
+    private SendDraftOrderToWaiterAction $sendDraftOrderToWaiter;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -84,6 +88,14 @@ class DraftTotals extends Component
 
     public string $feedbackMessage = '';
 
+    public function boot(
+        ToggleTableSessionGuestReadyAction $toggleGuestReady,
+        SendDraftOrderToWaiterAction $sendDraftOrderToWaiter,
+    ): void {
+        $this->toggleGuestReady = $toggleGuestReady;
+        $this->sendDraftOrderToWaiter = $sendDraftOrderToWaiter;
+    }
+
     public function mount(
         int $tableSessionId,
         int $currentGuestId,
@@ -113,7 +125,7 @@ class DraftTotals extends Component
 
         $guests = $this->activeGuests();
         $draftOrder = $this->draftOrder();
-        $draftItems = $draftOrder?->items ?? collect();
+        $draftItems = $draftOrder instanceof DraftOrder ? $draftOrder->items : collect();
         $tableSession = $this->tableSessionForBillState();
         $guestTotals = [];
         $draftTotalCents = 0;
@@ -184,7 +196,7 @@ class DraftTotals extends Component
             $itemTotalCents = self::decimalToCents($item->total_price);
             $draftTotalCents += $itemTotalCents;
             $guestId = (int) $item->table_session_guest_id;
-            $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
+            $guestName = $item->guest->guest_name;
 
             if (! isset($guestTotals[$guestId])) {
                 $guestTotals[$guestId] = [
@@ -248,7 +260,7 @@ class DraftTotals extends Component
         }
 
         try {
-            $guest = app(ToggleTableSessionGuestReadyAction::class)->handle($guest);
+            $guest = $this->toggleGuestReady->handle($guest);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -320,7 +332,7 @@ class DraftTotals extends Component
         }
 
         try {
-            app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest);
+            $this->sendDraftOrderToWaiter->handle($draftOrder, $guest);
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -458,7 +470,9 @@ class DraftTotals extends Component
 
                 return [
                     'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->guest?->guest_name ?? $firstItem->historicalGuestName() ?? __('guest.table.guest'),
+                    'guest_name' => $firstItem->table_session_guest_id === null
+                        ? ($firstItem->historicalGuestName() ?? (string) __('guest.table.guest'))
+                        : $firstItem->guest->guest_name,
                     'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
                 ];
             })

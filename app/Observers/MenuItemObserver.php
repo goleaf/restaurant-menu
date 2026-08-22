@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -12,6 +14,11 @@ use Illuminate\Support\Facades\Auth;
 
 class MenuItemObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+        private readonly RecordAuditLogAction $recordAuditLog,
+    ) {}
+
     /**
      * Handle the MenuItem "created" event.
      */
@@ -77,7 +84,7 @@ class MenuItemObserver
             ->value('branch_id');
 
         if (is_numeric($branchId)) {
-            app(ForgetBranchCacheAction::class)->handle((int) $branchId);
+            $this->forgetBranchCache->handle((int) $branchId);
         }
     }
 
@@ -87,7 +94,7 @@ class MenuItemObserver
         $actor = $this->currentUser();
 
         if ($menuItem->wasChanged('price')) {
-            app(RecordAuditLogAction::class)->handle(
+            $this->recordAuditLog->handle(
                 action: AuditLogAction::MenuPriceChanged,
                 entityType: 'menu_item',
                 entityId: $menuItem->id,
@@ -106,7 +113,7 @@ class MenuItemObserver
         }
 
         if ($menuItem->wasChanged('is_available')) {
-            app(RecordAuditLogAction::class)->handle(
+            $this->recordAuditLog->handle(
                 action: AuditLogAction::MenuAvailabilityChanged,
                 entityType: 'menu_item',
                 entityId: $menuItem->id,
@@ -129,7 +136,7 @@ class MenuItemObserver
     {
         $context = $this->contextForMenuId($menuItem->menu_id);
 
-        app(RecordAuditLogAction::class)->handle(
+        $this->recordAuditLog->handle(
             action: AuditLogAction::MenuItemDeleted,
             entityType: 'menu_item',
             entityId: $menuItem->id,

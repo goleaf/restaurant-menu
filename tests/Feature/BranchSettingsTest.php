@@ -41,7 +41,7 @@ test('branch settings table has safe operational fields', function () {
 test('creating branch creates settings with safe defaults', function () {
     [, $brand] = createOrganizationBrandForSettings();
 
-    $branch = (new CreateBranchAction)->handle($brand, [
+    $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Bella Pizza Vilnius Old Town',
         'address' => 'Pilies 1',
         'city' => 'Vilnius',
@@ -214,7 +214,7 @@ function createOrganizationBrandBranchForSettings(
     [$organization, $brand, $owner] = createOrganizationBrandForSettings($organizationName, $brandName);
 
     if ($createSettings) {
-        $branch = (new CreateBranchAction)->handle($brand, [
+        $branch = app(CreateBranchAction::class)->handle($brand, [
             'name' => $brandName.' Vilnius Old Town',
             'address' => 'Pilies 1',
             'city' => 'Vilnius',

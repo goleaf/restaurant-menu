@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Enums\TableSessionStatus;
@@ -50,8 +52,10 @@ class BuildTableSessionInactivityStateAction
 
     private function settingsFor(TableSession $tableSession): ?BranchSetting
     {
-        if ($tableSession->relationLoaded('branch') && $tableSession->branch?->relationLoaded('settings')) {
-            return $tableSession->branch?->settings;
+        if ($tableSession->relationLoaded('branch') && $tableSession->branch->relationLoaded('settings')) {
+            $settings = $tableSession->branch->getRelation('settings');
+
+            return $settings instanceof BranchSetting ? $settings : null;
         }
 
         $tableSession->loadMissing([
@@ -64,7 +68,9 @@ class BuildTableSessionInactivityStateAction
             ]),
         ]);
 
-        return $tableSession->branch?->settings;
+        $settings = $tableSession->branch->getRelation('settings');
+
+        return $settings instanceof BranchSetting ? $settings : null;
     }
 
     private function lastActivityAt(TableSession $tableSession): ?CarbonInterface
@@ -85,7 +91,7 @@ class BuildTableSessionInactivityStateAction
             return 0;
         }
 
-        $timezone = $tableSession->branch?->timezone ?: config('app.timezone', 'UTC');
+        $timezone = $tableSession->branch->timezone ?: config('app.timezone', 'UTC');
         $now = now($timezone);
 
         return max(0, (int) floor($lastActivityAt->copy()->setTimezone($timezone)->diffInMinutes($now)));
@@ -100,8 +106,6 @@ class BuildTableSessionInactivityStateAction
 
     private function status(TableSession $tableSession): TableSessionStatus
     {
-        return $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        return $tableSession->status;
     }
 }

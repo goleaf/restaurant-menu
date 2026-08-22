@@ -210,30 +210,50 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.staff.index')
+        return view('livewire.organizations.staff.index', [
+            'organizationName' => $this->organization->name,
+            'roleOptions' => $this->roles()
+                ->map(fn (Role $role): array => ['id' => $role->id, 'label' => $this->roleLabel($role)])
+                ->all(),
+            'memberRows' => $this->members()
+                ->map(fn (OrganizationUser $member): array => [
+                    'id' => $member->id,
+                    'user_id' => $member->user_id,
+                    'user_name' => $member->user->name,
+                    'user_email' => $member->user->email,
+                    'is_active' => $member->status === OrganizationUserStatus::Active,
+                    'localized_status' => $this->memberStatusLabel($member->status),
+                    'role_label' => $this->roleLabel($member->role),
+                ])
+                ->all(),
+            'invitationRows' => $this->invitations()
+                ->map(fn (Invitation $invitation): array => [
+                    'id' => $invitation->id,
+                    'role_label' => $this->roleLabel($invitation->role),
+                    'localized_status' => $this->invitationStatusLabel($invitation->status),
+                    'email' => $invitation->email,
+                    'phone' => $invitation->phone,
+                ])
+                ->all(),
+        ])
             ->title(__('staff.organization_access'));
     }
 
-    public function roleLabel(?Role $role): string
+    private function roleLabel(?Role $role): string
     {
         if (! $role instanceof Role) {
             return '';
         }
 
-        $roleCode = $role->code instanceof SystemRole
-            ? $role->code->value
-            : (string) $role->code;
-        $systemRole = SystemRole::tryFrom($roleCode);
-
-        return $systemRole?->localizedLabel() ?? (string) $role->name;
+        return $role->code->localizedLabel();
     }
 
-    public function memberStatusLabel(OrganizationUserStatus $status): string
+    private function memberStatusLabel(OrganizationUserStatus $status): string
     {
         return __(sprintf('staff.statuses.%s', $status->value));
     }
 
-    public function invitationStatusLabel(InvitationStatus $status): string
+    private function invitationStatusLabel(InvitationStatus $status): string
     {
         return __(sprintf('staff.invitation_statuses.%s', $status->value));
     }

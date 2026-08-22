@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\DraftOrderItemFactory;
@@ -8,6 +10,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $unit_price
+ * @property string $modifier_total
+ * @property string $total_price
+ * @property-read DraftOrder $draftOrder
+ * @property-read TableSessionGuest $guest
+ */
 #[Fillable(['draft_order_id', 'table_session_guest_id', 'menu_item_id', 'item_name', 'quantity', 'unit_price', 'modifier_total', 'total_price', 'selected_modifiers', 'comment'])]
 class DraftOrderItem extends Model
 {

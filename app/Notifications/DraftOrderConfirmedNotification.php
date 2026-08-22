@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications;
 
 use App\Models\DraftOrder;
@@ -49,19 +51,22 @@ class DraftOrderConfirmedNotification extends Notification
             'confirmedByUser:id,name',
         ]);
         $tableSession = $draftOrder->tableSession;
+        $confirmedByName = $order->confirmed_by_user_id !== null
+            ? $order->confirmedByUser->name
+            : ($draftOrder->converted_by_user_id === null ? null : $draftOrder->convertedByUser->name);
 
         return [
             'draft_order_id' => $draftOrder->id,
             'order_id' => $order->id,
             'table_session_id' => $draftOrder->table_session_id,
-            'branch_id' => $tableSession?->branch_id,
-            'branch_name' => $tableSession?->branch?->name,
-            'service_point_id' => $tableSession?->service_point_id,
-            'service_point_name' => $tableSession?->servicePoint?->name,
-            'service_point_display_number' => $tableSession?->servicePoint?->display_number,
-            'area_name' => $tableSession?->servicePoint?->areaNode?->name,
+            'branch_id' => $tableSession->branch_id,
+            'branch_name' => $tableSession->branch->name,
+            'service_point_id' => $tableSession->service_point_id,
+            'service_point_name' => $tableSession->servicePoint->name,
+            'service_point_display_number' => $tableSession->servicePoint->display_number,
+            'area_name' => $tableSession->servicePoint->areaNode?->name,
             'confirmed_by_user_id' => $order->confirmed_by_user_id,
-            'confirmed_by_user_name' => $order->confirmedByUser?->name ?? $draftOrder->convertedByUser?->name,
+            'confirmed_by_user_name' => $confirmedByName,
             'confirmed_at' => $order->confirmed_at?->toISOString(),
             'total_price' => $order->total_price,
             'currency' => $order->currency,

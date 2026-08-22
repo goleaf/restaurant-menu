@@ -8,10 +8,11 @@ use App\Actions\Staff\SetUserPermissionOverrideAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\PermissionOverrideState;
 use App\Enums\SystemPermission;
-use App\Enums\SystemRole;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\PermissionRole;
+use App\Models\PermissionUserOverride;
 use App\Models\Role;
 use App\Models\User;
 use Flux\Flux;
@@ -24,6 +25,8 @@ use Livewire\Component;
 
 class Permissions extends Component
 {
+    private SetUserPermissionOverrideAction $setUserPermissionOverride;
+
     public Organization $organization;
 
     public User $staffMember;
@@ -46,6 +49,11 @@ class Permissions extends Component
     public ?string $lastCriticalWarning = null;
 
     public string $criticalPermissionChangeReason = '';
+
+    public function boot(SetUserPermissionOverrideAction $setUserPermissionOverride): void
+    {
+        $this->setUserPermissionOverride = $setUserPermissionOverride;
+    }
 
     public function mount(Organization $organization, User $staffMember): void
     {
@@ -120,7 +128,7 @@ class Permissions extends Component
             $reason = (string) $validated['criticalPermissionChangeReason'];
         }
 
-        app(SetUserPermissionOverrideAction::class)->handle(
+        $this->setUserPermissionOverride->handle(
             user: $this->staffMember,
             permission: $permission,
             state: $overrideState,
@@ -139,7 +147,6 @@ class Permissions extends Component
             Flux::toast(variant: 'success', text: __('permissions.messages.override_saved'));
         }
 
-        unset($this->permissionRows, $this->permissionGroups);
     }
 
     /**
@@ -148,26 +155,20 @@ class Permissions extends Component
     #[Computed]
     public function permissionRows(): array
     {
-        $role = Role::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->with([
-                'permissions' => fn ($query) => $query
-                    ->select(['permissions.id', 'permissions.code'])
-                    ->orderBy('permissions.sort_order'),
-            ])
-            ->whereKey($this->membershipRoleId)
-            ->firstOrFail();
-
-        $roleDefaults = $role->permissions
-            ->mapWithKeys(fn (Permission $permission): array => [
-                $permission->id => (bool) $permission->pivot->enabled,
+        $roleDefaults = PermissionRole::query()
+            ->select(['permission_id', 'enabled'])
+            ->where('role_id', $this->membershipRoleId)
+            ->get()
+            ->mapWithKeys(fn (PermissionRole $assignment): array => [
+                $assignment->permission_id => $assignment->enabled,
             ]);
 
-        $overrides = $this->staffMember->permissionOverrides()
-            ->select(['permissions.id', 'permissions.code'])
+        $overrides = PermissionUserOverride::query()
+            ->select(['permission_id', 'enabled'])
+            ->where('user_id', $this->staffMember->id)
             ->get()
-            ->mapWithKeys(fn (Permission $permission): array => [
-                $permission->id => (bool) $permission->pivot->enabled,
+            ->mapWithKeys(fn (PermissionUserOverride $override): array => [
+                $override->permission_id => $override->enabled,
             ]);
 
         return Permission::query()
@@ -219,7 +220,7 @@ class Permissions extends Component
     {
         $groupOrder = array_flip(SystemPermission::uiGroupOrder());
 
-        return collect($this->permissionRows)
+        return collect($this->permissionRows())
             ->groupBy('group_key')
             ->map(fn ($rows, string $key): array => [
                 'key' => $key,
@@ -233,7 +234,12 @@ class Permissions extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.staff.permissions')
+        return view('livewire.organizations.staff.permissions', [
+            'organizationName' => $this->organization->name,
+            'staffMemberName' => $this->staffMember->name,
+            'staffMemberEmail' => $this->staffMember->email,
+            'permissionGroups' => $this->permissionGroups(),
+        ])
             ->title(__('staff.actions.update_permissions'));
     }
 
@@ -243,12 +249,7 @@ class Permissions extends Component
             return '';
         }
 
-        $roleCode = $role->code instanceof SystemRole
-            ? $role->code->value
-            : (string) $role->code;
-        $systemRole = SystemRole::tryFrom($roleCode);
-
-        return $systemRole?->localizedLabel() ?? (string) $role->name;
+        return $role->code->localizedLabel();
     }
 
     private function organizationUserStatusLabel(OrganizationUserStatus $status): string

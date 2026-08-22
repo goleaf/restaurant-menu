@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\AuditLogs;
 
 use App\Actions\AuditLogs\BuildAuditLogIndexAction;
@@ -7,18 +9,23 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('Audit log')]
 class Index extends Component
 {
     use WithPagination;
 
+    private BuildAuditLogIndexAction $buildAuditLogIndex;
+
+    public function boot(BuildAuditLogIndexAction $buildAuditLogIndex): void
+    {
+        $this->buildAuditLogIndex = $buildAuditLogIndex;
+    }
+
     public function mount(): void
     {
-        if (! app(BuildAuditLogIndexAction::class)->userHasAccess($this->currentUser())) {
+        if (! $this->buildAuditLogIndex->userHasAccess($this->currentUser())) {
             abort(403);
         }
     }
@@ -34,7 +41,7 @@ class Index extends Component
     #[Computed]
     public function payload(): array
     {
-        $payload = app(BuildAuditLogIndexAction::class)->handle($this->currentUser());
+        $payload = $this->buildAuditLogIndex->handle($this->currentUser());
 
         if (! $payload['has_access']) {
             abort(403);
@@ -45,7 +52,9 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.audit-logs.index');
+        return view('livewire.audit-logs.index', [
+            'payload' => $this->payload(),
+        ])->title(__('navigation.audit_log'));
     }
 
     private function currentUser(): User

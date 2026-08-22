@@ -150,7 +150,9 @@ class BuildDepartmentDashboardAction
             }
         }
 
-        return $departments->first();
+        $firstDepartment = $departments->first();
+
+        return $firstDepartment instanceof KitchenDepartment ? $firstDepartment : null;
     }
 
     /**
@@ -215,10 +217,10 @@ class BuildDepartmentDashboardAction
             'id' => $department->id,
             'name' => $department->name,
             'type_label' => $department->type->label(),
-            'branch_name' => $department->branch?->name,
-            'brand_name' => $department->branch?->brand?->name,
-            'organization_name' => $department->branch?->organization?->name,
-            'label' => trim(($department->branch?->name ?? '').' / '.$department->name, ' /'),
+            'branch_name' => $department->branch->name,
+            'brand_name' => $department->branch->brand->name,
+            'organization_name' => $department->branch->organization->name,
+            'label' => $department->branch->name.' / '.$department->name,
         ];
     }
 
@@ -227,15 +229,13 @@ class BuildDepartmentDashboardAction
      */
     private function ticketPayload(KitchenTicket $ticket): array
     {
-        $status = $ticket->status instanceof KitchenTicketStatus
-            ? $ticket->status
-            : KitchenTicketStatus::from((string) $ticket->status);
+        $status = $ticket->status;
         $items = $ticket->items
             ->map(fn (KitchenTicketItem $item): array => $this->itemPayload($item))
             ->values()
             ->all();
-        $displayNumber = trim((string) ($ticket->servicePoint?->display_number ?? ''));
-        $servicePointName = trim((string) ($ticket->servicePoint?->name ?? ''));
+        $displayNumber = trim((string) ($ticket->servicePoint->display_number ?? ''));
+        $servicePointName = trim((string) $ticket->servicePoint->name);
         $startedAt = $ticket->sent_at ?? $ticket->created_at;
         $elapsedSeconds = $this->elapsedSeconds($startedAt);
 

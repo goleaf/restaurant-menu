@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\DraftOrderStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\DraftOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +15,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
+/**
+ * @property DraftOrderStatus $status
+ * @property CarbonInterface|null $sent_to_waiter_at
+ * @property CarbonInterface|null $rejected_at
+ * @property CarbonInterface|null $converted_to_order_at
+ * @property-read TableSessionGuest|null $sentByGuest
+ */
 #[Fillable(['table_session_id', 'sent_to_waiter_at', 'sent_by_guest_id', 'rejected_at', 'rejected_by_user_id', 'rejection_reason', 'converted_to_order_at', 'converted_by_user_id'])]
 class DraftOrder extends Model
 {

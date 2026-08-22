@@ -47,7 +47,7 @@ class ConfirmDraftOrderByWaiterAction
             }
 
             $previousStatus = $draftOrder->status;
-            $currency = $draftOrder->tableSession?->branch?->currency ?? 'EUR';
+            $currency = $draftOrder->tableSession->branch->currency;
             $lineTotals = $draftOrder->items
                 ->mapWithKeys(fn (DraftOrderItem $item): array => [$item->id => $this->lineTotalCents($item)]);
             $totalCents = $lineTotals->sum();
@@ -73,7 +73,7 @@ class ConfirmDraftOrderByWaiterAction
 
             $draftOrder->items->each(function (DraftOrderItem $item) use ($order, $lineTotals): void {
                 $kitchenDepartment = $item->menuItem?->kitchenDepartment;
-                $guestNameSnapshot = $item->guest?->guest_name;
+                $guestNameSnapshot = $item->guest->guest_name;
                 $modifiersSnapshot = $item->selected_modifiers ?? [];
                 $lineTotal = $this->formatCents((int) $lineTotals->get($item->id, 0));
 
@@ -137,7 +137,7 @@ class ConfirmDraftOrderByWaiterAction
                 entityType: 'order',
                 entityId: $order->id,
                 actorUser: $confirmedBy,
-                organizationId: $draftOrder->tableSession->branch?->organization_id,
+                organizationId: $draftOrder->tableSession->branch->organization_id,
                 branchId: $order->branch_id,
                 oldValues: [
                     'draft_order_id' => $draftOrder->id,

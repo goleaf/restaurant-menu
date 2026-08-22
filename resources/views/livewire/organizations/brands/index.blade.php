@@ -5,7 +5,7 @@
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organizationName }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('navigation.brands') }}</h1>
         </div>
     </header>
@@ -28,9 +28,9 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->brands as $brand)
-                <div wire:key="brand-{{ $brand->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
-                    @if ($editingBrandId === $brand->id)
+            @forelse ($brandRows as $brand)
+                <div wire:key="brand-{{ $brand['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
+                    @if ($editingBrandId === $brand['id'])
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-[1fr_auto_auto] md:items-end">
                             <flux:input wire:model="editingName" :label="__('ui.organizations.brands.index.brand_name')" type="text" required maxlength="120" />
 
@@ -44,44 +44,41 @@
                         </form>
                     @else
                         <div class="min-w-0">
-                            @php($brandLogoUrl = $brand->logoUrl())
-
                             <div class="flex gap-3">
                                 <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                                    @if ($brandLogoUrl)
-                                        <img src="{{ $brandLogoUrl }}" alt="{{ $brand->name }}" class="size-full object-contain">
+                                    @if ($brand['logo_url'])
+                                        <img src="{{ $brand['logo_url'] }}" alt="{{ $brand['name'] }}" class="size-full object-contain">
                                     @else
                                         <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.logo') }}</span>
                                     @endif
                                 </div>
 
                                 <div class="min-w-0">
-                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $brand->name }}</h2>
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $brand['name'] }}</h2>
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ __('qr.labels.created') }} {{ $brand->created_at->format('d.m.Y') }}
+                                        {{ __('qr.labels.created') }} {{ $brand['created_at'] }}
                                     </p>
                                 </div>
                             </div>
 
                             @if ($canManageBrands)
-                                <form wire:submit="saveLogo({{ $brand->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                    <label for="brand-logo-{{ $brand->id }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
-                                    <input id="brand-logo-{{ $brand->id }}" wire:model="brandLogos.{{ $brand->id }}" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.logo') }}" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
-                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</p>
+                                <form wire:submit="saveLogo({{ $brand['id'] }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                    <label for="brand-logo-{{ $brand['id'] }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
+                                    <x-ui.image-upload-input id="brand-logo-{{ $brand['id'] }}" wire:model="brandLogos.{{ $brand['id'] }}" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" class="max-w-xs" />
 
                                     <div class="flex flex-wrap gap-2">
-                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="brandLogos.{{ $brand->id }}, saveLogo({{ $brand->id }})">
-                                            {{ $brandLogoUrl ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
+                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="brandLogos.{{ $brand['id'] }}, saveLogo({{ $brand['id'] }})">
+                                            {{ $brand['logo_url'] ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
                                         </flux:button>
 
-                                        @if ($brandLogoUrl)
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $brand->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $brand->id }})">
+                                        @if ($brand['logo_url'])
+                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $brand['id'] }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $brand['id'] }})">
                                                 {{ __('uploads.actions.remove') }}
                                             </flux:button>
                                         @endif
                                     </div>
 
-                                    @error('brandLogos.'.$brand->id)
+                                    @error('brandLogos.'.$brand['id'])
                                         <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                     @enderror
                                 </form>
@@ -90,27 +87,27 @@
 
                         @if ($canManageBrands)
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="map-pin" type="button" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
+                                <flux:button icon="map-pin" type="button" :href="$brand['branches_url']" wire:navigate>
                                     {{ __('navigation.branches') }}
                                 </flux:button>
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $brand->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $brand['id'] }})">
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $brand->id }})">
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $brand['id'] }})">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>
                         @else
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="map-pin" type="button" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
+                                <flux:button icon="map-pin" type="button" :href="$brand['branches_url']" wire:navigate>
                                     {{ __('navigation.branches') }}
                                 </flux:button>
                             </div>
                         @endif
 
-                        @if ($deletingBrandId === $brand->id)
+                        @if ($deletingBrandId === $brand['id'])
                             <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <span>{{ __('ui.confirmations.delete.title') }}</span>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\KitchenTicketItemStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\KitchenTicketItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property KitchenTicketItemStatus $status
+ * @property CarbonInterface|null $served_at
  * @property-read KitchenTicket $kitchenTicket
  * @property-read TableSessionGuest|null $guest
  */

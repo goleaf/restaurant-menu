@@ -34,7 +34,11 @@ beforeEach(function () {
 test('waiter with view orders but without confirm orders cannot confirm sent draft', function () {
     [$organization, , , $tableSession, $draftOrder] = createPrompt54SentDraftScenario();
     $waiter = User::factory()->create();
-    attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders]);
+    $role = attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders]);
+    $role->permissions()->updateExistingPivot(
+        Permission::query()->where('code', SystemPermission::ConfirmOrders->value)->firstOrFail()->id,
+        ['enabled' => false],
+    );
 
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])

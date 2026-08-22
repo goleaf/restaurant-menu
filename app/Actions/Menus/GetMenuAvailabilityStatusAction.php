@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Menus;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
@@ -137,9 +139,7 @@ class GetMenuAvailabilityStatusAction
     private function intervalsForDay(Collection $schedules, int $dayOfWeek): Collection
     {
         return $schedules
-            ->filter(fn (MenuAvailabilitySchedule $schedule): bool => $schedule->day_of_week === $dayOfWeek
-                && is_string($schedule->starts_at)
-                && is_string($schedule->ends_at))
+            ->filter(fn (MenuAvailabilitySchedule $schedule): bool => $schedule->day_of_week === $dayOfWeek)
             ->sortBy([
                 ['starts_at', 'asc'],
                 ['id', 'asc'],

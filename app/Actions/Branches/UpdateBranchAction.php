@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Branches;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -21,7 +23,7 @@ class UpdateBranchAction
     public function handle(Branch $branch, array $data, ?User $changedBy = null, ?string $reason = null): Branch
     {
         return DB::transaction(function () use ($branch, $data, $changedBy, $reason): Branch {
-            $currency = SupportedCurrency::normalize($data['currency'] ?? null);
+            $currency = SupportedCurrency::normalize($data['currency']);
             $wasActive = (bool) $branch->is_active;
 
             $branch->fill([

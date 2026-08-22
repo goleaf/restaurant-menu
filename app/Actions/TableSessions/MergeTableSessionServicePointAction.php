@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -43,7 +45,7 @@ class MergeTableSessionServicePointAction
                 metadata: (array) ($tableSession->metadata ?? []),
                 linkedServicePointId: (int) $servicePointToLink->id,
                 linkedByUserId: (int) $linkedBy->id,
-                linkedAt: $link->linked_at?->toISOString() ?? now()->toISOString(),
+                linkedAt: $link->linked_at->toISOString(),
             );
 
             $tableSession->fill(['metadata' => $metadata])->save();
@@ -54,7 +56,7 @@ class MergeTableSessionServicePointAction
                 entityType: 'table_session',
                 entityId: $tableSession->id,
                 actorUser: $linkedBy,
-                organizationId: $tableSession->branch?->organization_id,
+                organizationId: $tableSession->branch->organization_id,
                 branchId: $tableSession->branch_id,
                 oldValues: [
                     'service_point_status' => ServicePointStatus::Free,
@@ -209,15 +211,11 @@ class MergeTableSessionServicePointAction
 
     private function sessionStatus(TableSession $tableSession): TableSessionStatus
     {
-        return $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        return $tableSession->status;
     }
 
     private function servicePointStatus(ServicePoint $servicePoint): ServicePointStatus
     {
-        return $servicePoint->status instanceof ServicePointStatus
-            ? $servicePoint->status
-            : ServicePointStatus::from((string) $servicePoint->status);
+        return $servicePoint->status;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Branches;
 
 use App\Enums\BranchServiceMode;
@@ -9,6 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 class UpdateBranchSettingsAction
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * @param  array{
      *     require_waiter_confirmation_for_orders: bool,
@@ -22,7 +28,7 @@ class UpdateBranchSettingsAction
      *     default_language: string,
      *     default_currency: string,
      *     service_charge_enabled: bool,
-     *     service_charge_percent: string,
+     *     service_charge_percent?: string,
      *     tips_enabled: bool,
      *     order_flow_mode: string,
      *     service_modes?: list<string>
@@ -31,8 +37,8 @@ class UpdateBranchSettingsAction
     public function handle(BranchSetting $settings, array $data): BranchSetting
     {
         return DB::transaction(function () use ($settings, $data): BranchSetting {
-            $data['default_currency'] = SupportedCurrency::normalize($data['default_currency'] ?? null);
-            $data['service_charge_percent'] = number_format((float) ($data['service_charge_percent'] ?? 0), 2, '.', '');
+            $data['default_currency'] = SupportedCurrency::normalize($data['default_currency']);
+            $data['service_charge_percent'] = number_format((float) ($data['service_charge_percent'] ?? '0.00'), 2, '.', '');
             $data['service_modes'] = BranchServiceMode::normalizeList($data['service_modes'] ?? null);
 
             $settings->fill($data);
@@ -42,7 +48,7 @@ class UpdateBranchSettingsAction
                 ->select(['id', 'currency'])
                 ->update(['currency' => $data['default_currency']]);
 
-            app(ForgetBranchCacheAction::class)->handle((int) $settings->branch_id);
+            $this->forgetBranchCache->handle((int) $settings->branch_id);
 
             return $settings->refresh();
         });

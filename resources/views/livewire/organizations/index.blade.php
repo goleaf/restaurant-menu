@@ -20,9 +20,9 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->organizations as $organization)
-                <div wire:key="organization-{{ $organization->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
-                    @if ($editingOrganizationId === $organization->id)
+            @forelse ($organizationRows as $organization)
+                <div wire:key="organization-{{ $organization['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
+                    @if ($editingOrganizationId === $organization['id'])
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-[1fr_auto_auto] md:items-end">
                             <flux:input wire:model="editingName" :label="__('ui.organizations.index.organization_name')" type="text" required maxlength="120" />
 
@@ -36,12 +36,10 @@
                         </form>
                     @else
                         <div class="min-w-0">
-                            @php($organizationLogoUrl = $organization->logoUrl())
-
                             <div class="flex gap-3">
                                 <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                                    @if ($organizationLogoUrl)
-                                        <img src="{{ $organizationLogoUrl }}" alt="{{ $organization->name }}" class="size-full object-contain">
+                                    @if ($organization['logo_url'])
+                                        <img src="{{ $organization['logo_url'] }}" alt="{{ $organization['name'] }}" class="size-full object-contain">
                                     @else
                                         <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.logo') }}</span>
                                     @endif
@@ -49,9 +47,9 @@
 
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $organization->name }}</h2>
+                                        <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $organization['name'] }}</h2>
 
-                                        @if ($organization->owner_user_id === $currentUserId)
+                                        @if ($organization['is_owner'])
                                             <flux:badge color="green">{{ __('staff.roles.owner') }}</flux:badge>
                                         @else
                                             <flux:badge>{{ __('ui.organizations.index.member') }}</flux:badge>
@@ -59,71 +57,70 @@
                                     </div>
 
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                        {{ __('qr.labels.created') }} {{ $organization->created_at->format('d.m.Y') }}
+                                        {{ __('qr.labels.created') }} {{ $organization['created_at'] }}
                                     </p>
                                 </div>
                             </div>
 
-                            @if ($organization->owner_user_id === $currentUserId)
-                                <form wire:submit="saveLogo({{ $organization->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                    <label for="organization-logo-{{ $organization->id }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
-                                    <input id="organization-logo-{{ $organization->id }}" wire:model="organizationLogos.{{ $organization->id }}" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.logo') }}" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
-                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</p>
+                            @if ($organization['is_owner'])
+                                <form wire:submit="saveLogo({{ $organization['id'] }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                    <label for="organization-logo-{{ $organization['id'] }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
+                                    <x-ui.image-upload-input id="organization-logo-{{ $organization['id'] }}" wire:model="organizationLogos.{{ $organization['id'] }}" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" class="max-w-xs" />
 
                                     <div class="flex flex-wrap gap-2">
-                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="organizationLogos.{{ $organization->id }}, saveLogo({{ $organization->id }})">
-                                            {{ $organizationLogoUrl ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
+                                        <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="organizationLogos.{{ $organization['id'] }}, saveLogo({{ $organization['id'] }})">
+                                            {{ $organization['logo_url'] ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
                                         </flux:button>
 
-                                        @if ($organizationLogoUrl)
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $organization->id }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $organization->id }})">
+                                        @if ($organization['logo_url'])
+                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $organization['id'] }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $organization['id'] }})">
                                                 {{ __('uploads.actions.remove') }}
                                             </flux:button>
                                         @endif
                                     </div>
 
-                                    @error('organizationLogos.'.$organization->id)
+                                    @error('organizationLogos.'.$organization['id'])
                                         <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                     @enderror
                                 </form>
                             @endif
                         </div>
 
-                        @if ($organization->owner_user_id === $currentUserId)
+                        @if ($organization['is_owner'])
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="building-storefront" type="button" :href="route('organizations.brands.index', $organization)" wire:navigate>
+                                <flux:button icon="building-storefront" type="button" :href="$organization['brands_url']" wire:navigate>
                                     {{ __('navigation.brands') }}
                                 </flux:button>
 
-                                @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
-                                    <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
+                                @if ($organization['can_manage_staff'])
+                                    <flux:button icon="users" type="button" :href="$organization['staff_url']" wire:navigate>
                                         {{ __('navigation.staff') }}
                                     </flux:button>
                                 @endif
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $organization->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $organization['id'] }})">
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $organization->id }})">
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $organization['id'] }})">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>
                         @else
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="building-storefront" type="button" :href="route('organizations.brands.index', $organization)" wire:navigate>
+                                <flux:button icon="building-storefront" type="button" :href="$organization['brands_url']" wire:navigate>
                                     {{ __('navigation.brands') }}
                                 </flux:button>
 
-                                @if (in_array($organization->id, $this->staffManageableOrganizationIds, true))
-                                    <flux:button icon="users" type="button" :href="route('organizations.staff.index', $organization)" wire:navigate>
+                                @if ($organization['can_manage_staff'])
+                                    <flux:button icon="users" type="button" :href="$organization['staff_url']" wire:navigate>
                                         {{ __('navigation.staff') }}
                                     </flux:button>
                                 @endif
                             </div>
                         @endif
 
-                        @if ($deletingOrganizationId === $organization->id)
+                        @if ($deletingOrganizationId === $organization['id'])
                             <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <span>{{ __('ui.confirmations.delete.title') }}</span>

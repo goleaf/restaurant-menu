@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
@@ -7,6 +9,10 @@ use App\Models\KitchenDepartment;
 
 class KitchenDepartmentObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * Handle the KitchenDepartment "created" event.
      */
@@ -49,6 +55,6 @@ class KitchenDepartmentObserver
 
     private function forgetGuestMenu(KitchenDepartment $kitchenDepartment): void
     {
-        app(ForgetBranchCacheAction::class)->handle((int) $kitchenDepartment->branch_id);
+        $this->forgetBranchCache->handle((int) $kitchenDepartment->branch_id);
     }
 }

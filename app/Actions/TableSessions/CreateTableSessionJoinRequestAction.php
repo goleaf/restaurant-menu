@@ -5,7 +5,6 @@ namespace App\Actions\TableSessions;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
@@ -28,7 +27,7 @@ class CreateTableSessionJoinRequestAction
                 return null;
             }
 
-            if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
+            if (! $tableSession->servicePoint->is_active) {
                 return null;
             }
 

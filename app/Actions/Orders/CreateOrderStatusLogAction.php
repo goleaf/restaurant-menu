@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Orders;
 
 use App\Enums\OrderStatusLogEvent;
@@ -38,7 +40,7 @@ class CreateOrderStatusLogAction
             'branch_id' => $context['branch_id'],
             'service_point_id' => $context['service_point_id'],
             'table_session_id' => $context['table_session_id'],
-            'draft_order_id' => $draftOrder?->id ?? $order?->draft_order_id,
+            'draft_order_id' => $draftOrder instanceof DraftOrder ? $draftOrder->id : $order?->draft_order_id,
             'order_id' => $order?->id,
             'actor_user_id' => $actorUser?->id,
             'actor_guest_id' => $actorGuest?->id,
@@ -61,7 +63,7 @@ class CreateOrderStatusLogAction
      */
     private function resolveContext(?Order $order, ?DraftOrder $draftOrder): array
     {
-        $tableSessionId = $order?->table_session_id ?? $draftOrder?->table_session_id;
+        $tableSessionId = $order instanceof Order ? $order->table_session_id : $draftOrder?->table_session_id;
         $tableSession = $tableSessionId === null
             ? null
             : TableSession::query()
@@ -70,8 +72,8 @@ class CreateOrderStatusLogAction
                 ->first();
 
         return [
-            'branch_id' => $order?->branch_id ?? $tableSession?->branch_id,
-            'service_point_id' => $order?->service_point_id ?? $tableSession?->service_point_id,
+            'branch_id' => $order instanceof Order ? $order->branch_id : $tableSession?->branch_id,
+            'service_point_id' => $order instanceof Order ? $order->service_point_id : $tableSession?->service_point_id,
             'table_session_id' => $tableSessionId,
         ];
     }

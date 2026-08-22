@@ -244,10 +244,10 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSee('Vertical Lemonade')
         ->call('confirmDraft')
         ->assertHasNoErrors()
-        ->assertSee('Заказ подтверждён официантом.')
+        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po'))
         ->call('sendOrderToKitchenBar')
         ->assertHasNoErrors()
-        ->assertSee('Заказ отправлен на кухню/бар.');
+        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_otpravlen_na_kuxniu_bar_gosti_uvidiat'));
 
     $order = Order::query()
         ->select(['id', 'draft_order_id', 'status', 'total_price'])

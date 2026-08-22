@@ -12,7 +12,7 @@ use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -94,7 +94,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     public static function cacheKeyForBranchIds(Collection $branchIds, ?CarbonImmutable $date = null): string
     {
@@ -123,7 +123,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @return Collection<int, int>
+     * @return Collection<int, int<1, max>>
      */
     private function accessibleBranchIds(User $user): Collection
     {
@@ -137,7 +137,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      * @return array<string, mixed>
      */
     private function buildAnalytics(Collection $branchIds, string $cacheKey): array
@@ -185,7 +185,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      * @return Collection<int, Order>
      */
     private function todayOrders(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): Collection
@@ -224,7 +224,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $orderIds
+     * @param  Collection<int, covariant int>  $orderIds
      * @return list<array{item_name: string, quantity: int, total: string}>
      */
     private function popularItems(Collection $orderIds, ?string $singleCurrency): array
@@ -264,7 +264,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function activeTablesCount(Collection $branchIds): int
     {
@@ -280,7 +280,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function closedSessionsCount(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): int
     {
@@ -292,7 +292,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function cancelledOrdersCount(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): int
     {
@@ -304,7 +304,7 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function rememberBranchCacheKeys(Collection $branchIds, string $cacheKey): void
     {
@@ -359,7 +359,7 @@ class BuildBasicAnalyticsDashboardAction
             ->filter(fn (mixed $currency): bool => is_string($currency) && $currency !== '')
             ->first();
 
-        return is_string($currency) && $currency !== '' ? $currency : 'EUR';
+        return $currency ?? 'EUR';
     }
 
     /**

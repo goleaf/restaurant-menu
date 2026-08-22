@@ -1,5 +1,5 @@
 # Current version baseline
 
-As captured on 2026-08-22 before dependency modernization: PHP 8.5.8, Laravel 13.13.0, Livewire 4.3.1, Flux UI Free 2.14.1, Tailwind CSS 4.3.0, Vite 8.2.0, Pest 4.7.2 and PHPUnit 12.5.28.
+Verified on 2026-08-22: PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux UI Free 2.17.0; Tailwind CSS and `@tailwindcss/vite` 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Fortify 1.38.0; Pest 4.7.8 / PHPUnit 12.5.33; Pint 1.30.5; Larastan 3.10.0; Boost 2.5.5.
 
-The required constraints and final selected lock versions are documented in the root [`README.md`](../README.md), [`deployment.md`](deployment.md), and the final dated [`CHANGELOG.md`](../CHANGELOG.md) entry. This snapshot is updated after the lock files are finalized; package locks remain authoritative.
+Composer requires PHP `>=8.5.0 <8.6.0`, Laravel `^13.0` and Livewire `^4.4`. Package locks are authoritative; stable Pest 4 remains intentional even though Pest 5 is a newer incompatible major test-style migration.

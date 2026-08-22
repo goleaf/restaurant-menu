@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Waiter;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
@@ -36,12 +38,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Table detail')]
 class TableDetail extends Component
 {
+    private BuildWaiterTableDetailAction $buildWaiterTableDetail;
+
+    private DeleteDraftOrderItemByWaiterAction $deleteDraftOrderItemByWaiter;
+
+    private GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus;
+
+    private BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots;
+
     #[Locked]
     public int $tableSessionId;
 
@@ -100,7 +108,7 @@ class TableDetail extends Component
     public string $addingComment = '';
 
     /**
-     * @var array<string, list<int>>
+     * @var array<int, list<int>>
      */
     public array $addingModifierOptions = [];
 
@@ -124,7 +132,7 @@ class TableDetail extends Component
     public string $editingComment = '';
 
     /**
-     * @var array<string, list<int>>
+     * @var array<int, list<int>>
      */
     public array $editingModifierOptions = [];
 
@@ -132,6 +140,18 @@ class TableDetail extends Component
      * @var list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}>
      */
     public array $editingModifierGroups = [];
+
+    public function boot(
+        BuildWaiterTableDetailAction $buildWaiterTableDetail,
+        DeleteDraftOrderItemByWaiterAction $deleteDraftOrderItemByWaiter,
+        GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
+    ): void {
+        $this->buildWaiterTableDetail = $buildWaiterTableDetail;
+        $this->deleteDraftOrderItemByWaiter = $deleteDraftOrderItemByWaiter;
+        $this->getMenuAvailabilityStatus = $getMenuAvailabilityStatus;
+        $this->buildModifierSnapshots = $buildModifierSnapshots;
+    }
 
     public function mount(TableSession $tableSession): void
     {
@@ -146,7 +166,7 @@ class TableDetail extends Component
             ->whereKey($this->tableSessionId)
             ->firstOrFail();
 
-        $payload = app(BuildWaiterTableDetailAction::class)->handle($this->currentUser(), $tableSession);
+        $payload = $this->buildWaiterTableDetail->handle($this->currentUser(), $tableSession);
 
         if (! $payload['has_access']) {
             abort(403);
@@ -362,7 +382,7 @@ class TableDetail extends Component
         }
 
         try {
-            app(DeleteDraftOrderItemByWaiterAction::class)->handle($draftOrderItem, $this->currentUser());
+            $this->deleteDraftOrderItemByWaiter->handle($draftOrderItem, $this->currentUser());
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 
@@ -723,7 +743,8 @@ class TableDetail extends Component
 
     public function render(): View
     {
-        return view('livewire.waiter.table-detail');
+        return view('livewire.waiter.table-detail')
+            ->title(__('ui.waiter.table_detail.table_summary'));
     }
 
     private function currentUser(): User
@@ -890,7 +911,7 @@ class TableDetail extends Component
             ->first();
 
         if (! $draftOrderItem instanceof DraftOrderItem
-            || $draftOrderItem->draftOrder?->table_session_id !== $this->tableSessionId) {
+            || $draftOrderItem->draftOrder->table_session_id !== $this->tableSessionId) {
             return null;
         }
 
@@ -943,11 +964,11 @@ class TableDetail extends Component
                     return false;
                 }
 
-                return app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu)['is_available'];
+                return $this->getMenuAvailabilityStatus->handle($menuItem->menu)['is_available'];
             })
             ->map(fn (MenuItem $menuItem): array => [
                 'value' => (string) $menuItem->id,
-                'label' => trim(($menuItem->category?->name ? $menuItem->category->name.' · ' : '').$menuItem->name),
+                'label' => trim(($menuItem->category->name ? $menuItem->category->name.' · ' : '').$menuItem->name),
                 'price' => $menuItem->price,
             ])
             ->values()
@@ -1017,9 +1038,9 @@ class TableDetail extends Component
         $this->addingItemName = $menuItem->name;
         $this->addingUnitPrice = $menuItem->price;
         $this->addingModifierGroups = $this->modifierGroupPayloadFor($menuItem);
-        $this->addingModifierOptions = collect($this->addingModifierGroups)
-            ->mapWithKeys(fn (array $modifierGroup): array => [(string) $modifierGroup['id'] => []])
-            ->all();
+        foreach ($this->addingModifierGroups as $modifierGroup) {
+            $this->addingModifierOptions[$modifierGroup['id']] = [];
+        }
 
         $this->refreshAddingItemTotal();
     }
@@ -1054,7 +1075,7 @@ class TableDetail extends Component
             return [];
         }
 
-        return app(BuildDraftOrderItemModifierSnapshots::class)
+        return $this->buildModifierSnapshots
             ->groupsFor($menuItem)
             ->map(fn ($modifierGroup): array => [
                 'id' => $modifierGroup->id,
@@ -1077,13 +1098,15 @@ class TableDetail extends Component
 
     /**
      * @param  list<array{id: int, options: list<array{id: int}>}>  $modifierGroups
-     * @return array<string, list<int>>
+     * @return array<int, list<int>>
      */
     private function modifierOptionsFromSnapshots(mixed $selectedModifiers, array $modifierGroups): array
     {
-        $selectedOptions = collect($modifierGroups)
-            ->mapWithKeys(fn (array $modifierGroup): array => [(string) $modifierGroup['id'] => []])
-            ->all();
+        $selectedOptions = [];
+
+        foreach ($modifierGroups as $modifierGroup) {
+            $selectedOptions[$modifierGroup['id']] = [];
+        }
 
         if (! is_array($selectedModifiers)) {
             return $selectedOptions;
@@ -1113,19 +1136,21 @@ class TableDetail extends Component
                 ->all();
 
             if (in_array($optionId, $availableOptionIds, true)) {
-                $selectedOptions[(string) $groupId][] = $optionId;
+                $selectedOptions[$groupId][] = $optionId;
             }
         });
 
-        return collect($selectedOptions)
-            ->map(fn (array $optionIds): array => collect($optionIds)->unique()->values()->all())
-            ->all();
+        foreach ($selectedOptions as $groupId => $optionIds) {
+            $selectedOptions[$groupId] = array_values(array_unique($optionIds));
+        }
+
+        return $selectedOptions;
     }
 
     /**
      * @param  list<array{id: int, max_select: int, options: list<array{id: int}>}>  $modifierGroups
-     * @param  array<string, list<int>>  $selectedModifierOptions
-     * @return array<string, list<int>>
+     * @param  array<int, list<int>>  $selectedModifierOptions
+     * @return array<int, list<int>>
      */
     private function toggledModifierOptions(array $modifierGroups, array $selectedModifierOptions, int $modifierGroupId, int $modifierOptionId): array
     {
@@ -1138,7 +1163,7 @@ class TableDetail extends Component
         $selected = $this->selectedOptionIdsForGroup($modifierGroups, $selectedModifierOptions, $modifierGroupId);
 
         if (in_array($modifierOptionId, $selected, true)) {
-            $selectedModifierOptions[(string) $modifierGroupId] = array_values(array_filter(
+            $selectedModifierOptions[$modifierGroupId] = array_values(array_filter(
                 $selected,
                 fn (int $selectedOptionId): bool => $selectedOptionId !== $modifierOptionId,
             ));
@@ -1153,7 +1178,7 @@ class TableDetail extends Component
         }
 
         if ($maxSelect === 1) {
-            $selectedModifierOptions[(string) $modifierGroupId] = [$modifierOptionId];
+            $selectedModifierOptions[$modifierGroupId] = [$modifierOptionId];
 
             return $selectedModifierOptions;
         }
@@ -1163,7 +1188,7 @@ class TableDetail extends Component
         }
 
         $selected[] = $modifierOptionId;
-        $selectedModifierOptions[(string) $modifierGroupId] = array_values($selected);
+        $selectedModifierOptions[$modifierGroupId] = $selected;
 
         return $selectedModifierOptions;
     }
@@ -1185,7 +1210,7 @@ class TableDetail extends Component
             ->map(fn (mixed $optionId): int => (int) $optionId)
             ->all();
 
-        return collect($selectedModifierOptions[(string) $modifierGroupId] ?? [])
+        return collect($selectedModifierOptions[$modifierGroupId] ?? [])
             ->map(fn (mixed $optionId): int => (int) $optionId)
             ->filter(fn (int $optionId): bool => in_array($optionId, $availableOptionIds, true))
             ->unique()
@@ -1241,7 +1266,7 @@ class TableDetail extends Component
 
     /**
      * @param  list<array{id: int, options: list<array{id: int, price_delta: string}>}>  $modifierGroups
-     * @param  array<string, list<int>>  $selectedModifierOptions
+     * @param  array<int, list<int>>  $selectedModifierOptions
      */
     private function configuredItemTotal(string $unitPrice, string $fallbackModifierTotal, int $quantity, array $modifierGroups, array $selectedModifierOptions): string
     {

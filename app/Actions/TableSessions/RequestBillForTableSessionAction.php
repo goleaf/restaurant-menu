@@ -7,7 +7,6 @@ use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Notifications\BillRequestedNotification;
@@ -133,7 +132,7 @@ class RequestBillForTableSessionAction
     {
         $servicePoint = $tableSession->servicePoint;
 
-        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
+        if (! $servicePoint->is_active) {
             throw ValidationException::withMessages([
                 'bill_request' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
@@ -150,8 +149,6 @@ class RequestBillForTableSessionAction
 
     private function markServicePointPaymentRequested(TableSession $tableSession): void
     {
-        if ($tableSession->servicePoint instanceof ServicePoint) {
-            $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::PaymentRequested);
-        }
+        $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::PaymentRequested);
     }
 }

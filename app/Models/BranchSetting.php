@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\BranchOrderFlowMode;
@@ -11,6 +13,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $service_charge_percent
+ * @property BranchOrderFlowMode $order_flow_mode
+ * @property list<string> $service_modes
+ */
 #[Fillable([
     'require_waiter_confirmation_for_orders',
     'allow_guest_created_sessions',

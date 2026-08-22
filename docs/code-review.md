@@ -1,6 +1,19 @@
-# Code review checklist
+# Final code review
 
-Review the complete owned diff, not only the last file touched.
+The complete modernization diff was reviewed against the 48 canonical requirements after final implementation and verification. No known in-scope implementation defect remains open.
+
+## Review outcome
+
+- **Security:** invitation credentials are digest-only, atomic and throttled; scoped policies reject cross-tenant/direct-action access; backup/payment/file boundaries are transactional or compensating. A final browser/security review caught and fixed bearer invitation URLs entering a global Livewire offline snapshot; the guest/auth connectivity indicator is now client-only and a regression test prevents recurrence.
+- **Correctness:** PHP 8.5 syntax, Larastan level 8, 683 Pest tests, 66 fresh migrations, default/demo seeding and EN/LT/RU parity pass on the final tree.
+- **Architecture:** routes/controllers/Livewire remain thin, Actions own use cases, Blade is presentation-only, all 42 Livewire components are class/view pairs and all 41 models have factories.
+- **Performance:** growing reads are bounded/eager-loaded, SQLite race-sensitive writes are serialized, cache/query budgets pass, and isolated polling avoids unrelated blocking.
+- **Interface:** CSS-first Tailwind tokens, semantic HTML, focus/touch/reduced-motion/forced-colors behavior and responsive overflow were checked in isolated Chromium; sampled Lighthouse reports are 100/100/100/100.
+- **Operations:** no new worker, cron, Redis, WebSocket, S3, Docker or SSH runtime dependency was introduced; caches/routes/views build and local Herd HTTP smoke passes.
+
+## Durable review checklist
+
+Future changes must review the complete owned diff, not only the last file touched.
 
 - Requirement IDs and intended behavior are clear; docs/tests/code agree.
 - Routes are named/grouped/scoped; mutations authorize and validate server-side.
@@ -13,4 +26,4 @@ Review the complete owned diff, not only the last file touched.
 - Targeted tests, Pint, Larastan, build and relevant browser checks have observed results.
 - Final status/diff/staged content contain no unrelated or generated artifacts.
 
-No review finding is closed solely because a file exists; cite the passing command or runtime evidence.
+No finding is closed solely because a file exists; cite the passing command or runtime evidence. Environmental device/browser limitations are isolated in [`known-limitations.md`](known-limitations.md), not used to defer implementation work.

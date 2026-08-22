@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\AreaNodeType;
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property AreaNodeType $type
+ */
 #[Fillable(['parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active', 'metadata'])]
 class AreaNode extends Model
 {

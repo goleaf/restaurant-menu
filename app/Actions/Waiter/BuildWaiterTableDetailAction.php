@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\Payments\BuildManualPaymentSummaryAction;
@@ -10,8 +12,6 @@ use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -199,16 +199,10 @@ class BuildWaiterTableDetailAction
         $branch = $tableSession->branch;
         $servicePoint = $tableSession->servicePoint;
         $draftOrder = $tableSession->draftOrder;
-        $currency = $branch?->currency ?? 'EUR';
-        $sessionStatus = $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
-        $sessionSource = $tableSession->source instanceof TableSessionSource
-            ? $tableSession->source
-            : TableSessionSource::from((string) $tableSession->source);
-        $servicePointStatus = $servicePoint?->status instanceof ServicePointStatus
-            ? $servicePoint->status
-            : ServicePointStatus::from((string) ($servicePoint?->status ?? ServicePointStatus::Free->value));
+        $currency = $branch->currency;
+        $sessionStatus = $tableSession->status;
+        $sessionSource = $tableSession->source;
+        $servicePointStatus = $servicePoint->status;
 
         $confirmOrderBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ConfirmOrders);
@@ -224,7 +218,7 @@ class BuildWaiterTableDetailAction
         $canSendToKitchen = $sendToKitchenBranchIds->contains((int) $tableSession->branch_id);
         $cancelOrderBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::CancelOrders);
-        $organizationId = (int) ($branch?->organization_id ?? 0);
+        $organizationId = (int) $branch->organization_id;
         $canCancelOrder = $cancelOrderBranchIds->contains((int) $tableSession->branch_id)
             || ($organizationId > 0 && $user->hasOrganizationRole($organizationId, SystemRole::Director))
             || ($organizationId > 0 && $user->hasOrganizationRole($organizationId, SystemRole::ShiftManager));
@@ -254,7 +248,7 @@ class BuildWaiterTableDetailAction
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
-            draftItems: $draftOrder?->items ?? collect(),
+            draftItems: $draftOrder instanceof DraftOrder ? $draftOrder->items : collect(),
             currency: $currency,
         );
 
@@ -269,24 +263,24 @@ class BuildWaiterTableDetailAction
         return [
             'id' => $tableSession->id,
             'branch' => [
-                'id' => $branch?->id,
-                'name' => $branch?->name,
-                'brand_name' => $branch?->brand?->name,
-                'organization_name' => $branch?->organization?->name,
-                'city' => $branch?->city,
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'brand_name' => $branch->brand?->name,
+                'organization_name' => $branch->organization->name,
+                'city' => $branch->city,
                 'currency' => $currency,
             ],
             'zone' => [
-                'name' => $servicePoint?->areaNode?->name,
+                'name' => $servicePoint->areaNode?->name,
             ],
             'service_point' => [
-                'id' => $servicePoint?->id,
-                'name' => $servicePoint?->name,
-                'display_number' => $servicePoint?->display_number,
-                'capacity' => $servicePoint?->capacity,
+                'id' => $servicePoint->id,
+                'name' => $servicePoint->name,
+                'display_number' => $servicePoint->display_number,
+                'capacity' => $servicePoint->capacity,
                 'status_label' => $servicePointStatus->label(),
                 'status_color' => $servicePointStatus->badgeColor(),
-                'is_active' => (bool) $servicePoint?->is_active,
+                'is_active' => (bool) $servicePoint->is_active,
             ],
             'linked_service_points' => $this->linkedServicePointsPayload($tableSession),
             'session' => [
@@ -294,7 +288,7 @@ class BuildWaiterTableDetailAction
                 'status_label' => $sessionStatus->label(),
                 'source_label' => $sessionSource->label(),
                 'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
-                'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
+                'opened_by' => $this->openedByName($tableSession),
                 'can_close' => $canCloseTableSession,
                 'can_close_manually' => $canManuallyCloseTableSession,
                 'close_requires_warning' => $canCloseTableSession && $sessionStatus !== TableSessionStatus::Paid,
@@ -385,16 +379,9 @@ class BuildWaiterTableDetailAction
     {
         return $tableSession
             ->activeServicePointLinks
-            ->map(function (TableSessionServicePoint $link): ?array {
+            ->map(function (TableSessionServicePoint $link): array {
                 $servicePoint = $link->servicePoint;
-
-                if (! $servicePoint instanceof ServicePoint) {
-                    return null;
-                }
-
-                $status = $servicePoint->status instanceof ServicePointStatus
-                    ? $servicePoint->status
-                    : ServicePointStatus::from((string) $servicePoint->status);
+                $status = $servicePoint->status;
 
                 return [
                     'id' => $servicePoint->id,
@@ -405,7 +392,6 @@ class BuildWaiterTableDetailAction
                     'status_color' => $status->badgeColor(),
                 ];
             })
-            ->filter()
             ->values()
             ->all();
     }
@@ -471,6 +457,19 @@ class BuildWaiterTableDetailAction
         }
 
         return implode(' · ', $parts);
+    }
+
+    private function openedByName(TableSession $tableSession): ?string
+    {
+        if ($tableSession->opened_by_user_id !== null) {
+            return $tableSession->openedByUser->name;
+        }
+
+        if ($tableSession->opened_by_guest_id !== null) {
+            return $tableSession->openedByGuest->guest_name;
+        }
+
+        return null;
     }
 
     /**
@@ -573,11 +572,7 @@ class BuildWaiterTableDetailAction
             return 0;
         }
 
-        $status = $draftOrder->status instanceof DraftOrderStatus
-            ? $draftOrder->status
-            : DraftOrderStatus::from((string) $draftOrder->status);
-
-        return $status === DraftOrderStatus::ConvertedToOrder ? 0 : $draftTotalCents;
+        return $draftOrder->status === DraftOrderStatus::ConvertedToOrder ? 0 : $draftTotalCents;
     }
 
     /**
@@ -590,9 +585,7 @@ class BuildWaiterTableDetailAction
         $guestSections = [];
 
         $guests->each(function (TableSessionGuest $guest) use (&$guestSections): void {
-            $status = $guest->status instanceof TableSessionGuestStatus
-                ? $guest->status
-                : TableSessionGuestStatus::from((string) $guest->status);
+            $status = $guest->status;
 
             $guestSections[$guest->id] = [
                 'guest_id' => $guest->id,
@@ -606,13 +599,13 @@ class BuildWaiterTableDetailAction
 
         $draftItems->each(function (DraftOrderItem $item) use (&$guestSections, $currency): void {
             $guestId = (int) $item->table_session_guest_id;
-            $guestName = $item->guest?->guest_name ?? __('guest.table.guest');
+            $guestName = $item->guest->guest_name;
 
             if (! isset($guestSections[$guestId])) {
                 $guestSections[$guestId] = [
                     'guest_id' => $guestId,
                     'guest_name' => $guestName,
-                    'status_label' => $item->guest?->status?->label() ?? __('guest.table.guest'),
+                    'status_label' => $item->guest->status->label(),
                     'is_ready' => false,
                     'total_cents' => 0,
                     'items' => [],
@@ -719,9 +712,7 @@ class BuildWaiterTableDetailAction
             ];
         }
 
-        $status = $draftOrder->status instanceof DraftOrderStatus
-            ? $draftOrder->status
-            : DraftOrderStatus::from((string) $draftOrder->status);
+        $status = $draftOrder->status;
         $orderStatus = $draftOrder->order?->status instanceof OrderStatus
             ? $draftOrder->order->status
             : null;
@@ -815,9 +806,7 @@ class BuildWaiterTableDetailAction
      */
     private function orderTicketItemPayload(KitchenTicket $ticket, KitchenTicketItem $item, string $currency): array
     {
-        $status = $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        $status = $item->status;
 
         return [
             'id' => $item->id,

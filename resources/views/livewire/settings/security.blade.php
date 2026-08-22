@@ -19,7 +19,7 @@
                 type="password"
                 required
                 autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $this->browserPasswordRules }}"
                 viewable
             />
             <flux:input
@@ -28,7 +28,7 @@
                 type="password"
                 required
                 autocomplete="new-password"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $this->browserPasswordRules }}"
                 viewable
             />
 
@@ -84,7 +84,10 @@
                 class="max-w-md md:min-w-md"
                 @close="closeModal"
                 wire:model="showModal"
+                :closable="false"
             >
+                <x-modal-close-button />
+
                 <div class="space-y-6">
                     <div class="flex flex-col items-center space-y-4">
                         <div class="p-0.5 w-auto rounded-full border border-stone-100 dark:border-stone-600 bg-white dark:bg-stone-800 shadow-sm">
@@ -300,7 +303,10 @@
             class="max-w-md md:min-w-md"
             @close="closeDeleteModal"
             wire:model="showDeleteModal"
+            :closable="false"
         >
+            <x-modal-close-button />
+
             <div class="space-y-6">
                 <div class="space-y-2">
                     <flux:heading size="lg">{{ __('ui.confirmations.delete_passkey.title') }}</flux:heading>

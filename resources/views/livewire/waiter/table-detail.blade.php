@@ -3,16 +3,6 @@
     wire:poll.visible.1s="refreshTable"
     class="flex h-full w-full flex-1 flex-col gap-6"
 >
-    @php
-        $closeTableDangerousTitle = \App\Enums\DangerousAction::CloseTableWithUnpaidAmount->title();
-        $closeTableDangerousConsequence = \App\Enums\DangerousAction::CloseTableWithUnpaidAmount->consequence();
-        $paymentDangerousTitle = \App\Enums\DangerousAction::PaymentCorrection->title();
-        $paymentDangerousConsequence = \App\Enums\DangerousAction::PaymentCorrection->consequence();
-        $cancelOrderDangerousTitle = \App\Enums\DangerousAction::CancelOrder->title();
-        $cancelOrderDangerousConsequence = \App\Enums\DangerousAction::CancelOrder->consequence();
-        $cancelOrderRequiresReason = \App\Enums\DangerousAction::CancelOrder->requiresReason();
-    @endphp
-
     <header class="flex flex-col gap-3">
         <div>
             <flux:button icon="arrow-left" :href="route('restaurant.waiter.dashboard')" wire:navigate>
@@ -385,27 +375,16 @@
                         </p>
                     @endif
 
-                    @php
-                        $closeTableRequiresWarning = (bool) data_get($table, 'session.close_requires_warning');
-                        $closeTableTitle = $closeTableRequiresWarning ? $closeTableDangerousTitle : 'ui.confirmations.danger.title';
-                        $closeTableConsequence = $closeTableRequiresWarning
-                            ? $closeTableDangerousConsequence
-                            : 'ui.confirmations.danger.description';
-                        $closeTableConfirmationModel = $closeTableRequiresWarning ? 'closeTableConfirmation' : null;
-                        $closeTableConfirmationHelp = 'ui.confirmations.close_unpaid_session.confirmation_help';
-                    @endphp
-
                     <x-dangerous-action-confirmation
                         name="close-table-session"
-                        :title="$closeTableTitle"
-                        :consequence="$closeTableConsequence"
+                        :action="data_get($table, 'session.close_requires_warning') ? 'close_table_with_unpaid_amount' : null"
                         confirm-action="closeTableSession"
                         submit-target="closeTableSession"
                         confirm-label="ui.actions.i_understand"
                         loading-label="ui.actions.closing"
-                        :confirmation-model="$closeTableConfirmationModel"
+                        :confirmation-model="data_get($table, 'session.close_requires_warning') ? 'closeTableConfirmation' : null"
                         confirmation-text="CLOSE"
-                        :confirmation-help="$closeTableConfirmationHelp"
+                        confirmation-help="ui.confirmations.close_unpaid_session.confirmation_help"
                     >
                         <x-slot:trigger>
                             <flux:button icon="check" type="button" class="mt-3 w-full">
@@ -528,8 +507,7 @@
                             @if (data_get($table, 'payment.can_record_table_payment'))
                                 <x-dangerous-action-confirmation
                                     name="record-table-payment"
-                                    :title="$paymentDangerousTitle"
-                                    :consequence="$paymentDangerousConsequence"
+                                    action="payment_correction"
                                     confirm-action="recordTablePayment"
                                     submit-target="recordTablePayment"
                                     confirm-label="ui.actions.confirm"
@@ -574,8 +552,7 @@
                                 @if ($guestBalance['can_record_payment'])
                                     <x-dangerous-action-confirmation
                                         name="record-guest-payment-{{ $guestBalance['guest_id'] }}"
-                                        :title="$paymentDangerousTitle"
-                                        :consequence="$paymentDangerousConsequence"
+                                        action="payment_correction"
                                         confirm-action="recordGuestPayment({{ $guestBalance['guest_id'] }})"
                                         submit-target="recordGuestPayment({{ $guestBalance['guest_id'] }})"
                                         confirm-label="ui.actions.confirm"
@@ -757,15 +734,15 @@
 
                                             <div class="mt-3 grid gap-2">
                                                 @foreach ($modifierGroup['options'] as $modifierOption)
-                                                    @php($isSelected = in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true))
                                                     <button
                                                         type="button"
                                                         wire:key="waiter-add-modifier-option-{{ $modifierOption['id'] }}"
                                                         wire:click="toggleAddingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                                        aria-pressed="{{ in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
                                                         @class([
                                                             'flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $isSelected,
-                                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! $isSelected,
+                                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
+                                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
                                                         ])
                                                     >
                                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
@@ -1025,8 +1002,7 @@
 
                                 <x-dangerous-action-confirmation
                                     name="cancel-current-order"
-                                    :title="$cancelOrderDangerousTitle"
-                                    :consequence="$cancelOrderDangerousConsequence"
+                                    action="cancel_order"
                                     confirm-action="cancelOrder"
                                     submit-target="cancelOrder"
                                     confirm-label="ui.actions.confirm"
@@ -1034,7 +1010,6 @@
                                     reason-model="orderCancellationReason"
                                     reason-label="ui.confirmations.reason.label"
                                     reason-placeholder="ui.confirmations.reason.placeholder"
-                                    :reason-required="$cancelOrderRequiresReason"
                                 >
                                     <x-slot:trigger>
                                         <flux:button icon="x-mark" variant="danger" type="button" class="w-full">
@@ -1094,15 +1069,15 @@
 
                             <div class="mt-3 grid gap-2">
                                 @foreach ($modifierGroup['options'] as $modifierOption)
-                                    @php($isSelected = in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true))
                                     <button
                                         type="button"
                                         wire:key="waiter-edit-modifier-option-{{ $modifierOption['id'] }}"
                                         wire:click="toggleEditingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                        aria-pressed="{{ in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
                                         @class([
                                             'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $isSelected,
-                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! $isSelected,
+                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
+                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
                                         ])
                                     >
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>

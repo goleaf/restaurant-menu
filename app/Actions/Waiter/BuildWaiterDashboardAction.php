@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\TableSessions\BuildTableSessionInactivityStateAction;
@@ -118,17 +120,17 @@ class BuildWaiterDashboardAction
         $waiterCalls = $this->pendingWaiterCalls($branchIds, $servicePointIds);
         $readyItems = $this->readyTicketItems($branchIds, $servicePointIds);
         $draftsBySessionId = $draftOrders->keyBy('table_session_id');
-        $sessionsByServicePointId = $sessions->groupBy('service_point_id');
-        $waiterCallsByServicePointId = $waiterCalls->groupBy('service_point_id');
-        $readyItemsByServicePointId = $readyItems->groupBy(
-            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket?->service_point_id,
+        $sessionsByServicePointId = collect($sessions->all())->groupBy('service_point_id');
+        $waiterCallsByServicePointId = collect($waiterCalls->all())->groupBy('service_point_id');
+        $readyItemsByServicePointId = collect($readyItems->all())->groupBy(
+            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket->service_point_id,
         );
-        $servicePointsByBranchId = $servicePoints->groupBy('branch_id');
-        $sessionsByBranchId = $sessions->groupBy('branch_id');
+        $servicePointsByBranchId = collect($servicePoints->all())->groupBy('branch_id');
+        $sessionsByBranchId = collect($sessions->all())->groupBy('branch_id');
         $draftsByBranchId = $this->draftsByBranchId($draftOrders, $sessions);
-        $waiterCallsByBranchId = $waiterCalls->groupBy('branch_id');
-        $readyItemsByBranchId = $readyItems->groupBy(
-            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket?->branch_id,
+        $waiterCallsByBranchId = collect($waiterCalls->all())->groupBy('branch_id');
+        $readyItemsByBranchId = collect($readyItems->all())->groupBy(
+            fn (KitchenTicketItem $item): int => (int) $item->kitchenTicket->branch_id,
         );
         $billRequestsByBranchId = $this->billRequestsByBranchId($sessions);
         $billRequestCount = $billRequestsByBranchId->sum(fn (Collection $branchBillRequests): int => count($branchBillRequests));
@@ -469,7 +471,7 @@ class BuildWaiterDashboardAction
             'ready_items' => $readyItems
                 ->map(fn (KitchenTicketItem $item): array => $this->readyItemPayload(
                     item: $item,
-                    servicePoint: $servicePointsById->get((int) $item->kitchenTicket?->service_point_id),
+                    servicePoint: $servicePointsById->get((int) $item->kitchenTicket->service_point_id),
                 ))
                 ->values()
                 ->all(),
@@ -494,9 +496,7 @@ class BuildWaiterDashboardAction
         bool $canCloseTable,
         ?BranchSetting $inactivitySettings,
     ): array {
-        $status = $servicePoint->status instanceof ServicePointStatus
-            ? $servicePoint->status
-            : ServicePointStatus::from((string) $servicePoint->status);
+        $status = $servicePoint->status;
         $sessionPayloads = $sessions
             ->map(fn (TableSession $tableSession): array => $this->sessionPayload(
                 tableSession: $tableSession,
@@ -634,7 +634,7 @@ class BuildWaiterDashboardAction
             'service_point_display_number' => $servicePoint?->display_number,
             'area_name' => $servicePoint?->areaNode?->name,
             'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
-            'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
+            'opened_by' => $this->openedByName($tableSession),
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
         ];
     }
@@ -649,9 +649,7 @@ class BuildWaiterDashboardAction
         bool $canCloseTable,
         ?BranchSetting $inactivitySettings,
     ): array {
-        $status = $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        $status = $tableSession->status;
 
         return [
             'id' => $tableSession->id,
@@ -660,7 +658,7 @@ class BuildWaiterDashboardAction
             'status_label' => $status->label(),
             'source_label' => $tableSession->source->label(),
             'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
-            'opened_by' => $tableSession->openedByUser?->name ?? $tableSession->openedByGuest?->guest_name,
+            'opened_by' => $this->openedByName($tableSession),
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
             'can_close' => $canCloseTable,
             'inactivity' => $this->buildInactivityState->handle($tableSession, $inactivitySettings),
@@ -680,7 +678,7 @@ class BuildWaiterDashboardAction
         return [
             'id' => $draftOrder->id,
             'table_session_id' => $draftOrder->table_session_id,
-            'status_label' => $draftOrder->status?->label(),
+            'status_label' => $draftOrder->status->label(),
             'sent_at' => $draftOrder->sent_to_waiter_at?->format('Y-m-d H:i'),
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
             'items_count' => (int) ($draftOrder->items_count ?? 0),
@@ -693,21 +691,19 @@ class BuildWaiterDashboardAction
      */
     private function waiterCallPayload(WaiterCall $waiterCall): array
     {
-        $status = $waiterCall->status instanceof WaiterCallStatus
-            ? $waiterCall->status
-            : WaiterCallStatus::from((string) $waiterCall->status);
+        $status = $waiterCall->status;
 
         return [
             'id' => $waiterCall->id,
             'table_session_id' => $waiterCall->table_session_id,
             'detail_url' => route('restaurant.waiter.tables.show', $waiterCall->table_session_id),
-            'service_point_name' => $waiterCall->servicePoint?->name,
-            'service_point_display_number' => $waiterCall->servicePoint?->display_number,
-            'area_name' => $waiterCall->servicePoint?->areaNode?->name,
-            'guest_name' => $waiterCall->requestedByGuest?->guest_name,
+            'service_point_name' => $waiterCall->servicePoint->name,
+            'service_point_display_number' => $waiterCall->servicePoint->display_number,
+            'area_name' => $waiterCall->servicePoint->areaNode?->name,
+            'guest_name' => $waiterCall->requested_by_guest_id === null ? null : $waiterCall->requestedByGuest->guest_name,
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
-            'requested_at' => $waiterCall->requested_at?->format('Y-m-d H:i'),
+            'requested_at' => $waiterCall->requested_at->format('Y-m-d H:i'),
         ];
     }
 
@@ -716,21 +712,19 @@ class BuildWaiterDashboardAction
      */
     private function readyItemPayload(KitchenTicketItem $item, ?ServicePoint $servicePoint): array
     {
-        $status = $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        $status = $item->status;
 
         return [
             'id' => $item->id,
-            'table_session_id' => $item->kitchenTicket?->table_session_id,
-            'detail_url' => route('restaurant.waiter.tables.show', $item->kitchenTicket?->table_session_id),
+            'table_session_id' => $item->kitchenTicket->table_session_id,
+            'detail_url' => route('restaurant.waiter.tables.show', $item->kitchenTicket->table_session_id),
             'service_point_name' => $servicePoint?->name,
             'service_point_display_number' => $servicePoint?->display_number,
             'area_name' => $servicePoint?->areaNode?->name,
             'guest_name' => $item->guest_name,
             'item_name' => $item->item_name,
             'quantity' => (int) $item->quantity,
-            'department_name' => $item->kitchenTicket?->department_name,
+            'department_name' => $item->kitchenTicket->department_name,
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
             'ready_at' => $item->updated_at?->format('Y-m-d H:i') ?? $item->created_at?->format('Y-m-d H:i'),
@@ -746,7 +740,7 @@ class BuildWaiterDashboardAction
     {
         $sessionBranchIds = $sessions->pluck('branch_id', 'id');
 
-        return $draftOrders->groupBy(
+        return collect($draftOrders->all())->groupBy(
             fn (DraftOrder $draftOrder): int => (int) $sessionBranchIds->get($draftOrder->table_session_id),
         );
     }
@@ -757,9 +751,22 @@ class BuildWaiterDashboardAction
      */
     private function billRequestsByBranchId(EloquentCollection $sessions): Collection
     {
-        return $sessions
+        return collect($sessions->all())
             ->filter(fn (TableSession $tableSession): bool => $tableSession->status === TableSessionStatus::PaymentRequested)
             ->groupBy('branch_id');
+    }
+
+    private function openedByName(TableSession $tableSession): ?string
+    {
+        if ($tableSession->opened_by_user_id !== null) {
+            return $tableSession->openedByUser->name;
+        }
+
+        if ($tableSession->opened_by_guest_id !== null) {
+            return $tableSession->openedByGuest->guest_name;
+        }
+
+        return null;
     }
 
     private function temporaryClosureIsActive(Branch $branch): bool

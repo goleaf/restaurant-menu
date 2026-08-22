@@ -49,6 +49,8 @@ The demo seeder refuses to run when `APP_ENV=production`. See [`docs/DEMO_LOGIN.
 | `composer audit` | Check PHP dependency advisories. |
 | `composer lint` | Format PHP with Pint. |
 | `composer lint:check` | Check PHP formatting without changes. |
+| `composer analyse` | Run Larastan level 8. |
+| `composer dev` | Run only Pail logs and Vite; Herd already serves PHP. |
 | `php artisan test --compact` | Run the Pest suite. |
 | `php artisan test --parallel --compact` | Run safe parallel tests. |
 | `php artisan translations:audit` | Validate locale structure and semantic keys. |

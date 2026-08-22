@@ -28,8 +28,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface|null $ended_at
  * @property CarbonInterface|null $guest_invite_created_at
  * @property array<string, mixed>|null $metadata
- * @property-read Branch|null $branch
- * @property-read ServicePoint|null $servicePoint
+ * @property-read Branch $branch
+ * @property-read ServicePoint $servicePoint
+ * @property-read User|null $openedByUser
+ * @property-read TableSessionGuest|null $openedByGuest
+ * @property-read DraftOrder|null $draftOrder
  */
 #[Fillable(['service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
 class TableSession extends Model

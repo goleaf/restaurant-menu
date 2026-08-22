@@ -42,7 +42,7 @@ class SyncOrderStatusFromTicketItemsAction
         }
 
         $previousStatus = $order->status;
-        $metadata = is_array($order->metadata) ? $order->metadata : [];
+        $metadata = $order->metadata ?? [];
 
         $order
             ->forceFill([
@@ -145,9 +145,7 @@ class SyncOrderStatusFromTicketItemsAction
 
     private function itemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
     {
-        return $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        return $item->status;
     }
 
     private function syncServicePointStatus(Order $order, OrderStatus $newStatus): void

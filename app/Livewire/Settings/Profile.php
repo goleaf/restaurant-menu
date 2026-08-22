@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Settings;
 
 use App\Concerns\ProfileValidationRules;
@@ -7,11 +9,10 @@ use App\Enums\SupportedLocale;
 use Flux\Flux;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Profile settings')]
 class Profile extends Component
 {
     use ProfileValidationRules;
@@ -85,7 +86,18 @@ class Profile extends Component
     #[Computed]
     public function showDeleteUser(): bool
     {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
+        $user = Auth::user();
+
+        if (! $user instanceof MustVerifyEmail) {
+            return true;
+        }
+
+        return $user->hasVerifiedEmail();
+    }
+
+    public function render(): View
+    {
+        return view('livewire.settings.profile')
+            ->title(__('ui.settings.profile.profile_settings'));
     }
 }

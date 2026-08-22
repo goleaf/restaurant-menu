@@ -1,20 +1,3 @@
-@props([
-    'triggerLabel' => 'ui.actions.delete',
-    'triggerIcon' => 'trash',
-    'title' => 'ui.confirmations.danger.title',
-    'description' => 'ui.confirmations.danger.description',
-    'confirmLabel' => 'ui.actions.delete',
-    'cancelLabel' => 'ui.actions.cancel',
-    'confirmIcon' => 'exclamation-triangle',
-    'confirmAction' => null,
-    'confirmTarget' => null,
-])
-
-@php
-    $modalId = 'confirmation-modal-'.Illuminate\Support\Str::random(8);
-    $resolvedConfirmTarget = $confirmTarget ?? $confirmAction;
-@endphp
-
 <div x-data="{ open: false }" {{ $attributes->class('inline-flex') }}>
     @isset($trigger)
         <div x-on:click="open = true">

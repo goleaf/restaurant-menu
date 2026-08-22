@@ -245,7 +245,7 @@ function fieldTranslationAuditVisibleAttributes(): array
 
 function fieldTranslationAuditIsTranslatedAttribute(string $value): bool
 {
-    if (str_contains($value, '__(') || str_contains($value, '@lang(')) {
+    if (str_contains($value, '{{') || str_contains($value, '__(') || str_contains($value, '@lang(')) {
         return true;
     }
 

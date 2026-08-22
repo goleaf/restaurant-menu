@@ -12,6 +12,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+/**
+ * @property int $id
+ * @property int $organization_id
+ * @property int $user_id
+ * @property int $role_id
+ * @property OrganizationUserStatus $status
+ */
 #[Table('organization_users', incrementing: true)]
 #[Fillable(['user_id', 'joined_at', 'invited_by_user_id'])]
 class OrganizationUser extends Pivot

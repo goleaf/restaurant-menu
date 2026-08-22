@@ -6,7 +6,6 @@ use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\WaiterCallStatus;
-use App\Models\ServicePoint;
 use App\Models\User;
 use App\Models\WaiterCall;
 use App\Notifications\WaiterCalledNotification;
@@ -84,7 +83,7 @@ class MarkWaiterCallHandledAction
     {
         $servicePoint = $waiterCall->servicePoint;
 
-        if (! $servicePoint instanceof ServicePoint || $servicePoint->status !== ServicePointStatus::WaitingWaiter) {
+        if ($servicePoint->status !== ServicePointStatus::WaitingWaiter) {
             return;
         }
 
@@ -107,6 +106,8 @@ class MarkWaiterCallHandledAction
             ->limit(1000)
             ->get()
             ->filter(fn (DatabaseNotification $notification): bool => (int) data_get($notification->data, 'waiter_call_id') === $waiterCall->id)
-            ->each(fn (DatabaseNotification $notification): mixed => $notification->markAsRead());
+            ->each(function (DatabaseNotification $notification): void {
+                $notification->markAsRead();
+            });
     }
 }

@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Menus;
 
-use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Enums\MenuStatus;
 use App\Enums\SupportedLocale;
 use App\Models\BranchSetting;
@@ -13,8 +14,8 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
-use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Cache;
 
@@ -27,6 +28,10 @@ class GetGuestMenuForBranchAction
     private const LOCK_SECONDS = 10;
 
     private const LOCK_WAIT_SECONDS = 3;
+
+    public function __construct(
+        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+    ) {}
 
     /**
      * @return array{language: string, default_language: string, availability: array<string, mixed>, menu: array{id: int, name: string}|null, menus: list<array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, categories: list<array<string, mixed>>}
@@ -63,11 +68,6 @@ class GetGuestMenuForBranchAction
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
     {
         return self::cacheKey($branchId, $languageCode).':lock';
-    }
-
-    public static function forgetForBranch(int $branchId): void
-    {
-        app(ForgetBranchCacheAction::class)->handle($branchId);
     }
 
     public static function cacheStore(): string
@@ -301,7 +301,6 @@ class GetGuestMenuForBranchAction
      */
     private function availableMenusForBranch(int $branchId): array
     {
-        $availabilityAction = app(GetMenuAvailabilityStatusAction::class);
         $availableMenus = new EloquentCollection;
         $availableStatuses = [];
         $unavailableMenus = [];
@@ -333,7 +332,7 @@ class GetGuestMenuForBranchAction
             ->get();
 
         foreach ($menus as $menu) {
-            $availability = $availabilityAction->handle($menu);
+            $availability = $this->getMenuAvailabilityStatus->handle($menu);
 
             if ($availability['is_available']) {
                 $availableMenus->push($menu);

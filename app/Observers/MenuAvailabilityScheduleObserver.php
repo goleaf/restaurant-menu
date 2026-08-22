@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
@@ -7,6 +9,10 @@ use App\Models\MenuAvailabilitySchedule;
 
 class MenuAvailabilityScheduleObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * Handle the MenuAvailabilitySchedule "created" event.
      */
@@ -57,6 +63,6 @@ class MenuAvailabilityScheduleObserver
             return;
         }
 
-        app(ForgetBranchCacheAction::class)->handle((int) $menu->branch_id);
+        $this->forgetBranchCache->handle((int) $menu->branch_id);
     }
 }

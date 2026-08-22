@@ -1,18 +1,26 @@
 # Performance
 
-Performance work is evidence-driven. The baseline production build is 282.03 kB CSS (36.41 kB gzip) and effectively empty application JavaScript; the baseline PHP suite contains 655 tests and completes in 48.532 seconds on the recorded workstation. Critical page/query and Livewire payload baselines are established before claiming improvements.
+Performance changes are evidence-driven. Query-budget and cache-separation tests protect critical guest, waiter, department, dashboard, audit and export flows; lists paginate or stream; relationships are selected/eager-loaded; Livewire polling regions are isolated and public state contains no large model graph.
 
-## Budgets and controls
+## Baseline versus final
 
-- No unbounded `all()` or full-table rendering on growing production data.
-- Staff/menu/audit/export/superadmin lists paginate or cursor-stream as appropriate.
-- Relationships used for presentation are selected and eager-loaded; booleans/counts use `withExists`/`withCount`/database aggregates.
-- Polling components return only their independent changed region and use a justified interval/background throttling.
-- Livewire public state contains no large model graph; rendered loops have stable keys.
-- Cache is allowed only after query/payload measurement and follows [`caching.md`](caching.md).
-- Images use actual display-size variants if measurements show originals are oversized.
-- Production CSS/JS sizes are recorded after each frontend pass.
+| Measurement | Baseline | Final | Interpretation |
+|---|---:|---:|---|
+| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 683 tests / 59.490 s sequential; 17.060 s parallel, all applicable passing | test volume and coverage increased; wall time is not an application latency benchmark |
+| Application coverage | unavailable | 90.4% | process-only Herd PHP 8.5 Xdebug collection |
+| CSS | 282.03 kB / 36.41 kB gzip | 291.67 kB / 37.83 kB gzip | +9.64 kB raw / +1.42 kB gzip for Flux/Tailwind semantic tokens and UI fixes |
+| Application JS | 0.00 kB | 0.00 kB | no SPA/request library introduced |
+| Public page trace | not captured | LCP 104 ms; TTFB 44 ms; render delay 59 ms; CLS 0 | local Herd desktop trace, not production monitoring |
+| Lighthouse | not captured | 100/100/100/100 on public, login and authenticated dashboard samples | performance/accessibility/best-practice/SEO categories as applicable to the used audit mode |
+| HTTP smoke | not captured | `/` 200 in 0.166 s; protected dashboard 302 to login | local warm Herd request |
 
-Reliable query-count tests cover public QR/menu, waiter table, kitchen/bar board, dashboard and audit/export list. SQLite query plans are inspected for filters/orderings that can touch more than 10,000 rows, and composite indexes are added only when the plan/query pattern justifies them.
+## Controls
 
-The final report compares observed query counts, response/render time where measurable, Livewire payload/request behavior and asset sizes. A non-measured optimization is reported as a code-structure improvement, not as a measured speedup.
+- Growing organization/staff/menu/audit/export/superadmin data is bounded by pagination, cursor streaming or explicit limits.
+- Polling components are isolated and expose stable identifiers; loading indicators target only the active mutation.
+- Cache keys and invalidation include tenant/branch/locale/permission context when payload semantics require it.
+- Money/query calculations occur server-side and do not rehydrate full relationships only to count or aggregate.
+- SQLite guardrail indexes follow observed filtering/order patterns; the schema is not indiscriminately indexed.
+- Production asset sizes and browser console/network results are release evidence, not claims about real production latency.
+
+No Octane, Horizon, Reverb, Redis, Memcached or external observability runtime was added because the product and shared-hosting contract do not require them.

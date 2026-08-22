@@ -90,7 +90,9 @@ class OrderStatuses extends Component
         $tableSession = $this->tableSession();
         $draftOrder = $this->draftOrder();
         $orders = $this->recentOrders();
-        $order = $draftOrder?->order ?? $orders->last();
+        $order = $draftOrder instanceof DraftOrder && $draftOrder->order instanceof Order
+            ? $draftOrder->order
+            : $orders->last();
         $orderStatus = $this->orderStatus($order);
         $ticketItems = $this->orderTicketItems($order);
         $serviceStatus = $this->guestServiceStatus($draftOrder, $orderStatus, $ticketItems);
@@ -214,19 +216,19 @@ class OrderStatuses extends Component
      */
     private function guestItemStatuses(?DraftOrder $draftOrder, Collection $orders): array
     {
-        return $this->draftItemStatuses($draftOrder)
-            ->merge($this->orderItemStatuses($orders))
-            ->values()
-            ->all();
+        return array_merge(
+            $this->draftItemStatuses($draftOrder),
+            $this->orderItemStatuses($orders),
+        );
     }
 
     /**
-     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
+     * @return list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
-    private function draftItemStatuses(?DraftOrder $draftOrder): Collection
+    private function draftItemStatuses(?DraftOrder $draftOrder): array
     {
         if (! $draftOrder instanceof DraftOrder || $draftOrder->status === DraftOrderStatus::ConvertedToOrder) {
-            return collect();
+            return [];
         }
 
         $status = $this->draftItemGuestStatus($draftOrder->status);
@@ -245,30 +247,52 @@ class OrderStatuses extends Component
             ->orderBy('id')
             ->limit(200)
             ->get()
-            ->map(fn (DraftOrderItem $item): array => [
-                'id' => (int) $item->id,
-                'type' => 'draft',
-                'name' => (string) $item->item_name,
-                'guest_name' => (string) ($item->guest?->guest_name ?: __('guest.table.guest')),
-                'quantity' => (int) $item->quantity,
-                'status_value' => $status['value'],
-                'status_key' => $status['key'],
-                'status_description_key' => $status['description_key'],
-                'tone' => $status['tone'],
-                'comment' => filled($item->comment) ? (string) $item->comment : null,
-            ]);
+            ->map(fn (DraftOrderItem $item): array => $this->itemStatusPayload(
+                item: $item,
+                type: 'draft',
+                name: (string) $item->item_name,
+                guestName: $item->guest->guest_name,
+                status: $status,
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array{value: string, key: string, description_key: string, tone: string}  $status
+     * @return array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}
+     */
+    private function itemStatusPayload(
+        DraftOrderItem|OrderItem $item,
+        string $type,
+        string $name,
+        string $guestName,
+        array $status,
+    ): array {
+        return [
+            'id' => (int) $item->id,
+            'type' => $type,
+            'name' => $name,
+            'guest_name' => $guestName,
+            'quantity' => (int) $item->quantity,
+            'status_value' => $status['value'],
+            'status_key' => $status['key'],
+            'status_description_key' => $status['description_key'],
+            'tone' => $status['tone'],
+            'comment' => filled($item->comment) ? (string) $item->comment : null,
+        ];
     }
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
+     * @return list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
-    private function orderItemStatuses(Collection $orders): Collection
+    private function orderItemStatuses(Collection $orders): array
     {
         $orderIds = $orders->pluck('id');
 
         if ($orderIds->isEmpty()) {
-            return collect();
+            return [];
         }
 
         $orderStatuses = $orders->mapWithKeys(
@@ -302,19 +326,20 @@ class OrderStatuses extends Component
                     $item->kitchenTicketItem,
                 );
 
-                return [
-                    'id' => (int) $item->id,
-                    'type' => 'order',
-                    'name' => $item->historicalItemName(),
-                    'guest_name' => (string) ($item->historicalGuestName() ?? $item->guest?->guest_name ?? __('guest.table.guest')),
-                    'quantity' => (int) $item->quantity,
-                    'status_value' => $status['value'],
-                    'status_key' => $status['key'],
-                    'status_description_key' => $status['description_key'],
-                    'tone' => $status['tone'],
-                    'comment' => filled($item->comment) ? (string) $item->comment : null,
-                ];
-            });
+                $guestName = $item->table_session_guest_id === null
+                    ? ($item->historicalGuestName() ?? (string) __('guest.table.guest'))
+                    : $item->guest->guest_name;
+
+                return $this->itemStatusPayload(
+                    item: $item,
+                    type: 'order',
+                    name: $item->historicalItemName(),
+                    guestName: $guestName,
+                    status: $status,
+                );
+            })
+            ->values()
+            ->all();
     }
 
     /**
@@ -565,7 +590,7 @@ class OrderStatuses extends Component
             ];
         }
 
-        if ($ticketStatus === KitchenTicketItemStatus::InProgress || ($ticketStatus === null && $orderStatus === OrderStatus::InProgress)) {
+        if ($ticketStatus === KitchenTicketItemStatus::InProgress) {
             return [
                 'value' => 'cooking',
                 'key' => 'guest.statuses.items.cooking',
@@ -574,7 +599,16 @@ class OrderStatuses extends Component
             ];
         }
 
-        if ($ticketStatus === KitchenTicketItemStatus::New || ($ticketStatus === null && $orderStatus === OrderStatus::SentToKitchenBar)) {
+        if ($ticketStatus === null && $orderStatus === OrderStatus::InProgress) {
+            return [
+                'value' => 'cooking',
+                'key' => 'guest.statuses.items.cooking',
+                'description_key' => 'guest.statuses.items.cooking_description',
+                'tone' => 'amber',
+            ];
+        }
+
+        if ($ticketStatus === KitchenTicketItemStatus::New || $orderStatus === OrderStatus::SentToKitchenBar) {
             return [
                 'value' => 'accepted',
                 'key' => 'guest.statuses.items.accepted',
@@ -617,13 +651,11 @@ class OrderStatuses extends Component
 
     private function orderStatus(?Order $order): ?OrderStatus
     {
-        return $order?->status instanceof OrderStatus ? $order->status : null;
+        return $order instanceof Order ? $order->status : null;
     }
 
     private function ticketItemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
     {
-        return $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        return $item->status;
     }
 }

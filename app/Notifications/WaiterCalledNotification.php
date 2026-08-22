@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications;
 
 use App\Models\WaiterCall;
@@ -46,14 +48,14 @@ class WaiterCalledNotification extends Notification
         return [
             'waiter_call_id' => $waiterCall->id,
             'branch_id' => $waiterCall->branch_id,
-            'branch_name' => $waiterCall->branch?->name,
+            'branch_name' => $waiterCall->branch->name,
             'service_point_id' => $waiterCall->service_point_id,
-            'service_point_name' => $waiterCall->servicePoint?->name,
-            'service_point_display_number' => $waiterCall->servicePoint?->display_number,
-            'area_name' => $waiterCall->servicePoint?->areaNode?->name,
+            'service_point_name' => $waiterCall->servicePoint->name,
+            'service_point_display_number' => $waiterCall->servicePoint->display_number,
+            'area_name' => $waiterCall->servicePoint->areaNode?->name,
             'table_session_id' => $waiterCall->table_session_id,
-            'guest_name' => $waiterCall->requestedByGuest?->guest_name,
-            'requested_at' => $waiterCall->requested_at?->toISOString(),
+            'guest_name' => $waiterCall->requested_by_guest_id === null ? null : $waiterCall->requestedByGuest->guest_name,
+            'requested_at' => $waiterCall->requested_at->toISOString(),
             'message' => __('ui.livewire.notifications.unreadcount.gost_zovet_oficianta'),
         ];
     }

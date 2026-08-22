@@ -1,41 +1,40 @@
 # Livewire 4
 
-All components use normal PHP classes under `app/Livewire` with separate templates under `resources/views/livewire`. Volt and route-level single-file components are prohibited. Static visual reuse remains Blade/Flux rather than Livewire.
+All interactive UI uses 42 ordinary PHP classes under `app/Livewire` with separate templates under `resources/views/livewire`. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
 
 ## Component contract
 
-- Public state is typed, minimal and serializable; collections, model graphs, services, builders and sensitive server values stay private/derived.
-- All public properties/action parameters are untrusted. Each mutation validates and authorizes server-loaded resources.
-- Substantial forms use Livewire Form Objects. Derived display values use computed properties rather than duplicated mutable state.
-- Durable client-visible identifiers use `#[Locked]` where mutation is never intended, with authorization still enforced.
-- Lists paginate and use stable database identifiers for `wire:key`.
-- Search uses a deliberate debounce; `.blur`/`.change` is preferred when per-keystroke requests have no product value.
-- Events are narrow contracts, not a global bus; payloads are validated and receiving mutations authorize again.
+- Public state is typed, minimal and serializable; models, collections, builders and services remain server-derived.
+- Public properties and action arguments are hostile input. Mutations validate, reload within tenant/branch/session scope and authorize.
+- `#[Locked]` protects durable browser-visible identifiers but never replaces authorization.
+- Derived display data uses `#[Computed]`; shareable filters use stable `#[Url]` aliases and reset relevant pagination.
+- Lists are bounded and loops use durable keys. `.live` is reserved for actual server-reactive behavior.
+- Livewire `boot()`/method injection supplies Actions and the authenticated user; no service locator is used.
+- Loading/cloak feedback targets the action in progress and prevents duplicate destructive mutations. Offline state is rendered inside the trusted authenticated Livewire shell and by a presentation-only Alpine component on guest/auth pages whose URL may contain bearer credentials.
 
-## Feature applicability
+## Feature applicability matrix
 
-| Feature | Candidate / decision | Performance effect | Accessibility effect | Evidence |
+| Feature | Used / not applicable | Location / reason | Performance effect | Accessibility effect / tests |
 |---|---|---|---|---|
-| `#[Computed]` | Totals, prepared options and derived dashboards | avoids duplicate mutable snapshots | consistent labels/values | component tests |
-| `#[Locked]` | organization, branch, session and record identifiers | smaller trusted state surface | none directly | tampering tests |
-| `#[Url]` | shareable search/filter/sort/tab state on list screens | avoids state round trips and restores views | stable back/forward behavior | URL-state tests |
-| `#[Session]` | private display preferences only | avoids permanent DB writes | consistent preference | session-state tests |
-| `#[Lazy]` / `#[Defer]` | below-fold independent reports only after measurement | improves first response; stable placeholder required | announced loading and no layout shift | lazy tests/browser |
-| `#[Isolate]` / islands | slow independent dashboard regions only after query/payload measurement | prevents unrelated request blocking | independent busy state | concurrency/browser tests |
-| `#[Async]` | Not currently applicable to business writes | avoids unsafe out-of-order state | n/a | architecture decision |
-| `#[Renderless]` | Server actions with no DOM change only when proven | avoids render payload | visible status remains required | component tests |
-| `#[On]` | Narrow child-to-page notifications | bounded coordination | announced resulting state | event tests |
-| `#[Reactive]` / `#[Modelable]` | Reusable child controls with explicit parent contracts | prevents duplicate querying | preserves native label/input semantics | component tests |
-| `#[Js]` / `#[Json]` | Client-only safe behavior / explicit safe JSON only | avoids unnecessary server/render work | must retain keyboard alternative | integration tests |
-| `#[Transition]` | Orientation-improving transitions only | small visual enhancement | reduced-motion honored | browser review |
-| `wire:navigate` | Same-origin staff navigation | reduces full reloads | focus/title/announcement verified | repeated-navigation browser test |
-| `@persist` | Not applicable; no long-running media/DOM state | avoids stale auth-sensitive DOM | n/a | review |
-| `wire:sort` | Menu/area ordering with transaction and keyboard alternative | one bounded mutation | equivalent buttons/inputs required | action and browser tests |
-| `wire:stream` | Not applicable; no progressive-content requirement | avoids prolonged requests | n/a | review |
-| `wire:poll` | Kitchen/waiter status only if current behavior requires it | bounded interval and background throttle | non-disruptive announcements | component/browser tests |
-| `wire:intersect` | Below-fold loading only when duplicate-safe | defers work | content remains reachable | browser test |
-| `wire:offline` | Guest/staff mutation surfaces | prevents false saved state | explicit status message | markup/browser test |
-| `wire:loading/target/dirty/cloak/confirm` | Forms and mutations where relevant | precise request feedback | announced, localized, no flicker | component/browser tests |
-| `wire:ignore` | QR or other third-party managed DOM only with lifecycle adapter | avoids morph conflicts | equivalent accessible output | navigation test |
+| `#[Computed]` | used | menu, area, service-point, settings, audit, superadmin and setup components | derived payload is not duplicated in mutable state | consistent rendered values; component tests |
+| `#[Locked]` | used | permissions, public QR children, settings security, waiter detail | narrows tampering/hydration surface | direct-mutation tests still authorize |
+| `#[Url]` | used | QR print/service-point filters, guest menu/search and QR state | restores shareable filters without extra persistence | stable back/forward state tests |
+| `#[Layout]` | used | guest and print page classes | server-selected layouts without SFC logic | correct landmarks/print semantics |
+| `#[Isolate]` | used | guest draft totals/orders/join/notification/status/table regions | independent polls do not block one another | precise non-disruptive busy regions |
+| `#[Session]` | not applicable | persistent user locale belongs in `users.locale`; no ephemeral preference justifies session payload | avoids duplicate state | n/a |
+| `#[Lazy]` / `#[Defer]` | not applicable after query review | first-decision content is required immediately; isolated polling already bounds later updates | avoids placeholder/layout complexity | no artificial layout shift |
+| `#[Async]` | not applicable | business writes require ordered SQLite transactions | avoids race-prone UI mutation | deterministic feedback |
+| `#[Renderless]`, `#[Js]`, `#[Json]` | not applicable | current actions change DOM or require normal server responses; no safe direct JSON client contract | avoids duplicate response modes | normal Livewire error handling retained |
+| `#[On]`, `#[Reactive]`, `#[Modelable]` | not required | explicit nested component props/actions are sufficient; no global event bus added | less cross-component coupling | predictable focus/status |
+| `#[Transition]` / `wire:stream` | not applicable | no orientation/progressive-output need outweighs motion/long-request cost | avoids decorative/prolonged work | reduced-motion remains simple |
+| `wire:navigate` / `@persist` | used | same-origin navigation and the global toast host | avoids full reload; no auth-sensitive server DOM persisted | titles/landmarks/focus checked repeatedly |
+| `wire:poll` | used | waiter/kitchen/public status/notification regions | bounded isolated updates | non-blocking localized status |
+| `wire:loading`, `wire:target`, `wire:cloak` | used | forms and guest/staff mutations | prevents duplicate requests and broad busy state | precise action feedback and no initial flicker |
+| `wire:offline` | used in authenticated `OfflineIndicator`; Alpine equivalent on guest/auth layouts | Livewire is restricted to bearer-free authenticated URLs so its snapshot cannot serialize invitation/reset URLs; guest/auth layouts observe browser connectivity without a server snapshot | no server request; connection state is client-observed | equivalent localized polite `role=status`; both paths browser-verified |
+| `wire:dirty` | not applicable | recoverable forms preserve server-confirmed values; no autosave flow needs a second dirty banner | avoids duplicate status | n/a |
+| `wire:confirm` | not used | destructive operations require richer localized Flux dialogs with reason/typed confirmation | avoids native-dialog limits | modal focus/name tests |
+| `wire:sort` | not used | existing ordering inputs/actions are keyboard-operable; drag/drop offers no required benefit | avoids extra mutation/race contract | keyboard path remains primary |
+| `wire:ignore` | not applicable in first-party views | Flux owns its internal integration; no third-party widget needs a morph exclusion | avoids stale DOM | n/a |
+| islands / intersect / stream | not applicable | isolated child components and bounded queries already solve the measured needs | avoids fragmentation/duplicate loading | content remains immediately reachable |
 
-Features marked candidate become “used” only when implementation and verification demonstrate correct semantics. The goal is appropriate use, not syntax coverage.
+Final evidence: class/SFC architecture scan passes; Livewire security/component regressions pass inside the 683-test suite, including an assertion that invitation bearer tokens never enter rendered Livewire snapshots. Authenticated navigation, guest/auth and authenticated offline/online states, locale persistence, password confirmation, modal focus/names and repeated Livewire requests were checked in an isolated Chrome context with no console errors.

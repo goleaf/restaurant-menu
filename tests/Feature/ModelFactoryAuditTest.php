@@ -43,9 +43,14 @@ use App\Models\TableSessionJoinRequest;
 use App\Models\TableSessionServicePoint;
 use App\Models\User;
 use App\Models\WaiterCall;
+use Illuminate\Database\Eloquent\Model;
 
-test('core flow models expose factories', function () {
-    $models = [
+/**
+ * @return list<class-string<Model>>
+ */
+function firstPartyFactoryModels(): array
+{
+    return [
         User::class,
         Organization::class,
         Brand::class,
@@ -88,12 +93,22 @@ test('core flow models expose factories', function () {
         BranchOpeningHour::class,
         WaiterCall::class,
     ];
+}
 
-    foreach ($models as $model) {
+test('core flow models expose factories', function () {
+    foreach (firstPartyFactoryModels() as $model) {
         $factory = 'Database\\Factories\\'.class_basename($model).'Factory';
 
         expect(class_exists($factory))->toBeTrue($factory.' is missing.')
             ->and(method_exists($model, 'factory'))->toBeTrue($model.' does not use HasFactory.');
+    }
+});
+
+test('every first party model factory persists a valid default record', function () {
+    foreach (firstPartyFactoryModels() as $model) {
+        $record = $model::factory()->create();
+
+        $this->assertModelExists($record);
     }
 });
 

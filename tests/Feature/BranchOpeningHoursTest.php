@@ -107,14 +107,14 @@ test('opening status respects branch timezone and next interval', function () {
     expect($openStatus['is_configured'])->toBeTrue()
         ->and($openStatus['is_open'])->toBeTrue()
         ->and($openStatus['can_accept_orders'])->toBeTrue()
-        ->and($openStatus['label'])->toBe('Сейчас открыто')
-        ->and($openStatus['detail'])->toBe('Открыто до 14:00');
+        ->and($openStatus['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto'))
+        ->and($openStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => '14:00']));
 
     expect($closedStatus['is_configured'])->toBeTrue()
         ->and($closedStatus['is_open'])->toBeFalse()
         ->and($closedStatus['can_accept_orders'])->toBeFalse()
-        ->and($closedStatus['label'])->toBe('Сейчас закрыто')
-        ->and($closedStatus['detail'])->toBe('Откроется в 18:00');
+        ->and($closedStatus['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
+        ->and($closedStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']));
 });
 
 test('public qr opens when branch is closed and lets guest view the table without ordering', function () {
@@ -123,15 +123,15 @@ test('public qr opens when branch is closed and lets guest view the table withou
     [$qrCode] = createPrompt102GuestContext(scheduleIsClosedNow: true, withActiveSession: false);
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('landing.opening_status_label', 'Сейчас закрыто')
-        ->assertSet('landing.opening_status_detail', 'Откроется в 18:00')
-        ->assertSee('Сейчас закрыто')
+        ->assertSet('landing.opening_status_label', __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
+        ->assertSet('landing.opening_status_detail', __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']))
+        ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
         ->set('guestName', 'Ana')
         ->call('enterTable')
         ->assertSet('guestCanViewTable', true)
         ->assertSet('guestCanAddItems', false)
-        ->assertSee('Меню')
-        ->assertSee('Заказы принимаем в часы работы ресторана.');
+        ->assertSee(__('menu.guest.title'))
+        ->assertSee(__('guest.table.closed_description'));
 });
 
 test('closed branch blocks guest draft item creation and sending draft to waiter', function () {
@@ -144,7 +144,7 @@ test('closed branch blocks guest draft item creation and sending draft to waiter
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, 'Сейчас закрыто');
+    ))->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -156,7 +156,7 @@ test('closed branch blocks guest draft item creation and sending draft to waiter
         ->create(['item_name' => 'Margherita']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, 'Сейчас закрыто');
+        ->toThrow(ValidationException::class, __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
     expect($branch->openingHours()->count())->toBe(2);
@@ -167,7 +167,7 @@ function createPrompt102Branch(bool $withOwner = true): array
     $owner = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Prompt 102 Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 102 Brand']);
-    $branch = (new CreateBranchAction)->handle($brand, [
+    $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Prompt 102 Branch',
         'address' => 'Pilies 1',
         'city' => 'Vilnius',

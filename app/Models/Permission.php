@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\PermissionFactory;
@@ -27,21 +29,23 @@ class Permission extends Model
     }
 
     /**
-     * @return BelongsToMany<Role, $this>
+     * @return BelongsToMany<Role, $this, PermissionRole, 'pivot'>
      */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(Role::class)
+            ->using(PermissionRole::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }
 
     /**
-     * @return BelongsToMany<User, $this>
+     * @return BelongsToMany<User, $this, PermissionUserOverride, 'pivot'>
      */
     public function usersWithOverrides(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'permission_user_overrides')
+            ->using(PermissionUserOverride::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }

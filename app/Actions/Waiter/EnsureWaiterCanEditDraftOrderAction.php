@@ -20,14 +20,6 @@ class EnsureWaiterCanEditDraftOrderAction
     {
         $tableSession = $draftOrder->tableSession;
 
-        if ($tableSession === null || $tableSession->branch === null) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::SessionClosed,
-                'draft_edit',
-                __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
-            );
-        }
-
         $editableBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ConfirmOrders)
             ->merge($this->resolveAccessibleBranchIds->handle($user, SystemPermission::EditPendingOrders))

@@ -89,7 +89,7 @@ test('active guest can request waiter and waiter handles the database notificati
         ->assertSee('Waiter called')
         ->call('markWaiterCallHandled', $waiterCall->id)
         ->assertSet('waiterCallCount', 0)
-        ->assertSee('Вызов официанта отмечен как обработанный.');
+        ->assertSee(__('ui.livewire.waiter.dashboard.vyzov_oficianta_otmecen_kak_obrabotannyi'));
 
     $notification = $waiter->notifications()->firstOrFail();
     $waiterCall = $waiterCall->fresh();

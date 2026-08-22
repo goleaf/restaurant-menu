@@ -17,6 +17,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property string $timezone
+ */
 #[Fillable([
     'brand_id',
     'name',

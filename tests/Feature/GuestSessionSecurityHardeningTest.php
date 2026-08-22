@@ -84,7 +84,7 @@ test('guest draft actions reject inactive service points even with a valid activ
 test('rejected guest cannot add draft items through backend action', function () {
     [, , , $tableSession, $guest, $menuItem] = createPrompt85SecurityContext();
 
-    $guest->update(['status' => TableSessionGuestStatus::Rejected]);
+    $guest->forceFill(['status' => TableSessionGuestStatus::Rejected])->save();
 
     expect(fn () => app(AddGuestDraftOrderItemAction::class)->handle(
         tableSession: $tableSession,
@@ -113,7 +113,7 @@ test('expired join request restore is blocked and marked expired', function () {
         ->assertSet('currentJoinRequestId', $joinRequest->id)
         ->assertSet('guestCanAddItems', false)
         ->assertSet('entryState', 'join_request_blocked')
-        ->assertSeeText('Ваш запрос на присоединение истёк.');
+        ->assertSeeText(__('guest.table.join_request_expired'));
 
     expect($joinRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Expired)
         ->and(TableSessionGuest::query()->where('guest_token', $joinRequest->guest_token)->exists())->toBeFalse();
@@ -122,7 +122,7 @@ test('expired join request restore is blocked and marked expired', function () {
 test('disabled qr shows a safe error and cannot open guest ordering', function () {
     [$qrCode] = createPrompt85SecurityContext(withTableSession: false);
 
-    $qrCode->update(['status' => QrCodeStatus::Disabled]);
+    $qrCode->forceFill(['status' => QrCodeStatus::Disabled])->save();
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'disabled')

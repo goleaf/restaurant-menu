@@ -1,14 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Kitchen;
 
 use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Departments\Dashboard as DepartmentDashboard;
-use Livewire\Attributes\Title;
 
-#[Title('Kitchen screen')]
 class Dashboard extends DepartmentDashboard
 {
     /**

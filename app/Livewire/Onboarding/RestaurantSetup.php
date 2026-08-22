@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Onboarding;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
@@ -25,10 +27,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
-#[Title('Настроить ресторан')]
 class RestaurantSetup extends Component
 {
     public int $step = 1;
@@ -425,7 +425,8 @@ class RestaurantSetup extends Component
 
     public function render(): View
     {
-        return view('livewire.onboarding.restaurant-setup');
+        return view('livewire.onboarding.restaurant-setup')
+            ->title(__('ui.onboarding.restaurant_setup.nastroit_restoran'));
     }
 
     private function currentUser(): User

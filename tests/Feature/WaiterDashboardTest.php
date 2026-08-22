@@ -340,7 +340,7 @@ test('waiter dashboard groups tables by zones and surfaces urgent work', functio
         ->assertSee('Open table')
         ->call('openTable', $freeTable->id)
         ->assertHasNoErrors()
-        ->assertSee('Стол открыт.');
+        ->assertSee(__('ui.livewire.waiter.dashboard.stol_otkryt'));
 
     expect(TableSession::query()
         ->where('service_point_id', $freeTable->id)

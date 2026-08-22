@@ -11,7 +11,6 @@ use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class DeleteDraftOrderItemByWaiterAction
 {
@@ -26,12 +25,6 @@ class DeleteDraftOrderItemByWaiterAction
         DB::transaction(function () use ($draftOrderItem, $editedBy): void {
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $draftOrder = $draftOrderItem->draftOrder;
-
-            if ($draftOrder === null) {
-                throw ValidationException::withMessages([
-                    'draft_edit' => __('ui.actions.waiter.deletedraftorderitembywaiteraction.poziciia_bolse_ne_svia'),
-                ]);
-            }
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
             $previousStatus = $draftOrder->status;

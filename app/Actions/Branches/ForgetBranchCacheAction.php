@@ -3,7 +3,7 @@
 namespace App\Actions\Branches;
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
-use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
 
 class ForgetBranchCacheAction

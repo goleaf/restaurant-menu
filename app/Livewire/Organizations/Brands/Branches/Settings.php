@@ -30,11 +30,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Title('Branch settings')]
 class Settings extends Component
 {
     use WithFileUploads;
@@ -278,7 +276,14 @@ class Settings extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.settings');
+        return view('livewire.organizations.brands.branches.settings', [
+            'branchesUrl' => route('organizations.brands.branches.index', [$this->organization, $this->brand]),
+            'branchName' => $this->branch->name,
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'publicDisplayName' => $this->branch->publicDisplayName(),
+            'serviceModeOptions' => $this->serviceModeOptions(),
+            'orderFlowModeOptions' => $this->orderFlowModeOptions(),
+        ])->title(__('ui.organizations.brands.branches.settings.branch_settings'));
     }
 
     public function addOpeningInterval(int $dayOfWeek): void
@@ -549,13 +554,6 @@ class Settings extends Component
                 'unpaid' => $result['skipped_unpaid_orders'],
             ],
         );
-    }
-
-    private function branchTimezone(): string
-    {
-        $timezone = $this->branch->timezone;
-
-        return is_string($timezone) && $timezone !== '' ? $timezone : config('app.timezone', 'UTC');
     }
 
     private function currentUser(): User

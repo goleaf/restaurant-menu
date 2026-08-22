@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Enums\OrderStatus;
@@ -38,7 +40,7 @@ class CleanupInactiveTableSessionsAction
         foreach ($this->candidateSessions($branchId) as $tableSession) {
             $result['checked']++;
 
-            $state = $this->buildInactivityState->handle($tableSession, $tableSession->branch?->settings);
+            $state = $this->buildInactivityState->handle($tableSession);
             $status = $this->status($tableSession);
 
             if ($status === TableSessionStatus::Active && $state['should_warn']) {
@@ -200,8 +202,6 @@ class CleanupInactiveTableSessionsAction
 
     private function status(TableSession $tableSession): TableSessionStatus
     {
-        return $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        return $tableSession->status;
     }
 }

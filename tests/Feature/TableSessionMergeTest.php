@@ -78,7 +78,7 @@ test('waiter can merge a free service point into an active session without chang
 test('merge rejects occupied service point and keeps qr codes unchanged', function () {
     [$organization, $mainServicePoint, $linkedServicePoint, $tableSession, , $mainQrCode, $linkedQrCode, $waiter] = createPrompt118MergeContext();
     attachPrompt118Staff($waiter, $organization, [SystemPermission::ViewOrders]);
-    $linkedServicePoint->update(['status' => ServicePointStatus::Occupied]);
+    $linkedServicePoint->forceFill(['status' => ServicePointStatus::Occupied])->save();
 
     expect(fn () => app(MergeTableSessionServicePointAction::class)->handle($tableSession, $linkedServicePoint, $waiter))
         ->toThrow(ValidationException::class);
@@ -97,12 +97,12 @@ test('waiter table detail can merge another service point and shows linked place
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->assertSet('table.merge.can_merge', true)
-        ->assertSee('Объединить столы')
+        ->assertSee(__('ui.waiter.table_detail.obieedinit_stoly'))
         ->assertSee($linkedServicePoint->name)
         ->set('mergeTargetServicePointId', $linkedServicePoint->id)
         ->call('mergeServicePoint')
         ->assertHasNoErrors()
-        ->assertSee('Столы объединены')
+        ->assertSee(__('ui.livewire.waiter.tabledetail.stoly_obieedineny_qr_kody_kazdogo_fiziceskog'))
         ->assertSee($linkedServicePoint->name);
 
     expect(TableSessionServicePoint::query()

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ __('meta.document_language') }}" class="dark">
     <head>
         @include('partials.head')
     </head>
@@ -12,60 +12,60 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('navigation.workspaces')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="$currentNavigation['dashboard']" wire:navigate>
                         {{ __('navigation.dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="building-office" :href="route('organizations.index')" :current="request()->routeIs('organizations.*')" wire:navigate>
+                    <flux:sidebar.item icon="building-office" :href="route('organizations.index')" :current="$currentNavigation['organizations']" wire:navigate>
                         {{ __('navigation.organizations') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="request()->routeIs('onboarding.*')" wire:navigate>
+                    <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
                         {{ __('navigation.onboarding') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="request()->routeIs('restaurant.dashboard')" wire:navigate>
+                    <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="$currentNavigation['restaurant_dashboard']" wire:navigate>
                         {{ __('navigation.restaurant') }}
                     </flux:sidebar.item>
 
                     @if ($canAccessQrLookup ?? false)
-                        <flux:sidebar.item icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="request()->routeIs('restaurant.qr-lookup.*')" wire:navigate>
+                        <flux:sidebar.item icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="$currentNavigation['qr_lookup']" wire:navigate>
                             {{ __('navigation.qr_codes') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessWaiterDashboard ?? false)
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="request()->routeIs('restaurant.waiter.*')" wire:navigate>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="$currentNavigation['waiter']" wire:navigate>
                             {{ __('navigation.waiter') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessKitchenDashboard ?? false)
-                        <flux:sidebar.item icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="request()->routeIs('restaurant.kitchen.*')" wire:navigate>
+                        <flux:sidebar.item icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="$currentNavigation['kitchen']" wire:navigate>
                             {{ __('navigation.kitchen') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessBarDashboard ?? false)
-                        <flux:sidebar.item icon="beaker" :href="route('restaurant.bar.dashboard')" :current="request()->routeIs('restaurant.bar.*')" wire:navigate>
+                        <flux:sidebar.item icon="beaker" :href="route('restaurant.bar.dashboard')" :current="$currentNavigation['bar']" wire:navigate>
                             {{ __('navigation.bar') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessAuditLog ?? false)
-                        <flux:sidebar.item icon="shield-check" :href="route('restaurant.audit-log.index')" :current="request()->routeIs('restaurant.audit-log.*')" wire:navigate>
+                        <flux:sidebar.item icon="shield-check" :href="route('restaurant.audit-log.index')" :current="$currentNavigation['audit_log']" wire:navigate>
                             {{ __('navigation.audit_log') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessDataExports ?? false)
-                        <flux:sidebar.item icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="request()->routeIs('restaurant.exports.*')" wire:navigate>
+                        <flux:sidebar.item icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="$currentNavigation['exports']" wire:navigate>
                             {{ __('navigation.exports') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessPlatformDashboard ?? false)
-                        <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="request()->routeIs('superadmin.*')" wire:navigate>
+                        <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="$currentNavigation['superadmin']" wire:navigate>
                             {{ __('navigation.superadmin') }}
                         </flux:sidebar.item>
                     @endif
@@ -83,12 +83,19 @@
                     {{ __('navigation.guest_area') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="layout-grid" :href="route('profile.edit')" :current="request()->routeIs('profile.edit')" wire:navigate>
+                <flux:sidebar.item icon="layout-grid" :href="route('profile.edit')" :current="$currentNavigation['profile']" wire:navigate>
                     {{ __('navigation.settings') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
 
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            @if ($authenticatedUser !== null)
+                <x-desktop-user-menu
+                    class="hidden lg:block"
+                    :name="$authenticatedUser['name']"
+                    :email="$authenticatedUser['email']"
+                    :initials="$authenticatedUser['initials']"
+                />
+            @endif
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
@@ -99,9 +106,10 @@
 
             <livewire:notifications.unread-count :compact="true" />
 
+            @if ($authenticatedUser !== null)
             <flux:dropdown position="top" align="end">
                 <flux:profile
-                    :initials="auth()->user()->initials()"
+                    :initials="$authenticatedUser['initials']"
                     icon-trailing="chevron-down"
                 />
 
@@ -110,13 +118,13 @@
                         <div class="p-0 text-sm font-normal">
                             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
                                 <flux:avatar
-                                    :name="auth()->user()->name"
-                                    :initials="auth()->user()->initials()"
+                                    :name="$authenticatedUser['name']"
+                                    :initials="$authenticatedUser['initials']"
                                 />
 
                                 <div class="grid flex-1 text-start text-sm leading-tight">
-                                    <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
-                                    <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                                    <flux:heading class="truncate">{{ $authenticatedUser['name'] }}</flux:heading>
+                                    <flux:text class="truncate">{{ $authenticatedUser['email'] }}</flux:text>
                                 </div>
                             </div>
                         </div>
@@ -146,6 +154,7 @@
                     </form>
                 </flux:menu>
             </flux:dropdown>
+            @endif
         </flux:header>
 
         {{ $slot }}

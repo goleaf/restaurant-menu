@@ -20,7 +20,7 @@ use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -100,7 +100,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  array<string, Collection<int, int>>  $access
+     * @param  array<string, Collection<int, covariant int>>  $access
      */
     public static function cacheKeyForAccess(array $access, ?CarbonImmutable $date = null): string
     {
@@ -133,7 +133,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @return array<string, Collection<int, int>>
+     * @return array<string, Collection<int, int<1, max>>>
      */
     private function resolveAccess(User $user): array
     {
@@ -180,7 +180,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  array<string, Collection<int, int>>  $access
+     * @param  array<string, Collection<int, covariant int>>  $access
      * @return array<string, mixed>
      */
     private function buildDashboard(User $user, array $access, string $cacheKey): array
@@ -220,7 +220,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @return Collection<int, int>
+     * @return Collection<int, int<1, max>>
      */
     private function branchIdsForPermission(User $user, SystemPermission $permission): Collection
     {
@@ -234,8 +234,8 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $departmentIds
-     * @return Collection<int, int>
+     * @param  Collection<int, covariant int>  $departmentIds
+     * @return Collection<int, int<1, max>>
      */
     private function branchIdsForDepartments(Collection $departmentIds): Collection
     {
@@ -255,7 +255,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      * @return Collection<int, Branch>
      */
     private function branches(Collection $branchIds): Collection
@@ -273,7 +273,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      * @return Collection<int, Order>
      */
     private function todayOrders(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): Collection
@@ -293,7 +293,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function activeTablesCount(Collection $branchIds): int
     {
@@ -313,7 +313,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function newOrdersToWaiterCount(Collection $branchIds): int
     {
@@ -330,7 +330,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function cookingOrdersCount(Collection $branchIds): int
     {
@@ -348,7 +348,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function readyPositionsCount(Collection $branchIds): int
     {
@@ -389,7 +389,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $orderIds
+     * @param  Collection<int, covariant int>  $orderIds
      * @return list<array{item_name: string, quantity: int, total: string}>
      */
     private function popularItems(Collection $orderIds, ?string $singleCurrency): array
@@ -429,7 +429,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  array<string, Collection<int, int>>  $access
+     * @param  array<string, Collection<int, covariant int>>  $access
      * @return list<array{label: string, description: string, icon: string, href: string|null, is_available: bool}>
      */
     private function quickActions(User $user, array $access): array
@@ -488,7 +488,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      * @return array{label: string, description: string, icon: string, href: string|null, is_available: bool}
      */
     private function branchQuickAction(string $label, string $description, string $icon, string $routeName, Collection $branchIds): array
@@ -523,7 +523,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function firstBranch(Collection $branchIds): ?Branch
     {
@@ -549,7 +549,7 @@ class BuildRestaurantDashboardAction
             ->filter(fn (mixed $currency): bool => is_string($currency) && $currency !== '')
             ->first();
 
-        return is_string($currency) && $currency !== '' ? $currency : 'EUR';
+        return $currency ?? 'EUR';
     }
 
     /**
@@ -569,7 +569,7 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, int>  $branchIds
+     * @param  Collection<int, covariant int>  $branchIds
      */
     private function rememberBranchCacheKeys(Collection $branchIds, string $cacheKey): void
     {

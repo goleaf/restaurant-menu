@@ -10,7 +10,9 @@
         </flux:button>
     </flux:modal.trigger>
 
-    <flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
+    <flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg" :closable="false">
+        <x-modal-close-button />
+
         <form method="POST" wire:submit="deleteUser" class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('ui.settings.delete_user_form.are_you_sure_you_want_to_delete_your_account') }}</flux:heading>

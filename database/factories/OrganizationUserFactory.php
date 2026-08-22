@@ -47,7 +47,7 @@ class OrganizationUserFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'status' => OrganizationUserStatus::Invited,
             'joined_at' => null,
-            'invited_by_user_id' => $invitedBy?->id ?? User::factory(),
+            'invited_by_user_id' => $invitedBy instanceof User ? $invitedBy->id : User::factory(),
         ]);
     }
 

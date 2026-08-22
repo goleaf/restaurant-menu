@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\MenuItemFactory;
@@ -12,6 +14,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property string $price
+ * @property string|null $weight
+ * @property string|null $volume
+ * @property int|null $kitchen_department_id
+ * @property-read MenuCategory $category
+ * @property-read KitchenDepartment|null $kitchenDepartment
+ */
 #[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
 class MenuItem extends Model
 {

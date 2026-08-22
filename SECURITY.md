@@ -19,7 +19,7 @@ Never include production secrets or a copied production SQLite database.
 
 The authoritative control inventory is [`docs/security.md`](docs/security.md). In brief:
 
-- Fortify owns authentication, password reset, password confirmation, passkeys, and 2FA.
+- Fortify owns enabled registration, authentication, password reset and password confirmation. Passkeys and 2FA are currently disabled feature gates.
 - Protected pages and every mutation require server-side authorization.
 - Organization and branch access is tenant-scoped; superadmin bypass is explicit.
 - Public QR, guest, and invitation credentials are high-entropy tokens and must not be logged or exported.

@@ -25,13 +25,7 @@ class MarkKitchenTicketItemServedAction
     {
         return DB::transaction(function () use ($item, $servedBy): KitchenTicketItem {
             $item = $this->reloadItem($item);
-            $order = $item->kitchenTicket?->order;
-
-            if (! $order instanceof Order) {
-                throw ValidationException::withMessages([
-                    'order_service' => __('ui.actions.waiter.markkitchenticketitemservedaction.poziciia_ne_sviazana_s'),
-                ]);
-            }
+            $order = $item->kitchenTicket->order;
 
             $this->ensureCanServe($order, $servedBy);
 
@@ -108,8 +102,6 @@ class MarkKitchenTicketItemServedAction
 
     private function itemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
     {
-        return $item->status instanceof KitchenTicketItemStatus
-            ? $item->status
-            : KitchenTicketItemStatus::from((string) $item->status);
+        return $item->status;
     }
 }

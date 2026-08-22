@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Departments;
 
 use App\Actions\Departments\BuildDepartmentTicketPrintAction;
@@ -8,11 +10,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('layouts.print')]
-#[Title('Kitchen ticket print')]
 class TicketPrint extends Component
 {
     public KitchenTicket $kitchenTicket;

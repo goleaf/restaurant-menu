@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Branches;
 
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
@@ -11,13 +13,17 @@ use Illuminate\Support\Facades\DB;
 
 class CreateBranchAction
 {
+    public function __construct(
+        private readonly SeedKitchenDepartmentsForBranchAction $seedKitchenDepartments,
+    ) {}
+
     /**
      * @param  array{name: string, address: string, city: string, country: string, timezone: string, currency: string, is_active: bool}  $data
      */
     public function handle(Brand $brand, array $data): Branch
     {
         return DB::transaction(function () use ($brand, $data): Branch {
-            $currency = SupportedCurrency::normalize($data['currency'] ?? null);
+            $currency = SupportedCurrency::normalize($data['currency']);
 
             $branch = $brand->branches()->make([
                 'name' => $data['name'],
@@ -33,7 +39,7 @@ class CreateBranchAction
             ])->save();
 
             $branch->settings()->create(BranchSetting::defaults($branch));
-            app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
+            $this->seedKitchenDepartments->handle($branch);
 
             return $branch;
         });

@@ -23,11 +23,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Title('Organizations')]
 class Index extends Component
 {
     use WithFileUploads;
@@ -213,7 +211,7 @@ class Index extends Component
     #[Computed]
     public function staffManageableOrganizationIds(): array
     {
-        return $this->organizations
+        return $this->organizations()
             ->filter(fn (Organization $organization): bool => Gate::forUser($this->currentUser())->allows('manageStaff', $organization))
             ->pluck('id')
             ->all();
@@ -221,7 +219,22 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.index');
+        $manageableOrganizationIds = $this->staffManageableOrganizationIds();
+
+        return view('livewire.organizations.index', [
+            'organizationRows' => $this->organizations()
+                ->map(fn (Organization $organization): array => [
+                    'id' => $organization->id,
+                    'name' => $organization->name,
+                    'logo_url' => $organization->logoUrl(),
+                    'is_owner' => $organization->owner_user_id === $this->currentUserId,
+                    'can_manage_staff' => in_array($organization->id, $manageableOrganizationIds, true),
+                    'created_at' => $organization->created_at->format('d.m.Y'),
+                    'brands_url' => route('organizations.brands.index', ['organization' => $organization->id]),
+                    'staff_url' => route('organizations.staff.index', ['organization' => $organization->id]),
+                ])
+                ->all(),
+        ])->title(__('navigation.organizations'));
     }
 
     /**

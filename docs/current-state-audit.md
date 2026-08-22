@@ -1,81 +1,120 @@
 # Current-state audit
 
-Audit date: 2026-08-22. Branch at start: `main`, commit `aa2c675`, tracking `origin/main`. The working tree, index, and untracked set were clean before modernization. No existing user changes required preservation.
+Audit and modernization date: 2026-08-22. Initial branch: `main` at `aa2c675`, tracking `origin/main`. The index, worktree and untracked set were clean before this task; therefore every modernization diff is attributable and no pre-existing user change required merging or preservation.
 
-## Repository baseline
+## Factual baseline
 
-| Area | Observed baseline |
+| Area | Initial observation |
 |---|---|
-| Runtime | PHP 8.5.8, Laravel 13.13.0, Livewire 4.3.1, Flux UI Free 2.14.1, Tailwind 4.3.0, Vite 8.0.16, Pest 4.7.2 / PHPUnit 12.5.28. |
-| Constraints | `composer.json` still allowed PHP `^8.3`, Laravel `^13.7`, and Livewire `^4.1`; CI tested PHP 8.3/8.4/8.5. |
-| Storage | SQLite only; database cache/session/queue; local public/private disks. Boost schema inspection found 48 application/framework tables, no views, routines, or triggers. |
-| Application size | 269 PHP files under `app`, 103 Actions, 39 Livewire PHP components, 41 first-party models, 41 factories, 65 migrations, 6 seeders, 100 Blade files, 118 PHP test files. |
-| Tests | `php artisan test --compact`: 655 tests, 19,621 assertions, 567 passed, 64 failed, 15 errors, 9 skipped, 48.532 s. |
-| Formatting | `composer lint:check`: passed. |
-| Localization | 3 JSON catalogues, 2,002 keys per locale; audit found no missing/invalid/phrase-style key, and scan found 1,541 used plus 461 unused keys. |
-| Frontend | `npm run build`: passed in 620 ms; CSS 282.03 kB / 36.41 kB gzip, application JS 0.00 kB. |
-| Caches | Blade, configuration, and route cache builds passed, followed by `optimize:clear`. |
-| PHP dependencies | `composer audit`: 17 advisories affecting Guzzle, PSR-7, and CommonMark, including high severity findings. |
-| JavaScript dependencies | `npm audit`: 4 findings — 2 critical and 2 high — through `concurrently`, `shell-quote`, `postcss`, and `nanoid`. |
+| Runtime | PHP 8.5.8; Laravel 13.13.0; Livewire 4.3.1; Flux UI Free 2.14.1; Tailwind 4.3.0; Vite 8.0.16; Pest 4.7.2 / PHPUnit 12.5.28. |
+| Constraints | Composer still allowed PHP `^8.3`, Laravel `^13.7` and Livewire `^4.1`; CI included obsolete PHP targets. |
+| Persistence | SQLite only; database cache/session/queue; local public/private disks; 48 tables, no views/routines/triggers at inspection time. |
+| First-party size | 269 PHP files under `app`, 103 Actions, 39 Livewire classes plus two route SFCs, 41 models/factories, 65 migrations, 6 seeders, 100 Blade templates, 118 PHP test files. |
+| Pest | 655 tests, 19,621 assertions: 567 passed, 64 failed, 15 errors, 9 skipped; 48.532 seconds. |
+| Dependencies | Composer audit: 17 advisories. npm audit: 4 findings, including 2 critical and 2 high. |
+| Localization | 2,002 keys per EN/LT/RU file; no missing/invalid keys; 1,541 used and 461 unused. |
+| Frontend | Production build passed; CSS 282.03 kB / 36.41 kB gzip; application JS 0.00 kB. |
+| Caches/format | Config, route and view cache builds and Pint formatting check passed. Larastan was absent. |
 
-Baseline commands were non-destructive. PHPUnit uses SQLite `:memory:`. The existing application SQLite file was inspected read-only through Laravel Boost and `migrate:status` only.
+All destructive checks used testing SQLite only. The existing application database was inspected read-only through Laravel Boost and normal migration status commands.
 
 ## System model
 
-The application is a tenant-aware restaurant SaaS with these bounded workflows:
+Restaurant Menu is a tenant-aware restaurant SaaS. Superadmins own platform/subscription/safety/backup operations. Organization roles manage brands, branches, staff, permissions, profiles, schedules, floor areas, service points, menu/QR/reporting. Guests enter through opaque QR/cookie credentials, join a table, share drafts, request service and observe order status. Waiters validate/confirm drafts, explicitly dispatch immutable order snapshots and settle offline payments. Kitchen/bar teams progress department-scoped ticket items. Audit, notification, payment and status records retain operational history.
 
-- platform superadmin controls organizations, local subscriptions, safety checks, cleanup, and SQLite backup;
-- organization owners/directors/admins manage brands, branches, staff, permissions, public profiles, schedules, areas, service points, menus, QR, and reports according to role and branch assignments;
-- public QR tokens resolve the current physical service point without exposing internal route identifiers;
-- guests enter or join table sessions through opaque cookie tokens, share a draft, express readiness, call a waiter, and request the bill;
-- waiters review/edit/confirm drafts, explicitly dispatch confirmed orders, serve ready items, transfer/merge tables, and record authorized offline payment/closure operations;
-- kitchen/bar departments receive department-split ticket snapshots and update item progress;
-- order, status, payment, notification, and audit records retain operational history.
+The authoritative detailed views are [`architecture.md`](architecture.md), [`domain-model.md`](domain-model.md), [`data-model.md`](data-model.md), [`authorization.md`](authorization.md) and [`security.md`](security.md).
 
-The detailed model is in `domain-model.md` and `data-model.md`.
+## Findings and final resolution
 
-## Confirmed defects and risks
+| Initial finding | Final resolution and evidence |
+|---|---|
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 683 tests, with only 9 intentional feature-gated skips. |
+| 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
+| Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
+| No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
+| Unusable plaintext invitation bearer token | Digest-at-rest indexed lookup, expiry/revocation, atomic one-use consume, recipient/session binding and rate limiting. |
+| Concurrent manual payment overpay risk | SQLite write serialization plus fresh balance read, bounded retry and duplicate/race regression tests. |
+| Live SQLite file streamed directly | Native consistent online snapshot, mode-0600 private temporary file, recent password, confirmation/reason, no-store response and cleanup. |
+| File replacement could diverge from DB | Persistence-first replacement with new-file compensation and lifecycle tests. |
+| 94 Blade PHP directives/model/presentation calls | Removed; executable architecture scan blocks PHP blocks, models, Actions, Services, Illuminate/facades and container/auth/config/session access. |
+| Two Livewire route SFCs | Converted to `Guest\\Home` and `Restaurant\\Dashboard` classes with separate views; SFC/Volt scan passes. |
+| Unbounded lists/N+1 candidates | Bounded pagination/queries, selected/eager relations and query-budget coverage added. |
+| Float and duplicated money conversions | Decimal/minor-unit-safe formatting and domain arithmetic centralized and tested. |
+| Locale-sensitive cache keys | Cache ownership and invalidation now include the relevant branch/locale context; separation tests pass. |
+| 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; architecture scan passes. |
+| No strict Eloquent/static analysis | Strict local/test Eloquent enabled; Larastan level 8 added and final analysis reports 0 errors. |
+| Historical migrations use model backfills | Historical files preserved; new correction is forward-only/reversible; all 66 migrations pass from zero. |
+| Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
 
-| Finding | Evidence | Planned resolution |
-|---|---|---|
-| Baseline suite is not green. | 64 failures and 15 errors; clusters include tenant/role access, invalid factory graphs, locale-dependent UI assertions, cache invalidation, and ticket states. | TDD repair before declaring any requirement verified. |
-| Dependency vulnerabilities. | Composer: 17 advisories; npm: 2 critical and 2 high. | Upgrade to latest stable compatible releases and rerun both audits. |
-| Invalid factory/mass-assignment graphs. | `organization_users.organization_id`, `branches.organization_id`, and `area_node_waiters.organization_id` fail NOT NULL in tests. | Make relationship defaults explicit and test every factory/state. |
-| No formal Policy layer. | `app/Policies` absent; access logic is spread across `User`, components, and Actions. | Add aggregate policies and route/action tests without weakening existing guards. |
-| Invitation links are issued but acceptance is absent; plaintext bearer token is stored. | `Invitation::acceptUrl()`, invitation staff UI, no `/invite/{token}` route. | Add digest-at-rest, atomic single-use acceptance, expiry/revocation/rate limits, or stop issuing unusable links until the full flow exists. |
-| Concurrent manual payment can overpay. | Remaining balance is computed in a transaction without a locking/idempotency guard. | Add a SQLite-compatible serialization/lock contract and concurrency/replay tests. |
-| Active SQLite file download is not a guaranteed consistent snapshot under WAL/concurrent writes. | Backup controller streams the configured database file directly. | Produce a bounded consistent snapshot before download, with cleanup and tests. |
-| File replacement is not coordinated with DB persistence. | New file is stored and prior path may be deleted before caller persistence succeeds. | Introduce commit/compensation semantics and lifecycle tests. |
-| Blade boundary violations. | 40 files / 94 `@php` or `@endphp` occurrences, model methods in templates, and presentation payload construction. | Move preparation to classes/components and add architecture tests. |
-| Two Livewire SFC/view-based components remain. | `resources/views/pages/guest/home.blade.php`, `resources/views/pages/restaurant/dashboard.blade.php`. | Convert to normal PHP component classes plus separate views. |
-| Several unbounded administrative lists. | Organization, brand, branch, and staff computed collections use `get()` without pagination. | Add bounded pagination and filter-reset tests. |
-| Money calculations use float in several actions/components. | Dashboard, analytics, guest totals, waiter detail, and `MoneyFormatter`. | Centralize minor-unit decimal-safe arithmetic and add edge-case tests. |
-| Locale-sensitive data is cached without locale keying. | Dashboard/analytics caches include translated payloads but keys omit locale. | Cache neutral data or include normalized locale and test isolation. |
-| Service locator use is widespread. | 66 `app()` calls across 32 first-party PHP files plus view-composer resolution. | Replace opportunistically with method/constructor injection and explicit collaborators. |
-| Strict Eloquent and static analysis are absent. | No strict Eloquent configuration; no Larastan command/config. | Enable local/testing strictness, add Larastan, fix findings without broad ignores. |
-| Historical migrations use current models/backfills. | Two deployed migrations couple to current Eloquent. | Do not rewrite deployed history; document forward-only baseline/squash strategy and test fresh migration. |
+## Final state
 
-## Documentation inventory
+- PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
+- 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 106 Blade templates and 121 PHP test files.
+- 683 tests, 20,457 assertions, 90.4% application coverage, 0 static-analysis errors and 0 dependency advisories.
+- 2,026 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
+- Production CSS 291.67 kB / 37.83 kB gzip; application JS remains 0.00 kB.
 
-| Path | Purpose / owner | Status and conflicts | Action |
+## First-party Markdown inventory
+
+All 56 files were read twice: before implementation and during final synchronization. `Canonical` means the file defines current truth; `pointer` preserves an old path without duplicating requirements; `history` is intentionally chronological and may describe obsolete past states as dated history.
+
+| Path | Purpose / owner | Status, conflict, history, requirement gap | Final action |
 |---|---|---|---|
-| `AGENTS.md` | Repository rules | Previously generic Boost text and omitted product constraints. | Rewritten as canonical instructions. |
-| `CLAUDE.md`, `GEMINI.md` | Agent entry points | Exact duplicates of old `AGENTS.md`. | Replaced with pointers. |
-| `README.md` | Onboarding | 1,568 lines mixed current setup with prompt history and stale credentials. | Rewritten; history remains in `CHANGELOG.md`. |
-| `CHANGELOG.md` | Historical record | Valuable and intentionally historical; some limitations conflict with later features. | Preserve history; prepend final modernization entry. |
-| `docs/README.md` | Old document index | Listed planned documents that did not exist. | Replace with pointer to `docs/index.md`. |
-| `docs/AI_CONTEXT.md` | Prompt-by-prompt agent memory | 4,076 lines duplicate changelog and contain stale next-prompt rules. | Replace with compact canonical context pointer. |
-| `docs/CODEX_GUARDRAILS.md` | Product guardrails | Obsolete statements conflict with current item-status implementation. | Replace with pointer and non-negotiable invariants. |
-| `docs/CURRENT_VERSION.md` | Version snapshot | Useful path but versions and completion claims drift. | Rewrite from final installed lock state. |
-| `docs/DEMO_LOGIN.md` | Demo credentials | Current `@demo.test` contract is useful; older docs contradict it. | Keep as focused canonical supplement and verify seeder. |
-| `docs/DEPLOY_SHARED_HOSTING.md` | Deployment | Useful but duplicated setup. | Point to and supplement `deployment.md`. |
-| `docs/ERROR_HANDLING.md` | Error contract | Current enum/exception boundary remains useful. | Align with `security.md` and tests. |
-| `docs/FACTORY_SEEDER_RULES.md`, `docs/SEED_ARCHITECTURE.md`, `docs/SEEDERS.md` | Factories/seeding | Three overlapping sources. | Consolidate into `seeding.md`; retain concise compatibility pointers. |
-| `docs/FIELD_TRANSLATION_AUDIT.md` | Translation evidence | Useful dated evidence but not workflow authority. | Retain as evidence and link `localization.md`. |
-| `docs/FUNCTIONAL_TEST_STRATEGY.md`, `docs/TEST_CHECKLIST.md` | Automated/manual tests | Duplicate and partly historical. | Consolidate rules in `testing.md`; keep checklist as executable manual/browser list. |
-| `docs/MIGRATION_AUDIT.md`, `docs/SCHEMA_SNAPSHOT.md` | Schema evidence | Migration audit contains an obsolete proposed item-status redesign. | Replace with current `data-model.md` evidence and safe migration notes. |
-| `docs/NEXT_STEPS.md` | Prompt queue | Explicitly said to wait and included stale queued product work. | Replace with pointer to active implementation plan. |
-| `docs/SECURITY_RULES.md` | Security | Duplicates security prompt history. | Replace with focused invariants and point to `security.md`. |
-| `docs/TRANSLATION_KEY_MAP.md`, `docs/TRANSLATION_STANDARD.md` | Localization namespace/workflow | Valuable details but split authority. | Consolidate authority in `localization.md`; keep namespace map as supplement. |
+| `AGENTS.md` | repository instructions / maintainers | canonical, current, no unresolved conflict | rewritten and preserved |
+| `README.md` | onboarding / maintainers | canonical overview, current | rewritten and synchronized |
+| `SECURITY.md` | disclosure policy / security | canonical, current | rewritten and synchronized |
+| `CHANGELOG.md` | chronology / maintainers | history; old limitations remain dated, not active | preserved; modernization entry prepended |
+| `CLAUDE.md` | agent entry | duplicate of old rules | rewritten as pointer |
+| `GEMINI.md` | agent entry | duplicate of old rules | rewritten as pointer |
+| `docs/index.md` | documentation map / maintainers | canonical, current | created and preserved |
+| `docs/requirements.md` | active requirements / product+engineering | canonical; 48 stable IDs, no unimplemented active row | created and synchronized |
+| `docs/product-requirements.md` | product summary / product | canonical supplement | created and preserved |
+| `docs/system-requirements.md` | system summary / engineering | pointer to catalogue | created and preserved |
+| `docs/non-functional-requirements.md` | quality summary / engineering | pointer to catalogue | created and preserved |
+| `docs/compliance-matrix.md` | traceability / engineering | canonical evidence; 47 verified, 1 feature-gated N/A | created and finalized |
+| `docs/implementation-plan.md` | execution state / engineering | canonical completed plan | created and finalized |
+| `docs/current-state-audit.md` | baseline/resolution / engineering | canonical evidence | created and finalized |
+| `docs/architecture.md` | boundaries/applicability / architecture | canonical, current | created and synchronized |
+| `docs/domain-model.md` | roles/workflows/states / domain | canonical, current | created and preserved |
+| `docs/data-model.md` | schema/value conventions / data | canonical, current | created and synchronized |
+| `docs/security.md` | implemented controls / security | canonical, current | created and synchronized |
+| `docs/authorization.md` | roles/policies / security | canonical, current | created and preserved |
+| `docs/frontend.md` | Blade/Flux/browser boundary / frontend | canonical, current | created and preserved |
+| `docs/livewire.md` | Livewire decisions / frontend | canonical feature matrix | created and finalized |
+| `docs/tailwind.md` | Tailwind decisions / frontend | canonical feature matrix | created and finalized |
+| `docs/design-system.md` | tokens/components / design | canonical, current | created and preserved |
+| `docs/accessibility.md` | a11y contract/evidence / design | canonical, current with environmental limits | created and finalized |
+| `docs/localization.md` | EN/LT/RU workflow / localization | canonical, current | created and finalized |
+| `docs/testing.md` | quality commands / QA | canonical, commands executed | created and finalized |
+| `docs/seeding.md` | factory/seeder matrix / data+QA | canonical, complete | created and finalized |
+| `docs/performance.md` | budgets/measurements / engineering | canonical, final metrics | created and finalized |
+| `docs/caching.md` | cache ownership / engineering | canonical, current | created and preserved |
+| `docs/integrations.md` | external integration inventory / engineering | canonical; none external | created and preserved |
+| `docs/deployment.md` | release contract / operations | canonical, current | created and synchronized |
+| `docs/operations.md` | runtime/incident checks / operations | canonical, current | created and preserved |
+| `docs/code-review.md` | review record / maintainers | canonical final review | created and finalized |
+| `docs/known-limitations.md` | external/environmental limits / maintainers | canonical; no in-scope backlog hidden | created and finalized |
+| `docs/decisions/0001-shared-hosting-runtime.md` | runtime ADR / architecture | canonical accepted decision | created and preserved |
+| `docs/decisions/0002-class-livewire-and-presentation-blade.md` | UI ADR / architecture | canonical accepted decision | created and preserved |
+| `docs/decisions/0003-one-time-token-storage.md` | token ADR / security | canonical accepted decision | created and synchronized |
+| `docs/README.md` | legacy documentation entry | duplicated index | rewritten as pointer |
+| `docs/AI_CONTEXT.md` | legacy prompt memory | historical duplication/stale queues | rewritten as pointer to canonical docs/history |
+| `docs/CODEX_GUARDRAILS.md` | legacy guardrails | obsolete status statement | rewritten as current pointer/invariant |
+| `docs/CURRENT_VERSION.md` | version snapshot | drift-prone | rewritten with exact final locks |
+| `docs/DEMO_LOGIN.md` | demo credential supplement | current and intentionally focused | preserved and verified |
+| `docs/DEPLOY_SHARED_HOSTING.md` | legacy hosting guide | duplicated deployment contract | rewritten as focused pointer |
+| `docs/ERROR_HANDLING.md` | error supplement | current and focused | preserved and verified |
+| `docs/FACTORY_SEEDER_RULES.md` | legacy seeding rules | duplicated two other files | rewritten as pointer |
+| `docs/FIELD_TRANSLATION_AUDIT.md` | audit snapshot | old counts | synchronized with final command |
+| `docs/FUNCTIONAL_TEST_STRATEGY.md` | legacy test strategy | duplicated testing contract | rewritten as pointer |
+| `docs/MIGRATION_AUDIT.md` | legacy migration audit | old 65-migration count/proposal | rewritten with final evidence/pointer |
+| `docs/NEXT_STEPS.md` | legacy prompt queue | obsolete parallel backlog | rewritten as completed-plan pointer |
+| `docs/SCHEMA_SNAPSHOT.md` | schema supplement | old 65-migration count | synchronized with final evidence/pointer |
+| `docs/SECURITY_RULES.md` | legacy security rules | duplicated canonical controls | rewritten as pointer |
+| `docs/SEEDERS.md` | legacy seeder reference | duplicated canonical seeding | rewritten as pointer |
+| `docs/SEED_ARCHITECTURE.md` | legacy seeding architecture | duplicated canonical seeding | rewritten as pointer |
+| `docs/TEST_CHECKLIST.md` | browser/manual checklist | useful supplement; executed representative subset | preserved and annotated with evidence |
+| `docs/TRANSLATION_KEY_MAP.md` | namespace supplement | current | preserved |
+| `docs/TRANSLATION_STANDARD.md` | legacy localization standard | useful allow-list boundary | preserved and verified empty |
 
-The generated/copy skill trees under `.agents`, `.claude`, and `.cursor` are tooling instructions rather than application requirements. `.agents` is the project skill source; `.claude` and `.cursor` mirror it and must not be treated as three independent requirement sets.
+Generated skill trees under `.agents`, `.claude` and `.cursor` are tool instructions, not first-party application requirements, and were excluded from this 56-file inventory as defined by the audit scope.

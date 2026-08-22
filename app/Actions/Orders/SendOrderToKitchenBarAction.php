@@ -281,13 +281,20 @@ class SendOrderToKitchenBarAction
 
         $defaultKitchenDepartment ??= $this->defaultKitchenDepartmentFor($order);
 
+        if ($defaultKitchenDepartment instanceof KitchenDepartment) {
+            return [
+                'key' => 'department:'.$defaultKitchenDepartment->id,
+                'id' => $defaultKitchenDepartment->id,
+                'type' => $defaultKitchenDepartment->type->value,
+                'name' => $defaultKitchenDepartment->name,
+            ];
+        }
+
         return [
-            'key' => $defaultKitchenDepartment instanceof KitchenDepartment
-                ? 'department:'.$defaultKitchenDepartment->id
-                : 'snapshot:'.KitchenDepartmentType::Kitchen->value.':Kitchen',
-            'id' => $defaultKitchenDepartment?->id,
-            'type' => $defaultKitchenDepartment?->type->value ?? KitchenDepartmentType::Kitchen->value,
-            'name' => $defaultKitchenDepartment?->name ?? 'Kitchen',
+            'key' => 'snapshot:'.KitchenDepartmentType::Kitchen->value.':Kitchen',
+            'id' => null,
+            'type' => KitchenDepartmentType::Kitchen->value,
+            'name' => 'Kitchen',
         ];
     }
 
@@ -332,7 +339,7 @@ class SendOrderToKitchenBarAction
      */
     private function updatedOrderMetadata(Order $order, EloquentCollection $tickets, User $sentBy): array
     {
-        $metadata = is_array($order->metadata) ? $order->metadata : [];
+        $metadata = $order->metadata ?? [];
         $departmentTypes = $tickets
             ->map(fn (KitchenTicket $ticket): string => $ticket->department_type)
             ->values();

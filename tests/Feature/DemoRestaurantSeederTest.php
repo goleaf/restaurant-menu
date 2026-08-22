@@ -2,22 +2,36 @@
 
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
+use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
+use App\Enums\OrderStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionStatus;
+use App\Enums\WaiterCallStatus;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
+use App\Models\DraftOrder;
+use App\Models\KitchenTicketItem;
+use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Organization;
+use App\Models\OrganizationSubscription;
 use App\Models\OrganizationUser;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\TableSession;
+use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Models\WaiterCall;
 use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Support\Facades\Hash;
@@ -154,6 +168,35 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
         ->assertSuccessful()
         ->assertSee('Bella Pizza')
         ->assertSee('Bella Pizza Old Town');
+});
+
+test('demo restaurant seeder provides representative operational workflows', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organization = Organization::query()
+        ->where('name', 'Demo Food Group')
+        ->firstOrFail();
+    $branch = Branch::query()
+        ->where('organization_id', $organization->id)
+        ->where('name', 'Bella Pizza Old Town')
+        ->firstOrFail();
+
+    expect(OrganizationSubscription::query()->where('organization_id', $organization->id)->count())->toBe(1)
+        ->and(TableSession::query()->where('branch_id', $branch->id)->where('status', TableSessionStatus::Active->value)->count())->toBeGreaterThanOrEqual(2)
+        ->and(TableSession::query()->where('branch_id', $branch->id)->where('status', TableSessionStatus::PaymentRequested->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(TableSession::query()->where('branch_id', $branch->id)->where('status', TableSessionStatus::Closed->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(TableSessionGuest::query()->whereHas('tableSession', fn ($query) => $query->where('branch_id', $branch->id))->count())->toBeGreaterThanOrEqual(5)
+        ->and(DraftOrder::query()->whereHas('tableSession', fn ($query) => $query->where('branch_id', $branch->id))->where('status', DraftOrderStatus::SentToWaiter->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(Order::query()->where('branch_id', $branch->id)->where('status', OrderStatus::InProgress->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(Order::query()->where('branch_id', $branch->id)->where('status', OrderStatus::PaymentRequested->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(Order::query()->where('branch_id', $branch->id)->where('status', OrderStatus::Closed->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(OrderItem::query()->whereHas('order', fn ($query) => $query->where('branch_id', $branch->id))->count())->toBeGreaterThanOrEqual(25)
+        ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::New->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::InProgress->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::Ready->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(WaiterCall::query()->where('branch_id', $branch->id)->where('status', WaiterCallStatus::Pending->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(WaiterCall::query()->where('branch_id', $branch->id)->where('status', WaiterCallStatus::Handled->value)->count())->toBeGreaterThanOrEqual(1)
+        ->and(ManualPayment::query()->where('branch_id', $branch->id)->count())->toBeGreaterThanOrEqual(2);
 });
 
 test('demo restaurant seeder creates the complete organization brand branch hierarchy', function () {

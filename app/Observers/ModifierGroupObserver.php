@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
@@ -7,6 +9,10 @@ use App\Models\ModifierGroup;
 
 class ModifierGroupObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * Handle the ModifierGroup "created" event.
      */
@@ -49,12 +55,12 @@ class ModifierGroupObserver
 
     private function forgetGuestMenu(ModifierGroup $modifierGroup): void
     {
-        app(ForgetBranchCacheAction::class)->handle((int) $modifierGroup->branch_id);
+        $this->forgetBranchCache->handle((int) $modifierGroup->branch_id);
 
         $originalBranchId = $modifierGroup->getOriginal('branch_id');
 
         if (is_numeric($originalBranchId) && (int) $originalBranchId !== $modifierGroup->branch_id) {
-            app(ForgetBranchCacheAction::class)->handle((int) $originalBranchId);
+            $this->forgetBranchCache->handle((int) $originalBranchId);
         }
     }
 }

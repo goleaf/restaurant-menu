@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
@@ -17,7 +19,6 @@ use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\Menu;
 use App\Models\ServicePoint;
-use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Notifications\DraftOrderSentToWaiterNotification;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +28,11 @@ use Illuminate\Validation\ValidationException;
 class SendDraftOrderToWaiterAction
 {
     public function __construct(
-        private UpdateServicePointStatusAction $updateServicePointStatus,
+        private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
+        private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
+        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ) {}
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
@@ -144,10 +147,6 @@ class SendDraftOrderToWaiterAction
         $draftOrder = $this->reloadDraftOrderForNotification($draftOrder);
         $tableSession = $draftOrder->tableSession;
 
-        if (! $tableSession instanceof TableSession || $tableSession->branch === null) {
-            return;
-        }
-
         $recipients = $this->resolveRecipients->handle($tableSession->branch);
 
         if ($recipients->isEmpty()) {
@@ -258,7 +257,7 @@ class SendDraftOrderToWaiterAction
                 ]);
             }
 
-            $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menu);
+            $availability = $this->getMenuAvailabilityStatus->handle($menu);
 
             if (! $availability['is_available']) {
                 throw ValidationException::withMessages([
@@ -288,7 +287,7 @@ class SendDraftOrderToWaiterAction
             return;
         }
 
-        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
+        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
 
         if ($openingStatus['can_accept_orders']) {
             return;

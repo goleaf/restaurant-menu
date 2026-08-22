@@ -1,31 +1,10 @@
-@props([
-    'name',
-    'title',
-    'consequence',
-    'confirmAction' => null,
-    'confirmHref' => null,
-    'confirmLabel' => 'ui.actions.confirm',
-    'submitTarget' => null,
-    'reasonModel' => null,
-    'reasonLabel' => 'ui.confirmations.reason.label',
-    'reasonPlaceholder' => 'ui.confirmations.reason.placeholder',
-    'reasonRequired' => false,
-    'confirmationModel' => null,
-    'confirmationText' => null,
-    'confirmationLabel' => 'ui.confirmations.confirmation_text.label',
-    'confirmationHelp' => null,
-    'loadingLabel' => 'ui.actions.working',
-])
-
-@php
-    $submitTarget = $submitTarget ?: $confirmAction;
-@endphp
-
 <flux:modal.trigger name="{{ $name }}">
     {{ $trigger }}
 </flux:modal.trigger>
 
-<flux:modal name="{{ $name }}" class="md:w-[32rem]" :dismissible="false">
+<flux:modal name="{{ $name }}" class="md:w-[32rem]" :dismissible="false" :closable="false">
+    <x-modal-close-button />
+
     <div class="space-y-5">
         <div class="space-y-2">
             <flux:heading size="lg">{{ __($title) }}</flux:heading>

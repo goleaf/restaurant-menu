@@ -34,12 +34,10 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('Service points')]
 class Index extends Component
 {
     use WithPagination;
@@ -551,12 +549,12 @@ class Index extends Component
     }
 
     /**
-     * @return list<array{area_id: int|null, name: string, type: mixed, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: EloquentCollection<int, ServicePoint>}>
+     * @return list<array{area_id: int|null, name: string, type: string|null, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: list<array<string, mixed>>}>
      */
     #[Computed]
     public function floorBoardSections(): array
     {
-        $servicePoints = new EloquentCollection($this->servicePoints->getCollection()->all());
+        $servicePoints = new EloquentCollection($this->servicePoints()->getCollection()->all());
         $areaIds = $servicePoints
             ->pluck('area_node_id')
             ->filter(fn (mixed $areaNodeId): bool => $areaNodeId !== null)
@@ -570,17 +568,21 @@ class Index extends Component
                 : (string) $servicePoint->area_node_id,
         );
 
-        $sections = $this->areaNodes
+        $sections = $this->areaNodes()
             ->whereIn('id', $areaIds->all())
             ->map(fn (AreaNode $areaNode): array => [
                 'area_id' => $areaNode->id,
                 'name' => $areaNode->name,
-                'type' => $areaNode->type,
-                'type_label' => $areaNode->type->label(),
+                'type' => $areaNode->type->value,
+                'type_label' => __($areaNode->type->label()),
                 'icon' => $areaNode->icon,
                 'is_active' => $areaNode->is_active,
                 'service_point_count' => $servicePointsByAreaId->get((string) $areaNode->id, new EloquentCollection)->count(),
-                'service_points' => $servicePointsByAreaId->get((string) $areaNode->id, new EloquentCollection),
+                'service_points' => $servicePointsByAreaId
+                    ->get((string) $areaNode->id, new EloquentCollection)
+                    ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
+                    ->values()
+                    ->all(),
             ])
             ->values()
             ->all();
@@ -596,7 +598,10 @@ class Index extends Component
                 'icon' => 'bookmark',
                 'is_active' => true,
                 'service_point_count' => $servicePointsWithoutArea->count(),
-                'service_points' => $servicePointsWithoutArea,
+                'service_points' => $servicePointsWithoutArea
+                    ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
+                    ->values()
+                    ->all(),
             ];
         }
 
@@ -606,7 +611,7 @@ class Index extends Component
     #[Computed]
     public function floorBoardServicePointCount(): int
     {
-        return array_sum(array_column($this->floorBoardSections, 'service_point_count'));
+        return array_sum(array_column($this->floorBoardSections(), 'service_point_count'));
     }
 
     /**
@@ -641,7 +646,7 @@ class Index extends Component
     {
         return array_merge(
             [['value' => '', 'label' => __('qr.filters.no_zone')]],
-            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
+            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes())),
         );
     }
 
@@ -656,7 +661,7 @@ class Index extends Component
                 ['value' => 'all', 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones')],
                 ['value' => 'none', 'label' => __('qr.filters.no_zone')],
             ],
-            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
+            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes())),
         );
     }
 
@@ -756,7 +761,86 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.service-points.index');
+        $floorBoardSections = $this->floorBoardSections();
+        $servicePointPaginator = $this->servicePoints();
+        $servicePointRows = $servicePointPaginator->getCollection()
+            ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
+            ->all();
+
+        return view('livewire.organizations.brands.branches.service-points.index', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'branchName' => $this->branch->name,
+            'floorBoardSections' => $floorBoardSections,
+            'floorBoardServicePointCount' => array_sum(array_column($floorBoardSections, 'service_point_count')),
+            'servicePointRows' => $servicePointRows,
+            'servicePointPaginator' => $servicePointPaginator,
+            'areaOptions' => $this->areaOptions(),
+            'filterAreaOptions' => $this->filterAreaOptions(),
+            'servicePointTypeOptions' => $this->servicePointTypeOptions(),
+            'servicePointStatusOptions' => $this->servicePointStatusOptions(),
+            'activeFilterOptions' => $this->activeFilterOptions(),
+            'qrFilterOptions' => $this->qrFilterOptions(),
+            'iconOptions' => $this->iconOptions(),
+            'servicePointFiltersAreActive' => $this->servicePointFiltersAreActive(),
+            'quickCreateOptions' => $this->quickCreateOptions(),
+            'bulkCreatableCount' => $this->bulkCreatableCount(),
+            'bulkDuplicateCount' => $this->bulkDuplicateCount(),
+        ])->title(__('navigation.service_points'));
+    }
+
+    /**
+     * @return array{
+     *     id: int,
+     *     type: string,
+     *     type_label: string,
+     *     icon: string|null,
+     *     name: string,
+     *     display_number: string|null,
+     *     capacity: int,
+     *     status_tone: string,
+     *     localized_status: string,
+     *     is_active: bool,
+     *     has_direct_session: bool,
+     *     has_linked_session: bool,
+     *     session_started_at: string|null,
+     *     area_name: string,
+     *     has_qr: bool,
+     *     qr_short_code: string|null,
+     *     qr_localized_status: string|null,
+     *     qr_public_path: string|null,
+     *     qr_show_url: string|null
+     * }
+     */
+    private function presentServicePoint(ServicePoint $servicePoint): array
+    {
+        $activeQrCode = $servicePoint->activeQrCode;
+
+        return [
+            'id' => $servicePoint->id,
+            'type' => $servicePoint->type->value,
+            'type_label' => __($servicePoint->type->label()),
+            'icon' => $servicePoint->icon,
+            'name' => $servicePoint->name,
+            'display_number' => $servicePoint->display_number,
+            'capacity' => $servicePoint->capacity,
+            'status_tone' => $servicePoint->status->badgeColor(),
+            'localized_status' => __($servicePoint->status->label()),
+            'is_active' => $servicePoint->is_active,
+            'has_direct_session' => $servicePoint->activeTableSession !== null,
+            'has_linked_session' => $servicePoint->activeTableSessionServicePointLinks->isNotEmpty(),
+            'session_started_at' => $servicePoint->activeTableSession?->started_at?->format('Y-m-d H:i'),
+            'area_name' => $servicePoint->area_node_id === null
+                ? __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony')
+                : $servicePoint->areaNode->name,
+            'has_qr' => $activeQrCode !== null,
+            'qr_short_code' => $activeQrCode?->short_code,
+            'qr_localized_status' => $activeQrCode === null ? null : __($activeQrCode->status->label()),
+            'qr_public_path' => $activeQrCode?->publicPath(),
+            'qr_show_url' => $activeQrCode === null ? null : route(
+                'organizations.brands.branches.service-points.qr.show',
+                [$this->organization, $this->brand, $this->branch, $servicePoint, $activeQrCode],
+            ),
+        ];
     }
 
     /**

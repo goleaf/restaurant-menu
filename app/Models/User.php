@@ -149,11 +149,12 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     }
 
     /**
-     * @return BelongsToMany<Permission, $this>
+     * @return BelongsToMany<Permission, $this, PermissionUserOverride, 'pivot'>
      */
     public function permissionOverrides(): BelongsToMany
     {
         return $this->belongsToMany(Permission::class, 'permission_user_overrides')
+            ->using(PermissionUserOverride::class)
             ->withPivot('enabled')
             ->withTimestamps();
     }

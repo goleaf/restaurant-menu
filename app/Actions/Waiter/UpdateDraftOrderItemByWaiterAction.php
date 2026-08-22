@@ -38,12 +38,6 @@ class UpdateDraftOrderItemByWaiterAction
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $draftOrder = $draftOrderItem->draftOrder;
 
-            if ($draftOrder === null) {
-                throw ValidationException::withMessages([
-                    'draft_edit' => __('ui.actions.waiter.deletedraftorderitembywaiteraction.poziciia_bolse_ne_svia'),
-                ]);
-            }
-
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
 
             $quantity = $this->normalizeQuantity($quantity);

@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Order;
 use App\Models\Organization;
+use App\Models\OrganizationSubscription;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Support\PlainText;
@@ -21,14 +22,14 @@ use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-#[Title('Platform dashboard')]
 class Dashboard extends Component
 {
     use WithPagination;
+
+    private BuildProductionSafetyReportAction $buildProductionSafetyReport;
 
     public string $cleanupMessage = '';
 
@@ -37,6 +38,11 @@ class Dashboard extends Component
     public string $backupDownloadConfirmation = '';
 
     public string $backupDownloadReason = '';
+
+    public function boot(BuildProductionSafetyReportAction $buildProductionSafetyReport): void
+    {
+        $this->buildProductionSafetyReport = $buildProductionSafetyReport;
+    }
 
     /**
      * @return array{organizations: int, brands: int, branches: int, service_points: int, orders: int, users: int}
@@ -65,7 +71,7 @@ class Dashboard extends Component
     #[Computed]
     public function productionSafetyReport(): array
     {
-        return app(BuildProductionSafetyReportAction::class)->handle();
+        return $this->buildProductionSafetyReport->handle();
     }
 
     /**
@@ -226,7 +232,136 @@ class Dashboard extends Component
 
     public function render(): View
     {
-        return view('livewire.superadmin.dashboard');
+        $organizations = $this->organizations();
+        $brands = $this->brands();
+        $branches = $this->branches();
+        $users = $this->users();
+
+        return view('livewire.superadmin.dashboard', [
+            'productionSafetyReport' => $this->productionSafetyReport(),
+            'statRows' => $this->statRows(),
+            'organizationRows' => $organizations->getCollection()
+                ->map(fn (Organization $organization): array => $this->presentOrganization($organization))
+                ->all(),
+            'organizationPaginator' => $organizations,
+            'brandRows' => $brands->getCollection()
+                ->map(fn (Brand $brand): array => $this->presentBrand($brand))
+                ->all(),
+            'brandPaginator' => $brands,
+            'branchRows' => $branches->getCollection()
+                ->map(fn (Branch $branch): array => $this->presentBranch($branch))
+                ->all(),
+            'branchPaginator' => $branches,
+            'userRows' => $users->getCollection()
+                ->map(fn (User $user): array => $this->presentUser($user))
+                ->all(),
+            'userPaginator' => $users,
+        ])->title(__('ui.superadmin.dashboard.platform_dashboard'));
+    }
+
+    /**
+     * @return list<array{key: string, label: string, value: int}>
+     */
+    private function statRows(): array
+    {
+        $stats = $this->stats();
+
+        return [
+            ['key' => 'organizations', 'label' => __('navigation.organizations'), 'value' => $stats['organizations']],
+            ['key' => 'brands', 'label' => __('navigation.brands'), 'value' => $stats['brands']],
+            ['key' => 'branches', 'label' => __('navigation.branches'), 'value' => $stats['branches']],
+            ['key' => 'service_points', 'label' => __('navigation.service_points'), 'value' => $stats['service_points']],
+            ['key' => 'orders', 'label' => __('navigation.orders'), 'value' => $stats['orders']],
+            ['key' => 'users', 'label' => __('ui.superadmin.dashboard.users'), 'value' => $stats['users']],
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, owner_email: string, has_subscription: bool, subscription_color: string, subscription_label: string, is_active: bool, started_at: string, next_payment_at: string, payment_label: string, branches_count: int, active_branches_count: int, service_points_count: int, orders_count: int, brands_count: int, details_url: string, audit_url: string}
+     */
+    private function presentOrganization(Organization $organization): array
+    {
+        $subscriptionRelation = $organization->getRelation('subscription');
+        $subscription = $subscriptionRelation instanceof OrganizationSubscription ? $subscriptionRelation : null;
+        $ownerRelation = $organization->getRelation('owner');
+        $owner = $ownerRelation instanceof User ? $ownerRelation : null;
+
+        return [
+            'id' => $organization->id,
+            'name' => $organization->name,
+            'owner_email' => $owner instanceof User
+                ? $owner->email
+                : __('ui.superadmin.dashboard.no_owner'),
+            'has_subscription' => $subscription !== null,
+            'subscription_color' => $subscription?->status->badgeColor() ?? 'amber',
+            'subscription_label' => $subscription === null
+                ? __('ui.superadmin.dashboard.subscription_not_initialized')
+                : __($subscription->status->label()),
+            'is_active' => $subscription?->status === OrganizationSubscriptionStatus::Active,
+            'started_at' => $subscription?->started_at?->format('Y-m-d') ?? __('qr.labels.not_set'),
+            'next_payment_at' => $subscription?->next_payment_at?->format('Y-m-d') ?? __('qr.labels.not_set'),
+            'payment_label' => $subscription === null
+                ? __('staff.invitation_statuses.pending')
+                : __($subscription->payment_status->label()),
+            'branches_count' => $organization->branches_count,
+            'active_branches_count' => $organization->active_branches_count,
+            'service_points_count' => $organization->service_points_count,
+            'orders_count' => $organization->orders_count,
+            'brands_count' => $organization->brands_count,
+            'details_url' => route('organizations.brands.index', $organization),
+            'audit_url' => route('restaurant.audit-log.index', ['organization' => $organization->id]),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, organization_name: string}
+     */
+    private function presentBrand(Brand $brand): array
+    {
+        $organizationRelation = $brand->getRelation('organization');
+
+        return [
+            'id' => $brand->id,
+            'name' => $brand->name,
+            'organization_name' => $organizationRelation instanceof Organization
+                ? $organizationRelation->name
+                : __('ui.superadmin.dashboard.no_organization'),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, is_active: bool, organization_name: string, brand_name: string, location: string}
+     */
+    private function presentBranch(Branch $branch): array
+    {
+        $organizationRelation = $branch->getRelation('organization');
+        $brandRelation = $branch->getRelation('brand');
+
+        return [
+            'id' => $branch->id,
+            'name' => $branch->name,
+            'is_active' => $branch->is_active,
+            'organization_name' => $organizationRelation instanceof Organization
+                ? $organizationRelation->name
+                : __('ui.superadmin.dashboard.no_organization'),
+            'brand_name' => $brandRelation instanceof Brand
+                ? $brandRelation->name
+                : __('ui.superadmin.dashboard.no_brand'),
+            'location' => collect([$branch->city, $branch->country])->filter()->join(', '),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string, roles: string}
+     */
+    private function presentUser(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->roles->pluck('name')->join(', ') ?: __('ui.superadmin.dashboard.no_roles'),
+        ];
     }
 
     private function findOrganization(int $organizationId): Organization

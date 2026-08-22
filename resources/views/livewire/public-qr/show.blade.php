@@ -3,7 +3,7 @@
         <div class="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
             <a href="{{ route('guest.home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
                 <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
-                <span>{{ config('app.name', 'Laravel') }}</span>
+                <span>{{ __('layout.app_name') }}</span>
             </a>
 
             <div class="flex items-center gap-2">

@@ -1,5 +1,5 @@
 # Translation audit evidence
 
-The 2026-08-22 baseline `composer translations:audit` inspected `en.json`, `lt.json`, and `ru.json`: 2,002 keys per locale, 6,006 total entries, 1,541 referenced keys, 461 unused keys, and zero missing or invalid keys.
+The final 2026-08-22 `php artisan translations:audit` inspected `en.json`, `lt.json`, and `ru.json`: 2,026 semantic keys per locale, 6,078 total entries, zero missing/invalid/bad/legacy/phrase-style keys and zero critical issues. `translations:scan --json` scanned 412 first-party files: 1,495 semantic keys are used, 531 are currently unused, and none are missing or legacy.
 
-Counts are evidence from that execution, not a permanent guarantee. The canonical workflow and required parity checks are in [`localization.md`](localization.md); rerun the command after every user-facing text change and update this snapshot only with observed output.
+Counts are evidence from that execution, not a permanent guarantee. The canonical workflow and required parity checks are in [`localization.md`](localization.md); rerun both commands after every user-facing text change.

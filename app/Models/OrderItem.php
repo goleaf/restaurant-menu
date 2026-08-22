@@ -98,11 +98,11 @@ class OrderItem extends Model
     {
         $itemName = $this->item_name_snapshot ?? $this->item_name;
 
-        if (is_string($itemName) && filled($itemName)) {
+        if (filled($itemName)) {
             return $itemName;
         }
 
-        return is_string($this->item_name) ? $this->item_name : '';
+        return $this->item_name;
     }
 
     /**

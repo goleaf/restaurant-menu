@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\MenuCategoryFactory;
@@ -10,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property-read MenuCategory|null $parent
+ */
 #[Fillable(['menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active'])]
 class MenuCategory extends Model
 {

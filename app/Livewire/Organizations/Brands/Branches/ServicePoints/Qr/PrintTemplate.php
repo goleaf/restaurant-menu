@@ -24,6 +24,10 @@ use Livewire\Component;
 #[Layout('layouts.print')]
 class PrintTemplate extends Component
 {
+    private QrCodeSvgRenderer $qrCodeSvgRenderer;
+
+    private QrPrintBrandingResolver $brandingResolver;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -39,6 +43,14 @@ class PrintTemplate extends Component
 
     #[Url(as: 'preset', except: 'minimal')]
     public string $preset = 'minimal';
+
+    public function boot(
+        QrCodeSvgRenderer $qrCodeSvgRenderer,
+        QrPrintBrandingResolver $brandingResolver,
+    ): void {
+        $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
+        $this->brandingResolver = $brandingResolver;
+    }
 
     public function mount(
         Organization $organization,
@@ -73,7 +85,7 @@ class PrintTemplate extends Component
     #[Computed]
     public function qrImageDataUri(): string
     {
-        $svg = app(QrCodeSvgRenderer::class)->render($this->publicUrl, 420);
+        $svg = $this->qrCodeSvgRenderer->render($this->publicUrl(), 420);
 
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
@@ -81,7 +93,7 @@ class PrintTemplate extends Component
     #[Computed]
     public function restaurantLogoUrl(): ?string
     {
-        return app(QrPrintBrandingResolver::class)->localLogoUrlFor([
+        return $this->brandingResolver->localLogoUrlFor([
             $this->branch,
             $this->brand,
             $this->organization,
@@ -111,7 +123,26 @@ class PrintTemplate extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.service-points.qr.print-template')
+        $selectedPreset = $this->selectedPreset();
+
+        return view('livewire.organizations.brands.branches.service-points.qr.print-template', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'qrPageUrl' => route('organizations.brands.branches.service-points.qr.show', [
+                $this->organization,
+                $this->brand,
+                $this->branch,
+                $this->servicePoint,
+                $this->qrCode,
+            ]),
+            'presetOptions' => $this->presetOptions(),
+            'selectedPresetCssClass' => $selectedPreset->cssClass(),
+            'selectedPresetValue' => $selectedPreset->value,
+            'restaurantLogoUrl' => $this->restaurantLogoUrl(),
+            'brandName' => $this->brand->name,
+            'qrImageDataUri' => $this->qrImageDataUri(),
+            'qrShortCode' => $this->qrCode->short_code,
+            'tableLabel' => $this->tableLabel(),
+        ])
             ->title(__('qr.print.single_title'));
     }
 
@@ -135,7 +166,7 @@ class PrintTemplate extends Component
 
     private function reloadPrintContext(): void
     {
-        $branding = app(QrPrintBrandingResolver::class);
+        $branding = $this->brandingResolver;
 
         $this->organization = Organization::query()
             ->select($branding->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))

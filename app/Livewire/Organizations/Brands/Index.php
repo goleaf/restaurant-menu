@@ -22,11 +22,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Title('Brands')]
 class Index extends Component
 {
     use WithFileUploads;
@@ -219,7 +217,21 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.index');
+        return view('livewire.organizations.brands.index', [
+            'organizationName' => $this->organization->name,
+            'brandRows' => $this->brands()
+                ->map(fn (Brand $brand): array => [
+                    'id' => $brand->id,
+                    'name' => $brand->name,
+                    'logo_url' => $brand->logoUrl(),
+                    'created_at' => $brand->created_at->format('d.m.Y'),
+                    'branches_url' => route('organizations.brands.branches.index', [
+                        'organization' => $this->organization->id,
+                        'brand' => $brand->id,
+                    ]),
+                ])
+                ->all(),
+        ])->title(__('navigation.brands'));
     }
 
     /**

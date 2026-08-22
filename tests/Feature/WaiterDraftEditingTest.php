@@ -101,7 +101,7 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->call('confirmDraft')
         ->assertHasNoErrors()
-        ->assertSee('Order #');
+        ->assertSee(__('guest.table.order').' #');
 
     $order = Order::query()
         ->with(['items'])
@@ -193,7 +193,7 @@ test('waiter can manually create guest draft item and confirm it from active tab
         ->assertSee('Confirm order')
         ->call('confirmDraft')
         ->assertHasNoErrors()
-        ->assertSee('Order #');
+        ->assertSee(__('guest.table.order').' #');
 
     $manualGuest = TableSessionGuest::query()
         ->where('table_session_id', $tableSession->id)
@@ -253,7 +253,7 @@ test('waiter cannot add draft item from menu outside current schedule', function
         editedBy: $waiter,
         quantity: 1,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, 'Будет доступно с Пн 08:00');
+    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 08:00']));
 
     expect(DraftOrderItem::query()
         ->where('draft_order_id', $draftOrder->id)

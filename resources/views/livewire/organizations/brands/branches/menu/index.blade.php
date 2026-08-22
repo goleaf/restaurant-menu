@@ -1,18 +1,11 @@
 <section data-page="branch-menu" class="flex h-full w-full flex-1 flex-col gap-6">
-    @php
-        $menuItemDangerousTitle = \App\Enums\DangerousAction::DeleteOrDeactivateMenuItem->title();
-        $menuItemDangerousConsequence = \App\Enums\DangerousAction::DeleteOrDeactivateMenuItem->consequence();
-        $deleteMediaTitle = \App\Enums\DangerousAction::DeleteMediaFile->title();
-        $deleteMediaConsequence = \App\Enums\DangerousAction::DeleteMediaFile->consequence();
-    @endphp
-
     <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
+        <flux:button icon="arrow-left" :href="$branchesUrl" wire:navigate>
             {{ __('navigation.branches') }}
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('menu.guest.title') }}</h1>
         </div>
     </header>
@@ -30,11 +23,11 @@
                 <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                     <div class="flex items-center justify-between gap-3">
                         <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.currently_out_of_stock') }}</p>
-                        <flux:badge color="zinc">{{ count($this->stopListItems) }}</flux:badge>
+                        <flux:badge color="zinc">{{ count($stopListItems) }}</flux:badge>
                     </div>
 
                     <div class="mt-3 space-y-3">
-                        @forelse ($this->stopListItems as $stopListItem)
+                        @forelse ($stopListItems as $stopListItem)
                             <div wire:key="stop-list-item-{{ $stopListItem['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div class="min-w-0">
@@ -73,11 +66,11 @@
                 <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                     <div class="flex items-center justify-between gap-3">
                         <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.available_dishes') }}</p>
-                        <flux:badge color="green">{{ count($this->availableItems) }}</flux:badge>
+                        <flux:badge color="green">{{ count($availableItems) }}</flux:badge>
                     </div>
 
                     <div class="mt-3 space-y-3">
-                        @forelse ($this->availableItems as $availableItem)
+                        @forelse ($availableItems as $availableItem)
                             <div wire:key="available-stop-list-item-{{ $availableItem['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                                     <div class="min-w-0">
@@ -98,8 +91,7 @@
 
                                     <x-dangerous-action-confirmation
                                         name="stop-list-available-item-{{ $availableItem['id'] }}"
-                                        :title="$menuItemDangerousTitle"
-                                        :consequence="$menuItemDangerousConsequence"
+                                        action="delete_or_deactivate_menu_item"
                                         confirm-action="setItemAvailability({{ $availableItem['id'] }}, false)"
                                         submit-target="setItemAvailability({{ $availableItem['id'] }}, false)"
                                         confirm-label="ui.actions.confirm"
@@ -138,7 +130,7 @@
                 <flux:input wire:model="menuName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
 
                 <flux:select wire:model="menuStatus" :label="__('guest.table.status')">
-                    @foreach ($this->menuStatusOptions as $value => $label)
+                    @foreach ($menuStatusOptions as $value => $label)
                         <flux:select.option wire:key="menu-status-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -157,7 +149,7 @@
 
             <div class="mt-4 grid gap-3">
                 <flux:select wire:model.live="categoryMenuId" :label="__('menu.guest.title')">
-                    @forelse ($this->menuOptions() as $option)
+                    @forelse ($menuOptions as $option)
                         <flux:select.option wire:key="category-menu-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @empty
                         <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_menu_first') }}</flux:select.option>
@@ -166,7 +158,7 @@
 
                 <flux:select wire:model="categoryParentId" :label="__('reports.csv.parent_category')">
                     <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.areas.top_level') }}</flux:select.option>
-                    @foreach ($this->categoryOptionsForMenu($categoryMenuId) as $option)
+                    @foreach ($categoryMenuOptions as $option)
                         <flux:select.option wire:key="category-parent-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -179,7 +171,7 @@
                 </label>
 
                 <flux:select wire:model="categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
-                    @foreach ($this->iconOptions as $value => $label)
+                    @foreach ($iconOptions as $value => $label)
                         <flux:select.option wire:key="category-icon-create-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -203,7 +195,7 @@
 
             <div class="mt-4 grid gap-3">
                 <flux:select wire:model.live="itemMenuId" :label="__('menu.guest.title')">
-                    @forelse ($this->menuOptions() as $option)
+                    @forelse ($menuOptions as $option)
                         <flux:select.option wire:key="item-menu-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @empty
                         <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_menu_first') }}</flux:select.option>
@@ -211,7 +203,7 @@
                 </flux:select>
 
                 <flux:select wire:model="itemCategoryId" :label="__('ui.organizations.brands.branches.menu.index.category')">
-                    @forelse ($this->categoryOptionsForMenu($itemMenuId, false) as $option)
+                    @forelse ($itemCategoryOptions as $option)
                         <flux:select.option wire:key="item-category-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @empty
                         <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_an_active_category_first') }}</flux:select.option>
@@ -222,7 +214,7 @@
 
                 <flux:select wire:model="itemKitchenDepartmentId" :label="__('reports.csv.kitchen_department')">
                     <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:select.option>
-                    @foreach ($this->kitchenDepartmentOptions() as $option)
+                    @foreach ($kitchenDepartmentOptions as $option)
                         <flux:select.option wire:key="item-department-create-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -264,7 +256,7 @@
                 <flux:input wire:model="departmentName" :label="__('reports.csv.name')" type="text" required maxlength="120" />
 
                 <flux:select wire:model="departmentType" :label="__('reports.csv.type')">
-                    @foreach ($this->kitchenDepartmentTypeOptions as $value => $label)
+                    @foreach ($kitchenDepartmentTypeOptions as $value => $label)
                         <flux:select.option wire:key="department-type-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -310,17 +302,15 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->menus as $menu)
-                <div wire:key="menu-{{ $menu->id }}" class="grid gap-4 px-4 py-4">
-                    @php($availabilityStatus = $this->menuAvailabilityStatus($menu))
-
-                    @if ($editingMenuId === $menu->id)
+            @forelse ($menuRows as $menu)
+                <div wire:key="menu-{{ $menu['id'] }}" class="grid gap-4 px-4 py-4">
+                    @if ($editingMenuId === $menu['id'])
                         <form wire:submit="updateMenu" class="grid gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
                             <flux:input wire:model="editingMenuName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
 
                             <flux:select wire:model="editingMenuStatus" :label="__('guest.table.status')">
-                                @foreach ($this->menuStatusOptions as $value => $label)
-                                    <flux:select.option wire:key="menu-status-edit-{{ $menu->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                @foreach ($menuStatusOptions as $value => $label)
+                                    <flux:select.option wire:key="menu-status-edit-{{ $menu['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
@@ -340,24 +330,24 @@
                         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $menu->name }}</h2>
-                                    <flux:badge :color="$menu->status->badgeColor()">{{ __($menu->status->label()) }}</flux:badge>
-                                    <flux:badge>{{ __('ui.departments.dashboard.sort') }} {{ $menu->sort_order }}</flux:badge>
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $menu['name'] }}</h2>
+                                    <flux:badge :color="$menu['status_color']">{{ $menu['localized_status'] }}</flux:badge>
+                                    <flux:badge>{{ __('ui.departments.dashboard.sort') }} {{ $menu['sort_order'] }}</flux:badge>
                                 </div>
 
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ trans_choice('ui.organizations.brands.branches.menu.index.category_categories', $menu->categories_count, ['count' => $menu->categories_count]) }}
+                                    {{ trans_choice('ui.organizations.brands.branches.menu.index.category_categories', $menu['categories_count'], ['count' => $menu['categories_count']]) }}
                                     /
-                                    {{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $menu->items_count, ['count' => $menu->items_count]) }}
+                                    {{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $menu['items_count'], ['count' => $menu['items_count']]) }}
                                 </p>
                             </div>
 
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="pencil" type="button" wire:click="startEditingMenu({{ $menu->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditingMenu({{ $menu['id'] }})">
                                     {{ __('ui.organizations.brands.branches.menu.index.edit_menu') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenu({{ $menu->id }})">
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenu({{ $menu['id'] }})">
                                     {{ __('ui.organizations.brands.branches.menu.index.delete_menu') }}
                                 </flux:button>
                             </div>
@@ -369,24 +359,24 @@
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.menu_schedule') }}</p>
-                                    <flux:badge :color="$availabilityStatus['tone'] === 'success' ? 'green' : ($availabilityStatus['tone'] === 'warning' ? 'amber' : 'zinc')">
-                                        {{ $availabilityStatus['label'] }}
+                                    <flux:badge :color="$menu['availability_color']">
+                                        {{ $menu['availability_label'] }}
                                     </flux:badge>
                                 </div>
 
-                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $availabilityStatus['detail'] }}</p>
+                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ $menu['availability_detail'] }}</p>
                             </div>
                         </div>
 
                         <div class="mt-3 grid gap-2">
-                            @forelse ($menu->availabilitySchedules as $schedule)
-                                <div wire:key="menu-schedule-{{ $schedule->id }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
+                            @forelse ($menu['schedules'] as $schedule)
+                                <div wire:key="menu-schedule-{{ $schedule['id'] }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
                                     <div class="flex flex-wrap items-center gap-2 text-sm">
-                                        <flux:badge>{{ $this->scheduleDayOptions()[$schedule->day_of_week] ?? __('ui.organizations.brands.branches.menu.index.day') }}</flux:badge>
-                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ substr((string) $schedule->starts_at, 0, 5) }}-{{ substr((string) $schedule->ends_at, 0, 5) }}</span>
+                                        <flux:badge>{{ $schedule['day_label'] }}</flux:badge>
+                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $schedule['time_range'] }}</span>
                                     </div>
 
-                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule->id }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule->id }})">
+                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})">
                                         {{ __('ui.actions.delete') }}
                                     </flux:button>
                                 </div>
@@ -397,17 +387,17 @@
                             @endforelse
                         </div>
 
-                        <form wire:submit="createMenuSchedule({{ $menu->id }})" class="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
+                        <form wire:submit="createMenuSchedule({{ $menu['id'] }})" class="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
                             <flux:select wire:model="scheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
-                                @foreach ($this->scheduleDayOptions() as $dayValue => $dayLabel)
-                                    <flux:select.option wire:key="menu-schedule-day-{{ $menu->id }}-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
+                                @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
+                                    <flux:select.option wire:key="menu-schedule-day-{{ $menu['id'] }}-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
                             <flux:input wire:model="scheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
                             <flux:input wire:model="scheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
 
-                            <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenuSchedule({{ $menu->id }})">
+                            <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenuSchedule({{ $menu['id'] }})">
                                 {{ __('ui.organizations.brands.branches.menu.index.add_interval') }}
                             </flux:button>
                         </form>
@@ -418,9 +408,9 @@
                             <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('menu.guest.categories') }}</p>
 
                             <div class="mt-3 space-y-2">
-                                @forelse ($menu->categories as $category)
-                                    <div wire:key="menu-category-{{ $category->id }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                                        @if ($editingCategoryId === $category->id)
+                                @forelse ($menu['categories'] as $category)
+                                    <div wire:key="menu-category-{{ $category['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                                        @if ($editingCategoryId === $category['id'])
                                             <form wire:submit="updateCategory" class="grid gap-3">
                                                 <flux:input wire:model="editingCategoryName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
 
@@ -431,8 +421,8 @@
 
                                                 <div class="grid gap-3 sm:grid-cols-2">
                                                     <flux:select wire:model="editingCategoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
-                                                        @foreach ($this->iconOptions as $value => $label)
-                                                            <flux:select.option wire:key="category-icon-edit-{{ $category->id }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
+                                                        @foreach ($iconOptions as $value => $label)
+                                                            <flux:select.option wire:key="category-icon-edit-{{ $category['id'] }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                                         @endforeach
                                                     </flux:select>
 
@@ -457,28 +447,28 @@
                                             <div class="flex items-start justify-between gap-3">
                                                 <div class="min-w-0">
                                                     <div class="flex flex-wrap items-center gap-2">
-                                                        <flux:badge :icon="$category->icon ?? 'bookmark'">{{ $category->name }}</flux:badge>
+                                                        <flux:badge :icon="$category['icon']">{{ $category['name'] }}</flux:badge>
 
-                                                        @if ($category->is_active)
+                                                        @if ($category['is_active'])
                                                             <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                                                         @else
                                                             <flux:badge color="zinc">{{ __('staff.statuses.suspended') }}</flux:badge>
                                                         @endif
                                                     </div>
 
-                                                    @if ($category->description)
-                                                        <x-ui.plain-text :text="$category->description" class="mt-2 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
+                                                    @if ($category['description'])
+                                                        <x-ui.plain-text :text="$category['description']" class="mt-2 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                     @endif
 
-                                                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $category->sort_order }}</p>
+                                                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $category['sort_order'] }}</p>
                                                 </div>
 
                                                 <div class="flex flex-wrap gap-2">
-                                                    <flux:button icon="pencil" type="button" wire:click="startEditingCategory({{ $category->id }})">
+                                                    <flux:button icon="pencil" type="button" wire:click="startEditingCategory({{ $category['id'] }})">
                                                         {{ __('guest.cart.edit_item') }}
                                                     </flux:button>
 
-                                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteCategory({{ $category->id }})">
+                                                    <flux:button icon="trash" type="button" variant="danger" wire:click="deleteCategory({{ $category['id'] }})">
                                                         {{ __('ui.actions.delete') }}
                                                     </flux:button>
                                                 </div>
@@ -495,20 +485,20 @@
                             <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.dishes') }}</p>
 
                             <div class="mt-3 space-y-3">
-                                @forelse ($menu->items as $item)
-                                    <div wire:key="menu-item-{{ $item->id }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                                        @if ($editingItemId === $item->id)
+                                @forelse ($menu['items'] as $item)
+                                    <div wire:key="menu-item-{{ $item['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                                        @if ($editingItemId === $item['id'])
                                             <form wire:submit="updateItem" class="grid gap-3">
                                                 <div class="grid gap-3 md:grid-cols-2">
                                                     <flux:select wire:model.live="editingItemMenuId" :label="__('menu.guest.title')">
-                                                        @foreach ($this->menuOptions() as $option)
-                                                            <flux:select.option wire:key="item-menu-edit-{{ $item->id }}-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
+                                                        @foreach ($menuOptions as $option)
+                                                            <flux:select.option wire:key="item-menu-edit-{{ $item['id'] }}-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                                                         @endforeach
                                                     </flux:select>
 
                                                     <flux:select wire:model="editingItemCategoryId" :label="__('ui.organizations.brands.branches.menu.index.category')">
-                                                        @foreach ($this->categoryOptionsForMenu($editingItemMenuId, false) as $option)
-                                                            <flux:select.option wire:key="item-category-edit-{{ $item->id }}-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
+                                                        @foreach ($editingItemCategoryOptions as $option)
+                                                            <flux:select.option wire:key="item-category-edit-{{ $item['id'] }}-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                                                         @endforeach
                                                     </flux:select>
                                                 </div>
@@ -517,8 +507,8 @@
 
                                                 <flux:select wire:model="editingItemKitchenDepartmentId" :label="__('reports.csv.kitchen_department')">
                                                     <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:select.option>
-                                                    @foreach ($this->kitchenDepartmentOptions(false) as $option)
-                                                        <flux:select.option wire:key="item-department-edit-{{ $item->id }}-{{ $option['value'] }}" value="{{ $option['value'] }}">
+                                                    @foreach ($activeKitchenDepartmentOptions as $option)
+                                                        <flux:select.option wire:key="item-department-edit-{{ $item['id'] }}-{{ $option['value'] }}" value="{{ $option['value'] }}">
                                                             {{ $option['label'] }}{{ $option['is_active'] ? '' : ' - '.__('staff.statuses.suspended') }}
                                                         </flux:select.option>
                                                     @endforeach
@@ -559,8 +549,8 @@
                                         @else
                                             <div class="grid gap-3 md:grid-cols-[64px_1fr_auto] md:items-start">
                                                 <div class="flex size-16 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                                                    @if ($item->imageUrl())
-                                                        <img src="{{ $item->imageUrl() }}" alt="{{ $item->name }}" class="size-full object-cover">
+                                                    @if ($item['has_image'])
+                                                        <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" class="size-full object-cover">
                                                     @else
                                                         <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.image') }}</span>
                                                     @endif
@@ -568,43 +558,43 @@
 
                                                 <div class="min-w-0">
                                                     <div class="flex flex-wrap items-center gap-2">
-                                                        <x-ui.plain-text :text="$item->name" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                                        <flux:badge>{{ $item->category?->name ?? __('ui.livewire.organizations.brands.branches.menu.index.no_category') }}</flux:badge>
-                                                        @if ($item->kitchenDepartment)
-                                                            <flux:badge :color="$item->kitchenDepartment->type->badgeColor()">{{ $item->kitchenDepartment->name }}</flux:badge>
+                                                        <x-ui.plain-text :text="$item['name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
+                                                        <flux:badge>{{ $item['category_name'] }}</flux:badge>
+                                                        @if ($item['has_department'])
+                                                            <flux:badge :color="$item['department_color']">{{ $item['department_name'] }}</flux:badge>
                                                         @else
                                                             <flux:badge color="zinc">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:badge>
                                                         @endif
 
-                                                        @if ($item->is_available)
+                                                        @if ($item['is_available'])
                                                             <flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
                                                         @else
                                                             <flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>
                                                         @endif
                                                     </div>
 
-                                                    @if ($item->description)
-                                                        <x-ui.plain-text :text="$item->description" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
+                                                    @if ($item['description'])
+                                                        <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                     @endif
 
                                                     <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                                        {{ __('guest.cart.price') }}: {{ $item->price }} {{ $branch->currency }} / {{ __('ui.departments.dashboard.sort') }} {{ $item->sort_order }}
+                                                        {{ __('guest.cart.price') }}: {{ $item['formatted_price'] }} / {{ __('ui.departments.dashboard.sort') }} {{ $item['sort_order'] }}
                                                     </p>
 
                                                     <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                        {{ __('reports.csv.weight') }}: {{ $item->weight ?? '—' }}
+                                                        {{ __('reports.csv.weight') }}: {{ $item['weight'] }}
                                                         /
-                                                        {{ __('reports.csv.volume') }}: {{ $item->volume ?? '—' }}
+                                                        {{ __('reports.csv.volume') }}: {{ $item['volume'] }}
                                                         /
-                                                        {{ __('reports.csv.calories') }}: {{ $item->calories ?? '—' }}
+                                                        {{ __('reports.csv.calories') }}: {{ $item['calories'] }}
                                                     </p>
 
-                                                    @if ($item->modifierGroups->isNotEmpty())
+                                                    @if ($item['modifier_groups'] !== [])
                                                         <div class="mt-3 flex flex-wrap gap-2">
-                                                            @foreach ($item->modifierGroups as $modifierGroup)
-                                                                <span wire:key="item-{{ $item->id }}-modifier-{{ $modifierGroup->id }}" class="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-                                                                    {{ $modifierGroup->name }}
-                                                                    <button type="button" wire:click="detachModifierGroupFromItem({{ $item->id }}, {{ $modifierGroup->id }})" class="text-zinc-400 hover:text-red-600" aria-label="{{ __('ui.organizations.brands.branches.menu.index.remove_modifier_group') }}">
+                                                            @foreach ($item['modifier_groups'] as $modifierGroup)
+                                                                <span wire:key="item-{{ $item['id'] }}-modifier-{{ $modifierGroup['id'] }}" class="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
+                                                                    {{ $modifierGroup['name'] }}
+                                                                    <button type="button" wire:click="detachModifierGroupFromItem({{ $item['id'] }}, {{ $modifierGroup['id'] }})" class="text-zinc-400 hover:text-red-600" aria-label="{{ __('ui.organizations.brands.branches.menu.index.remove_modifier_group') }}">
                                                                         ×
                                                                     </button>
                                                                 </span>
@@ -612,23 +602,21 @@
                                                         </div>
                                                     @endif
 
-                                                    <form wire:submit="saveItemImage({{ $item->id }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                                        <label for="item-photo-{{ $item->id }}" class="sr-only">{{ __('uploads.labels.image') }}</label>
-                                                        <input id="item-photo-{{ $item->id }}" wire:model="itemImages.{{ $item->id }}" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.image') }}" class="block w-full max-w-xs rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-medium dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:file:bg-zinc-800">
-                                                        <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</p>
+                                                    <form wire:submit="saveItemImage({{ $item['id'] }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                                                        <label for="item-photo-{{ $item['id'] }}" class="sr-only">{{ __('uploads.labels.image') }}</label>
+                                                        <x-ui.image-upload-input id="item-photo-{{ $item['id'] }}" wire:model="itemImages.{{ $item['id'] }}" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" class="max-w-xs" />
 
                                                         <div class="flex flex-wrap gap-2">
-                                                            <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="itemImages.{{ $item->id }}, saveItemImage({{ $item->id }})">
-                                                                {{ $item->imageUrl() ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
+                                                            <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="itemImages.{{ $item['id'] }}, saveItemImage({{ $item['id'] }})">
+                                                                {{ $item['has_image'] ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
                                                             </flux:button>
 
-                                                            @if ($item->imageUrl())
+                                                            @if ($item['has_image'])
                                                                 <x-dangerous-action-confirmation
-                                                                    name="remove-menu-item-photo-{{ $item->id }}"
-                                                                    :title="$deleteMediaTitle"
-                                                                    :consequence="$deleteMediaConsequence"
-                                                                    confirm-action="removeItemImage({{ $item->id }})"
-                                                                    submit-target="removeItemImage({{ $item->id }})"
+                                                                    name="remove-menu-item-photo-{{ $item['id'] }}"
+                                                                    action="delete_media_file"
+                                                                    confirm-action="removeItemImage({{ $item['id'] }})"
+                                                                    submit-target="removeItemImage({{ $item['id'] }})"
                                                                     confirm-label="ui.actions.confirm"
                                                                     loading-label="ui.actions.removing"
                                                                 >
@@ -641,7 +629,7 @@
                                                             @endif
                                                         </div>
 
-                                                        @error('itemImages.'.$item->id)
+                                                        @error('itemImages.'.$item['id'])
                                                             <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
                                                         @enderror
                                                     </form>
@@ -649,13 +637,12 @@
 
                                                 <div class="flex flex-wrap gap-2 md:justify-end">
                                                     @if ($canChangeAvailability)
-                                                        @if ($item->is_available)
+                                                        @if ($item['is_available'])
                                                             <x-dangerous-action-confirmation
-                                                                name="disable-menu-item-{{ $item->id }}"
-                                                                :title="$menuItemDangerousTitle"
-                                                                :consequence="$menuItemDangerousConsequence"
-                                                                confirm-action="setItemAvailability({{ $item->id }}, false)"
-                                                                submit-target="setItemAvailability({{ $item->id }}, false)"
+                                                                name="disable-menu-item-{{ $item['id'] }}"
+                                                                action="delete_or_deactivate_menu_item"
+                                                                confirm-action="setItemAvailability({{ $item['id'] }}, false)"
+                                                                submit-target="setItemAvailability({{ $item['id'] }}, false)"
                                                                 confirm-label="ui.actions.confirm"
                                                                 loading-label="ui.actions.saving"
                                                             >
@@ -666,22 +653,21 @@
                                                                 </x-slot:trigger>
                                                             </x-dangerous-action-confirmation>
                                                         @else
-                                                            <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item->id }}, true)">
+                                                            <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item['id'] }}, true)">
                                                                 {{ __('ui.organizations.brands.branches.menu.index.enable') }}
                                                             </flux:button>
                                                         @endif
                                                     @endif
 
-                                                    <flux:button icon="pencil" type="button" wire:click="startEditingItem({{ $item->id }})">
+                                                    <flux:button icon="pencil" type="button" wire:click="startEditingItem({{ $item['id'] }})">
                                                         {{ __('guest.cart.edit_item') }}
                                                     </flux:button>
 
                                                     <x-dangerous-action-confirmation
-                                                        name="delete-menu-item-{{ $item->id }}"
-                                                        :title="$menuItemDangerousTitle"
-                                                        :consequence="$menuItemDangerousConsequence"
-                                                        confirm-action="deleteItem({{ $item->id }})"
-                                                        submit-target="deleteItem({{ $item->id }})"
+                                                        name="delete-menu-item-{{ $item['id'] }}"
+                                                        action="delete_or_deactivate_menu_item"
+                                                        confirm-action="deleteItem({{ $item['id'] }})"
+                                                        submit-target="deleteItem({{ $item['id'] }})"
                                                         confirm-label="ui.actions.confirm"
                                                         loading-label="ui.actions.deleting"
                                                     >
@@ -716,15 +702,15 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->kitchenDepartments as $department)
-                <div wire:key="kitchen-department-{{ $department->id }}" class="px-4 py-4">
-                    @if ($editingDepartmentId === $department->id)
+            @forelse ($kitchenDepartmentRows as $department)
+                <div wire:key="kitchen-department-{{ $department['id'] }}" class="px-4 py-4">
+                    @if ($editingDepartmentId === $department['id'])
                         <form wire:submit="updateKitchenDepartment" class="grid gap-3 md:grid-cols-[1fr_160px_120px_auto] md:items-end">
                             <flux:input wire:model="editingDepartmentName" :label="__('reports.csv.name')" type="text" required maxlength="120" />
 
                             <flux:select wire:model="editingDepartmentType" :label="__('reports.csv.type')">
-                                @foreach ($this->kitchenDepartmentTypeOptions as $value => $label)
-                                    <flux:select.option wire:key="department-type-edit-{{ $department->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                @foreach ($kitchenDepartmentTypeOptions as $value => $label)
+                                    <flux:select.option wire:key="department-type-edit-{{ $department['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
@@ -744,34 +730,34 @@
                         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $department->name }}</h2>
-                                    <flux:badge :color="$department->type->badgeColor()">{{ __($department->type->label()) }}</flux:badge>
-                                    @if ($department->is_active)
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $department['name'] }}</h2>
+                                    <flux:badge :color="$department['type_color']">{{ $department['localized_type'] }}</flux:badge>
+                                    @if ($department['is_active'])
                                         <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                                     @else
                                         <flux:badge color="zinc">{{ __('staff.statuses.suspended') }}</flux:badge>
                                     @endif
-                                    <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $department->menu_items_count, ['count' => $department->menu_items_count]) }}</flux:badge>
+                                    <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $department['menu_items_count'], ['count' => $department['menu_items_count']]) }}</flux:badge>
                                 </div>
-                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $department->sort_order }}</p>
+                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $department['sort_order'] }}</p>
                             </div>
 
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                @if ($department->is_active)
-                                    <flux:button icon="eye-slash" type="button" wire:click="setKitchenDepartmentActive({{ $department->id }}, false)">
+                                @if ($department['is_active'])
+                                    <flux:button icon="eye-slash" type="button" wire:click="setKitchenDepartmentActive({{ $department['id'] }}, false)">
                                         {{ __('ui.actions.disable') }}
                                     </flux:button>
                                 @else
-                                    <flux:button icon="eye" type="button" wire:click="setKitchenDepartmentActive({{ $department->id }}, true)">
+                                    <flux:button icon="eye" type="button" wire:click="setKitchenDepartmentActive({{ $department['id'] }}, true)">
                                         {{ __('ui.organizations.brands.branches.menu.index.enable') }}
                                     </flux:button>
                                 @endif
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditingKitchenDepartment({{ $department->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditingKitchenDepartment({{ $department['id'] }})">
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteKitchenDepartment({{ $department->id }})">
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteKitchenDepartment({{ $department['id'] }})">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>
@@ -802,7 +788,7 @@
 
                 <div class="mt-3 grid gap-3">
                     <flux:select wire:model="modifierOptionGroupId" :label="__('ui.organizations.brands.branches.menu.index.modifier_group')">
-                        @forelse ($this->modifierGroupOptions() as $option)
+                        @forelse ($modifierGroupOptions as $option)
                             <flux:select.option wire:key="modifier-option-group-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
                             <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_modifier_group_first') }}</flux:select.option>
@@ -835,7 +821,7 @@
 
                 <div class="mt-3 grid gap-3">
                     <flux:select wire:model.live="modifierItemMenuId" :label="__('menu.guest.title')">
-                        @forelse ($this->menuOptions() as $option)
+                        @forelse ($menuOptions as $option)
                             <flux:select.option wire:key="modifier-item-menu-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
                             <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_menu_first') }}</flux:select.option>
@@ -843,7 +829,7 @@
                     </flux:select>
 
                     <flux:select wire:model="modifierItemId" :label="__('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish')">
-                        @forelse ($this->itemOptionsForMenu($modifierItemMenuId) as $option)
+                        @forelse ($modifierItemOptions as $option)
                             <flux:select.option wire:key="modifier-item-dish-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
                             <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_dish_first') }}</flux:select.option>
@@ -851,7 +837,7 @@
                     </flux:select>
 
                     <flux:select wire:model="modifierItemGroupId" :label="__('ui.organizations.brands.branches.menu.index.modifier_group')">
-                        @forelse ($this->modifierGroupOptions() as $option)
+                        @forelse ($modifierGroupOptions as $option)
                             <flux:select.option wire:key="modifier-item-group-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
                         @empty
                             <flux:select.option value="">{{ __('ui.organizations.brands.branches.menu.index.create_a_modifier_group_first') }}</flux:select.option>
@@ -862,9 +848,9 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->modifierGroups as $modifierGroup)
-                <div wire:key="modifier-group-{{ $modifierGroup->id }}" class="px-4 py-4">
-                    @if ($editingModifierGroupId === $modifierGroup->id)
+            @forelse ($modifierGroupRows as $modifierGroup)
+                <div wire:key="modifier-group-{{ $modifierGroup['id'] }}" class="px-4 py-4">
+                    @if ($editingModifierGroupId === $modifierGroup['id'])
                         <form wire:submit="updateModifierGroup" class="grid gap-3 md:grid-cols-[1fr_100px_100px_120px_auto] md:items-end">
                             <flux:input wire:model="editingModifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
                             <flux:input wire:model="editingModifierGroupMinSelect" :label="__('ui.organizations.brands.branches.menu.index.min')" type="number" required min="0" max="50" />
@@ -885,23 +871,23 @@
                         <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup->name }}</h2>
-                                    @if ($modifierGroup->is_required)
+                                    <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $modifierGroup['name'] }}</h2>
+                                    @if ($modifierGroup['is_required'])
                                         <flux:badge color="amber">{{ __('guest.cart.required') }}</flux:badge>
                                     @else
                                         <flux:badge color="zinc">{{ __('guest.cart.optional') }}</flux:badge>
                                     @endif
-                                    <flux:badge>{{ __('ui.organizations.brands.branches.menu.index.select') }} {{ $modifierGroup->min_select }}–{{ $modifierGroup->max_select }}</flux:badge>
-                                    <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $modifierGroup->items_count, ['count' => $modifierGroup->items_count]) }}</flux:badge>
+                                    <flux:badge>{{ __('ui.organizations.brands.branches.menu.index.select') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</flux:badge>
+                                    <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $modifierGroup['items_count'], ['count' => $modifierGroup['items_count']]) }}</flux:badge>
                                 </div>
-                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $modifierGroup->sort_order }}</p>
+                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $modifierGroup['sort_order'] }}</p>
                             </div>
 
                             <div class="flex flex-wrap gap-2 md:justify-end">
-                                <flux:button icon="pencil" type="button" wire:click="startEditingModifierGroup({{ $modifierGroup->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditingModifierGroup({{ $modifierGroup['id'] }})">
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierGroup({{ $modifierGroup->id }})">
+                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierGroup({{ $modifierGroup['id'] }})">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>
@@ -909,9 +895,9 @@
                     @endif
 
                     <div class="mt-4 grid gap-2">
-                        @forelse ($modifierGroup->options as $modifierOption)
-                            <div wire:key="modifier-option-{{ $modifierOption->id }}" class="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60">
-                                @if ($editingModifierOptionId === $modifierOption->id)
+                        @forelse ($modifierGroup['options'] as $modifierOption)
+                            <div wire:key="modifier-option-{{ $modifierOption['id'] }}" class="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+                                @if ($editingModifierOptionId === $modifierOption['id'])
                                     <form wire:submit="updateModifierOption" class="grid gap-3 md:grid-cols-[1fr_140px_120px_auto] md:items-end">
                                         <flux:input wire:model="editingModifierOptionName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
 
@@ -936,21 +922,21 @@
                                 @else
                                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <span class="font-medium text-zinc-950 dark:text-white">{{ $modifierOption->name }}</span>
-                                            <flux:badge>{{ $modifierOption->price_delta }} {{ $branch->currency }}</flux:badge>
-                                            @if ($modifierOption->is_available)
+                                            <span class="font-medium text-zinc-950 dark:text-white">{{ $modifierOption['name'] }}</span>
+                                            <flux:badge>{{ $modifierOption['formatted_price_delta'] }}</flux:badge>
+                                            @if ($modifierOption['is_available'])
                                                 <flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
                                             @else
                                                 <flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>
                                             @endif
-                                            <flux:badge>{{ __('ui.departments.dashboard.sort') }} {{ $modifierOption->sort_order }}</flux:badge>
+                                            <flux:badge>{{ __('ui.departments.dashboard.sort') }} {{ $modifierOption['sort_order'] }}</flux:badge>
                                         </div>
 
                                         <div class="flex flex-wrap gap-2 md:justify-end">
-                                            <flux:button icon="pencil" type="button" wire:click="startEditingModifierOption({{ $modifierOption->id }})">
+                                            <flux:button icon="pencil" type="button" wire:click="startEditingModifierOption({{ $modifierOption['id'] }})">
                                                 {{ __('guest.cart.edit_item') }}
                                             </flux:button>
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierOption({{ $modifierOption->id }})">
+                                            <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierOption({{ $modifierOption['id'] }})">
                                                 {{ __('ui.actions.delete') }}
                                             </flux:button>
                                         </div>

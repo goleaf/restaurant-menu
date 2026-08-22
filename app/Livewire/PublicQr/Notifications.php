@@ -184,7 +184,7 @@ class Notifications extends Component
      */
     private function presentNotification(DatabaseNotification $notification): array
     {
-        $data = is_array($notification->data) ? $notification->data : [];
+        $data = $notification->data;
         $itemName = (string) data_get($data, 'item_name', '');
         $guestName = (string) data_get($data, 'guest_name', '');
         $reason = (string) data_get($data, 'rejection_reason', '');

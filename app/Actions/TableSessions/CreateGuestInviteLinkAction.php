@@ -6,7 +6,6 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\BranchSetting;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
@@ -98,7 +97,7 @@ class CreateGuestInviteLinkAction
             ]);
         }
 
-        if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
+        if (! $tableSession->servicePoint->is_active) {
             throw ValidationException::withMessages([
                 'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.eto_mesto_seicas_nedos'),
             ]);

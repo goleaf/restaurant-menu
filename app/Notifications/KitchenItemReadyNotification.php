@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications;
 
 use App\Models\KitchenTicketItem;
@@ -47,16 +49,16 @@ class KitchenItemReadyNotification extends Notification
         return [
             'kitchen_ticket_item_id' => $ticketItem->id,
             'kitchen_ticket_id' => $ticketItem->kitchen_ticket_id,
-            'order_id' => $kitchenTicket?->order_id,
-            'table_session_id' => $kitchenTicket?->table_session_id,
-            'branch_id' => $kitchenTicket?->branch_id,
-            'branch_name' => $kitchenTicket?->branch?->name,
-            'service_point_id' => $kitchenTicket?->service_point_id,
-            'service_point_name' => $kitchenTicket?->servicePoint?->name,
-            'service_point_display_number' => $kitchenTicket?->servicePoint?->display_number,
-            'area_name' => $kitchenTicket?->servicePoint?->areaNode?->name,
-            'department_type' => $kitchenTicket?->department_type,
-            'department_name' => $kitchenTicket?->department_name,
+            'order_id' => $kitchenTicket->order_id,
+            'table_session_id' => $kitchenTicket->table_session_id,
+            'branch_id' => $kitchenTicket->branch_id,
+            'branch_name' => $kitchenTicket->branch->name,
+            'service_point_id' => $kitchenTicket->service_point_id,
+            'service_point_name' => $kitchenTicket->servicePoint->name,
+            'service_point_display_number' => $kitchenTicket->servicePoint->display_number,
+            'area_name' => $kitchenTicket->servicePoint->areaNode?->name,
+            'department_type' => $kitchenTicket->department_type,
+            'department_name' => $kitchenTicket->department_name,
             'item_name' => $ticketItem->item_name,
             'guest_name' => $ticketItem->guest_name,
             'quantity' => $ticketItem->quantity,

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
@@ -45,6 +47,14 @@ class DemoRestaurantSeeder extends Seeder
 
     private const LEGACY_PRIMARY_BRANCH_NAME = 'Demo Old Town';
 
+    public function __construct(
+        private readonly EnsureBranchSettingsAction $ensureBranchSettings,
+        private readonly SeedKitchenDepartmentsForBranchAction $seedKitchenDepartments,
+        private readonly CreateAreaNodeAction $createAreaNode,
+        private readonly CreateServicePointAction $createServicePoint,
+        private readonly GenerateQrCodeForServicePointAction $generateQrCode,
+    ) {}
+
     /**
      * Run the database seeds.
      */
@@ -78,6 +88,8 @@ class DemoRestaurantSeeder extends Seeder
             $this->seedQrCodes($servicePoints, $owner);
             $this->seedMenu($primaryBranch);
         });
+
+        $this->call(DemoOperationalStateSeeder::class);
     }
 
     private function demoOrganization(User $owner): Organization
@@ -225,7 +237,7 @@ class DemoRestaurantSeeder extends Seeder
 
     private function ensureBranchSetup(Branch $branch): void
     {
-        $settings = app(EnsureBranchSettingsAction::class)->handle($branch);
+        $settings = $this->ensureBranchSettings->handle($branch);
         $attributes = BranchSetting::factory()
             ->demoReadyForService($branch)
             ->make()
@@ -233,7 +245,7 @@ class DemoRestaurantSeeder extends Seeder
 
         $settings->forceFill($attributes)->save();
 
-        app(SeedKitchenDepartmentsForBranchAction::class)->handle($branch);
+        $this->seedKitchenDepartments->handle($branch);
     }
 
     private function demoUser(string $name, string $email, SystemRole $role): User
@@ -393,7 +405,7 @@ class DemoRestaurantSeeder extends Seeder
             return $area;
         }
 
-        return app(CreateAreaNodeAction::class)->handle($branch, [
+        return $this->createAreaNode->handle($branch, [
             'parent_id' => null,
             'type' => $type->value,
             'name' => $name,
@@ -515,7 +527,7 @@ class DemoRestaurantSeeder extends Seeder
             ->first();
 
         if (! $servicePoint instanceof ServicePoint) {
-            $servicePoint = app(CreateServicePointAction::class)->handle($branch, [
+            $servicePoint = $this->createServicePoint->handle($branch, [
                 'area_node_id' => $area->id,
                 'type' => $data['type']->value,
                 'name' => $data['name'],
@@ -551,7 +563,7 @@ class DemoRestaurantSeeder extends Seeder
     private function seedQrCodes(array $servicePoints, User $owner): void
     {
         foreach ($servicePoints as $servicePoint) {
-            app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $owner);
+            $this->generateQrCode->handle($servicePoint, $owner);
         }
     }
 

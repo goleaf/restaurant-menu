@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
@@ -15,7 +17,6 @@ use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\PlainText;
@@ -27,6 +28,8 @@ class AddGuestDraftOrderItemAction
     public function __construct(
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
+        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ) {}
 
     /**
@@ -171,7 +174,7 @@ class AddGuestDraftOrderItemAction
     {
         $servicePoint = $tableSession->servicePoint;
 
-        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
+        if (! $servicePoint->is_active) {
             throw ValidationException::withMessages([
                 'guest' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
@@ -190,16 +193,16 @@ class AddGuestDraftOrderItemAction
 
     private function ensureMenuItemCanBeAdded(TableSession $tableSession, MenuItem $menuItem): void
     {
-        if ($menuItem->menu?->branch_id !== $tableSession->branch_id
-            || $menuItem->menu?->status !== MenuStatus::Active
-            || ! $menuItem->category?->is_active
+        if ($menuItem->menu->branch_id !== $tableSession->branch_id
+            || $menuItem->menu->status !== MenuStatus::Active
+            || ! $menuItem->category->is_active
             || ! $menuItem->is_available) {
             throw ValidationException::withMessages([
                 'menu_item' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_bliudo_seicas_nedos'),
             ]);
         }
 
-        $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu);
+        $availability = $this->getMenuAvailabilityStatus->handle($menuItem->menu);
 
         if (! $availability['is_available']) {
             throw ValidationException::withMessages([
@@ -260,7 +263,7 @@ class AddGuestDraftOrderItemAction
             return;
         }
 
-        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
+        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
 
         if ($openingStatus['can_accept_orders']) {
             return;

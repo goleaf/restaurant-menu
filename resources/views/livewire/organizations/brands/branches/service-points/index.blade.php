@@ -6,7 +6,7 @@
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
                 {{ __('ui.organizations.brands.branches.index.stoly_i_mesta') }}
                 <span class="sr-only">{{ __('navigation.service_points') }}</span>
@@ -22,7 +22,7 @@
         >
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                @foreach ($this->quickCreateOptions as $option)
+                @foreach ($quickCreateOptions as $option)
                     <flux:button
                         wire:key="service-point-preset-{{ $option['type'] }}"
                         :icon="$option['icon']"
@@ -40,13 +40,13 @@
                 <flux:input wire:model="displayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" maxlength="80" />
 
                 <flux:select wire:model="type" :label="__('ui.organizations.brands.branches.service_points.index.tip_mesta')">
-                    @foreach ($this->servicePointTypeOptions as $value => $label)
+                    @foreach ($servicePointTypeOptions as $value => $label)
                         <flux:select.option wire:key="service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                     @endforeach
                 </flux:select>
 
                 <flux:select wire:model="areaNodeId" :label="__('ui.livewire.onboarding.restaurantsetup.zona')">
-                    @foreach ($this->areaOptions as $option)
+                    @foreach ($areaOptions as $option)
                         <flux:select.option wire:key="service-point-area-create-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
                             {{ $option['label'] }}
                         </flux:select.option>
@@ -54,7 +54,7 @@
                 </flux:select>
 
                 <flux:select wire:model="icon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
-                    @foreach ($this->iconOptions as $value => $label)
+                    @foreach ($iconOptions as $value => $label)
                         <flux:select.option wire:key="service-point-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                     @endforeach
                 </flux:select>
@@ -80,7 +80,7 @@
 
                 <form wire:submit="previewBulkCreate" class="grid gap-4 md:grid-cols-3">
                     <flux:select wire:model.live="bulkAreaNodeId" :label="__('ui.livewire.onboarding.restaurantsetup.zona')">
-                        @foreach ($this->areaOptions as $option)
+                        @foreach ($areaOptions as $option)
                             <flux:select.option wire:key="bulk-service-point-area-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
                                 {{ $option['label'] }}
                             </flux:select.option>
@@ -88,7 +88,7 @@
                     </flux:select>
 
                     <flux:select wire:model.live="bulkType" :label="__('ui.organizations.brands.branches.service_points.index.tip_mesta')">
-                        @foreach ($this->servicePointTypeOptions as $value => $label)
+                        @foreach ($servicePointTypeOptions as $value => $label)
                             <flux:select.option wire:key="bulk-service-point-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                         @endforeach
                     </flux:select>
@@ -108,7 +108,7 @@
                 @if ($bulkPreviewRows !== [])
                     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
                         <div class="border-b border-zinc-200 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
-                            {{ __('ui.organizations.brands.branches.service_points.index.budet_sozdano') }}: {{ $this->bulkCreatableCount }} / {{ __('ui.organizations.brands.branches.service_points.index.already_exists') }}: {{ $this->bulkDuplicateCount }}
+                            {{ __('ui.organizations.brands.branches.service_points.index.budet_sozdano') }}: {{ $bulkCreatableCount }} / {{ __('ui.organizations.brands.branches.service_points.index.already_exists') }}: {{ $bulkDuplicateCount }}
                         </div>
 
                         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -135,12 +135,12 @@
                                 wire:click="confirmBulkCreate"
                                 wire:loading.attr="disabled"
                                 wire:target="confirmBulkCreate"
-                                :disabled="$this->bulkCreatableCount === 0"
+                                :disabled="$bulkCreatableCount === 0"
                             >
                                 {{ __('ui.organizations.brands.branches.service_points.index.sozdat_mesta') }}
                             </flux:button>
 
-                            @if ($this->bulkCreatableCount === 0)
+                            @if ($bulkCreatableCount === 0)
                                 <span class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.brands.branches.service_points.index.net_novyx_mest_dlia_s') }}</span>
                             @endif
                         </div>
@@ -177,8 +177,6 @@
         </x-ui.card>
     @endif
 
-    @php($floorBoardSections = $this->floorBoardSections)
-
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -190,7 +188,7 @@
                 </div>
 
                 <x-ui.status-badge tone="muted" size="lg">
-                    {{ __('ui.organizations.brands.branches.service_points.index.na_doske') }}: {{ $this->floorBoardServicePointCount }}
+                    {{ __('ui.organizations.brands.branches.service_points.index.na_doske') }}: {{ $floorBoardServicePointCount }}
                 </x-ui.status-badge>
             </div>
         </div>
@@ -200,7 +198,7 @@
                 <section wire:key="floor-board-zone-{{ $section['area_id'] ?? 'none' }}" class="space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                         <div class="flex min-w-0 items-center gap-3">
-                            <x-ui.area-icon :type="$section['type']" :icon="$section['icon']" :label="$section['type_label'] ? __($section['type_label']) : __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony')" :active="$section['is_active']" />
+                            <x-ui.area-icon :type="$section['type']" :icon="$section['icon']" :label="$section['type_label'] ?: __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony')" :active="$section['is_active']" />
 
                             <div class="min-w-0">
                                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $section['name'] }}</h2>
@@ -217,41 +215,41 @@
 
                     <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                         @forelse ($section['service_points'] as $servicePoint)
-                            <article wire:key="floor-board-service-point-{{ $servicePoint->id }}" class="min-h-52 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                            <article wire:key="floor-board-service-point-{{ $servicePoint['id'] }}" class="min-h-52 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="flex min-w-0 gap-3">
-                                        <x-ui.service-point-icon :type="$servicePoint->type" :icon="$servicePoint->icon" :label="__($servicePoint->type->label())" :active="$servicePoint->is_active" />
+                                        <x-ui.service-point-icon :type="$servicePoint['type']" :icon="$servicePoint['icon']" :label="$servicePoint['type_label']" :active="$servicePoint['is_active']" />
 
                                         <div class="min-w-0">
-                                            <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint->name }}</h3>
+                                            <h3 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</h3>
                                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                                {{ __('ui.organizations.brands.branches.service_points.index.nomer') }}: {{ $servicePoint->display_number ?: __('ui.organizations.brands.branches.service_points.index.ne_ukazan') }}
+                                                {{ __('ui.organizations.brands.branches.service_points.index.nomer') }}: {{ $servicePoint['display_number'] ?: __('ui.organizations.brands.branches.service_points.index.ne_ukazan') }}
                                             </p>
                                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                                {{ __($servicePoint->type->label()) }} · {{ __('ui.organizations.brands.branches.service_points.index.gostei') }}: {{ $servicePoint->capacity }}
+                                                {{ $servicePoint['type_label'] }} · {{ __('ui.organizations.brands.branches.service_points.index.gostei') }}: {{ $servicePoint['capacity'] }}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <x-ui.status-badge :tone="$servicePoint->status->badgeColor()" dot>{{ __($servicePoint->status->label()) }}</x-ui.status-badge>
+                                    <x-ui.status-badge :tone="$servicePoint['status_tone']" dot>{{ $servicePoint['localized_status'] }}</x-ui.status-badge>
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap gap-2">
-                                    @if ($servicePoint->is_active)
+                                    @if ($servicePoint['is_active'])
                                         <x-ui.status-badge tone="success">{{ __('ui.organizations.brands.branches.area_node_row.rabotaet') }}</x-ui.status-badge>
                                     @else
                                         <x-ui.status-badge tone="muted">{{ __('ui.organizations.brands.branches.service_points.index.vykliuceno') }}</x-ui.status-badge>
                                     @endif
 
-                                    @if ($servicePoint->activeTableSession)
+                                    @if ($servicePoint['has_direct_session'])
                                         <x-ui.status-badge tone="info">{{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}</x-ui.status-badge>
-                                    @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                    @elseif ($servicePoint['has_linked_session'])
                                         <x-ui.status-badge tone="info">{{ __('ui.organizations.brands.branches.service_points.index.stoly_obieedineny') }}</x-ui.status-badge>
                                     @endif
 
                                     @if ($canGenerateQr)
-                                        @if ($servicePoint->activeQrCode)
-                                            <x-ui.status-badge tone="success" icon="qr-code">{{ $servicePoint->activeQrCode->short_code }}</x-ui.status-badge>
+                                        @if ($servicePoint['has_qr'])
+                                            <x-ui.status-badge tone="success" icon="qr-code">{{ $servicePoint['qr_short_code'] }}</x-ui.status-badge>
                                         @else
                                             <x-ui.status-badge tone="muted" icon="qr-code">{{ __('qr.labels.no_qr') }}</x-ui.status-badge>
                                         @endif
@@ -260,12 +258,12 @@
 
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     @if ($canOpenTable)
-                                        @if ($servicePoint->activeTableSession || $servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                        @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
                                             <flux:button size="sm" icon="check" type="button" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                             </flux:button>
-                                        @elseif ($servicePoint->is_active)
-                                            <flux:button size="sm" icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint->id }})">
+                                        @elseif ($servicePoint['is_active'])
+                                            <flux:button size="sm" icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                                 {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                             </flux:button>
                                         @else
@@ -276,24 +274,24 @@
                                     @endif
 
                                     @if ($canGenerateQr)
-                                        @if ($servicePoint->activeQrCode)
+                                        @if ($servicePoint['has_qr'])
                                             <flux:button
                                                 size="sm"
                                                 icon="qr-code"
-                                                :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
+                                                :href="$servicePoint['qr_show_url']"
                                                 wire:navigate
                                             >
                                                 {{ __('qr.actions.show') }}
                                             </flux:button>
                                         @else
-                                            <flux:button size="sm" icon="qr-code" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
+                                            <flux:button size="sm" icon="qr-code" type="button" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
                                                 {{ __('qr.actions.generate') }}
                                             </flux:button>
                                         @endif
                                     @endif
 
                                     @if ($canManageServicePoints)
-                                        <flux:button size="sm" icon="pencil" type="button" wire:click="startEditingFromBoard({{ $servicePoint->id }})">
+                                        <flux:button size="sm" icon="pencil" type="button" wire:click="startEditingFromBoard({{ $servicePoint['id'] }})">
                                             {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                         </flux:button>
                                     @endif
@@ -325,7 +323,7 @@
                 </flux:heading>
 
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <flux:input :label="__('ui.organizations.brands.branches.service_points.index.filial')" type="text" :value="$branch->name" disabled />
+                    <flux:input :label="__('ui.organizations.brands.branches.service_points.index.filial')" type="text" :value="$branchName" disabled />
 
                     <flux:input
                         wire:model.live.debounce.300ms="servicePointSearch"
@@ -336,7 +334,7 @@
                     />
 
                     <flux:select wire:model.live="filterAreaNodeId" :label="__('ui.livewire.onboarding.restaurantsetup.zona')">
-                        @foreach ($this->filterAreaOptions as $option)
+                        @foreach ($filterAreaOptions as $option)
                             <flux:select.option wire:key="service-point-filter-area-{{ $option['value'] }}" value="{{ $option['value'] }}">
                                 {{ $option['label'] }}
                             </flux:select.option>
@@ -345,26 +343,26 @@
 
                     <flux:select wire:model.live="filterType" :label="__('ui.organizations.brands.branches.service_points.index.tip')">
                         <flux:select.option value="all">{{ __('ui.organizations.brands.branches.service_points.index.all_types') }}</flux:select.option>
-                        @foreach ($this->servicePointTypeOptions as $value => $label)
+                        @foreach ($servicePointTypeOptions as $value => $label)
                             <flux:select.option wire:key="service-point-filter-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
                     <flux:select wire:model.live="filterStatus" :label="__('ui.organizations.brands.branches.service_points.index.status')">
                         <flux:select.option value="all">{{ __('ui.organizations.brands.branches.service_points.index.all_statuses') }}</flux:select.option>
-                        @foreach ($this->servicePointStatusOptions as $value => $label)
+                        @foreach ($servicePointStatusOptions as $value => $label)
                             <flux:select.option wire:key="service-point-filter-status-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
                     <flux:select wire:model.live="filterActive" :label="__('ui.organizations.brands.branches.service_points.index.aktivnost')">
-                        @foreach ($this->activeFilterOptions as $value => $label)
+                        @foreach ($activeFilterOptions as $value => $label)
                             <flux:select.option wire:key="service-point-filter-active-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                         @endforeach
                     </flux:select>
 
                     <flux:select wire:model.live="filterQr" :label="__('qr.labels.qr')">
-                        @foreach ($this->qrFilterOptions as $value => $label)
+                        @foreach ($qrFilterOptions as $value => $label)
                             <flux:select.option wire:key="service-point-filter-qr-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                         @endforeach
                     </flux:select>
@@ -374,7 +372,7 @@
                             icon="x-mark"
                             type="button"
                             wire:click="resetServicePointFilters"
-                            :disabled="! $this->servicePointFiltersAreActive"
+                            :disabled="! $servicePointFiltersAreActive"
                         >
                             {{ __('ui.organizations.brands.branches.service_points.index.sbrosit') }}
                         </flux:button>
@@ -383,33 +381,31 @@
             </div>
         </div>
 
-        @php($servicePoints = $this->servicePoints)
-
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($servicePoints as $servicePoint)
-                <div wire:key="service-point-{{ $servicePoint->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
-                    @if ($editingServicePointId === $servicePoint->id)
+            @forelse ($servicePointRows as $servicePoint)
+                <div wire:key="service-point-{{ $servicePoint['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
+                    @if ($editingServicePointId === $servicePoint['id'])
                         <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
                             <flux:input wire:model="editingName" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" required maxlength="160" />
                             <flux:input wire:model="editingDisplayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" maxlength="80" />
 
                             <flux:select wire:model="editingType" :label="__('ui.organizations.brands.branches.service_points.index.tip_mesta')">
-                                @foreach ($this->servicePointTypeOptions as $value => $label)
-                                    <flux:select.option wire:key="editing-service-point-type-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                @foreach ($servicePointTypeOptions as $value => $label)
+                                    <flux:select.option wire:key="editing-service-point-type-{{ $servicePoint['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
                             <flux:select wire:model="editingAreaNodeId" :label="__('ui.livewire.onboarding.restaurantsetup.zona')">
-                                @foreach ($this->areaOptions as $option)
-                                    <flux:select.option wire:key="editing-service-point-area-{{ $servicePoint->id }}-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
+                                @foreach ($areaOptions as $option)
+                                    <flux:select.option wire:key="editing-service-point-area-{{ $servicePoint['id'] }}-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
                                         {{ $option['label'] }}
                                     </flux:select.option>
                                 @endforeach
                             </flux:select>
 
                             <flux:select wire:model="editingIcon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
-                                @foreach ($this->iconOptions as $value => $label)
-                                    <flux:select.option wire:key="editing-service-point-icon-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
+                                @foreach ($iconOptions as $value => $label)
+                                    <flux:select.option wire:key="editing-service-point-icon-{{ $servicePoint['id'] }}-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                 @endforeach
                             </flux:select>
 
@@ -432,25 +428,25 @@
                     @else
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <x-ui.service-point-icon :type="$servicePoint->type" :icon="$servicePoint->icon" :label="__($servicePoint->type->label())" :active="$servicePoint->is_active" />
+                                <x-ui.service-point-icon :type="$servicePoint['type']" :icon="$servicePoint['icon']" :label="$servicePoint['type_label']" :active="$servicePoint['is_active']" />
 
-                                <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint->name }}</h2>
+                                <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</h2>
 
-                                <x-ui.status-badge tone="muted">{{ __($servicePoint->type->label()) }}</x-ui.status-badge>
-                                <x-ui.status-badge :tone="$servicePoint->status->badgeColor()" dot>{{ __($servicePoint->status->label()) }}</x-ui.status-badge>
+                                <x-ui.status-badge tone="muted">{{ $servicePoint['type_label'] }}</x-ui.status-badge>
+                                <x-ui.status-badge :tone="$servicePoint['status_tone']" dot>{{ $servicePoint['localized_status'] }}</x-ui.status-badge>
 
-                                @if ($servicePoint->is_active)
+                                @if ($servicePoint['is_active'])
                                     <x-ui.status-badge tone="success">{{ __('ui.organizations.brands.branches.area_node_row.rabotaet') }}</x-ui.status-badge>
                                 @else
                                     <x-ui.status-badge tone="muted">{{ __('ui.organizations.brands.branches.service_points.index.vykliuceno') }}</x-ui.status-badge>
                                 @endif
 
-                                @if ($servicePoint->activeTableSession)
+                                @if ($servicePoint['has_direct_session'])
                                     <x-ui.status-badge tone="info">
                                         {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.active_session') }}</span>
                                     </x-ui.status-badge>
-                                @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                @elseif ($servicePoint['has_linked_session'])
                                     <x-ui.status-badge tone="info">
                                         {{ __('ui.organizations.brands.branches.service_points.index.stoly_obieedineny') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.merged_table_session') }}</span>
@@ -458,7 +454,7 @@
                                 @endif
 
                                 @if ($canGenerateQr)
-                                    @if ($servicePoint->activeQrCode)
+                                    @if ($servicePoint['has_qr'])
                                         <x-ui.status-badge tone="success" icon="qr-code">
                                             {{ __('qr.labels.ready') }}
                                             <span class="sr-only">{{ __('qr.status.active') }}</span>
@@ -473,40 +469,40 @@
                             </div>
 
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('ui.organizations.brands.branches.service_points.index.nomer') }}: {{ $servicePoint->display_number ?: __('ui.organizations.brands.branches.service_points.index.ne_ukazan') }}
+                                {{ __('ui.organizations.brands.branches.service_points.index.nomer') }}: {{ $servicePoint['display_number'] ?: __('ui.organizations.brands.branches.service_points.index.ne_ukazan') }}
                             </p>
 
                             <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {{ __('ui.livewire.onboarding.restaurantsetup.zona') }}: {{ $servicePoint->areaNode?->name ?? __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony') }} / {{ __('ui.organizations.brands.branches.service_points.index.gostei') }}: {{ $servicePoint->capacity }}
+                                {{ __('ui.livewire.onboarding.restaurantsetup.zona') }}: {{ $servicePoint['area_name'] }} / {{ __('ui.organizations.brands.branches.service_points.index.gostei') }}: {{ $servicePoint['capacity'] }}
                             </p>
 
-                            @if ($servicePoint->activeTableSession)
+                            @if ($servicePoint['has_direct_session'])
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                     {{ __('ui.organizations.brands.branches.service_points.index.otkryt') }}:
-                                    {{ $servicePoint->activeTableSession->started_at?->format('Y-m-d H:i') ?? __('ui.organizations.brands.branches.service_points.index.seicas') }}
+                                    {{ $servicePoint['session_started_at'] ?? __('ui.organizations.brands.branches.service_points.index.seicas') }}
                                 </p>
-                            @elseif ($servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                            @elseif ($servicePoint['has_linked_session'])
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                     {{ __('ui.organizations.brands.branches.service_points.index.obieedinen_s_aktivnym') }}
                                 </p>
                             @endif
 
-                            @if ($canGenerateQr && $servicePoint->activeQrCode)
+                            @if ($canGenerateQr && $servicePoint['has_qr'])
                                 <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ __('qr.labels.qr') }}: {{ $servicePoint->activeQrCode->short_code }} / {{ __($servicePoint->activeQrCode->status->label()) }}
+                                    {{ __('qr.labels.qr') }}: {{ $servicePoint['qr_short_code'] }} / {{ $servicePoint['qr_localized_status'] }}
                                 </p>
                             @endif
                         </div>
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
                             @if ($canOpenTable)
-                                @if ($servicePoint->activeTableSession || $servicePoint->activeTableSessionServicePointLinks->isNotEmpty())
+                                @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
                                     <flux:button icon="check" type="button" disabled>
                                         {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.table_opened') }}</span>
                                     </flux:button>
-                                @elseif ($servicePoint->is_active)
-                                    <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint->id }})">
+                                @elseif ($servicePoint['is_active'])
+                                    <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.open_table') }}</span>
                                     </flux:button>
@@ -519,31 +515,31 @@
                             @endif
 
                             @if ($canChangeServicePointStatus)
-                                <form wire:submit="changeStatus({{ $servicePoint->id }})" class="flex flex-wrap items-end gap-2">
-                                    <flux:select wire:model="statusSelections.{{ $servicePoint->id }}" :label="__('ui.organizations.brands.branches.service_points.index.status')">
-                                        @foreach ($this->servicePointStatusOptions as $value => $label)
-                                            <flux:select.option wire:key="service-point-status-{{ $servicePoint->id }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                                <form wire:submit="changeStatus({{ $servicePoint['id'] }})" class="flex flex-wrap items-end gap-2">
+                                    <flux:select wire:model="statusSelections.{{ $servicePoint['id'] }}" :label="__('ui.organizations.brands.branches.service_points.index.status')">
+                                        @foreach ($servicePointStatusOptions as $value => $label)
+                                            <flux:select.option wire:key="service-point-status-{{ $servicePoint['id'] }}-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
 
-                                    <flux:button icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint->id }})">
+                                    <flux:button icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.service_points.index.smenit') }}
                                     </flux:button>
                                 </form>
                             @endif
 
                             @if ($canGenerateQr)
-                                @if ($servicePoint->activeQrCode)
+                                @if ($servicePoint['has_qr'])
                                     <flux:button
                                         icon="qr-code"
-                                        :href="route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $servicePoint->activeQrCode])"
+                                        :href="$servicePoint['qr_show_url']"
                                         wire:navigate
                                     >
                                         {{ __('qr.actions.show') }}
                                         <span class="sr-only">{{ __('qr.actions.show') }}</span>
                                     </flux:button>
                                 @else
-                                    <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint->id }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint->id }})">
+                                    <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
                                         {{ __('qr.actions.generate') }}
                                         <span class="sr-only">{{ __('qr.actions.generate') }}</span>
                                     </flux:button>
@@ -551,30 +547,30 @@
                             @endif
 
                             @if ($canManageServicePoints)
-                                @if ($servicePoint->is_active)
-                                    <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint->id }})">
+                                @if ($servicePoint['is_active'])
+                                    <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.area_node_row.vykliucit') }}
                                     </flux:button>
                                 @else
-                                    <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint->id }})">
+                                    <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.area_node_row.vkliucit') }}
                                     </flux:button>
                                 @endif
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint->id }})">
+                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint['id'] }})">
                                     {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                 </flux:button>
                             @endif
                         </div>
 
-                        @if ($canGenerateQr && $shownQrServicePointId === $servicePoint->id)
+                        @if ($canGenerateQr && $shownQrServicePointId === $servicePoint['id'])
                             <div class="border-t border-zinc-200 pt-4 md:col-span-2 dark:border-zinc-800">
-                                @if ($servicePoint->activeQrCode)
+                                @if ($servicePoint['has_qr'])
                                     <div class="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
                                         <div class="min-w-0 space-y-1">
-                                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('qr.labels.qr') }} {{ $servicePoint->activeQrCode->short_code }}</p>
-                                            <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint->activeQrCode->publicPath() }}</p>
-                                            <p class="text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.brands.branches.service_points.index.status') }}: {{ __($servicePoint->activeQrCode->status->label()) }}</p>
+                                            <p class="font-medium text-zinc-950 dark:text-white">{{ __('qr.labels.qr') }} {{ $servicePoint['qr_short_code'] }}</p>
+                                            <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint['qr_public_path'] }}</p>
+                                            <p class="text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.brands.branches.service_points.index.status') }}: {{ $servicePoint['qr_localized_status'] }}</p>
                                         </div>
 
                                         <flux:button icon="x-mark" type="button" wire:click="hideQr">
@@ -593,7 +589,7 @@
                     <x-ui.empty-state
                         icon="squares-2x2"
                         :heading="__('ui.empty.no_service_points')"
-                        :description="$this->servicePointFiltersAreActive
+                        :description="$servicePointFiltersAreActive
                             ? __('ui.empty.no_results')
                             : __('service_points.empty.no_service_points_description')"
                     />
@@ -602,9 +598,9 @@
             @endforelse
         </div>
 
-        @if ($servicePoints->hasPages())
+        @if ($servicePointPaginator->hasPages())
             <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
-                {{ $servicePoints->links() }}
+                {{ $servicePointPaginator->links() }}
             </div>
         @endif
     </x-ui.card>

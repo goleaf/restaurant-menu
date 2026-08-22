@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
@@ -18,6 +20,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
+use App\Models\BranchSetting;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -37,6 +40,12 @@ use Livewire\Component;
 #[Layout('layouts.guest')]
 class Show extends Component
 {
+    private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+
+    private GetBranchOpeningStatusAction $getBranchOpeningStatus;
+
+    private GetBranchPollingIntervalAction $getBranchPollingInterval;
+
     #[Locked]
     public string $token = '';
 
@@ -143,6 +152,16 @@ class Show extends Component
         'short_code' => '',
     ];
 
+    public function boot(
+        GetGuestMenuForBranchAction $getGuestMenuForBranch,
+        GetBranchOpeningStatusAction $getBranchOpeningStatus,
+        GetBranchPollingIntervalAction $getBranchPollingInterval,
+    ): void {
+        $this->getGuestMenuForBranch = $getGuestMenuForBranch;
+        $this->getBranchOpeningStatus = $getBranchOpeningStatus;
+        $this->getBranchPollingInterval = $getBranchPollingInterval;
+    }
+
     public function mount(string $token): void
     {
         $this->token = $token;
@@ -213,16 +232,19 @@ class Show extends Component
             return;
         }
 
-        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch(
+        $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch(
             $branch->id,
             $hasRequestedLanguage ? $this->language : null,
         );
         $this->applyGuestLocale();
 
-        $branchSettings = $branch->settings;
-        $openingStatus = app(GetBranchOpeningStatusAction::class)->handle($branch);
+        $branchSettingsRelation = $branch->getRelation('settings');
+        $branchSettings = $branchSettingsRelation instanceof BranchSetting ? $branchSettingsRelation : null;
+        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
         $defaultLanguage = SupportedLocale::normalize($branchSettings?->default_language);
-        $defaultCurrency = SupportedCurrency::normalize($branchSettings?->default_currency ?? $branch->currency);
+        $defaultCurrency = SupportedCurrency::normalize(
+            $branchSettings instanceof BranchSetting ? $branchSettings->default_currency : $branch->currency,
+        );
         $languageLabels = SupportedLocale::labels();
         $venueName = $branch->publicDisplayName();
         $publicDescription = filled($branch->public_description)
@@ -256,7 +278,7 @@ class Show extends Component
             'default_language' => $defaultLanguage,
             'default_language_label' => $languageLabels[$defaultLanguage] ?? $defaultLanguage,
             'default_currency' => $defaultCurrency,
-            'polling_interval_seconds' => app(GetBranchPollingIntervalAction::class)->handle($branch->id),
+            'polling_interval_seconds' => $this->getBranchPollingInterval->handle($branch->id),
             'venue_name' => $venueName,
             'public_description' => $publicDescription,
             'logo_url' => $logoUrl,
@@ -284,9 +306,9 @@ class Show extends Component
 
     public function updatedLanguage(): void
     {
-        $branchId = (int) ($this->landing['branch_id'] ?? 0);
+        $branchId = (int) $this->landing['branch_id'];
         $this->language = $branchId > 0
-            ? app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $this->language)
+            ? $this->getGuestMenuForBranch->resolveLanguageForBranch($branchId, $this->language)
             : SupportedLocale::normalize($this->language);
 
         $this->applyGuestLocale();
@@ -1097,10 +1119,6 @@ class Show extends Component
 
         $servicePoint = $tableSession->servicePoint;
 
-        if (! $servicePoint instanceof ServicePoint) {
-            return;
-        }
-
         $this->landing['service_point_name'] = $servicePoint->name;
         $this->landing['service_point_display_number'] = $servicePoint->display_number;
         $this->landing['service_point_type'] = $servicePoint->type->label();
@@ -1372,7 +1390,7 @@ class Show extends Component
         }
 
         return $guest->status === TableSessionGuestStatus::Active
-            && (bool) ($this->landing['can_accept_orders'] ?? true);
+            && (bool) $this->landing['can_accept_orders'];
     }
 
     private function canGuestViewTable(TableSessionGuest $guest, TableSession $tableSession): bool

@@ -165,7 +165,7 @@ function createPrompt101Branch(bool $withOwner = true): array
     $owner = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Prompt 101 Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Prompt 101 Brand']);
-    $branch = (new CreateBranchAction)->handle($brand, [
+    $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Prompt 101 Branch',
         'address' => 'Pilies 1',
         'city' => 'Vilnius',

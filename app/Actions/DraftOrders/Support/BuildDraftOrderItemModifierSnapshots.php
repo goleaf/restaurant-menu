@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\DraftOrders\Support;
 
 use App\Enums\BusinessRuleCode;
@@ -9,6 +11,7 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class BuildDraftOrderItemModifierSnapshots
 {

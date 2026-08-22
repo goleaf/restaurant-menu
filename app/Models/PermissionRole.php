@@ -1,11 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\PermissionRoleFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+/**
+ * @property int $permission_id
+ * @property bool $enabled
+ */
+#[Fillable(['enabled'])]
 class PermissionRole extends Pivot
 {
     /** @use HasFactory<PermissionRoleFactory> */

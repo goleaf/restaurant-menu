@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property OrderStatus $status
+ * @property CarbonInterface|null $confirmed_at
+ * @property array<string, mixed>|null $metadata
+ * @property-read User|null $confirmedByUser
  */
 #[Fillable(['service_point_id', 'table_session_id', 'draft_order_id', 'confirmed_by_user_id', 'confirmed_at', 'total_price', 'currency', 'metadata'])]
 class Order extends Model

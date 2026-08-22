@@ -35,14 +35,18 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-#[Title('Menu')]
 class Index extends Component
 {
     use WithFileUploads;
+
+    private ForgetBranchCacheAction $forgetBranchCache;
+
+    private GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus;
+
+    private SeedKitchenDepartmentsForBranchAction $seedKitchenDepartments;
 
     public Organization $organization;
 
@@ -220,6 +224,16 @@ class Index extends Component
     public bool $canChangePrices = false;
 
     public bool $canChangeAvailability = false;
+
+    public function boot(
+        ForgetBranchCacheAction $forgetBranchCache,
+        GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        SeedKitchenDepartmentsForBranchAction $seedKitchenDepartments,
+    ): void {
+        $this->forgetBranchCache = $forgetBranchCache;
+        $this->getMenuAvailabilityStatus = $getMenuAvailabilityStatus;
+        $this->seedKitchenDepartments = $seedKitchenDepartments;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -1208,7 +1222,7 @@ class Index extends Component
      */
     public function menuOptions(): array
     {
-        return $this->menus
+        return $this->menus()
             ->map(fn (Menu $menu): array => [
                 'value' => (string) $menu->id,
                 'label' => $menu->name,
@@ -1228,9 +1242,9 @@ class Index extends Component
     /**
      * @return array{label: string, detail: string, tone: string}
      */
-    public function menuAvailabilityStatus(Menu $menu): array
+    private function menuAvailabilityStatus(Menu $menu): array
     {
-        $status = app(GetMenuAvailabilityStatusAction::class)->handle($menu);
+        $status = $this->getMenuAvailabilityStatus->handle($menu);
 
         return [
             'label' => (string) $status['label'],
@@ -1285,7 +1299,7 @@ class Index extends Component
      */
     public function modifierGroupOptions(): array
     {
-        return $this->modifierGroups
+        return $this->modifierGroups()
             ->map(fn (ModifierGroup $group): array => [
                 'value' => (string) $group->id,
                 'label' => $group->name,
@@ -1299,7 +1313,7 @@ class Index extends Component
      */
     public function kitchenDepartmentOptions(bool $activeOnly = true): array
     {
-        return $this->kitchenDepartments
+        return $this->kitchenDepartments()
             ->when($activeOnly, fn ($departments) => $departments->where('is_active', true))
             ->map(fn (KitchenDepartment $department): array => [
                 'value' => (string) $department->id,
@@ -1312,7 +1326,169 @@ class Index extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.menu.index');
+        $menus = $this->menus();
+
+        return view('livewire.organizations.brands.branches.menu.index', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'branchesUrl' => route('organizations.brands.branches.index', [$this->organization, $this->brand]),
+            'menuRows' => $menus
+                ->map(fn (Menu $menu): array => $this->presentMenu($menu))
+                ->all(),
+            'kitchenDepartmentRows' => $this->kitchenDepartments()
+                ->map(fn (KitchenDepartment $department): array => $this->presentKitchenDepartment($department))
+                ->all(),
+            'modifierGroupRows' => $this->modifierGroups()
+                ->map(fn (ModifierGroup $group): array => $this->presentModifierGroup($group))
+                ->all(),
+            'stopListItems' => $this->stopListItems(),
+            'availableItems' => $this->availableItems(),
+            'menuStatusOptions' => $this->menuStatusOptions(),
+            'kitchenDepartmentTypeOptions' => $this->kitchenDepartmentTypeOptions(),
+            'iconOptions' => $this->iconOptions(),
+            'menuOptions' => $this->menuOptions(),
+            'categoryMenuOptions' => $this->categoryOptionsForMenu($this->categoryMenuId),
+            'itemCategoryOptions' => $this->categoryOptionsForMenu($this->itemMenuId, false),
+            'editingItemCategoryOptions' => $this->categoryOptionsForMenu($this->editingItemMenuId, false),
+            'kitchenDepartmentOptions' => $this->kitchenDepartmentOptions(),
+            'activeKitchenDepartmentOptions' => $this->kitchenDepartmentOptions(false),
+            'scheduleDayOptions' => $this->scheduleDayOptions(),
+            'modifierGroupOptions' => $this->modifierGroupOptions(),
+            'modifierItemOptions' => $this->itemOptionsForMenu($this->modifierItemMenuId),
+        ])->title(__('navigation.menu'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentMenu(Menu $menu): array
+    {
+        $availability = $this->menuAvailabilityStatus($menu);
+        $scheduleDayOptions = $this->scheduleDayOptions();
+
+        return [
+            'id' => $menu->id,
+            'name' => $menu->name,
+            'status_color' => $menu->status->badgeColor(),
+            'localized_status' => __($menu->status->label()),
+            'sort_order' => $menu->sort_order,
+            'categories_count' => $menu->categories_count,
+            'items_count' => $menu->items_count,
+            'availability_color' => match ($availability['tone']) {
+                'success' => 'green',
+                'warning' => 'amber',
+                default => 'zinc',
+            },
+            'availability_label' => $availability['label'],
+            'availability_detail' => $availability['detail'],
+            'schedules' => $menu->availabilitySchedules
+                ->map(fn (MenuAvailabilitySchedule $schedule): array => [
+                    'id' => $schedule->id,
+                    'day_label' => $scheduleDayOptions[$schedule->day_of_week]
+                        ?? __('ui.organizations.brands.branches.menu.index.day'),
+                    'time_range' => substr((string) $schedule->starts_at, 0, 5)
+                        .'-'.substr((string) $schedule->ends_at, 0, 5),
+                ])
+                ->all(),
+            'categories' => $menu->categories
+                ->map(fn (MenuCategory $category): array => $this->presentCategory($category))
+                ->all(),
+            'items' => $menu->items
+                ->map(fn (MenuItem $item): array => $this->presentItem($item))
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{id: int, icon: string, name: string, is_active: bool, description: string|null, sort_order: int}
+     */
+    private function presentCategory(MenuCategory $category): array
+    {
+        return [
+            'id' => $category->id,
+            'icon' => $category->icon ?? 'bookmark',
+            'name' => $category->name,
+            'is_active' => $category->is_active,
+            'description' => $category->description,
+            'sort_order' => $category->sort_order,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentItem(MenuItem $item): array
+    {
+        $categoryRelation = $item->getRelation('category');
+        $departmentRelation = $item->getRelation('kitchenDepartment');
+        $department = $departmentRelation instanceof KitchenDepartment ? $departmentRelation : null;
+        $imageUrl = $item->imageUrl();
+
+        return [
+            'id' => $item->id,
+            'image_url' => $imageUrl,
+            'has_image' => $imageUrl !== null,
+            'name' => $item->name,
+            'category_name' => $categoryRelation instanceof MenuCategory
+                ? $categoryRelation->name
+                : __('ui.livewire.organizations.brands.branches.menu.index.no_category'),
+            'has_department' => $department !== null,
+            'department_color' => $department?->type->badgeColor() ?? 'zinc',
+            'department_name' => $department?->name,
+            'is_available' => $item->is_available,
+            'description' => $item->description,
+            'formatted_price' => MoneyFormatter::format($item->price, $this->branch->currency),
+            'sort_order' => $item->sort_order,
+            'weight' => $item->weight ?? '—',
+            'volume' => $item->volume ?? '—',
+            'calories' => $item->calories ?? '—',
+            'modifier_groups' => $item->modifierGroups
+                ->map(fn (ModifierGroup $group): array => [
+                    'id' => $group->id,
+                    'name' => $group->name,
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, type_color: string, localized_type: string, is_active: bool, menu_items_count: int, sort_order: int}
+     */
+    private function presentKitchenDepartment(KitchenDepartment $department): array
+    {
+        return [
+            'id' => $department->id,
+            'name' => $department->name,
+            'type_color' => $department->type->badgeColor(),
+            'localized_type' => __($department->type->label()),
+            'is_active' => $department->is_active,
+            'menu_items_count' => $department->menu_items_count,
+            'sort_order' => $department->sort_order,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentModifierGroup(ModifierGroup $group): array
+    {
+        return [
+            'id' => $group->id,
+            'name' => $group->name,
+            'is_required' => $group->is_required,
+            'min_select' => $group->min_select,
+            'max_select' => $group->max_select,
+            'items_count' => $group->items_count,
+            'sort_order' => $group->sort_order,
+            'options' => $group->options
+                ->map(fn (ModifierOption $option): array => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'formatted_price_delta' => MoneyFormatter::formatSigned($option->price_delta, $this->branch->currency),
+                    'is_available' => $option->is_available,
+                    'sort_order' => $option->sort_order,
+                ])
+                ->all(),
+        ];
     }
 
     /**
@@ -1329,7 +1505,7 @@ class Index extends Component
     private function categoryRules(string $prefix = ''): array
     {
         if ($prefix === 'editing') {
-            return RestaurantValidationRules::category('editing', array_keys($this->iconOptions));
+            return RestaurantValidationRules::category('editing', array_keys($this->iconOptions()));
         }
 
         $parentRules = ['nullable'];
@@ -1342,7 +1518,7 @@ class Index extends Component
         return [
             'categoryMenuId' => ['required', 'integer', $this->menuRule()],
             'categoryParentId' => $parentRules,
-            ...RestaurantValidationRules::category(iconValues: array_keys($this->iconOptions)),
+            ...RestaurantValidationRules::category(iconValues: array_keys($this->iconOptions())),
         ];
     }
 
@@ -1486,8 +1662,8 @@ class Index extends Component
      */
     private function itemPayload(array $validated, string $prefix = '', ?MenuItem $existingItem = null): array
     {
-        $price = $existingItem?->price ?? '0.00';
-        $isAvailable = $existingItem?->is_available ?? true;
+        $price = $existingItem instanceof MenuItem ? $existingItem->price : '0.00';
+        $isAvailable = $existingItem instanceof MenuItem ? $existingItem->is_available : true;
 
         if ($this->canChangePrices) {
             $price = number_format((float) $validated[$prefix === '' ? 'itemPrice' : $prefix.'ItemPrice'], 2, '.', '');
@@ -1518,8 +1694,8 @@ class Index extends Component
      */
     private function modifierOptionPayload(array $validated, string $prefix = '', ?ModifierOption $existingOption = null): array
     {
-        $priceDelta = $existingOption?->price_delta ?? '0.00';
-        $isAvailable = $existingOption?->is_available ?? true;
+        $priceDelta = $existingOption instanceof ModifierOption ? $existingOption->price_delta : '0.00';
+        $isAvailable = $existingOption instanceof ModifierOption ? $existingOption->is_available : true;
 
         if ($this->canChangePrices) {
             $priceDelta = number_format((float) $validated[$prefix === '' ? 'modifierOptionPriceDelta' : $prefix.'ModifierOptionPriceDelta'], 2, '.', '');
@@ -1845,13 +2021,11 @@ class Index extends Component
             return $departmentId;
         }
 
-        app(SeedKitchenDepartmentsForBranchAction::class)->handle($this->branch);
+        $this->seedKitchenDepartments->handle($this->branch);
 
         unset($this->kitchenDepartments);
 
-        return $this->queryDefaultKitchenDepartmentId(activeOnly: true)
-            ?? $this->queryDefaultKitchenDepartmentId(activeOnly: false)
-            ?? $this->firstActiveKitchenDepartmentId();
+        return $this->firstActiveKitchenDepartmentId();
     }
 
     private function queryDefaultKitchenDepartmentId(bool $activeOnly): ?int
@@ -1897,7 +2071,7 @@ class Index extends Component
             return null;
         }
 
-        return $this->menus->first(fn (Menu $menu): bool => $menu->id === (int) $menuId);
+        return $this->menus()->first(fn (Menu $menu): bool => $menu->id === (int) $menuId);
     }
 
     private function authorizeMenuManagement(): void
@@ -1932,7 +2106,7 @@ class Index extends Component
 
     private function forgetBranchMenuCache(): void
     {
-        app(ForgetBranchCacheAction::class)->handle((int) $this->branch->id);
+        $this->forgetBranchCache->handle((int) $this->branch->id);
     }
 
     private function emptyStringToNull(mixed $value): ?string
@@ -1958,7 +2132,7 @@ class Index extends Component
      */
     private function availabilityItems(bool $isAvailable): array
     {
-        return $this->menus
+        return $this->menus()
             ->flatMap(function (Menu $menu) use ($isAvailable): array {
                 return $menu->items
                     ->filter(fn (MenuItem $item): bool => $item->is_available === $isAvailable)
@@ -1966,8 +2140,10 @@ class Index extends Component
                         'id' => $item->id,
                         'name' => $item->name,
                         'menu_name' => $menu->name,
-                        'category_name' => $item->category?->name ?? __('ui.livewire.organizations.brands.branches.menu.index.no_category'),
-                        'department_name' => $item->kitchenDepartment?->name ?? __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen'),
+                        'category_name' => $item->category->name,
+                        'department_name' => $item->kitchen_department_id === null
+                            ? __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen')
+                            : $item->kitchenDepartment->name,
                         'price' => MoneyFormatter::format($item->price, $this->branch->currency),
                         'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
                     ])

@@ -6,7 +6,7 @@
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
                 {{ __('ui.organizations.brands.branches.areas.zony_restorana') }}
                 <span class="sr-only">{{ __('ui.organizations.brands.branches.areas.areas') }}</span>
@@ -21,7 +21,7 @@
     >
 
         <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($this->quickCreateOptions as $option)
+            @foreach ($quickCreateOptions as $option)
                 <flux:button
                     wire:key="area-preset-{{ $option['type'] }}"
                     :icon="$option['icon']"
@@ -38,19 +38,19 @@
             <flux:input wire:model="name" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
 
             <flux:select wire:model="type" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
-                @foreach ($this->areaTypeOptions as $value => $label)
+                @foreach ($areaTypeOptions as $value => $label)
                     <flux:select.option wire:key="area-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model="icon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
-                @foreach ($this->iconOptions as $value => $label)
+                @foreach ($iconOptions as $value => $label)
                     <flux:select.option wire:key="area-icon-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model="parentId" :label="__('ui.organizations.brands.branches.area_node_row.gde_naxoditsia')">
-                @foreach ($this->parentOptions() as $option)
+                @foreach ($parentOptions as $option)
                     <flux:select.option wire:key="area-parent-create-{{ $option['value'] === '' ? 'top' : $option['value'] }}" value="{{ $option['value'] }}">
                         {{ $option['label'] }}
                     </flux:select.option>
@@ -75,7 +75,7 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->treeNodes as $node)
+            @forelse ($treeNodes as $node)
                 @include('livewire.organizations.brands.branches.area-node-row', ['node' => $node])
             @empty
                 <div class="p-4">

@@ -24,6 +24,91 @@ test('livewire pages use class components with separate presentation views', fun
         ->and($matchingPaths)->toBeEmpty();
 });
 
+test('first party blade templates do not contain php directives or ordinary php blocks', function () {
+    $forbiddenPhpPattern = '/@(?:php|endphp)\b|<\?(?:php|=)/i';
+
+    $matchingPaths = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.blade.php'))
+        ->mapWithKeys(function (SplFileInfo $file) use ($forbiddenPhpPattern): array {
+            if (preg_match($forbiddenPhpPattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
+test('blade templates do not resolve application services or invoke livewire methods', function () {
+    $forbiddenDependencyPattern = '/(?:\\\\)?(?:App\\\\(?:Models|Actions|Services)|Illuminate\\\\)|\\b(?:DB|Cache|Auth|Gate|Storage|Http|Route)::|\\b(?:app|resolve|container|request|auth|config|session)\\s*\\(/';
+    $livewireMethodPattern = '/\\$this->[A-Za-z_][A-Za-z0-9_]*\\s*\\(/';
+    $domainModelPropertyPattern = '/\\$(?:organization|brand|branch|menu|category|item|department|modifierGroup|modifierOption|schedule|servicePoint|qrCode|staffMember|user)->/';
+
+    $matchingPaths = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.blade.php'))
+        ->mapWithKeys(function (SplFileInfo $file) use ($domainModelPropertyPattern, $forbiddenDependencyPattern, $livewireMethodPattern): array {
+            $contents = File::get($file->getPathname());
+
+            if (
+                preg_match($forbiddenDependencyPattern, $contents) !== 1
+                && preg_match($livewireMethodPattern, $contents) !== 1
+                && preg_match($domainModelPropertyPattern, $contents) !== 1
+            ) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
+test('application operations use explicit dependency injection', function () {
+    $serviceLocatorPattern = '/\b(?:app|resolve)\s*\(/';
+
+    $matchingPaths = collect([
+        app_path('Actions'),
+        app_path('Livewire'),
+        app_path('Observers'),
+    ])
+        ->flatMap(fn (string $path) => File::allFiles($path))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
+        ->mapWithKeys(function (SplFileInfo $file) use ($serviceLocatorPattern): array {
+            if (preg_match($serviceLocatorPattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
+test('livewire page metadata and action errors are localized', function () {
+    $hardcodedPresentationPattern = '/#\[Title\s*\(|\baddError\s*\([^,]+,\s*[\'\"]/';
+
+    $matchingPaths = collect(File::allFiles(app_path('Livewire')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
+        ->mapWithKeys(function (SplFileInfo $file) use ($hardcodedPresentationPattern): array {
+            if (preg_match($hardcodedPresentationPattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
 test('shared hosting infrastructure does not expose redis s3 websockets or docker tooling', function () {
     $composerJson = json_decode(file_get_contents(base_path('composer.json')), true, flags: JSON_THROW_ON_ERROR);
     $packageJson = json_decode(file_get_contents(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);

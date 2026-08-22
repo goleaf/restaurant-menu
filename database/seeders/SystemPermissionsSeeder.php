@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Enums\SystemPermission;
@@ -56,11 +58,7 @@ class SystemPermissionsSeeder extends Seeder
             ->orderBy('sort_order')
             ->get()
             ->each(function (Role $role) use ($permissions): void {
-                $systemRole = $role->code instanceof SystemRole
-                    ? $role->code
-                    : SystemRole::from((string) $role->code);
-
-                $enabledCodes = collect(SystemPermission::baselineForRole($systemRole))
+                $enabledCodes = collect(SystemPermission::baselineForRole($role->code))
                     ->map(fn (SystemPermission $permission): string => $permission->value)
                     ->flip();
 

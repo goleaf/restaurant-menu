@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Departments;
 
 use App\Actions\Departments\BuildDepartmentDashboardAction;
@@ -17,6 +19,10 @@ use Livewire\Component;
 
 abstract class Dashboard extends Component
 {
+    private BuildDepartmentDashboardAction $buildDepartmentDashboard;
+
+    private UpdateDepartmentTicketItemStatusAction $updateDepartmentTicketItemStatus;
+
     /**
      * @var list<array<string, mixed>>
      */
@@ -58,6 +64,14 @@ abstract class Dashboard extends Component
      */
     public array $statusOptions = [];
 
+    public function boot(
+        BuildDepartmentDashboardAction $buildDepartmentDashboard,
+        UpdateDepartmentTicketItemStatusAction $updateDepartmentTicketItemStatus,
+    ): void {
+        $this->buildDepartmentDashboard = $buildDepartmentDashboard;
+        $this->updateDepartmentTicketItemStatus = $updateDepartmentTicketItemStatus;
+    }
+
     public function mount(): void
     {
         $this->statusOptions = KitchenTicketItemStatus::options();
@@ -76,7 +90,7 @@ abstract class Dashboard extends Component
 
     public function refreshDepartment(): void
     {
-        $payload = app(BuildDepartmentDashboardAction::class)->handle(
+        $payload = $this->buildDepartmentDashboard->handle(
             user: $this->currentUser(),
             selectedDepartmentId: $this->selectedDepartmentId === '' ? null : (int) $this->selectedDepartmentId,
             departmentTypes: $this->departmentTypes(),
@@ -115,7 +129,7 @@ abstract class Dashboard extends Component
                 ->whereKey($itemId)
                 ->firstOrFail();
 
-            app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+            $this->updateDepartmentTicketItemStatus->handle(
                 item: $item,
                 status: $statusEnum,
                 user: $this->currentUser(),
@@ -133,7 +147,19 @@ abstract class Dashboard extends Component
 
     public function render(): View
     {
-        return view('livewire.departments.dashboard');
+        return view('livewire.departments.dashboard', [
+            'presentedTickets' => collect($this->tickets)
+                ->map(function (array $ticket): array {
+                    $ticket['timer_classes'] = match ($ticket['timer_tone']) {
+                        'rose' => 'border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-100',
+                        'amber' => 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100',
+                        default => 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100',
+                    };
+
+                    return $ticket;
+                })
+                ->all(),
+        ])->title($this->screenTitle());
     }
 
     /**

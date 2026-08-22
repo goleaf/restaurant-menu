@@ -8,7 +8,6 @@ use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\WaiterCall;
@@ -41,9 +40,7 @@ class RequestWaiterForTableSessionAction
             }
 
             $servicePoint = $tableSession->servicePoint;
-            $previousStatus = $servicePoint?->status instanceof ServicePointStatus
-                ? $servicePoint->status->value
-                : ServicePointStatus::Occupied->value;
+            $previousStatus = $servicePoint->status->value;
 
             $waiterCall = new WaiterCall;
             $waiterCall->forceFill([
@@ -121,7 +118,7 @@ class RequestWaiterForTableSessionAction
     {
         $servicePoint = $tableSession->servicePoint;
 
-        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
+        if (! $servicePoint->is_active) {
             throw ValidationException::withMessages([
                 'waiter_call' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_mesto_seicas_nedost'),
             ]);
@@ -161,9 +158,7 @@ class RequestWaiterForTableSessionAction
 
     private function markServicePointWaiting(TableSession $tableSession): void
     {
-        if ($tableSession->servicePoint instanceof ServicePoint) {
-            $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::WaitingWaiter);
-        }
+        $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::WaitingWaiter);
     }
 
     private function reloadWaiterCallForNotification(WaiterCall $waiterCall): WaiterCall

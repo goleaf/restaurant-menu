@@ -61,6 +61,6 @@ enum SupportedLocale: string
         $locale = strtolower(trim((string) $locale));
         $locale = str_replace('_', '-', $locale);
 
-        return explode('-', $locale)[0] ?? '';
+        return explode('-', $locale)[0];
     }
 }

@@ -1,14 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\TableSessionJoinRequestStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\TableSessionJoinRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property TableSessionJoinRequestStatus $status
+ * @property CarbonInterface|null $expires_at
+ */
 #[Fillable(['table_session_id', 'guest_name', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
 class TableSessionJoinRequest extends Model
 {

@@ -4,7 +4,7 @@
             {{ __('ui.auth.verify_email.please_verify_your_email_address_by_clicking_on_the_li') }}
         </flux:text>
 
-        @if (session('status') == 'verification-link-sent')
+        @if ($verificationLinkSent)
             <flux:text class="text-center font-medium !dark:text-green-400 !text-green-600">
                 {{ __('ui.auth.verify_email.a_new_verification_link_has_been_sent_to_the_email_add') }}
             </flux:text>

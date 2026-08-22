@@ -1,11 +1,11 @@
 <section data-page="branch-settings" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
+        <flux:button icon="arrow-left" :href="$branchesUrl" wire:navigate>
             {{ __('navigation.branches') }}
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }} / {{ $brand->name }} / {{ $branch->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('ui.organizations.brands.branches.settings.branch_settings') }}</h1>
         </div>
     </header>
@@ -25,7 +25,7 @@
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="publicName" :label="__('ui.organizations.brands.branches.settings.venue_name')" maxlength="160" :placeholder="$branch->name" />
+                    <flux:input wire:model="publicName" :label="__('ui.organizations.brands.branches.settings.venue_name')" maxlength="160" :placeholder="$branchName" />
                     <flux:input wire:model="phone" :label="__('ui.organizations.brands.branches.settings.phone')" maxlength="80" :placeholder="__('fields.placeholders.phone_example')" />
                     <flux:input wire:model="email" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" :placeholder="__('fields.placeholders.branch_email_example')" />
                     <flux:input wire:model="websiteUrl" :label="__('guest.table.website')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.website_url_example')" />
@@ -46,12 +46,11 @@
                     <label class="grid gap-2 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.logo') }}</span>
                         @if ($currentLogoUrl)
-                            <img src="{{ $currentLogoUrl }}" alt="{{ $branch->publicDisplayName() }}" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
+                            <img src="{{ $currentLogoUrl }}" alt="{{ $publicDisplayName }}" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
                         @else
                             <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.logo') }}</div>
                         @endif
-                        <input wire:model="publicLogo" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.logo') }}" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
-                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</span>
+                        <x-ui.image-upload-input wire:model="publicLogo" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" />
                         @error('publicLogo')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
@@ -60,12 +59,11 @@
                     <label class="grid gap-2 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('uploads.labels.image') }}</span>
                         @if ($currentCoverImageUrl)
-                            <img src="{{ $currentCoverImageUrl }}" alt="{{ $branch->publicDisplayName() }}" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
+                            <img src="{{ $currentCoverImageUrl }}" alt="{{ $publicDisplayName }}" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
                         @else
                             <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.image') }}</div>
                         @endif
-                        <input wire:model="coverImage" type="file" accept="{{ \App\Actions\Media\StoreLocalImageAction::acceptedMimeTypes() }}" aria-label="{{ __('uploads.actions.choose_file') }} {{ __('uploads.labels.image') }}" class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:file:bg-zinc-100 dark:file:text-zinc-950">
-                        <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ \App\Actions\Media\StoreLocalImageAction::helpText() }}</span>
+                        <x-ui.image-upload-input wire:model="coverImage" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" />
                         @error('coverImage')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
@@ -192,7 +190,7 @@
                 </div>
 
                 <div class="grid gap-3 md:grid-cols-2">
-                    @foreach ($this->serviceModeOptions as $mode)
+                    @foreach ($serviceModeOptions as $mode)
                         <label wire:key="branch-service-mode-{{ $mode['value'] }}" class="flex gap-3 rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
                             <input type="checkbox" wire:model="serviceModes" value="{{ $mode['value'] }}" class="mt-1 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
                             <span class="grid gap-1">
@@ -298,7 +296,7 @@
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.order_flow_mode') }}</span>
                     <select wire:model="orderFlowMode" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-xs outline-hidden focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white">
-                        @foreach ($this->orderFlowModeOptions as $option)
+                        @foreach ($orderFlowModeOptions as $option)
                             <option wire:key="order-flow-mode-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ __($option['label']) }}</option>
                         @endforeach
                     </select>

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\QrCodeStatus;
@@ -8,6 +10,7 @@ use App\Enums\ServicePointType;
 use App\Enums\TableSessionStatus;
 use Database\Factories\ServicePointFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,6 +18,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property ServicePointType $type
+ * @property ServicePointStatus $status
+ * @property-read AreaNode|null $areaNode
+ * @property-read QrCode|null $activeQrCode
+ * @property-read TableSession|null $activeTableSession
+ * @property-read Collection<int, TableSessionServicePoint> $activeTableSessionServicePointLinks
+ */
 #[Fillable(['area_node_id', 'type', 'name', 'display_number', 'internal_code', 'capacity', 'icon', 'position_x', 'position_y', 'is_active', 'metadata'])]
 class ServicePoint extends Model
 {

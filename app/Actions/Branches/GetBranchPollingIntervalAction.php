@@ -3,7 +3,7 @@
 namespace App\Actions\Branches;
 
 use App\Models\BranchSetting;
-use Illuminate\Cache\Repository as CacheRepository;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
 
 class GetBranchPollingIntervalAction

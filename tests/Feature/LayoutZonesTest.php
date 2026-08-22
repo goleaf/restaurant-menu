@@ -9,6 +9,8 @@ test('guest interface start page is public and mobile first', function () {
     $this->get(route('guest.home'))
         ->assertOk()
         ->assertSee('data-layout="guest"', false)
+        ->assertSee('x-on:offline.window', false)
+        ->assertSee('role="status"', false)
         ->assertSee('Guest interface')
         ->assertSee('Scan a table QR code')
         ->assertSee('min-h-svh');
@@ -18,6 +20,9 @@ test('auth pages use the auth layout zone', function () {
     $this->get(route('login'))
         ->assertOk()
         ->assertSee('data-layout="auth"', false)
+        ->assertSee('x-on:offline.window', false)
+        ->assertSee('<main', false)
+        ->assertSee('<meta name="description"', false)
         ->assertSee('Log in');
 });
 
@@ -32,6 +37,8 @@ test('restaurant dashboard is available to authenticated users', function () {
     $this->actingAs($user)
         ->get(route('restaurant.dashboard'))
         ->assertOk()
+        ->assertSee('<main', false)
+        ->assertSee('wire:offline', false)
         ->assertSee('data-layout="restaurant-dashboard"', false)
         ->assertSee('Restaurant dashboard');
 });

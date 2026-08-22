@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
@@ -8,6 +10,10 @@ use App\Models\ModifierOption;
 
 class ModifierOptionObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * Handle the ModifierOption "created" event.
      */
@@ -71,7 +77,7 @@ class ModifierOptionObserver
             ->value('branch_id');
 
         if (is_numeric($branchId)) {
-            app(ForgetBranchCacheAction::class)->handle((int) $branchId);
+            $this->forgetBranchCache->handle((int) $branchId);
         }
     }
 }

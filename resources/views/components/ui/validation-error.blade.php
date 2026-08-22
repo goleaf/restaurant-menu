@@ -1,14 +1,11 @@
-@props([
-    'name' => null,
-    'error' => null,
-])
-
-@php
-    $message = $error ?? ($name && isset($errors) ? $errors->first($name) : null);
-@endphp
-
-@if ($message)
+@if ($error)
     <p {{ $attributes->class('text-sm font-medium text-red-600 dark:text-red-300') }}>
-        {{ $message }}
+        {{ $error }}
     </p>
+@elseif ($name)
+    @error($name)
+        <p {{ $attributes->class('text-sm font-medium text-red-600 dark:text-red-300') }}>
+            {{ $message }}
+        </p>
+    @enderror
 @endif

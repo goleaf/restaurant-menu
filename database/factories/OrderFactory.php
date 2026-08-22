@@ -129,7 +129,8 @@ class OrderFactory extends Factory
 
             $items->each(function (OrderItem $orderItem) use ($ticket): void {
                 KitchenTicketItem::factory()
-                    ->forOrderItem($orderItem, $ticket)
+                    ->for($orderItem, 'orderItem')
+                    ->for($ticket, 'kitchenTicket')
                     ->pending()
                     ->create();
             });

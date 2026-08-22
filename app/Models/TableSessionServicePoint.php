@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\TableSessionServicePointFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -9,6 +12,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonInterface $linked_at
+ */
 #[Fillable(['table_session_id', 'service_point_id', 'active_service_point_id', 'linked_by_user_id', 'linked_at', 'unlinked_by_user_id', 'unlinked_at'])]
 class TableSessionServicePoint extends Model
 {

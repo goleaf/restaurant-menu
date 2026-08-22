@@ -1,17 +1,11 @@
 <section data-page="organization-staff" class="flex h-full w-full flex-1 flex-col gap-6">
-    @php
-        $deactivateStaffTitle = \App\Enums\DangerousAction::DeactivateStaff->title();
-        $deactivateStaffConsequence = \App\Enums\DangerousAction::DeactivateStaff->consequence();
-        $deactivateStaffRequiresReason = \App\Enums\DangerousAction::DeactivateStaff->requiresReason();
-    @endphp
-
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.index')" wire:navigate>
             {{ __('navigation.organizations') }}
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organizationName }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('staff.organization_access') }}</h1>
         </div>
     </header>
@@ -26,9 +20,9 @@
                     <flux:input wire:model="manualEmail" :label="__('ui.auth.reset_password.email')" type="email" required maxlength="255" />
 
                     <flux:select wire:model="manualRoleId" :label="__('staff.role')" required>
-                        @foreach ($this->roles as $role)
-                            <flux:select.option wire:key="manual-role-{{ $role->id }}" value="{{ $role->id }}">
-                                {{ $this->roleLabel($role) }}
+                        @foreach ($roleOptions as $role)
+                            <flux:select.option wire:key="manual-role-{{ $role['id'] }}" value="{{ $role['id'] }}">
+                                {{ $role['label'] }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
@@ -51,9 +45,9 @@
                     <flux:input wire:model="invitePhone" :label="__('ui.organizations.brands.branches.settings.phone')" type="text" maxlength="40" />
 
                     <flux:select wire:model="inviteRoleId" :label="__('staff.role')" required>
-                        @foreach ($this->roles as $role)
-                            <flux:select.option wire:key="invite-role-{{ $role->id }}" value="{{ $role->id }}">
-                                {{ $this->roleLabel($role) }}
+                        @foreach ($roleOptions as $role)
+                            <flux:select.option wire:key="invite-role-{{ $role['id'] }}" value="{{ $role['id'] }}">
+                                {{ $role['label'] }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
@@ -92,40 +86,38 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->members as $member)
-                <div wire:key="organization-staff-{{ $member->id }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
+            @forelse ($memberRows as $member)
+                <div wire:key="organization-staff-{{ $member['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     <div class="min-w-0">
                         <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $member->user->name }}</h2>
+                            <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $member['user_name'] }}</h2>
 
-                            @if ($member->status->value === 'active')
-                                <flux:badge color="green">{{ $this->memberStatusLabel($member->status) }}</flux:badge>
+                            @if ($member['is_active'])
+                                <flux:badge color="green">{{ $member['localized_status'] }}</flux:badge>
                             @else
-                                <flux:badge color="zinc">{{ $this->memberStatusLabel($member->status) }}</flux:badge>
+                                <flux:badge color="zinc">{{ $member['localized_status'] }}</flux:badge>
                             @endif
                         </div>
 
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member->user->email }}</p>
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $this->roleLabel($member->role) }}</p>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member['user_email'] }}</p>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member['role_label'] }}</p>
                     </div>
 
                     <div class="flex flex-wrap gap-2 md:justify-end">
-                        <flux:button icon="shield-check" type="button" :href="route('organizations.staff.permissions', [$organization, $member->user])" wire:navigate>
+                        <flux:button icon="shield-check" type="button" :href="route('organizations.staff.permissions', [$organization, $member['user_id']])" wire:navigate>
                             {{ __('staff.actions.update_permissions') }}
                         </flux:button>
 
-                        @if ($member->status->value === 'active')
+                        @if ($member['is_active'])
                             <x-dangerous-action-confirmation
-                                name="deactivate-organization-staff-{{ $member->id }}"
-                                :title="$deactivateStaffTitle"
-                                :consequence="$deactivateStaffConsequence"
-                                confirm-action="deactivateMember({{ $member->id }})"
-                                submit-target="deactivateMember({{ $member->id }})"
+                                name="deactivate-organization-staff-{{ $member['id'] }}"
+                                action="deactivate_staff"
+                                confirm-action="deactivateMember({{ $member['id'] }})"
+                                submit-target="deactivateMember({{ $member['id'] }})"
                                 confirm-label="ui.actions.confirm"
                                 reason-model="staffDeactivationReason"
                                 :reason-label="__('staff.forms.deactivation_reason')"
                                 :reason-placeholder="__('staff.forms.deactivation_reason_organization_placeholder')"
-                                :reason-required="$deactivateStaffRequiresReason"
                             >
                                 <x-slot:trigger>
                                     <flux:button icon="pause" type="button">
@@ -134,7 +126,7 @@
                                 </x-slot:trigger>
                             </x-dangerous-action-confirmation>
                         @else
-                            <flux:button icon="play" variant="primary" type="button" wire:click="activateMember({{ $member->id }})">
+                            <flux:button icon="play" variant="primary" type="button" wire:click="activateMember({{ $member['id'] }})">
                                 {{ __('staff.reactivate') }}
                             </flux:button>
                         @endif
@@ -154,14 +146,14 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->invitations as $invitation)
-                <div wire:key="organization-invitation-{{ $invitation->id }}" class="px-4 py-4">
+            @forelse ($invitationRows as $invitation)
+                <div wire:key="organization-invitation-{{ $invitation['id'] }}" class="px-4 py-4">
                     <div class="flex flex-wrap items-center gap-2">
-                        <p class="font-medium text-zinc-950 dark:text-white">{{ $this->roleLabel($invitation->role) }}</p>
-                        <flux:badge>{{ $this->invitationStatusLabel($invitation->status) }}</flux:badge>
+                        <p class="font-medium text-zinc-950 dark:text-white">{{ $invitation['role_label'] }}</p>
+                        <flux:badge>{{ $invitation['localized_status'] }}</flux:badge>
                     </div>
 
-                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation->email ?: __('staff.no_email') }} / {{ $invitation->phone ?: __('staff.no_phone') }}</p>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation['email'] ?: __('staff.no_email') }} / {{ $invitation['phone'] ?: __('staff.no_phone') }}</p>
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

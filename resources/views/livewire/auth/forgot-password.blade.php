@@ -3,7 +3,7 @@
         <x-auth-header :title="__('ui.auth.forgot_password.forgot_password')" :description="__('ui.auth.forgot_password.enter_your_email_to_receive_a_password_reset_link')" />
 
         <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
         <form method="POST" action="{{ route('password.email') }}" class="flex flex-col gap-6">
             @csrf

@@ -3,7 +3,7 @@
         <x-auth-header :title="__('ui.auth.register.create_an_account')" :description="__('ui.auth.register.enter_your_details_below_to_create_your_account')" />
 
         <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
         <form method="POST" action="{{ route('register.store') }}" class="flex flex-col gap-6">
             @csrf
@@ -38,7 +38,7 @@
                 required
                 autocomplete="new-password"
                 :placeholder="__('ui.auth.confirm_password.password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $passwordRules }}"
                 viewable
             />
 
@@ -50,7 +50,7 @@
                 required
                 autocomplete="new-password"
                 :placeholder="__('ui.auth.confirm_password.confirm_password')"
-                passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
+                passwordrules="{{ $passwordRules }}"
                 viewable
             />
 

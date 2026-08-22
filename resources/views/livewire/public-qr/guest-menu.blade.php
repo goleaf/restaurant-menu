@@ -1,10 +1,4 @@
 <section data-component="guest-menu" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-    @php
-        $availableMenus = $guestMenu['menus'] ?? [];
-        $unavailableMenus = $guestMenu['unavailable_menus'] ?? [];
-        $availableMenuCount = count($availableMenus);
-    @endphp
-
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
     <div class="flex items-start justify-between gap-3">
         <div>
@@ -301,15 +295,15 @@
 
                             <div class="mt-3 grid gap-2">
                                 @forelse ($modifierGroup['options'] as $modifierOption)
-                                    @php($isSelected = in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true))
                                     <button
                                         type="button"
                                         wire:key="guest-menu-selected-option-{{ $modifierOption['id'] }}"
                                         wire:click="toggleModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                        aria-pressed="{{ in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
                                         @class([
                                             'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $isSelected,
-                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! $isSelected,
+                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true),
+                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true),
                                         ])
                                     >
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>

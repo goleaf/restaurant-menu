@@ -152,7 +152,7 @@ class AuditTranslationsCommand extends Command
 
     /**
      * @param  list<string>  $invalidJsonFiles
-     * @return array<string, mixed>|null
+     * @return array<mixed>|null
      */
     private function decodeJsonFile(string $path, array &$invalidJsonFiles): ?array
     {
@@ -351,8 +351,8 @@ class AuditTranslationsCommand extends Command
     {
         $option = $this->option('scan-dir');
 
-        if (is_array($option) && $option !== []) {
-            return array_values(array_filter($option, fn (string $path): bool => $path !== ''));
+        if ($option !== []) {
+            return array_values(array_filter($option, fn (?string $path): bool => is_string($path) && $path !== ''));
         }
 
         return [

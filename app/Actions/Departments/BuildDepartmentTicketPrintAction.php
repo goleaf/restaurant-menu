@@ -6,7 +6,6 @@ namespace App\Actions\Departments;
 
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
-use App\Enums\KitchenTicketStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\KitchenTicket;
@@ -38,7 +37,7 @@ class BuildDepartmentTicketPrintAction
             abort(403);
         }
 
-        $timezone = $ticket->branch?->timezone ?: config('app.timezone');
+        $timezone = $ticket->branch->timezone ?: config('app.timezone');
         $items = $ticket->items
             ->map(fn (KitchenTicketItem $item): array => $this->itemPayload($item))
             ->values()
@@ -56,19 +55,21 @@ class BuildDepartmentTicketPrintAction
             ],
             'branch' => [
                 'id' => $ticket->branch_id,
-                'name' => $ticket->branch?->name ?? __('guest.table.branch'),
-                'city' => $ticket->branch?->city,
-                'country' => $ticket->branch?->country,
+                'name' => $ticket->branch->name,
+                'city' => $ticket->branch->city,
+                'country' => $ticket->branch->country,
             ],
             'service_point' => [
                 'id' => $ticket->service_point_id,
-                'name' => $ticket->servicePoint?->name ?? __('guest.table.service_point'),
-                'display_number' => $ticket->servicePoint?->display_number,
+                'name' => $ticket->servicePoint->name,
+                'display_number' => $ticket->servicePoint->display_number,
                 'label' => $this->servicePointLabel(
-                    (string) ($ticket->servicePoint?->display_number ?? ''),
-                    (string) ($ticket->servicePoint?->name ?? ''),
+                    (string) ($ticket->servicePoint->display_number ?? ''),
+                    (string) $ticket->servicePoint->name,
                 ),
-                'zone_name' => $ticket->servicePoint?->areaNode?->name,
+                'zone_name' => $ticket->servicePoint->area_node_id === null
+                    ? null
+                    : $ticket->servicePoint->areaNode->name,
             ],
             'department' => [
                 'id' => $ticket->kitchen_department_id,
@@ -234,15 +235,6 @@ class BuildDepartmentTicketPrintAction
     private function formatTime(?CarbonInterface $time, string $timezone): ?string
     {
         return $time?->copy()->timezone($timezone)->format('Y-m-d H:i');
-    }
-
-    private function ticketStatus(KitchenTicket $ticket): KitchenTicketStatus
-    {
-        if ($ticket->status instanceof KitchenTicketStatus) {
-            return $ticket->status;
-        }
-
-        return KitchenTicketStatus::tryFrom((string) $ticket->status) ?? KitchenTicketStatus::Sent;
     }
 
     private function itemStatus(mixed $status): KitchenTicketItemStatus

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
@@ -7,6 +9,10 @@ use App\Models\Menu;
 
 class MenuObserver
 {
+    public function __construct(
+        private readonly ForgetBranchCacheAction $forgetBranchCache,
+    ) {}
+
     /**
      * Handle the Menu "created" event.
      */
@@ -50,7 +56,7 @@ class MenuObserver
 
     private function forgetGuestMenu(Menu $menu): void
     {
-        app(ForgetBranchCacheAction::class)->handle((int) $menu->branch_id);
+        $this->forgetBranchCache->handle((int) $menu->branch_id);
     }
 
     private function softDeleteCategories(Menu $menu): void

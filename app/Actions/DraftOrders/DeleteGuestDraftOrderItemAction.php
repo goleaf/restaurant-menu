@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Orders\CreateOrderStatusLogAction;
@@ -8,7 +10,6 @@ use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
-use App\Models\ServicePoint;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -97,14 +98,12 @@ class DeleteGuestDraftOrderItemAction
     private function ensureGuestCanDeleteItem(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
     {
         $draftOrder = $draftOrderItem->draftOrder;
-        $tableSession = $draftOrder?->tableSession;
-        $servicePoint = $tableSession?->servicePoint;
+        $tableSession = $draftOrder->tableSession;
+        $servicePoint = $tableSession->servicePoint;
 
         if ($draftOrderItem->table_session_guest_id !== $guest->id
-            || $draftOrder?->table_session_id !== $guest->table_session_id
+            || $draftOrder->table_session_id !== $guest->table_session_id
             || $guest->status !== TableSessionGuestStatus::Active
-            || $tableSession === null
-            || ! $servicePoint instanceof ServicePoint
             || ! $servicePoint->is_active
             || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
             throw ValidationException::withMessages([

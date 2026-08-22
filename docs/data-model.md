@@ -2,7 +2,7 @@
 
 ## Database contract
 
-SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 48 application/framework tables, 65 migrations and no views, triggers, routines or database-specific raw SQL. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
+SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 66 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
 
 ## Entity groups
 
@@ -14,14 +14,14 @@ SQLite is the supported local, test and production database. The schema is migra
 | Branch setup | branch_settings, branch_opening_hours, area_nodes, area_node_waiters, service_points, qr_codes | service points/QR/assignments stay within the branch hierarchy |
 | Menu | menus, categories/translations, items/translations, modifier groups/options, schedules | localized records unique per owner+locale; published relationships remain valid |
 | Guest/session | table_sessions, session_service_points, guests, join_requests, waiter_calls | guarded active/pending service-point uniqueness; session ownership enforced |
-| Ordering | draft_orders/items, orders/items, order_status_logs | money uses integer minor units; immutable snapshots preserve historical meaning |
+| Ordering | draft_orders/items, orders/items, order_status_logs | money uses fixed-precision decimal snapshots; immutable values preserve historical meaning |
 | Fulfilment | kitchen_departments, kitchen_tickets/items | branch/department/order consistency; item status transitions are closed enums |
 | Settlement/governance | manual_payments, audit_logs, organization_subscriptions, notifications | non-negative money; replay-safe operations; immutable audit facts |
 | Runtime | cache, cache_locks, jobs, job_batches, failed_jobs | infrastructure records contain no cross-tenant business cache leakage |
 
 ## Value conventions
 
-- Money: integer minor units only. Display conversion is locale/currency aware and does not feed persistence.
+- Money: fixed-precision decimal strings/columns at persistence boundaries and integer minor units for arithmetic where an operation requires it; binary float never crosses a domain boundary. Display formatting is locale/currency aware and never feeds persistence.
 - Time: database timestamps represent an unambiguous instant; branch/user locale formats presentation.
 - State: backed enum values persisted as canonical lowercase snake-case strings.
 - Localization: branch/menu presentation supports `en`, `lt`, and `ru`; translation tables use owner+locale uniqueness.

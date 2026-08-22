@@ -1,14 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\AuditLogAction;
+use Carbon\CarbonImmutable;
 use Database\Factories\AuditLogFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property AuditLogAction $action
+ * @property CarbonImmutable $created_at
+ */
 #[Fillable(['user_id', 'guest_id', 'action', 'entity_type', 'entity_id', 'old_values', 'new_values', 'created_at'])]
 class AuditLog extends Model
 {

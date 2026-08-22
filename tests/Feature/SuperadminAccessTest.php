@@ -76,7 +76,7 @@ test('superadmin can access platform dashboard and see platform records', functi
 test('superadmin sees expanded organization controls and counts', function () {
     [$organization, $brand, $branch] = createPlatformRecordsForSuperadmin();
     $superadmin = createSuperadminUser();
-    $inactiveBranch = (new CreateBranchAction)->handle($brand, [
+    $inactiveBranch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Platform Paused Branch',
         'address' => 'Side Street 2',
         'city' => 'Kaunas',
@@ -100,7 +100,7 @@ test('superadmin sees expanded organization controls and counts', function () {
     $this->actingAs($superadmin)
         ->get(route('superadmin.dashboard'))
         ->assertOk()
-        ->assertSee('Service Points')
+        ->assertSee(__('navigation.service_points'))
         ->assertSee('Orders')
         ->assertSee('Activity active')
         ->assertSee('Service points')
@@ -153,7 +153,7 @@ function createPlatformRecordsForSuperadmin(): array
     $owner = User::factory()->create(['name' => 'Restaurant Owner']);
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Platform Visible Group']);
     $brand = Brand::factory()->for($organization)->create(['name' => 'Platform Visible Brand']);
-    $branch = (new CreateBranchAction)->handle($brand, [
+    $branch = app(CreateBranchAction::class)->handle($brand, [
         'name' => 'Platform Visible Branch',
         'address' => 'Main Street 1',
         'city' => 'Vilnius',

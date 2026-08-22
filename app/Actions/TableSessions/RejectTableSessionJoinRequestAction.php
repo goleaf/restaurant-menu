@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
-use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use Illuminate\Support\Facades\DB;
@@ -115,8 +116,7 @@ class RejectTableSessionJoinRequestAction
     ): void {
         $tableSession = $joinRequest->tableSession;
 
-        if (! $tableSession instanceof TableSession
-            || $guest->table_session_id !== $tableSession->id
+        if ($guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
                 'guest' => __('ui.actions.tablesessions.rejecttablesessionjoinrequestaction.only_an_active'),

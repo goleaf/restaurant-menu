@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\QrCodeStatus;
@@ -9,6 +11,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property QrCodeStatus $status
+ */
 #[Fillable(['service_point_id', 'short_code', 'revoked_at', 'revoked_by_user_id'])]
 class QrCode extends Model
 {
@@ -25,9 +30,10 @@ class QrCode extends Model
     protected static function booted(): void
     {
         static::saving(function (QrCode $qrCode): void {
-            $status = $qrCode->status instanceof QrCodeStatus
-                ? $qrCode->status
-                : QrCodeStatus::from($qrCode->status ?? QrCodeStatus::Active->value);
+            $storedStatus = $qrCode->getAttribute('status');
+            $status = $storedStatus instanceof QrCodeStatus
+                ? $storedStatus
+                : QrCodeStatus::from((string) ($storedStatus ?? QrCodeStatus::Active->value));
 
             $qrCode->active_service_point_id = $status === QrCodeStatus::Active
                 ? $qrCode->service_point_id

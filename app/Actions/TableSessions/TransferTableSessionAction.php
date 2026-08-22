@@ -33,10 +33,8 @@ class TransferTableSessionAction
             $this->ensureCanTransfer($tableSession, $targetServicePoint, $transferredBy);
 
             $oldServicePointId = (int) $tableSession->service_point_id;
-            $oldServicePointName = $currentServicePoint?->name;
-            $oldServicePointStatus = $currentServicePoint instanceof ServicePoint
-                ? $this->servicePointStatus($currentServicePoint)
-                : null;
+            $oldServicePointName = $currentServicePoint->name;
+            $oldServicePointStatus = $this->servicePointStatus($currentServicePoint);
             $newServicePointName = $targetServicePoint->name;
             $transferredAt = now();
             $metadata = $this->metadataWithTransferHistory(
@@ -52,9 +50,7 @@ class TransferTableSessionAction
                 'metadata' => $metadata,
             ])->save();
 
-            if ($currentServicePoint instanceof ServicePoint) {
-                $this->updateServicePointStatus->handle($currentServicePoint, ServicePointStatus::Free);
-            }
+            $this->updateServicePointStatus->handle($currentServicePoint, ServicePointStatus::Free);
 
             $this->updateServicePointStatus->handle($targetServicePoint, ServicePointStatus::Occupied);
 
@@ -63,7 +59,7 @@ class TransferTableSessionAction
                 entityType: 'table_session',
                 entityId: $tableSession->id,
                 actorUser: $transferredBy,
-                organizationId: $tableSession->branch?->organization_id,
+                organizationId: $tableSession->branch->organization_id,
                 branchId: $tableSession->branch_id,
                 oldValues: [
                     'service_point_id' => $oldServicePointId,
@@ -212,15 +208,11 @@ class TransferTableSessionAction
 
     private function sessionStatus(TableSession $tableSession): TableSessionStatus
     {
-        return $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        return $tableSession->status;
     }
 
     private function servicePointStatus(ServicePoint $servicePoint): ServicePointStatus
     {
-        return $servicePoint->status instanceof ServicePointStatus
-            ? $servicePoint->status
-            : ServicePointStatus::from((string) $servicePoint->status);
+        return $servicePoint->status;
     }
 }

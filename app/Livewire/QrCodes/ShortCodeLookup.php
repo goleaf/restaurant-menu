@@ -1,16 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\QrCodes;
 
 use App\Actions\QrCodes\DisableQrCodeAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
-use App\Enums\DangerousAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
-use App\Models\Branch;
 use App\Models\QrCode;
-use App\Models\ServicePoint;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -23,6 +22,8 @@ use Livewire\Component;
 
 class ShortCodeLookup extends Component
 {
+    private ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds;
+
     public string $shortCode = '';
 
     public bool $searched = false;
@@ -32,6 +33,11 @@ class ShortCodeLookup extends Component
     public string $qrDisableReason = '';
 
     public string $qrReissueConfirmation = '';
+
+    public function boot(ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds): void
+    {
+        $this->resolveAccessibleBranchIds = $resolveAccessibleBranchIds;
+    }
 
     public function mount(): void
     {
@@ -202,28 +208,26 @@ class ShortCodeLookup extends Component
     #[Computed]
     public function publicUrl(): ?string
     {
-        if (! $this->qrCode instanceof QrCode) {
+        $qrCode = $this->qrCode();
+
+        if (! $qrCode instanceof QrCode) {
             return null;
         }
 
-        return route('public.qr.show', ['token' => $this->qrCode->public_token]);
+        return route('public.qr.show', ['token' => $qrCode->public_token]);
     }
 
     #[Computed]
     public function adminUrl(): ?string
     {
-        $qrCode = $this->qrCode;
+        $qrCode = $this->qrCode();
 
-        if (! $qrCode instanceof QrCode || ! $qrCode->servicePoint instanceof ServicePoint) {
+        if (! $qrCode instanceof QrCode) {
             return null;
         }
 
         $servicePoint = $qrCode->servicePoint;
         $branch = $servicePoint->branch;
-
-        if (! $branch instanceof Branch || ! $branch->brand || ! $branch->organization) {
-            return null;
-        }
 
         return route('organizations.brands.branches.service-points.qr.show', [
             'organization' => $branch->organization,
@@ -234,32 +238,72 @@ class ShortCodeLookup extends Component
         ]);
     }
 
-    public function statusColor(QrCode $qrCode): string
-    {
-        return match ($qrCode->status) {
-            QrCodeStatus::Active => 'green',
-            QrCodeStatus::Disabled => 'amber',
-            QrCodeStatus::Revoked => 'red',
-        };
-    }
-
     public function render(): View
     {
-        return view('livewire.qr-codes.short-code-lookup')
+        return view('livewire.qr-codes.short-code-lookup', [
+            'qrCode' => $this->qrCodePresentation(),
+        ])
             ->title(__('qr.lookup.title'));
     }
 
-    public function dangerousAction(string $action): DangerousAction
+    /**
+     * @return array{
+     *     id: int,
+     *     short_code: string,
+     *     is_active: bool,
+     *     status_color: string,
+     *     localized_status: string,
+     *     branch_name: string,
+     *     location: string,
+     *     organization_name: string,
+     *     brand_name: string,
+     *     zone_name: string,
+     *     service_point_name: string,
+     *     display_number: string,
+     *     public_url: string|null,
+     *     admin_url: string|null
+     * }|null
+     */
+    private function qrCodePresentation(): ?array
     {
-        return DangerousAction::from($action);
+        $qrCode = $this->qrCode();
+
+        if (! $qrCode instanceof QrCode) {
+            return null;
+        }
+
+        $servicePoint = $qrCode->servicePoint;
+        $branch = $servicePoint->branch;
+        $status = $qrCode->status;
+
+        return [
+            'id' => $qrCode->id,
+            'short_code' => $qrCode->short_code,
+            'is_active' => $status === QrCodeStatus::Active,
+            'status_color' => match ($status) {
+                QrCodeStatus::Active => 'green',
+                QrCodeStatus::Disabled => 'amber',
+                QrCodeStatus::Revoked => 'red',
+            },
+            'localized_status' => __($status->label()),
+            'branch_name' => $branch->name,
+            'location' => collect([$branch->city, $branch->country])->filter()->implode(', ') ?: __('qr.labels.location_not_set'),
+            'organization_name' => $branch->organization->name,
+            'brand_name' => $branch->brand->name,
+            'zone_name' => $servicePoint->area_node_id === null ? __('qr.labels.no_zone') : $servicePoint->areaNode->name,
+            'service_point_name' => $servicePoint->name,
+            'display_number' => $servicePoint->display_number ?: __('qr.labels.number_not_set'),
+            'public_url' => $this->publicUrl(),
+            'admin_url' => $this->adminUrl(),
+        ];
     }
 
     /**
-     * @return Collection<int, int>
+     * @return Collection<int, int<1, max>>
      */
     private function accessibleBranchIds(): Collection
     {
-        return app(ResolveWaiterAccessibleBranchIdsAction::class)
+        return $this->resolveAccessibleBranchIds
             ->handle($this->currentUser(), SystemPermission::GenerateQr)
             ->map(fn (mixed $branchId): int => (int) $branchId)
             ->filter(fn (int $branchId): bool => $branchId > 0)
@@ -283,7 +327,7 @@ class ShortCodeLookup extends Component
 
         unset($this->qrCode);
 
-        $qrCode = $this->qrCode;
+        $qrCode = $this->qrCode();
 
         if (! $qrCode instanceof QrCode) {
             abort(404);

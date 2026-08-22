@@ -14,7 +14,6 @@ use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\ManualPayment;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
@@ -132,7 +131,7 @@ class RecordManualPaymentAction
                 entityType: 'manual_payment',
                 entityId: $manualPayment->id,
                 actorUser: $recordedBy,
-                organizationId: $tableSession->branch?->organization_id,
+                organizationId: $tableSession->branch->organization_id,
                 branchId: $manualPayment->branch_id,
                 oldValues: [
                     'remaining_total' => $summary['remaining_total'],
@@ -187,7 +186,7 @@ class RecordManualPaymentAction
             );
         }
 
-        if (! $tableSession->servicePoint instanceof ServicePoint || ! $tableSession->servicePoint->is_active) {
+        if (! $tableSession->servicePoint->is_active) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::BranchInaccessible,
                 'manual_payment',
@@ -326,9 +325,7 @@ class RecordManualPaymentAction
                 'metadata' => $metadata,
             ])->save();
 
-            if ($tableSession->servicePoint instanceof ServicePoint) {
-                $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Paid);
-            }
+            $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Paid);
 
             return;
         }
@@ -341,9 +338,7 @@ class RecordManualPaymentAction
             'metadata' => $metadata,
         ])->save();
 
-        if ($tableSession->servicePoint instanceof ServicePoint) {
-            $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::PaymentRequested);
-        }
+        $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::PaymentRequested);
     }
 
     private function normalizeNote(?string $note): ?string

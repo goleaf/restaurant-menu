@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Exports;
 
 use App\Enums\DataExportType;
@@ -114,7 +116,7 @@ class StreamBranchCsvExportAction
                         $this->servicePointLabel($order->servicePoint),
                         $order->table_session_id,
                         $this->dateValue($order->confirmed_at),
-                        $order->confirmedByUser?->name ?? '',
+                        $order->confirmed_by_user_id === null ? '' : $order->confirmedByUser->name,
                         $order->total_price,
                         $order->currency,
                         $this->orderItemsSummary($order->items),
@@ -177,7 +179,7 @@ class StreamBranchCsvExportAction
                         $this->servicePointLabel($payment->servicePoint),
                         $payment->table_session_id,
                         $payment->guest_name ?? '',
-                        $payment->recordedBy?->name ?? '',
+                        $payment->recorded_by_user_id === null ? '' : $payment->recordedBy->name,
                         $payment->amount,
                         $payment->currency,
                         $this->dateValue($payment->paid_at),
@@ -239,16 +241,16 @@ class StreamBranchCsvExportAction
                 $items->each(function (MenuItem $item) use ($handle): void {
                     $this->putRow($handle, [
                         $item->menu_id,
-                        $item->menu?->name ?? '',
-                        $this->enumLabel($item->menu?->status),
+                        $item->menu->name,
+                        $this->enumLabel($item->menu->status),
                         $item->category_id,
-                        $item->category?->name ?? '',
-                        $item->category?->parent?->name ?? '',
+                        $item->category->name,
+                        $item->category->parent_id === null ? '' : $item->category->parent->name,
                         $item->id,
                         $item->name,
                         $item->description ?? '',
                         $item->price,
-                        $item->kitchenDepartment?->name ?? '',
+                        $item->kitchen_department_id === null ? '' : $item->kitchenDepartment->name,
                         $item->weight ?? '',
                         $item->volume ?? '',
                         $item->calories ?? '',
@@ -303,7 +305,7 @@ class StreamBranchCsvExportAction
                     $this->putRow($handle, [
                         $servicePoint->id,
                         $branch->name,
-                        $servicePoint->areaNode?->name ?? '',
+                        $servicePoint->area_node_id === null ? '' : $servicePoint->areaNode->name,
                         $this->enumLabel($servicePoint->type),
                         $servicePoint->name,
                         $servicePoint->display_number ?? '',

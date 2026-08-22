@@ -1,29 +1,30 @@
 # Tailwind CSS 4
 
-Tailwind is integrated through `@tailwindcss/vite` and a CSS-first stylesheet. The build uses `@import "tailwindcss"`, explicit first-party/vendor `@source` paths, `@theme` design variables, and narrowly justified custom variants/utilities. Obsolete Tailwind 3/PostCSS configuration is not retained after all behavior has been migrated.
+Tailwind 4.3.3 is integrated directly through `@tailwindcss/vite` 4.3.3. [`resources/css/app.css`](../resources/css/app.css) is CSS-first: `@import 'tailwindcss'`, explicit `@source` paths for first-party PHP/Blade, Laravel pagination and installed Flux Free stubs, `@custom-variant dark`, an OKLCH `@theme` token system and a small `@utility touch-target`. No Tailwind 3 JavaScript/PostCSS configuration, Sass/Less, Flux Pro source or unsafe runtime class construction remains.
 
-## Source and class rules
+## Design tokens
 
-All Blade, PHP-rendered class maps and Flux Free templates required by the application are discoverable. Flux Pro sources are included only if a licensed Pro package is installed. Runtime fragments such as `text-${color}-500`, `bg-${status}` and `grid-cols-${count}` are prohibited; use complete controlled class maps or source-detectable declarations.
-
-Repeated arbitrary values become theme variables or intentional utilities. `@apply` is not the default component abstraction; repeated structures use Blade/Flux components and design tokens.
+The theme defines brand scale, canvas/surface/border/text, success/warning/danger/information/focus colors, font stack, touch target, content/reading containers, extra-small breakpoint, control/card/dialog radii, elevation shadows and product easing. Critical controls have visible focus rings; status includes text/icon; reduced-motion and forced-colors rules are explicit. Repeated QR print values remain domain-specific semantic CSS because printer labels require exact colors/aspect ratios.
 
 ## Feature applicability
 
-| Feature | Candidate / decision | Responsive/accessibility effect | Browser consideration | Evidence |
-|---|---|---|---|---|
-| CSS-first `@theme` | Used for color, type, space, radius, shadow, transition and layers | consistent responsive UI and contrast | CSS variables require modern supported browsers | build + visual review |
-| `@source` | Used for first-party Blade/PHP and installed Flux Free paths | prevents missing production utilities | validate minified build | build/smoke |
-| Container queries | Reusable cards/toolbars that live in variable-width panes | component responds to container, not viewport | progressive modern CSS | viewport matrix |
-| Logical utilities | Navigation, forms, metadata and icon spacing | RTL-ready and direction independent | native logical properties | LTR/long-text review |
-| aria/data/has/not/group/peer variants | controls and stateful lists | state visible beyond color; less custom JS | supported target browsers | browser/a11y tests |
-| Reduced-motion/forced-colors/contrast variants | focus, transitions and status controls | respects preferences and high contrast | OS emulation/manual review | browser review |
-| Dynamic viewport units | mobile full-height shells/dialogs where required | avoids browser chrome clipping | mobile viewport check | responsive smoke |
-| Text shadow/masks/zoom/tab-size | Not currently needed for product UI | avoid decorative/maintenance cost | n/a | design review |
-| View-transition utilities | Only with `wire:navigate` and orientation value | reduced-motion fallback required | navigation lifecycle | browser test |
+| Feature | Decision and location | Responsive/accessibility effect | Verification |
+|---|---|---|---|
+| CSS-first `@theme`, `@source`, custom dark variant | used in `app.css` | coherent sources/tokens, no purged production utilities | architecture tests and build |
+| OKLCH semantic colors | used for application tokens | maintainable contrast roles; status never color-only | design tests and Lighthouse |
+| Logical utilities/properties | used in navigation, dialogs and component spacing | direction-independent start/end layout | long-text/locale review |
+| Reduced motion / forced colors | explicit media rules in `app.css` | motion/high-contrast preferences retained | CSS/design tests |
+| Dynamic viewport units | used for mobile/print shells where needed | avoids browser-chrome clipping | responsive browser checks |
+| Data/ARIA/group/peer variants | used where component state benefits | state remains semantic with minimal custom JS | markup/browser tests |
+| Container queries | not applicable: current reusable panes respond correctly to viewport/grid and have no independent container-width contract | avoids needless complexity | layout review |
+| Text shadows, masks, zoom, tab-size | not applicable to product workflows | avoids decorative/maintenance cost | design review |
+| View transitions | not added: normal `wire:navigate` orientation and focus behavior is sufficient | avoids decorative motion | browser navigation review |
 
-## Responsive matrix
+## Final responsive/build evidence
 
-The accepted representative widths are 360, 430, 768, 1024, 1280 and 1536 CSS pixels. Base styles target the smallest viewport. Navigation, cards, forms, filters, dialogs, tables, pagination, kitchen/waiter boards, QR print layouts and long localized strings must have no page-level horizontal overflow. Touch targets do not rely on hover.
+- Production build: CSS 291.67 kB / 37.83 kB gzip; application JS 0.00 kB; Vite 8.2.2 completed in 529 ms on the final run.
+- Public page has no horizontal overflow at emulated touch widths 360 and 430 CSS px or desktop 768/1024/1280/1536 checks.
+- Authenticated dashboard has no overflow at 500/768/1024/1440 CSS px; mobile and desktop landmarks/navigation remain keyboard accessible.
+- Public, login and authenticated dashboard Lighthouse samples scored 100 in all reported categories; no browser console warnings/errors remained.
 
-Design variables and component principles are in [`design-system.md`](design-system.md).
+Component principles and token roles are in [`design-system.md`](design-system.md). Physical-device and non-Chromium evidence limits are recorded in [`known-limitations.md`](known-limitations.md).

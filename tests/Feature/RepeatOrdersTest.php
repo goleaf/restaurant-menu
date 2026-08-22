@@ -114,7 +114,7 @@ test('guests can make repeat orders in the same table session', function () {
         ->assertSet('totalAmount', '5.00')
         ->assertSet('confirmedOrdersTotalAmount', '12.00')
         ->assertSet('tableTotalAmount', '17.00')
-        ->assertSee('Итого за стол');
+        ->assertSee(__('guest.cart.table_total'));
 
     app(SendDraftOrderToWaiterAction::class)->handle($secondDraft, $guest);
 
@@ -124,8 +124,8 @@ test('guests can make repeat orders in the same table session', function () {
         ->assertSet('table.current_draft_total', '5.00 EUR')
         ->assertSet('table.confirmed_orders_total', '12.00 EUR')
         ->assertSet('table.total', '17.00 EUR')
-        ->assertSee('Confirmed orders')
-        ->assertSee('Current draft total');
+        ->assertSee(__('ui.waiter.table_detail.confirmed_orders'))
+        ->assertSee(__('ui.waiter.table_detail.current_draft_total'));
 
     $secondOrder = app(ConfirmDraftOrderByWaiterAction::class)->handle($secondDraft, $waiter);
     app(SendOrderToKitchenBarAction::class)->handle($secondOrder, $waiter);

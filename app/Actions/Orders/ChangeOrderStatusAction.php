@@ -221,7 +221,7 @@ class ChangeOrderStatusAction
         ?string $reason,
         array $ticketItemWarningCounts,
     ): array {
-        $metadata = is_array($order->metadata) ? $order->metadata : [];
+        $metadata = $order->metadata ?? [];
 
         if ($newStatus !== OrderStatus::Cancelled) {
             return $metadata;

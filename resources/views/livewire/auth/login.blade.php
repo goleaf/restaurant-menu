@@ -3,7 +3,7 @@
         <x-auth-header :title="__('ui.auth.login.log_in_to_your_account')" :description="__('ui.auth.login.enter_your_email_and_password_below_to_log_in')" />
 
         <!-- Session Status -->
-        <x-auth-session-status class="text-center" :status="session('status')" />
+        <x-auth-session-status class="text-center" :status="$sessionStatus" />
 
         <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-6">
             @csrf
@@ -32,11 +32,9 @@
                     viewable
                 />
 
-                @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
-                        {{ __('ui.auth.login.forgot_your_password') }}
-                    </flux:link>
-                @endif
+                <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
+                    {{ __('ui.auth.login.forgot_your_password') }}
+                </flux:link>
             </div>
 
             <!-- Remember Me -->

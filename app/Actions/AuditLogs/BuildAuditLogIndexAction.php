@@ -170,19 +170,23 @@ class BuildAuditLogIndexAction
      */
     private function row(AuditLog $auditLog): array
     {
+        $actor = match (true) {
+            $auditLog->user_id !== null => $auditLog->user->name,
+            filled($auditLog->guest_display_name) => $auditLog->guest_display_name,
+            $auditLog->guest_id !== null => $auditLog->guest->guest_name,
+            default => __('audit.actor.system'),
+        };
+
         return [
             'id' => $auditLog->id,
-            'created_at' => $auditLog->created_at?->format('Y-m-d H:i:s'),
+            'created_at' => $auditLog->created_at->format('Y-m-d H:i:s'),
             'action' => $auditLog->action->value,
             'action_label' => $auditLog->action->label(),
             'entity_type' => $auditLog->entity_type,
             'entity_id' => $auditLog->entity_id,
-            'organization_name' => $auditLog->organization?->name,
-            'branch_name' => $auditLog->branch?->name,
-            'actor' => $auditLog->user?->name
-                ?? $auditLog->guest_display_name
-                ?? $auditLog->guest?->guest_name
-                ?? 'System',
+            'organization_name' => $auditLog->organization_id === null ? null : $auditLog->organization->name,
+            'branch_name' => $auditLog->branch_id === null ? null : $auditLog->branch->name,
+            'actor' => $actor,
             'old_values' => $auditLog->old_values ?? [],
             'new_values' => $auditLog->new_values ?? [],
             'old_summary' => $this->valueSanitizer->summary($auditLog->old_values ?? []),

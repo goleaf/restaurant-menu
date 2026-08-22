@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -10,7 +12,6 @@ use App\Enums\AuditLogAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -52,17 +53,13 @@ class CloseTableSessionAction
                 'metadata' => $metadata,
             ])->save();
 
-            if ($tableSession->servicePoint instanceof ServicePoint) {
-                $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Free);
-            }
+            $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Free);
 
             $linkedServicePointIds = [];
 
             foreach ($tableSession->activeServicePointLinks as $link) {
-                if ($link->servicePoint instanceof ServicePoint) {
-                    $linkedServicePointIds[] = $link->servicePoint->id;
-                    $this->updateServicePointStatus->handle($link->servicePoint, ServicePointStatus::Free);
-                }
+                $linkedServicePointIds[] = $link->servicePoint->id;
+                $this->updateServicePointStatus->handle($link->servicePoint, ServicePointStatus::Free);
 
                 $link->fill([
                     'unlinked_by_user_id' => $closedBy->id,
@@ -75,7 +72,7 @@ class CloseTableSessionAction
                 entityType: 'table_session',
                 entityId: $tableSession->id,
                 actorUser: $closedBy,
-                organizationId: $tableSession->branch?->organization_id,
+                organizationId: $tableSession->branch->organization_id,
                 branchId: $tableSession->branch_id,
                 oldValues: [
                     'status' => $sessionStatus,
@@ -128,9 +125,7 @@ class CloseTableSessionAction
 
     private function sessionStatus(TableSession $tableSession): TableSessionStatus
     {
-        return $tableSession->status instanceof TableSessionStatus
-            ? $tableSession->status
-            : TableSessionStatus::from((string) $tableSession->status);
+        return $tableSession->status;
     }
 
     private function ensureCanClose(

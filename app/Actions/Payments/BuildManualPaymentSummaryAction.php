@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Payments;
 
 use App\Enums\DraftOrderStatus;
@@ -25,9 +27,10 @@ class BuildManualPaymentSummaryAction
     public function handle(TableSession $tableSession): array
     {
         $tableSession = $this->reloadTableSession($tableSession);
-        $currency = $tableSession->branch?->currency ?? 'EUR';
+        $branch = $tableSession->branch;
+        $currency = $branch->currency;
         $confirmedTotalCents = $this->confirmedOrderItemsTotalCents($tableSession->orders);
-        $settings = $this->settingsPayload($tableSession->branch?->settings, $tableSession->branch);
+        $settings = $this->settingsPayload($this->loadedSettings($branch), $branch);
         $serviceChargeTotalCents = $settings['service_charge_enabled']
             ? $this->percentageCents($confirmedTotalCents, $settings['service_charge_percent'])
             : 0;
@@ -166,11 +169,7 @@ class BuildManualPaymentSummaryAction
             return false;
         }
 
-        $status = $draftOrder->status instanceof DraftOrderStatus
-            ? $draftOrder->status
-            : DraftOrderStatus::from((string) $draftOrder->status);
-
-        return in_array($status, [
+        return in_array($draftOrder->status, [
             DraftOrderStatus::Draft,
             DraftOrderStatus::SentToWaiter,
             DraftOrderStatus::WaiterReview,
@@ -301,12 +300,8 @@ class BuildManualPaymentSummaryAction
         return $payments
             ->sortByDesc(fn (ManualPayment $payment): int => $payment->paid_at?->getTimestamp() ?? 0)
             ->map(function (ManualPayment $payment) use ($currency): array {
-                $scope = $payment->scope instanceof ManualPaymentScope
-                    ? $payment->scope
-                    : ManualPaymentScope::from((string) $payment->scope);
-                $method = $payment->payment_method instanceof ManualPaymentMethod
-                    ? $payment->payment_method
-                    : ManualPaymentMethod::from((string) $payment->payment_method);
+                $scope = $payment->scope;
+                $method = $payment->payment_method;
 
                 return [
                     'id' => $payment->id,
@@ -319,8 +314,8 @@ class BuildManualPaymentSummaryAction
                     'service_charge_amount' => $this->formatCents($this->decimalToCents($payment->service_charge_amount)).' '.($payment->currency ?: $currency),
                     'tips_amount' => $this->formatCents($this->decimalToCents($payment->tips_amount)).' '.($payment->currency ?: $currency),
                     'amount' => $this->formatCents($this->decimalToCents($payment->amount)).' '.($payment->currency ?: $currency),
-                    'guest_name' => $payment->guest?->guest_name ?? $payment->guest_name,
-                    'recorded_by_name' => $payment->recordedBy?->name,
+                    'guest_name' => $payment->table_session_guest_id === null ? $payment->guest_name : $payment->guest->guest_name,
+                    'recorded_by_name' => $payment->recorded_by_user_id === null ? null : $payment->recordedBy->name,
                     'paid_at' => $payment->paid_at?->format('Y-m-d H:i'),
                     'note' => $payment->note,
                 ];
@@ -336,11 +331,26 @@ class BuildManualPaymentSummaryAction
     {
         $defaults = BranchSetting::defaults($branch);
 
+        if (! $settings instanceof BranchSetting) {
+            return [
+                'service_charge_enabled' => (bool) $defaults['service_charge_enabled'],
+                'service_charge_percent' => $this->formatPercent($defaults['service_charge_percent']),
+                'tips_enabled' => (bool) $defaults['tips_enabled'],
+            ];
+        }
+
         return [
-            'service_charge_enabled' => (bool) ($settings?->service_charge_enabled ?? $defaults['service_charge_enabled']),
-            'service_charge_percent' => $this->formatPercent($settings?->service_charge_percent ?? $defaults['service_charge_percent']),
-            'tips_enabled' => (bool) ($settings?->tips_enabled ?? $defaults['tips_enabled']),
+            'service_charge_enabled' => (bool) $settings->service_charge_enabled,
+            'service_charge_percent' => $this->formatPercent($settings->service_charge_percent),
+            'tips_enabled' => (bool) $settings->tips_enabled,
         ];
+    }
+
+    private function loadedSettings(Branch $branch): ?BranchSetting
+    {
+        $settings = $branch->getRelation('settings');
+
+        return $settings instanceof BranchSetting ? $settings : null;
     }
 
     private function coveredSubtotalCents(ManualPayment $payment): int

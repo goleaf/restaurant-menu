@@ -91,12 +91,6 @@ class ReturnRejectedDraftOrderToDraftAction
     {
         $tableSession = $draftOrder->tableSession;
 
-        if ($tableSession === null || $tableSession->branch === null) {
-            throw ValidationException::withMessages([
-                'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.cernovik_bolse_ne_sviazan'),
-            ]);
-        }
-
         $confirmableBranchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders);
 
         if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {

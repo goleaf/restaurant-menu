@@ -71,12 +71,12 @@ test('waiter table detail exposes free service points and can transfer the sessi
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->assertSet('table.transfer.can_transfer', true)
-        ->assertSee('Перенести стол')
+        ->assertSee(__('ui.waiter.table_detail.perenesti_stol'))
         ->assertSee($newServicePoint->name)
         ->set('transferTargetServicePointId', $newServicePoint->id)
         ->call('transferTableSession')
         ->assertHasNoErrors()
-        ->assertSee('Стол перенесён');
+        ->assertSee(__('ui.livewire.waiter.tabledetail.stol_perenesen_gosti_vidiat_novoe_mesto_qr_k'));
 
     expect($tableSession->fresh()->service_point_id)->toBe($newServicePoint->id)
         ->and($oldServicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
@@ -86,7 +86,7 @@ test('waiter table detail exposes free service points and can transfer the sessi
 test('transfer rejects occupied target and keeps current session location', function () {
     [$organization, $oldServicePoint, $newServicePoint, $tableSession, , , , $waiter] = createPrompt117TransferContext();
     attachPrompt117Staff($waiter, $organization, [SystemPermission::ViewOrders]);
-    $newServicePoint->update(['status' => ServicePointStatus::Occupied]);
+    $newServicePoint->forceFill(['status' => ServicePointStatus::Occupied])->save();
 
     expect(fn () => app(TransferTableSessionAction::class)->handle($tableSession, $newServicePoint, $waiter))
         ->toThrow(ValidationException::class);

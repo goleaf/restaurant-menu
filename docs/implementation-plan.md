@@ -1,116 +1,95 @@
-# Living implementation plan
+# Modernization implementation plan
 
-Statuses: **pending**, **in progress**, **implemented**, **verified**, or **blocked by external dependency**. A pass becomes verified only after its listed command evidence succeeds.
+This living plan was executed on 2026-08-22. A pass is marked **verified** only because its implementation and listed gates succeeded on the final code tree. Requirement-level evidence is in [`compliance-matrix.md`](compliance-matrix.md).
 
-## Pass 0 — repository protection and baseline
+## Pass 0 — protect and baseline
 
-Status: **verified for capture; remediation remains in later passes**.
+Status: **verified**.
 
-- [x] Record branch/HEAD/index/worktree/untracked state.
-- [x] Read all first-party Markdown and governing project skill rules.
-- [x] Inventory routes, modules, models, schema, factories, seeders, views, Livewire, tests, configuration, CI and runtime constraints.
-- [x] Run safe baseline Composer/npm/Laravel/test/build/cache/translation checks.
-- [x] Record exact failures and dependency advisories in `current-state-audit.md`.
-
-Verification: `git status --short --branch`; inventory commands; baseline commands in the audit.
+- Captured clean `main` at `aa2c675`, index/worktree/untracked state and `origin/main`.
+- Read all 56 first-party Markdown files and governing project instructions.
+- Inventoried routes, 41 models/factories, schema, seeders, Actions, Livewire, Blade, configuration, tests, CI and shared-hosting constraints.
+- Recorded the failing 655-test baseline and dependency/security findings in [`current-state-audit.md`](current-state-audit.md).
 
 ## Pass 1 — canonical requirements and documentation
 
-Status: **in progress**.
+Status: **verified**.
 
-Requirements: all, principally `test-feature-001`, `ops-deployment-001`.
+- Established the root `AGENTS.md` and [`index.md`](index.md) reading order.
+- Normalized 48 stable requirements, architecture/domain/data/security/frontend/runtime documentation and three ADRs.
+- Replaced duplicate historical instruction documents with concise canonical pointers while preserving the chronological `CHANGELOG.md`.
+- Created this plan and the one-row-per-requirement compliance matrix.
 
-- [x] Establish canonical reading order and durable root instructions.
-- [x] Catalogue 42 stable, testable active requirements.
-- [x] Document architecture, domain/data/security/auth/frontend/runtime boundaries.
-- [x] Create first compliance matrix, feature applicability matrices and this plan.
-- [ ] Reconcile every legacy Markdown path with a canonical document without losing history.
+## Pass 2 — dependency/framework baseline
 
-Verification: Markdown inventory/diff/link scan; final second pass after code.
-
-## Pass 2 — dependency and framework baseline
-
-Status: **in progress**.
+Status: **verified**.
 
 Requirements: `sec-dependency-001`, `sec-session-001`, `livewire-001`, `tailwind-001`, `test-feature-001`, `ops-deployment-001`.
 
-- Raise PHP constraint to `>=8.5.0 <8.6.0` and select latest stable compatible Laravel 13, Livewire 4, Flux Free 2, Fortify, Vite, Tailwind, Pest 4, Pint and Boost releases.
-- Upgrade targeted lock-file graph, resolve Composer/npm advisories and remove obsolete platform-specific npm dependencies.
-- Add latest compatible Larastan at a useful strict level without a broad baseline.
-- Reconcile Laravel 13 bootstrap/config/CI with PHP 8.5 and one npm lock.
-- Add class-component Livewire generation configuration; remove Flux Pro source/config assumptions.
+- Locked PHP 8.5, Laravel 13, Livewire 4, Flux Free 2, Tailwind 4/Vite 8, Pest 4, Pint, Boost and Larastan to stable compatible releases.
+- Removed all Composer/npm advisories and obsolete runtime assumptions; retained one npm lock.
+- Modernized Herd development scripts so they do not start a second web server or mandatory queue worker.
+- Verified Composer metadata/audits/prohibits, npm audit/build, application boot, route/cache builds and HTTP smoke.
 
-Verification: Composer metadata/audit/why-not, npm audit/build, Artisan boot/cache/route listing, focused framework tests.
+Rollback: manifests and lock files are committed with the compatible code change; no prerelease package or production-only infrastructure was introduced.
 
-Rollback: Composer and npm manifests/locks form one atomic reviewable commit; revert that coherent commit if the selected graph cannot boot.
+## Pass 3 — security and data integrity
 
-## Pass 3 — security and data-integrity foundations
+Status: **verified**.
 
-Status: **pending**.
+Requirements: tenant/staff/payment/backup requirements, all `sec-*` and `data-*`.
 
-Requirements: `sys-tenant-001`, `sys-staff-001`, `sys-payment-001`, `sys-backup-001`, all `sec-*`, `data-*`.
+- Added scoped nested bindings, aggregate policies and negative wrong-tenant/direct-action tests.
+- Replaced plaintext invitation credentials with digest-at-rest, expiring/revocable atomic acceptance and throttling.
+- Serialized SQLite manual-payment balance checks and made duplicate/race outcomes deterministic.
+- Replaced live-database streaming with a private consistent online SQLite snapshot, recent-password and reason-bound authorization, no-store response and cleanup.
+- Added persistence/file compensation, strict local/test Eloquent behavior, guarded mass assignment and exact-money contracts.
+- Verified fresh migration, replay/race, upload lifecycle, backup cleanup and security regression suites.
 
-- Add scoped nested bindings and a policy structure for protected resources/actions; test wrong parent/tenant/direct Livewire invocation.
-- [x] Replace invitation plaintext/unusable links with digest-at-rest, expiring, revocable, atomic one-time acceptance; add rate limits/replay/concurrency tests. Verified by the focused Invitation/Staff/Token/Livewire suite (24 tests, 159 assertions), focused PHPStan (0 errors), fresh testing migration, route inspection, and translation audit (0 critical issues).
-- [x] Serialize manual-payment balance checks before summary calculation with SQLite `IMMEDIATE` transactions, a bounded busy timeout, WAL/NORMAL pragmas, row locks on engines that support them, and deadlock retry; repeated stale submissions remain single-write. Verified by 10 payment tests / 98 assertions and focused PHPStan with 0 errors. Repository-wide duplicated float-based money helpers remain in Pass 4.
-- [x] Replace live-file download with the native SQLite online-backup API, a mode-0600 private temporary snapshot, one-time reason-bound authorization, recent password confirmation, no-store headers, audit reason and delete-after-send cleanup. Verified by 49 backup/dangerous-action/route tests (243 assertions) and focused PHPStan with 0 errors.
-- Make local image replacement persistence-first with failure compensation.
-- Enable strict Eloquent behavior in local/test and fix all lazy/missing/discarded-attribute violations.
-- Add forward-only constraints/indexes only where schema/query evidence requires them.
+Rollback: the only new migration is forward-compatible and reversible; no production data refresh, truncation or historical migration rewrite is used.
 
-Verification: security/domain targeted tests, migration upgrade/fresh/rollback tests, SQLite query plans, full suite after the pass.
+## Pass 4 — backend, factories and seeders
 
-Rollback: new schema uses expand/backfill/verify/switch; no historical migration rewrite or destructive production rollback.
+Status: **verified**.
 
-## Pass 4 — backend architecture and factories/seeders
+Requirements: all `sys-*`, `perf-*`, `seed-*`.
 
-Status: **pending**.
+- Replaced service-locator usage in application operations with explicit Livewire boot/Action dependencies.
+- Prepared presentation arrays before Blade, bounded growing queries, eager-loaded relationships and locale-scoped cached payloads.
+- Repaired all 41 factory defaults and meaningful states; there are no model exemptions.
+- Added `DemoOperationalStateSeeder` for live, payment-requested, completed and audit workflows while preserving production refusal and idempotency.
+- Verified factory/state sweeps and isolated 66-migration/default-seed/twice-demo-seed execution.
 
-Requirements: `sys-*`, `perf-query-001`, `perf-cache-001`, `seed-model-001`, `seed-demo-001`.
+## Pass 5 — Livewire, Blade, Tailwind and localization
 
-- Move scattered authorization into policies and substantial validation into Form Requests/Livewire Forms/custom rules.
-- Remove service-locator use from modified domain code; inject Actions/collaborators and split oversized use cases without generic repositories/services.
-- Centralize minor-unit money formatting/calculation and locale-safe analytics/dashboard cache keys.
-- Bound/paginate growing organization, brand, branch, staff, audit/export and operational lists; eager-load/select only needed relationships.
-- Repair every factory default/relationship, add meaningful states/helpers and exhaustive persistence tests.
-- Make fixed seeders idempotent and demo graph comprehensive, deterministic and production-safe.
+Status: **verified**.
 
-Verification: affected Feature/Unit tests, Larastan, query budgets, factory/state sweep, fresh seed twice, production-safeguard test.
+Requirements: `livewire-001`, `blade-001`, `tailwind-001`, `i18n-001`, `ui-*`.
 
-## Pass 5 — Livewire/Blade/frontend modernization
+- Converted route single-file components and added the zero-state offline region as 42 ordinary class Livewire components with separate views; Volt is prohibited.
+- Removed all Blade PHP blocks and direct model/service/facade/container/config/session/auth access; executable architecture tests preserve the boundary.
+- Applied typed/locked/minimal public state and appropriate `Computed`, `Url`, `Isolate`, `Layout`, loading/offline/cloak/navigation features.
+- Implemented CSS-first Tailwind sources and OKLCH semantic tokens; preserved Flux Free and added semantic localized password/modal accessibility overrides.
+- Achieved EN/LT/RU parity: 2,026 semantic keys per locale, no missing/legacy/phrase keys.
+- Browser-verified public/auth/dashboard/settings flows, locale persistence, modal names, keyboard focus, responsive overflow and zero console errors.
 
-Status: **pending**.
+## Pass 6 — complete verification
 
-Requirements: `livewire-001`, `blade-001`, `tailwind-001`, `i18n-001`, `ui-*`, relevant workflows.
+Status: **verified**.
 
-- Convert both route SFCs to class components with separate views; prohibit SFC/Volt in architecture tests.
-- Remove every `@php`, `@endphp`, ordinary PHP block and model/service/facade/container/business transform from first-party Blade.
-- Reduce and type public component state, lock durable IDs, authorize direct actions, introduce Form Objects/computed/URL/loading/offline features where correct.
-- Split independently updating expensive regions only after query/payload measurement.
-- Build a CSS-first semantic token system, remove Flux Pro source, unsafe class construction and obsolete integration; reduce repeated `@apply` where components/tokens are clearer.
-- Complete EN/LT/RU keys/placeholders/formatting and accessible responsive states.
+- Pint passed; Larastan level 8 reported 0 errors; 558 PHP files passed syntax checks.
+- Sequential and parallel Pest both passed 683 tests with 20,457 assertions; 9 skips are only disabled passkey/2FA feature gates.
+- Xdebug coverage passed at 90.4%.
+- Composer/npm audits, translation scan/audit, production build, fresh migration/seeding, cache builds and HTTP smoke passed.
+- Chromium Lighthouse scored 100/100/100/100 on public, login and authenticated dashboard samples; no checked viewport overflowed.
 
-Verification: architecture/Livewire/locale/design tests, production build size, isolated Chrome console/network/keyboard/focus/responsive/reduced-motion runs.
+## Pass 7 — synchronization and publication
 
-## Pass 6 — comprehensive verification and remediation
+Status: **verified after the observed final commit and push; publication evidence is reported in the handoff**.
 
-Status: **pending**.
+- Re-read and synchronized all first-party Markdown after implementation.
+- Updated the audit, matrices, exact version/test/asset evidence and only genuine environmental limitations.
+- Inspected unstaged/staged/full diffs, secret/debug/generated-artifact patterns and preserved repository scope.
+- Publication hashes and observed push result belong in the final report and changelog, not in requirement definitions.
 
-Requirements: all.
-
-- Make all relevant baseline failures pass; add regression, policy, race, route, migration, factory/seeder, cache/query, localization and security coverage.
-- Run Pint and Larastan to the selected level with no broad suppression.
-- Run full/parallel/coverage/fresh-migrate/fresh-seed/idempotency/build/audit/cache/browser gates.
-- Inspect full diff for secrets, dead/debug code, generated artifacts and unrelated changes.
-
-Verification: exact final command transcript and counts in the final report.
-
-## Pass 7 — final synchronization and publication
-
-Status: **pending**.
-
-- Re-read every first-party Markdown file and align it with final code/evidence.
-- Update requirement statuses, matrices, resolved audit findings, real limitations and dated changelog.
-- Create coherent Conventional Commits, inspect staged scope, push `main` only after all required gates pass and report the observed result.
-
-No isolated blocker pauses other safe passes. A task is never moved to verified because it is difficult or because a file exists.
+No implementation pass remains pending, partial or blocked. Future product work starts from new requirements rather than reopening this completed modernization plan.

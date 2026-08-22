@@ -1,15 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
+use Carbon\CarbonInterface;
 use Database\Factories\ManualPaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property ManualPaymentScope $scope
+ * @property ManualPaymentMethod $payment_method
+ * @property CarbonInterface|null $paid_at
+ * @property-read TableSessionGuest|null $guest
+ * @property-read User|null $recordedBy
+ */
 #[Fillable(['service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_amount', 'service_charge_percent', 'service_charge_amount', 'tips_amount', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
 class ManualPayment extends Model
 {

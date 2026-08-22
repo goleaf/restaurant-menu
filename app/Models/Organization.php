@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\OrganizationUserStatus;
@@ -15,6 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property int $active_branches_count
+ */
 #[Fillable(['owner_user_id', 'name', 'logo_path'])]
 class Organization extends Model
 {

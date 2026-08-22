@@ -112,7 +112,7 @@ test('guest error page is shown when guest was rejected', function () {
         ->assertSet('guestCanAddItems', false)
         ->assertSee('data-component="guest-error-page"', false)
         ->assertSee('data-error-state="guest_rejected"', false)
-        ->assertSeeText('Guest access was not approved')
+        ->assertSeeText(__('guest.table.rejected_title'))
         ->assertSeeText('Return to QR page');
 });
 

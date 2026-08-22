@@ -1,17 +1,11 @@
 <section data-page="staff-permissions" class="flex h-full w-full flex-1 flex-col gap-6">
-    @php
-        $criticalPermissionTitle = \App\Enums\DangerousAction::ChangeCriticalPermission->title();
-        $criticalPermissionConsequence = \App\Enums\DangerousAction::ChangeCriticalPermission->consequence();
-        $criticalPermissionRequiresReason = \App\Enums\DangerousAction::ChangeCriticalPermission->requiresReason();
-    @endphp
-
     <header class="flex flex-col gap-3">
         <flux:button icon="arrow-left" :href="route('organizations.staff.index', $organization)" wire:navigate>
             {{ __('staff.organization_access') }}
         </flux:button>
 
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organization->name }}</p>
+            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $organizationName }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('staff.actions.update_permissions') }}</h1>
         </div>
     </header>
@@ -20,14 +14,14 @@
         <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
             <div class="min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="truncate text-lg font-semibold text-zinc-950 dark:text-white">{{ $staffMember->name }}</h2>
+                    <h2 class="truncate text-lg font-semibold text-zinc-950 dark:text-white">{{ $staffMemberName }}</h2>
                     <flux:badge>{{ $membershipRoleName }}</flux:badge>
                     <flux:badge color="{{ $membershipStatus === 'active' ? 'green' : 'zinc' }}">
                         {{ $membershipStatusLabel }}
                     </flux:badge>
                 </div>
 
-                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $staffMember->email }}</p>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $staffMemberEmail }}</p>
             </div>
 
             @if ($superadminTarget)
@@ -60,7 +54,7 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
-            @forelse ($this->permissionGroups as $group)
+            @forelse ($permissionGroups as $group)
                 <section wire:key="permission-group-{{ $group['key'] }}">
                     <div class="flex items-center justify-between gap-3 bg-zinc-50 px-4 py-3 dark:bg-zinc-950/40">
                         <flux:heading size="md">{{ $group['label'] }}</flux:heading>
@@ -101,15 +95,13 @@
                                             @foreach (['default' => __('permissions.actions.default'), 'allow' => __('permissions.actions.allow'), 'deny' => __('permissions.actions.deny')] as $stateValue => $stateLabel)
                                                 <x-dangerous-action-confirmation
                                                     name="critical-permission-{{ $row['id'] }}-{{ $stateValue }}"
-                                                    :title="$criticalPermissionTitle"
-                                                    :consequence="$criticalPermissionConsequence"
+                                                    action="change_critical_permission"
                                                     confirm-action="setPermissionState({{ $row['id'] }}, '{{ $stateValue }}')"
                                                     submit-target="setPermissionState({{ $row['id'] }}, '{{ $stateValue }}')"
                                                     confirm-label="ui.actions.confirm"
                                                     reason-model="criticalPermissionChangeReason"
                                                     :reason-label="__('permissions.forms.change_reason')"
                                                     :reason-placeholder="__('permissions.forms.critical_reason_placeholder')"
-                                                    :reason-required="$criticalPermissionRequiresReason"
                                                 >
                                                     <x-slot:trigger>
                                                         <flux:button

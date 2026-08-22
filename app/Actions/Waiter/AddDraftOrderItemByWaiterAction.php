@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -29,6 +31,7 @@ class AddDraftOrderItemByWaiterAction
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ) {}
 
     /**
@@ -206,9 +209,9 @@ class AddDraftOrderItemByWaiterAction
         $tableSession = $draftOrder->tableSession;
 
         if ($tableSession === null
-            || $menuItem->menu?->branch_id !== $tableSession->branch_id
-            || $menuItem->menu?->status !== MenuStatus::Active
-            || ! $menuItem->category?->is_active
+            || $menuItem->menu->branch_id !== $tableSession->branch_id
+            || $menuItem->menu->status !== MenuStatus::Active
+            || ! $menuItem->category->is_active
             || ! $menuItem->is_available) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::ItemUnavailable,
@@ -217,7 +220,7 @@ class AddDraftOrderItemByWaiterAction
             );
         }
 
-        $availability = app(GetMenuAvailabilityStatusAction::class)->handle($menuItem->menu);
+        $availability = $this->getMenuAvailabilityStatus->handle($menuItem->menu);
 
         if (! $availability['is_available']) {
             throw BusinessRuleViolation::for(

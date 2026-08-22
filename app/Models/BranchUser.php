@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\OrganizationUserStatus;
@@ -10,6 +12,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
+/**
+ * @property int $id
+ * @property int $organization_id
+ * @property int $branch_id
+ * @property int $user_id
+ * @property int $role_id
+ * @property OrganizationUserStatus $status
+ */
 #[Table('branch_users', incrementing: true)]
 #[Fillable(['assigned_at'])]
 class BranchUser extends Pivot

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
@@ -22,6 +24,8 @@ use Livewire\Component;
 
 class GuestMenu extends Component
 {
+    private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+
     #[Locked]
     public int $branchId;
 
@@ -53,7 +57,7 @@ class GuestMenu extends Component
     public ?int $selectedItemId = null;
 
     /**
-     * @var array<string, list<int>>
+     * @var array<int, list<int>>
      */
     public array $selectedModifierOptions = [];
 
@@ -65,6 +69,11 @@ class GuestMenu extends Component
      * @var array<int, array{name: string, total_price: string, modifier_summary: list<string>, comment: string|null}>
      */
     public array $configuredItems = [];
+
+    public function boot(GetGuestMenuForBranchAction $getGuestMenuForBranch): void
+    {
+        $this->getGuestMenuForBranch = $getGuestMenuForBranch;
+    }
 
     public function mount(
         int $branchId,
@@ -87,13 +96,13 @@ class GuestMenu extends Component
         $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
         $this->currency = SupportedCurrency::normalize($currency);
         $this->languageOptions = GetGuestMenuForBranchAction::supportedLanguageLabels();
-        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($branchId, $language ?? $this->language);
+        $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch($branchId, $language ?? $this->language);
         $this->applyLocale();
     }
 
     public function updatedLanguage(): void
     {
-        $this->language = app(GetGuestMenuForBranchAction::class)->resolveLanguageForBranch($this->branchId, $this->language);
+        $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $this->language);
         $this->applyLocale();
         unset($this->guestMenu);
         $this->configuredItems = [];
@@ -118,7 +127,7 @@ class GuestMenu extends Component
         $this->itemComment = '';
 
         foreach ($item['modifier_groups'] as $modifierGroup) {
-            $this->selectedModifierOptions[(string) $modifierGroup['id']] = [];
+            $this->selectedModifierOptions[$modifierGroup['id']] = [];
         }
     }
 
@@ -143,7 +152,7 @@ class GuestMenu extends Component
         $selected = $this->selectedOptionIdsForGroup($modifierGroupId, $item);
 
         if (in_array($modifierOptionId, $selected, true)) {
-            $this->selectedModifierOptions[(string) $modifierGroupId] = array_values(array_filter(
+            $this->selectedModifierOptions[$modifierGroupId] = array_values(array_filter(
                 $selected,
                 fn (int $selectedOptionId): bool => $selectedOptionId !== $modifierOptionId,
             ));
@@ -158,7 +167,7 @@ class GuestMenu extends Component
         }
 
         if ($maxSelect === 1) {
-            $this->selectedModifierOptions[(string) $modifierGroupId] = [$modifierOptionId];
+            $this->selectedModifierOptions[$modifierGroupId] = [$modifierOptionId];
 
             return;
         }
@@ -168,7 +177,7 @@ class GuestMenu extends Component
         }
 
         $selected[] = $modifierOptionId;
-        $this->selectedModifierOptions[(string) $modifierGroupId] = array_values($selected);
+        $this->selectedModifierOptions[$modifierGroupId] = $selected;
     }
 
     public function saveConfiguredItem(AddGuestDraftOrderItemAction $addGuestDraftOrderItem): void
@@ -251,7 +260,7 @@ class GuestMenu extends Component
     #[Computed]
     public function guestMenu(): array
     {
-        return app(GetGuestMenuForBranchAction::class)->handle($this->branchId, $this->language);
+        return $this->getGuestMenuForBranch->handle($this->branchId, $this->language);
     }
 
     public function render(): View
@@ -259,9 +268,14 @@ class GuestMenu extends Component
         $this->applyLocale();
 
         $selectedItem = $this->selectedItem();
+        $guestMenu = $this->displayGuestMenu();
+        $availableMenus = $guestMenu['menus'] ?? [];
 
         return view('livewire.public-qr.guest-menu', [
-            'guestMenu' => $this->displayGuestMenu(),
+            'guestMenu' => $guestMenu,
+            'availableMenus' => $availableMenus,
+            'availableMenuCount' => count($availableMenus),
+            'unavailableMenus' => $guestMenu['unavailable_menus'] ?? [],
             'selectedItem' => $selectedItem === null ? null : $this->displayItem($selectedItem),
             'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::format(0, $this->currency) : $this->selectedItemTotal($selectedItem),
         ]);
@@ -292,7 +306,7 @@ class GuestMenu extends Component
      */
     private function findItemInGuestMenu(int $itemId): ?array
     {
-        foreach ($this->guestMenu['menus'] ?? [] as $menu) {
+        foreach ($this->guestMenu()['menus'] ?? [] as $menu) {
             foreach ($menu['categories'] ?? [] as $category) {
                 foreach ($category['items'] ?? [] as $item) {
                     if ((int) $item['id'] === $itemId) {
@@ -302,7 +316,7 @@ class GuestMenu extends Component
             }
         }
 
-        foreach ($this->guestMenu['categories'] ?? [] as $category) {
+        foreach ($this->guestMenu()['categories'] ?? [] as $category) {
             foreach ($category['items'] as $item) {
                 if ((int) $item['id'] === $itemId) {
                     return $item;
@@ -385,7 +399,7 @@ class GuestMenu extends Component
      */
     private function selectedOptionIdsForGroup(int $modifierGroupId, array $item): array
     {
-        $selectedOptionIds = collect($this->selectedModifierOptions[(string) $modifierGroupId] ?? [])
+        $selectedOptionIds = collect($this->selectedModifierOptions[$modifierGroupId] ?? [])
             ->map(fn (mixed $optionId): int => (int) $optionId)
             ->filter(fn (int $optionId): bool => $optionId > 0)
             ->values();
@@ -453,7 +467,7 @@ class GuestMenu extends Component
      */
     private function displayGuestMenu(): array
     {
-        $guestMenu = $this->guestMenu;
+        $guestMenu = $this->guestMenu();
         $menus = collect($guestMenu['menus'] ?? []);
 
         if ($menus->isEmpty() && ($guestMenu['menu'] ?? null) !== null) {

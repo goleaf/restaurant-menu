@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\ModifierOptionFactory;
@@ -8,6 +10,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $price_delta
+ */
 #[Fillable(['modifier_group_id', 'name', 'price_delta', 'is_available', 'sort_order'])]
 class ModifierOption extends Model
 {

@@ -1,5 +1,10 @@
 # Known limitations
 
-This file lists only external or environmental blockers remaining after implementation. It is intentionally empty during active modernization: incomplete in-scope implementation belongs in [`implementation-plan.md`](implementation-plan.md), not here.
+Only external/environmental evidence limits remain; no unfinished in-scope implementation is hidden here.
 
-The final pass will add a limitation only with evidence, affected requirement IDs, user impact and the exact condition needed to unblock it. Lack of a physical assistive-technology/device environment may limit manual evidence but does not waive automated DOM, keyboard, responsive and reduced-motion checks.
+| Affected requirement | Evidence gap | User impact | Unblock condition |
+|---|---|---|---|
+| `ui-accessibility-001` | The available isolated Chrome tooling provides accessibility-tree, keyboard, Lighthouse, reduced-motion/forced-color CSS and focus evidence, but not a physical screen reader, switch device or human assistive-technology session. | Automated and keyboard acceptance is verified; physical AT ergonomics are not independently certified. | Run the documented critical workflows with VoiceOver/NVDA and representative switch/zoom users on supported hardware. |
+| `ui-responsive-001` | Responsive checks used Chrome emulation and desktop Chromium, not physical iOS/Android hardware or non-Chromium browser engines. | Layout/overflow/touch emulation is verified; platform-specific browser chrome, virtual keyboard and native touch behavior may still vary. | Execute `TEST_CHECKLIST.md` on supported physical iOS/Android devices and current Safari/Firefox releases. |
+
+There are no unresolved dependency advisories, migration/seed failures, static-analysis findings, test failures, console errors or external service blockers as of the 2026-08-22 final gates.

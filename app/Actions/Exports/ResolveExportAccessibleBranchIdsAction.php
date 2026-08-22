@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Exports;
 
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
@@ -15,7 +17,7 @@ class ResolveExportAccessibleBranchIdsAction
     ) {}
 
     /**
-     * @return Collection<int, int>
+     * @return Collection<int, int<1, max>>
      */
     public function handle(User $user): Collection
     {

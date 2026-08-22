@@ -15,8 +15,13 @@ The target is WCAG 2.2 AA for critical user and staff workflows. Native semantic
 - Tables expose headers and retain context on narrow screens; images use meaningful or empty alt text as appropriate.
 - QR SVG/print output has an accessible textual equivalent.
 
-## Verification workflows
+## Final verification evidence
 
-Browser checks cover: login; main navigation; organization/branch setup; menu editing; public QR entry and draft submission; waiter approval; kitchen/bar progression; payment and table closure; role/permission administration; responsive navigation and dialogs. For each: keyboard-only pass, focus order/restoration, accessible names, validation association, console errors, reduced motion, forced colors where tooling permits, and 360/430/768/1024/1280/1536 widths.
+- Native `main` landmarks were added to all auth and authenticated layouts; one logical `h1` is asserted by layout tests.
+- The Flux password toggle and modal close controls use semantic EN/LT/RU accessible-name keys; the isolated browser accessibility tree showed `Показать или скрыть пароль` and `Close dialog` in the active locale.
+- Keyboard traversal covered login fields, password toggle, reset link, remember checkbox, submit and registration navigation with visible focus; native email validation remained active.
+- Browser flows covered registration, password confirmation, settings navigation, locale persistence, logout/login and destructive account deletion; focus traps and controls remained reachable.
+- Lighthouse accessibility scored 100 on the public page, login and authenticated dashboard samples; console inspection found no warnings, errors or issues.
+- Automated markup/design/architecture tests cover field labels/errors, dialog semantics, focus rules, touch tokens, reduced motion, forced colors and non-color status text throughout first-party views.
 
-Automated checks supplement rather than replace manual keyboard and screen-reader-oriented DOM inspection. Physical assistive-technology testing not executed in the current environment is reported as an environmental limitation, never as a pass.
+Chrome tooling cannot emulate a physical screen reader, switch input or actual touch hardware. That environmental evidence gap is recorded in [`known-limitations.md`](known-limitations.md); it does not waive the automated DOM, keyboard, responsive, contrast and reduced-motion checks that were executed.

@@ -29,6 +29,10 @@ use Livewire\Component;
 #[Layout('layouts.print')]
 class BulkPrint extends Component
 {
+    private QrCodeSvgRenderer $qrCodeSvgRenderer;
+
+    private QrPrintBrandingResolver $brandingResolver;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -48,6 +52,14 @@ class BulkPrint extends Component
      * @var list<int>
      */
     public array $selectedServicePointIds = [];
+
+    public function boot(
+        QrCodeSvgRenderer $qrCodeSvgRenderer,
+        QrPrintBrandingResolver $brandingResolver,
+    ): void {
+        $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
+        $this->brandingResolver = $brandingResolver;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -80,7 +92,7 @@ class BulkPrint extends Component
 
     public function selectAllVisible(): void
     {
-        $this->selectedServicePointIds = $this->servicePoints
+        $this->selectedServicePointIds = $this->servicePoints()
             ->filter(fn (ServicePoint $servicePoint): bool => $servicePoint->activeQrCode instanceof QrCode)
             ->pluck('id')
             ->map(fn (int $servicePointId): int => $servicePointId)
@@ -124,7 +136,7 @@ class BulkPrint extends Component
 
         $selectedIds = $this->normalizedSelectedServicePointIds();
 
-        foreach ($this->servicePoints as $servicePoint) {
+        foreach ($this->servicePoints() as $servicePoint) {
             if ($servicePoint->activeQrCode instanceof QrCode) {
                 continue;
             }
@@ -149,7 +161,7 @@ class BulkPrint extends Component
         return array_merge(
             [['value' => 'all', 'label' => __('qr.filters.all_areas')]],
             [['value' => 'none', 'label' => __('qr.filters.no_zone')]],
-            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes)),
+            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes())),
         );
     }
 
@@ -242,9 +254,9 @@ class BulkPrint extends Component
     public function printItems(): array
     {
         $selectedIds = $this->normalizedSelectedServicePointIds();
-        $qrRenderer = app(QrCodeSvgRenderer::class);
+        $qrRenderer = $this->qrCodeSvgRenderer;
 
-        return $this->servicePoints
+        return $this->servicePoints()
             ->filter(fn (ServicePoint $servicePoint): bool => in_array($servicePoint->id, $selectedIds, true))
             ->filter(fn (ServicePoint $servicePoint): bool => $servicePoint->activeQrCode instanceof QrCode)
             ->map(function (ServicePoint $servicePoint) use ($qrRenderer): array {
@@ -267,7 +279,7 @@ class BulkPrint extends Component
     #[Computed]
     public function visibleMissingQrCount(): int
     {
-        return $this->servicePoints
+        return $this->servicePoints()
             ->filter(fn (ServicePoint $servicePoint): bool => ! ($servicePoint->activeQrCode instanceof QrCode))
             ->count();
     }
@@ -275,7 +287,7 @@ class BulkPrint extends Component
     #[Computed]
     public function restaurantLogoUrl(): ?string
     {
-        return app(QrPrintBrandingResolver::class)->localLogoUrlFor([
+        return $this->brandingResolver->localLogoUrlFor([
             $this->branch,
             $this->brand,
             $this->organization,
@@ -299,7 +311,26 @@ class BulkPrint extends Component
 
     public function render(): View
     {
-        return view('livewire.organizations.brands.branches.qr.bulk-print')
+        $printItems = $this->printItems();
+        $selectedPreset = $this->selectedPreset();
+
+        return view('livewire.organizations.brands.branches.qr.bulk-print', [
+            'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
+            'branchesUrl' => route('organizations.brands.branches.index', [
+                $this->organization,
+                $this->brand,
+            ]),
+            'areaOptions' => $this->areaOptions(),
+            'presetOptions' => $this->presetOptions(),
+            'visibleMissingQrCount' => $this->visibleMissingQrCount(),
+            'printItems' => $printItems,
+            'servicePointRows' => $this->servicePoints()
+                ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
+                ->all(),
+            'selectedPresetCssClass' => $selectedPreset->cssClass(),
+            'selectedPresetValue' => $selectedPreset->value,
+            'restaurantLogoUrl' => $this->restaurantLogoUrl(),
+        ])
             ->title(__('qr.print.bulk_title'));
     }
 
@@ -321,7 +352,7 @@ class BulkPrint extends Component
 
     private function reloadBranchContext(): void
     {
-        $branding = app(QrPrintBrandingResolver::class);
+        $branding = $this->brandingResolver;
 
         $this->organization = Organization::query()
             ->select($branding->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
@@ -391,6 +422,25 @@ class BulkPrint extends Component
     private function normalizedPresetValue(string $preset): string
     {
         return QrLabelPreset::fromValue($preset)->value;
+    }
+
+    /**
+     * @return array{id: int, name: string, area_name: string, display_number: string, has_qr: bool, qr_short_code: string|null}
+     */
+    private function presentServicePoint(ServicePoint $servicePoint): array
+    {
+        $activeQrCode = $servicePoint->activeQrCode;
+
+        return [
+            'id' => $servicePoint->id,
+            'name' => $servicePoint->name,
+            'area_name' => $servicePoint->area_node_id === null
+                ? __('qr.labels.no_zone')
+                : $servicePoint->areaNode->name,
+            'display_number' => $servicePoint->display_number ?: __('qr.labels.not_set'),
+            'has_qr' => $activeQrCode instanceof QrCode,
+            'qr_short_code' => $activeQrCode?->short_code,
+        ];
     }
 
     /**

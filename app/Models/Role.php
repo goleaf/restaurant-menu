@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use Database\Factories\RoleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property SystemRole $code
+ */
 #[Fillable(['code', 'name', 'sort_order'])]
 class Role extends Model
 {
@@ -29,18 +33,6 @@ class Role extends Model
             'code' => SystemRole::class,
             'sort_order' => 'integer',
         ];
-    }
-
-    /**
-     * @return Attribute<never, string>
-     */
-    protected function code(): Attribute
-    {
-        return Attribute::set(
-            fn (SystemRole|string $value): string => $value instanceof SystemRole
-                ? $value->value
-                : SystemRole::from($value)->value,
-        );
     }
 
     /**

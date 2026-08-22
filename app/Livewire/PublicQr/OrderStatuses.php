@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
@@ -67,7 +69,7 @@ class OrderStatuses extends Component
     public array $guestSteps = [];
 
     /**
-     * @var list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_label: string, status_description: string, tone: string, comment: ?string}>
+     * @var list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
     public array $itemStatuses = [];
 
@@ -208,7 +210,7 @@ class OrderStatuses extends Component
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_label: string, status_description: string, tone: string, comment: ?string}>
+     * @return list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
     private function guestItemStatuses(?DraftOrder $draftOrder, Collection $orders): array
     {
@@ -219,7 +221,7 @@ class OrderStatuses extends Component
     }
 
     /**
-     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_label: string, status_description: string, tone: string, comment: ?string}>
+     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
     private function draftItemStatuses(?DraftOrder $draftOrder): Collection
     {
@@ -250,8 +252,8 @@ class OrderStatuses extends Component
                 'guest_name' => (string) ($item->guest?->guest_name ?: __('guest.table.guest')),
                 'quantity' => (int) $item->quantity,
                 'status_value' => $status['value'],
-                'status_label' => $status['label'],
-                'status_description' => $status['description'],
+                'status_key' => $status['key'],
+                'status_description_key' => $status['description_key'],
                 'tone' => $status['tone'],
                 'comment' => filled($item->comment) ? (string) $item->comment : null,
             ]);
@@ -259,7 +261,7 @@ class OrderStatuses extends Component
 
     /**
      * @param  Collection<int, Order>  $orders
-     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_label: string, status_description: string, tone: string, comment: ?string}>
+     * @return Collection<int, array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
     private function orderItemStatuses(Collection $orders): Collection
     {
@@ -307,8 +309,8 @@ class OrderStatuses extends Component
                     'guest_name' => (string) ($item->historicalGuestName() ?? $item->guest?->guest_name ?? __('guest.table.guest')),
                     'quantity' => (int) $item->quantity,
                     'status_value' => $status['value'],
-                    'status_label' => $status['label'],
-                    'status_description' => $status['description'],
+                    'status_key' => $status['key'],
+                    'status_description_key' => $status['description_key'],
                     'tone' => $status['tone'],
                     'comment' => filled($item->comment) ? (string) $item->comment : null,
                 ];
@@ -470,48 +472,48 @@ class OrderStatuses extends Component
     }
 
     /**
-     * @return array{value: string, label: string, description: string, tone: string}
+     * @return array{value: string, key: string, description_key: string, tone: string}
      */
     private function draftItemGuestStatus(DraftOrderStatus $status): array
     {
         return match ($status) {
             DraftOrderStatus::SentToWaiter => [
                 'value' => 'sent_to_waiter',
-                'label' => __('guest.statuses.items.sent_to_waiter'),
-                'description' => __('guest.statuses.items.sent_to_waiter_description'),
+                'key' => 'guest.statuses.items.sent_to_waiter',
+                'description_key' => 'guest.statuses.items.sent_to_waiter_description',
                 'tone' => 'amber',
             ],
             DraftOrderStatus::WaiterReview => [
                 'value' => 'waiter_review',
-                'label' => __('guest.statuses.items.waiter_review'),
-                'description' => __('guest.statuses.items.waiter_review_description'),
+                'key' => 'guest.statuses.items.waiter_review',
+                'description_key' => 'guest.statuses.items.waiter_review_description',
                 'tone' => 'amber',
             ],
             DraftOrderStatus::Rejected => [
                 'value' => 'rejected',
-                'label' => __('guest.statuses.items.rejected'),
-                'description' => __('guest.statuses.items.rejected_description'),
+                'key' => 'guest.statuses.items.rejected',
+                'description_key' => 'guest.statuses.items.rejected_description',
                 'tone' => 'red',
             ],
             default => [
                 'value' => 'draft',
-                'label' => __('guest.statuses.items.draft'),
-                'description' => __('guest.statuses.items.draft_description'),
+                'key' => 'guest.statuses.items.draft',
+                'description_key' => 'guest.statuses.items.draft_description',
                 'tone' => 'zinc',
             ],
         };
     }
 
     /**
-     * @return array{value: string, label: string, description: string, tone: string}
+     * @return array{value: string, key: string, description_key: string, tone: string}
      */
     private function orderItemGuestStatus(?OrderStatus $orderStatus, ?KitchenTicketItem $ticketItem): array
     {
         if ($orderStatus === OrderStatus::Cancelled) {
             return [
                 'value' => 'cancelled',
-                'label' => __('guest.statuses.items.cancelled'),
-                'description' => __('guest.statuses.items.cancelled_description'),
+                'key' => 'guest.statuses.items.cancelled',
+                'description_key' => 'guest.statuses.items.cancelled_description',
                 'tone' => 'red',
             ];
         }
@@ -519,8 +521,8 @@ class OrderStatuses extends Component
         if ($ticketItem instanceof KitchenTicketItem && $ticketItem->served_at !== null) {
             return [
                 'value' => 'served',
-                'label' => __('guest.statuses.items.served'),
-                'description' => __('guest.statuses.items.served_description'),
+                'key' => 'guest.statuses.items.served',
+                'description_key' => 'guest.statuses.items.served_description',
                 'tone' => 'sky',
             ];
         }
@@ -530,8 +532,8 @@ class OrderStatuses extends Component
         if ($orderStatus === OrderStatus::Served) {
             return [
                 'value' => 'served',
-                'label' => __('guest.statuses.items.served'),
-                'description' => __('guest.statuses.items.served_description'),
+                'key' => 'guest.statuses.items.served',
+                'description_key' => 'guest.statuses.items.served_description',
                 'tone' => 'sky',
             ];
         }
@@ -539,8 +541,8 @@ class OrderStatuses extends Component
         if ($orderStatus === OrderStatus::Paid || $orderStatus === OrderStatus::Closed) {
             return [
                 'value' => 'paid',
-                'label' => __('guest.statuses.items.paid'),
-                'description' => __('guest.statuses.items.paid_description'),
+                'key' => 'guest.statuses.items.paid',
+                'description_key' => 'guest.statuses.items.paid_description',
                 'tone' => 'emerald',
             ];
         }
@@ -548,8 +550,8 @@ class OrderStatuses extends Component
         if ($orderStatus === OrderStatus::PaymentRequested) {
             return [
                 'value' => 'bill_requested',
-                'label' => __('guest.statuses.items.bill_requested'),
-                'description' => __('guest.statuses.items.bill_requested_description'),
+                'key' => 'guest.statuses.items.bill_requested',
+                'description_key' => 'guest.statuses.items.bill_requested_description',
                 'tone' => 'sky',
             ];
         }
@@ -557,8 +559,8 @@ class OrderStatuses extends Component
         if ($ticketStatus === KitchenTicketItemStatus::Ready || $orderStatus === OrderStatus::Ready) {
             return [
                 'value' => 'ready',
-                'label' => __('guest.statuses.items.ready'),
-                'description' => __('guest.statuses.items.ready_description'),
+                'key' => 'guest.statuses.items.ready',
+                'description_key' => 'guest.statuses.items.ready_description',
                 'tone' => 'emerald',
             ];
         }
@@ -566,8 +568,8 @@ class OrderStatuses extends Component
         if ($ticketStatus === KitchenTicketItemStatus::InProgress || ($ticketStatus === null && $orderStatus === OrderStatus::InProgress)) {
             return [
                 'value' => 'cooking',
-                'label' => __('guest.statuses.items.cooking'),
-                'description' => __('guest.statuses.items.cooking_description'),
+                'key' => 'guest.statuses.items.cooking',
+                'description_key' => 'guest.statuses.items.cooking_description',
                 'tone' => 'amber',
             ];
         }
@@ -575,16 +577,16 @@ class OrderStatuses extends Component
         if ($ticketStatus === KitchenTicketItemStatus::New || ($ticketStatus === null && $orderStatus === OrderStatus::SentToKitchenBar)) {
             return [
                 'value' => 'accepted',
-                'label' => __('guest.statuses.items.accepted'),
-                'description' => __('guest.statuses.items.accepted_description'),
+                'key' => 'guest.statuses.items.accepted',
+                'description_key' => 'guest.statuses.items.accepted_description',
                 'tone' => 'emerald',
             ];
         }
 
         return [
             'value' => 'accepted',
-            'label' => __('guest.statuses.items.accepted'),
-            'description' => __('guest.statuses.items.confirmed_description'),
+            'key' => 'guest.statuses.items.accepted',
+            'description_key' => 'guest.statuses.items.confirmed_description',
             'tone' => 'emerald',
         ];
     }

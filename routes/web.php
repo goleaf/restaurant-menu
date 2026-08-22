@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\DataExportType;
+use App\Http\Controllers\Invitations\AcceptInvitationController;
+use App\Http\Controllers\Invitations\ShowInvitationController;
 use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
 use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
 use App\Livewire\Exports\Index as DataExportsIndex;
+use App\Livewire\Guest\Home as GuestHome;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
@@ -24,6 +29,7 @@ use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
 use App\Livewire\Organizations\Staff\Permissions as OrganizationStaffPermissions;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\QrCodes\ShortCodeLookup as QrShortCodeLookup;
+use App\Livewire\Restaurant\Dashboard as RestaurantDashboard;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
@@ -35,7 +41,7 @@ Route::middleware(['web'])
     ->prefix('guest')
     ->name('guest.')
     ->group(function () {
-        Route::livewire('/', 'pages::guest.home')->name('home');
+        Route::livewire('/', GuestHome::class)->name('home');
     });
 
 Route::middleware(['web'])
@@ -50,6 +56,16 @@ Route::middleware(['web'])
 Route::middleware(['auth'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+Route::middleware(['auth', 'throttle:staff-invitations'])
+    ->prefix('invite')
+    ->name('invitations.')
+    ->group(function () {
+        Route::get('{token}', ShowInvitationController::class)
+            ->where('token', '[A-Za-z0-9]{64}')
+            ->name('show');
+        Route::post('accept', AcceptInvitationController::class)->name('accept');
+    });
 
 Route::middleware(['auth'])
     ->prefix('onboarding')
@@ -69,6 +85,7 @@ Route::middleware(['auth'])
 
         Route::prefix('{organization}/brands')
             ->name('brands.')
+            ->scopeBindings()
             ->group(function () {
                 Route::livewire('/', OrganizationBrandsIndex::class)->name('index');
 
@@ -122,7 +139,7 @@ Route::middleware(['auth'])
     ->prefix('restaurant')
     ->name('restaurant.')
     ->group(function () {
-        Route::livewire('dashboard', 'pages::restaurant.dashboard')->name('dashboard');
+        Route::livewire('dashboard', RestaurantDashboard::class)->name('dashboard');
         Route::livewire('qr-lookup', QrShortCodeLookup::class)->name('qr-lookup.index');
         Route::livewire('audit-log', AuditLogIndex::class)->name('audit-log.index');
 
@@ -172,7 +189,9 @@ Route::middleware(['auth'])
                 Route::prefix('backups')
                     ->name('backups.')
                     ->group(function () {
-                        Route::get('sqlite', DownloadSqliteBackupController::class)->name('sqlite.download');
+                        Route::get('sqlite', DownloadSqliteBackupController::class)
+                            ->middleware('password.confirm')
+                            ->name('sqlite.download');
                     });
             });
     });

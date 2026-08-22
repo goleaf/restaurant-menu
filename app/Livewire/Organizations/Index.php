@@ -1,16 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations;
 
-use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\RemoveLocalImageAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
-use App\Enums\SystemPermission;
-use App\Enums\SystemRole;
 use App\Models\Organization;
 use App\Models\User;
 use App\Support\Validation\RestaurantValidationRules;
@@ -18,6 +19,7 @@ use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -52,6 +54,8 @@ class Index extends Component
 
     public function create(CreateOrganizationAction $createOrganization): void
     {
+        Gate::forUser($this->currentUser())->authorize('create', Organization::class);
+
         $this->name = trim($this->name);
 
         $validated = $this->validate($this->organizationNameRules('name'));
@@ -129,7 +133,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_deleted'));
     }
 
-    public function saveLogo(int $organizationId, StoreLocalImageAction $storeLocalImage): void
+    public function saveLogo(int $organizationId, ReplaceLocalImageAction $replaceLocalImage): void
     {
         $organization = $this->findOwnedOrganization($organizationId);
 
@@ -144,25 +148,30 @@ class Index extends Component
             return;
         }
 
-        $organization->update([
-            'logo_path' => $storeLocalImage->handle(
-                file: $file,
-                directory: 'media/organizations/'.$organization->id.'/logos',
-                oldPath: $organization->logo_path,
-            ),
-        ]);
+        $replaceLocalImage->handle(
+            file: $file,
+            directory: 'media/organizations/'.$organization->id.'/logos',
+            oldPath: $organization->logo_path,
+            persist: function (string $path) use ($organization): void {
+                $organization->forceFill(['logo_path' => $path])->saveOrFail();
+            },
+        );
 
         unset($this->organizationLogos[$organization->id], $this->organizations);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $organizationId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    public function removeLogo(int $organizationId, RemoveLocalImageAction $removeLocalImage): void
     {
         $organization = $this->findOwnedOrganization($organizationId);
 
-        $deleteLocalMediaFile->handle($organization->logo_path);
-        $organization->update(['logo_path' => null]);
+        $removeLocalImage->handle(
+            oldPath: $organization->logo_path,
+            persist: function () use ($organization): void {
+                $organization->forceFill(['logo_path' => null])->saveOrFail();
+            },
+        );
 
         unset($this->organizationLogos[$organization->id], $this->organizations);
 
@@ -205,7 +214,7 @@ class Index extends Component
     public function staffManageableOrganizationIds(): array
     {
         return $this->organizations
-            ->filter(fn (Organization $organization): bool => $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization))
+            ->filter(fn (Organization $organization): bool => Gate::forUser($this->currentUser())->allows('manageStaff', $organization))
             ->pluck('id')
             ->all();
     }
@@ -258,13 +267,7 @@ class Index extends Component
             ->whereKey($organizationId)
             ->firstOrFail();
 
-        if (! $this->currentUser()->canAccessOrganization($organization)) {
-            abort(403);
-        }
-
-        if (! $this->currentUser()->hasOrganizationRole($organization, SystemRole::Owner)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('update', $organization);
 
         return $organization;
     }

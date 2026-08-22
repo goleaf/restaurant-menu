@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
@@ -38,7 +40,7 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
         'pollingIntervalSeconds' => 1,
     ])
         ->assertSet('overallStatusLabel', 'Choosing items')
-        ->assertSet('itemStatuses.0.status_label', 'In draft')
+        ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.draft')
         ->assertSeeText('Choosing items')
         ->assertSeeText('Маргарита')
         ->assertSeeText('In draft');
@@ -54,7 +56,7 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
     $component
         ->call('refreshOrderStatuses')
         ->assertSet('overallStatusLabel', 'Sent to waiter')
-        ->assertSet('itemStatuses.0.status_label', 'Waiting for waiter')
+        ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.sent_to_waiter')
         ->assertSeeText('Sent to waiter')
         ->assertSeeText('Waiting for waiter');
 
@@ -65,7 +67,7 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
     $component
         ->call('refreshOrderStatuses')
         ->assertSet('overallStatusLabel', 'Waiter review')
-        ->assertSet('itemStatuses.0.status_label', 'Waiter review')
+        ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.waiter_review')
         ->assertSeeText('Waiter review');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'waiter_review')['state'])->toBe('current');
@@ -84,7 +86,7 @@ test('guest sees accepted cooking ready and served item statuses', function () {
         'pollingIntervalSeconds' => 1,
     ])
         ->assertSet('overallStatusLabel', 'Order accepted')
-        ->assertSet('itemStatuses.0.status_label', 'Accepted')
+        ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.accepted')
         ->assertSeeText('Order accepted')
         ->assertSeeText('Суп дня');
 
@@ -110,10 +112,10 @@ test('guest sees accepted cooking ready and served item statuses', function () {
         'pollingIntervalSeconds' => 1,
     ])
         ->assertSet('overallStatusLabel', 'Cooking')
-        ->assertSet('itemStatuses.0.status_label', 'Accepted')
-        ->assertSet('itemStatuses.1.status_label', 'Cooking')
-        ->assertSet('itemStatuses.2.status_label', 'Ready')
-        ->assertSet('itemStatuses.3.status_label', 'Served')
+        ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.accepted')
+        ->assertSet('itemStatuses.1.status_key', 'guest.statuses.items.cooking')
+        ->assertSet('itemStatuses.2.status_key', 'guest.statuses.items.ready')
+        ->assertSet('itemStatuses.3.status_key', 'guest.statuses.items.served')
         ->assertSeeText('Accepted')
         ->assertSeeText('Cooking')
         ->assertSeeText('Ready')

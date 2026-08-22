@@ -67,6 +67,7 @@ test('active organization member can see branches inside brand', function () {
 });
 
 test('branch page shows simple restaurant setup wizard', function () {
+    app()->setLocale('ru');
     [$organization, $brand, $owner] = createOrganizationBrand();
 
     Branch::factory()
@@ -76,13 +77,13 @@ test('branch page shows simple restaurant setup wizard', function () {
 
     Livewire::actingAs($owner)
         ->test(Index::class, ['organization' => $organization, 'brand' => $brand])
-        ->assertSee('Настроить ресторан')
-        ->assertSee('Создать филиал')
-        ->assertSee('Добавить зоны')
-        ->assertSee('Добавить столы')
-        ->assertSee('Сгенерировать QR')
-        ->assertSee('Напечатать QR')
-        ->assertSee('Открыть гостевое меню');
+        ->assertSee(__('ui.onboarding.restaurant_setup.nastroit_restoran'))
+        ->assertSee(__('ui.livewire.organizations.brands.branches.index.sozdat_filial'))
+        ->assertSee(__('ui.livewire.organizations.brands.branches.index.dobavit_zony'))
+        ->assertSee(__('ui.livewire.organizations.brands.branches.index.dobavit_stoly'))
+        ->assertSee(__('qr.setup.generate.title'))
+        ->assertSee(__('qr.setup.print.title'))
+        ->assertSee(__('qr.setup.guest_menu.title'));
 });
 
 test('owner can create update and delete branch', function () {

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\InvitationStatus;
@@ -33,8 +35,10 @@ class InvitationFactory extends Factory
             )->id,
             'email' => fake()->unique()->safeEmail(),
             'phone' => fake()->optional()->e164PhoneNumber(),
-            'invite_token' => Str::random(64),
-            'invite_code' => Str::upper(Str::random(8)),
+            'invite_token' => null,
+            'invite_code' => null,
+            'invite_token_hash' => hash('sha256', Str::random(64)),
+            'invite_code_hash' => hash('sha256', Str::upper(Str::random(8))),
             'expires_at' => now()->addDays(7),
             'status' => InvitationStatus::Pending,
             'invited_by_user_id' => User::factory(),

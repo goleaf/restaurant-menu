@@ -1,7 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+
+test('livewire pages use class components with separate presentation views', function () {
+    $singleFileComponentPattern = '/<\?php\s+.*?new(?:\s+#\[[^]]+\])?\s+class\s+extends\s+Component/s';
+
+    $matchingPaths = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => str_ends_with($file->getFilename(), '.blade.php'))
+        ->mapWithKeys(function (SplFileInfo $file) use ($singleFileComponentPattern): array {
+            if (preg_match($singleFileComponentPattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect(config('livewire.make_command.type'))->toBe('class')
+        ->and($matchingPaths)->toBeEmpty();
+});
 
 test('shared hosting infrastructure does not expose redis s3 websockets or docker tooling', function () {
     $composerJson = json_decode(file_get_contents(base_path('composer.json')), true, flags: JSON_THROW_ON_ERROR);
@@ -46,12 +67,12 @@ test('first party code does not reintroduce forbidden product modules', function
         ->filter(fn (string $path): bool => preg_match($forbiddenModulePattern, $path) === 1)
         ->values();
 
-    expect($matchingPaths)->toBeEmpty();
+    expect($matchingPaths->all())->toBe([]);
 });
 
 test('first party code does not contain debug dumps or generated stub comments', function () {
     $debugPattern = '/\b(dd|dump|var_dump|print_r|ray)\s*\(|@dd\b|@dump\b|console\.log\s*\(|debugger;/i';
-    $temporaryCommentPattern = '/\b(TODO|FIXME|HACK|XXX)\b|Well begun|Aristotle|Marcus Aurelius|Benjamin Franklin|Leonardo da Vinci|Seneca|George Eliot|Laozi|Mustafa Kemal/i';
+    $temporaryCommentPattern = '/(?:\/\/|#|\/\*+|\*|\{\{--)[^\r\n]*(?:\b(?:TODO|FIXME|HACK|XXX)\b|Well begun|Aristotle|Marcus Aurelius|Benjamin Franklin|Leonardo da Vinci|Seneca|George Eliot|Laozi|Mustafa Kemal)/i';
 
     $matchingPaths = collect([
         app_path(),
@@ -77,7 +98,7 @@ test('first party code does not contain debug dumps or generated stub comments',
         ->keys()
         ->values();
 
-    expect($matchingPaths)->toBeEmpty();
+    expect($matchingPaths->all())->toBe([]);
 });
 
 test('blade status labels are rendered through translations', function () {
@@ -97,7 +118,7 @@ test('blade status labels are rendered through translations', function () {
         ->keys()
         ->values();
 
-    expect($matchingPaths)->toBeEmpty();
+    expect($matchingPaths->all())->toBe([]);
 });
 
 test('public entry pages no longer contain starter placeholders', function () {

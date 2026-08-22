@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Departments;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -15,7 +17,6 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
-use App\Models\Order;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\KitchenItemCookingNotification;
@@ -46,7 +47,7 @@ class UpdateDepartmentTicketItemStatusAction
         array $permissionCodes,
     ): KitchenTicketItem {
         $item = KitchenTicketItem::query()
-            ->select(['id', 'kitchen_ticket_id', 'order_item_id', 'item_name', 'quantity', 'status', 'served_at'])
+            ->select(['id', 'kitchen_ticket_id', 'order_item_id', 'item_name', 'quantity', 'status', 'served_at', 'updated_at'])
             ->with([
                 'kitchenTicket' => fn ($query) => $query
                     ->select(['id', 'branch_id', 'kitchen_department_id', 'department_name', 'order_id'])
@@ -66,7 +67,7 @@ class UpdateDepartmentTicketItemStatusAction
             ->whereKey($item->id)
             ->firstOrFail();
 
-        $departmentId = $item->kitchenTicket?->kitchen_department_id;
+        $departmentId = $item->kitchenTicket->kitchen_department_id;
         $accessibleDepartmentIds = $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
             departmentTypes: $departmentTypes,
@@ -88,8 +89,9 @@ class UpdateDepartmentTicketItemStatusAction
             );
         }
 
-        if ($item->kitchenTicket?->order instanceof Order
-            && $item->kitchenTicket->order->status === OrderStatus::Cancelled) {
+        $order = $item->kitchenTicket->order;
+
+        if ($order->status === OrderStatus::Cancelled) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::OrderAlreadyCancelled,
                 'ticket_item_status',
@@ -99,19 +101,13 @@ class UpdateDepartmentTicketItemStatusAction
 
         $previousStatus = $item->status;
 
-        if ($previousStatus === KitchenTicketItemStatus::Ready && $status === KitchenTicketItemStatus::Ready) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::DepartmentAlreadyReady,
-                'ticket_item_status',
-                __('ui.actions.departments.updatedepartmentticketitemstatusaction.poziciia_uze'),
-            );
+        if ($previousStatus === $status) {
+            return $item;
         }
 
         $item->forceFill(['status' => $status])->save();
 
-        if ($item->kitchenTicket?->order instanceof Order) {
-            $this->syncOrderStatus->handle($item->kitchenTicket->order, $user);
-        }
+        $this->syncOrderStatus->handle($order, $user);
 
         if ($status === KitchenTicketItemStatus::Ready && $previousStatus !== KitchenTicketItemStatus::Ready) {
             $this->recordAuditLog->handle(
@@ -119,16 +115,16 @@ class UpdateDepartmentTicketItemStatusAction
                 entityType: 'kitchen_ticket_item',
                 entityId: $item->id,
                 actorUser: $user,
-                organizationId: $item->kitchenTicket?->branch?->organization_id,
-                branchId: $item->kitchenTicket?->branch_id,
+                organizationId: $item->kitchenTicket->branch->organization_id,
+                branchId: $item->kitchenTicket->branch_id,
                 oldValues: [
                     'status' => $previousStatus,
                 ],
                 newValues: [
                     'status' => KitchenTicketItemStatus::Ready,
-                    'order_id' => $item->kitchenTicket?->order_id,
+                    'order_id' => $item->kitchenTicket->order_id,
                     'order_item_id' => $item->order_item_id,
-                    'department_name' => $item->kitchenTicket?->department_name,
+                    'department_name' => $item->kitchenTicket->department_name,
                     'item_name' => $item->item_name,
                     'quantity' => $item->quantity,
                 ],
@@ -187,11 +183,7 @@ class UpdateDepartmentTicketItemStatusAction
             ])
             ->whereKey($item->id)
             ->firstOrFail();
-        $branch = $item->kitchenTicket?->branch;
-
-        if ($branch === null) {
-            return;
-        }
+        $branch = $item->kitchenTicket->branch;
 
         $recipients = $this->resolveWaiterRecipients->handle($branch);
 

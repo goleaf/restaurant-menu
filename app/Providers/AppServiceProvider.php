@@ -44,8 +44,11 @@ use App\Observers\OrderObserver;
 use App\Observers\OrganizationObserver;
 use App\Observers\TableSessionObserver;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
@@ -66,11 +69,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureRateLimiting();
         $this->registerModelObservers();
 
         Livewire::addPersistentMiddleware([
             EnsureUserIsSuperadmin::class,
         ]);
+    }
+
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('staff-invitations', function (Request $request): Limit {
+            $token = (string) $request->route('token');
+
+            return Limit::perMinute(10)->by(hash('sha256', $token).'|'.$request->ip());
+        });
     }
 
     /**

@@ -18,7 +18,7 @@ beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
-test('staff permission page requires manage staff permission', function () {
+test('staff permission page requires manage permissions permission', function () {
     [$manager, $organization] = createPrompt16Organization();
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
 
@@ -26,7 +26,7 @@ test('staff permission page requires manage staff permission', function () {
         ->get(route('organizations.staff.permissions', [$organization, $staff]))
         ->assertForbidden();
 
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
 
     $this->actingAs($manager)
         ->get(route('organizations.staff.permissions', [$organization, $staff]))
@@ -36,7 +36,7 @@ test('staff permission page requires manage staff permission', function () {
 
 test('staff permission page groups permissions with human labels and descriptions', function () {
     [$manager, $organization] = createPrompt16Organization();
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Director);
 
     Livewire::actingAs($manager)
@@ -80,7 +80,7 @@ test('superadmin can see technical permission keys in permission UI', function (
 
 test('staff permission overrides can allow deny and return to default', function () {
     [$manager, $organization] = createPrompt16Organization();
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $changePrices = Permission::query()->where('code', SystemPermission::ChangePrices->value)->firstOrFail();
     $confirmOrders = Permission::query()->where('code', SystemPermission::ConfirmOrders->value)->firstOrFail();
@@ -116,7 +116,7 @@ test('staff permission overrides can allow deny and return to default', function
 
 test('critical permission changes show a warning', function () {
     [$manager, $organization] = createPrompt16Organization();
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Director);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
@@ -129,7 +129,7 @@ test('critical permission changes show a warning', function () {
 
 test('critical permission changes require a reason', function () {
     [$manager, $organization] = createPrompt16Organization();
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $staff = createPrompt16StaffMember($organization, SystemRole::Director);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
@@ -142,6 +142,7 @@ test('critical permission changes require a reason', function () {
 
 test('staff cannot edit their own permission overrides', function () {
     [$manager, $organization] = createPrompt16Organization();
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
@@ -155,7 +156,7 @@ test('staff cannot edit their own permission overrides', function () {
     expect($manager->fresh()->hasPermission(SystemPermission::ManageStaff, $organization))->toBeTrue();
 });
 
-test('regular staff cannot open their own permission page without manage staff', function () {
+test('regular staff cannot open their own permission page without manage permissions', function () {
     [, $organization] = createPrompt16Organization();
     $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
 
@@ -166,7 +167,7 @@ test('regular staff cannot open their own permission page without manage staff',
 
 test('superadmin staff member keeps full computed access', function () {
     [$manager, $organization] = createPrompt16Organization();
-    grantPrompt16Permission($manager, $organization, SystemPermission::ManageStaff);
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
     $superadmin = createPrompt16StaffMember($organization, SystemRole::Superadmin);
 
     Livewire::actingAs($manager)

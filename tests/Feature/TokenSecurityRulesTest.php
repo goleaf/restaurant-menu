@@ -58,14 +58,14 @@ test('generated qr and staff invitation tokens are long random route credentials
     $this->get('/q/'.$qrCode->short_code)->assertNotFound();
 
     $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
-    $invitation = app(CreateInvitationAction::class)->handle($organization, $role, $createdBy, []);
+    $createdInvitation = app(CreateInvitationAction::class)->handle($organization, $role, $createdBy, []);
 
-    expect($invitation->invite_token)
+    expect($createdInvitation->token)
         ->toHaveLength(64)
         ->toMatch('/\A[A-Za-z0-9]+\z/')
         ->not->toBe((string) $organization->id)
         ->not->toMatch('/\A\d+\z/')
-        ->and($invitation->invite_code)
+        ->and($createdInvitation->code)
         ->toHaveLength(8)
         ->toMatch('/\A[A-Z0-9]+\z/');
 });
@@ -100,27 +100,30 @@ test('guest tokens stay hidden and cannot authenticate staff routes', function (
 });
 
 test('expired or non pending staff invitation tokens are not acceptable', function (): void {
+    $activeToken = str_repeat('A', 64);
+    $expiredToken = str_repeat('B', 64);
+    $acceptedToken = str_repeat('C', 64);
     $active = Invitation::factory()->create([
-        'invite_token' => str_repeat('A', 64),
+        'invite_token_hash' => hash('sha256', $activeToken),
         'status' => InvitationStatus::Pending,
         'expires_at' => now()->addHour(),
     ]);
     $expired = Invitation::factory()->create([
-        'invite_token' => str_repeat('B', 64),
+        'invite_token_hash' => hash('sha256', $expiredToken),
         'status' => InvitationStatus::Pending,
         'expires_at' => now()->subMinute(),
     ]);
     $accepted = Invitation::factory()->create([
-        'invite_token' => str_repeat('C', 64),
+        'invite_token_hash' => hash('sha256', $acceptedToken),
         'status' => InvitationStatus::Accepted,
         'expires_at' => now()->addHour(),
     ]);
 
-    expect(Invitation::findAcceptableByToken($active->invite_token)?->id)->toBe($active->id)
+    expect(Invitation::findAcceptableByToken($activeToken)?->id)->toBe($active->id)
         ->and($active->canBeAccepted())->toBeTrue()
-        ->and(Invitation::findAcceptableByToken($expired->invite_token))->toBeNull()
+        ->and(Invitation::findAcceptableByToken($expiredToken))->toBeNull()
         ->and($expired->canBeAccepted())->toBeFalse()
-        ->and(Invitation::findAcceptableByToken($accepted->invite_token))->toBeNull()
+        ->and(Invitation::findAcceptableByToken($acceptedToken))->toBeNull()
         ->and($accepted->canBeAccepted())->toBeFalse()
         ->and(Invitation::findAcceptableByToken('short-token'))->toBeNull();
 });
@@ -229,7 +232,7 @@ test('branch csv exports do not include raw security tokens', function (): void 
         ->create(['name' => 'Export Menu Item']);
     $invitation = Invitation::factory()
         ->for($organization)
-        ->create(['invite_token' => str_repeat('I', 64)]);
+        ->create(['invite_token_hash' => hash('sha256', str_repeat('I', 64))]);
 
     $content = collect(DataExportType::cases())
         ->map(fn (DataExportType $type): string => $this
@@ -243,7 +246,7 @@ test('branch csv exports do not include raw security tokens', function (): void 
         ->not->toContain($qrCode->public_token)
         ->not->toContain($guest->guest_token)
         ->not->toContain($tableSession->guest_invite_token)
-        ->not->toContain($invitation->invite_token)
+        ->not->toContain(str_repeat('I', 64))
         ->not->toContain('guest_token')
         ->not->toContain('invite_token')
         ->not->toContain('public_token');

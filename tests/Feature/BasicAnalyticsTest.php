@@ -143,10 +143,10 @@ test('payment and session changes invalidate analytics cache', function () {
 
     expect(analyticsCacheStore()->has($cacheKey))->toBeTrue();
 
-    $activeSession->update([
+    $activeSession->forceFill([
         'status' => TableSessionStatus::Closed,
         'ended_at' => now(),
-    ]);
+    ])->save();
 
     expect(analyticsCacheStore()->has($cacheKey))->toBeFalse();
 

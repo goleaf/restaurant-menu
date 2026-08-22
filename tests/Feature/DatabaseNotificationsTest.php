@@ -76,7 +76,7 @@ test('new join request creates unread database notifications for active guests',
             'publicToken' => 'prompt82token',
         ])
         ->assertSet('unreadCount', 1)
-        ->assertSee('Новый гость ждёт подтверждения')
+        ->assertSee(__('ui.livewire.publicqr.notifications.novyi_gost_zdet_podtverzdeniia_7813e12a'))
         ->assertSee('Mira');
 });
 
@@ -98,8 +98,8 @@ test('sent draft creates unread database notification for waiter and unread coun
     Livewire::actingAs($waiter)
         ->test(UnreadCount::class)
         ->assertSet('unreadCount', 1)
-        ->assertSee('Notifications')
-        ->assertSee('Новый заказ')
+        ->assertSee(__('ui.notifications.unread_count.notifications'))
+        ->assertSee(__('ui.livewire.notifications.unreadcount.novyi_zakaz'))
         ->call('markAllRead')
         ->assertSet('unreadCount', 0);
 
@@ -127,9 +127,9 @@ test('staff notification ui lists waiter events and can mark one notification re
     Livewire::actingAs($waiter)
         ->test(UnreadCount::class)
         ->assertSet('unreadCount', 3)
-        ->assertSee('Вызов официанта')
-        ->assertSee('Просьба счёта')
-        ->assertSee('Позиция готова')
+        ->assertSee(__('ui.livewire.notifications.unreadcount.vyzov_oficianta'))
+        ->assertSee(__('ui.livewire.notifications.unreadcount.prosba_sceta'))
+        ->assertSee(__('ui.livewire.notifications.unreadcount.poziciia_gotova_d55866f3'))
         ->call('markNotificationRead', $waiterCallNotificationId)
         ->assertSet('unreadCount', 2);
 
@@ -195,7 +195,7 @@ test('kitchen in progress creates guest notification and guest notification ui s
             'publicToken' => 'prompt82token',
         ])
         ->assertSet('unreadCount', 1)
-        ->assertSee('Позиция готовится')
+        ->assertSee(__('ui.livewire.publicqr.notifications.poziciia_gotovitsia_c07e0e57'))
         ->assertSee('Prompt 81 Soup');
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
@@ -214,7 +214,7 @@ test('kitchen in progress creates guest notification and guest notification ui s
             'publicToken' => 'prompt82token',
         ])
         ->assertSet('unreadCount', 2)
-        ->assertSee('Позиция готова')
+        ->assertSee(__('ui.livewire.notifications.unreadcount.poziciia_gotova_d55866f3'))
         ->call('markAllRead')
         ->assertSet('unreadCount', 0);
 });
@@ -245,7 +245,7 @@ test('rejected draft creates unread database notifications for active guests', f
             'publicToken' => 'prompt82token',
         ])
         ->assertSet('unreadCount', 1)
-        ->assertSee('Заказ отклонён')
+        ->assertSee(__('ui.livewire.publicqr.notifications.zakaz_otklonen'))
         ->assertSee('Please remove the soup.');
 });
 
@@ -275,8 +275,8 @@ test('confirmed draft creates unread database notifications for active guests', 
             'publicToken' => 'prompt82token',
         ])
         ->assertSet('unreadCount', 1)
-        ->assertSee('Заказ подтверждён')
-        ->assertSee('Официант подтвердил заказ.');
+        ->assertSee(__('ui.livewire.publicqr.notifications.zakaz_podtverzden'))
+        ->assertSee(__('ui.livewire.publicqr.notifications.oficiant_podtverdil_zakaz'));
 });
 
 function createPrompt81NotificationContext(): array

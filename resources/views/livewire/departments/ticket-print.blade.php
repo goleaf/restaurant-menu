@@ -35,7 +35,7 @@
                 <div class="rounded-lg border border-zinc-300 px-4 py-3 text-right">
                     <p class="text-sm text-zinc-500">{{ __('ui.departments.ticket_print.order_number') }}</p>
                     <p class="text-3xl font-semibold tabular-nums">{{ $print['ticket']['order_number'] }}</p>
-                    <p class="mt-1 text-sm text-zinc-500">{{ $print['ticket']['status_label'] }}</p>
+                    <p class="mt-1 text-sm text-zinc-500">{{ __($print['ticket']['status_key']) }}</p>
                 </div>
             </div>
 
@@ -88,7 +88,7 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <h3 class="text-xl font-semibold">{{ $item['item_name'] }}</h3>
                             <span class="rounded-full border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600">
-                                {{ $item['status_label'] }}
+                                {{ __($item['status_key']) }}
                             </span>
                         </div>
 

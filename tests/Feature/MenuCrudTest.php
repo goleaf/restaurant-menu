@@ -489,6 +489,16 @@ function createMenuCrudBranch(string $organizationName = 'Menu Group', string $b
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => $organizationName]);
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+
+    $membership = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail();
+    $membership->forceFill(['role_id' => $restrictedRole->id])->saveOrFail();
+
     $brand = Brand::factory()->for($organization)->create(['name' => $brandName]);
     $branch = Branch::factory()
         ->for($organization)

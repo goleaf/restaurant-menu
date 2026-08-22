@@ -11,6 +11,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Exceptions\BusinessRuleViolation;
 use App\Livewire\Waiter\TableDetail;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -31,6 +32,13 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+});
+
+test('sqlite payment transactions reserve the write lock before reading the remaining balance', function (): void {
+    expect(config('database.connections.sqlite.transaction_mode'))->toBe('IMMEDIATE')
+        ->and(config('database.connections.sqlite.busy_timeout'))->toBe(5000)
+        ->and(config('database.connections.sqlite.journal_mode'))->toBe('WAL')
+        ->and(config('database.connections.sqlite.synchronous'))->toBe('NORMAL');
 });
 
 test('payment manager can mark whole table paid and close the session', function () {
@@ -187,6 +195,28 @@ test('manual payment amounts are server calculated and reject negative or duplic
         ->assertHasErrors(['manual_payment']);
 
     expect(ManualPayment::query()->where('table_session_guest_id', $ana->id)->count())->toBe(1);
+});
+
+test('stale repeated payment submissions cannot create a second payment', function (): void {
+    [$organization, , $tableSession] = createPrompt67ManualPaymentContext();
+    $manager = User::factory()->create(['name' => 'Repeated Payment Manager']);
+    attachPrompt67PaymentManager($manager, $organization);
+    $firstRequestSession = TableSession::query()->findOrFail($tableSession->id);
+    $staleSecondRequestSession = TableSession::query()->findOrFail($tableSession->id);
+
+    app(RecordManualPaymentAction::class)->recordTable(
+        tableSession: $firstRequestSession,
+        recordedBy: $manager,
+        paymentMethod: ManualPaymentMethod::Cash,
+    );
+
+    expect(fn () => app(RecordManualPaymentAction::class)->recordTable(
+        tableSession: $staleSecondRequestSession,
+        recordedBy: $manager,
+        paymentMethod: ManualPaymentMethod::Cash,
+    ))->toThrow(BusinessRuleViolation::class)
+        ->and(ManualPayment::query()->where('table_session_id', $tableSession->id)->count())->toBe(1)
+        ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid);
 });
 
 test('manual payments cannot be silently corrected through ordinary model paths', function () {

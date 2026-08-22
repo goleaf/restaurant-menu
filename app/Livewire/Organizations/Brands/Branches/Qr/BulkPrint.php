@@ -1,11 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\Qr;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
-use App\Enums\SystemPermission;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -18,6 +19,7 @@ use App\Services\QrPrintBrandingResolver;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -314,14 +316,7 @@ class BulkPrint extends Component
 
     private function authorizeQrManagement(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessBranch($this->branch, $this->organization)
-            || ! $user->hasPermission(SystemPermission::GenerateQr, $this->organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
     }
 
     private function reloadBranchContext(): void

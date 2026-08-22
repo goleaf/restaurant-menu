@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\AreaNodes\DeleteAreaNodeAction;
 use App\Actions\AreaNodes\UpdateAreaNodeAction;
 use App\Enums\AreaNodeType;
-use App\Enums\SystemPermission;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -17,6 +18,7 @@ use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use InvalidArgumentException;
@@ -78,12 +80,11 @@ class Areas extends Component
         }
 
         $user = $this->currentUser();
+        $gate = Gate::forUser($user);
 
-        if (! $user->canAccessBranch($branch, $organization)) {
-            abort(403);
-        }
+        $gate->authorize('view', $branch);
 
-        $this->canManageZones = $user->hasPermission(SystemPermission::ManageZones, $organization);
+        $this->canManageZones = $gate->allows('manageZones', $branch);
 
         if (! $this->canManageZones) {
             abort(403);
@@ -534,9 +535,7 @@ class Areas extends Component
 
     private function authorizeZoneManagement(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::ManageZones, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('manageZones', $this->branch);
     }
 
     private function currentUser(): User

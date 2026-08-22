@@ -30,7 +30,7 @@ class ViewServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::composer(['dashboard', 'layouts.app.sidebar', 'pages.restaurant.dashboard'], function (ViewInstance $view): void {
+        View::composer(['dashboard', 'layouts.app.sidebar'], function (ViewInstance $view): void {
             $user = Auth::user();
 
             $view->with(

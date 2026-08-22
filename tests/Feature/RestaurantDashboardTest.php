@@ -125,7 +125,7 @@ test('restaurant dashboard cache is invalidated by draft and kitchen ticket item
 
     expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeTrue();
 
-    $sentDraft->update(['status' => DraftOrderStatus::WaiterReview]);
+    $sentDraft->forceFill(['status' => DraftOrderStatus::WaiterReview])->save();
 
     expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeFalse();
 

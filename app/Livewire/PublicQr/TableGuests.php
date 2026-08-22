@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
@@ -26,7 +28,7 @@ class TableGuests extends Component
     public string $language = 'ru';
 
     /**
-     * @var list<array{id: int, guest_name: string, status: string, status_label: string, status_tone: string, is_ready: bool, ready_label: string, is_current: bool}>
+     * @var list<array{id: int, guest_name: string, status: string, status_key: string, status_tone: string, is_ready: bool, ready_key: string, is_current: bool}>
      */
     public array $guests = [];
 
@@ -63,10 +65,10 @@ class TableGuests extends Component
                 'id' => $guest->id,
                 'guest_name' => $guest->guest_name,
                 'status' => $guest->status->value,
-                'status_label' => $this->statusLabel($guest->status),
+                'status_key' => $this->statusKey($guest->status),
                 'status_tone' => $this->statusTone($guest->status),
                 'is_ready' => $guest->ready_at !== null,
-                'ready_label' => $guest->ready_at === null ? __('guest.table.not_ready') : __('guest.table.ready'),
+                'ready_key' => $guest->ready_at === null ? 'guest.table.not_ready' : 'guest.table.ready',
                 'is_current' => $guest->id === $this->currentGuestId,
             ])
             ->all();
@@ -84,14 +86,14 @@ class TableGuests extends Component
         App::setLocale($this->language);
     }
 
-    private function statusLabel(TableSessionGuestStatus $status): string
+    private function statusKey(TableSessionGuestStatus $status): string
     {
         return match ($status) {
-            TableSessionGuestStatus::PendingApproval => __('guest.statuses.pending_approval'),
-            TableSessionGuestStatus::Active => __('guest.statuses.active'),
-            TableSessionGuestStatus::Rejected => __('guest.statuses.rejected'),
-            TableSessionGuestStatus::Left => __('guest.statuses.left'),
-            TableSessionGuestStatus::Removed => __('guest.statuses.removed'),
+            TableSessionGuestStatus::PendingApproval => 'guest.statuses.pending_approval',
+            TableSessionGuestStatus::Active => 'guest.statuses.active',
+            TableSessionGuestStatus::Rejected => 'guest.statuses.rejected',
+            TableSessionGuestStatus::Left => 'guest.statuses.left',
+            TableSessionGuestStatus::Removed => 'guest.statuses.removed',
         };
     }
 

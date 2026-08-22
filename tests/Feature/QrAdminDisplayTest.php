@@ -8,6 +8,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
 use App\Models\AreaNode;
 use App\Models\AuditLog;
@@ -17,6 +18,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
@@ -258,6 +260,15 @@ function createPrompt25QrContext(): array
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => 'QR Admin Group']);
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+    $membership = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail();
+    $membership->forceFill(['role_id' => $restrictedRole->id])->saveOrFail();
+
     $brand = Brand::factory()->for($organization)->create(['name' => 'QR Admin Brand']);
     $branch = Branch::factory()
         ->for($organization)

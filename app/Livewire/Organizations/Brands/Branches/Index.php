@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
-use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\RemoveLocalImageAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedCurrency;
@@ -22,6 +25,7 @@ use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -110,21 +114,20 @@ class Index extends Component
             abort(403);
         }
 
-        if (! $this->currentUser()->canAccessOrganization($organization)) {
-            abort(403);
-        }
+        $user = $this->currentUser();
+        Gate::forUser($user)->authorize('view', $brand);
 
-        $this->canManageBranches = $this->currentUser()->canManageOrganizationBranches($organization);
-        $this->canManageZones = $this->currentUser()->hasPermission(SystemPermission::ManageZones, $organization);
-        $this->canManageServicePoints = $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $organization);
-        $this->canManageMenu = $this->currentUser()->hasPermission(SystemPermission::ManageMenu, $organization);
-        $this->canChangeAvailability = $this->currentUser()->hasPermission(SystemPermission::ChangeAvailability, $organization);
+        $this->canManageBranches = Gate::forUser($user)->allows('create', [Branch::class, $organization]);
+        $this->canManageZones = $user->hasPermission(SystemPermission::ManageZones, $organization);
+        $this->canManageServicePoints = $user->hasPermission(SystemPermission::ManageServicePoints, $organization);
+        $this->canManageMenu = $user->hasPermission(SystemPermission::ManageMenu, $organization);
+        $this->canChangeAvailability = $user->hasPermission(SystemPermission::ChangeAvailability, $organization);
         $this->canChangeServicePointStatus = $this->canManageServicePoints
-            || $this->currentUser()->hasOrganizationRole($organization, SystemRole::Waiter);
-        $this->canOpenTable = $this->currentUser()->hasPermission(SystemPermission::ViewOrders, $organization)
-            || $this->currentUser()->hasPermission(SystemPermission::ConfirmOrders, $organization);
-        $this->canGenerateQr = $this->currentUser()->hasPermission(SystemPermission::GenerateQr, $organization);
-        $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
+            || $user->hasOrganizationRole($organization, SystemRole::Waiter);
+        $this->canOpenTable = $user->hasPermission(SystemPermission::ViewOrders, $organization)
+            || $user->hasPermission(SystemPermission::ConfirmOrders, $organization);
+        $this->canGenerateQr = $user->hasPermission(SystemPermission::GenerateQr, $organization);
+        $this->canManageStaff = $user->hasPermission(SystemPermission::ManageStaff, $organization);
     }
 
     public function create(CreateBranchAction $createBranch): void
@@ -243,7 +246,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_deleted'));
     }
 
-    public function saveLogo(int $branchId, StoreLocalImageAction $storeLocalImage): void
+    public function saveLogo(int $branchId, ReplaceLocalImageAction $replaceLocalImage): void
     {
         $this->authorizeBranchManagement();
 
@@ -260,27 +263,32 @@ class Index extends Component
             return;
         }
 
-        $branch->update([
-            'logo_path' => $storeLocalImage->handle(
-                file: $file,
-                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$branch->id.'/logos',
-                oldPath: $branch->logo_path,
-            ),
-        ]);
+        $replaceLocalImage->handle(
+            file: $file,
+            directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$branch->id.'/logos',
+            oldPath: $branch->logo_path,
+            persist: function (string $path) use ($branch): void {
+                $branch->forceFill(['logo_path' => $path])->saveOrFail();
+            },
+        );
 
         unset($this->branchLogos[$branch->id], $this->branches);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $branchId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    public function removeLogo(int $branchId, RemoveLocalImageAction $removeLocalImage): void
     {
         $this->authorizeBranchManagement();
 
         $branch = $this->findBrandBranch($branchId);
 
-        $deleteLocalMediaFile->handle($branch->logo_path);
-        $branch->update(['logo_path' => null]);
+        $removeLocalImage->handle(
+            oldPath: $branch->logo_path,
+            persist: function () use ($branch): void {
+                $branch->forceFill(['logo_path' => null])->saveOrFail();
+            },
+        );
 
         unset($this->branchLogos[$branch->id], $this->branches);
 
@@ -557,9 +565,7 @@ class Index extends Component
 
     private function authorizeBranchManagement(): void
     {
-        if (! $this->canManageBranches) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('create', [Branch::class, $this->organization]);
     }
 
     private function findBrandBranch(int $branchId): Branch
@@ -584,9 +590,7 @@ class Index extends Component
             ->whereKey($branchId)
             ->firstOrFail();
 
-        if (! $this->currentUser()->canAccessBranch($branch, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('view', $branch);
 
         return $branch;
     }

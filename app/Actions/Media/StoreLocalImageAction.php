@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Media;
 
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -104,7 +105,7 @@ class StoreLocalImageAction
         ];
     }
 
-    public function handle(UploadedFile $file, string $directory, ?string $oldPath = null): string
+    public function handle(UploadedFile $file, string $directory): string
     {
         $this->validateFile($file);
 
@@ -117,10 +118,6 @@ class StoreLocalImageAction
 
         if (! is_string($path) || blank($path)) {
             throw new RuntimeException(__('uploads.errors.upload_failed'));
-        }
-
-        if (filled($oldPath) && $oldPath !== $path) {
-            Storage::disk('public')->delete($oldPath);
         }
 
         return $path;

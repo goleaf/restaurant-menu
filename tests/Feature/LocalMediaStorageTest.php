@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Actions\Media\RemoveLocalImageAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
@@ -177,6 +181,37 @@ test('local image storage validates direct action calls and never uses the origi
         ->and(basename($path))->toMatch('/^[0-9a-f-]{36}\.(jpg|jpeg|png|webp)$/');
 
     Storage::disk('public')->assertExists($path);
+});
+
+test('failed image replacement keeps the old file and removes the uncommitted new file', function (): void {
+    $oldPath = 'media/compensation/old-logo.png';
+    Storage::disk('public')->put($oldPath, 'old logo');
+
+    expect(fn () => app(ReplaceLocalImageAction::class)->handle(
+        file: UploadedFile::fake()->image('new-logo.png')->size(100),
+        directory: 'media/compensation',
+        oldPath: $oldPath,
+        persist: function (): never {
+            throw new RuntimeException('Simulated persistence failure.');
+        },
+    ))->toThrow(RuntimeException::class, 'Simulated persistence failure.');
+
+    Storage::disk('public')->assertExists($oldPath);
+    expect(Storage::disk('public')->allFiles('media/compensation'))->toBe([$oldPath]);
+});
+
+test('failed image removal keeps the referenced file', function (): void {
+    $oldPath = 'media/compensation/old-cover.png';
+    Storage::disk('public')->put($oldPath, 'old cover');
+
+    expect(fn () => app(RemoveLocalImageAction::class)->handle(
+        oldPath: $oldPath,
+        persist: function (): never {
+            throw new RuntimeException('Simulated persistence failure.');
+        },
+    ))->toThrow(RuntimeException::class, 'Simulated persistence failure.');
+
+    Storage::disk('public')->assertExists($oldPath);
 });
 
 function createPrompt28MediaContext(): array

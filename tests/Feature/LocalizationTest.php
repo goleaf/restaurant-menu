@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SupportedLocale;
@@ -81,7 +83,7 @@ test('guest qr page uses branch default language and can switch language', funct
 test('dashboard entry views keep visible chrome translatable', function () {
     $dashboardSources = [
         resource_path('views/dashboard.blade.php'),
-        resource_path('views/pages/restaurant/dashboard.blade.php'),
+        resource_path('views/livewire/restaurant/dashboard.blade.php'),
     ];
 
     foreach ($dashboardSources as $dashboardSource) {

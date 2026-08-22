@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Staff;
 
 use App\Actions\Staff\SetUserPermissionOverrideAction;
@@ -14,6 +16,7 @@ use App\Models\Role;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -50,14 +53,7 @@ class Permissions extends Component
         $this->staffMember = $staffMember;
 
         $currentUser = $this->currentUser();
-
-        if (! $currentUser->canAccessOrganization($organization)) {
-            abort(403);
-        }
-
-        if (! $currentUser->hasPermission(SystemPermission::ManageStaff, $organization)) {
-            abort(403);
-        }
+        Gate::forUser($currentUser)->authorize('managePermissions', $organization);
 
         $this->showTechnicalPermissionKeys = $currentUser->isSuperadmin();
 
@@ -262,14 +258,7 @@ class Permissions extends Component
 
     private function authorizeStaffManagement(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessOrganization($this->organization)
-            || ! $user->hasPermission(SystemPermission::ManageStaff, $this->organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('managePermissions', $this->organization);
     }
 
     private function currentUser(): User

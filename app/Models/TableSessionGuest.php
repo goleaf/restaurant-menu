@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\TableSessionGuestStatus;
@@ -11,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property TableSessionGuestStatus $status
+ */
 #[Fillable(['table_session_id', 'guest_name', 'ready_at', 'joined_at', 'left_at', 'metadata'])]
 class TableSessionGuest extends Model
 {

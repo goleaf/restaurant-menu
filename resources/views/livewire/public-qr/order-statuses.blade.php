@@ -102,11 +102,11 @@
                         'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-100' => $item['tone'] === 'red',
                         'bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-100' => $item['tone'] === 'zinc',
                     ])>
-                        {{ $item['status_label'] }}
+                        {{ __($item['status_key']) }}
                     </span>
                 </div>
 
-                <p class="pt-2 text-xs text-zinc-600 dark:text-zinc-300">{{ $item['status_description'] }}</p>
+                <p class="pt-2 text-xs text-zinc-600 dark:text-zinc-300">{{ __($item['status_description_key']) }}</p>
 
                 @if ($item['comment'])
                     <p class="mt-2 rounded-md bg-white px-2 py-1.5 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">

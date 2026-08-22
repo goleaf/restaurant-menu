@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\EnsureBranchSettingsAction;
@@ -8,6 +10,7 @@ use App\Actions\Branches\UpdateBranchOpeningHoursAction;
 use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\BranchOrderFlowMode;
@@ -23,6 +26,7 @@ use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -147,14 +151,7 @@ class Settings extends Component
             abort(403);
         }
 
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessBranch($branch, $organization)
-            || ! $user->canManageOrganizationBranches($organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('manageSettings', $branch);
 
         $this->fillFromSettings($ensureBranchSettings->handle($branch));
         $this->fillFromBranchProfile($this->branch);
@@ -167,8 +164,9 @@ class Settings extends Component
         UpdateBranchPublicProfileAction $updateBranchPublicProfile,
         UpdateBranchOpeningHoursAction $updateBranchOpeningHours,
         UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
-        StoreLocalImageAction $storeLocalImage,
+        ReplaceLocalImageAction $replaceLocalImage,
     ): void {
+        $this->authorizeSettingsManagement();
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
 
         $validated = $this->validate($this->rules(), $this->imageValidationMessages());
@@ -210,18 +208,24 @@ class Settings extends Component
         ];
 
         if ($this->publicLogo instanceof UploadedFile) {
-            $profilePayload['logo_path'] = $storeLocalImage->handle(
+            $profilePayload['logo_path'] = $replaceLocalImage->handle(
                 file: $this->publicLogo,
                 directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/logos',
                 oldPath: $this->branch->logo_path,
+                persist: function (string $path): void {
+                    $this->branch->forceFill(['logo_path' => $path])->saveOrFail();
+                },
             );
         }
 
         if ($this->coverImage instanceof UploadedFile) {
-            $profilePayload['cover_image_path'] = $storeLocalImage->handle(
+            $profilePayload['cover_image_path'] = $replaceLocalImage->handle(
                 file: $this->coverImage,
                 directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/covers',
                 oldPath: $this->branch->cover_image_path,
+                persist: function (string $path): void {
+                    $this->branch->forceFill(['cover_image_path' => $path])->saveOrFail();
+                },
             );
         }
 
@@ -246,14 +250,7 @@ class Settings extends Component
 
     public function runSessionInactivityCleanup(CleanupInactiveTableSessionsAction $cleanupInactiveTableSessions): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessBranch($this->branch, $this->organization)
-            || ! $user->canManageOrganizationBranches($this->organization)
-        ) {
-            abort(403);
-        }
+        $this->authorizeSettingsManagement();
 
         $result = $cleanupInactiveTableSessions->handle($this->branch->id);
         $this->cleanupMessage = $this->cleanupSummary($result);
@@ -570,5 +567,10 @@ class Settings extends Component
         }
 
         return $user;
+    }
+
+    private function authorizeSettingsManagement(): void
+    {
+        Gate::forUser($this->currentUser())->authorize('manageSettings', $this->branch);
     }
 }

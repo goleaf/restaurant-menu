@@ -54,7 +54,7 @@ test('staff invitation can target organization brand and branch', function () {
 
     $inviteToken = str_repeat('T', 64);
 
-    $invitation = (new CreateInvitationAction)->handle($organization, $role, $invitedBy, [
+    $createdInvitation = (new CreateInvitationAction)->handle($organization, $role, $invitedBy, [
         'brand' => $brand,
         'branch' => $branch,
         'email' => 'waiter@example.test',
@@ -64,6 +64,8 @@ test('staff invitation can target organization brand and branch', function () {
         'expires_at' => now()->addDays(3),
     ]);
 
+    $invitation = $createdInvitation->invitation;
+
     expect($invitation)->toBeInstanceOf(Invitation::class);
     expect($invitation->organization_id)->toBe($organization->id);
     expect($invitation->brand_id)->toBe($brand->id);
@@ -71,8 +73,8 @@ test('staff invitation can target organization brand and branch', function () {
     expect($invitation->role_id)->toBe($role->id);
     expect($invitation->email)->toBe('waiter@example.test');
     expect($invitation->phone)->toBe('+37060000000');
-    expect($invitation->invite_token)->toBe($inviteToken);
-    expect($invitation->invite_code)->toBe('WAITER01');
+    expect($createdInvitation->token)->toBe($inviteToken);
+    expect($createdInvitation->code)->toBe('WAITER01');
     expect($invitation->status)->toBe(InvitationStatus::Pending);
     expect($invitation->invited_by_user_id)->toBe($invitedBy->id);
     expect($invitation->canBeAccepted())->toBeTrue();
@@ -83,7 +85,8 @@ test('staff invitation can target only organization with generated token and cod
     $role = Role::query()->where('code', 'director')->firstOrFail();
     $invitedBy = User::factory()->create();
 
-    $invitation = (new CreateInvitationAction)->handle($organization, $role, $invitedBy, []);
+    $createdInvitation = (new CreateInvitationAction)->handle($organization, $role, $invitedBy, []);
+    $invitation = $createdInvitation->invitation;
 
     expect($invitation->organization_id)->toBe($organization->id);
     expect($invitation->brand_id)->toBeNull();
@@ -91,8 +94,8 @@ test('staff invitation can target only organization with generated token and cod
     expect($invitation->role_id)->toBe($role->id);
     expect($invitation->email)->toBeNull();
     expect($invitation->phone)->toBeNull();
-    expect($invitation->invite_token)->toHaveLength(64);
-    expect($invitation->invite_code)->toHaveLength(8);
+    expect($createdInvitation->token)->toHaveLength(64);
+    expect($createdInvitation->code)->toHaveLength(8);
     expect($invitation->expires_at)->not->toBeNull();
     expect($invitation->status)->toBe(InvitationStatus::Pending);
 });

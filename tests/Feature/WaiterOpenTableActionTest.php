@@ -127,10 +127,10 @@ test('user with confirm orders can open a table from service point page', functi
     expect($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
 });
 
-test('waiter role without order permission cannot open a table', function () {
+test('staff role without order permission cannot open a table', function () {
     [$organization, $brand, $branch] = createWaiterOpenTableBranch();
     $waiter = User::factory()->create();
-    attachWaiterOpenTableWaiter($waiter, $organization);
+    attachWaiterOpenTableRestrictedStaff($waiter, $organization);
     $servicePoint = ServicePoint::factory()->for($branch)->create(['name' => 'No order permission table']);
 
     Livewire::actingAs($waiter)
@@ -173,11 +173,16 @@ function grantWaiterOpenTablePermission(User $user, Organization $organization, 
     $membership->role->permissions()->updateExistingPivot($permissionRecord->id, ['enabled' => true]);
 }
 
-function attachWaiterOpenTableWaiter(User $user, Organization $organization): void
+function attachWaiterOpenTableRestrictedStaff(User $user, Organization $organization): void
 {
     $waiterRole = Role::query()
-        ->where('code', SystemRole::Waiter->value)
+        ->where('code', SystemRole::Cook->value)
         ->firstOrFail();
+    $manageServicePoints = Permission::query()
+        ->where('code', SystemPermission::ManageServicePoints->value)
+        ->firstOrFail();
+
+    $waiterRole->permissions()->updateExistingPivot($manageServicePoints->id, ['enabled' => true]);
 
     $organization->users()->syncWithoutDetachingOrFail([
         $user->id => [

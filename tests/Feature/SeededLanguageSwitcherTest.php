@@ -91,7 +91,7 @@ test('seeded guest language switcher persists and renders translated ui and menu
 function seededLanguageDemoBranch(): Branch
 {
     return Branch::query()
-        ->where('name', 'Demo Old Town')
+        ->where('name', 'Bella Pizza Old Town')
         ->firstOrFail();
 }
 

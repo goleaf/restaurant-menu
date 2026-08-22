@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Invitations;
 
 use App\Enums\InvitationStatus;
@@ -22,29 +24,40 @@ class CreateInvitationAction
     /**
      * @param  array{brand?: Brand|null, branch?: Branch|null, email?: string|null, phone?: string|null, invite_token?: string|null, invite_code?: string|null, expires_at?: CarbonInterface|null}  $data
      */
-    public function handle(Organization $organization, Role $role, User $invitedBy, array $data): Invitation
+    public function handle(Organization $organization, Role $role, User $invitedBy, array $data): CreatedInvitation
     {
         $branch = $data['branch'] ?? null;
         $brand = $data['brand'] ?? null;
 
         $this->ensureScopeBelongsToOrganization($organization, $brand, $branch);
 
+        $token = $this->inviteToken($data['invite_token'] ?? null);
+        $code = $this->inviteCode($data['invite_code'] ?? null);
+        $email = isset($data['email'])
+            ? Str::lower(trim($data['email']))
+            : null;
+        $phone = isset($data['phone'])
+            ? trim($data['phone'])
+            : null;
+
         $invitation = new Invitation;
         $invitation->forceFill([
             'organization_id' => $organization->id,
-            'brand_id' => $brand?->id ?? $branch?->brand_id,
+            'brand_id' => $brand->id ?? $branch?->brand_id,
             'branch_id' => $branch?->id,
             'role_id' => $role->id,
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'invite_token' => $this->inviteToken($data['invite_token'] ?? null),
-            'invite_code' => $this->inviteCode($data['invite_code'] ?? null),
+            'email' => $email === '' ? null : $email,
+            'phone' => $phone === '' ? null : $phone,
+            'invite_token' => null,
+            'invite_code' => null,
+            'invite_token_hash' => self::credentialHash($token),
+            'invite_code_hash' => self::credentialHash($code),
             'expires_at' => $data['expires_at'] ?? now()->addDays(7),
             'status' => InvitationStatus::Pending,
             'invited_by_user_id' => $invitedBy->id,
         ])->save();
 
-        return $invitation;
+        return new CreatedInvitation($invitation, $token, $code);
     }
 
     private function ensureScopeBelongsToOrganization(Organization $organization, ?Brand $brand, ?Branch $branch): void
@@ -80,7 +93,7 @@ class CreateInvitationAction
 
         do {
             $token = Str::random(self::INVITE_TOKEN_LENGTH);
-        } while (Invitation::query()->where('invite_token', $token)->exists());
+        } while (Invitation::query()->where('invite_token_hash', self::credentialHash($token))->exists());
 
         return $token;
     }
@@ -93,8 +106,13 @@ class CreateInvitationAction
 
         do {
             $code = Str::upper(Str::random(self::INVITE_CODE_LENGTH));
-        } while (Invitation::query()->where('invite_code', $code)->exists());
+        } while (Invitation::query()->where('invite_code_hash', self::credentialHash($code))->exists());
 
         return $code;
+    }
+
+    private static function credentialHash(string $credential): string
+    {
+        return hash('sha256', $credential);
     }
 }

@@ -42,7 +42,7 @@ test('data exports require export data permission', function () {
 
     $organization->users()->syncWithoutDetachingOrFail([
         $user->id => [
-            'role_id' => Role::query()->where('code', SystemRole::Director->value)->firstOrFail()->id,
+            'role_id' => Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail()->id,
             'status' => OrganizationUserStatus::Active->value,
             'joined_at' => now(),
             'invited_by_user_id' => null,

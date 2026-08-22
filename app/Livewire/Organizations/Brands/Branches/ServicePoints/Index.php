@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
@@ -11,8 +13,6 @@ use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
-use App\Enums\SystemPermission;
-use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -157,17 +158,14 @@ class Index extends Component
         }
 
         $user = $this->currentUser();
+        $gate = Gate::forUser($user);
 
-        if (! $user->canAccessBranch($branch, $organization)) {
-            abort(403);
-        }
+        $gate->authorize('view', $branch);
 
-        $this->canManageServicePoints = $user->hasPermission(SystemPermission::ManageServicePoints, $organization);
-        $this->canChangeServicePointStatus = $this->canManageServicePoints
-            || $user->hasOrganizationRole($organization, SystemRole::Waiter);
-        $this->canOpenTable = $user->hasPermission(SystemPermission::ViewOrders, $organization)
-            || $user->hasPermission(SystemPermission::ConfirmOrders, $organization);
-        $this->canGenerateQr = $user->hasPermission(SystemPermission::GenerateQr, $organization);
+        $this->canManageServicePoints = $gate->allows('manageServicePoints', $branch);
+        $this->canChangeServicePointStatus = $gate->allows('changeServicePointStatus', $branch);
+        $this->canOpenTable = $gate->allows('openTable', $branch);
+        $this->canGenerateQr = $gate->allows('generateQr', $branch);
 
         if (! $this->canChangeServicePointStatus && ! $this->canOpenTable && ! $this->canGenerateQr) {
             abort(403);
@@ -1098,40 +1096,22 @@ class Index extends Component
 
     private function authorizeServicePointManagement(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::ManageServicePoints, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('manageServicePoints', $this->branch);
     }
 
     private function authorizeServicePointStatusChange(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->hasPermission(SystemPermission::ManageServicePoints, $this->organization)
-            && ! $user->hasOrganizationRole($this->organization, SystemRole::Waiter)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('changeServicePointStatus', $this->branch);
     }
 
     private function authorizeQrGeneration(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::GenerateQr, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
     }
 
     private function authorizeTableOpening(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->hasPermission(SystemPermission::ViewOrders, $this->organization)
-            && ! $user->hasPermission(SystemPermission::ConfirmOrders, $this->organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('openTable', $this->branch);
     }
 
     private function currentUser(): User

@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
 
 use App\Enums\QrLabelPreset;
-use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
 use App\Services\QrPrintBrandingResolver;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -128,14 +130,7 @@ class PrintTemplate extends Component
 
     private function authorizeQrManagement(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessBranch($this->branch, $this->organization)
-            || ! $user->hasPermission(SystemPermission::GenerateQr, $this->organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
     }
 
     private function reloadPrintContext(): void

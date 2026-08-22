@@ -34,6 +34,7 @@ test('service point page requires authentication', function () {
 });
 
 test('service point page requires manage service points permission', function () {
+    app()->setLocale('ru');
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
 
     $this->actingAs($manager)
@@ -45,9 +46,9 @@ test('service point page requires manage service points permission', function ()
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.service-points.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee('Service points')
-        ->assertSee('Столы и места')
-        ->assertSee('Шаг 3: добавьте столы');
+        ->assertSee(__('navigation.service_points'))
+        ->assertSee(__('ui.organizations.brands.branches.index.stoly_i_mesta'))
+        ->assertSee(__('ui.organizations.brands.branches.service_points.index.sag_3_dobavte_stoly'));
 });
 
 test('branch list shows service point link to users with permission or waiter role', function () {
@@ -246,6 +247,7 @@ test('manager can search and filter service points inside current branch', funct
 });
 
 test('service point page shows a simple visual floor board grouped by zones', function () {
+    app()->setLocale('ru');
     [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
     grantServicePointCrudPermission($manager, $organization);
     grantServicePointCrudPermission($manager, $organization, SystemPermission::GenerateQr);
@@ -307,19 +309,19 @@ test('service point page shows a simple visual floor board grouped by zones', fu
 
     Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSee('Визуальный зал')
+        ->assertSee(__('ui.organizations.brands.branches.service_points.index.vizualnyi_zal'))
         ->assertSee('Board Hall')
         ->assertSee('Board Terrace')
-        ->assertSee('Без зоны')
+        ->assertSee(__('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony'))
         ->assertSee('Board Alpha Table')
         ->assertSee('Board Terrace Seat')
         ->assertSee('Board Pickup Window')
-        ->assertSee('Has new order')
-        ->assertSee('Waiting waiter')
+        ->assertSee(__(ServicePointStatus::HasNewOrder->label()))
+        ->assertSee(__(ServicePointStatus::WaitingWaiter->label()))
         ->assertSee('QR-BOARD1')
-        ->assertSee('Показать QR')
-        ->assertSee('Открыть стол')
-        ->assertSee('Изменить')
+        ->assertSee(__('qr.actions.show'))
+        ->assertSee(__('ui.organizations.brands.branches.service_points.index.otkryt_stol'))
+        ->assertSee(__('ui.organizations.brands.branches.area_node_row.izmenit'))
         ->call('startEditingFromBoard', $terraceTable->id)
         ->assertSet('editingServicePointId', $terraceTable->id)
         ->assertSet('servicePointSearch', 'BOARD-TERRACE')
@@ -484,6 +486,15 @@ function createServicePointCrudBranch(string $organizationName = 'Service Point 
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => $organizationName]);
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Cook->value)
+        ->firstOrFail();
+    $membership = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail();
+    $membership->forceFill(['role_id' => $restrictedRole->id])->saveOrFail();
+
     $brand = Brand::factory()->for($organization)->create(['name' => $brandName]);
     $branch = Branch::factory()
         ->for($organization)

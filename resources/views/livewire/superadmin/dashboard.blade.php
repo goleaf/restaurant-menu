@@ -73,6 +73,8 @@
                     confirm-action="downloadBackup"
                     submit-target="downloadBackup"
                     confirm-label="ui.actions.i_understand"
+                    reason-model="backupDownloadReason"
+                    reason-required
                     confirmation-model="backupDownloadConfirmation"
                     confirmation-text="BACKUP"
                     confirmation-label="ui.confirmations.confirmation_text.label"

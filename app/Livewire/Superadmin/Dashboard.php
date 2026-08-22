@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Superadmin;
 
 use App\Actions\Subscriptions\SetOrganizationSubscriptionStatusAction;
@@ -12,8 +14,9 @@ use App\Models\Order;
 use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\PlainText;
+use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -32,6 +35,8 @@ class Dashboard extends Component
     public string $organizationSuspendReason = '';
 
     public string $backupDownloadConfirmation = '';
+
+    public string $backupDownloadReason = '';
 
     /**
      * @return array{organizations: int, brands: int, branches: int, service_points: int, orders: int, users: int}
@@ -150,21 +155,31 @@ class Dashboard extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.session_cleanup_finished'));
     }
 
-    public function downloadBackup(): RedirectResponse
+    public function downloadBackup(): void
     {
         $this->authorizeSuperadmin();
 
-        $this->validate([
+        $this->backupDownloadReason = trim($this->backupDownloadReason);
+        $validated = $this->validate([
+            ...RestaurantValidationRules::auditReason('backupDownloadReason'),
             'backupDownloadConfirmation' => ['required', 'string', 'in:BACKUP'],
         ], [
+            'backupDownloadReason.required' => __('ui.confirmations.reason.required'),
+            'backupDownloadReason.min' => __('ui.confirmations.reason.min'),
             'backupDownloadConfirmation.required' => __('ui.confirmations.download_backup.confirmation_required'),
             'backupDownloadConfirmation.in' => __('ui.confirmations.download_backup.confirmation_match'),
         ]);
 
-        $this->backupDownloadConfirmation = '';
+        session()->put('sqlite_backup_download_authorization', [
+            'issued_at' => now()->timestamp,
+            'reason' => PlainText::required((string) $validated['backupDownloadReason'], 500),
+            'user_id' => $this->currentUser()->id,
+        ]);
+
+        $this->reset('backupDownloadConfirmation', 'backupDownloadReason');
         Flux::modals()->close();
 
-        return redirect()->route('superadmin.backups.sqlite.download');
+        $this->redirectRoute('superadmin.backups.sqlite.download');
     }
 
     /**

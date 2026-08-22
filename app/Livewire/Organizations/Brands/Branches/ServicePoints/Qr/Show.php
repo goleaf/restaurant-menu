@@ -1,12 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr;
 
 use App\Actions\QrCodes\DisableQrCodeAction;
 use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
 use App\Enums\DangerousAction;
 use App\Enums\QrCodeStatus;
-use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -191,14 +193,7 @@ class Show extends Component
 
     private function authorizeQrManagement(): void
     {
-        $user = $this->currentUser();
-
-        if (
-            ! $user->canAccessBranch($this->branch, $this->organization)
-            || ! $user->hasPermission(SystemPermission::GenerateQr, $this->organization)
-        ) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
     }
 
     private function reloadQrCode(): void

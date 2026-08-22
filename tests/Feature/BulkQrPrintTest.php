@@ -6,6 +6,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint;
 use App\Models\AreaNode;
@@ -15,6 +16,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -188,6 +190,18 @@ function createPrompt27QrContext(): array
             'city' => 'Vilnius',
             'country' => 'Lithuania',
         ]);
+
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+
+    $manager->roles()->sync([$restrictedRole->id]);
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail()
+        ->forceFill(['role_id' => $restrictedRole->id])
+        ->save();
 
     $mainHall = AreaNode::factory()
         ->for($branch)

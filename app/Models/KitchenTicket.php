@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\KitchenTicketStatus;
@@ -10,6 +12,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property KitchenTicketStatus $status
+ * @property-read Branch $branch
+ * @property-read Order $order
+ */
 #[Fillable(['order_id', 'service_point_id', 'table_session_id', 'kitchen_department_id', 'department_type', 'department_name', 'sent_by_user_id', 'sent_at', 'metadata'])]
 class KitchenTicket extends Model
 {

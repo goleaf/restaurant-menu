@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
@@ -34,7 +36,7 @@ test('active guest sees the guest table page shell', function () {
         ->assertSeeText('Entry saved')
         ->assertSeeText('Invite guest')
         ->assertSeeText('Menu')
-        ->assertSeeText('Dish selection')
+        ->assertSeeText(__('menu.guest.choose_items'))
         ->assertSee('data-component="guest-order-statuses"', false)
         ->assertSee('data-component="guest-draft-order"', false)
         ->assertSee('data-component="guest-draft-totals"', false)

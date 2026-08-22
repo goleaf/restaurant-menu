@@ -83,7 +83,7 @@ test('business rule violation is validation safe and not reportable', function (
         ->and($exception)->toBeInstanceOf(ShouldntReport::class)
         ->and($exception->businessRule())->toBe($codeClass::SessionClosed)
         ->and($exception->errorType())->toBe(ApplicationErrorType::SessionClosed)
-        ->and($exception->errors()['draft_edit'][0])->toBe(__('Нельзя выполнить действие для закрытого стола.'))
+        ->and($exception->errors()['draft_edit'][0])->toBe(__('ui.enums.businessrulecode.nelzia_vypolnit_deistvie_dlia_zakrytogo_stola'))
         ->and($exception->errors()['draft_edit'][0])->not->toContain('SessionClosed')
         ->and($exception->errors()['draft_edit'][0])->not->toContain('session_closed');
 });
@@ -97,7 +97,7 @@ test('closed session draft edit returns controlled business rule error', functio
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule()->value)->toBe('session_closed')
-            ->and($exception->errors()['draft_edit'][0])->toBe(__('Нельзя редактировать заказ для закрытого стола.'));
+            ->and($exception->errors()['draft_edit'][0])->toBe(__('ui.actions.waiter.ensurewaitercaneditdraftorderaction.nelzia_redaktirovat_z'));
     }
 });
 
@@ -125,7 +125,7 @@ test('required modifier missing returns controlled business rule error', functio
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::RequiredModifierMissing)
-            ->and($exception->errors()['selectedModifierOptions.'.$modifierGroup->id][0])->toBe(__('Выберите вариант.'));
+            ->and($exception->errors()['selectedModifierOptions.'.$modifierGroup->id][0])->toBe(__('ui.actions.draftorders.support.builddraftorderitemmodifiersnapshots.vyberite_var'));
     }
 });
 
@@ -150,11 +150,11 @@ test('already cancelled order returns controlled business rule error', function 
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::OrderAlreadyCancelled)
-            ->and($exception->errors()['order_status'][0])->toBe(__('Заказ уже отменён.'));
+            ->and($exception->errors()['order_status'][0])->toBe(__('ui.actions.orders.changeorderstatusaction.zakaz_uze_otmenen'));
     }
 });
 
-test('department item already ready returns controlled business rule error', function () {
+test('repeating a ready department item transition is idempotent', function () {
     [$organization, $branch] = createBusinessRuleBranch();
     $department = KitchenDepartment::factory()
         ->for($branch)
@@ -178,21 +178,18 @@ test('department item already ready returns controlled business rule error', fun
     $chef = User::factory()->create();
     attachBusinessRuleStaff($chef, $organization, SystemRole::HeadChef);
 
-    try {
-        app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-            item: $item,
-            status: KitchenTicketItemStatus::Ready,
-            user: $chef,
-            departmentTypes: [KitchenDepartmentType::Kitchen],
-            roleCodes: [SystemRole::HeadChef],
-            permissionCodes: [SystemPermission::ViewKitchen],
-        );
-        $this->fail('Expected ready ticket item to return a business rule violation.');
-    } catch (Throwable $exception) {
-        expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
-            ->and($exception->businessRule())->toBe(BusinessRuleCode::DepartmentAlreadyReady)
-            ->and($exception->errors()['ticket_item_status'][0])->toBe(__('Позиция уже отмечена готовой.'));
-    }
+    $updatedAt = $item->updated_at;
+    $result = app(UpdateDepartmentTicketItemStatusAction::class)->handle(
+        item: $item,
+        status: KitchenTicketItemStatus::Ready,
+        user: $chef,
+        departmentTypes: [KitchenDepartmentType::Kitchen],
+        roleCodes: [SystemRole::HeadChef],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    );
+
+    expect($result->status)->toBe(KitchenTicketItemStatus::Ready)
+        ->and($result->updated_at?->equalTo($updatedAt))->toBeTrue();
 });
 
 test('pending guest waiter item add returns controlled business rule error', function () {
@@ -213,7 +210,7 @@ test('pending guest waiter item add returns controlled business rule error', fun
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::GuestNotApproved)
-            ->and($exception->errors()['addingGuestId'][0])->toBe(__('Гость ещё не подтверждён для этого стола.'));
+            ->and($exception->errors()['addingGuestId'][0])->toBe(__('ui.actions.waiter.adddraftorderitembywaiteraction.gost_eshhe_ne_podtverzden'));
     }
 });
 
@@ -234,7 +231,7 @@ test('unavailable menu item waiter add returns controlled business rule error', 
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::ItemUnavailable)
-            ->and($exception->errors()['addingMenuItemId'][0])->toBe(__('Это блюдо сейчас недоступно для этого филиала.'));
+            ->and($exception->errors()['addingMenuItemId'][0])->toBe(__('ui.actions.waiter.adddraftorderitembywaiteraction.eto_bliudo_seicas_nedostu'));
     }
 });
 
@@ -252,7 +249,7 @@ test('payment branch access denial returns controlled business rule error', func
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::BranchInaccessible)
-            ->and($exception->errors()['manual_payment'][0])->toBe(__('У вас нет права отмечать оплату для этого стола.'));
+            ->and($exception->errors()['manual_payment'][0])->toBe(__('payments.errors.permission_denied'));
     }
 });
 
@@ -271,7 +268,7 @@ test('paid session manual payment returns controlled business rule error', funct
     } catch (Throwable $exception) {
         expect($exception::class)->toBe('App\\Exceptions\\BusinessRuleViolation')
             ->and($exception->businessRule())->toBe(BusinessRuleCode::PaymentExceedsRemaining)
-            ->and($exception->errors()['manual_payment'][0])->toBe(__('Эта сессия уже оплачена.'));
+            ->and($exception->errors()['manual_payment'][0])->toBe(__('payments.messages.session_paid'));
     }
 });
 
@@ -408,17 +405,19 @@ function attachBusinessRuleStaff(
         );
     }
 
-    OrganizationUser::query()->create([
+    $organizationUser = new OrganizationUser;
+    $organizationUser->forceFill([
         'organization_id' => $organization->id,
         'user_id' => $user->id,
         'role_id' => $role->id,
         'status' => OrganizationUserStatus::Active,
         'joined_at' => now(),
         'invited_by_user_id' => null,
-    ]);
+    ])->save();
 
     if ($branch instanceof Branch) {
-        BranchUser::query()->create([
+        $branchUser = new BranchUser;
+        $branchUser->forceFill([
             'organization_id' => $organization->id,
             'branch_id' => $branch->id,
             'user_id' => $user->id,
@@ -426,7 +425,7 @@ function attachBusinessRuleStaff(
             'status' => OrganizationUserStatus::Active,
             'assigned_at' => now(),
             'assigned_by_user_id' => null,
-        ]);
+        ])->save();
     }
 
     return $role;

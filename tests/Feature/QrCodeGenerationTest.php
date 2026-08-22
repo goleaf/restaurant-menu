@@ -5,6 +5,7 @@ use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Index as ServicePointsIndex;
 use App\Models\AreaNode;
@@ -14,6 +15,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -112,11 +114,11 @@ test('generate qr permission can access service points and create qr from ui', f
         ->assertSet('canManageServicePoints', false)
         ->assertSet('canChangeServicePointStatus', false)
         ->assertSee('QR table')
-        ->assertSee('Create QR')
+        ->assertSee('Generate QR')
         ->assertDontSee('Update status')
         ->call('generateQr', $servicePoint->id)
         ->assertHasNoErrors()
-        ->assertSee('QR active');
+        ->assertSee('QR ready');
 
     $qrCode = $servicePoint->fresh()->activeQrCode;
 
@@ -175,6 +177,17 @@ function createPrompt23Branch(): array
         ->for($organization)
         ->for($brand)
         ->create(['name' => 'QR Generation Branch']);
+
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Cook->value)
+        ->firstOrFail();
+
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail()
+        ->forceFill(['role_id' => $restrictedRole->id])
+        ->save();
 
     return [$organization, $brand, $branch, $manager->fresh()];
 }

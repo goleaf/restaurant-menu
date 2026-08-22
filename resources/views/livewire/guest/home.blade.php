@@ -1,14 +1,3 @@
-<?php
-
-use Livewire\Attributes\Layout;
-use Livewire\Component;
-
-new #[Layout('layouts.guest')] class extends Component
-{
-    //
-};
-?>
-
 <div data-layout="guest" class="min-h-svh">
     <header class="border-b border-zinc-200 bg-white/90 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/90">
         <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3">
@@ -47,13 +36,9 @@ new #[Layout('layouts.guest')] class extends Component
         </section>
 
         <section class="grid gap-3 sm:grid-cols-3">
-            @foreach ([
-                __('ui.pages.guest.home.permanent_qr'),
-                __('ui.pages.guest.home.table_session'),
-                __('ui.pages.guest.home.shared_cart'),
-            ] as $label)
-                <div wire:key="guest-entry-{{ $loop->index }}" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p class="text-sm font-medium text-zinc-900 dark:text-white">{{ $label }}</p>
+            @foreach ($featureKeys as $featureKey)
+                <div wire:key="guest-entry-{{ $featureKey }}" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                    <p class="text-sm font-medium text-zinc-900 dark:text-white">{{ __($featureKey) }}</p>
                     <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.pages.guest.home.handled_through_the_active_qr_table_flow') }}</p>
                 </div>
             @endforeach

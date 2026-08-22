@@ -96,7 +96,7 @@ test('staff with close table sessions permission can close an active session and
 test('staff without close table sessions permission cannot manually close an unpaid active session', function () {
     [$organization, , $servicePoint, $tableSession] = createPrompt68CloseContext();
     $waiter = User::factory()->create(['name' => 'Viewer Waiter']);
-    attachPrompt68Staff($waiter, $organization, [SystemPermission::ViewOrders]);
+    attachPrompt68Staff($waiter, $organization, [SystemPermission::ViewOrders], SystemRole::Cook);
 
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
@@ -191,10 +191,14 @@ function createPrompt68CloseContext(): array
     return [$organization, $branch, $servicePoint, $tableSession, $guest, $qrCode, $menuItem];
 }
 
-function attachPrompt68Staff(User $user, Organization $organization, array $permissions): Role
-{
+function attachPrompt68Staff(
+    User $user,
+    Organization $organization,
+    array $permissions,
+    SystemRole $systemRole = SystemRole::Waiter,
+): Role {
     $role = Role::query()
-        ->where('code', SystemRole::Waiter->value)
+        ->where('code', $systemRole->value)
         ->firstOrFail();
 
     foreach ($permissions as $permission) {

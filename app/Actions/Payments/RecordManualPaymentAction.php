@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Payments;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -37,7 +39,7 @@ class RecordManualPaymentAction
         User $recordedBy,
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
-        string|int|float|null $tipsAmount = null,
+        string|int|null $tipsAmount = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -56,7 +58,7 @@ class RecordManualPaymentAction
         User $recordedBy,
         ManualPaymentMethod|string $paymentMethod,
         ?string $note = null,
-        string|int|float|null $tipsAmount = null,
+        string|int|null $tipsAmount = null,
     ): ManualPayment {
         return $this->record(
             tableSession: $tableSession,
@@ -76,7 +78,7 @@ class RecordManualPaymentAction
         ManualPaymentScope $scope,
         ?TableSessionGuest $guest,
         ?string $note,
-        string|int|float|null $tipsAmount,
+        string|int|null $tipsAmount,
     ): ManualPayment {
         return DB::transaction(function () use ($tableSession, $recordedBy, $paymentMethod, $scope, $guest, $note, $tipsAmount): ManualPayment {
             $tableSession = $this->reloadTableSession($tableSession);
@@ -149,7 +151,7 @@ class RecordManualPaymentAction
             );
 
             return $manualPayment->refresh();
-        });
+        }, attempts: 3);
     }
 
     private function reloadTableSession(TableSession $tableSession): TableSession
@@ -166,9 +168,12 @@ class RecordManualPaymentAction
             ])
             ->with([
                 'branch:id,organization_id',
-                'servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'is_active']),
+                'servicePoint' => fn ($query) => $query
+                    ->select(['id', 'branch_id', 'status', 'is_active'])
+                    ->lockForUpdate(),
             ])
             ->whereKey($tableSession->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -218,7 +223,7 @@ class RecordManualPaymentAction
         array $summary,
         ManualPaymentScope $scope,
         ?TableSessionGuest $guest,
-        string|int|float|null $tipsAmount,
+        string|int|null $tipsAmount,
     ): array {
         if ((bool) $summary['has_open_draft']) {
             throw BusinessRuleViolation::for(
@@ -286,7 +291,7 @@ class RecordManualPaymentAction
         ];
     }
 
-    private function normalizeTipsCents(string|int|float|null $tipsAmount, bool $tipsEnabled): int
+    private function normalizeTipsCents(string|int|null $tipsAmount, bool $tipsEnabled): int
     {
         $tipsCents = $this->decimalToCents($tipsAmount);
 
@@ -369,13 +374,13 @@ class RecordManualPaymentAction
         return MoneyFormatter::centsToDecimal($cents);
     }
 
-    private function decimalToCents(string|int|float|null $amount): int
+    private function decimalToCents(string|int|null $amount): int
     {
         return MoneyFormatter::decimalToCents($amount);
     }
 
-    private function formatPercent(string|int|float|null $percent): string
+    private function formatPercent(string|int|null $percent): string
     {
-        return number_format((float) ($percent ?? 0), 2, '.', '');
+        return MoneyFormatter::centsToDecimal(MoneyFormatter::decimalToCents($percent));
     }
 }

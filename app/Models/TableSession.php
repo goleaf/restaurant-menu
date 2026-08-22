@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\TableSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +16,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property int $branch_id
+ * @property int $service_point_id
+ * @property int|null $active_service_point_id
+ * @property int|null $pending_service_point_id
+ * @property TableSessionStatus $status
+ * @property TableSessionSource $source
+ * @property CarbonInterface|null $started_at
+ * @property CarbonInterface|null $ended_at
+ * @property CarbonInterface|null $guest_invite_created_at
+ * @property array<string, mixed>|null $metadata
+ * @property-read Branch|null $branch
+ * @property-read ServicePoint|null $servicePoint
+ */
 #[Fillable(['service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
 class TableSession extends Model
 {
@@ -30,9 +48,7 @@ class TableSession extends Model
     protected static function booted(): void
     {
         static::saving(function (TableSession $tableSession): void {
-            $status = $tableSession->status instanceof TableSessionStatus
-                ? $tableSession->status
-                : TableSessionStatus::from($tableSession->status ?? TableSessionStatus::Pending->value);
+            $status = $tableSession->status;
 
             $tableSession->active_service_point_id = in_array($status, [
                 TableSessionStatus::Active,

@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Media;
 
 use Illuminate\Support\Facades\Storage;
 
-class DeleteLocalMediaFileAction
+final class DeleteLocalMediaFileAction
 {
     public function handle(?string $path): void
     {

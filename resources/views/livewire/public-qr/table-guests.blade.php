@@ -36,11 +36,11 @@
 
                     <div class="mt-1 flex flex-wrap gap-1.5">
                         <x-ui.status-badge :tone="$guest['status_tone']">
-                            {{ $guest['status_label'] }}
+                            {{ __($guest['status_key']) }}
                         </x-ui.status-badge>
 
                         <x-ui.status-badge :tone="$guest['is_ready'] ? 'success' : 'muted'">
-                            {{ $guest['ready_label'] }}
+                            {{ __($guest['ready_key']) }}
                         </x-ui.status-badge>
                     </div>
                 </div>

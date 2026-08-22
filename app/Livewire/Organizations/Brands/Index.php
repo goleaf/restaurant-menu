@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands;
 
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
 use App\Actions\Brands\UpdateBrandAction;
-use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\RemoveLocalImageAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -15,6 +18,7 @@ use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -47,12 +51,11 @@ class Index extends Component
     public function mount(Organization $organization): void
     {
         $this->organization = $organization;
+        $user = $this->currentUser();
 
-        if (! $this->currentUser()->canAccessOrganization($organization)) {
-            abort(403);
-        }
+        Gate::forUser($user)->authorize('viewAny', [Brand::class, $organization]);
 
-        $this->canManageBrands = $this->currentUser()->canManageOrganizationBrands($organization);
+        $this->canManageBrands = Gate::forUser($user)->allows('create', [Brand::class, $organization]);
     }
 
     public function create(CreateBrandAction $createBrand): void
@@ -144,7 +147,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_deleted'));
     }
 
-    public function saveLogo(int $brandId, StoreLocalImageAction $storeLocalImage): void
+    public function saveLogo(int $brandId, ReplaceLocalImageAction $replaceLocalImage): void
     {
         $this->authorizeBrandManagement();
 
@@ -161,27 +164,32 @@ class Index extends Component
             return;
         }
 
-        $brand->update([
-            'logo_path' => $storeLocalImage->handle(
-                file: $file,
-                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$brand->id.'/logos',
-                oldPath: $brand->logo_path,
-            ),
-        ]);
+        $replaceLocalImage->handle(
+            file: $file,
+            directory: 'media/organizations/'.$this->organization->id.'/brands/'.$brand->id.'/logos',
+            oldPath: $brand->logo_path,
+            persist: function (string $path) use ($brand): void {
+                $brand->forceFill(['logo_path' => $path])->saveOrFail();
+            },
+        );
 
         unset($this->brandLogos[$brand->id], $this->brands);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $brandId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    public function removeLogo(int $brandId, RemoveLocalImageAction $removeLocalImage): void
     {
         $this->authorizeBrandManagement();
 
         $brand = $this->findOrganizationBrand($brandId);
 
-        $deleteLocalMediaFile->handle($brand->logo_path);
-        $brand->update(['logo_path' => null]);
+        $removeLocalImage->handle(
+            oldPath: $brand->logo_path,
+            persist: function () use ($brand): void {
+                $brand->forceFill(['logo_path' => null])->saveOrFail();
+            },
+        );
 
         unset($this->brandLogos[$brand->id], $this->brands);
 
@@ -245,14 +253,12 @@ class Index extends Component
 
     private function authorizeBrandManagement(): void
     {
-        if (! $this->canManageBrands) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('create', [Brand::class, $this->organization]);
     }
 
     private function findOrganizationBrand(int $brandId): Brand
     {
-        return $this->organization
+        $brand = $this->organization
             ->brands()
             ->select([
                 'id',
@@ -264,5 +270,9 @@ class Index extends Component
             ])
             ->whereKey($brandId)
             ->firstOrFail();
+
+        Gate::forUser($this->currentUser())->authorize('update', $brand);
+
+        return $brand;
     }
 }

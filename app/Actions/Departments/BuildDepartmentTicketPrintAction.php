@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Departments;
 
 use App\Enums\KitchenDepartmentType;
@@ -47,7 +49,7 @@ class BuildDepartmentTicketPrintAction
                 'id' => $ticket->id,
                 'order_id' => $ticket->order_id,
                 'order_number' => '#'.$ticket->order_id,
-                'status_label' => $this->ticketStatus($ticket)->label(),
+                'status_key' => 'statuses.kitchen_ticket.sent',
                 'sent_at' => $this->formatTime($ticket->sent_at ?? $ticket->created_at, $timezone),
                 'printed_at' => $this->formatTime(now(), $timezone),
                 'timezone' => $timezone,
@@ -184,7 +186,11 @@ class BuildDepartmentTicketPrintAction
             'guest_name' => $item->guest_name,
             'item_name' => $item->item_name,
             'quantity' => $item->quantity,
-            'status_label' => $status->label(),
+            'status_key' => match ($status) {
+                KitchenTicketItemStatus::New => 'statuses.kitchen_ticket_item.new',
+                KitchenTicketItemStatus::InProgress => 'statuses.kitchen_ticket_item.in_progress',
+                KitchenTicketItemStatus::Ready => 'statuses.kitchen_ticket_item.ready',
+            },
             'selected_modifiers' => $this->modifierSummary($item->selected_modifiers ?? []),
             'comment' => $item->comment,
         ];

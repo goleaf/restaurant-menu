@@ -128,8 +128,10 @@ test('organization staff page can create invite link and invite code', function 
 
     expect($invitation->role_id)->toBe($role->id);
     expect($invitation->phone)->toBe('+37060000001');
-    expect($invitation->invite_token)->not->toBeEmpty();
-    expect($invitation->invite_code)->not->toBeEmpty();
+    expect($invitation->invite_token)->toBeNull();
+    expect($invitation->invite_code)->toBeNull();
+    expect($invitation->invite_token_hash)->toHaveLength(64);
+    expect($invitation->invite_code_hash)->toHaveLength(64);
 });
 
 test('branch staff page can manually add and toggle a branch staff member', function () {
@@ -211,8 +213,10 @@ test('branch staff page can create branch scoped invite link and code', function
 
     expect($invitation->role_id)->toBe($role->id);
     expect($invitation->phone)->toBe('+37060000002');
-    expect($invitation->invite_token)->not->toBeEmpty();
-    expect($invitation->invite_code)->not->toBeEmpty();
+    expect($invitation->invite_token)->toBeNull();
+    expect($invitation->invite_code)->toBeNull();
+    expect($invitation->invite_token_hash)->toHaveLength(64);
+    expect($invitation->invite_code_hash)->toHaveLength(64);
 });
 
 function createOrganizationForStaff(): array

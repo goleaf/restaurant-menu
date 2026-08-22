@@ -1,15 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\RemoveLocalImageAction;
+use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuStatus;
-use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\KitchenDepartment;
@@ -28,6 +31,7 @@ use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -232,14 +236,13 @@ class Index extends Component
         }
 
         $user = $this->currentUser();
+        $gate = Gate::forUser($user);
 
-        if (! $user->canAccessBranch($branch, $organization)) {
-            abort(403);
-        }
+        $gate->authorize('view', $branch);
 
-        $this->canManageMenu = $user->hasPermission(SystemPermission::ManageMenu, $organization);
-        $this->canChangePrices = $user->hasPermission(SystemPermission::ChangePrices, $organization);
-        $this->canChangeAvailability = $user->hasPermission(SystemPermission::ChangeAvailability, $organization);
+        $this->canManageMenu = $gate->allows('manageMenu', $branch);
+        $this->canChangePrices = $gate->allows('changeMenuPrices', $branch);
+        $this->canChangeAvailability = $gate->allows('changeMenuAvailability', $branch);
 
         if (! $this->canManageMenu && ! $this->canChangeAvailability) {
             abort(403);
@@ -366,13 +369,13 @@ class Index extends Component
         $this->authorizeMenuManagement();
 
         $menu = $this->findBranchMenu($menuId);
-        $menu->items()
+        $imagePaths = $menu->items()
             ->select(['id', 'menu_id', 'image'])
-            ->get()
-            ->each(function (MenuItem $item) use ($deleteLocalMediaFile): void {
-                $deleteLocalMediaFile->handle($item->image);
-            });
-        $menu->delete();
+            ->pluck('image');
+
+        $menu->deleteOrFail();
+
+        $imagePaths->each($deleteLocalMediaFile->handle(...));
 
         $this->cancelMenuEditing();
         $this->cancelCategoryEditing();
@@ -507,13 +510,13 @@ class Index extends Component
         $this->authorizeMenuManagement();
 
         $category = $this->findBranchCategory($categoryId);
-        $category->items()
+        $imagePaths = $category->items()
             ->select(['id', 'menu_id', 'category_id', 'image'])
-            ->get()
-            ->each(function (MenuItem $item) use ($deleteLocalMediaFile): void {
-                $deleteLocalMediaFile->handle($item->image);
-            });
-        $category->delete();
+            ->pluck('image');
+
+        $category->deleteOrFail();
+
+        $imagePaths->each($deleteLocalMediaFile->handle(...));
 
         $this->cancelCategoryEditing();
         $this->cancelItemEditing();
@@ -615,9 +618,10 @@ class Index extends Component
         $this->authorizeMenuManagement();
 
         $item = $this->findBranchItem($itemId);
+        $imagePath = $item->image;
 
-        $deleteLocalMediaFile->handle($item->image);
-        $item->delete();
+        $item->deleteOrFail();
+        $deleteLocalMediaFile->handle($imagePath);
 
         unset($this->itemImages[$item->id]);
         $this->cancelItemEditing();
@@ -643,7 +647,7 @@ class Index extends Component
         );
     }
 
-    public function saveItemImage(int $itemId, StoreLocalImageAction $storeLocalImage): void
+    public function saveItemImage(int $itemId, ReplaceLocalImageAction $replaceLocalImage): void
     {
         $this->authorizeMenuManagement();
 
@@ -660,13 +664,14 @@ class Index extends Component
             return;
         }
 
-        $item->update([
-            'image' => $storeLocalImage->handle(
-                file: $file,
-                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/menu-items/'.$item->id.'/images',
-                oldPath: $item->image,
-            ),
-        ]);
+        $replaceLocalImage->handle(
+            file: $file,
+            directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/menu-items/'.$item->id.'/images',
+            oldPath: $item->image,
+            persist: function (string $path) use ($item): void {
+                $item->forceFill(['image' => $path])->saveOrFail();
+            },
+        );
 
         unset($this->itemImages[$item->id]);
         $this->forgetMenuComputed();
@@ -674,14 +679,18 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeItemImage(int $itemId, DeleteLocalMediaFileAction $deleteLocalMediaFile): void
+    public function removeItemImage(int $itemId, RemoveLocalImageAction $removeLocalImage): void
     {
         $this->authorizeMenuManagement();
 
         $item = $this->findBranchItem($itemId);
 
-        $deleteLocalMediaFile->handle($item->image);
-        $item->update(['image' => null]);
+        $removeLocalImage->handle(
+            oldPath: $item->image,
+            persist: function () use ($item): void {
+                $item->forceFill(['image' => null])->saveOrFail();
+            },
+        );
 
         unset($this->itemImages[$item->id]);
         $this->forgetMenuComputed();
@@ -1893,16 +1902,12 @@ class Index extends Component
 
     private function authorizeMenuManagement(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::ManageMenu, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('manageMenu', $this->branch);
     }
 
     private function authorizeAvailabilityChange(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::ChangeAvailability, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('changeMenuAvailability', $this->branch);
     }
 
     private function currentUser(): User

@@ -1,43 +1,3 @@
-<?php
-
-use App\Actions\Dashboard\BuildRestaurantDashboardAction;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Livewire\Component;
-
-new class extends Component
-{
-    public bool $canAccessRestaurantDashboard = false;
-
-    /**
-     * @var array<string, mixed>|null
-     */
-    public ?array $dashboard = null;
-
-    public function mount(): void
-    {
-        $this->refreshDashboard();
-    }
-
-    public function refreshDashboard(): void
-    {
-        $user = Auth::user();
-
-        if (! $user instanceof User) {
-            $this->canAccessRestaurantDashboard = false;
-            $this->dashboard = null;
-
-            return;
-        }
-
-        $payload = app(BuildRestaurantDashboardAction::class)->handle($user);
-
-        $this->canAccessRestaurantDashboard = (bool) $payload['has_access'];
-        $this->dashboard = is_array($payload['dashboard'] ?? null) ? $payload['dashboard'] : null;
-    }
-};
-?>
-
 <div data-layout="restaurant-dashboard" class="flex h-full w-full flex-1 flex-col gap-5">
     <header class="flex flex-col gap-2">
         <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('layout.restaurant_workspace') }}</p>
@@ -50,31 +10,31 @@ new class extends Component
             </div>
 
             <div class="flex flex-wrap gap-2">
-                @if ($canAccessWaiterDashboard ?? false)
+                @if ($canAccessWaiterDashboard)
                     <flux:button icon="clipboard-document-list" variant="primary" :href="route('restaurant.waiter.dashboard')" wire:navigate>
                         {{ __('navigation.waiter') }}
                     </flux:button>
                 @endif
 
-                @if ($canAccessKitchenDashboard ?? false)
+                @if ($canAccessKitchenDashboard)
                     <flux:button icon="fire" :href="route('restaurant.kitchen.dashboard')" wire:navigate>
                         {{ __('navigation.kitchen') }}
                     </flux:button>
                 @endif
 
-                @if ($canAccessBarDashboard ?? false)
+                @if ($canAccessBarDashboard)
                     <flux:button icon="beaker" :href="route('restaurant.bar.dashboard')" wire:navigate>
                         {{ __('navigation.bar') }}
                     </flux:button>
                 @endif
 
-                @if ($canAccessAuditLog ?? false)
+                @if ($canAccessAuditLog)
                     <flux:button icon="shield-check" :href="route('restaurant.audit-log.index')" wire:navigate>
                         {{ __('navigation.audit_log') }}
                     </flux:button>
                 @endif
 
-                @if ($canAccessDataExports ?? false)
+                @if ($canAccessDataExports)
                     <flux:button icon="arrow-down-tray" :href="route('restaurant.exports.index')" wire:navigate>
                         {{ __('navigation.exports') }}
                     </flux:button>
@@ -100,7 +60,7 @@ new class extends Component
                     <p class="text-xs text-zinc-500 dark:text-zinc-400">
                         {{ __('reports.cached_at') }} {{ $dashboard['cached_at'] }}
                     </p>
-                    <flux:button icon="arrow-path" size="sm" wire:click="refreshDashboard">
+                    <flux:button icon="arrow-path" size="sm" wire:click="refreshDashboard" wire:loading.attr="disabled" wire:target="refreshDashboard">
                         {{ __('ui.audit_logs.index.refresh') }}
                     </flux:button>
                 </div>
@@ -144,7 +104,7 @@ new class extends Component
                     <div class="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
                         @if ($dashboard['can_view_reports'])
                             @forelse ($dashboard['popular_items'] as $item)
-                                <div wire:key="dashboard-popular-item-{{ $loop->index }}" class="flex items-center justify-between gap-4 py-3">
+                                <div wire:key="dashboard-popular-item-{{ $item['item_name'] }}" class="flex items-center justify-between gap-4 py-3">
                                     <div>
                                         <p class="font-medium text-zinc-950 dark:text-white">{{ $item['item_name'] }}</p>
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('reports.popular_items.quantity_sold') }}: {{ $item['quantity'] }}</p>
@@ -187,9 +147,9 @@ new class extends Component
         </section>
     @else
         <section class="grid gap-4 md:grid-cols-3">
-            @foreach (['Setup', 'Guest flow', 'Waiter workflow'] as $label)
-                <div wire:key="restaurant-dashboard-{{ $label }}" class="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __($label) }}</p>
+            @foreach ($emptyStateFeatureKeys as $featureKey)
+                <div wire:key="restaurant-dashboard-{{ $featureKey }}" class="rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __($featureKey) }}</p>
                     <p class="mt-3 text-lg font-semibold text-zinc-950 dark:text-white">{{ __('ui.pages.restaurant.dashboard.available_step_by_step') }}</p>
                 </div>
             @endforeach

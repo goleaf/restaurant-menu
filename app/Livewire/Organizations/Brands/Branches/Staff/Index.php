@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\Organizations\Brands\Branches\Staff;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -8,7 +10,6 @@ use App\Actions\Staff\AddBranchStaffMemberAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
-use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
@@ -23,6 +24,7 @@ use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -71,11 +73,10 @@ class Index extends Component
             abort(403);
         }
 
-        if (! $this->currentUser()->canAccessBranch($branch, $organization)) {
-            abort(403);
-        }
+        $gate = Gate::forUser($this->currentUser());
+        $gate->authorize('view', $branch);
 
-        $this->canManageStaff = $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $organization);
+        $this->canManageStaff = $gate->allows('manageStaff', $branch);
 
         if (! $this->canManageStaff) {
             abort(403);
@@ -265,7 +266,7 @@ class Index extends Component
     public function invitations(): EloquentCollection
     {
         return Invitation::query()
-            ->select(['id', 'organization_id', 'brand_id', 'branch_id', 'role_id', 'email', 'phone', 'invite_token', 'invite_code', 'expires_at', 'status', 'invited_by_user_id', 'created_at', 'updated_at'])
+            ->select(['id', 'organization_id', 'brand_id', 'branch_id', 'role_id', 'email', 'phone', 'expires_at', 'status', 'invited_by_user_id', 'accepted_by_user_id', 'accepted_at', 'created_at', 'updated_at'])
             ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
             ->where('organization_id', $this->organization->id)
             ->where('branch_id', $this->branch->id)
@@ -369,18 +370,18 @@ class Index extends Component
         $validated = $this->validate($this->invitationRules());
         $role = $this->findAssignableRole((int) $validated['inviteRoleId']);
 
-        $invitation = $createInvitation->handle($this->organization, $role, $this->currentUser(), [
+        $createdInvitation = $createInvitation->handle($this->organization, $role, $this->currentUser(), [
             'brand' => $this->brand,
             'branch' => $this->branch,
             'email' => $validated['inviteEmail'] === '' ? null : $validated['inviteEmail'],
             'phone' => $validated['invitePhone'] === '' ? null : $validated['invitePhone'],
         ]);
 
-        $this->lastInviteLink = $invitation->inviteLink();
-        $this->lastInviteCode = $invitation->invite_code;
+        $this->lastInviteLink = $createdInvitation->inviteLink();
+        $this->lastInviteCode = $createdInvitation->code;
         unset($this->invitations);
 
-        return $invitation;
+        return $createdInvitation->invitation;
     }
 
     private function defaultRoleId(): ?int
@@ -435,9 +436,7 @@ class Index extends Component
 
     private function authorizeStaffManagement(): void
     {
-        if (! $this->currentUser()->hasPermission(SystemPermission::ManageStaff, $this->organization)) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('manageStaff', $this->branch);
     }
 
     private function currentUser(): User

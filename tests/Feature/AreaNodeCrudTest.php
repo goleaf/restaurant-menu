@@ -4,6 +4,7 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AreaNodeType;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Areas;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -11,6 +12,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
@@ -27,6 +29,7 @@ test('area node page requires authentication', function () {
 });
 
 test('area node page requires manage zones permission', function () {
+    app()->setLocale('ru');
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
 
     $this->actingAs($manager)
@@ -38,9 +41,9 @@ test('area node page requires manage zones permission', function () {
     $this->actingAs($manager)
         ->get(route('organizations.brands.branches.areas.index', [$organization, $brand, $branch]))
         ->assertOk()
-        ->assertSee('Areas')
-        ->assertSee('Зоны ресторана')
-        ->assertSee('Шаг 2: добавьте зоны');
+        ->assertSee(__('ui.organizations.brands.branches.areas.areas'))
+        ->assertSee(__('ui.organizations.brands.branches.areas.zony_restorana'))
+        ->assertSee(__('ui.organizations.brands.branches.areas.sag_2_dobavte_zony'));
 });
 
 test('manager can create nested area nodes inside branch', function () {
@@ -199,6 +202,15 @@ function createAreaCrudBranch(string $organizationName = 'Area Group', string $b
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => $organizationName]);
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+    $membership = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail();
+    $membership->forceFill(['role_id' => $restrictedRole->id])->saveOrFail();
+
     $brand = Brand::factory()->for($organization)->create(['name' => $brandName]);
     $branch = Branch::factory()
         ->for($organization)

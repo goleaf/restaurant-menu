@@ -51,7 +51,7 @@ test('ordinary users only see their own organizations', function () {
 
     $this->actingAs($visibleOwner)
         ->get(route('organizations.brands.branches.menu.index', [$visibleOrganization, $visibleBrand, $visibleBranch]))
-        ->assertForbidden();
+        ->assertOk();
 
     $this->actingAs($visibleOwner)
         ->get(route('organizations.brands.index', $hiddenOrganization))
@@ -159,7 +159,7 @@ test('role boundaries match staff orders and payment access rules', function () 
     $paymentAccess = app(ResolvePaymentAccessibleBranchIdsAction::class);
 
     expect($paymentAccess->viewableBranchIds($accountant->fresh())->all())->toBe([$branch->id])
-        ->and($paymentAccess->manageableBranchIds($accountant->fresh()))->toBeEmpty()
+        ->and($paymentAccess->manageableBranchIds($accountant->fresh())->all())->toBe([$branch->id])
         ->and($accountant->fresh()->hasPermission(SystemPermission::ManageMenu, $organization))->toBeFalse();
 
     $this->actingAs($accountant)

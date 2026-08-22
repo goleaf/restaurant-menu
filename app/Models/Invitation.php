@@ -1,16 +1,40 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use App\Enums\InvitationStatus;
+use Carbon\CarbonInterface;
 use Database\Factories\InvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['brand_id', 'email', 'phone', 'invite_token', 'invite_code', 'expires_at', 'invited_by_user_id'])]
+/**
+ * @property int $id
+ * @property int $organization_id
+ * @property int|null $brand_id
+ * @property int|null $branch_id
+ * @property int $role_id
+ * @property string|null $email
+ * @property string|null $phone
+ * @property string|null $invite_token_hash
+ * @property string|null $invite_code_hash
+ * @property CarbonInterface $expires_at
+ * @property InvitationStatus $status
+ * @property int|null $invited_by_user_id
+ * @property int|null $accepted_by_user_id
+ * @property CarbonInterface|null $accepted_at
+ * @property-read Organization|null $organization
+ * @property-read Branch|null $branch
+ * @property-read Role|null $role
+ */
+#[Fillable(['email', 'phone'])]
+#[Hidden(['invite_token', 'invite_code', 'invite_token_hash', 'invite_code_hash'])]
 class Invitation extends Model
 {
     /** @use HasFactory<InvitationFactory> */
@@ -30,6 +54,7 @@ class Invitation extends Model
     {
         return [
             'expires_at' => 'datetime',
+            'accepted_at' => 'datetime',
             'status' => InvitationStatus::class,
         ];
     }
@@ -74,19 +99,20 @@ class Invitation extends Model
         return $this->belongsTo(User::class, 'invited_by_user_id');
     }
 
-    public function inviteLink(): string
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function acceptedBy(): BelongsTo
     {
-        return url('/invite/'.$this->invite_token);
+        return $this->belongsTo(User::class, 'accepted_by_user_id');
     }
 
     public function canBeAccepted(): bool
     {
         return $this->status === InvitationStatus::Pending
-            && $this->expires_at !== null
             && $this->expires_at->isFuture()
-            && is_string($this->invite_token)
-            && strlen($this->invite_token) === 64
-            && ctype_alnum($this->invite_token);
+            && is_string($this->invite_token_hash)
+            && strlen($this->invite_token_hash) === 64;
     }
 
     /**
@@ -117,16 +143,23 @@ class Invitation extends Model
                 'role_id',
                 'email',
                 'phone',
-                'invite_token',
-                'invite_code',
+                'invite_token_hash',
+                'invite_code_hash',
                 'expires_at',
                 'status',
                 'invited_by_user_id',
+                'accepted_by_user_id',
+                'accepted_at',
                 'created_at',
                 'updated_at',
             ])
             ->acceptable()
-            ->where('invite_token', $inviteToken)
+            ->where('invite_token_hash', self::tokenHash($inviteToken))
             ->first();
+    }
+
+    private static function tokenHash(string $inviteToken): string
+    {
+        return hash('sha256', $inviteToken);
     }
 }

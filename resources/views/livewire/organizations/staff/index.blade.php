@@ -162,8 +162,6 @@
                     </div>
 
                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation->email ?: __('staff.no_email') }} / {{ $invitation->phone ?: __('staff.no_phone') }}</p>
-                    <p class="mt-2 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('staff.invite_link') }}: {{ $invitation->inviteLink() }}</p>
-                    <p class="mt-1 break-all text-sm text-zinc-600 dark:text-zinc-300">{{ __('staff.invite_code') }}: {{ $invitation->invite_code }}</p>
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

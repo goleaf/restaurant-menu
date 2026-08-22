@@ -6,6 +6,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate;
 use App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show as QrAdminShow;
 use App\Models\AreaNode;
@@ -15,6 +16,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -167,6 +169,15 @@ function createPrompt26QrContext(): array
 {
     $manager = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($manager, ['name' => 'QR Print Group']);
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Waiter->value)
+        ->firstOrFail();
+    $membership = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail();
+    $membership->forceFill(['role_id' => $restrictedRole->id])->saveOrFail();
+
     $brand = Brand::factory()->for($organization)->create(['name' => 'Bella Print']);
     $branch = Branch::factory()
         ->for($organization)

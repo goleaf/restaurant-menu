@@ -5,6 +5,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
+use App\Enums\SystemRole;
 use App\Livewire\QrCodes\ShortCodeLookup;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -13,6 +14,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -188,6 +190,17 @@ function createPrompt109QrLookupContext(string $prefix = 'P109'): array
             'status' => QrCodeStatus::Active,
             'created_by_user_id' => $manager->id,
         ]);
+
+    $restrictedRole = Role::query()
+        ->where('code', SystemRole::Cook->value)
+        ->firstOrFail();
+
+    OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->where('user_id', $manager->id)
+        ->firstOrFail()
+        ->forceFill(['role_id' => $restrictedRole->id])
+        ->save();
 
     return [$organization, $brand, $branch, $servicePoint, $qrCode, $manager->fresh()];
 }

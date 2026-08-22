@@ -14,7 +14,7 @@ final class BuildDemoLoginPageAction
      */
     public function handle(): array
     {
-        $catalogue = DemoAccountCatalog::all();
+        $catalogue = DemoAccountCatalog::accounts();
         $usersByEmail = User::query()
             ->select(['id', 'email'])
             ->with('roles:id,code')

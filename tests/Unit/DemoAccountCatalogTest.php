@@ -12,7 +12,7 @@ test('demo account catalogue covers every system role in canonical order', funct
             'name' => $account['name'],
             'email' => $account['email'],
         ],
-        DemoAccountCatalog::all(),
+        DemoAccountCatalog::accounts(),
     );
 
     expect($accounts)->toBe([

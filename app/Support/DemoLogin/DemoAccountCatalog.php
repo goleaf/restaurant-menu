@@ -29,7 +29,7 @@ final class DemoAccountCatalog
     /**
      * @return list<array{role: SystemRole, name: string, email: string}>
      */
-    public static function all(): array
+    public static function accounts(): array
     {
         return array_map(
             static fn (SystemRole $role): array => self::forRole($role),

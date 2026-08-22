@@ -39,7 +39,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 test('demo account catalogue matches the seeded identity contract', function (): void {
-    $catalogue = collect(DemoAccountCatalog::all())
+    $catalogue = collect(DemoAccountCatalog::accounts())
         ->mapWithKeys(fn (array $account): array => [
             $account['email'] => [
                 'name' => $account['name'],

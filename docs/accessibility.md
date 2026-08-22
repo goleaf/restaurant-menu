@@ -20,7 +20,7 @@ The target is WCAG 2.2 AA for critical user and staff workflows. Native semantic
 - Localized skip links and native `main` landmarks are present on public, guest, auth and authenticated layouts; semantic `h1` behavior is asserted by layout/design tests.
 - The Flux password toggle and modal close controls use semantic EN/LT/RU accessible-name keys; the isolated browser accessibility tree showed `Показать или скрыть пароль` and `Close dialog` in the active locale.
 - Keyboard traversal covered the skip link, login controls, native waiter branch disclosure and destructive Flux dialogs. Dialog opening focuses the safe cancel action and `Escape` restores focus to its trigger.
-- Browser flows covered registration, password confirmation, settings navigation, locale persistence, logout/login and destructive account deletion; focus traps and controls remained reachable.
+- Browser flows covered account authentication, password confirmation, settings navigation, locale persistence, logout/login and destructive account deletion; invitation registration and public-registration rejection have automated form/route coverage.
 - Public, waiter and service-point mobile Lighthouse accessibility scored 100; the final checked pages had no console errors/issues, horizontal overflow or interactive target below 40 CSS px at the 390 px touch viewport.
 - Automated markup/design/architecture tests cover field labels/errors, dialog semantics, focus rules, touch tokens, reduced motion, forced colors, image dimensions, non-color status text and legacy icon fallback throughout first-party views.
 

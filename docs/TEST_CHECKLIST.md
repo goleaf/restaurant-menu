@@ -2,7 +2,7 @@
 
 Use a disposable isolated Chrome profile. Record URL, viewport, actor/data fixture, console/network result, keyboard/focus result and screenshot or DOM evidence where useful.
 
-- Authentication: registration/login/invalid login/logout/reset/2FA/passkey/settings.
+- Authentication: invite registration/public-registration rejection/login/invalid login/logout/reset/2FA/passkey/settings.
 - Tenant navigation: organization, brand, branch, staff/permissions, wrong-parent URL rejection.
 - Setup: onboarding, areas, service points, settings, QR generation/print/short lookup.
 - Menu: categories/items/modifiers/schedules/image upload, EN/LT/RU and long text.

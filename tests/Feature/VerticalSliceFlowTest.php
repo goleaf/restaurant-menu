@@ -52,22 +52,12 @@ beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
-test('first vertical slice works from registration to closed table session', function () {
-    $this
-        ->post(route('register.store'), [
-            'name' => 'Vertical Owner',
-            'email' => 'vertical-owner@example.test',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ])
-        ->assertRedirect(route('dashboard', absolute: false));
-
-    $this->assertAuthenticated();
-
-    $owner = User::query()
-        ->select(['id', 'name', 'email'])
-        ->where('email', 'vertical-owner@example.test')
-        ->firstOrFail();
+test('first vertical slice works from authenticated owner setup to closed table session', function () {
+    $owner = User::factory()->create([
+        'name' => 'Vertical Owner',
+        'email' => 'vertical-owner@example.test',
+    ]);
+    $this->actingAs($owner);
 
     $organization = app(CreateOrganizationAction::class)->handle($owner, [
         'name' => 'Vertical Food Group',

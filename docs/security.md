@@ -4,7 +4,7 @@ Report vulnerabilities privately as described in the root [`SECURITY.md`](../SEC
 
 ## Identity and sessions
 
-Fortify owns registration, password login/reset/confirmation and account flows. Authentication regenerates the session; logout invalidates it and regenerates the CSRF token. Sensitive endpoints use named rate limiters and responses avoid unnecessary account disclosure. Passkey and two-factor code remains feature-gated but both features are disabled by current configuration; dormant credentials stay encrypted/hidden. Demo identities are seeded only outside production.
+Public Fortify registration is disabled. Account creation is available only through a valid staff invitation with recipient binding and atomic one-time consumption; Fortify owns password login/reset/confirmation and the remaining account flows. Authentication regenerates the session; logout invalidates it and regenerates the CSRF token. Sensitive endpoints use named rate limiters and responses avoid unnecessary account disclosure. Passkey and two-factor code remains feature-gated but both features are disabled by current configuration; dormant credentials stay encrypted/hidden. Demo identities are seeded only outside production.
 
 ## Authorization and isolation
 

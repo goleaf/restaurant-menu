@@ -41,6 +41,8 @@ Requirements: tenant/staff/payment/backup requirements, all `sec-*` and `data-*`
 
 - Added scoped nested bindings, aggregate policies and negative wrong-tenant/direct-action tests.
 - Replaced plaintext invitation credentials with digest-at-rest, expiring/revocable atomic acceptance and throttling.
+- Added public invitation entry, token-free login continuation, and atomic invited-user registration with recipient email binding.
+- Disabled public Fortify registration so production account creation is invitation-only.
 - Serialized SQLite manual-payment balance checks and made duplicate/race outcomes deterministic.
 - Replaced live-database streaming with a private consistent online SQLite snapshot, recent-password and reason-bound authorization, no-store response and cleanup.
 - Added persistence/file compensation, strict local/test Eloquent behavior, guarded mass assignment and exact-money contracts.

@@ -22,9 +22,7 @@ class AcceptInvitationController extends Controller
     {
         $recipient = $request->user();
         $invitationId = $request->session()->get('staff_invitation_id');
-        $invitation = is_int($invitationId)
-            ? Invitation::query()->acceptable()->whereKey($invitationId)->first()
-            : null;
+        $invitation = is_int($invitationId) ? Invitation::findAcceptableById($invitationId) : null;
 
         if (! $recipient instanceof User || ! $invitation instanceof Invitation) {
             abort(410);
@@ -38,7 +36,7 @@ class AcceptInvitationController extends Controller
             abort(410);
         }
 
-        $request->session()->forget('staff_invitation_id');
+        $request->session()->forget(['staff_invitation_id', 'url.intended']);
 
         return redirect()->route('dashboard')->with('status', __('invitations.messages.accepted'));
     }

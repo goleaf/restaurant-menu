@@ -1,27 +1,27 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
-beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::registration());
-});
+test('public registration is disabled and account creation is invitation only', function () {
+    expect(config('fortify.features'))->not->toContain(Features::registration())
+        ->and(Route::has('register'))->toBeFalse()
+        ->and(Route::has('register.store'))->toBeFalse()
+        ->and(Route::has('invitations.register'))->toBeTrue();
 
-test('registration screen can be rendered', function () {
-    $response = $this->get(route('register'));
-
-    $response->assertOk();
-});
-
-test('new users can register', function () {
-    $response = $this->post(route('register.store'), [
-        'name' => 'John Doe',
-        'email' => 'test@example.com',
+    $this->get('/register')->assertNotFound();
+    $this->post('/register', [
+        'name' => 'Uninvited User',
+        'email' => 'uninvited@example.test',
         'password' => 'password',
         'password_confirmation' => 'password',
-    ]);
+    ])->assertNotFound();
 
-    $response->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertSee(__('invitations.account.invite_only'))
+        ->assertDontSee(__('ui.auth.login.sign_up'));
 
-    $this->assertAuthenticated();
+    $this->assertGuest();
+    $this->assertDatabaseMissing('users', ['email' => 'uninvited@example.test']);
 });

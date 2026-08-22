@@ -46,9 +46,8 @@
             </div>
         </form>
 
-        <div class="space-x-1 text-sm text-center rtl:space-x-reverse text-zinc-600 dark:text-zinc-400">
-            <span>{{ __('ui.auth.login.don_t_have_an_account') }}</span>
-            <flux:link :href="route('register')" wire:navigate>{{ __('ui.auth.login.sign_up') }}</flux:link>
+        <div class="text-center text-sm text-zinc-600 dark:text-zinc-400">
+            {{ __('invitations.account.invite_only') }}
         </div>
     </div>
 </x-layouts::auth>

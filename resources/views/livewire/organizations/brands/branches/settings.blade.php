@@ -48,7 +48,7 @@
                         @if ($currentLogoUrl)
                             <img src="{{ $currentLogoUrl }}" alt="{{ $publicDisplayName }}" width="80" height="80" class="h-20 w-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950">
                         @else
-                            <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.logo') }}</div>
+                            <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.logo') }}</div>
                         @endif
                         <x-ui.image-upload-input wire:model="publicLogo" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" />
                         @error('publicLogo')
@@ -61,7 +61,7 @@
                         @if ($currentCoverImageUrl)
                             <img src="{{ $currentCoverImageUrl }}" alt="{{ $publicDisplayName }}" width="640" height="160" class="h-20 w-full rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800 dark:bg-zinc-950">
                         @else
-                            <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-400 dark:border-zinc-700 dark:bg-zinc-950">{{ __('uploads.labels.image') }}</div>
+                            <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.image') }}</div>
                         @endif
                         <x-ui.image-upload-input wire:model="coverImage" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" />
                         @error('coverImage')

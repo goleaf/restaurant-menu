@@ -22,7 +22,7 @@
             </flux:button>
         </form>
 
-        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-400">
+        <div class="space-x-1 rtl:space-x-reverse text-center text-sm text-zinc-600 dark:text-zinc-400">
             <span>{{ __('ui.auth.forgot_password.or_return_to') }}</span>
             <flux:link :href="route('login')" wire:navigate>{{ __('ui.auth.forgot_password.log_in') }}</flux:link>
         </div>

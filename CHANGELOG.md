@@ -7,8 +7,8 @@
 - Reframed the public entry, guest orientation and authenticated dashboards around one visible next action, role-specific context and progressive disclosure instead of equal-weight card galleries.
 - Added a shared compact metric strip for restaurant, waiter and department workspaces; idle waiter branches now collapse behind native keyboard-operable disclosure while active work stays expanded.
 - Added localized skip links, semantic page headings, practical touch targets, stable image dimensions, dark/forced-color-safe semantic surfaces and native Flux confirmation dialogs with focus trap/restoration.
-- Hardened persisted area/service-point icon rendering through explicit supported-icon boundaries and corrected demo icon values, preventing historical invalid values from causing a server error.
-- Browser-verified public, login, waiter and service-point flows in isolated Chrome contexts across 360–1920 CSS px samples. Public, waiter and service-point mobile Lighthouse samples scored 100 in every reported category, with no final console errors or horizontal overflow.
+- Hardened persisted area, service-point and menu-category icon rendering through explicit supported-icon boundaries and corrected demo icon values, preventing historical invalid values from causing a server error.
+- Browser-verified public, login, waiter, service-point and menu flows in isolated Chrome contexts across 360–1920 CSS px samples. Public, waiter, service-point and menu mobile Lighthouse samples scored 100 in every reported category, with no final console errors or horizontal overflow.
 
 ### Runtime and dependencies
 
@@ -18,7 +18,7 @@
 
 ### Architecture, security and data
 
-- Established 48 stable canonical requirements, a complete compliance matrix, architecture/domain/data/security/frontend/runtime documentation and three ADRs; all 56 first-party Markdown files were normalized and reviewed again after implementation.
+- Established 48 stable canonical requirements, a complete compliance matrix, architecture/domain/data/security/frontend/runtime documentation and three ADRs; all 58 first-party Markdown files were normalized and reviewed again after implementation.
 - Added aggregate policies, scoped nested bindings, strict local/test Eloquent behavior, explicit dependency injection and executable Blade/Livewire/service-locator architecture checks.
 - Replaced plaintext staff invitation credentials with digest-at-rest, expiring/revocable, recipient-bound and atomically single-use acceptance protected by rate limiting.
 - Serialized SQLite payment balance checks against concurrent overpayment, introduced persistence/file compensation and replaced live-database streaming with a private consistent online SQLite snapshot protected by recent password, typed confirmation and audited reason.
@@ -29,16 +29,16 @@
 - Converted route single-file components to normal classes and finished with 42 class-based Livewire components plus separate views; no Volt/SFC remains.
 - Removed every first-party Blade PHP block and direct model/Action/Service/Illuminate/facade/container/auth/config/session access; presentation now receives prepared escaped/localized data.
 - Applied typed/locked public state, `Computed`, `Url`, `Layout`, isolated polling and localized polite offline status regions. `wire:offline` is restricted to bearer-free authenticated pages; guest/auth pages use a client-only equivalent so invitation/reset URLs never enter Livewire snapshots. Destructive Flux dialogs and password toggles have semantic EN/LT/RU accessible names.
-- Migrated to CSS-first Tailwind sources and an OKLCH semantic token system with focus, touch, reduced-motion and forced-colors support. Final CSS is 296.74 kB / 38.98 kB gzip; application JS remains 0.00 kB.
+- Migrated to CSS-first Tailwind sources and an OKLCH semantic token system with focus, touch, reduced-motion and forced-colors support. Final CSS is 296.99 kB / 39.02 kB gzip; application JS remains 0.00 kB.
 - Browser-verified public/auth/dashboard/settings flows, locale persistence, password confirmation, logout/login/delete, offline/online state, responsive overflow and modal semantics in an isolated Chrome context. Representative Lighthouse samples scored 100 in every reported category with no console warnings/errors.
 
 ### Factories, seeders and tests
 
 - Completed 41 factories for all 41 first-party models with valid defaults and 105 explicit state/relationship helpers; there are no exemptions.
 - Added `DemoOperationalStateSeeder` and a safe seven-seeder hierarchy covering empty, live, payment-requested, completed, ticket, waiter-call, payment and audit workflows; demo seeding remains production-blocked and idempotent.
-- Final sequential and parallel Pest runs pass 693 tests with 20,593 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Larastan level 8 reports zero errors and 664 first-party PHP entry files pass syntax checks. The earlier 90.4% coverage result remains historical evidence; a fresh UI-slice coverage run was blocked because the available PHP CLI no longer loads Xdebug/PCOV.
+- Final sequential and parallel Pest runs pass 694 tests with 20,597 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Larastan level 8 reports zero errors and 665 first-party PHP entry files pass syntax checks. The earlier 90.4% coverage result remains historical evidence; a fresh UI-slice coverage run was blocked because the available PHP CLI no longer loads Xdebug/PCOV.
 - Added executable query budgets: audit pagination remains at 10 queries as history grows from 12 to 52 rows, the guest menu drops from 15 cold-cache queries to 2 warm-cache queries, and the eager-loaded waiter dashboard is capped at 40 queries for its complete operational graph.
-- Isolated SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.61 s / 6.67 s. EN/LT/RU contain 2,039 semantic keys each with zero audit issues.
+- Isolated SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.62 s / 7.06 s. EN/LT/RU contain 2,039 semantic keys each with zero audit issues.
 
 ### Deployment and compatibility
 

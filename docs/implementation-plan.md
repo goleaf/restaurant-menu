@@ -7,7 +7,7 @@ This living plan was executed on 2026-08-22. A pass is marked **verified** only 
 Status: **verified**.
 
 - Captured clean `main` at `aa2c675`, index/worktree/untracked state and `origin/main`.
-- Read all 56 first-party Markdown files and governing project instructions.
+- Read all 58 first-party Markdown files and governing project instructions.
 - Inventoried routes, 41 models/factories, schema, seeders, Actions, Livewire, Blade, configuration, tests, CI and shared-hosting constraints.
 - Recorded the failing 655-test baseline and dependency/security findings in [`current-state-audit.md`](current-state-audit.md).
 
@@ -77,12 +77,12 @@ Requirements: `livewire-001`, `blade-001`, `tailwind-001`, `i18n-001`, `ui-*`.
 
 Status: **verified**.
 
-- Pint passed; Larastan level 8 reported 0 errors; 664 first-party PHP/Blade entry files passed syntax checks.
-- Sequential and parallel Pest both passed 693 tests with 20,593 assertions; 9 skips are only disabled passkey/2FA feature gates.
+- Pint passed; Larastan level 8 reported 0 errors; 665 first-party PHP/Blade entry files passed syntax checks.
+- Sequential and parallel Pest both passed 694 tests with 20,597 assertions; 9 skips are only disabled passkey/2FA feature gates.
 - Numeric performance regressions cap audit history at 10 queries independent of page-row volume, guest menu at 15 cold / 2 warm and waiter dashboard at 40.
 - Xdebug coverage passed at 90.4% before the UI slice; the final UI tree could not be freshly measured because the available PHP CLI/Herd proxy loads no coverage driver.
 - Composer/npm audits, translation scan/audit, production build, fresh migration/seeding, cache builds and HTTP smoke passed.
-- Chromium Lighthouse scored 100/100/100/100 on public, login and authenticated dashboard samples; no checked viewport overflowed.
+- Chromium Lighthouse scored 100/100/100/100 on public, login, authenticated dashboard and sampled operational pages; no checked viewport overflowed.
 
 ## Pass 7 — synchronization and publication
 
@@ -99,8 +99,8 @@ Status: **implemented and verified locally**.
 
 - Reworked public/guest/auth/dashboard hierarchy around role goals and one clear next action while preserving every domain route and mutation.
 - Added shared metric strips, native progressive disclosure, localized skip navigation, Flux modal focus behavior, responsive touch targets, complete light/dark tokens and stable media dimensions.
-- Added regression protection for layout anti-patterns, auth autofocus, image dimensions, modal semantics, dashboard hierarchy and invalid persisted Flux icon names.
-- Verified responsive public, waiter and service-point surfaces at representative 360–1920 CSS px samples, mobile Lighthouse 100/100/100/100, zero final console issues and a no-throttle public trace of LCP 140 ms / TTFB 37 ms / CLS 0.
+- Added regression protection for layout anti-patterns, auth autofocus, image dimensions, modal semantics, dashboard hierarchy and invalid persisted area/service-point/menu-category Flux icon names.
+- Verified responsive public, waiter, service-point and menu surfaces at representative 360–1920 CSS px samples, mobile Lighthouse 100/100/100/100, zero final console issues and a no-throttle public trace of LCP 140 ms / TTFB 37 ms / CLS 0.
 - Publication was not part of this UI request; the worktree remains intentionally uncommitted for review.
 
 No implementation pass remains pending or partial. Fresh coverage collection remains the documented environment-only evidence limitation; future product work starts from new requirements rather than reopening this completed modernization plan.

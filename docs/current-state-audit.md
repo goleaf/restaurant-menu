@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 693 tests, with only 9 intentional feature-gated skips. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 694 tests, with only 9 intentional feature-gated skips. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -46,15 +46,15 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | Historical migrations use model backfills | Historical files preserved; new correction is forward-only/reversible; all 66 migrations pass from zero. |
 | Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
 | Generic equal-weight dashboard/card hierarchy and over-expanded waiter branches | Public, guest, restaurant, waiter and department surfaces now expose one primary path, compact related metrics and native progressive disclosure; responsive/browser regressions pass. |
-| Persisted legacy area/service-point icon names could address missing dynamic Flux components and return HTTP 500 | Both presentation components enforce explicit supported-icon lists with type-safe fallback; demo values are corrected and regressions cover legacy records. |
+| Persisted legacy area/service-point/menu-category icon names could address missing dynamic Flux components and return HTTP 500 | All three presentation boundaries enforce explicit supported-icon lists with type-safe fallback; demo values are corrected and regressions cover legacy records. |
 
 ## Final state
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
 - 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 107 Blade templates and 121 PHP test files.
-- 693 tests, 20,593 assertions, 0 static-analysis errors and 0 dependency advisories. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
+- 694 tests, 20,597 assertions, 0 static-analysis errors and 0 dependency advisories. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
 - 2,039 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
-- Production CSS 296.74 kB / 38.98 kB gzip; application JS remains 0.00 kB.
+- Production CSS 296.99 kB / 39.02 kB gzip; application JS remains 0.00 kB.
 
 ## First-party Markdown inventory
 

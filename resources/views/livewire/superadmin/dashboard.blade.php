@@ -158,7 +158,7 @@
                                     <span>
                                         {{ __('navigation.branches') }}:
                                         <span class="font-medium">{{ $organization['branches_count'] }}</span>
-                                        <span class="text-zinc-400 dark:text-zinc-500">({{ __('ui.superadmin.dashboard.active') }} {{ $organization['active_branches_count'] }})</span>
+                                        <span class="text-zinc-600 dark:text-zinc-400">({{ __('ui.superadmin.dashboard.active') }} {{ $organization['active_branches_count'] }})</span>
                                     </span>
                                     <span>
                                         {{ __('navigation.service_points') }}:

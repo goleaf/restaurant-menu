@@ -285,7 +285,7 @@
                         @empty
                             <div class="p-8 text-center">
                                 <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-card bg-zinc-100 dark:bg-zinc-800">
-                                    <flux:icon.key class="size-7 text-zinc-400 dark:text-zinc-500" />
+                                    <flux:icon.key class="size-7 text-zinc-600 dark:text-zinc-400" />
                                 </div>
                                 <p class="font-medium">{{ __('ui.empty.no_passkeys') }}</p>
                                 <flux:text class="mt-1">{{ __('ui.settings.security.add_a_passkey_to_sign_in_without_a_password') }}</flux:text>

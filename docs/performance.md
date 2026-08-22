@@ -6,12 +6,12 @@ Performance changes are evidence-driven. Query-budget and cache-separation tests
 
 | Measurement | Baseline | Final | Interpretation |
 |---|---:|---:|---|
-| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 693 tests / 61.058 s sequential; 17.406 s parallel, all applicable passing | test volume increased; wall time is not an application latency benchmark |
+| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 694 tests / 62.488 s sequential; 20.227 s parallel, all applicable passing | test volume increased; wall time is not an application latency benchmark |
 | Application coverage | unavailable | last verified 90.4% before the UI slice; fresh final collection unavailable | current PHP CLI has no Xdebug/PCOV; this is not presented as fresh proof |
-| CSS | 282.03 kB / 36.41 kB gzip | 296.74 kB / 38.98 kB gzip | +14.71 kB raw / +2.57 kB gzip for Flux/Tailwind tokens and complete UI states |
+| CSS | 282.03 kB / 36.41 kB gzip | 296.99 kB / 39.02 kB gzip | +14.96 kB raw / +2.61 kB gzip for Flux/Tailwind tokens and complete UI states |
 | Application JS | 0.00 kB | 0.00 kB | no SPA/request library introduced |
 | Public mobile trace | LCP 107 ms; TTFB 47 ms; CLS 0 before the UI slice | LCP 140 ms; TTFB 37 ms; render delay 103 ms; CLS 0 | local Herd, no throttle; small-run variance is not production monitoring |
-| Lighthouse | not captured | 100/100/100/100 on public, waiter and service-point mobile samples | accessibility/best-practice/SEO/agentic categories from the used audit mode |
+| Lighthouse | not captured | 100/100/100/100 on public, waiter, service-point and menu mobile samples | accessibility/best-practice/SEO/agentic categories from the used audit mode |
 | HTTP smoke | not captured | `/` 200 in 0.166 s; protected dashboard 302 to login | local warm Herd request |
 
 ## Executable query budgets

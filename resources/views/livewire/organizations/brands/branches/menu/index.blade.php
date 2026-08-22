@@ -167,7 +167,7 @@
 
                 <label class="grid gap-1 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
-                    <textarea wire:model="categoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
+                    <textarea name="category_description" autocomplete="off" wire:model="categoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                 </label>
 
                 <flux:select wire:model="categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
@@ -221,7 +221,7 @@
 
                 <label class="grid gap-1 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
-                    <textarea wire:model="itemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
+                    <textarea name="item_description" autocomplete="off" wire:model="itemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                 </label>
 
                 <div class="grid gap-3 sm:grid-cols-2">
@@ -416,7 +416,7 @@
 
                                                 <label class="grid gap-1 text-sm">
                                                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
-                                                    <textarea wire:model="editingCategoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
+                                                    <textarea name="editing_category_description" autocomplete="off" wire:model="editingCategoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                                                 </label>
 
                                                 <div class="grid gap-3 sm:grid-cols-2">
@@ -516,7 +516,7 @@
 
                                                 <label class="grid gap-1 text-sm">
                                                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
-                                                    <textarea wire:model="editingItemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
+                                                    <textarea name="editing_item_description" autocomplete="off" wire:model="editingItemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                                                 </label>
 
                                                 <div class="grid gap-3 md:grid-cols-4">
@@ -552,7 +552,7 @@
                                                     @if ($item['has_image'])
                                                         <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="64" height="64" loading="lazy" decoding="async" class="size-full object-cover">
                                                     @else
-                                                        <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.image') }}</span>
+                                                        <span class="text-xs font-medium text-zinc-600 dark:text-zinc-400">{{ __('uploads.labels.image') }}</span>
                                                     @endif
                                                 </div>
 
@@ -594,7 +594,7 @@
                                                             @foreach ($item['modifier_groups'] as $modifierGroup)
                                                                 <span wire:key="item-{{ $item['id'] }}-modifier-{{ $modifierGroup['id'] }}" class="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
                                                                     {{ $modifierGroup['name'] }}
-                                                                    <button type="button" wire:click="detachModifierGroupFromItem({{ $item['id'] }}, {{ $modifierGroup['id'] }})" class="text-zinc-400 hover:text-red-600" aria-label="{{ __('ui.organizations.brands.branches.menu.index.remove_modifier_group') }}">
+                                                                    <button type="button" wire:click="detachModifierGroupFromItem({{ $item['id'] }}, {{ $modifierGroup['id'] }})" class="text-zinc-600 hover:text-red-700 dark:text-zinc-400 dark:hover:text-red-400" aria-label="{{ __('ui.organizations.brands.branches.menu.index.remove_modifier_group') }}">
                                                                         ×
                                                                     </button>
                                                                 </span>

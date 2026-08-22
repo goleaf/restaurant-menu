@@ -115,7 +115,7 @@
                                         @if ($item['image_url'])
                                             <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="176" height="176" loading="lazy" decoding="async" class="size-full object-cover">
                                         @else
-                                            <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
+                                            <span class="px-2 text-center text-xs font-semibold text-zinc-600 dark:text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                                         @endif
                                     </div>
 
@@ -247,7 +247,7 @@
                             @if ($selectedItem['image_url'])
                                 <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" width="64" height="64" decoding="async" class="size-full object-cover">
                             @else
-                                <span class="px-2 text-center text-xs font-semibold text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
+                                <span class="px-2 text-center text-xs font-semibold text-zinc-600 dark:text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                             @endif
                         </div>
 

@@ -54,7 +54,7 @@
                     'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold',
                     'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $step['state'] === 'done',
                     'border-sky-200 bg-sky-50 text-sky-700 ring-2 ring-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100 dark:ring-sky-950' => $step['state'] === 'current',
-                    'border-zinc-200 bg-white text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500' => $step['state'] === 'pending',
+                    'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400' => $step['state'] === 'pending',
                 ])>
                     @if ($step['state'] === 'done')
                         ✓

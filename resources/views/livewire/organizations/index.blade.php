@@ -41,7 +41,7 @@
                                     @if ($organization['logo_url'])
                                         <img src="{{ $organization['logo_url'] }}" alt="{{ $organization['name'] }}" width="48" height="48" loading="lazy" decoding="async" class="size-full object-contain">
                                     @else
-                                        <span class="text-xs font-medium text-zinc-400">{{ __('uploads.labels.logo') }}</span>
+                                        <span class="text-xs font-medium text-zinc-600 dark:text-zinc-400">{{ __('uploads.labels.logo') }}</span>
                                     @endif
                                 </div>
 

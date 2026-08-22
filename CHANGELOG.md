@@ -46,9 +46,9 @@
 
 - Completed 41 factories for all 41 first-party models with valid defaults and 105 explicit state/relationship helpers; there are no exemptions.
 - Added `DemoOperationalStateSeeder` and a safe seven-seeder hierarchy covering empty, live, payment-requested, completed, ticket, waiter-call, payment and audit workflows; demo seeding remains production-blocked and idempotent.
-- Final sequential and parallel Pest runs pass 693 tests with 20,593 assertions; nine skips are exclusively disabled passkey/2FA feature gates. Larastan level 8 reports zero errors and 664 first-party PHP entry files pass syntax checks. The earlier 90.4% coverage result remains historical evidence; a fresh UI-slice coverage run was blocked because the available PHP CLI no longer loads Xdebug/PCOV.
+- The pre-demo sequential and parallel Pest snapshot passed 693 tests with 20,593 assertions; nine skips were exclusively disabled passkey/2FA feature gates. Larastan level 8 reported zero errors and 664 first-party PHP entry files passed syntax checks. Current stable-tree and browser acceptance remain pending Task 8; the earlier 90.4% coverage result is historical because the available PHP CLI no longer loads Xdebug/PCOV.
 - Added executable query budgets: audit pagination remains at 10 queries as history grows from 12 to 52 rows, the guest menu drops from 15 cold-cache queries to 2 warm-cache queries, and the eager-loaded waiter dashboard is capped at 40 queries for its complete operational graph.
-- Isolated SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.61 s / 6.67 s. EN/LT/RU contain 2,039 semantic keys each with zero audit issues.
+- Isolated SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.61 s / 6.67 s. The pre-demo translation snapshot contained 2,039 semantic keys per locale; the current EN/LT/RU JSON inventory contains 2,056 keys per locale, with the 421-file scan using 1,505 semantic keys and the 6,168-entry audit reporting zero critical issues.
 
 ### Deployment and compatibility
 

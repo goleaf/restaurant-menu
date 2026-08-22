@@ -14,7 +14,9 @@ Pest 4 is the sole primary PHP test style. Feature tests cover Laravel/Livewire 
 
 Tests use isolated SQLite, fake local disks and faked external I/O. Never run `migrate:fresh` against the application database. Factories create valid records; no test or seeder requires public internet or real credentials.
 
-## Final commands and observed results (2026-08-22)
+## Pre-demo historical baseline (2026-08-22)
+
+The table below predates the demo-login slice. It remains historical evidence only; current targeted demo evidence follows separately, while the stable-tree full-suite, cache and browser refresh remains pending Task 8.
 
 | Command | Result |
 |---|---|
@@ -22,8 +24,8 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 | `vendor/bin/phpstan analyse --memory-limit=1G` | Larastan level 8, 0 errors |
 | PHP syntax loop over first-party PHP/Blade entry files | 664 files, 0 errors |
 | `php artisan test --compact tests/Feature/DesignSystemTest.php tests/Feature/DemoRestaurantSeederTest.php tests/Feature/ServicePointCrudTest.php tests/Feature/AreaNodeCrudTest.php` | 34 passed; 794 assertions |
-| `php artisan test --compact` | 693 tests; 684 passed; 9 skipped; 20,593 assertions; 61.058 s |
-| `php artisan test --compact --parallel` | same counts; 17.406 s |
+| `php artisan test --compact` | pre-demo baseline: 693 tests; 684 passed; 9 skipped; 20,593 assertions; 61.058 s |
+| `php artisan test --compact --parallel` | pre-demo baseline: same counts; 17.406 s |
 | `php artisan test --compact --coverage --min=90` and Herd coverage proxy | blocked: no Xdebug/PCOV driver loaded; last pre-UI verified result was 90.4% and is historical only |
 | isolated `php artisan migrate:fresh --seed --force --no-interaction` | all 66 migrations and default seed passed |
 | two isolated `DemoRestaurantSeeder` runs | passed; 3.61 s then 6.67 s |
@@ -31,7 +33,7 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 | `php artisan translations:audit` | 6,117 semantic entries; 0 critical issues |
 | `composer validate --strict` / `composer audit --locked` | valid / zero advisories |
 | `npm audit --audit-level=low` / `npm run build` | zero advisories / passed |
-| config, route and view cache builds | passed; 64 routes; followed by `optimize:clear` |
+| config, route and view cache builds | pre-demo baseline passed with 64 routes and was followed by `optimize:clear`; current read-only route inventory is 66, while cache/HTTP smoke refresh remains pending Task 8 |
 
 The gated skips are intentional passkey/2FA feature boundaries because `config('fortify.features')` currently enables only password reset. Public registration is intentionally disabled and covered by negative route tests; invited account creation is covered by invitation acceptance tests.
 

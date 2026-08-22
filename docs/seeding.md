@@ -42,6 +42,6 @@ Demo data is fictitious and covers every meaningful staff role, ownership/non-ow
 
 - 41 first-party Eloquent models, 41 factories and 105 explicit state/relationship helpers; no exemptions.
 - Seven seeders including the orchestrator and operational demo layer.
-- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards pass in the 693-test suite.
+- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards passed in the pre-demo historical 693-test suite; the current full-suite refresh remains pending Task 8.
 - Fresh isolated SQLite completed all 66 migrations and `DatabaseSeeder`; `DemoRestaurantSeeder` then passed twice in 3.61 s and 6.67 s. Demo area/service-point icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
 - Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data.

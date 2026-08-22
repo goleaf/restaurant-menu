@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
+use Database\Factories\UserFactory;
 use Database\Seeders\SystemRolesSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -96,6 +97,95 @@ test('missing or mismatched demo identities are not authenticated', function ():
 
     expect($loginAsDemoRole->handle($request, SystemRole::Waiter))->toBeFalse()
         ->and(Auth::guard('web')->check())->toBeFalse();
+});
+
+test('disabled and production demo login routes are hidden', function (): void {
+    config()->set('demo-login.enabled', false);
+
+    $this->get('/demo-login')->assertNotFound();
+    $this->post('/demo-login/waiter')->assertNotFound();
+
+    config()->set('demo-login.enabled', true);
+    $this->app->detectEnvironment(fn (): string => 'production');
+
+    $this->get('/demo-login')->assertNotFound();
+    $this->withHeader('Sec-Fetch-Site', 'same-origin')
+        ->post('/demo-login/waiter')
+        ->assertNotFound();
+});
+
+test('enabled demo login page lists all roles without exposing the password', function (): void {
+    config()->set('demo-login.enabled', true);
+    createDemoLoginAccount(SystemRole::Waiter);
+
+    $roleLabels = array_map(
+        static fn (SystemRole $role): string => $role->localizedLabel(),
+        SystemRole::cases(),
+    );
+
+    $this->get(route('demo-login.index'))
+        ->assertOk()
+        ->assertHeaderContains('Cache-Control', 'no-store')
+        ->assertHeaderContains('Cache-Control', 'private')
+        ->assertHeader('Referrer-Policy', 'no-referrer')
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow')
+        ->assertSeeTextInOrder($roleLabels)
+        ->assertSeeText('waiter@demo.test')
+        ->assertSeeText('cook@demo.test')
+        ->assertSee('disabled', escape: false)
+        ->assertDontSee(UserFactory::DEMO_PASSWORD);
+});
+
+test('every seeded demo role may log in through the demo route', function (SystemRole $role): void {
+    config()->set('demo-login.enabled', true);
+    $user = createDemoLoginAccount($role);
+
+    $this->post(route('demo-login.authenticate', ['role' => $role->value]))
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticatedAs($user);
+})->with(SystemRole::cases());
+
+test('invalid missing and mismatched demo roles are rejected', function (): void {
+    config()->set('demo-login.enabled', true);
+
+    $this->post('/demo-login/not-a-role')->assertNotFound();
+
+    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
+        ->assertRedirect(route('demo-login.index'))
+        ->assertSessionHasErrors(['demo_login' => __('demo_login.unavailable_error')]);
+
+    $this->assertGuest();
+
+    createDemoLoginAccount(SystemRole::Waiter, SystemRole::Cook);
+
+    $this->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
+        ->assertRedirect(route('demo-login.index'))
+        ->assertSessionHasErrors(['demo_login' => __('demo_login.unavailable_error')]);
+
+    $this->assertGuest();
+});
+
+test('authenticated users cannot switch through demo login', function (): void {
+    config()->set('demo-login.enabled', true);
+    $currentUser = User::factory()->create();
+    createDemoLoginAccount(SystemRole::Waiter);
+
+    $this->actingAs($currentUser)
+        ->post(route('demo-login.authenticate', ['role' => SystemRole::Waiter->value]))
+        ->assertRedirect(route('dashboard'));
+
+    $this->assertAuthenticatedAs($currentUser);
+});
+
+test('demo login page is rate limited', function (): void {
+    config()->set('demo-login.enabled', true);
+
+    foreach (range(1, 20) as $attempt) {
+        $this->get(route('demo-login.index'))->assertOk();
+    }
+
+    $this->get(route('demo-login.index'))->assertTooManyRequests();
 });
 
 function createDemoLoginAccount(SystemRole $identityRole, ?SystemRole $assignedRole = null): User

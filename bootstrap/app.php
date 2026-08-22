@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\BusinessRuleViolation;
+use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\SetInterfaceLocale;
 use Illuminate\Foundation\Application;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'demo-login' => EnsureDemoLoginIsEnabled::class,
             'superadmin' => EnsureUserIsSuperadmin::class,
         ]);
     })

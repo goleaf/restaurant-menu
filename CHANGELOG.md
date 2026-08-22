@@ -10,7 +10,7 @@
 ### Security
 
 - Hard-denied demo GET and POST routes in production and while disabled, kept them guest-only behind a shared per-IP limiter, revalidated the canonical email-role assignment and regenerated the session after login.
-- Kept reusable passwords out of the demo page and added private/no-store, no-referrer and noindex response controls; final all-role browser acceptance remains a release gate.
+- Kept reusable passwords out of the demo page and added private/no-store, no-referrer and noindex response controls; final Chrome and Playwright acceptance verified every role without exposing cookie, token or password values.
 
 ### UI/UX implementation addendum
 
@@ -19,6 +19,7 @@
 - Added localized skip links, semantic page headings, practical touch targets, stable image dimensions, dark/forced-color-safe semantic surfaces and native Flux confirmation dialogs with focus trap/restoration.
 - Hardened persisted area/service-point icon rendering through explicit supported-icon boundaries and corrected demo icon values, preventing historical invalid values from causing a server error.
 - Browser-verified public, login, waiter and service-point flows in isolated Chrome contexts across 360–1920 CSS px samples. Public, waiter and service-point mobile Lighthouse samples scored 100 in every reported category, with no final console errors or horizontal overflow.
+- Browser-verified the demo surface on 2026-08-23 in disposable contexts: all 12 roles completed one-click login with the expected user, authenticated users could not switch roles, missing/restored account behavior was visible, EN/LT/RU and 320–1440 CSS px layouts passed, and Chrome plus Playwright reported no failed assets or console warnings/errors. Demo Lighthouse accessibility scored 100 on mobile and desktop; the performance trace recorded LCP 100 ms, TTFB 29 ms and CLS 0.00. Local HTTP/no-HTTPS-redirect and intentional `noindex` checks account for the lower best-practices/SEO scores.
 
 ### Runtime and dependencies
 
@@ -39,21 +40,22 @@
 - Converted route single-file components to normal classes and finished with 42 class-based Livewire components plus separate views; no Volt/SFC remains.
 - Removed every first-party Blade PHP block and direct model/Action/Service/Illuminate/facade/container/auth/config/session access; presentation now receives prepared escaped/localized data.
 - Applied typed/locked public state, `Computed`, `Url`, `Layout`, isolated polling and localized polite offline status regions. `wire:offline` is restricted to bearer-free authenticated pages; guest/auth pages use a client-only equivalent so invitation/reset URLs never enter Livewire snapshots. Destructive Flux dialogs and password toggles have semantic EN/LT/RU accessible names.
-- Migrated to CSS-first Tailwind sources and an OKLCH semantic token system with focus, touch, reduced-motion and forced-colors support. Final CSS is 296.74 kB / 38.98 kB gzip; application JS remains 0.00 kB.
+- Migrated to CSS-first Tailwind sources and an OKLCH semantic token system with focus, touch, reduced-motion and forced-colors support. Final CSS is 297.20 kB / 39.04 kB gzip; application JS remains 0.00 kB.
 - Browser-verified public/auth/dashboard/settings flows, locale persistence, password confirmation, logout/login/delete, offline/online state, responsive overflow and modal semantics in an isolated Chrome context. Representative Lighthouse samples scored 100 in every reported category with no console warnings/errors.
 
 ### Factories, seeders and tests
 
 - Completed 41 factories for all 41 first-party models with valid defaults and 105 explicit state/relationship helpers; there are no exemptions.
 - Added `DemoOperationalStateSeeder` and a safe seven-seeder hierarchy covering empty, live, payment-requested, completed, ticket, waiter-call, payment and audit workflows; demo seeding remains production-blocked and idempotent.
-- The pre-demo sequential and parallel Pest snapshot passed 693 tests with 20,593 assertions; nine skips were exclusively disabled passkey/2FA feature gates. Larastan level 8 reported zero errors and 664 first-party PHP entry files passed syntax checks. Current stable-tree and browser acceptance remain pending Task 8; the earlier 90.4% coverage result is historical because the available PHP CLI no longer loads Xdebug/PCOV.
+- Final sequential and parallel Pest runs pass 737 tests with 21,006 assertions: 728 pass and nine skips remain exclusively disabled passkey/2FA feature gates. Sequential runtime is 62.483 seconds and parallel runtime is 17.822 seconds. Larastan level 8 and Pint pass; the earlier 90.4% coverage and 664-file syntax results remain historical because the available PHP CLI loads no Xdebug/PCOV driver and the syntax inventory predates this slice.
 - Added executable query budgets: audit pagination remains at 10 queries as history grows from 12 to 52 rows, the guest menu drops from 15 cold-cache queries to 2 warm-cache queries, and the eager-loaded waiter dashboard is capped at 40 queries for its complete operational graph.
-- Isolated SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.61 s / 6.67 s. The pre-demo translation snapshot contained 2,039 semantic keys per locale; the current EN/LT/RU JSON inventory contains 2,056 keys per locale, with the 421-file scan using 1,505 semantic keys and the 6,168-entry audit reporting zero critical issues.
+- Isolated temporary SQLite completed all 66 migrations plus default seeding, followed by two successful idempotent demo runs in 3.582 s / 6.660 s and an exact count of 12 catalogue users; the validated temporary file was removed afterward. EN/LT/RU contain 2,056 JSON keys per locale, with the 421-file scan using 1,505 semantic keys and the 6,168-entry audit reporting zero critical issues.
 
 ### Deployment and compatibility
 
 - Production requires PHP 8.5, locked Composer/npm dependencies, built Vite assets, forward migrations, writable SQLite/storage/cache paths, HTTPS secure sessions and `APP_DEBUG=false`.
 - Core workflows continue to require no Redis, WebSocket, S3, Docker, supervisor, persistent worker, cron or SSH-only runtime. Passkeys and 2FA remain explicitly disabled feature gates; no existing public/API contract was silently enabled.
+- Config, route and view caches pass with 66 routes. Real Herd probes return 404 for demo GET and POST when disabled and also in production with the demo flag deliberately set true; the verified local environment was restored to `DEMO_LOGIN_ENABLED=false`.
 - Physical assistive-technology/device and non-Chromium browser evidence remain environmental limitations; no in-scope implementation, dependency, test, static-analysis, migration, seed or browser-console defect is deferred.
 
 ## 2026-06-05

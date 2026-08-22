@@ -16,7 +16,7 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 
 ## Pre-demo historical baseline (2026-08-22)
 
-The table below predates the demo-login slice. It remains historical evidence only; current targeted demo evidence follows separately, while the stable-tree full-suite, cache and browser refresh remains pending Task 8.
+The table below predates the demo-login slice and remains historical evidence only. The current stable-tree evidence follows separately.
 
 | Command | Result |
 |---|---|
@@ -33,24 +33,37 @@ The table below predates the demo-login slice. It remains historical evidence on
 | `php artisan translations:audit` | 6,117 semantic entries; 0 critical issues |
 | `composer validate --strict` / `composer audit --locked` | valid / zero advisories |
 | `npm audit --audit-level=low` / `npm run build` | zero advisories / passed |
-| config, route and view cache builds | pre-demo baseline passed with 64 routes and was followed by `optimize:clear`; current read-only route inventory is 66, while cache/HTTP smoke refresh remains pending Task 8 |
+| config, route and view cache builds | pre-demo baseline passed with 64 routes and was followed by `optimize:clear` |
 
 The gated skips are intentional passkey/2FA feature boundaries because `config('fortify.features')` currently enables only password reset. Public registration is intentionally disabled and covered by negative route tests; invited account creation is covered by invitation acceptance tests.
 
-## Demo-login targeted evidence
+## Current stable-tree and demo-login evidence (2026-08-23)
 
-The current demo-login slice has separate targeted evidence and does not replace the historical full-suite results above:
+All commands below were observed again on the final feature tree after the demo-login and shared favicon fixes:
 
 | Check | Observed result |
 |---|---|
-| `php artisan test --compact tests/Feature/DemoLoginTest.php tests/Feature/RouteProtectionAuditTest.php` | 77 tests passed; 358 assertions |
+| `composer validate --strict` / `composer audit --locked --no-interaction` | valid package; zero advisories |
+| `composer prohibits php 8.6 --locked` | expected exit 1: the project constraint and three locked dependencies explicitly prohibit PHP 8.6 |
+| `vendor/bin/pint --parallel --test` / `vendor/bin/phpstan analyse --memory-limit=1G` | passed / Larastan level 8, 0 errors |
+| `php artisan test --compact tests/Unit/DemoAccountCatalogTest.php tests/Feature/DemoLoginTest.php tests/Feature/DemoRestaurantSeederTest.php tests/Feature/RouteProtectionAuditTest.php tests/Feature/DesignSystemTest.php` | 94 tests passed; 1,019 assertions |
+| `php artisan test --compact` | 737 tests; 728 passed; 9 skipped; 21,006 assertions; 62.483 s |
+| `php artisan test --compact --parallel` | same counts and assertions; 17.822 s |
 | demo page query budget | exactly 2 Eloquent queries with two catalog users (one matching and one role-mismatched); all 12 roles remain in canonical order |
 | disabled and production boundary | 21 repeated GET probes remain 404 in each state; guarded requests do not consume the demo throttle |
 | CSRF and throttle regressions | demo POST without a token and logout POST without a token return 419; request 21 after 20 successful demo GETs returns 429 |
 | `php artisan translations:scan --json` | 421 files; 1,505 semantic keys used; 0 missing, legacy or phrase keys |
 | `php artisan translations:audit` | 6,168 semantic entries; 0 critical issues |
+| `npm audit --audit-level=low` / `npm run build` | zero vulnerabilities; Vite 8.2.2 build passes with CSS 297.20 kB / 39.04 kB gzip and application JS 0.00 kB |
+| config, route and view cache builds | pass; 66 routes total; exactly two demo routes with guard → CSRF → throttle order |
+| isolated SQLite acceptance | all 66 migrations plus default seed pass; consecutive demo seeds take 3.582 s and 6.660 s and leave 12 catalogue users; validated temporary file removed |
+| real Herd guard probes | local disabled GET/POST return 404; production with `DEMO_LOGIN_ENABLED=true` also returns 404; final environment restored to local/false |
 
-Final browser acceptance is still pending the final Task 8 gate. It must exercise every available role through selection, login and destination; EN/LT/RU content; keyboard operation and visible focus; 320 px mobile layout without horizontal overflow; and browser console/network inspection in disposable isolated profiles. These browser checks are acceptance criteria, not yet observed evidence for this slice.
+Chrome DevTools used a distinct disposable isolated context for every role. All 12 visible buttons submitted to `/dashboard`, the account control named the expected demo user, and authenticated navigation back to `/demo-login` remained on `/dashboard`. A bounded local fixture check removed only the fictitious Cook user; Chrome exposed the unavailable status, hint and disabled control, guest dashboard access still redirected to login, and `DemoRestaurantSeeder` immediately restored all 12 identities. The automated action/HTTP tests provide the matching direct-POST rejection and session-ID regeneration assertions without exposing cookie or token values.
+
+Fresh EN/LT/RU contexts verified translated title, warning, availability state and role button text with no raw placeholder. Chrome captured 320×640, 360×640, 768×1024 and 1440×900 screenshots in its disposable tool temp; each viewport had `scrollWidth == clientWidth`, 12 usable actions and 44 px minimum control height. Keyboard order was skip link → logo → first role action, focus remained visible, and Enter completed login. Light and dark Chromium rendering passed. The available headless interface did not change zoom for its 200% keyboard shortcut and exposes no reduced-motion or forced-colors emulator; the corresponding CSS media queries and focused design tests pass, but non-headless 200% zoom, physical assistive technology/device and non-Chromium checks remain environmental limitations.
+
+Chrome and Playwright both completed real Herd navigation and accessibility snapshots with 0 console warnings/errors and no failed assets; the SVG favicon and Apple touch icon returned 200 and no legacy ICO request occurred. Mobile and desktop Lighthouse scored accessibility 100 and agentic browsing 100. Best practices 78 and SEO 60 reflect only the local HTTP/HTTPS-redirect checks and the intentional `noindex` demo response. The Chrome performance trace recorded LCP 100 ms, TTFB 29 ms and CLS 0.00.
 
 ## Automated architecture boundaries
 

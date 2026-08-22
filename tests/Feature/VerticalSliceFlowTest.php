@@ -26,10 +26,14 @@ use App\Enums\TableSessionStatus;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
+use App\Livewire\PublicQr\GuestActions;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Livewire\PublicQr\JoinRequests;
 use App\Livewire\PublicQr\Show as PublicQrShow;
-use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
+use App\Livewire\Waiter\TableDetail\DraftReview as WaiterDraftReview;
+use App\Livewire\Waiter\TableDetail\OrderFulfilment as WaiterOrderFulfilment;
+use App\Livewire\Waiter\TableDetail\Payment as WaiterPayment;
 use App\Models\DraftOrder;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
@@ -129,7 +133,9 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSeeText('Terrace Table 1');
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('state', 'ready')
+        ->assertSet('state', 'ready');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', '  Ana  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -154,9 +160,13 @@ test('first vertical slice works from registration to closed table session', fun
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
 
     Livewire::withCookie($cookieName, $firstGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentTableSessionId', $tableSession->id)
-        ->assertSet('currentGuestId', $firstGuest->id)
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $firstGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+            'venueName' => 'Vertical Bistro',
+        ])
         ->call('createGuestInviteLink')
         ->assertHasNoErrors()
         ->assertSeeText('Invite link is ready.');
@@ -170,7 +180,7 @@ test('first vertical slice works from registration to closed table session', fun
 
     Livewire::withQueryParams(['invite' => $inviteToken])
         ->withCookie($cookieName, str_repeat('x', 64))
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Boris')
         ->call('enterTable')
@@ -238,13 +248,16 @@ test('first vertical slice works from registration to closed table session', fun
         ->and($waiter->notifications()->count())->toBe(1);
 
     Livewire::actingAs($waiter)
-        ->test(WaiterTableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.draft.status_value', DraftOrderStatus::SentToWaiter->value)
+        ->test(WaiterDraftReview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('draftReview.status_value', DraftOrderStatus::SentToWaiter->value)
         ->assertSee('Vertical Pizza')
         ->assertSee('Vertical Lemonade')
         ->call('confirmDraft')
         ->assertHasNoErrors()
-        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po'))
+        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po'));
+
+    Livewire::actingAs($waiter)
+        ->test(WaiterOrderFulfilment::class, ['tableSessionId' => $tableSession->id])
         ->call('sendOrderToKitchenBar')
         ->assertHasNoErrors()
         ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_otpravlen_na_kuxniu_bar_gosti_uvidiat'));
@@ -282,14 +295,14 @@ test('first vertical slice works from registration to closed table session', fun
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::ReadyToServe);
 
     Livewire::actingAs($waiter)
-        ->test(WaiterTableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.draft.ready_ticket_item_count', 2)
+        ->test(WaiterOrderFulfilment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('orderFulfilment.ready_ticket_item_count', 2)
         ->assertSee('Mark served')
         ->call('markTicketItemServed', $kitchenTicketItem->id)
         ->assertHasNoErrors()
         ->call('markTicketItemServed', $barTicketItem->id)
         ->assertHasNoErrors()
-        ->assertSet('table.draft.order_status_value', OrderStatus::Served->value)
+        ->assertSet('orderFulfilment.order_status_value', OrderStatus::Served->value)
         ->assertSee('Served');
 
     expect($order->fresh()->status)->toBe(OrderStatus::Served)
@@ -307,8 +320,8 @@ test('first vertical slice works from registration to closed table session', fun
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::PaymentRequested);
 
     Livewire::actingAs($waiter)
-        ->test(WaiterTableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.remaining_total', '16.50 EUR')
+        ->test(WaiterPayment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.remaining_total', '16.50 EUR')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
         ->assertHasNoErrors()

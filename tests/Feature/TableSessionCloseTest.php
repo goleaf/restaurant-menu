@@ -12,7 +12,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\Payment;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -53,9 +53,9 @@ test('staff with close table sessions permission can close an active session and
         ->count();
 
     Livewire::actingAs($staff)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.session.can_close', true)
-        ->assertSet('table.session.close_requires_warning', true)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.session.can_close', true)
+        ->assertSet('payment.session.close_requires_warning', true)
         ->set('closeTableConfirmation', 'CLOSE')
         ->call('closeTableSession')
         ->assertSee(__('payments.messages.session_closed'));
@@ -99,10 +99,29 @@ test('staff without close table sessions permission cannot manually close an unp
     attachPrompt68Staff($waiter, $organization, [SystemPermission::ViewOrders], SystemRole::Cook);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.session.can_close', false)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.session.can_close', false)
         ->call('closeTableSession')
         ->assertHasErrors(['table_session']);
+
+    expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Active)
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+});
+
+test('browser tampering cannot bypass the unpaid session close confirmation', function () {
+    [$organization, , $servicePoint, $tableSession] = createPrompt68CloseContext();
+    $staff = User::factory()->create(['name' => 'Tamper resistant closer']);
+    attachPrompt68Staff($staff, $organization, [
+        SystemPermission::ViewOrders,
+        SystemPermission::CloseTableSessions,
+    ]);
+
+    Livewire::actingAs($staff)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.session.close_requires_warning', true)
+        ->set('payment.session.close_requires_warning', false)
+        ->call('closeTableSession')
+        ->assertHasErrors(['closeTableConfirmation']);
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Active)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);

@@ -10,8 +10,8 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Livewire\PublicQr\Show as PublicQrShow;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\PublicQr\GuestEntry;
+use App\Livewire\Waiter\TableDetail\Overview;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -69,8 +69,8 @@ test('waiter table detail exposes free service points and can transfer the sessi
     attachPrompt117Staff($waiter, $organization, [SystemPermission::ViewOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.transfer.can_transfer', true)
+        ->test(Overview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('overview.transfer.can_transfer', true)
         ->assertSee(__('ui.waiter.table_detail.perenesti_stol'))
         ->assertSee($newServicePoint->name)
         ->set('transferTargetServicePointId', $newServicePoint->id)
@@ -103,7 +103,7 @@ test('guest restored from original qr sees the current transferred service point
     app(TransferTableSessionAction::class)->handle($tableSession, $newServicePoint, $waiter);
 
     Livewire::withCookie(prompt117GuestTokenCookieName($oldQrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $oldQrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $oldQrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $guest->id)
         ->assertSet('landing.service_point_name', $newServicePoint->name)

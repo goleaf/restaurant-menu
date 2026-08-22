@@ -12,8 +12,8 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Livewire\PublicQr\Show as PublicQrShow;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\PublicQr\GuestEntry;
+use App\Livewire\Waiter\TableDetail\Overview;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -95,8 +95,8 @@ test('waiter table detail can merge another service point and shows linked place
     attachPrompt118Staff($waiter, $organization, [SystemPermission::ViewOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.merge.can_merge', true)
+        ->test(Overview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('overview.merge.can_merge', true)
         ->assertSee(__('ui.waiter.table_detail.obieedinit_stoly'))
         ->assertSee($linkedServicePoint->name)
         ->set('mergeTargetServicePointId', $linkedServicePoint->id)
@@ -117,7 +117,7 @@ test('guest scanning linked qr creates a join request for the main active sessio
     attachPrompt118Staff($waiter, $organization, [SystemPermission::ViewOrders]);
     app(MergeTableSessionServicePointAction::class)->handle($tableSession, $linkedServicePoint, $waiter);
 
-    Livewire::test(PublicQrShow::class, ['token' => $linkedQrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $linkedQrCode->public_token])
         ->set('guestName', 'Bella')
         ->call('enterTable')
         ->assertSet('currentTableSessionId', $tableSession->id)

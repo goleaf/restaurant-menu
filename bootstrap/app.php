@@ -5,6 +5,7 @@ use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Http\Middleware\RequireJsonHealthCheckResponse;
 use App\Http\Middleware\SetInterfaceLocale;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(RequireJsonHealthCheckResponse::class);
         $middleware->append(AssignRequestId::class);
 
         $middleware->web(append: [

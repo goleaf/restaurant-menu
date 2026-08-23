@@ -29,3 +29,7 @@ The only unnamed first-party application route was `/settings`. Adding `settings
 ## D-007 — Do not perform an unnecessary dependency migration
 
 The installed dependencies match the declared target stack and audits are clean. Pest 5 is a major-version opportunity, not a current requirement; upgrading it during closure would expand scope and invalidate a stable Pest 4 baseline without a product or security benefit.
+
+## D-008 — Serve the readiness endpoint as JSON for every client
+
+Laravel 13's built-in health route preserves the required `DiagnosingHealth` event and generic 200/500 handling, but its HTML branch loads fonts and Tailwind from public CDNs and requests a favicon. A path-scoped request middleware forces only `/up` through Laravel's built-in JSON branch, retaining framework health semantics while making readiness deterministic, offline-safe, detail-free, and free of browser console/network noise.

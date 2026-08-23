@@ -4,6 +4,7 @@ This file records shipped milestones, not active requirements or future work. Se
 
 ## 2026-08-23 — operational hardening
 
+- Made `/up` return a self-contained JSON readiness result for every client, removing the framework health page's runtime CDN and missing-favicon requests while preserving dependency diagnostics and generic 200/500 states.
 - Expanded the deterministic factory-backed demo restaurant so every branch has a complete staff/menu/table/QR/order/payment/history graph and every bar department has new, in-progress, and ready tickets.
 - Upgraded `/up` to verify the migrated SQLite schema, cache, private storage, and log storage; added request IDs, safe structured exception context, redacted daily logs, and deduplicated opt-in production error email.
 - Added protected SQLite restoration with password confirmation, audited intent, schema validation, exclusive locking, maintenance mode, a private safety snapshot, rollback, and session invalidation.

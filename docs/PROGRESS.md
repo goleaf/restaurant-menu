@@ -26,15 +26,15 @@ The first audit run found a formatting defect in `DemoOperationalStateSeeder` an
 
 ## P0 progress
 
-- **P0.1 demo graph:** implementation committed concurrently; one bounded loop-count optimization remains as a preserved working-tree change. Fresh post-commit targeted/idempotency/static-analysis evidence is pending.
-- **P0.2 named routes:** RED observed for missing `settings.index` (42 passed, 1 failed); route named without behavioural change; GREEN observed (43 tests, 169 assertions); Pint passed.
-- **P0.3 documentation:** requested completion plan/progress/decisions, index, requirement status, architecture inventory, roadmap relationship, and permanent reading rule added. Final link/diff review is pending.
+- **P0.1 demo graph — complete:** the factory-backed graph and bounded loop-count optimization are committed at local `ff8fac0`. Post-commit demo/factory/route verification passed with 67 tests and 1,264 assertions; Larastan reported 0 errors; Pint reported clean. All 73 migrations ran against `/tmp/restaurant-menu-p0.fGhb8K/audit.sqlite`, and two consecutive isolated `DemoRestaurantSeeder` runs completed successfully with storage isolated under the same temporary root.
+- **P0.2 named routes — complete:** RED observed for missing `settings.index` (42 passed, 1 failed); route named without behavioural change; GREEN observed (43 tests, 169 assertions); the route inventory confirms `settings.index` carries `web` and `auth`; Pint passed.
+- **P0.3 documentation — complete:** requested completion plan/progress/decisions, index, requirement status, architecture inventory, roadmap relationship, and permanent reading rule added. Requirement/compliance parity is 49/49, every new cross-document target exists, and `git diff --check` passes.
 
 ## P1 progress
 
-- Backend/data final gates: pending after P0 stabilization.
-- Frontend/localization/cache final gates: pending after P0 stabilization.
-- Disposable-browser smoke/accessibility review: pending.
+- Backend/data final gates: Composer validation/audit, targeted P0 suites, Larastan, Pint, fresh isolated migration and repeated demo seed pass. Sequential/parallel/full coverage gates remain pending on the final stable tree.
+- Frontend/localization/cache final gates: npm audit, Vite build, EN/LT/RU scan/audit and config/route/event/view cache builds pass; generated caches were cleared afterward.
+- Disposable-browser smoke/accessibility review: isolated Chrome verified `/`, staff-login navigation, `/login`, and `/guest` at desktop and 390×844 mobile. Public/login/guest requests returned 200, accessibility trees were meaningful, keyboard focus began with the skip link and reached named controls, mobile horizontal overflow was zero, and `/guest` Lighthouse scored 100 in accessibility, best practices, SEO and agentic browsing. The first `/up` check exposed Laravel's external Bunny/jsDelivr assets plus a missing favicon; a RED/GREEN observability test and `RequireJsonHealthCheckResponse` fixed the root cause. Recheck observed only `GET /up` 200 with `{"status":"up"}` and zero console messages or asset requests.
 
 ## P2 boundaries
 

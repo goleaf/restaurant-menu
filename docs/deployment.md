@@ -25,7 +25,7 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-Before promotion, run the complete release gates in [`testing.md`](testing.md). After promotion, verify `/up`, its `X-Request-Id` and no-store response, login, one public QR route, an authorized staff dashboard, asset delivery and recent application/browser logs. Test-fire error notification delivery with an authorized staging failure before enabling it in production. Never run demo seeding or `migrate:fresh` in production.
+Before promotion, run the complete release gates in [`testing.md`](testing.md). After promotion, verify `/up`, its self-contained JSON `status`, `X-Request-Id` and no-store response without any asset requests; then verify login, one public QR route, an authorized staff dashboard, asset delivery and recent application/browser logs. Test-fire error notification delivery with an authorized staging failure before enabling it in production. Never run demo seeding or `migrate:fresh` in production.
 
 ## Environment and data
 

@@ -21,7 +21,11 @@ test('health endpoint verifies production dependencies without exposing details'
 
     $response
         ->assertOk()
-        ->assertHeader('X-Request-Id');
+        ->assertHeader('X-Request-Id')
+        ->assertHeader('Content-Type', 'application/json')
+        ->assertJson(['status' => 'up'])
+        ->assertDontSee('fonts.bunny.net', false)
+        ->assertDontSee('cdn.jsdelivr.net', false);
 
     expect($response->headers->get('X-Request-Id'))
         ->toMatch('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/');
@@ -40,6 +44,8 @@ test('health endpoint fails closed when a required dependency is unavailable', f
         $this->get('/up')
             ->assertInternalServerError()
             ->assertHeader('X-Request-Id')
+            ->assertHeader('Content-Type', 'application/json')
+            ->assertJson(['status' => 'down'])
             ->assertDontSee('Production health check [cache] failed');
     } finally {
         config()->set('cache.default', $originalCacheStore);

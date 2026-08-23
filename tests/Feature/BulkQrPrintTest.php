@@ -93,6 +93,18 @@ test('bulk qr print can select multiple existing eternal qr codes', function () 
         ->assertSee('QR-P27NOZN')
         ->assertSee('data:image/svg+xml;base64', false)
         ->assertDontSee('QR-P27MISS');
+
+    $component
+        ->set('selectedServicePointIds', [
+            $servicePoints['mainWithQr']->id,
+            (string) $servicePoints['mainWithQr']->id,
+        ]);
+
+    expect($component->get('selectedServicePointIds'))->toBe([$servicePoints['mainWithQr']->id]);
+
+    $component
+        ->call('clearSelection')
+        ->assertSet('selectedServicePointIds', []);
 });
 
 test('bulk qr print applies label design presets to selected stickers', function () {
@@ -148,7 +160,8 @@ test('bulk qr print offers and creates missing qr without duplicating active qr 
             'brand' => $brand,
             'branch' => $branch,
         ])
-        ->call('createQrForServicePoint', $missingServicePoint->id);
+        ->call('createQrForServicePoint', $missingServicePoint->id)
+        ->call('createMissingQrForVisible');
 
     expect(QrCode::query()
         ->where('service_point_id', $missingServicePoint->id)

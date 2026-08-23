@@ -157,7 +157,7 @@ test('manager must explain qr disable and type short code before reissue', funct
     [$organization, $brand, $branch, $servicePoint, $qrCode, $manager] = createPrompt25QrContext();
     grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
 
-    Livewire::actingAs($manager)
+    $component = Livewire::actingAs($manager)
         ->test(QrAdminShow::class, [
             'organization' => $organization,
             'brand' => $brand,
@@ -180,11 +180,19 @@ test('manager must explain qr disable and type short code before reissue', funct
         ])
         ->call('confirmReissue')
         ->assertSet('confirmingReissue', true)
+        ->set('qrReissueConfirmation', 'TEMPORARY')
+        ->call('cancelReissue')
+        ->assertSet('confirmingReissue', false)
+        ->assertSet('qrReissueConfirmation', '')
+        ->call('confirmReissue')
         ->call('reissueQr')
         ->assertHasErrors(['qrReissueConfirmation'])
         ->set('qrReissueConfirmation', 'WRONG-CODE')
         ->call('reissueQr')
         ->assertHasErrors(['qrReissueConfirmation']);
+
+    expect($component->instance()->dangerousAction(DangerousAction::DisableQr->value))
+        ->toBe(DangerousAction::DisableQr);
 
     expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active)
         ->and(QrCode::query()

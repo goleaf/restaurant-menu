@@ -162,6 +162,8 @@ test('show qr reveals existing active qr without creating another record', funct
         ->call('showQr', $servicePoint->id)
         ->assertSee($existingQrCode->short_code)
         ->assertSee($existingQrCode->publicPath())
+        ->call('hideQr')
+        ->assertSet('shownQrServicePointId', null)
         ->call('generateQr', $servicePoint->id)
         ->assertSee($existingQrCode->short_code);
 

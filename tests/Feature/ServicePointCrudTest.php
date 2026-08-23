@@ -385,7 +385,7 @@ test('manager can rename move and disable service points without changing identi
     $originalId = $servicePoint->id;
     $originalInternalCode = $servicePoint->internal_code;
 
-    Livewire::actingAs($manager)
+    $component = Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
         ->call('startEditing', $servicePoint->id)
         ->assertSet('editingName', 'Table 12')
@@ -399,6 +399,8 @@ test('manager can rename move and disable service points without changing identi
         ->assertSee('Terrace table 12')
         ->call('disable', $servicePoint->id);
 
+    expect($component->get('floorBoardServicePointCount'))->toBe(1);
+
     $servicePoint->refresh();
 
     expect($servicePoint->id)->toBe($originalId);
@@ -409,6 +411,10 @@ test('manager can rename move and disable service points without changing identi
     expect($servicePoint->capacity)->toBe(5);
     expect($servicePoint->icon)->toBe('sparkles');
     expect($servicePoint->is_active)->toBeFalse();
+
+    $component->call('enable', $servicePoint->id);
+
+    expect($servicePoint->fresh()->is_active)->toBeTrue();
 });
 
 test('manager can change service point status manually', function () {

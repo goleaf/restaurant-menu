@@ -15,7 +15,6 @@ GitHub Issues is the only source for acceptance criteria and status. This table 
 | Now | [#3 — Publish the verified modernization release](https://github.com/goleaf/restaurant-menu/issues/3) |
 | Now | [#4 — Run all production release gates on the exact release commit](https://github.com/goleaf/restaurant-menu/issues/4) |
 | Now | [#5 — Configure and verify production health, logs, and error alerts](https://github.com/goleaf/restaurant-menu/issues/5) |
-| Now | [#6 — Perform an isolated production-like SQLite backup and restore drill](https://github.com/goleaf/restaurant-menu/issues/6) |
 | Next | [#7 — Validate critical workflows on physical devices and Safari/Firefox](https://github.com/goleaf/restaurant-menu/issues/7) |
 | Next | [#8 — Complete physical screen-reader and assistive-technology review](https://github.com/goleaf/restaurant-menu/issues/8) |
 | Later | [#10 — Define and implement shared draft-item allocations between guests](https://github.com/goleaf/restaurant-menu/issues/10) |

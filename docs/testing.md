@@ -27,7 +27,8 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 | `php artisan test --compact` | 854 tests; 845 passed; 8 feature-gated skips and 1 tracked `todo` for issue #10; 22,990 assertions; 85.913 seconds |
 | `php artisan test --compact --parallel` | same counts and assertions; 28.048 seconds |
 | `composer test:coverage` | 850 Unit/Feature tests; 841 passed; 9 skipped, including the single tracked `todo` for issue #10; 22,877 assertions; 90.6% application coverage; 264.760 seconds |
-| SQLite restore tests after in-memory maintenance isolation | 4 passed; 24 assertions |
+| authorized SQLite backup/restore and rollback suite | 12 passed; 86 assertions; 3.03 seconds |
+| isolated WAL/concurrent-reader demo recovery drill | 1 organization, 4 branches, 19 QR records/files, 6 orders and 5 payments restored; cache/session/token cleanup and safety snapshot passed; core restore 0.066 seconds |
 | `vendor/bin/pint --dirty --format agent` | passed |
 | `vendor/bin/phpstan analyse --memory-limit=1G` | passed; 0 errors |
 | `php artisan translations:scan --json` | 550 files; 1,614 semantic keys used; 2,178 JSON keys per locale; 0 missing/legacy/phrase keys |

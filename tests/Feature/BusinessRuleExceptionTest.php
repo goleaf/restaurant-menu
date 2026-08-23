@@ -21,6 +21,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
@@ -42,6 +43,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\BusinessRules\BusinessRuleResult;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Validation\ValidationException;
@@ -89,6 +91,36 @@ test('business rule violation is validation safe and not reportable', function (
         ->and($exception->errors()['draft_edit'][0])->toBe(__('ui.enums.businessrulecode.nelzia_vypolnit_deistvie_dlia_zakrytogo_stola'))
         ->and($exception->errors()['draft_edit'][0])->not->toContain('SessionClosed')
         ->and($exception->errors()['draft_edit'][0])->not->toContain('session_closed');
+});
+
+test('business rule result represents allowed and denied outcomes', function (): void {
+    $allowed = BusinessRuleResult::allowed();
+
+    $allowed->throwIfDenied();
+
+    expect($allowed->allowed)->toBeTrue()
+        ->and($allowed->rule)->toBeNull()
+        ->and($allowed->field)->toBe('business_rule')
+        ->and($allowed->context)->toBe([]);
+
+    $denied = BusinessRuleResult::denied(
+        rule: BusinessRuleCode::SessionClosed,
+        field: 'table_session',
+        message: 'The table session is closed.',
+        context: ['table_session_id' => 91],
+    );
+
+    try {
+        $denied->throwIfDenied();
+        $this->fail('Expected the denied result to throw a business rule violation.');
+    } catch (BusinessRuleViolation $exception) {
+        expect($denied->allowed)->toBeFalse()
+            ->and($denied->rule)->toBe(BusinessRuleCode::SessionClosed)
+            ->and($exception->businessRule())->toBe(BusinessRuleCode::SessionClosed)
+            ->and($exception->field())->toBe('table_session')
+            ->and($exception->errors()['table_session'][0])->toBe('The table session is closed.')
+            ->and($exception->context())->toBe(['table_session_id' => 91]);
+    }
 });
 
 test('closed session draft edit returns controlled business rule error', function () {

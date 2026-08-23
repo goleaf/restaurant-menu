@@ -2,6 +2,7 @@
 
 use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
+use App\Actions\Notifications\MarkGuestNotificationsReadAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -78,6 +79,21 @@ test('new join request creates unread database notifications for active guests',
         ->assertSet('unreadCount', 1)
         ->assertSee(__('ui.livewire.publicqr.notifications.novyi_gost_zdet_podtverzdeniia_7813e12a'))
         ->assertSee('Mira');
+});
+
+test('guest notification read action marks only an allowed unread notification', function (): void {
+    [, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
+    $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
+    $guest->notify(new KitchenItemReadyNotification($ticketItem));
+    $notification = $guest->unreadNotifications()
+        ->where('type', 'kitchen_item_ready')
+        ->firstOrFail();
+    $action = app(MarkGuestNotificationsReadAction::class);
+
+    expect($action->one($guest, $notification->id, ['draft_order_confirmed']))->toBeFalse()
+        ->and($action->one($guest, $notification->id, ['kitchen_item_ready']))->toBeTrue()
+        ->and($action->one($guest, $notification->id, ['kitchen_item_ready']))->toBeFalse()
+        ->and($notification->fresh()->read_at)->not->toBeNull();
 });
 
 test('sent draft creates unread database notification for waiter and unread count polls it', function () {

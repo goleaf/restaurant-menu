@@ -85,6 +85,18 @@ test('central rules allow valid enum and money inputs', function () {
     expect($validator->fails())->toBeFalse($validator->errors()->toJson());
 });
 
+test('optional guest name accepts null and validates provided names', function (): void {
+    $rules = RestaurantValidationRules::optionalGuestName('guestName');
+    $emptyValidator = Validator::make(['guestName' => null], $rules);
+    $validValidator = Validator::make(['guestName' => 'Ana'], $rules);
+    $shortValidator = Validator::make(['guestName' => 'A'], $rules);
+
+    expect($emptyValidator->passes())->toBeTrue()
+        ->and($validValidator->passes())->toBeTrue()
+        ->and($shortValidator->fails())->toBeTrue()
+        ->and($shortValidator->errors()->keys())->toContain('guestName');
+});
+
 test('central image upload rules reject scriptable files', function () {
     $validator = Validator::make([
         'image' => UploadedFile::fake()->create('payload.svg', 10, 'image/svg+xml'),

@@ -24,6 +24,7 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 |---|---|
 | focused demo, invitation, seeder, route, design and vertical-flow Pest suite | 117 passed; 1,439 assertions |
 | invitation registration → paid table closure browser E2E | 1 passed; 82 assertions |
+| `vendor/bin/pest tests/Browser --browser chrome --compact` / `--browser safari` | 4 passed and 113 assertions in each of Chromium and Playwright WebKit 26.5 |
 | `php artisan test --compact` | 854 tests; 845 passed; 8 feature-gated skips and 1 tracked `todo` for issue #10; 22,990 assertions; 85.913 seconds |
 | `php artisan test --compact --parallel` | same counts and assertions; 28.048 seconds |
 | `composer test:coverage` | 850 Unit/Feature tests; 841 passed; 9 skipped, including the single tracked `todo` for issue #10; 22,877 assertions; 90.6% application coverage; 264.760 seconds |
@@ -42,7 +43,9 @@ The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/
 
 ## Preserved browser evidence
 
-Before the merge, Chrome DevTools used distinct disposable isolated contexts for the restaurant UI and every demo role. The checked flows covered all 12 one-click role logins, authenticated switch prevention, missing/restored account behavior, invitation registration boundaries, EN/LT/RU, keyboard submission and focus, light/dark rendering, and 320, 360, 768 and 1,440 CSS-pixel layouts without horizontal overflow. Chrome and Playwright reported no console warnings/errors or failed assets; demo Lighthouse accessibility scored 100 on mobile and desktop. Physical assistive technology/device, non-headless 200% zoom and non-Chromium evidence remain environmental limitations.
+Before the merge, Chrome DevTools used distinct disposable isolated contexts for the restaurant UI and every demo role. The checked flows covered all 12 one-click role logins, authenticated switch prevention, missing/restored account behavior, invitation registration boundaries, EN/LT/RU, keyboard submission and focus, light/dark rendering, and 320, 360, 768 and 1,440 CSS-pixel layouts without horizontal overflow. Chrome and Playwright reported no console warnings/errors or failed assets; demo Lighthouse accessibility scored 100 on mobile and desktop.
+
+On 2026-08-23, an additional disposable Chrome pass covered the waiter dashboard and table detail at 1,280 and 390 CSS pixels. The checked pages had no horizontal overflow, no checked interactive target below 24 CSS pixels, visible focus through the keyboard order, no console warnings/errors, and only successful network responses after applying the pending forward migrations to the local demo database. The complete four-test Pest Browser suite also passed in Playwright WebKit 26.5 with 113 assertions. Playwright Firefox 153 could not start on macOS 27 because of the [confirmed upstream sandbox failure](https://github.com/microsoft/playwright/issues/42082); a minimal browser launch reproduced the runtime failure before application navigation. Physical assistive technology/device, actual Safari/Firefox, and non-headless 200% zoom remain environmental limitations.
 
 ## Automated architecture boundaries
 

@@ -330,7 +330,12 @@ test('a restore failure after replacement automatically rolls the live database 
  */
 function sqliteRestoreSandbox(string $suffix): array
 {
-    $connection = 'sqlite_restore_'.str_replace('-', '_', $suffix);
+    $connection = implode('_', [
+        'sqlite_restore',
+        str_replace('-', '_', $suffix),
+        (string) getmypid(),
+        Str::lower(Str::random(8)),
+    ]);
     $directory = storage_path('framework/testing/'.$connection);
     $database = $directory.'/database.sqlite';
 

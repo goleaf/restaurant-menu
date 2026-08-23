@@ -33,3 +33,7 @@ The installed dependencies match the declared target stack and audits are clean.
 ## D-008 — Serve the readiness endpoint as JSON for every client
 
 Laravel 13's built-in health route preserves the required `DiagnosingHealth` event and generic 200/500 handling, but its HTML branch loads fonts and Tailwind from public CDNs and requests a favicon. A path-scoped request middleware forces only `/up` through Laravel's built-in JSON branch, retaining framework health semantics while making readiness deterministic, offline-safe, detail-free, and free of browser console/network noise.
+
+## D-009 — Make release tests safe under concurrency and long coverage runs
+
+Independent full and coverage processes may run in the shared checkout. SQLite restore tests therefore allocate unique database and local-filesystem roots per process/test instead of sharing candidates or safety snapshots. The canonical coverage script disables Composer's generic process timeout because the verified suite exceeds 300 seconds; Pest remains responsible for test failures and enforcing the unchanged 90% application floor.

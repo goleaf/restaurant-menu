@@ -84,3 +84,9 @@ Bring the present checkout to a locally complete, reproducibly tested, release-r
 3. Execute P1 backend/data, then frontend/localization/cache, then browser gates; fix any discovered defect before proceeding.
 4. Perform a final requirements-to-code/compliance audit and diff review.
 5. Report P2 external boundaries exactly; do not publish, deploy, rewrite history, or destroy data.
+
+## Execution status
+
+- **P0:** complete with targeted tests, route evidence, isolated migrations/seeding, static analysis, and documentation parity.
+- **P1:** complete with dependency audits, sequential/parallel/coverage suites, translations, production build, caches, disposable Chrome navigation, mobile overflow/keyboard/accessibility checks, Lighthouse 100, and a clean self-contained `/up` response.
+- **P2:** external/operator evidence remains explicitly bounded as described above; no production deployment, release publication, physical-device claim, or unapproved shared-allocation feature was performed.

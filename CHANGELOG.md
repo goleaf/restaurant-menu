@@ -7,6 +7,7 @@ This file records shipped milestones, not active requirements or future work. Se
 - Upgraded `/up` to verify the migrated SQLite schema, cache, private storage, and log storage; added request IDs, safe structured exception context, redacted daily logs, and deduplicated opt-in production error email.
 - Added protected SQLite restoration with password confirmation, audited intent, schema validation, exclusive locking, maintenance mode, a private safety snapshot, rollback, and session invalidation.
 - Established Larastan/PHPStan as the single static-analysis stack and added a CI-enforced 90% application coverage floor.
+- Enabled opt-in Xdebug coverage on the local Herd PHP 8.5 CLI and refreshed the current-tree application result to 90.6% without changing the coverage floor or production runtime mode.
 - Completed deterministic, production-guarded demo graphs across roles, restaurants, branches, areas, tables, localized menus, orders, payments, and print-safe QR images.
 - Finished integer-cent money persistence, item-level order cancellation history, kitchen/bar readiness separation, main-module policies, duplicate-operation protection, guest throttles, complete menu translation editing, model factories, and idempotent seed coverage.
 - Replaced public registration with recipient-bound invitation registration while preserving Fortify login, password reset, session regeneration, CSRF, and rate-limit controls.

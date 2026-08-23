@@ -52,15 +52,15 @@ Final status on 2026-08-23: **49 requirements catalogued; 48 implemented and ver
 | `ui-responsive-001` | responsive complete states | mobile-first layouts/components/tokens | n/a | duplicate mutations disabled | loading/empty/error/offline/success states | empty/normal/volume demo | design tests; public 360–1920 and operational 390–1440 Chromium checks | implemented and verified; physical-device limitation documented |
 | `seed-model-001` | factory for every model | 43 factories | every entity table | valid default graph and meaningful states | n/a | 43/43, no exemptions | `ModelFactoryAuditTest`, `FactoryStatesTest` | implemented and verified |
 | `seed-demo-001` | safe complete demo graph | 7 seeders including operational states | full restaurant workflow graph | production refusal, no truncation, idempotent keys | EN/LT/RU realistic content | roles and empty/live/historical/payment/audit states | fresh seed; repeated demo seed; production guard tests | implemented and verified |
-| `test-feature-001` | comprehensive Pest suite | feature, unit and browser suites | isolated SQLite | critical route/domain/security branches | Livewire/browser boundaries | factory/seeder support | full Pest suite, focused demo/invitation suite and CI-enforced 90% coverage floor; fresh local coverage blocked by missing driver | implemented and verified; local coverage evidence limitation documented |
+| `test-feature-001` | comprehensive Pest suite | feature, unit and browser suites | isolated SQLite | critical route/domain/security branches | Livewire/browser boundaries | factory/seeder support | full Pest suite, focused demo/invitation suite and 90% coverage floor; fresh local PHP 8.5/Xdebug run: 850 tests, 22,877 assertions, 90.6% | implemented and verified |
 | `test-architecture-001` | executable repository rules | architecture tests, Pint, configured Larastan | n/a | no broad static baseline/suppression | Blade/Tailwind/localization scans | n/a | PHP syntax, Pint, PHPStan and architecture tests | implemented and verified |
 | `ops-deployment-001` | reproducible observable shared-host release | monitoring/logging config, health listener/action, request-ID middleware, exception reporter/notification, Composer scripts and CI/docs | forward SQLite migrations and health schema/cache checks | production seed/debug/file safeguards; redacted rotating logs; deduplicated safe opt-in alerts | locked assets and no-cache `/up` with request ID | safe default seed; guarded demo | `ProductionObservabilityTest`; cache builds, route/event inspection, HTTP health smoke, audits/build | implemented and verified |
 
 ## Final common evidence
 
-- Sequential Pest: 854 tests, 845 passed, 9 feature-gated skips and 22,990 assertions in 85.913 seconds.
+- Sequential Pest: 854 tests, 845 passed, 8 feature-gated skips, 1 tracked issue #10 `todo` and 22,990 assertions in 85.913 seconds.
 - Parallel Pest: the same counts and assertions in 28.048 seconds after isolating maintenance mode inside restore tests.
-- Coverage remains CI-enforced at 90%; fresh local collection requires Xdebug or PCOV and must not be inferred from the historical 90.4% measurement.
+- Coverage remains enforced at 90%; fresh local collection on PHP 8.5.8 with Xdebug 3.5.0 passed at 90.6% in 264.760 seconds with 850 Unit/Feature tests, 841 passed, 9 skipped and 22,877 assertions.
 - Static/format: configured Larastan reports 0 errors and Pint passes.
 - Data: all 73 migrations pass from zero; two isolated demo seeds pass in 4.131 and 7.089 seconds and retain exactly 12 catalogue accounts plus 19 generated QR images.
 - Frontend: Vite 8.2.2 production build passes; CSS 303.36 kB / 39.72 kB gzip and application JS 4.56 kB / 1.73 kB gzip.

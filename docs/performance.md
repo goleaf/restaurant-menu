@@ -7,7 +7,7 @@ Performance changes are evidence-driven. Query-budget and cache-separation tests
 | Measurement | Baseline | Final | Interpretation |
 |---|---:|---:|---|
 | Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 854 tests / 85.913 s sequential; 28.048 s parallel, with 845 passed and 9 feature-gated skips | test volume increased; wall time is not an application latency benchmark |
-| Application coverage | unavailable | 90% minimum enforced in CI; last local measurement 90.4% before the UI slice | CI provisions Xdebug; current local PHP CLI has no Xdebug/PCOV and is not presented as fresh proof |
+| Application coverage | unavailable | 90.6% on the current tree; 90% minimum enforced locally and in CI | local Herd PHP 8.5.8 with Xdebug 3.5.0; coverage mode enabled only for the canonical command |
 | CSS | 282.03 kB / 36.41 kB gzip | 303.36 kB / 39.72 kB gzip | +21.33 kB raw / +3.31 kB gzip for Flux/Tailwind tokens and complete UI states |
 | Application JS | 0.00 kB | 4.56 kB / 1.73 kB gzip | bounded waiter sound and kitchen delay-timer behavior; no SPA/request library introduced |
 | Public mobile trace | LCP 107 ms; TTFB 47 ms; CLS 0 before the UI slice | LCP 140 ms; TTFB 37 ms; render delay 103 ms; CLS 0 | local Herd, no throttle; small-run variance is not production monitoring |

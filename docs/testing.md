@@ -16,7 +16,7 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 
 If `php artisan optimize` was run under the local environment, run `php artisan optimize:clear` before the test suite so PHPUnit's isolated environment and in-memory database configuration are loaded instead of the local cached configuration.
 
-`composer test:coverage` is the canonical coverage command. It runs the Unit and Feature suites against `app/` and fails below 90%. GitHub Actions provisions Xdebug and executes this gate after the full behavioral suite; local runs require a PHP 8.5 Xdebug or PCOV driver.
+`composer test:coverage` is the canonical coverage command. It runs the Unit and Feature suites against `app/` and fails below 90%. GitHub Actions provisions Xdebug and executes this gate after the full behavioral suite. The local Herd PHP 8.5 CLI loads Xdebug with `xdebug.mode=off`; the Composer script enables coverage only for this command through `XDEBUG_MODE=coverage`, so normal local and production requests do not pay coverage overhead.
 
 ## Current merged-tree evidence (2026-08-23)
 
@@ -24,8 +24,9 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 |---|---|
 | focused demo, invitation, seeder, route, design and vertical-flow Pest suite | 117 passed; 1,439 assertions |
 | invitation registration → paid table closure browser E2E | 1 passed; 82 assertions |
-| `php artisan test --compact` | 854 tests; 845 passed; 9 feature-gated skips; 22,990 assertions; 85.913 seconds |
+| `php artisan test --compact` | 854 tests; 845 passed; 8 feature-gated skips and 1 tracked `todo` for issue #10; 22,990 assertions; 85.913 seconds |
 | `php artisan test --compact --parallel` | same counts and assertions; 28.048 seconds |
+| `composer test:coverage` | 850 Unit/Feature tests; 841 passed; 9 skipped, including the single tracked `todo` for issue #10; 22,877 assertions; 90.6% application coverage; 264.760 seconds |
 | SQLite restore tests after in-memory maintenance isolation | 4 passed; 24 assertions |
 | `vendor/bin/pint --dirty --format agent` | passed |
 | `vendor/bin/phpstan analyse --memory-limit=1G` | passed; 0 errors |
@@ -36,7 +37,7 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 | isolated migration plus two `DemoRestaurantSeeder` runs | all 73 migrations passed; seeds completed in 4.131 and 7.089 seconds; 12 catalogue users and 19 QR SVGs retained |
 | config, route and view cache builds | passed; 71 routes; followed by `optimize:clear` |
 
-Fresh local coverage remains an explicit environment-dependent gate. The last historical measurement was 90.4%; it is not evidence for the merged tree.
+The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/bin/php85`, PHP 8.5.8 and Xdebug 3.5.0. `php -m` and `php --ri xdebug` confirmed the extension in that binary, and `XDEBUG_MODE=coverage php --ri xdebug` confirmed coverage mode for the canonical command. The 90% threshold and first-party source set were unchanged.
 
 ## Preserved browser evidence
 

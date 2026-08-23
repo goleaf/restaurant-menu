@@ -18,7 +18,6 @@ GitHub Issues is the only source for acceptance criteria and status. This table 
 | Now | [#6 — Perform an isolated production-like SQLite backup and restore drill](https://github.com/goleaf/restaurant-menu/issues/6) |
 | Next | [#7 — Validate critical workflows on physical devices and Safari/Firefox](https://github.com/goleaf/restaurant-menu/issues/7) |
 | Next | [#8 — Complete physical screen-reader and assistive-technology review](https://github.com/goleaf/restaurant-menu/issues/8) |
-| Next | [#9 — Enable local PHP 8.5 coverage and refresh the coverage report](https://github.com/goleaf/restaurant-menu/issues/9) |
 | Later | [#10 — Define and implement shared draft-item allocations between guests](https://github.com/goleaf/restaurant-menu/issues/10) |
 
 The external evidence gaps are summarized in [`docs/known-limitations.md`](docs/known-limitations.md). Issue #10 requires an approved requirement contract before implementation.

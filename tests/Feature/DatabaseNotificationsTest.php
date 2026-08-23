@@ -96,6 +96,28 @@ test('guest notification read action marks only an allowed unread notification',
         ->and($notification->fresh()->read_at)->not->toBeNull();
 });
 
+test('guest notification ui can mark one notification as read', function (): void {
+    [, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
+    $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
+    $guest->notify(new KitchenItemReadyNotification($ticketItem));
+    $notification = $guest->unreadNotifications()
+        ->where('type', 'kitchen_item_ready')
+        ->firstOrFail();
+
+    Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $guest->guest_token)
+        ->test(GuestNotifications::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => 'prompt82token',
+        ])
+        ->assertSet('unreadCount', 1)
+        ->call('markNotificationRead', $notification->id)
+        ->assertSet('unreadCount', 0)
+        ->assertSet('notifications', []);
+
+    expect($notification->fresh()->read_at)->not->toBeNull();
+});
+
 test('sent draft creates unread database notification for waiter and unread count polls it', function () {
     [$organization, , , $tableSession, $guest] = createPrompt81NotificationContext();
     $waiter = User::factory()->create(['name' => 'Prompt 81 Waiter']);

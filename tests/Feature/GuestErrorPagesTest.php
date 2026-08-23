@@ -134,6 +134,25 @@ test('guest error page is shown when invite link is stale', function () {
         ->assertSeeText('Return to QR page');
 });
 
+test('guest entry revalidates service point availability before creating a session', function () {
+    [$qrCode, , $servicePoint] = createPrompt86GuestErrorContext();
+
+    $component = Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
+        ->assertSet('state', 'ready');
+
+    $servicePoint->update(['is_active' => false]);
+
+    $component
+        ->set('guestName', 'Mira')
+        ->call('enterTable')
+        ->assertSet('state', 'inactive_service_point')
+        ->assertSet('title', __('qr.errors.service_point_unavailable.title'))
+        ->assertSet('message', __('qr.errors.service_point_unavailable.description'))
+        ->assertSet('entryIssueCode', '');
+
+    expect(TableSession::query()->count())->toBe(0);
+});
+
 function createPrompt86GuestErrorContext(QrCodeStatus $qrStatus = QrCodeStatus::Active): array
 {
     $organization = Organization::factory()->create(['name' => 'Prompt 86 Group']);

@@ -16,7 +16,9 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 
 test('active guest can approve a pending guest from the polled join requests block', function () {
     [$qrCode, , $tableSession, $activeGuest] = createGuestJoinApprovalContext();
@@ -121,6 +123,38 @@ test('waiting guest sees rejection after a current guest rejects from the join r
             ->where('guest_token', $joinRequest->guest_token)
             ->exists()
     )->toBeFalse();
+});
+
+test('join request moderation shows the first validation error returned by the action', function () {
+    [$qrCode, , $tableSession, $activeGuest] = createGuestJoinApprovalContext();
+    $joinRequest = TableSessionJoinRequest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Tomas',
+            'status' => TableSessionJoinRequestStatus::Pending,
+        ]);
+
+    $this->mock(ApproveTableSessionJoinRequestAction::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('handle')
+            ->once()
+            ->andThrow(ValidationException::withMessages([
+                'join_request' => ['The join request changed before approval.'],
+            ]));
+    });
+
+    Livewire::withCookie(guestJoinApprovalCookieName($qrCode), $activeGuest->guest_token)
+        ->test(JoinRequests::class, [
+            'tableSessionId' => $tableSession->id,
+            'guestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+        ])
+        ->call('approve', $joinRequest->id)
+        ->assertSet('notice', 'The join request changed before approval.')
+        ->assertSet('noticeTone', 'warning')
+        ->assertSeeText('The join request changed before approval.');
+
+    expect($joinRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Pending);
 });
 
 function createGuestJoinApprovalContext(): array

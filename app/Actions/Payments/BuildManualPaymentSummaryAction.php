@@ -33,12 +33,13 @@ class BuildManualPaymentSummaryAction
         $branch = $tableSession->branch;
         $currency = $branch->currency;
         $normalization = ['count' => 0, 'fields' => []];
-        $this->normalizeNullableBranchSettings($branch, $normalization);
+        $serviceChargeBasisPointsDefault = (int) BranchSetting::defaults($branch)['service_charge_basis_points'];
+        $this->normalizeNullableBranchSettings($branch, $serviceChargeBasisPointsDefault, $normalization);
         $confirmedTotalCents = $this->confirmedOrderItemsTotalCents($tableSession->orders);
         $settings = $this->settingsPayload($this->loadedSettings($branch), $branch);
         $this->normalizeNullablePaymentSnapshots(
             payments: $tableSession->manualPayments,
-            serviceChargeBasisPointsFallback: $settings['service_charge_basis_points'],
+            serviceChargeBasisPointsFallback: $serviceChargeBasisPointsDefault,
             normalization: $normalization,
         );
         $serviceChargeTotalCents = $settings['service_charge_enabled']
@@ -373,18 +374,18 @@ class BuildManualPaymentSummaryAction
     /**
      * @param  array{count: int, fields: list<array{record_type: string, record_id: int, column: string}>}  $normalization
      */
-    private function normalizeNullableBranchSettings(Branch $branch, array &$normalization): void
-    {
+    private function normalizeNullableBranchSettings(
+        Branch $branch,
+        int $serviceChargeBasisPointsDefault,
+        array &$normalization,
+    ): void {
         $settings = $this->loadedSettings($branch);
 
         if (! $settings instanceof BranchSetting || $settings->getAttribute('service_charge_basis_points') !== null) {
             return;
         }
 
-        $settings->setAttribute(
-            'service_charge_basis_points',
-            (int) BranchSetting::defaults($branch)['service_charge_basis_points'],
-        );
+        $settings->setAttribute('service_charge_basis_points', $serviceChargeBasisPointsDefault);
         $this->recordNormalizedField(
             normalization: $normalization,
             recordType: 'branch_setting',

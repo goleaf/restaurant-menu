@@ -274,7 +274,8 @@ test('nullable payment summary warning bounds normalized field references', func
         BranchSetting::factory()
             ->for($branch)
             ->create([
-                'service_charge_basis_points' => null,
+                'service_charge_enabled' => true,
+                'service_charge_basis_points' => 2500,
             ]);
         ManualPayment::factory()
             ->count(11)
@@ -291,7 +292,12 @@ test('nullable payment summary warning bounds normalized field references', func
 
         Log::spy();
 
-        app(BuildManualPaymentSummaryAction::class)->handle($tableSession);
+        $summary = app(BuildManualPaymentSummaryAction::class)->handle($tableSession);
+
+        expect($summary['service_charge_basis_points'])
+            ->toBe(2500)
+            ->and($summary['payments'][0]['service_charge_percent'])
+            ->toBe('0.00');
 
         Log::shouldHaveReceived('warning')
             ->once()
@@ -300,7 +306,7 @@ test('nullable payment summary warning bounds normalized field references', func
                 Mockery::on(function (array $context): bool {
                     $encodedContext = json_encode($context, JSON_THROW_ON_ERROR);
 
-                    return $context['normalized_count'] === 56
+                    return $context['normalized_count'] === 55
                         && count($context['normalized_fields']) === 50
                         && ($context['normalized_fields_truncated'] ?? null) === true
                         && ! str_contains($encodedContext, 'Sensitive legacy guest')

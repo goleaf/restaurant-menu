@@ -136,6 +136,12 @@ test('manager can rename move and disable area nodes', function () {
         ->call('enable', $hall->id);
 
     expect($hall->fresh()->is_active)->toBeTrue();
+
+    Livewire::actingAs($manager)
+        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('disable', $hall->id);
+
+    expect($hall->fresh()->is_active)->toBeFalse();
 });
 
 test('manager can soft delete area node and keep children visible', function () {

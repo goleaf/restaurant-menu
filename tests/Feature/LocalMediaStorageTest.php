@@ -85,6 +85,16 @@ test('brand manager can upload a local brand logo', function () {
     expect($brand->logo_path)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/logos/');
     expect($brand->logoUrl())->toContain('/storage/'.$brand->logo_path);
     Storage::disk('public')->assertExists($brand->logo_path);
+
+    $path = $brand->logo_path;
+
+    Livewire::actingAs($owner)
+        ->test(BrandsIndex::class, ['organization' => $organization])
+        ->call('removeLogo', $brand->id)
+        ->assertHasNoErrors();
+
+    expect($brand->refresh()->logo_path)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
 });
 
 test('branch manager can upload a local branch logo', function () {
@@ -105,6 +115,19 @@ test('branch manager can upload a local branch logo', function () {
     expect($branch->logo_path)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/logos/');
     expect($branch->logoUrl())->toContain('/storage/'.$branch->logo_path);
     Storage::disk('public')->assertExists($branch->logo_path);
+
+    $path = $branch->logo_path;
+
+    Livewire::actingAs($owner)
+        ->test(BranchesIndex::class, [
+            'organization' => $organization,
+            'brand' => $brand,
+        ])
+        ->call('removeLogo', $branch->id)
+        ->assertHasNoErrors();
+
+    expect($branch->refresh()->logo_path)->toBeNull();
+    Storage::disk('public')->assertMissing($path);
 });
 
 test('local logo uploads validate file type and size', function () {

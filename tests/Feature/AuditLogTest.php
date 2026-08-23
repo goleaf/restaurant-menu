@@ -119,6 +119,8 @@ test('audit log schema and page are restricted by view audit log permission', fu
     Livewire::actingAs($viewer)
         ->test(AuditLogIndex::class)
         ->assertSet('payload.has_access', true)
+        ->call('refreshAuditLog')
+        ->assertSet('payload.has_access', true)
         ->assertSee('Price changed');
 });
 

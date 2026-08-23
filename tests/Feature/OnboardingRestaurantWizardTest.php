@@ -89,6 +89,12 @@ test('new user can create restaurant setup from onboarding wizard', function () 
 
     expect(QrCode::query()->count())->toBe($qrCountBeforeSecondClick);
 
+    $component
+        ->call('goToStep', 1)
+        ->assertSet('step', 1)
+        ->call('goToStep', 99)
+        ->assertSet('step', 1);
+
     $qrCode = QrCode::query()
         ->select(['id', 'public_token'])
         ->oldest('id')

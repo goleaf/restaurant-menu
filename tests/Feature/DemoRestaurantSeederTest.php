@@ -432,7 +432,7 @@ test('demo restaurant seeder creates the complete organization brand branch hier
             ->and($branch->email)->toBe($profile['email'])
             ->and($branch->website_url)->toBe($profile['website_url'])
             ->and($branch->public_description)->toBe($profile['public_description'])
-            ->and($branch->is_active)->toBeTrue()
+            ->and($branch->is_active)->toBe($branchName !== 'Coffee Bar Small Hall')
             ->and($branch->settings)->not->toBeNull()
             ->and($branch->settings->default_language)->toBe('en')
             ->and($branch->settings->default_currency)->toBe($profile['currency']);
@@ -517,13 +517,13 @@ test('demo restaurant seeder is idempotent', function () {
         'organizations' => 1,
         'brands' => 3,
         'branches' => 4,
-        'areas' => 9,
-        'service_points' => 19,
+        'areas' => 10,
+        'service_points' => 20,
         'qr_codes' => 19,
         'menus' => 4,
         'menu_categories' => 9,
-        'menu_items' => 21,
-        'menu_item_variants' => 32,
+        'menu_items' => 22,
+        'menu_item_variants' => 33,
         'menu_item_variant_translations' => 96,
         'table_sessions' => 11,
         'draft_orders' => 11,
@@ -596,8 +596,8 @@ test('demo restaurant seeder is idempotent', function () {
         ->and(MenuCategory::query()->where('menu_id', $menu->id)->count())->toBe(3)
         ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7)
         ->and(User::query()->whereIn('email', array_keys(demoRestaurantUsers()))->count())->toBe(count(demoRestaurantUsers()))
-        ->and(OrganizationUser::query()->where('organization_id', $organization->id)->count())->toBe(count(demoRestaurantUsers()) - 1)
-        ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount())
+        ->and(OrganizationUser::query()->where('organization_id', $organization->id)->count())->toBe(count(demoRestaurantUsers()) + 2)
+        ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount() + 3)
         ->and(demoSeedGraphCounts())->toBe($firstCounts)
         ->and(Order::query()
             ->whereNotNull('metadata')

@@ -49,7 +49,7 @@ use RuntimeException;
 
 class DemoRestaurantSeeder extends Seeder
 {
-    private const ORGANIZATION_NAME = 'Demo Food Group';
+    public const ORGANIZATION_NAME = 'Demo Food Group';
 
     private const PRIMARY_BRANCH_KEY = 'bella_pizza_old_town';
 
@@ -107,6 +107,7 @@ class DemoRestaurantSeeder extends Seeder
         }
 
         $this->call(DemoOperationalStateSeeder::class);
+        $this->call(DemoOrganizationCrudSeeder::class);
     }
 
     private function demoOrganization(User $owner): Organization

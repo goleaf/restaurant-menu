@@ -25,6 +25,7 @@ use App\Models\ServicePoint;
 use Database\Factories\MenuAvailabilityScheduleFactory;
 use Database\Seeders\DemoOrganizationCrudSeeder;
 use Database\Seeders\DemoRestaurantSeeder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Storage;
 
@@ -59,6 +60,9 @@ test('the parent seeder creates every missing organization administration fixtur
         ->whereIn('branch_id', $branchIds)
         ->orderBy('id')
         ->pluck('id');
+    $memberUserIds = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->pluck('user_id');
 
     expect($branches)->toHaveCount(4)
         ->and(BranchOpeningHour::query()->whereIn('branch_id', $branchIds)->count())->toBe(29)
@@ -96,9 +100,9 @@ test('the parent seeder creates every missing organization administration fixtur
         ])
         ->and(Invitation::query()->where('organization_id', $organization->id)->whereNotNull('invite_token')->exists())->toBeFalse()
         ->and(Invitation::query()->where('organization_id', $organization->id)->whereNotNull('invite_code')->exists())->toBeFalse()
-        ->and(PermissionUserOverride::query()->whereHas('user.organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id))->count())->toBe(2)
-        ->and(PermissionUserOverride::query()->whereHas('user.organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id))->where('enabled', true)->count())->toBe(1)
-        ->and(PermissionUserOverride::query()->whereHas('user.organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id))->where('enabled', false)->count())->toBe(1)
+        ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->count())->toBe(2)
+        ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', true)->count())->toBe(1)
+        ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', false)->count())->toBe(1)
         ->and(OrganizationUser::query()->where('organization_id', $organization->id)->where('status', OrganizationUserStatus::Suspended->value)->count())->toBe(1)
         ->and(OrganizationUser::query()->where('organization_id', $organization->id)->where('status', OrganizationUserStatus::Removed->value)->count())->toBe(1)
         ->and(BranchUser::query()->where('organization_id', $organization->id)->where('status', OrganizationUserStatus::Suspended->value)->count())->toBe(1)
@@ -133,8 +137,20 @@ test('the CRUD seeder is tenant-safe idempotent and restores only its owned soft
     $unrelatedBranch = Branch::factory()->for($unrelatedOrganization)->create(['name' => 'Unrelated Branch']);
     $unrelatedArea = AreaNode::factory()->forBranch($unrelatedBranch)->create(['name' => 'Unrelated archived area']);
     $unrelatedSnapshot = [
-        'organization' => $unrelatedOrganization->getAttributes(),
-        'branch' => $unrelatedBranch->getAttributes(),
+        'organization' => $unrelatedOrganization->refresh()->only(['id', 'owner_user_id', 'name', 'logo_path', 'deleted_at']),
+        'branch' => $unrelatedBranch->refresh()->only([
+            'id',
+            'organization_id',
+            'brand_id',
+            'name',
+            'is_active',
+            'is_temporarily_closed',
+            'temporary_closed_reason',
+            'temporary_closed_until',
+            'logo_path',
+            'cover_image_path',
+            'deleted_at',
+        ]),
         'area_name' => $unrelatedArea->name,
     ];
 
@@ -158,8 +174,8 @@ test('the CRUD seeder is tenant-safe idempotent and restores only its owned soft
     expect(demoCrudSnapshot($organization->refresh()))->toBe($firstSnapshot)
         ->and(AreaNode::query()->whereKey($ownedArea->id)->exists())->toBeTrue()
         ->and(AreaNode::withTrashed()->whereKey($unrelatedArea->id)->whereNotNull('deleted_at')->exists())->toBeTrue()
-        ->and($unrelatedOrganization->refresh()->getAttributes())->toBe($unrelatedSnapshot['organization'])
-        ->and($unrelatedBranch->refresh()->getAttributes())->toBe($unrelatedSnapshot['branch'])
+        ->and($unrelatedOrganization->refresh()->only(array_keys($unrelatedSnapshot['organization'])))->toBe($unrelatedSnapshot['organization'])
+        ->and($unrelatedBranch->refresh()->only(array_keys($unrelatedSnapshot['branch'])))->toBe($unrelatedSnapshot['branch'])
         ->and(AreaNode::withTrashed()->findOrFail($unrelatedArea->id)->name)->toBe($unrelatedSnapshot['area_name']);
 
     foreach ($firstMediaHashes as $path => $hash) {
@@ -199,9 +215,9 @@ function demoCrudOrganization(): Organization
 }
 
 /**
- * @return \Illuminate\Database\Eloquent\Collection<int, Branch>
+ * @return Collection<int, Branch>
  */
-function demoCrudBranches(Organization $organization): \Illuminate\Database\Eloquent\Collection
+function demoCrudBranches(Organization $organization): Collection
 {
     return Branch::query()
         ->where('organization_id', $organization->id)
@@ -236,6 +252,9 @@ function demoCrudSnapshot(Organization $organization): array
     $branches = demoCrudBranches($organization);
     $branchIds = $branches->pluck('id');
     $menuIds = Menu::query()->whereIn('branch_id', $branchIds)->orderBy('id')->pluck('id');
+    $memberUserIds = OrganizationUser::query()
+        ->where('organization_id', $organization->id)
+        ->pluck('user_id');
 
     return [
         'branch_ids' => $branchIds->all(),
@@ -249,7 +268,7 @@ function demoCrudSnapshot(Organization $organization): array
             $invitation->getRawOriginal('invite_token_hash'),
             $invitation->getRawOriginal('invite_code_hash'),
         ])->all(),
-        'override_ids' => PermissionUserOverride::query()->whereHas('user.organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id))->orderBy('id')->pluck('id')->all(),
+        'override_ids' => PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->orderBy('id')->pluck('id')->all(),
         'qr_tokens' => QrCode::query()->whereHas('servicePoint', fn ($query) => $query->whereIn('branch_id', $branchIds))->orderBy('id')->pluck('public_token')->all(),
         'media_paths' => demoCrudMediaPaths($organization->refresh()),
     ];

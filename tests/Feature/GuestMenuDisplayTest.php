@@ -129,6 +129,8 @@ test('guest menu component uses cached active menu payload', function () {
 });
 
 test('guest menu cold and warm cache query counts stay bounded', function () {
+    config()->set('cache.stores.database.lock_lottery', [0, 1]);
+
     [, $branch] = createGuestMenuDisplayContext();
     createGuestMenuRows($branch);
 

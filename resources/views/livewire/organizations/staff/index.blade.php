@@ -101,10 +101,53 @@
                         </div>
 
                         <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member['user_email'] }}</p>
-                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member['role_label'] }}</p>
+                        @if ($editingMembershipId === $member['id'])
+                            <div class="mt-3 max-w-sm">
+                                <flux:select wire:model="editingRoleId" :label="__('staff.role')" required>
+                                    @foreach ($roleOptions as $role)
+                                        <flux:select.option wire:key="organization-edit-role-{{ $member['id'] }}-{{ $role['id'] }}" value="{{ $role['id'] }}">
+                                            {{ $role['label'] }}
+                                        </flux:select.option>
+                                    @endforeach
+                                </flux:select>
+
+                                @error('editingRoleId')
+                                    <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        @else
+                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $member['role_label'] }}</p>
+                        @endif
                     </div>
 
                     <div class="flex flex-wrap gap-2 md:justify-end">
+                        @if ($editingMembershipId === $member['id'])
+                            <flux:button icon="x-mark" type="button" wire:click="cancelEditingRole">
+                                {{ __('ui.actions.cancel') }}
+                            </flux:button>
+
+                            <x-dangerous-action-confirmation
+                                name="change-organization-staff-role-{{ $member['id'] }}"
+                                action="change_staff_role"
+                                confirm-action="updateRole"
+                                submit-target="updateRole"
+                                confirm-label="staff.actions.save_role"
+                                reason-model="staffRoleReason"
+                                :reason-label="__('staff.forms.role_change_reason')"
+                                :reason-placeholder="__('staff.forms.role_change_reason_placeholder')"
+                            >
+                                <x-slot:trigger>
+                                    <flux:button icon="check" variant="primary" type="button">
+                                        {{ __('staff.actions.save_role') }}
+                                    </flux:button>
+                                </x-slot:trigger>
+                            </x-dangerous-action-confirmation>
+                        @elseif ($member['can_edit_role'])
+                            <flux:button icon="pencil-square" type="button" wire:click="startEditingRole({{ $member['id'] }})">
+                                {{ __('staff.actions.edit_role') }}
+                            </flux:button>
+                        @endif
+
                         <flux:button icon="shield-check" type="button" :href="route('organizations.staff.permissions', [$organization, $member['user_id']])" wire:navigate>
                             {{ __('staff.actions.update_permissions') }}
                         </flux:button>
@@ -155,13 +198,31 @@
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @forelse ($invitationRows as $invitation)
-                <div wire:key="organization-invitation-{{ $invitation['id'] }}" class="px-4 py-4">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <p class="font-medium text-zinc-950 dark:text-white">{{ $invitation['role_label'] }}</p>
-                        <flux:badge>{{ $invitation['localized_status'] }}</flux:badge>
+                <div wire:key="organization-invitation-{{ $invitation['id'] }}" class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="font-medium text-zinc-950 dark:text-white">{{ $invitation['role_label'] }}</p>
+                            <flux:badge>{{ $invitation['localized_status'] }}</flux:badge>
+                        </div>
+
+                        <p class="mt-1 break-words text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation['email'] ?: __('staff.no_email') }} / {{ $invitation['phone'] ?: __('staff.no_phone') }}</p>
                     </div>
 
-                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation['email'] ?: __('staff.no_email') }} / {{ $invitation['phone'] ?: __('staff.no_phone') }}</p>
+                    @if ($invitation['can_cancel'])
+                        <x-dangerous-action-confirmation
+                            name="cancel-organization-invitation-{{ $invitation['id'] }}"
+                            action="cancel_invitation"
+                            confirm-action="cancelInvitation({{ $invitation['id'] }})"
+                            submit-target="cancelInvitation({{ $invitation['id'] }})"
+                            confirm-label="staff.actions.cancel_invitation"
+                        >
+                            <x-slot:trigger>
+                                <flux:button icon="x-circle" type="button">
+                                    {{ __('staff.actions.cancel_invitation') }}
+                                </flux:button>
+                            </x-slot:trigger>
+                        </x-dangerous-action-confirmation>
+                    @endif
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

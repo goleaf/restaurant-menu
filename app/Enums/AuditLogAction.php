@@ -13,7 +13,9 @@ enum AuditLogAction: string
     case QrDisabled = 'qr_disabled';
     case QrReissued = 'qr_reissued';
     case StaffPermissionChanged = 'staff_permission_changed';
+    case StaffRoleChanged = 'staff_role_changed';
     case StaffDeactivated = 'staff_deactivated';
+    case InvitationCancelled = 'invitation_cancelled';
     case BranchSuspended = 'branch_suspended';
     case OrganizationSubscriptionChanged = 'organization_subscription_changed';
     case BackupDownloaded = 'backup_downloaded';
@@ -41,7 +43,9 @@ enum AuditLogAction: string
             self::QrDisabled => 'QR disabled',
             self::QrReissued => 'QR reissued',
             self::StaffPermissionChanged => 'Staff permission changed',
+            self::StaffRoleChanged => 'Staff role changed',
             self::StaffDeactivated => 'Staff deactivated',
+            self::InvitationCancelled => 'Invitation cancelled',
             self::BranchSuspended => 'Branch suspended',
             self::OrganizationSubscriptionChanged => 'Organization subscription changed',
             self::BackupDownloaded => 'Backup downloaded',

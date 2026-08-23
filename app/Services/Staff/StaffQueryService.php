@@ -153,11 +153,32 @@ final class StaffQueryService
             ->firstOrFail();
     }
 
+    public function findOrganizationInvitation(Organization $organization, int $invitationId): Invitation
+    {
+        return Invitation::query()
+            ->select($this->invitationColumns())
+            ->where('organization_id', $organization->id)
+            ->whereNull('brand_id')
+            ->whereNull('branch_id')
+            ->whereKey($invitationId)
+            ->firstOrFail();
+    }
+
     public function findBranchUser(Branch $branch, int $branchUserId): BranchUser
     {
         return BranchUser::query()
             ->where('branch_id', $branch->id)
             ->whereKey($branchUserId)
+            ->firstOrFail();
+    }
+
+    public function findBranchInvitation(Organization $organization, Branch $branch, int $invitationId): Invitation
+    {
+        return Invitation::query()
+            ->select($this->invitationColumns())
+            ->where('organization_id', $organization->id)
+            ->where('branch_id', $branch->id)
+            ->whereKey($invitationId)
             ->firstOrFail();
     }
 

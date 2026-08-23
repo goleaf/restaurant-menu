@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Staff;
 
+use App\Actions\Invitations\CancelInvitationAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddOrganizationStaffMemberAction;
 use App\Actions\Staff\SetOrganizationStaffStatusAction;
+use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
@@ -57,6 +59,12 @@ class Index extends Component
     public bool $canManageStaff = false;
 
     public string $staffDeactivationReason = '';
+
+    public ?int $editingMembershipId = null;
+
+    public ?int $editingRoleId = null;
+
+    public string $staffRoleReason = '';
 
     public string $staffSearch = '';
 
@@ -163,6 +171,63 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
     }
 
+    public function startEditingRole(int $membershipId): void
+    {
+        $this->authorizeStaffManagement();
+        $membership = $this->findMembership($membershipId);
+
+        $this->resetValidation(['editingRoleId', 'staffRoleReason']);
+        $this->editingMembershipId = $membership->id;
+        $this->editingRoleId = $membership->role_id;
+        $this->staffRoleReason = '';
+    }
+
+    public function cancelEditingRole(): void
+    {
+        $this->reset('editingMembershipId', 'editingRoleId', 'staffRoleReason');
+        $this->resetValidation(['editingRoleId', 'staffRoleReason']);
+    }
+
+    public function updateRole(UpdateOrganizationStaffRoleAction $updateRole): void
+    {
+        $this->authorizeStaffManagement();
+
+        $validated = $this->validate([
+            'editingMembershipId' => ['required', 'integer'],
+            'editingRoleId' => ['required', 'integer', $this->assignableRoleRule()],
+            ...RestaurantValidationRules::auditReason('staffRoleReason'),
+        ]);
+
+        $updateRole->handle(
+            $this->currentUser(),
+            $this->organization,
+            $this->findMembership((int) $validated['editingMembershipId']),
+            $this->findAssignableRole((int) $validated['editingRoleId']),
+            (string) $validated['staffRoleReason'],
+        );
+
+        $this->cancelEditingRole();
+        unset($this->members);
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.role_updated'));
+    }
+
+    public function cancelInvitation(int $invitationId, CancelInvitationAction $cancelInvitation): void
+    {
+        $this->authorizeStaffManagement();
+        $invitation = $this->staffQueries->findOrganizationInvitation($this->organization, $invitationId);
+
+        $cancelInvitation->handle($this->currentUser(), $this->organization, $invitation);
+
+        $this->lastInviteLink = null;
+        $this->lastInviteCode = null;
+        unset($this->invitations);
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_cancelled'));
+    }
+
     public function updatedStaffSearch(): void
     {
         $this->resetPage(pageName: 'organizationStaffPage');
@@ -224,6 +289,8 @@ class Index extends Component
                     'user_name' => $member->user->name,
                     'user_email' => $member->user->email,
                     'is_active' => $member->status === OrganizationUserStatus::Active,
+                    'can_edit_role' => (int) $member->user_id !== (int) $this->currentUser()->id,
+                    'role_id' => $member->role_id,
                     'localized_status' => $this->memberStatusLabel($member->status),
                     'role_label' => $this->roleLabel($member->role),
                 ])
@@ -237,6 +304,7 @@ class Index extends Component
                     'localized_status' => $this->invitationStatusLabel($invitation->status),
                     'email' => $invitation->email,
                     'phone' => $invitation->phone,
+                    'can_cancel' => $invitation->status === InvitationStatus::Pending,
                 ])
                 ->all(),
             'invitationsPaginator' => $invitations,

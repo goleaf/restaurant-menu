@@ -11,6 +11,8 @@ enum DangerousAction: string
     case SuspendOrganization = 'suspend_organization';
     case SuspendBranch = 'suspend_branch';
     case DeactivateStaff = 'deactivate_staff';
+    case ChangeStaffRole = 'change_staff_role';
+    case CancelInvitation = 'cancel_invitation';
     case ChangeCriticalPermission = 'change_critical_permission';
     case CancelOrder = 'cancel_order';
     case VoidOrderItem = 'void_order_item';
@@ -31,6 +33,8 @@ enum DangerousAction: string
             self::SuspendOrganization => __('ui.confirmations.suspend_organization.title'),
             self::SuspendBranch => __('ui.confirmations.suspend_branch.title'),
             self::DeactivateStaff => __('ui.confirmations.deactivate_staff.title'),
+            self::ChangeStaffRole => __('ui.confirmations.change_staff_role.title'),
+            self::CancelInvitation => __('ui.confirmations.cancel_invitation.title'),
             self::ChangeCriticalPermission => __('ui.confirmations.change_critical_permission.title'),
             self::CancelOrder => __('ui.confirmations.cancel_order.title'),
             self::VoidOrderItem => __('ui.confirmations.void_item.title'),
@@ -53,6 +57,8 @@ enum DangerousAction: string
             self::SuspendOrganization => __('ui.confirmations.suspend_organization.description'),
             self::SuspendBranch => __('ui.confirmations.suspend_branch.description'),
             self::DeactivateStaff => __('ui.confirmations.deactivate_staff.description'),
+            self::ChangeStaffRole => __('ui.confirmations.change_staff_role.description'),
+            self::CancelInvitation => __('ui.confirmations.cancel_invitation.description'),
             self::ChangeCriticalPermission => __('ui.confirmations.change_critical_permission.description'),
             self::CancelOrder => __('ui.confirmations.cancel_order.description'),
             self::VoidOrderItem => __('ui.confirmations.void_item.description'),
@@ -74,6 +80,7 @@ enum DangerousAction: string
             self::SuspendOrganization,
             self::SuspendBranch,
             self::DeactivateStaff,
+            self::ChangeStaffRole,
             self::ChangeCriticalPermission,
             self::CancelOrder,
             self::VoidOrderItem,

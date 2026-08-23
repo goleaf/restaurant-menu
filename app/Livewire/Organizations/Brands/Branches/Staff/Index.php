@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Staff;
 
+use App\Actions\Invitations\CancelInvitationAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddBranchStaffMemberAction;
 use App\Actions\Staff\SetBranchStaffStatusAction;
 use App\Actions\Staff\SyncWaiterAreaAssignmentsAction;
+use App\Actions\Staff\UpdateBranchStaffRoleAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
@@ -65,6 +67,12 @@ class Index extends Component
     public bool $canManageStaff = false;
 
     public string $staffDeactivationReason = '';
+
+    public ?int $editingMembershipId = null;
+
+    public ?int $editingRoleId = null;
+
+    public string $staffRoleReason = '';
 
     public string $staffSearch = '';
 
@@ -176,6 +184,68 @@ class Index extends Component
 
         Flux::modals()->close();
         Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
+    }
+
+    public function startEditingRole(int $branchUserId): void
+    {
+        $this->authorizeStaffManagement();
+        $branchUser = $this->findBranchUser($branchUserId);
+
+        $this->resetValidation(['editingRoleId', 'staffRoleReason']);
+        $this->editingMembershipId = $branchUser->id;
+        $this->editingRoleId = $branchUser->role_id;
+        $this->staffRoleReason = '';
+    }
+
+    public function cancelEditingRole(): void
+    {
+        $this->reset('editingMembershipId', 'editingRoleId', 'staffRoleReason');
+        $this->resetValidation(['editingRoleId', 'staffRoleReason']);
+    }
+
+    public function updateRole(UpdateBranchStaffRoleAction $updateRole): void
+    {
+        $this->authorizeStaffManagement();
+
+        $validated = $this->validate([
+            'editingMembershipId' => ['required', 'integer'],
+            'editingRoleId' => ['required', 'integer', $this->assignableRoleRule()],
+            ...RestaurantValidationRules::auditReason('staffRoleReason'),
+        ]);
+
+        $branchUser = $updateRole->handle(
+            $this->currentUser(),
+            $this->branch,
+            $this->findBranchUser((int) $validated['editingMembershipId']),
+            $this->findAssignableRole((int) $validated['editingRoleId']),
+            (string) $validated['staffRoleReason'],
+        );
+
+        $this->cancelEditingRole();
+        $this->loadAreaAssignments();
+        unset($this->members);
+
+        if (! $this->memberIsWaiter($branchUser->load('role'))) {
+            unset($this->areaNodes);
+        }
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.role_updated'));
+    }
+
+    public function cancelInvitation(int $invitationId, CancelInvitationAction $cancelInvitation): void
+    {
+        $this->authorizeStaffManagement();
+        $invitation = $this->staffQueries->findBranchInvitation($this->organization, $this->branch, $invitationId);
+
+        $cancelInvitation->handle($this->currentUser(), $this->organization, $invitation);
+
+        $this->lastInviteLink = null;
+        $this->lastInviteCode = null;
+        unset($this->invitations);
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_cancelled'));
     }
 
     public function saveAreaAssignments(int $userId, SyncWaiterAreaAssignmentsAction $syncAssignments): void
@@ -292,6 +362,8 @@ class Index extends Component
                     'user_name' => $member->user->name,
                     'user_email' => $member->user->email,
                     'is_active' => $member->status === OrganizationUserStatus::Active,
+                    'can_edit_role' => (int) $member->user_id !== (int) $this->currentUser()->id,
+                    'role_id' => $member->role_id,
                     'is_waiter' => $this->memberIsWaiter($member),
                     'localized_status' => $this->memberStatusLabel($member->status),
                     'role_label' => $this->roleLabel($member->role),
@@ -309,6 +381,7 @@ class Index extends Component
                     'localized_status' => $this->invitationStatusLabel($invitation->status),
                     'email' => $invitation->email,
                     'phone' => $invitation->phone,
+                    'can_cancel' => $invitation->status === InvitationStatus::Pending,
                 ])
                 ->all(),
             'invitationsPaginator' => $invitations,

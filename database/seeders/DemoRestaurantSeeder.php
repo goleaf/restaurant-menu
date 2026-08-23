@@ -40,6 +40,7 @@ use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\DemoLogin\DemoAccountCatalog;
 use App\Support\MoneyFormatter;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
@@ -79,10 +80,10 @@ class DemoRestaurantSeeder extends Seeder
         /** @var list<array{qr_code: QrCode, service_point: ServicePoint}> $qrImageSources */
         $qrImageSources = DB::transaction(function (): array {
             $qrImageSources = [];
-            $superadmin = $this->demoUser('Demo Superadmin', 'superadmin@demo.test', SystemRole::Superadmin);
+            $superadmin = $this->demoUser(SystemRole::Superadmin);
             $this->syncPermissions($superadmin, []);
 
-            $owner = $this->demoUser('Demo Owner', 'owner@demo.test', SystemRole::Owner);
+            $owner = $this->demoUser(SystemRole::Owner);
             $organization = $this->demoOrganization($owner);
             $brands = $this->demoBrands($organization);
             $branches = $this->demoBranches($brands);
@@ -266,19 +267,21 @@ class DemoRestaurantSeeder extends Seeder
         $this->seedKitchenDepartments->handle($branch);
     }
 
-    private function demoUser(string $name, string $email, SystemRole $role): User
+    private function demoUser(SystemRole $role): User
     {
+        $identity = DemoAccountCatalog::forRole($role);
         $user = User::query()
-            ->where('email', $email)
+            ->select(['id', 'name', 'email', 'locale', 'email_verified_at', 'password'])
+            ->where('email', $identity['email'])
             ->first();
 
         if (! $user instanceof User) {
             $user = User::factory()
-                ->demoIdentity($name, $email)
+                ->demoIdentity($identity['name'], $identity['email'])
                 ->create();
         } else {
             $attributes = User::factory()
-                ->demoIdentity($name, $email)
+                ->demoIdentity($identity['name'], $identity['email'])
                 ->make()
                 ->getAttributes();
 
@@ -305,16 +308,16 @@ class DemoRestaurantSeeder extends Seeder
      */
     private function seedStaff(Organization $organization, array $branches, User $owner): void
     {
-        $director = $this->demoUser('Demo Director', 'director@demo.test', SystemRole::Director);
-        $admin = $this->demoUser('Demo Restaurant Admin', 'admin@demo.test', SystemRole::RestaurantAdmin);
-        $manager = $this->demoUser('Demo Shift Manager', 'manager@demo.test', SystemRole::ShiftManager);
-        $waiter = $this->demoUser('Demo Waiter', 'waiter@demo.test', SystemRole::Waiter);
-        $headChef = $this->demoUser('Demo Head Chef', 'chef@demo.test', SystemRole::HeadChef);
-        $cook = $this->demoUser('Demo Cook', 'cook@demo.test', SystemRole::Cook);
-        $bartender = $this->demoUser('Demo Bartender', 'bartender@demo.test', SystemRole::Bartender);
-        $cashier = $this->demoUser('Demo Cashier', 'cashier@demo.test', SystemRole::Cashier);
-        $accountant = $this->demoUser('Demo Accountant', 'accountant@demo.test', SystemRole::Accountant);
-        $marketer = $this->demoUser('Demo Marketer', 'marketer@demo.test', SystemRole::Marketer);
+        $director = $this->demoUser(SystemRole::Director);
+        $admin = $this->demoUser(SystemRole::RestaurantAdmin);
+        $manager = $this->demoUser(SystemRole::ShiftManager);
+        $waiter = $this->demoUser(SystemRole::Waiter);
+        $headChef = $this->demoUser(SystemRole::HeadChef);
+        $cook = $this->demoUser(SystemRole::Cook);
+        $bartender = $this->demoUser(SystemRole::Bartender);
+        $cashier = $this->demoUser(SystemRole::Cashier);
+        $accountant = $this->demoUser(SystemRole::Accountant);
+        $marketer = $this->demoUser(SystemRole::Marketer);
 
         $allBranches = array_values($branches);
 

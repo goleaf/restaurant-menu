@@ -6,10 +6,10 @@ Performance changes are evidence-driven. Query-budget and cache-separation tests
 
 | Measurement | Baseline | Final | Interpretation |
 |---|---:|---:|---|
-| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 757 passing / 61.49 s sequential; 18.90 s parallel (8 processes), with 8 skips and 1 todo ([#10](https://github.com/goleaf/restaurant-menu/issues/10)) | test volume increased; wall time is not an application latency benchmark |
+| Pest suite | 655 tests / 48.532 s, with 79 failures/errors | 854 tests / 85.913 s sequential; 28.048 s parallel, with 845 passed and 9 feature-gated skips | test volume increased; wall time is not an application latency benchmark |
 | Application coverage | unavailable | 90% minimum enforced in CI; last local measurement 90.4% before the UI slice | CI provisions Xdebug; current local PHP CLI has no Xdebug/PCOV and is not presented as fresh proof |
-| CSS | 282.03 kB / 36.41 kB gzip | 296.99 kB / 39.02 kB gzip | +14.96 kB raw / +2.61 kB gzip for Flux/Tailwind tokens and complete UI states |
-| Application JS | 0.00 kB | 0.00 kB | no SPA/request library introduced |
+| CSS | 282.03 kB / 36.41 kB gzip | 303.36 kB / 39.72 kB gzip | +21.33 kB raw / +3.31 kB gzip for Flux/Tailwind tokens and complete UI states |
+| Application JS | 0.00 kB | 4.56 kB / 1.73 kB gzip | bounded waiter sound and kitchen delay-timer behavior; no SPA/request library introduced |
 | Public mobile trace | LCP 107 ms; TTFB 47 ms; CLS 0 before the UI slice | LCP 140 ms; TTFB 37 ms; render delay 103 ms; CLS 0 | local Herd, no throttle; small-run variance is not production monitoring |
 | Lighthouse | not captured | 100/100/100/100 on public, waiter, service-point and menu mobile samples | accessibility/best-practice/SEO/agentic categories from the used audit mode |
 | HTTP smoke | not captured | `/` 200 in 0.166 s; protected dashboard 302 to login | local warm Herd request |

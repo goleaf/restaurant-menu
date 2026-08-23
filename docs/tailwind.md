@@ -22,7 +22,7 @@ The theme defines brand scale, canvas/surface/border/text, success/warning/dange
 
 ## Final responsive/build evidence
 
-- Production build: CSS 296.99 kB / 39.02 kB gzip; application JS 0.00 kB; Vite 8.2.2 completed in 728 ms on the final run.
+- Production build: CSS 303.36 kB / 39.72 kB gzip; application JS 4.56 kB / 1.73 kB gzip; Vite 8.2.2 completed in 658 ms on the final run.
 - Public entry has no horizontal overflow at 360/390/430/768/1024/1440/1920 CSS px. Waiter checks covered 390/768/1024/1440; service points covered 390/768/1440; menu covered 390/1440 in light and dark modes.
 - Operational metrics use two columns on small touch screens and six on desktop. Checked waiter and service-point controls meet the practical touch-target contract at 390 CSS px.
 - Public, waiter, service-point and menu mobile Lighthouse samples scored 100 in every reported category; final console inspection found no errors or issues.

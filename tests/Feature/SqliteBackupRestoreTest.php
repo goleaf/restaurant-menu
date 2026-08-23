@@ -22,6 +22,36 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
+beforeEach(function (): void {
+    app()->instance(MaintenanceMode::class, new class implements MaintenanceMode
+    {
+        /** @var array<string, mixed>|null */
+        private ?array $payload = null;
+
+        /** @param array<string, mixed> $payload */
+        public function activate(array $payload): void
+        {
+            $this->payload = $payload;
+        }
+
+        public function deactivate(): void
+        {
+            $this->payload = null;
+        }
+
+        public function active(): bool
+        {
+            return $this->payload !== null;
+        }
+
+        /** @return array<string, mixed> */
+        public function data(): array
+        {
+            return $this->payload ?? [];
+        }
+    });
+});
+
 test('a compatible sqlite backup restores data and retains a safety snapshot', function (): void {
     $sandbox = sqliteRestoreSandbox('compatible');
     $candidateArtifactsBefore = sqliteRestoreCandidateArtifacts();

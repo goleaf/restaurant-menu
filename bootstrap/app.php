@@ -3,11 +3,14 @@
 use App\Actions\Monitoring\ReportProductionExceptionAction;
 use App\Exceptions\BusinessRuleViolation;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\SetInterfaceLocale;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,8 +28,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
+            'demo-login' => EnsureDemoLoginIsEnabled::class,
             'superadmin' => EnsureUserIsSuperadmin::class,
         ]);
+
+        $middleware->prependToPriorityList(
+            before: AuthenticatesRequests::class,
+            prepend: PreventRequestForgery::class,
+        );
+        $middleware->prependToPriorityList(
+            before: PreventRequestForgery::class,
+            prepend: EnsureDemoLoginIsEnabled::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontReportDuplicates();

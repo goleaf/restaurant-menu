@@ -158,6 +158,16 @@ class Invitation extends Model
             ->first();
     }
 
+    public static function findAcceptableById(int $invitationId): ?self
+    {
+        $invitation = self::query()
+            ->acceptable()
+            ->whereKey($invitationId)
+            ->first();
+
+        return $invitation?->canBeAccepted() === true ? $invitation : null;
+    }
+
     private static function tokenHash(string $inviteToken): string
     {
         return hash('sha256', $inviteToken);

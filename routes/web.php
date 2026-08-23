@@ -3,7 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\DataExportType;
+use App\Enums\SystemRole;
+use App\Http\Controllers\Auth\LoginAsDemoRoleController;
+use App\Http\Controllers\Auth\ShowDemoLoginController;
 use App\Http\Controllers\Invitations\AcceptInvitationController;
+use App\Http\Controllers\Invitations\RegisterInvitationController;
 use App\Http\Controllers\Invitations\ShowInvitationController;
 use App\Http\Controllers\Organizations\DownloadBranchQrPdfController;
 use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
@@ -58,18 +62,34 @@ Route::middleware(['web'])
             ->name('show');
     });
 
+Route::middleware(['demo-login', 'guest', 'throttle:demo-login'])
+    ->prefix('demo-login')
+    ->name('demo-login.')
+    ->group(function (): void {
+        Route::get('/', ShowDemoLoginController::class)->name('index');
+        Route::post('{role}', LoginAsDemoRoleController::class)
+            ->whereIn('role', SystemRole::values())
+            ->name('authenticate');
+    });
+
 Route::middleware(['auth'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
 
-Route::middleware(['auth', 'throttle:staff-invitations'])
+Route::middleware(['throttle:staff-invitations'])
     ->prefix('invite')
     ->name('invitations.')
     ->group(function () {
+        Route::get('pending', ShowInvitationController::class)->name('pending');
+        Route::post('register', RegisterInvitationController::class)
+            ->middleware('guest')
+            ->name('register');
+        Route::post('accept', AcceptInvitationController::class)
+            ->middleware('auth')
+            ->name('accept');
         Route::get('{token}', ShowInvitationController::class)
             ->where('token', '[A-Za-z0-9]{64}')
             ->name('show');
-        Route::post('accept', AcceptInvitationController::class)->name('accept');
     });
 
 Route::middleware(['auth'])

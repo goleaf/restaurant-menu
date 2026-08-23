@@ -2,7 +2,7 @@
 
 ## Inventory and contract
 
-There are 41 first-party Eloquent models and 41 model factories. There are no independent-model exemptions. The factories expose 105 explicit state/relationship helper methods in addition to their 41 `definition()` methods. Every default factory must satisfy required foreign keys, enums, ownership, uniqueness, date ordering and money invariants. Optional large graphs are explicit factory states/helpers rather than hidden callbacks.
+There are 43 first-party Eloquent models and 43 model factories. There are no independent-model exemptions. Every default factory must satisfy required foreign keys, enums, ownership, uniqueness, date ordering and money invariants. Optional large graphs are explicit factory states/helpers rather than hidden callbacks.
 
 Meaningful states cover workflow values actually used by each model: active/inactive/pending/approved/rejected/archived/expired/verified/public/private/deleted/failed/completed only where that model owns such a concept. Edge data includes empty optionals, complete optionals, Unicode/long values and historical/future dates where valid.
 
@@ -20,6 +20,12 @@ Meaningful states cover workflow values actually used by each model: active/inac
 
 Demo data is fictitious and covers every meaningful staff role, ownership/non-ownership, current/historical workflow states, localized menu data, empty/normal/heavy presentation cases and local file fixtures. The current deterministic snapshot contains 12 roles, 1 organization, 3 brands, 4 branches, 9 areas, 19 service points and QR codes, 19 ready SVG QR images, 4 menus, 8 categories, 20 items, 6 orders and 5 immutable payments. The images are written to `storage/app/public/demo/qr/<service-point-internal-code>.svg`; filenames contain no bearer token, repeated seeding overwrites the same paths, and `php artisan storage:link` exposes them through the configured public disk. No seeded capability depends on the internet.
 
+## Canonical demo identities
+
+`App\Support\DemoLogin\DemoAccountCatalog` is the single identity map shared by `DemoRestaurantSeeder` and the opt-in demo-login surface. It defines one deterministic fictitious name and email for each of the 12 `SystemRole` cases in canonical enum order; it contains no password or persistence logic. Seeder parity coverage proves that every generated demo account matches this catalogue and its assigned role.
+
+`DemoRestaurantSeeder` remains idempotent, refuses production and uses natural keys without truncating unrestricted data. `DatabaseSeeder` wiring is unchanged: demo restaurant data is still an explicit operator action, not an implicit default seed. The shared seed password remains a non-production operator/testing detail and is never exposed by the role-selection page.
+
 ## Coverage matrix
 
 | Model group | Factory | Meaningful state examples | Seeder coverage | Tests |
@@ -34,8 +40,8 @@ Demo data is fictitious and covers every meaningful staff role, ownership/non-ow
 
 ## Final evidence
 
-- 41 first-party Eloquent models, 41 factories and 105 explicit state/relationship helpers; no exemptions.
+- 43 first-party Eloquent models and 43 factories; no exemptions.
 - Seven seeders including the orchestrator and operational demo layer.
-- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards cover the complete graph, ready QR SVG contents and repeated-run file hashes.
-- Fresh isolated SQLite completed all 70 migrations; `DemoRestaurantSeeder` then passed twice in 3.983 s and 6.992 s, creating 19 QR SVGs with unchanged file hashes on the second run. The second run also preserved exact graph counts and existing order/payment IDs. Demo area/service-point/menu-category icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
+- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards cover the complete graph, catalogue parity, ready QR SVG contents and repeated-run file hashes.
+- Fresh isolated SQLite completed all 73 migrations; repeated `DemoRestaurantSeeder` runs create exactly 12 catalogue users and 19 QR SVGs while preserving graph counts, file hashes and existing order/payment IDs. Demo area/service-point/menu-category icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
 - Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data. QR files are written only after the core demo transaction commits, and a failed filesystem write raises an exception instead of silently reporting a complete seed.

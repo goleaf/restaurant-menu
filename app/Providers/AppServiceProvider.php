@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
@@ -83,10 +85,19 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureRateLimiting(): void
     {
+        RateLimiter::for(
+            'demo-login',
+            fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->ip()),
+        );
+
         RateLimiter::for('staff-invitations', function (Request $request): Limit {
             $token = (string) $request->route('token');
+            $invitationId = $request->session()->get('staff_invitation_id');
+            $credentialScope = $token !== ''
+                ? $token
+                : (is_int($invitationId) ? 'invitation:'.$invitationId : 'missing-invitation');
 
-            return Limit::perMinute(10)->by(hash('sha256', $token).'|'.$request->ip());
+            return Limit::perMinute(10)->by(hash('sha256', $credentialScope).'|'.$request->ip());
         });
     }
 

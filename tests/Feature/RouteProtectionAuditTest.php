@@ -70,9 +70,20 @@ test('auth routes stay inside the web session middleware group', function (strin
     'password.update',
     'password.confirm',
     'password.confirm.store',
-    'register',
-    'register.store',
 ]);
+
+test('account creation is exposed only through the invitation session boundary', function (): void {
+    expect(prompt334RouteByName('register'))->toBeNull()
+        ->and(prompt334RouteByName('register.store'))->toBeNull();
+
+    $inviteRegistration = prompt334RouteByName('invitations.register');
+
+    expect($inviteRegistration)->not->toBeNull()
+        ->and(prompt334RouteMethods($inviteRegistration))->toContain('POST')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('web')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('guest')
+        ->and(prompt334RouteMiddleware($inviteRegistration))->toContain('throttle:staff-invitations');
+});
 
 test('download routes have the required access middleware boundary', function (): void {
     $exportRoute = prompt334RouteByName('restaurant.exports.download');
@@ -119,6 +130,27 @@ test('first party web route file does not disable csrf protection', function ():
     expect($bootstrap)->not->toContain('preventRequestForgery(except:')
         ->and($bootstrap)->not->toContain('withoutMiddleware')
         ->and(prompt334RouteByName('default-livewire.update')?->gatherMiddleware())->toContain('web');
+});
+
+test('demo login routes keep their public authentication boundary', function (): void {
+    $indexRoute = prompt334RouteByName('demo-login.index');
+    $authenticateRoute = prompt334RouteByName('demo-login.authenticate');
+
+    expect($indexRoute)->not->toBeNull()
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('web')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('demo-login')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('guest')
+        ->and(prompt334RouteMiddleware($indexRoute))->toContain('throttle:demo-login')
+        ->and(prompt334RouteMiddleware($indexRoute))->not->toContain('auth')
+        ->and(prompt334RouteMethods($indexRoute))->toContain('GET');
+
+    expect($authenticateRoute)->not->toBeNull()
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('web')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('demo-login')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('guest')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->toContain('throttle:demo-login')
+        ->and(prompt334RouteMiddleware($authenticateRoute))->not->toContain('auth')
+        ->and(prompt334RouteMethods($authenticateRoute))->toContain('POST');
 });
 
 /**

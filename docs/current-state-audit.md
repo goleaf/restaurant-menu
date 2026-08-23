@@ -28,9 +28,9 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 757 tests, with 8 intentional feature-gated skips and 1 explicit todo tracked by [GitHub issue #10](https://github.com/goleaf/restaurant-menu/issues/10). |
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both run 854 tests with 845 passing, 9 intentional feature-gated skips and 22,990 assertions. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
-| Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
+| Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 43/43 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
 | Unusable plaintext invitation bearer token | Digest-at-rest indexed lookup, expiry/revocation, atomic one-use consume, recipient/session binding and rate limiting. |
 | Concurrent manual payment overpay risk | SQLite write serialization plus fresh balance read, bounded retry and duplicate/race regression tests. |
@@ -43,7 +43,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | Locale-sensitive cache keys | Cache ownership and invalidation now include the relevant branch/locale context; separation tests pass. |
 | 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; architecture scan passes. |
 | No strict Eloquent/static analysis | Strict local/test Eloquent enabled; configured Larastan level 5 analyses 502 files with 0 errors. |
-| Historical migrations use model backfills | Historical files preserved; corrections are forward-only/reversible; all 70 migrations pass from zero. |
+| Historical migrations use model backfills | Historical files preserved; corrections are forward-only/reversible; all 73 migrations pass from zero. |
 | Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
 | Generic equal-weight dashboard/card hierarchy and over-expanded waiter branches | Public, guest, restaurant, waiter and department surfaces now expose one primary path, compact related metrics and native progressive disclosure; responsive/browser regressions pass. |
 | Persisted legacy area/service-point/menu-category icon names could address missing dynamic Flux components and return HTTP 500 | All three presentation boundaries enforce explicit supported-icon lists with type-safe fallback; demo values are corrected and regressions cover legacy records. |
@@ -51,10 +51,10 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 ## Final state
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
-- 376 application PHP files, 56 class Livewire components, 41 models/factories, 70 migrations, 7 seeders, 117 Blade templates and 124 PHP test files.
-- 757 passing tests, 21,231 assertions, 8 skips, 1 todo ([#10](https://github.com/goleaf/restaurant-menu/issues/10)) and 0 static-analysis errors. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
-- 2,039 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
-- Production CSS 296.99 kB / 39.02 kB gzip; application JS remains 0.00 kB.
+- 424 application PHP files, 52 concrete class Livewire components, 43 models/factories, 73 migrations, 7 seeders plus one translation support class, 123 Blade templates and 135 PHP test files.
+- 854 tests, 845 passed, 9 feature-gated skips, 22,990 assertions and 0 static-analysis errors. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
+- 2,178 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
+- Production CSS 303.36 kB / 39.72 kB gzip; application JS is 4.56 kB / 1.73 kB gzip.
 
 ## First-party Markdown inventory
 

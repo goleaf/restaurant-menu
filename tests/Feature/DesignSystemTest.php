@@ -130,11 +130,19 @@ test('area icon safely falls back when persisted icon is unsupported', function 
 });
 
 test('authentication forms do not force focus before the user chooses a field', function () {
-    foreach ([route('login'), route('register'), route('password.request')] as $url) {
+    foreach ([route('login'), route('password.request')] as $url) {
         $this->get($url)
             ->assertOk()
             ->assertDontSee('autofocus', false);
     }
+});
+
+test('application head uses favicon assets served successfully by shared hosting', function () {
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('href="/favicon.svg"', false)
+        ->assertSee('href="/apple-touch-icon.png"', false)
+        ->assertDontSee('href="/favicon.ico"', false);
 });
 
 test('application layout zones provide a keyboard skip link and main target', function () {

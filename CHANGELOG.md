@@ -9,6 +9,8 @@ This file records shipped milestones, not active requirements or future work. Se
 - Established Larastan/PHPStan as the single static-analysis stack and added a CI-enforced 90% application coverage floor.
 - Completed deterministic, production-guarded demo graphs across roles, restaurants, branches, areas, tables, localized menus, orders, payments, and print-safe QR images.
 - Finished integer-cent money persistence, item-level order cancellation history, kitchen/bar readiness separation, main-module policies, duplicate-operation protection, guest throttles, complete menu translation editing, model factories, and idempotent seed coverage.
+- Replaced public registration with recipient-bound invitation registration while preserving Fortify login, password reset, session regeneration, CSRF, and rate-limit controls.
+- Added an explicitly enabled, non-production-only demo login for all 12 seeded roles, backed by a shared identity catalogue and protected by guest, CSRF, throttle, and production-deny middleware.
 
 ## 2026-08-22 — production-grade modernization
 

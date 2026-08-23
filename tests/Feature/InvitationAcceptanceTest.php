@@ -59,6 +59,10 @@ test('an authenticated matching recipient can accept a pending branch invitation
 
     $this->actingAs($recipient)
         ->get(route('invitations.show', ['token' => $createdInvitation->token]))
+        ->assertRedirect(route('invitations.pending'));
+
+    $this->actingAs($recipient)
+        ->get(route('invitations.pending'))
         ->assertOk()
         ->assertSee($organization->name)
         ->assertSee($branch->name)
@@ -105,11 +109,136 @@ test('an authenticated matching recipient can accept a pending branch invitation
             ->count())->toBe(1);
 });
 
-test('an unauthenticated visitor is redirected to login before invitation details are disclosed', function (): void {
+test('an unauthenticated recipient can review an invitation without exposing its bearer token', function (): void {
     $createdInvitation = createAcceptanceInvitation();
 
     $this->get(route('invitations.show', ['token' => $createdInvitation->token]))
-        ->assertRedirect(route('login'));
+        ->assertRedirect(route('invitations.pending'))
+        ->assertHeader('Referrer-Policy', 'no-referrer')
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
+
+    $this->get(route('invitations.pending'))
+        ->assertOk()
+        ->assertSee($createdInvitation->invitation->organization->name)
+        ->assertSee('recipient@example.test')
+        ->assertSee(__('invitations.actions.create_account_and_accept'))
+        ->assertDontSee($createdInvitation->token)
+        ->assertHeader('Referrer-Policy', 'no-referrer')
+        ->assertSessionHas('staff_invitation_id', $createdInvitation->invitation->id)
+        ->assertSessionHas('url.intended', route('invitations.pending'));
+
+    $this->assertGuest();
+});
+
+test('a new recipient can register and atomically accept a branch invitation', function (): void {
+    $organization = Organization::factory()->create();
+    $brand = Brand::factory()->for($organization)->create();
+    $branch = Branch::factory()->for($organization)->for($brand)->create();
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $invitedBy = User::factory()->create();
+    $createdInvitation = app(CreateInvitationAction::class)->handle($organization, $role, $invitedBy, [
+        'brand' => $brand,
+        'branch' => $branch,
+        'email' => 'new.waiter@example.test',
+    ]);
+
+    $this->get(route('invitations.show', ['token' => $createdInvitation->token]))
+        ->assertRedirect(route('invitations.pending'));
+    $this->get(route('invitations.pending'))->assertOk();
+
+    $this->post(route('invitations.register'), [
+        'name' => 'New Waiter',
+        'email' => ' NEW.WAITER@EXAMPLE.TEST ',
+        'password' => 'StrongPassword2026!',
+        'password_confirmation' => 'StrongPassword2026!',
+    ])
+        ->assertSessionHasNoErrors()
+        ->assertSessionMissing('staff_invitation_id')
+        ->assertSessionMissing('url.intended')
+        ->assertRedirect(route('dashboard'));
+
+    $recipient = User::query()->where('email', 'new.waiter@example.test')->firstOrFail();
+
+    $this->assertAuthenticatedAs($recipient);
+    expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Accepted)
+        ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id);
+
+    $this->assertDatabaseHas('organization_users', [
+        'organization_id' => $organization->id,
+        'user_id' => $recipient->id,
+        'role_id' => $role->id,
+        'status' => OrganizationUserStatus::Active->value,
+    ]);
+    $this->assertDatabaseHas('branch_users', [
+        'organization_id' => $organization->id,
+        'branch_id' => $branch->id,
+        'user_id' => $recipient->id,
+        'role_id' => $role->id,
+        'status' => OrganizationUserStatus::Active->value,
+    ]);
+});
+
+test('invitation registration rejects a different email without creating partial records', function (): void {
+    $createdInvitation = createAcceptanceInvitation('recipient@example.test');
+
+    $this->get(route('invitations.show', ['token' => $createdInvitation->token]))
+        ->assertRedirect(route('invitations.pending'));
+    $this->get(route('invitations.pending'))->assertOk();
+
+    $this->post(route('invitations.register'), [
+        'name' => 'Wrong Recipient',
+        'email' => 'other@example.test',
+        'password' => 'StrongPassword2026!',
+        'password_confirmation' => 'StrongPassword2026!',
+    ])
+        ->assertSessionHasErrors('email');
+
+    $this->assertGuest();
+    $this->assertDatabaseMissing('users', ['email' => 'other@example.test']);
+    expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Pending)
+        ->and(OrganizationUser::query()
+            ->where('organization_id', $createdInvitation->invitation->organization_id)
+            ->exists())->toBeFalse();
+});
+
+test('an existing recipient returns to a token free invitation page after login and accepts it', function (): void {
+    $recipient = User::factory()->create(['email' => 'recipient@example.test']);
+    $createdInvitation = createAcceptanceInvitation($recipient->email);
+
+    $this->get(route('invitations.show', ['token' => $createdInvitation->token]))
+        ->assertRedirect(route('invitations.pending'))
+        ->assertSessionHas('url.intended', route('invitations.pending'));
+
+    $this->post(route('login.store'), [
+        'email' => $recipient->email,
+        'password' => 'password',
+    ])->assertRedirect(route('invitations.pending'));
+
+    $this->get(route('invitations.pending'))
+        ->assertOk()
+        ->assertSee($createdInvitation->invitation->organization->name)
+        ->assertSee(__('invitations.actions.accept'))
+        ->assertDontSee($createdInvitation->token);
+
+    $this->post(route('invitations.accept'))
+        ->assertSessionMissing('staff_invitation_id')
+        ->assertSessionMissing('url.intended')
+        ->assertRedirect(route('dashboard'));
+
+    expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Accepted)
+        ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id);
+});
+
+test('invitation registration requires a valid invitation in the current session', function (): void {
+    $this->post(route('invitations.register'), [
+        'name' => 'Uninvited User',
+        'email' => 'uninvited@example.test',
+        'password' => 'StrongPassword2026!',
+        'password_confirmation' => 'StrongPassword2026!',
+    ])->assertGone();
+
+    $this->assertGuest();
+    $this->assertDatabaseMissing('users', ['email' => 'uninvited@example.test']);
 });
 
 test('a signed in user with a different email cannot inspect or accept an invitation', function (): void {
@@ -152,7 +281,7 @@ test('invitation endpoints are rate limited by credential and client address', f
     foreach (range(1, 10) as $attempt) {
         $this->actingAs($recipient)
             ->get(route('invitations.show', ['token' => $createdInvitation->token]))
-            ->assertOk();
+            ->assertRedirect(route('invitations.pending'));
     }
 
     $this->actingAs($recipient)

@@ -4,7 +4,15 @@ Report vulnerabilities privately as described in the root [`SECURITY.md`](../SEC
 
 ## Identity and sessions
 
-Fortify owns registration, password login/reset/confirmation and account flows. Authentication regenerates the session; logout invalidates it and regenerates the CSRF token. Sensitive endpoints use named rate limiters and responses avoid unnecessary account disclosure. Passkey and two-factor code remains feature-gated but both features are disabled by current configuration; dormant credentials stay encrypted/hidden. Demo identities are seeded only outside production.
+Public Fortify registration is disabled. Account creation is available only through a valid staff invitation with recipient binding and atomic one-time consumption; Fortify owns password login/reset/confirmation and the remaining account flows. Authentication regenerates the session; logout invalidates it and regenerates the CSRF token. Sensitive endpoints use named rate limiters and responses avoid unnecessary account disclosure. Passkey and two-factor code remains feature-gated but both features are disabled by current configuration; dormant credentials stay encrypted/hidden. Demo identities are seeded only outside production.
+
+## Demo authentication boundary
+
+- Demo login requires the explicit `DEMO_LOGIN_ENABLED=true` flag outside production; production always returns 404 even if the flag is enabled accidentally.
+- The demo environment guard has priority before CSRF and the shared demo throttle so hidden requests neither reveal the feature nor consume its rate-limit budget. Global web middleware still keeps CSRF validation before authentication.
+- Both named routes are guest-only, use the normal web/CSRF stack and share a 20-requests-per-minute-per-IP limiter. The POST role parameter is restricted to the `SystemRole` enum allowlist.
+- Authentication reloads the canonical demo email, revalidates the exact email-role assignment, uses the `web` guard and regenerates the session before redirecting. Missing or mismatched identities fail generically without login.
+- The role page is private/non-cacheable and sends `Referrer-Policy: no-referrer` plus `X-Robots-Tag: noindex, nofollow`. Passwords, complete tokens and session identifiers are not rendered or logged.
 
 ## Authorization and isolation
 

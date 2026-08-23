@@ -2,7 +2,7 @@
 
 ## Database contract
 
-SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 70 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
+SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 73 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
 
 ## Entity groups
 
@@ -40,4 +40,4 @@ All production collections are bounded or paginated. Lists select necessary colu
 
 ## Factory and seed coverage
 
-Every one of the 41 first-party Eloquent models has a factory. The final state/exemption inventory and idempotent seeding contract live in [`seeding.md`](seeding.md). Factory defaults must satisfy every non-null foreign key and must not implicitly create unexpectedly large graphs.
+Every one of the 43 first-party Eloquent models has a factory. The final state/exemption inventory and idempotent seeding contract live in [`seeding.md`](seeding.md). Factory defaults must satisfy every non-null foreign key and must not implicitly create unexpectedly large graphs.

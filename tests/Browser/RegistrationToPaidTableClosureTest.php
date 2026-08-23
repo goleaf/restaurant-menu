@@ -2,18 +2,22 @@
 
 declare(strict_types=1);
 
+use App\Actions\Invitations\CreateInvitationAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
+use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\ManualPayment;
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
 use App\Models\Order;
+use App\Models\Organization;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -21,18 +25,30 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Pest\Browser\Api\PendingAwaitablePage;
 
-test('owner can register and close a fully paid table through the browser', function () {
+test('invited owner can register and close a fully paid table through the browser', function () {
     $this->seed(SystemPermissionsSeeder::class);
 
-    $page = visit(route('register', absolute: false));
+    $invitedBy = User::factory()->create();
+    $organization = Organization::factory()->create([
+        'owner_user_id' => $invitedBy->id,
+        'name' => 'Browser E2E Invitation Host',
+    ]);
+    $ownerRole = Role::query()
+        ->where('code', SystemRole::Owner->value)
+        ->firstOrFail();
+    $invitation = app(CreateInvitationAction::class)->handle($organization, $ownerRole, $invitedBy, [
+        'email' => 'browser-e2e-owner@example.test',
+    ]);
+
+    $page = visit(route('invitations.show', ['token' => $invitation->token], false));
 
     $page
-        ->assertSee(__('ui.auth.register.create_an_account'))
+        ->assertSee(__('invitations.account.create_title'))
+        ->assertValue('email', 'browser-e2e-owner@example.test')
         ->fill('name', 'Browser E2E Owner')
-        ->fill('email', 'browser-e2e-owner@example.test')
         ->fill('password', 'password')
         ->fill('password_confirmation', 'password')
-        ->click('@register-user-button')
+        ->click('@register-invitation-button')
         ->assertPathIs(route('dashboard', absolute: false))
         ->assertNoJavaScriptErrors();
 

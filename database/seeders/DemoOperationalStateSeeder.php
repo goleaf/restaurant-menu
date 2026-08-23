@@ -9,11 +9,9 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\KitchenTicketStatus;
-use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\OrderStatus;
-use App\Enums\OrganizationSubscriptionPaymentStatus;
-use App\Enums\OrganizationSubscriptionStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
@@ -29,6 +27,7 @@ use App\Models\ManualPayment;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Models\ServicePoint;
@@ -120,6 +119,20 @@ class DemoOperationalStateSeeder extends Seeder
             $this->seedPaymentWorkflow($branch, $servicePoints[2], $menuItems[0], $waiter);
             $this->seedHistoricalVolume($branch, $servicePoints[3], $menuItems[1], $waiter);
 
+            foreach ($branches as $operationalBranch) {
+                $barServicePoint = $operationalBranch->servicePoints->last();
+                $barMenuItems = $operationalBranch->menus
+                    ->flatMap(fn ($menu) => $menu->items)
+                    ->filter(fn (MenuItem $menuItem): bool => $menuItem->kitchenDepartment?->type === KitchenDepartmentType::Bar)
+                    ->values();
+
+                if (! $barServicePoint instanceof ServicePoint || $barMenuItems->isEmpty()) {
+                    throw new RuntimeException("Demo branch [{$operationalBranch->name}] must have a service point and bar menu item.");
+                }
+
+                $this->seedBarWorkflow($operationalBranch, $barServicePoint, $barMenuItems, $manager);
+            }
+
             foreach ($branches->where('id', '!=', $branch->id) as $secondaryBranch) {
                 $servicePoint = $secondaryBranch->servicePoints->first();
                 $menuItem = $secondaryBranch->menus
@@ -139,15 +152,23 @@ class DemoOperationalStateSeeder extends Seeder
     {
         $subscription = OrganizationSubscription::query()
             ->where('organization_id', $organization->id)
-            ->first() ?? new OrganizationSubscription;
+            ->first();
+        $factory = OrganizationSubscription::factory()
+            ->for($organization)
+            ->active()
+            ->paymentPaid()
+            ->state([
+                'started_at' => now()->subMonths(2),
+                'next_payment_at' => now()->addMonthNoOverflow(),
+            ]);
 
-        $subscription->forceFill([
-            'organization_id' => $organization->id,
-            'status' => OrganizationSubscriptionStatus::Active,
-            'started_at' => now()->subMonths(2),
-            'next_payment_at' => now()->addMonthNoOverflow(),
-            'payment_status' => OrganizationSubscriptionPaymentStatus::Paid,
-        ])->save();
+        if (! $subscription instanceof OrganizationSubscription) {
+            $factory->create();
+
+            return;
+        }
+
+        $subscription->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**
@@ -209,6 +230,68 @@ class DemoOperationalStateSeeder extends Seeder
         $this->waiterCall($branch, $session, $guest, WaiterCallStatus::Handled, 'handled-payment-call', $waiter);
     }
 
+    /**
+     * @param  Collection<int, MenuItem>  $menuItems
+     */
+    private function seedBarWorkflow(
+        Branch $branch,
+        ServicePoint $servicePoint,
+        Collection $menuItems,
+        User $manager,
+    ): void {
+        $branchKey = Str::slug($branch->name);
+        $statuses = [
+            KitchenTicketItemStatus::New,
+            KitchenTicketItemStatus::InProgress,
+            KitchenTicketItemStatus::Ready,
+        ];
+        $workflowItems = collect($statuses)
+            ->map(fn (KitchenTicketItemStatus $status, int $index): array => [
+                'menu_item' => $menuItems[$index % $menuItems->count()],
+                'status' => $status,
+            ]);
+        $totalPriceCents = $workflowItems->sum(
+            fn (array $workflowItem): int => max(1, $workflowItem['menu_item']->price_cents),
+        );
+        $session = $this->session(
+            $branch,
+            $servicePoint,
+            "$branchKey-bar-live",
+            TableSessionStatus::Active,
+            now()->subMinutes(35),
+        );
+        $guest = $this->guest($session, $branch->name.' Bar Guest', true);
+        $order = $this->order(
+            $session,
+            $guest,
+            $manager,
+            "$branchKey-bar-order",
+            OrderStatus::InProgress,
+            $totalPriceCents,
+        );
+
+        foreach ($workflowItems as $index => $workflowItem) {
+            $menuItem = $workflowItem['menu_item'];
+            $status = $workflowItem['status'];
+            $orderItem = $this->orderItem(
+                order: $order,
+                guest: $guest,
+                menuItem: $menuItem,
+                itemName: 'Bar demo '.($index + 1).' '.$status->value,
+                unitPriceCents: max(1, $menuItem->price_cents),
+            );
+            $this->ticketItem($branch, $session, $order, $orderItem, $menuItem, $status, $manager);
+        }
+
+        $this->orderStatusLog(
+            order: $order,
+            actor: $manager,
+            demoKey: "$branchKey-bar-status-history",
+            previousStatus: OrderStatus::SentToKitchenBar,
+            newStatus: OrderStatus::InProgress,
+        );
+    }
+
     private function seedHistoricalVolume(
         Branch $branch,
         ServicePoint $servicePoint,
@@ -262,6 +345,7 @@ class DemoOperationalStateSeeder extends Seeder
 
         $this->orderItem($order, $guest, $menuItem, $branch->name.' demo item', $amountCents);
         $this->payment($branch, $session, null, $manager, "$branchKey-payment", $amountCents);
+        $this->audit($branch, $manager, $session);
     }
 
     private function session(
@@ -275,17 +359,23 @@ class DemoOperationalStateSeeder extends Seeder
         $session = TableSession::query()
             ->where('branch_id', $branch->id)
             ->where('metadata->demo_key', $demoKey)
-            ->first() ?? new TableSession;
+            ->first();
+        $factory = TableSession::factory()
+            ->forServicePoint($servicePoint)
+            ->state([
+                'status' => $status,
+                'source' => TableSessionSource::WaiterOpened,
+                'started_at' => $startedAt,
+                'ended_at' => $endedAt,
+                'metadata' => ['demo_key' => $demoKey],
+            ]);
 
-        $session->forceFill([
-            'branch_id' => $branch->id,
-            'service_point_id' => $servicePoint->id,
-            'status' => $status,
-            'source' => TableSessionSource::WaiterOpened,
-            'started_at' => $startedAt,
-            'ended_at' => $endedAt,
-            'metadata' => ['demo_key' => $demoKey],
-        ])->save();
+        if (! $session instanceof TableSession) {
+            $session = $factory->create();
+        } else {
+            $session->forceFill($factory->make()->attributesToArray())->save();
+        }
+
         $session->setRelation('branch', $branch);
 
         return $session;
@@ -300,18 +390,24 @@ class DemoOperationalStateSeeder extends Seeder
         $guest = TableSessionGuest::query()
             ->where('table_session_id', $session->id)
             ->where('guest_name', $name)
-            ->first() ?? new TableSessionGuest;
+            ->first();
+        $factory = TableSessionGuest::factory()
+            ->for($session)
+            ->state([
+                'guest_name' => $name,
+                'guest_token' => $guest?->guest_token ?: Str::random(64),
+                'status' => $status,
+                'ready_at' => $ready ? now()->subMinutes(10) : null,
+                'joined_at' => now()->subHour(),
+                'left_at' => $status === TableSessionGuestStatus::Left ? now()->subDays(2) : null,
+                'metadata' => ['demo' => true],
+            ]);
 
-        $guest->forceFill([
-            'table_session_id' => $session->id,
-            'guest_name' => $name,
-            'guest_token' => $guest->guest_token ?: Str::random(64),
-            'status' => $status,
-            'ready_at' => $ready ? now()->subMinutes(10) : null,
-            'joined_at' => now()->subHour(),
-            'left_at' => $status === TableSessionGuestStatus::Left ? now()->subDays(2) : null,
-            'metadata' => ['demo' => true],
-        ])->save();
+        if (! $guest instanceof TableSessionGuest) {
+            return $factory->create();
+        }
+
+        $guest->forceFill($factory->make()->attributesToArray())->save();
 
         return $guest;
     }
@@ -325,16 +421,25 @@ class DemoOperationalStateSeeder extends Seeder
         $draft = DraftOrder::query()
             ->where('table_session_id', $session->id)
             ->where('status', $status->value)
-            ->first() ?? new DraftOrder;
+            ->first();
+        $factory = DraftOrder::factory()
+            ->forTableSession($session)
+            ->state([
+                'status' => $status,
+                'sent_to_waiter_at' => now()->subMinutes(15),
+                'sent_by_guest_id' => $guest->id,
+                'rejected_at' => null,
+                'rejected_by_user_id' => null,
+                'rejection_reason' => null,
+                'converted_to_order_at' => $status === DraftOrderStatus::ConvertedToOrder ? now()->subMinutes(12) : null,
+                'converted_by_user_id' => $status === DraftOrderStatus::ConvertedToOrder ? $waiter?->id : null,
+            ]);
 
-        $draft->forceFill([
-            'table_session_id' => $session->id,
-            'status' => $status,
-            'sent_to_waiter_at' => now()->subMinutes(15),
-            'sent_by_guest_id' => $guest->id,
-            'converted_to_order_at' => $status === DraftOrderStatus::ConvertedToOrder ? now()->subMinutes(12) : null,
-            'converted_by_user_id' => $status === DraftOrderStatus::ConvertedToOrder ? $waiter?->id : null,
-        ])->save();
+        if (! $draft instanceof DraftOrder) {
+            return $factory->create();
+        }
+
+        $draft->forceFill($factory->make()->attributesToArray())->save();
 
         return $draft;
     }
@@ -353,23 +458,31 @@ class DemoOperationalStateSeeder extends Seeder
             ->where('draft_order_id', $draft->id)
             ->where('table_session_guest_id', $guest->id)
             ->where('menu_item_id', $menuItem->id)
-            ->first() ?? new DraftOrderItem;
+            ->first();
+        $factory = DraftOrderItem::factory()
+            ->for($draft, 'draftOrder')
+            ->for($guest, 'guest')
+            ->for($menuItem, 'menuItem')
+            ->state([
+                'menu_item_variant_id' => $variant?->id,
+                'item_name' => $menuItem->name,
+                'variant_name' => $variant?->name,
+                'variant_type' => $variant?->type,
+                'quantity' => $quantity,
+                'unit_price_cents' => $unitPriceCents,
+                'modifier_total_cents' => 0,
+                'total_price_cents' => $totalPriceCents,
+                'selected_modifiers' => [],
+                'comment' => $comment,
+            ]);
 
-        $item->forceFill([
-            'draft_order_id' => $draft->id,
-            'table_session_guest_id' => $guest->id,
-            'menu_item_id' => $menuItem->id,
-            'menu_item_variant_id' => $variant?->id,
-            'item_name' => $menuItem->name,
-            'variant_name' => $variant?->name,
-            'variant_type' => $variant?->type,
-            'quantity' => $quantity,
-            'unit_price_cents' => $unitPriceCents,
-            'modifier_total_cents' => 0,
-            'total_price_cents' => $totalPriceCents,
-            'selected_modifiers' => [],
-            'comment' => $comment,
-        ])->save();
+        if (! $item instanceof DraftOrderItem) {
+            $factory->create();
+
+            return;
+        }
+
+        $item->forceFill($factory->make()->attributesToArray())->save();
     }
 
     private function order(
@@ -383,20 +496,25 @@ class DemoOperationalStateSeeder extends Seeder
         $order = Order::query()
             ->where('branch_id', $session->branch_id)
             ->where('metadata->demo_key', $demoKey)
-            ->first() ?? new Order;
+            ->first();
         $draft = $this->draft($session, DraftOrderStatus::ConvertedToOrder, $guest, $waiter);
-        $order->forceFill([
-            'branch_id' => $session->branch_id,
-            'service_point_id' => $session->service_point_id,
-            'table_session_id' => $session->id,
-            'draft_order_id' => $draft->id,
-            'status' => $status,
-            'confirmed_by_user_id' => $waiter->id,
-            'confirmed_at' => now()->subMinutes(12),
-            'total_price_cents' => $totalPriceCents,
-            'currency' => $session->branch->currency,
-            'metadata' => ['demo_key' => $demoKey],
-        ])->save();
+        $factory = Order::factory()
+            ->forTableSession($session)
+            ->state([
+                'draft_order_id' => $draft->id,
+                'status' => $status,
+                'confirmed_by_user_id' => $waiter->id,
+                'confirmed_at' => now()->subMinutes(12),
+                'total_price_cents' => $totalPriceCents,
+                'currency' => $session->branch->currency,
+                'metadata' => ['demo_key' => $demoKey],
+            ]);
+
+        if (! $order instanceof Order) {
+            return $factory->create();
+        }
+
+        $order->forceFill($factory->make()->attributesToArray())->save();
 
         return $order;
     }
@@ -412,36 +530,46 @@ class DemoOperationalStateSeeder extends Seeder
         $item = OrderItem::query()
             ->where('order_id', $order->id)
             ->where('item_name_snapshot', $itemName)
-            ->first() ?? new OrderItem;
+            ->first();
 
         $department = $menuItem->kitchenDepartment;
-        $item->forceFill([
-            'order_id' => $order->id,
-            'table_session_guest_id' => $guest->id,
-            'menu_item_id' => $menuItem->id,
-            'menu_item_variant_id' => $variant?->id,
-            'original_menu_item_id' => $menuItem->id,
-            'kitchen_department_id' => $department?->id,
-            'kitchen_department_type' => $department?->type,
-            'kitchen_department_name' => $department?->name,
-            'guest_name' => $guest->guest_name,
-            'guest_name_snapshot' => $guest->guest_name,
-            'item_name' => $itemName,
-            'item_name_snapshot' => $itemName,
-            'item_description_snapshot' => null,
-            'variant_name' => $variant?->name,
-            'variant_type' => $variant?->type,
-            'quantity' => 1,
-            'unit_price_cents' => $unitPriceCents,
-            'unit_price_snapshot_cents' => $unitPriceCents,
-            'modifier_total_cents' => 0,
-            'total_price_cents' => $unitPriceCents,
-            'selected_modifiers' => [],
-            'modifiers_snapshot' => [],
-            'tax_snapshot' => [],
-            'service_snapshot' => [],
-            'comment' => null,
-        ])->save();
+        $factory = OrderItem::factory()
+            ->for($order)
+            ->for($guest, 'guest')
+            ->for($menuItem, 'menuItem')
+            ->state([
+                'menu_item_variant_id' => $variant?->id,
+                'original_menu_item_id' => $menuItem->id,
+                'kitchen_department_id' => $department?->id,
+                'kitchen_department_type' => $department?->type,
+                'kitchen_department_name' => $department?->name,
+                'guest_name' => $guest->guest_name,
+                'guest_name_snapshot' => $guest->guest_name,
+                'item_name' => $itemName,
+                'item_name_snapshot' => $itemName,
+                'item_description_snapshot' => null,
+                'variant_name' => $variant?->name,
+                'variant_type' => $variant?->type,
+                'quantity' => 1,
+                'unit_price_cents' => $unitPriceCents,
+                'unit_price_snapshot_cents' => $unitPriceCents,
+                'modifier_total_cents' => 0,
+                'total_price_cents' => $unitPriceCents,
+                'selected_modifiers' => [],
+                'modifiers_snapshot' => [],
+                'tax_snapshot' => [],
+                'service_snapshot' => [],
+                'comment' => null,
+                'cancelled_at' => null,
+                'cancelled_by_user_id' => null,
+                'cancellation_reason' => null,
+            ]);
+
+        if (! $item instanceof OrderItem) {
+            return $factory->create();
+        }
+
+        $item->forceFill($factory->make()->attributesToArray())->save();
 
         return $item;
     }
@@ -463,39 +591,49 @@ class DemoOperationalStateSeeder extends Seeder
             ->where('order_id', $order->id)
             ->where('department_type', $department->type->value)
             ->where('department_name', $department->name)
-            ->first() ?? new KitchenTicket;
+            ->first();
+        $ticketFactory = KitchenTicket::factory()
+            ->forOrder($order)
+            ->state([
+                'kitchen_department_id' => $department->id,
+                'department_type' => $department->type,
+                'department_name' => $department->name,
+                'status' => KitchenTicketStatus::Sent,
+                'sent_by_user_id' => $waiter->id,
+                'sent_at' => now()->subMinutes(10),
+                'metadata' => ['demo' => true],
+            ]);
 
-        $ticket->forceFill([
-            'order_id' => $order->id,
-            'branch_id' => $branch->id,
-            'service_point_id' => $session->service_point_id,
-            'table_session_id' => $session->id,
-            'kitchen_department_id' => $department->id,
-            'department_type' => $department->type,
-            'department_name' => $department->name,
-            'status' => KitchenTicketStatus::Sent,
-            'sent_by_user_id' => $waiter->id,
-            'sent_at' => now()->subMinutes(10),
-            'metadata' => ['demo' => true],
-        ])->save();
+        if (! $ticket instanceof KitchenTicket) {
+            $ticket = $ticketFactory->create();
+        } else {
+            $ticket->forceFill($ticketFactory->make()->attributesToArray())->save();
+        }
 
         $ticketItem = KitchenTicketItem::query()
             ->where('order_item_id', $orderItem->id)
-            ->first() ?? new KitchenTicketItem;
-        $ticketItem->forceFill([
-            'kitchen_ticket_id' => $ticket->id,
-            'order_item_id' => $orderItem->id,
-            'table_session_guest_id' => $orderItem->table_session_guest_id,
-            'menu_item_id' => $menuItem->id,
-            'guest_name' => $orderItem->guest_name,
-            'item_name' => filled($orderItem->variant_name)
-                ? $orderItem->item_name.' · '.$orderItem->variant_name
-                : $orderItem->item_name,
-            'quantity' => $orderItem->quantity,
-            'status' => $status,
-            'selected_modifiers' => [],
-            'comment' => null,
-        ])->save();
+            ->first();
+        $ticketItemFactory = KitchenTicketItem::factory()
+            ->forDispatchedOrderItem($ticket, $orderItem)
+            ->state([
+                'menu_item_id' => $menuItem->id,
+                'guest_name' => $orderItem->guest_name,
+                'item_name' => filled($orderItem->variant_name)
+                    ? $orderItem->item_name.' · '.$orderItem->variant_name
+                    : $orderItem->item_name,
+                'quantity' => $orderItem->quantity,
+                'status' => $status,
+                'selected_modifiers' => [],
+                'comment' => null,
+            ]);
+
+        if (! $ticketItem instanceof KitchenTicketItem) {
+            $ticketItemFactory->create();
+
+            return;
+        }
+
+        $ticketItem->forceFill($ticketItemFactory->make()->attributesToArray())->save();
     }
 
     private function waiterCall(
@@ -509,18 +647,25 @@ class DemoOperationalStateSeeder extends Seeder
         $call = WaiterCall::query()
             ->where('branch_id', $branch->id)
             ->where('metadata->demo_key', $demoKey)
-            ->first() ?? new WaiterCall;
-        $call->forceFill([
-            'branch_id' => $branch->id,
-            'service_point_id' => $session->service_point_id,
-            'table_session_id' => $session->id,
-            'requested_by_guest_id' => $guest->id,
-            'status' => $status,
-            'requested_at' => now()->subMinutes(8),
-            'handled_at' => $status === WaiterCallStatus::Handled ? now()->subMinutes(6) : null,
-            'handled_by_user_id' => $status === WaiterCallStatus::Handled ? $waiter?->id : null,
-            'metadata' => ['demo_key' => $demoKey],
-        ])->save();
+            ->first();
+        $factory = WaiterCall::factory()
+            ->forTableSession($session)
+            ->state([
+                'requested_by_guest_id' => $guest->id,
+                'status' => $status,
+                'requested_at' => now()->subMinutes(8),
+                'handled_at' => $status === WaiterCallStatus::Handled ? now()->subMinutes(6) : null,
+                'handled_by_user_id' => $status === WaiterCallStatus::Handled ? $waiter?->id : null,
+                'metadata' => ['demo_key' => $demoKey],
+            ]);
+
+        if (! $call instanceof WaiterCall) {
+            $factory->create();
+
+            return;
+        }
+
+        $call->forceFill($factory->make()->attributesToArray())->save();
     }
 
     private function payment(
@@ -538,26 +683,26 @@ class DemoOperationalStateSeeder extends Seeder
             return;
         }
 
-        $payment = new ManualPayment;
-        $payment->forceFill([
-            'branch_id' => $branch->id,
-            'service_point_id' => $session->service_point_id,
-            'table_session_id' => $session->id,
-            'table_session_guest_id' => $guest?->id,
-            'recorded_by_user_id' => $waiter->id,
-            'scope' => $guest instanceof TableSessionGuest ? ManualPaymentScope::Guest : ManualPaymentScope::Table,
-            'payment_method' => ManualPaymentMethod::CardTerminal,
-            'covered_subtotal_cents' => $amountCents,
-            'service_charge_basis_points' => 0,
-            'service_charge_cents' => 0,
-            'tips_cents' => 0,
-            'amount_cents' => $amountCents,
-            'currency' => $branch->currency,
-            'guest_name' => $guest?->guest_name,
-            'note' => 'Deterministic demo payment',
-            'paid_at' => now()->subMinutes(5),
-            'metadata' => ['demo_key' => $demoKey],
-        ])->save();
+        $factory = $guest instanceof TableSessionGuest
+            ? ManualPayment::factory()->forGuest($guest)
+            : ManualPayment::factory()->forTableSession($session);
+
+        $factory
+            ->cardTerminal()
+            ->state([
+                'recorded_by_user_id' => $waiter->id,
+                'scope' => $guest instanceof TableSessionGuest ? ManualPaymentScope::Guest : ManualPaymentScope::Table,
+                'covered_subtotal_cents' => $amountCents,
+                'service_charge_basis_points' => 0,
+                'service_charge_cents' => 0,
+                'tips_cents' => 0,
+                'amount_cents' => $amountCents,
+                'currency' => $branch->currency,
+                'guest_name' => $guest?->guest_name,
+                'note' => 'Deterministic demo payment',
+                'paid_at' => now()->subMinutes(5),
+                'metadata' => ['demo_key' => $demoKey],
+            ])->create();
     }
 
     private function audit(Branch $branch, User $waiter, TableSession $session): void
@@ -569,8 +714,7 @@ class DemoOperationalStateSeeder extends Seeder
             return;
         }
 
-        $auditLog = new AuditLog;
-        $auditLog->forceFill([
+        AuditLog::factory()->create([
             'organization_id' => $branch->organization_id,
             'branch_id' => $branch->id,
             'user_id' => $waiter->id,
@@ -580,6 +724,35 @@ class DemoOperationalStateSeeder extends Seeder
             'old_values' => ['status' => TableSessionStatus::Active->value],
             'new_values' => ['status' => TableSessionStatus::Closed->value],
             'created_at' => now()->subDays(2),
-        ])->save();
+        ]);
+    }
+
+    private function orderStatusLog(
+        Order $order,
+        User $actor,
+        string $demoKey,
+        OrderStatus $previousStatus,
+        OrderStatus $newStatus,
+    ): void {
+        $factory = OrderStatusLog::factory()
+            ->forOrderTransition($order, $actor, $previousStatus, $newStatus)
+            ->state([
+                'event' => OrderStatusLogEvent::OrderStatusChanged,
+                'reason' => 'Deterministic demo status history',
+                'metadata' => ['demo_key' => $demoKey],
+                'occurred_at' => now()->subMinutes(8),
+            ]);
+        $statusLog = OrderStatusLog::query()
+            ->where('branch_id', $order->branch_id)
+            ->where('metadata->demo_key', $demoKey)
+            ->first();
+
+        if (! $statusLog instanceof OrderStatusLog) {
+            $factory->create();
+
+            return;
+        }
+
+        $statusLog->forceFill($factory->make()->attributesToArray())->save();
     }
 }

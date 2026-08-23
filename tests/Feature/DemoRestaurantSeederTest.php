@@ -3,6 +3,7 @@
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\QrCodeStatus;
@@ -11,12 +12,15 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\Menu;
@@ -26,6 +30,7 @@ use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Models\OrganizationUser;
@@ -276,6 +281,113 @@ test('demo restaurant seeder provides representative operational workflows', fun
         ->and(ManualPayment::query()->where('branch_id', $branch->id)->count())->toBeGreaterThanOrEqual(2);
 });
 
+test('demo restaurant seeder creates a maximum operational graph for every seeded branch', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organizations = Organization::query()
+        ->select(['id'])
+        ->withCount(['memberships', 'brands', 'branches', 'servicePoints', 'orders'])
+        ->orderBy('id')
+        ->get();
+    $organizationIds = $organizations->pluck('id');
+    $branches = Branch::query()
+        ->select(['id', 'organization_id'])
+        ->whereIn('organization_id', $organizationIds)
+        ->withCount([
+            'staffAssignments',
+            'areaNodes',
+            'servicePoints',
+            'menus',
+            'tableSessions',
+            'orders',
+            'kitchenTickets',
+            'orderStatusLogs',
+        ])
+        ->orderBy('id')
+        ->get();
+    $branchIds = $branches->pluck('id');
+    $branchesWithBarMenuItems = MenuItem::query()
+        ->select(['id', 'menu_id', 'kitchen_department_id'])
+        ->whereHas('menu', fn ($query) => $query->whereIn('branch_id', $branchIds))
+        ->whereHas('kitchenDepartment', fn ($query) => $query->where('type', KitchenDepartmentType::Bar->value))
+        ->with('menu:id,branch_id')
+        ->get()
+        ->pluck('menu.branch_id')
+        ->unique()
+        ->values();
+    $branchesWithQrCodes = QrCode::query()
+        ->select(['id', 'service_point_id'])
+        ->whereHas('servicePoint', fn ($query) => $query->whereIn('branch_id', $branchIds))
+        ->with('servicePoint:id,branch_id')
+        ->get()
+        ->pluck('servicePoint.branch_id')
+        ->unique()
+        ->values();
+    $branchesWithPayments = ManualPayment::query()
+        ->whereIn('branch_id', $branchIds)
+        ->pluck('branch_id')
+        ->unique()
+        ->values();
+    $branchesWithAuditHistory = AuditLog::query()
+        ->whereIn('branch_id', $branchIds)
+        ->pluck('branch_id')
+        ->unique()
+        ->values();
+    $branchesWithOrderHistory = OrderStatusLog::query()
+        ->whereIn('branch_id', $branchIds)
+        ->pluck('branch_id')
+        ->unique()
+        ->values();
+    $barDepartments = KitchenDepartment::query()
+        ->select(['id', 'branch_id', 'type'])
+        ->whereIn('branch_id', $branchIds)
+        ->where('type', KitchenDepartmentType::Bar->value)
+        ->with(['kitchenTickets.items:id,kitchen_ticket_id,status'])
+        ->orderBy('id')
+        ->get();
+
+    expect($organizations)->not->toBeEmpty()
+        ->and($branches)->not->toBeEmpty()
+        ->and($branchesWithBarMenuItems->all())->toEqualCanonicalizing($branchIds->all())
+        ->and($branchesWithQrCodes->all())->toEqualCanonicalizing($branchIds->all())
+        ->and($branchesWithPayments->all())->toEqualCanonicalizing($branchIds->all())
+        ->and($branchesWithAuditHistory->all())->toEqualCanonicalizing($branchIds->all())
+        ->and($branchesWithOrderHistory->all())->toEqualCanonicalizing($branchIds->all())
+        ->and($barDepartments->pluck('branch_id')->unique()->values()->all())
+        ->toEqualCanonicalizing($branchIds->all());
+
+    foreach ($organizations as $organization) {
+        expect($organization->memberships_count)->toBeGreaterThan(0)
+            ->and($organization->brands_count)->toBeGreaterThan(0)
+            ->and($organization->branches_count)->toBeGreaterThan(0)
+            ->and($organization->service_points_count)->toBeGreaterThan(0)
+            ->and($organization->orders_count)->toBeGreaterThan(0);
+    }
+
+    foreach ($branches as $branch) {
+        expect($branch->staff_assignments_count)->toBeGreaterThan(0)
+            ->and($branch->area_nodes_count)->toBeGreaterThan(0)
+            ->and($branch->service_points_count)->toBeGreaterThan(0)
+            ->and($branch->menus_count)->toBeGreaterThan(0)
+            ->and($branch->table_sessions_count)->toBeGreaterThan(0)
+            ->and($branch->orders_count)->toBeGreaterThan(0)
+            ->and($branch->kitchen_tickets_count)->toBeGreaterThan(0)
+            ->and($branch->order_status_logs_count)->toBeGreaterThan(0);
+    }
+
+    foreach ($barDepartments as $barDepartment) {
+        $statuses = $barDepartment->kitchenTickets
+            ->flatMap(fn ($ticket) => $ticket->items)
+            ->pluck('status');
+
+        expect($statuses)->toContain(
+            KitchenTicketItemStatus::New,
+            KitchenTicketItemStatus::InProgress,
+            KitchenTicketItemStatus::Ready,
+        );
+    }
+});
+
 test('demo restaurant seeder creates the complete organization brand branch hierarchy', function () {
     $this->seed(DemoRestaurantSeeder::class);
 
@@ -409,15 +521,19 @@ test('demo restaurant seeder is idempotent', function () {
         'service_points' => 19,
         'qr_codes' => 19,
         'menus' => 4,
-        'menu_categories' => 8,
-        'menu_items' => 20,
-        'menu_item_variants' => 30,
-        'menu_item_variant_translations' => 90,
-        'table_sessions' => 7,
-        'draft_orders' => 7,
-        'orders' => 6,
-        'order_items' => 28,
+        'menu_categories' => 9,
+        'menu_items' => 21,
+        'menu_item_variants' => 32,
+        'menu_item_variant_translations' => 96,
+        'table_sessions' => 11,
+        'draft_orders' => 11,
+        'orders' => 10,
+        'order_items' => 40,
+        'kitchen_tickets' => 5,
+        'kitchen_ticket_items' => 15,
         'manual_payments' => 5,
+        'order_status_logs' => 4,
+        'audit_logs' => 4,
     ]);
 
     $firstOrderIds = Order::query()
@@ -584,7 +700,11 @@ function demoSeedGraphCounts(): array
         'draft_orders' => DraftOrder::query()->count(),
         'orders' => Order::query()->count(),
         'order_items' => OrderItem::query()->count(),
+        'kitchen_tickets' => KitchenTicket::query()->count(),
+        'kitchen_ticket_items' => KitchenTicketItem::query()->count(),
         'manual_payments' => ManualPayment::query()->count(),
+        'order_status_logs' => OrderStatusLog::query()->count(),
+        'audit_logs' => AuditLog::query()->count(),
     ];
 }
 

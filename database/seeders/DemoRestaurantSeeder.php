@@ -15,8 +15,6 @@ use App\Enums\KitchenDepartmentType;
 use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuItemVariantType;
-use App\Enums\MenuStatus;
-use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -680,18 +678,24 @@ class DemoRestaurantSeeder extends Seeder
         $menu = Menu::withTrashed()
             ->where('branch_id', $branch->id)
             ->where('name', $menuName)
-            ->first() ?? new Menu;
+            ->first();
+        $factory = Menu::factory()
+            ->forBranch($branch)
+            ->active()
+            ->state([
+                'name' => $menuName,
+                'sort_order' => 10,
+            ]);
 
-        if ($menu->trashed()) {
-            $menu->restore();
+        if (! $menu instanceof Menu) {
+            $menu = $factory->create();
+        } else {
+            if ($menu->trashed()) {
+                $menu->restore();
+            }
+
+            $menu->forceFill($factory->make()->attributesToArray())->save();
         }
-
-        $menu->forceFill([
-            'branch_id' => $branch->id,
-            'name' => $menuName,
-            'status' => MenuStatus::Active,
-            'sort_order' => 10,
-        ])->save();
 
         $departments = KitchenDepartment::query()
             ->where('branch_id', $branch->id)
@@ -792,9 +796,11 @@ class DemoRestaurantSeeder extends Seeder
     private function seedSushiMenu(Menu $menu, Collection $departments): void
     {
         $rolls = $this->category($menu, 'Роллы', 'Роллы и нигири, приготовленные после заказа.', 'squares-2x2', 10);
-        $departmentId = $departments->get(KitchenDepartmentType::Kitchen->value);
+        $drinks = $this->category($menu, 'Напитки', 'Горячие и холодные напитки.', 'beaker', 20);
+        $kitchenDepartmentId = $departments->get(KitchenDepartmentType::Kitchen->value);
+        $barDepartmentId = $departments->get(KitchenDepartmentType::Bar->value);
 
-        $this->item($menu, $rolls, $departmentId, [
+        $this->item($menu, $rolls, $kitchenDepartmentId, [
             'name' => 'Филадельфия',
             'description' => 'Лосось, сливочный сыр, огурец и рис.',
             'price' => '12.90',
@@ -803,7 +809,7 @@ class DemoRestaurantSeeder extends Seeder
             'calories' => 520,
             'sort_order' => 10,
         ]);
-        $this->item($menu, $rolls, $departmentId, [
+        $this->item($menu, $rolls, $kitchenDepartmentId, [
             'name' => 'Калифорния',
             'description' => 'Краб, авокадо, огурец и тобико.',
             'price' => '11.50',
@@ -812,7 +818,7 @@ class DemoRestaurantSeeder extends Seeder
             'calories' => 480,
             'sort_order' => 20,
         ]);
-        $this->item($menu, $rolls, $departmentId, [
+        $this->item($menu, $rolls, $kitchenDepartmentId, [
             'name' => 'Нигири с лососем',
             'description' => 'Лосось и рис, две штуки.',
             'price' => '6.20',
@@ -821,6 +827,15 @@ class DemoRestaurantSeeder extends Seeder
             'weight' => '110.00',
             'calories' => 210,
             'sort_order' => 30,
+        ]);
+        $this->item($menu, $drinks, $barDepartmentId, [
+            'name' => 'Домашний лимонад',
+            'description' => 'Лимон, мята, лёд и газированная вода.',
+            'price' => '4.20',
+            'dietary_labels' => [MenuDietaryLabel::Vegan, MenuDietaryLabel::GlutenFree, MenuDietaryLabel::LactoseFree],
+            'volume' => '0.40',
+            'calories' => 120,
+            'sort_order' => 40,
         ]);
     }
 
@@ -870,29 +885,46 @@ class DemoRestaurantSeeder extends Seeder
         $category = MenuCategory::withTrashed()
             ->where('menu_id', $menu->id)
             ->where('name', $name)
-            ->first() ?? new MenuCategory;
+            ->first();
+        $factory = MenuCategory::factory()
+            ->for($menu)
+            ->active()
+            ->state([
+                'name' => $name,
+                'description' => $description,
+                'icon' => $icon,
+                'sort_order' => $sortOrder,
+            ]);
 
-        if ($category->trashed()) {
-            $category->restore();
+        if (! $category instanceof MenuCategory) {
+            $category = $factory->create();
+        } else {
+            if ($category->trashed()) {
+                $category->restore();
+            }
+
+            $category->forceFill($factory->make()->attributesToArray())->save();
         }
 
-        $category->forceFill([
-            'menu_id' => $menu->id,
-            'name' => $name,
-            'description' => $description,
-            'icon' => $icon,
-            'sort_order' => $sortOrder,
-            'is_active' => true,
-        ])->save();
-
         foreach (DemoMenuTranslations::category($name, $description) as $languageCode => $translation) {
-            MenuCategoryTranslation::query()->updateOrCreate(
-                [
-                    'menu_category_id' => $category->id,
+            $categoryTranslation = MenuCategoryTranslation::query()
+                ->where('menu_category_id', $category->id)
+                ->where('language_code', $languageCode)
+                ->first();
+            $translationFactory = MenuCategoryTranslation::factory()
+                ->for($category, 'category')
+                ->state([
                     'language_code' => $languageCode,
-                ],
-                $translation,
-            );
+                    ...$translation,
+                ]);
+
+            if (! $categoryTranslation instanceof MenuCategoryTranslation) {
+                $translationFactory->create();
+
+                continue;
+            }
+
+            $categoryTranslation->forceFill($translationFactory->make()->attributesToArray())->save();
         }
 
         return $category;
@@ -906,42 +938,59 @@ class DemoRestaurantSeeder extends Seeder
         $item = MenuItem::withTrashed()
             ->where('menu_id', $menu->id)
             ->where('name', $data['name'])
-            ->first() ?? new MenuItem;
+            ->first();
+        $factory = MenuItem::factory()
+            ->for($menu)
+            ->for($category, 'category')
+            ->available()
+            ->state([
+                'kitchen_department_id' => $departmentId,
+                'name' => $data['name'],
+                'description' => $data['description'],
+                'price_cents' => MoneyFormatter::decimalToCents($data['price']),
+                'allergens' => array_map(
+                    fn (MenuAllergen $allergen): string => $allergen->value,
+                    $data['allergens'] ?? [],
+                ),
+                'dietary_labels' => array_map(
+                    fn (MenuDietaryLabel $label): string => $label->value,
+                    $data['dietary_labels'] ?? [],
+                ),
+                'weight' => $data['weight'] ?? null,
+                'volume' => $data['volume'] ?? null,
+                'calories' => $data['calories'],
+                'sort_order' => $data['sort_order'],
+            ]);
 
-        if ($item->trashed()) {
-            $item->restore();
+        if (! $item instanceof MenuItem) {
+            $item = $factory->create();
+        } else {
+            if ($item->trashed()) {
+                $item->restore();
+            }
+
+            $item->forceFill($factory->make()->attributesToArray())->save();
         }
 
-        $item->forceFill([
-            'menu_id' => $menu->id,
-            'name' => $data['name'],
-            'category_id' => $category->id,
-            'kitchen_department_id' => $departmentId,
-            'description' => $data['description'],
-            'price_cents' => MoneyFormatter::decimalToCents($data['price']),
-            'allergens' => array_map(
-                fn (MenuAllergen $allergen): string => $allergen->value,
-                $data['allergens'] ?? [],
-            ),
-            'dietary_labels' => array_map(
-                fn (MenuDietaryLabel $label): string => $label->value,
-                $data['dietary_labels'] ?? [],
-            ),
-            'weight' => $data['weight'] ?? null,
-            'volume' => $data['volume'] ?? null,
-            'calories' => $data['calories'],
-            'is_available' => true,
-            'sort_order' => $data['sort_order'],
-        ])->save();
-
         foreach (DemoMenuTranslations::item($data['name'], $data['description']) as $languageCode => $translation) {
-            MenuItemTranslation::query()->updateOrCreate(
-                [
-                    'menu_item_id' => $item->id,
+            $itemTranslation = MenuItemTranslation::query()
+                ->where('menu_item_id', $item->id)
+                ->where('language_code', $languageCode)
+                ->first();
+            $translationFactory = MenuItemTranslation::factory()
+                ->for($item, 'item')
+                ->state([
                     'language_code' => $languageCode,
-                ],
-                $translation,
-            );
+                    ...$translation,
+                ]);
+
+            if (! $itemTranslation instanceof MenuItemTranslation) {
+                $translationFactory->create();
+
+                continue;
+            }
+
+            $itemTranslation->forceFill($translationFactory->make()->attributesToArray())->save();
         }
 
         $this->seedItemVariants($item);
@@ -960,30 +1009,49 @@ class DemoRestaurantSeeder extends Seeder
         $item->variants()->update(['is_default' => false]);
 
         foreach ($profiles as $profile) {
-            $variant = MenuItemVariant::query()->updateOrCreate(
-                [
-                    'menu_item_id' => $item->id,
-                    'type' => $profile['type']->value,
+            $variant = MenuItemVariant::query()
+                ->where('menu_item_id', $item->id)
+                ->where('type', $profile['type']->value)
+                ->where('name', $profile['name'])
+                ->first();
+            $factory = MenuItemVariant::factory()
+                ->for($item, 'item')
+                ->state([
+                    'type' => $profile['type'],
                     'name' => $profile['name'],
-                ],
-                [
                     'price_cents' => $profile['price_cents'],
                     'weight' => $profile['weight'],
                     'volume' => $profile['volume'],
                     'is_default' => $profile['is_default'],
                     'is_available' => true,
                     'sort_order' => $profile['sort_order'],
-                ],
-            );
+                ]);
+
+            if (! $variant instanceof MenuItemVariant) {
+                $variant = $factory->create();
+            } else {
+                $variant->forceFill($factory->make()->attributesToArray())->save();
+            }
 
             foreach ($profile['translations'] as $languageCode => $name) {
-                MenuItemVariantTranslation::query()->updateOrCreate(
-                    [
-                        'menu_item_variant_id' => $variant->id,
+                $translation = MenuItemVariantTranslation::query()
+                    ->where('menu_item_variant_id', $variant->id)
+                    ->where('language_code', $languageCode)
+                    ->first();
+                $translationFactory = MenuItemVariantTranslation::factory()
+                    ->for($variant, 'variant')
+                    ->state([
                         'language_code' => $languageCode,
-                    ],
-                    ['name' => $name],
-                );
+                        'name' => $name,
+                    ]);
+
+                if (! $translation instanceof MenuItemVariantTranslation) {
+                    $translationFactory->create();
+
+                    continue;
+                }
+
+                $translation->forceFill($translationFactory->make()->attributesToArray())->save();
             }
         }
     }
@@ -1077,16 +1145,21 @@ class DemoRestaurantSeeder extends Seeder
         $membership = OrganizationUser::query()
             ->where('organization_id', $organization->id)
             ->where('user_id', $user->id)
-            ->first() ?? new OrganizationUser;
+            ->first();
+        $factory = OrganizationUser::factory()
+            ->forOrganization($organization)
+            ->forUser($user)
+            ->forRole($this->role($role))
+            ->active()
+            ->state(['invited_by_user_id' => $invitedBy?->id]);
 
-        $membership->forceFill([
-            'organization_id' => $organization->id,
-            'user_id' => $user->id,
-            'role_id' => $this->role($role)->id,
-            'status' => OrganizationUserStatus::Active,
-            'joined_at' => now(),
-            'invited_by_user_id' => $invitedBy?->id,
-        ])->save();
+        if (! $membership instanceof OrganizationUser) {
+            $factory->create();
+
+            return;
+        }
+
+        $membership->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**
@@ -1134,17 +1207,21 @@ class DemoRestaurantSeeder extends Seeder
             ->where('organization_id', $organization->id)
             ->where('branch_id', $branch->id)
             ->where('user_id', $user->id)
-            ->first() ?? new BranchUser;
+            ->first();
+        $factory = BranchUser::factory()
+            ->forBranch($branch)
+            ->forUser($user)
+            ->forRole($this->role($role))
+            ->active()
+            ->state(['assigned_by_user_id' => $assignedBy->id]);
 
-        $assignment->forceFill([
-            'organization_id' => $organization->id,
-            'branch_id' => $branch->id,
-            'user_id' => $user->id,
-            'role_id' => $this->role($role)->id,
-            'status' => OrganizationUserStatus::Active,
-            'assigned_at' => now(),
-            'assigned_by_user_id' => $assignedBy->id,
-        ])->save();
+        if (! $assignment instanceof BranchUser) {
+            $factory->create();
+
+            return;
+        }
+
+        $assignment->forceFill($factory->make()->attributesToArray())->save();
     }
 
     /**

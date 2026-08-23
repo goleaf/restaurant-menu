@@ -1,5 +1,13 @@
 # Restaurant Menu completion implementation plan
 
+## Active follow-up — complete `/organizations` CRUD demo
+
+The approved active follow-up is defined by [`superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md`](superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md) and executed by [`superpowers/plans/2026-08-23-organizations-full-crud-demo.md`](superpowers/plans/2026-08-23-organizations-full-crud-demo.md). It extends the canonical factory-backed demo graph, seeds the actual local database only after isolated proof, and supplies an auditable 26-resource CRUD/lifecycle matrix for every management surface below `/organizations`.
+
+The previously approved dish-gallery work remains mandatory as the subordinate plan [`superpowers/plans/2026-08-23-menu-item-image-gallery.md`](superpowers/plans/2026-08-23-menu-item-image-gallery.md). It is inventory row 20 of the master plan, not a competing track.
+
+Execution status: design approved; complete TDD implementation plan prepared; implementation and verification pending.
+
 ## Goal
 
 Bring the present checkout to a locally complete, reproducibly tested, release-ready state without discarding user work, changing the approved product scope, publishing a release, deploying production, or touching existing application data destructively.

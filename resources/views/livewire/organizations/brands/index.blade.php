@@ -23,8 +23,9 @@
     @endif
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-800">
             <flux:heading size="lg">{{ __('ui.organizations.brands.index.brands_in_this_organization') }}</flux:heading>
+            <flux:input wire:model.live.debounce.300ms="search" :label="__('layout.search')" type="search" autocomplete="off" class="sm:max-w-xs" />
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -128,9 +129,15 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('ui.empty.no_brands') }}
+                    {{ $search !== '' ? __('ui.empty.no_results') : __('ui.empty.no_brands') }}
                 </div>
             @endforelse
         </div>
+
+        @if ($brandsPaginator->hasPages())
+            <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                {{ $brandsPaginator->links() }}
+            </div>
+        @endif
     </div>
 </section>

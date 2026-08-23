@@ -81,8 +81,9 @@
     </div>
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-800">
             <flux:heading size="lg">{{ __('staff.list') }}</flux:heading>
+            <flux:input wire:model.live.debounce.300ms="staffSearch" :label="__('layout.search').' — '.__('staff.list')" type="search" autocomplete="off" class="sm:max-w-xs" />
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -134,15 +135,22 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('staff.empty.no_staff') }}
+                    {{ $staffSearch !== '' ? __('ui.empty.no_results') : __('staff.empty.no_staff') }}
                 </div>
             @endforelse
         </div>
+
+        @if ($membersPaginator->hasPages())
+            <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                {{ $membersPaginator->links() }}
+            </div>
+        @endif
     </div>
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-800">
             <flux:heading size="lg">{{ __('staff.invitations') }}</flux:heading>
+            <flux:input wire:model.live.debounce.300ms="invitationSearch" :label="__('layout.search').' — '.__('staff.invitations')" type="search" autocomplete="off" class="sm:max-w-xs" />
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -157,9 +165,15 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ __('staff.empty.no_invitations') }}
+                    {{ $invitationSearch !== '' ? __('ui.empty.no_results') : __('staff.empty.no_invitations') }}
                 </div>
             @endforelse
         </div>
+
+        @if ($invitationsPaginator->hasPages())
+            <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                {{ $invitationsPaginator->links() }}
+            </div>
+        @endif
     </div>
 </section>

@@ -14,12 +14,15 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 
 final class StaffQueryService
 {
-    /** @return EloquentCollection<int, OrganizationUser> */
-    public function organizationMembers(Organization $organization): EloquentCollection
+    /** @return Paginator<int, OrganizationUser> */
+    public function paginateOrganizationMembers(Organization $organization, string $search, int $perPage): Paginator
     {
+        $search = trim($search);
+
         return OrganizationUser::query()
             ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at'])
             ->with([
@@ -27,14 +30,21 @@ final class StaffQueryService
                 'role' => fn ($query) => $query->select($this->roleColumns()),
             ])
             ->where('organization_id', $organization->id)
+            ->when($search !== '', fn ($query) => $query->whereHas('user', function ($userQuery) use ($search): void {
+                $userQuery
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
+            }))
             ->orderBy('status')
             ->orderByDesc('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'organizationStaffPage');
     }
 
-    /** @return EloquentCollection<int, BranchUser> */
-    public function branchMembers(Branch $branch): EloquentCollection
+    /** @return Paginator<int, BranchUser> */
+    public function paginateBranchMembers(Branch $branch, string $search, int $perPage): Paginator
     {
+        $search = trim($search);
+
         return BranchUser::query()
             ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
             ->with([
@@ -42,34 +52,57 @@ final class StaffQueryService
                 'role' => fn ($query) => $query->select($this->roleColumns()),
             ])
             ->where('branch_id', $branch->id)
+            ->when($search !== '', fn ($query) => $query->whereHas('user', function ($userQuery) use ($search): void {
+                $userQuery
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
+            }))
             ->orderBy('status')
             ->orderByDesc('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'branchStaffPage');
     }
 
-    /** @return EloquentCollection<int, Invitation> */
-    public function organizationInvitations(Organization $organization): EloquentCollection
+    /** @return Paginator<int, Invitation> */
+    public function paginateOrganizationInvitations(Organization $organization, string $search, int $perPage): Paginator
     {
+        $search = trim($search);
+
         return Invitation::query()
             ->select($this->invitationColumns())
             ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
             ->where('organization_id', $organization->id)
             ->whereNull('brand_id')
             ->whereNull('branch_id')
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
+                $searchQuery
+                    ->where('email', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%');
+            }))
             ->orderByDesc('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'organizationInvitationsPage');
     }
 
-    /** @return EloquentCollection<int, Invitation> */
-    public function branchInvitations(Organization $organization, Branch $branch): EloquentCollection
-    {
+    /** @return Paginator<int, Invitation> */
+    public function paginateBranchInvitations(
+        Organization $organization,
+        Branch $branch,
+        string $search,
+        int $perPage,
+    ): Paginator {
+        $search = trim($search);
+
         return Invitation::query()
             ->select($this->invitationColumns())
             ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
             ->where('organization_id', $organization->id)
             ->where('branch_id', $branch->id)
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
+                $searchQuery
+                    ->where('email', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%');
+            }))
             ->orderByDesc('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'branchInvitationsPage');
     }
 
     /** @return EloquentCollection<int, Role> */

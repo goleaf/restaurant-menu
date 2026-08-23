@@ -8,13 +8,15 @@ use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Models\Organization;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 
 final class OrganizationQueryService
 {
-    /** @return EloquentCollection<int, Organization> */
-    public function accessibleTo(User $user): EloquentCollection
+    /** @return Paginator<int, Organization> */
+    public function paginateAccessibleTo(User $user, string $search, int $perPage): Paginator
     {
+        $search = trim($search);
+
         return $user->organizations()
             ->wherePivot('status', OrganizationUserStatus::Active->value)
             ->where(function ($query): void {
@@ -24,6 +26,8 @@ final class OrganizationQueryService
                         $subscriptionQuery->where('status', OrganizationSubscriptionStatus::Active->value);
                     });
             })
+            ->when($search !== '', fn ($query) => $query
+                ->where('organizations.name', 'like', '%'.$search.'%'))
             ->select([
                 'organizations.id',
                 'organizations.owner_user_id',
@@ -34,7 +38,7 @@ final class OrganizationQueryService
             ])
             ->orderBy('organizations.name')
             ->orderBy('organizations.id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'organizationsPage');
     }
 
     public function find(int $organizationId): Organization

@@ -14,8 +14,8 @@ use App\Models\User;
 use App\Services\Organizations\OrganizationQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -23,14 +23,20 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
     use WithFileUploads;
+    use WithPagination;
+
+    private const PER_PAGE = 15;
 
     private OrganizationQueryService $organizationQueries;
 
     public string $name = '';
+
+    public string $search = '';
 
     /**
      * @var array<int, mixed>
@@ -169,13 +175,21 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
-    /**
-     * @return EloquentCollection<int, Organization>
-     */
-    #[Computed]
-    public function organizations(): EloquentCollection
+    public function updatedSearch(): void
     {
-        return $this->organizationQueries->accessibleTo($this->currentUser());
+        $this->resetPage(pageName: 'organizationsPage');
+        unset($this->organizations);
+    }
+
+    /** @return Paginator<int, Organization> */
+    #[Computed]
+    public function organizations(): Paginator
+    {
+        return $this->organizationQueries->paginateAccessibleTo(
+            $this->currentUser(),
+            $this->search,
+            self::PER_PAGE,
+        );
     }
 
     /**
@@ -185,6 +199,7 @@ class Index extends Component
     public function staffManageableOrganizationIds(): array
     {
         return $this->organizations()
+            ->getCollection()
             ->filter(fn (Organization $organization): bool => Gate::forUser($this->currentUser())->allows('manageStaff', $organization))
             ->pluck('id')
             ->all();
@@ -193,9 +208,11 @@ class Index extends Component
     public function render(): View
     {
         $manageableOrganizationIds = $this->staffManageableOrganizationIds();
+        $organizations = $this->organizations();
 
         return view('livewire.organizations.index', [
-            'organizationRows' => $this->organizations()
+            'organizationRows' => $organizations
+                ->getCollection()
                 ->map(fn (Organization $organization): array => [
                     'id' => $organization->id,
                     'name' => $organization->name,
@@ -207,6 +224,7 @@ class Index extends Component
                     'staff_url' => route('organizations.staff.index', ['organization' => $organization->id]),
                 ])
                 ->all(),
+            'organizationsPaginator' => $organizations,
         ])->title(__('navigation.organizations'));
     }
 

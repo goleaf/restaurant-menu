@@ -15,8 +15,8 @@ use App\Models\User;
 use App\Services\Organizations\BrandQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -24,16 +24,22 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
     use WithFileUploads;
+    use WithPagination;
+
+    private const PER_PAGE = 15;
 
     private BrandQueryService $brandQueries;
 
     public Organization $organization;
 
     public string $name = '';
+
+    public string $search = '';
 
     /**
      * @var array<int, mixed>
@@ -189,20 +195,31 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
-    /**
-     * @return EloquentCollection<int, Brand>
-     */
-    #[Computed]
-    public function brands(): EloquentCollection
+    public function updatedSearch(): void
     {
-        return $this->brandQueries->forOrganization($this->organization);
+        $this->resetPage(pageName: 'brandsPage');
+        unset($this->brands);
+    }
+
+    /** @return Paginator<int, Brand> */
+    #[Computed]
+    public function brands(): Paginator
+    {
+        return $this->brandQueries->paginateForOrganization(
+            $this->organization,
+            $this->search,
+            self::PER_PAGE,
+        );
     }
 
     public function render(): View
     {
+        $brands = $this->brands();
+
         return view('livewire.organizations.brands.index', [
             'organizationName' => $this->organization->name,
-            'brandRows' => $this->brands()
+            'brandRows' => $brands
+                ->getCollection()
                 ->map(fn (Brand $brand): array => [
                     'id' => $brand->id,
                     'name' => $brand->name,
@@ -214,6 +231,7 @@ class Index extends Component
                     ]),
                 ])
                 ->all(),
+            'brandsPaginator' => $brands,
         ])->title(__('navigation.brands'));
     }
 

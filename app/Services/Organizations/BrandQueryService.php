@@ -6,18 +6,21 @@ namespace App\Services\Organizations;
 
 use App\Models\Brand;
 use App\Models\Organization;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 
 final class BrandQueryService
 {
-    /** @return EloquentCollection<int, Brand> */
-    public function forOrganization(Organization $organization): EloquentCollection
+    /** @return Paginator<int, Brand> */
+    public function paginateForOrganization(Organization $organization, string $search, int $perPage): Paginator
     {
+        $search = trim($search);
+
         return $organization->brands()
             ->select($this->columns())
+            ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
             ->orderBy('name')
             ->orderBy('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'brandsPage');
     }
 
     public function findForOrganization(Organization $organization, int $brandId): Brand

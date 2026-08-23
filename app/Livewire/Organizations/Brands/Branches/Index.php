@@ -21,8 +21,8 @@ use App\Models\User;
 use App\Services\Branches\BranchQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -30,10 +30,14 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
     use WithFileUploads;
+    use WithPagination;
+
+    private const PER_PAGE = 15;
 
     private BranchQueryService $branchQueries;
 
@@ -47,6 +51,8 @@ class Index extends Component
     public array $branchLogos = [];
 
     public string $name = '';
+
+    public string $search = '';
 
     public string $address = '';
 
@@ -287,16 +293,22 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
     }
 
-    /**
-     * @return EloquentCollection<int, Branch>
-     */
-    #[Computed]
-    public function branches(): EloquentCollection
+    public function updatedSearch(): void
     {
-        return $this->branchQueries->accessibleForBrand(
+        $this->resetPage(pageName: 'branchesPage');
+        unset($this->branches, $this->branchSetupGuides);
+    }
+
+    /** @return Paginator<int, Branch> */
+    #[Computed]
+    public function branches(): Paginator
+    {
+        return $this->branchQueries->paginateAccessibleForBrand(
             $this->currentUser(),
             $this->organization,
             $this->brand,
+            $this->search,
+            self::PER_PAGE,
         );
     }
 
@@ -336,6 +348,7 @@ class Index extends Component
     public function branchSetupGuides(): array
     {
         return $this->branches()
+            ->getCollection()
             ->map(fn (Branch $branch): array => [
                 'branch' => [
                     'id' => $branch->id,
@@ -367,8 +380,11 @@ class Index extends Component
 
     public function render(): View
     {
+        $branches = $this->branches();
+
         return view('livewire.organizations.brands.branches.index', [
             'branchSetupGuides' => $this->branchSetupGuides(),
+            'branchesPaginator' => $branches,
             'brandsUrl' => route('organizations.brands.index', $this->organization),
             'contextLabel' => $this->organization->name.' / '.$this->brand->name,
         ])->title(__('navigation.branches'));

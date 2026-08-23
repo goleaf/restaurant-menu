@@ -19,15 +19,21 @@ use App\Services\Staff\StaffQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithPagination;
+
+    private const PER_PAGE = 15;
+
     private StaffQueryService $staffQueries;
 
     public Organization $organization;
@@ -51,6 +57,10 @@ class Index extends Component
     public bool $canManageStaff = false;
 
     public string $staffDeactivationReason = '';
+
+    public string $staffSearch = '';
+
+    public string $invitationSearch = '';
 
     public function boot(StaffQueryService $staffQueries): void
     {
@@ -153,22 +163,38 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
     }
 
-    /**
-     * @return EloquentCollection<int, OrganizationUser>
-     */
-    #[Computed]
-    public function members(): EloquentCollection
+    public function updatedStaffSearch(): void
     {
-        return $this->staffQueries->organizationMembers($this->organization);
+        $this->resetPage(pageName: 'organizationStaffPage');
+        unset($this->members);
     }
 
-    /**
-     * @return EloquentCollection<int, Invitation>
-     */
-    #[Computed]
-    public function invitations(): EloquentCollection
+    public function updatedInvitationSearch(): void
     {
-        return $this->staffQueries->organizationInvitations($this->organization);
+        $this->resetPage(pageName: 'organizationInvitationsPage');
+        unset($this->invitations);
+    }
+
+    /** @return Paginator<int, OrganizationUser> */
+    #[Computed]
+    public function members(): Paginator
+    {
+        return $this->staffQueries->paginateOrganizationMembers(
+            $this->organization,
+            $this->staffSearch,
+            self::PER_PAGE,
+        );
+    }
+
+    /** @return Paginator<int, Invitation> */
+    #[Computed]
+    public function invitations(): Paginator
+    {
+        return $this->staffQueries->paginateOrganizationInvitations(
+            $this->organization,
+            $this->invitationSearch,
+            self::PER_PAGE,
+        );
     }
 
     /**
@@ -182,12 +208,16 @@ class Index extends Component
 
     public function render(): View
     {
+        $members = $this->members();
+        $invitations = $this->invitations();
+
         return view('livewire.organizations.staff.index', [
             'organizationName' => $this->organization->name,
             'roleOptions' => $this->roles()
                 ->map(fn (Role $role): array => ['id' => $role->id, 'label' => $this->roleLabel($role)])
                 ->all(),
-            'memberRows' => $this->members()
+            'memberRows' => $members
+                ->getCollection()
                 ->map(fn (OrganizationUser $member): array => [
                     'id' => $member->id,
                     'user_id' => $member->user_id,
@@ -198,7 +228,9 @@ class Index extends Component
                     'role_label' => $this->roleLabel($member->role),
                 ])
                 ->all(),
-            'invitationRows' => $this->invitations()
+            'membersPaginator' => $members,
+            'invitationRows' => $invitations
+                ->getCollection()
                 ->map(fn (Invitation $invitation): array => [
                     'id' => $invitation->id,
                     'role_label' => $this->roleLabel($invitation->role),
@@ -207,6 +239,7 @@ class Index extends Component
                     'phone' => $invitation->phone,
                 ])
                 ->all(),
+            'invitationsPaginator' => $invitations,
         ])
             ->title(__('staff.organization_access'));
     }

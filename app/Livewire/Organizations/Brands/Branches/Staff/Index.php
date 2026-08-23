@@ -23,15 +23,21 @@ use App\Services\Staff\StaffQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Index extends Component
 {
+    use WithPagination;
+
+    private const PER_PAGE = 15;
+
     private StaffQueryService $staffQueries;
 
     public Organization $organization;
@@ -59,6 +65,10 @@ class Index extends Component
     public bool $canManageStaff = false;
 
     public string $staffDeactivationReason = '';
+
+    public string $staffSearch = '';
+
+    public string $invitationSearch = '';
 
     /**
      * @var array<int, list<string>>
@@ -206,22 +216,39 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.waiter_zones_updated'));
     }
 
-    /**
-     * @return EloquentCollection<int, BranchUser>
-     */
-    #[Computed]
-    public function members(): EloquentCollection
+    public function updatedStaffSearch(): void
     {
-        return $this->staffQueries->branchMembers($this->branch);
+        $this->resetPage(pageName: 'branchStaffPage');
+        unset($this->members);
     }
 
-    /**
-     * @return EloquentCollection<int, Invitation>
-     */
-    #[Computed]
-    public function invitations(): EloquentCollection
+    public function updatedInvitationSearch(): void
     {
-        return $this->staffQueries->branchInvitations($this->organization, $this->branch);
+        $this->resetPage(pageName: 'branchInvitationsPage');
+        unset($this->invitations);
+    }
+
+    /** @return Paginator<int, BranchUser> */
+    #[Computed]
+    public function members(): Paginator
+    {
+        return $this->staffQueries->paginateBranchMembers(
+            $this->branch,
+            $this->staffSearch,
+            self::PER_PAGE,
+        );
+    }
+
+    /** @return Paginator<int, Invitation> */
+    #[Computed]
+    public function invitations(): Paginator
+    {
+        return $this->staffQueries->paginateBranchInvitations(
+            $this->organization,
+            $this->branch,
+            $this->invitationSearch,
+            self::PER_PAGE,
+        );
     }
 
     /**
@@ -249,12 +276,16 @@ class Index extends Component
 
     public function render(): View
     {
+        $members = $this->members();
+        $invitations = $this->invitations();
+
         return view('livewire.organizations.brands.branches.staff.index', [
             'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
             'roleOptions' => $this->roles()
                 ->map(fn (Role $role): array => ['id' => $role->id, 'label' => $this->roleLabel($role)])
                 ->all(),
-            'memberRows' => $this->members()
+            'memberRows' => $members
+                ->getCollection()
                 ->map(fn (BranchUser $member): array => [
                     'id' => $member->id,
                     'user_id' => $member->user_id,
@@ -266,10 +297,12 @@ class Index extends Component
                     'role_label' => $this->roleLabel($member->role),
                 ])
                 ->all(),
+            'membersPaginator' => $members,
             'areaNodeOptions' => $this->areaNodes()
                 ->map(fn (AreaNode $areaNode): array => ['id' => $areaNode->id, 'name' => $areaNode->name])
                 ->all(),
-            'invitationRows' => $this->invitations()
+            'invitationRows' => $invitations
+                ->getCollection()
                 ->map(fn (Invitation $invitation): array => [
                     'id' => $invitation->id,
                     'role_label' => $this->roleLabel($invitation->role),
@@ -278,6 +311,7 @@ class Index extends Component
                     'phone' => $invitation->phone,
                 ])
                 ->all(),
+            'invitationsPaginator' => $invitations,
         ])
             ->title(__('staff.branch_access'));
     }

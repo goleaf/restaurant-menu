@@ -9,16 +9,20 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 
 final class BranchQueryService
 {
-    /** @return EloquentCollection<int, Branch> */
-    public function accessibleForBrand(
+    /** @return Paginator<int, Branch> */
+    public function paginateAccessibleForBrand(
         User $user,
         Organization $organization,
         Brand $brand,
-    ): EloquentCollection {
+        string $search,
+        int $perPage,
+    ): Paginator {
+        $search = trim($search);
+
         return $brand->branches()
             ->select($this->columns())
             ->withCount([
@@ -51,9 +55,15 @@ final class BranchQueryService
                     ->orderBy('id'),
             ])
             ->whereIn('id', $user->accessibleBranchIdsForOrganization($organization))
+            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
+                $searchQuery
+                    ->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('address', 'like', '%'.$search.'%')
+                    ->orWhere('city', 'like', '%'.$search.'%');
+            }))
             ->orderBy('name')
             ->orderBy('id')
-            ->get();
+            ->simplePaginate($perPage, pageName: 'branchesPage');
     }
 
     public function findForBrand(Brand $brand, int $branchId): Branch

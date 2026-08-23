@@ -82,6 +82,7 @@
             "@php vendor/bin/pest tests/Browser --compact"
         ],
         "test:coverage": [
+            "Composer\\Config::disableProcessTimeout",
             "@putenv XDEBUG_MODE=coverage",
             "@php vendor/bin/pest tests/Unit tests/Feature --compact --coverage --min=90 --only-summary-for-coverage-text"
         ],

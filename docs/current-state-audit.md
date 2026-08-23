@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both run 854 tests with 845 passing, 8 intentional feature-gated skips, 1 tracked issue #10 `todo` and 22,990 assertions. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; the current sequential suite runs 878 tests with 869 passing, 8 intentional feature-gated skips, 1 tracked issue #10 `todo` and 23,166 assertions. The parallel gate also passes with process-unique SQLite restore sandboxes. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 43/43 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -52,7 +52,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
 - 424 application PHP files, 52 concrete class Livewire components, 43 models/factories, 73 migrations, 7 seeders plus one translation support class, 123 Blade templates and 135 PHP test files.
-- 854 tests, 845 passed, 9 skipped, 22,990 assertions and 0 static-analysis errors. The fresh Unit/Feature coverage run used PHP 8.5.8 with Xdebug 3.5.0: 850 tests, 841 passed, 9 skipped including the tracked issue #10 `todo`, 22,877 assertions, 264.760 seconds and 90.6% application coverage.
+- 878 sequential tests, 869 passed, 9 skipped, 23,166 assertions and 0 static-analysis errors. The fresh Unit/Feature coverage run used PHP 8.5.8 with Xdebug 3.5.0: 945 tests, 936 passed, 9 skipped including the tracked issue #10 `todo`, 23,265 assertions, 293.875 seconds and 91.9% application coverage.
 - 2,178 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
 - Production CSS 303.36 kB / 39.72 kB gzip; application JS is 4.56 kB / 1.73 kB gzip.
 

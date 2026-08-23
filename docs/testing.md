@@ -25,9 +25,9 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 | focused demo, invitation, seeder, route, design and vertical-flow Pest suite | 117 passed; 1,439 assertions |
 | invitation registration → paid table closure browser E2E | 1 passed; 82 assertions |
 | `vendor/bin/pest tests/Browser --browser chrome --compact` / `--browser safari` | 4 passed and 113 assertions in each of Chromium and Playwright WebKit 26.5 |
-| `php artisan test --compact` | 854 tests; 845 passed; 8 feature-gated skips and 1 tracked `todo` for issue #10; 22,990 assertions; 85.913 seconds |
-| `php artisan test --compact --parallel` | same counts and assertions; 28.048 seconds |
-| `composer test:coverage` | 850 Unit/Feature tests; 841 passed; 9 skipped, including the single tracked `todo` for issue #10; 22,877 assertions; 90.6% application coverage; 264.760 seconds |
+| `php artisan test --compact` | 878 tests; 869 passed; 8 feature-gated skips and 1 tracked `todo` for issue #10; 23,166 assertions; 88.828 seconds |
+| `php artisan test --compact --parallel` | 949 tests; 940 passed; 9 skipped; 23,378 assertions; 28.556 seconds |
+| `composer test:coverage` | 945 Unit/Feature tests; 936 passed; 9 skipped, including the single tracked `todo` for issue #10; 23,265 assertions; 91.9% application coverage; 293.875 seconds |
 | authorized SQLite backup/restore and rollback suite | 12 passed; 86 assertions; 3.03 seconds |
 | isolated WAL/concurrent-reader demo recovery drill | 1 organization, 4 branches, 19 QR records/files, 6 orders and 5 payments restored; cache/session/token cleanup and safety snapshot passed; core restore 0.066 seconds |
 | `vendor/bin/pint --dirty --format agent` | passed |
@@ -39,7 +39,7 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 | isolated migration plus two `DemoRestaurantSeeder` runs | all 73 migrations passed; seeds completed in 4.131 and 7.089 seconds; 12 catalogue users and 19 QR SVGs retained |
 | config, route and view cache builds | passed; 71 routes; followed by `optimize:clear` |
 
-The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/bin/php85`, PHP 8.5.8 and Xdebug 3.5.0. `php -m` and `php --ri xdebug` confirmed the extension in that binary, and `XDEBUG_MODE=coverage php --ri xdebug` confirmed coverage mode for the canonical command. The 90% threshold and first-party source set were unchanged.
+The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/bin/php85`, PHP 8.5.8 and Xdebug 3.5.0. `php -m` and `php --ri xdebug` confirmed the extension in that binary, and `XDEBUG_MODE=coverage php --ri xdebug` confirmed coverage mode for the canonical command. The 90% threshold and first-party source set were unchanged. SQLite backup/restore sandboxes include a per-process unique suffix so simultaneous full and coverage processes cannot corrupt each other's test databases.
 
 ## Preserved browser evidence
 

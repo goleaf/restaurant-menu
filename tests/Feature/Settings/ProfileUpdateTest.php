@@ -44,6 +44,16 @@ test('email verification status is unchanged when email address is unchanged', f
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
+test('verification resend safely redirects when email verification is not enabled', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    Livewire::test(Profile::class)
+        ->call('resendVerificationNotification')
+        ->assertRedirect(route('dashboard', absolute: false));
+});
+
 test('user can delete their account', function () {
     $user = User::factory()->create();
 

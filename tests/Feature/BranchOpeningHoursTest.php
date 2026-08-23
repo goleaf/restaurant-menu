@@ -53,6 +53,18 @@ test('branch opening hours table stores multiple intervals per weekday', functio
 test('owner can manage branch opening hours from branch settings', function () {
     [$organization, $brand, $branch, $owner] = createPrompt102Branch();
 
+    $intervalEditor = Livewire::actingAs($owner)
+        ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch]);
+    $mondayIntervals = $intervalEditor->get('openingHours')[0]['intervals'];
+
+    $intervalEditor->call('addOpeningInterval', 1);
+
+    expect($intervalEditor->get('openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals) + 1);
+
+    $intervalEditor->call('removeOpeningInterval', 1, count($mondayIntervals));
+
+    expect($intervalEditor->get('openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals));
+
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
         ->set('openingHoursConfigured', true)

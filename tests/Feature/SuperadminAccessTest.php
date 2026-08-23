@@ -118,7 +118,9 @@ test('superadmin sees expanded organization controls and counts', function () {
         ->call('suspendOrganization', $organization->id)
         ->assertSee('Activity suspended')
         ->call('activateOrganization', $organization->id)
-        ->assertSee('Activity active');
+        ->assertSee('Activity active')
+        ->call('runSessionInactivityCleanup')
+        ->assertSet('cleanupMessage', fn (mixed $message): bool => is_string($message) && $message !== '');
 
     expect($organization->fresh()->subscription->status)->toBe(OrganizationSubscriptionStatus::Active);
 });
@@ -130,7 +132,9 @@ test('superadmin bypasses organization branch restrictions', function () {
     Livewire::actingAs($superadmin)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
         ->assertSee('Branch settings')
-        ->assertSet('branch.id', $branch->id);
+        ->assertSet('branch.id', $branch->id)
+        ->call('runSessionInactivityCleanup')
+        ->assertSet('cleanupMessage', fn (mixed $message): bool => is_string($message) && $message !== '');
 });
 
 function createSuperadminUser(): User

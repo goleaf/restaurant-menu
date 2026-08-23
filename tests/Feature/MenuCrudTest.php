@@ -237,6 +237,40 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->and($item->image)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/menu-items/'.$item->id.'/images/');
 
     Storage::disk('public')->assertExists($item->image);
+
+    $imagePath = $item->image;
+
+    Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->set('editingItemMenuId', (string) $menu->id)
+        ->assertSet('editingItemCategoryId', (string) $category->id)
+        ->call('startEditingMenu', $menu->id)
+        ->set('editingMenuName', 'Evening Menu')
+        ->set('editingMenuStatus', MenuStatus::Archived->value)
+        ->set('editingMenuSortOrder', 40)
+        ->call('updateMenu')
+        ->assertHasNoErrors()
+        ->call('startEditingCategory', $category->id)
+        ->set('editingCategoryName', 'Italian Pizza')
+        ->set('editingCategoryDescription', 'Updated pizza selection')
+        ->set('editingCategoryIcon', 'cake')
+        ->set('editingCategorySortOrder', 50)
+        ->set('editingCategoryIsActive', false)
+        ->call('updateCategory')
+        ->assertHasNoErrors()
+        ->call('removeItemImage', $item->id)
+        ->assertHasNoErrors();
+
+    expect($menu->refresh()->name)->toBe('Evening Menu')
+        ->and($menu->status)->toBe(MenuStatus::Archived)
+        ->and($menu->sort_order)->toBe(40)
+        ->and($category->refresh()->name)->toBe('Italian Pizza')
+        ->and($category->description)->toBe('Updated pizza selection')
+        ->and($category->sort_order)->toBe(50)
+        ->and($category->is_active)->toBeFalse()
+        ->and($item->refresh()->image)->toBeNull();
+
+    Storage::disk('public')->assertMissing($imagePath);
 });
 
 test('menu item allergen and dietary selections reject unknown values and normalize updates', function () {
@@ -355,6 +389,7 @@ test('manager can manage modifier groups options and item assignments', function
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('refreshData')
         ->call('startEditingModifierGroup', $group->id)
         ->set('editingModifierGroupName', 'Choose size')
         ->set('editingModifierGroupMinSelect', 1)
@@ -402,6 +437,7 @@ test('manager can manage localized dish variants and portion sizes', function ()
         ->test(MenuVariants::class, $parameters)
         ->set('variantMenuId', (string) $menu->id)
         ->set('variantItemId', (string) $item->id)
+        ->call('refreshData')
         ->set('variantType', MenuItemVariantType::Portion->value)
         ->set('variantName', 'Large')
         ->set('variantPrice', '18.90')
@@ -503,6 +539,15 @@ test('price and availability changes require dedicated permissions', function ()
 
     expect($item->price_cents)->toBe(950)
         ->and($item->is_available)->toBeFalse();
+
+    Livewire::actingAs($manager->fresh())
+        ->test(MenuAvailability::class, [
+            'organizationId' => $organization->id,
+            'brandId' => $brand->id,
+            'branchId' => $branch->id,
+        ])
+        ->call('refreshItems')
+        ->assertOk();
 });
 
 test('menu item action independently preserves restricted price and availability fields', function () {

@@ -13,6 +13,7 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Session\SessionManager;
 use Illuminate\Support\Facades\Artisan;
@@ -23,6 +24,15 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 beforeEach(function (): void {
+    $temporaryLocalRoot = storage_path('framework/testing/sqlite_restore_local_'.getmypid().'_'.Str::lower(Str::random(8)));
+
+    config()->set([
+        'testing.sqlite_restore.original_local_root' => config('filesystems.disks.local.root'),
+        'testing.sqlite_restore.temporary_local_root' => $temporaryLocalRoot,
+        'filesystems.disks.local.root' => $temporaryLocalRoot,
+    ]);
+    app(FilesystemManager::class)->forgetDisk('local');
+
     app()->instance(MaintenanceMode::class, new class implements MaintenanceMode
     {
         /** @var array<string, mixed>|null */
@@ -50,6 +60,20 @@ beforeEach(function (): void {
             return $this->payload ?? [];
         }
     });
+});
+
+afterEach(function (): void {
+    $filesystem = app(FilesystemManager::class);
+    $temporaryLocalRoot = config('testing.sqlite_restore.temporary_local_root');
+    $originalLocalRoot = config('testing.sqlite_restore.original_local_root');
+
+    $filesystem->forgetDisk('local');
+    config()->set('filesystems.disks.local.root', $originalLocalRoot);
+    config()->set('testing.sqlite_restore', null);
+
+    if (is_string($temporaryLocalRoot)) {
+        File::deleteDirectory($temporaryLocalRoot);
+    }
 });
 
 test('a compatible sqlite backup restores data and retains a safety snapshot', function (): void {
@@ -237,7 +261,9 @@ test('the protected restore endpoint restores sqlite and signs every session out
         $audit = AuditLog::on($sandbox['connection'])
             ->where('action', 'backup_restored')
             ->firstOrFail();
-        $safetyBackupPath = storage_path('app/private/backups/sqlite/'.($audit->new_values['safety_snapshot'] ?? ''));
+        $safetyBackupPath = app(FilesystemManager::class)
+            ->disk('local')
+            ->path('backups/sqlite/'.($audit->new_values['safety_snapshot'] ?? ''));
 
         expect(User::on($sandbox['connection'])->findOrFail($superadmin->id)->name)
             ->toBe('Name in uploaded backup')
@@ -266,7 +292,9 @@ test('the protected restore endpoint restores sqlite and signs every session out
 test('a restore failure after replacement automatically rolls the live database back', function (): void {
     $sandbox = sqliteRestoreSandbox('automatic-rollback');
     $originalDefault = config('database.default');
-    $backupDirectory = storage_path('app/private/backups/sqlite');
+    $backupDirectory = app(FilesystemManager::class)
+        ->disk('local')
+        ->path('backups/sqlite');
     $backupFilesBefore = collect(File::glob($backupDirectory.'/*.sqlite'));
 
     try {
@@ -365,7 +393,11 @@ function sqliteRestoreSandbox(string $suffix): array
  */
 function sqliteRestoreCandidateArtifacts(): array
 {
-    return collect(File::glob(storage_path('app/private/backups/sqlite/restore-candidates/*')))
+    $candidateDirectory = app(FilesystemManager::class)
+        ->disk('local')
+        ->path('backups/sqlite/restore-candidates');
+
+    return collect(File::glob($candidateDirectory.'/*'))
         ->sort()
         ->values()
         ->all();

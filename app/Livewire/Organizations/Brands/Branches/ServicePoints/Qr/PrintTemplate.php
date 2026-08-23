@@ -11,6 +11,7 @@ use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodes\QrPrintQueryService;
 use App\Services\QrCodeSvgRenderer;
 use App\Services\QrPrintBrandingResolver;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,8 @@ class PrintTemplate extends Component
     private QrCodeSvgRenderer $qrCodeSvgRenderer;
 
     private QrPrintBrandingResolver $brandingResolver;
+
+    private QrPrintQueryService $qrPrintQueries;
 
     public Organization $organization;
 
@@ -47,9 +50,11 @@ class PrintTemplate extends Component
     public function boot(
         QrCodeSvgRenderer $qrCodeSvgRenderer,
         QrPrintBrandingResolver $brandingResolver,
+        QrPrintQueryService $qrPrintQueries,
     ): void {
         $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
         $this->brandingResolver = $brandingResolver;
+        $this->qrPrintQueries = $qrPrintQueries;
     }
 
     public function mount(
@@ -172,70 +177,19 @@ class PrintTemplate extends Component
 
     private function reloadPrintContext(): void
     {
-        $branding = $this->brandingResolver;
+        $context = $this->qrPrintQueries->printContext(
+            $this->organization,
+            $this->brand,
+            $this->branch,
+            $this->servicePoint,
+            $this->qrCode,
+        );
 
-        $this->organization = Organization::query()
-            ->select($branding->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
-            ->whereKey($this->organization->id)
-            ->firstOrFail();
-
-        $this->brand = Brand::query()
-            ->select($branding->columnsWithOptionalLogo(new Brand, ['id', 'organization_id', 'name']))
-            ->whereKey($this->brand->id)
-            ->where('organization_id', $this->organization->id)
-            ->firstOrFail();
-
-        $this->branch = Branch::query()
-            ->select($branding->columnsWithOptionalLogo(new Branch, [
-                'id',
-                'organization_id',
-                'brand_id',
-                'name',
-                'address',
-                'city',
-                'country',
-                'timezone',
-                'currency',
-                'is_active',
-            ]))
-            ->whereKey($this->branch->id)
-            ->where('organization_id', $this->organization->id)
-            ->where('brand_id', $this->brand->id)
-            ->firstOrFail();
-
-        $this->servicePoint = ServicePoint::query()
-            ->select([
-                'id',
-                'branch_id',
-                'area_node_id',
-                'type',
-                'name',
-                'display_number',
-                'capacity',
-                'icon',
-                'status',
-                'is_active',
-            ])
-            ->whereKey($this->servicePoint->id)
-            ->where('branch_id', $this->branch->id)
-            ->firstOrFail();
-
-        $this->qrCode = QrCode::query()
-            ->select([
-                'id',
-                'service_point_id',
-                'public_token',
-                'short_code',
-                'status',
-                'created_by_user_id',
-                'revoked_at',
-                'revoked_by_user_id',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($this->qrCode->id)
-            ->where('service_point_id', $this->servicePoint->id)
-            ->firstOrFail();
+        $this->organization = $context['organization'];
+        $this->brand = $context['brand'];
+        $this->branch = $context['branch'];
+        $this->servicePoint = $context['servicePoint'];
+        $this->qrCode = $context['qrCode'];
     }
 
     private function normalizedPresetValue(string $preset): string

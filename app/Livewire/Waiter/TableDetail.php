@@ -7,6 +7,7 @@ namespace App\Livewire\Waiter;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Services\Waiter\WaiterTableQueryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -16,12 +17,17 @@ final class TableDetail extends Component
 {
     private BuildWaiterTableDetailAction $buildWaiterTableDetail;
 
+    private WaiterTableQueryService $waiterQueries;
+
     #[Locked]
     public int $tableSessionId;
 
-    public function boot(BuildWaiterTableDetailAction $buildWaiterTableDetail): void
-    {
+    public function boot(
+        BuildWaiterTableDetailAction $buildWaiterTableDetail,
+        WaiterTableQueryService $waiterQueries,
+    ): void {
         $this->buildWaiterTableDetail = $buildWaiterTableDetail;
+        $this->waiterQueries = $waiterQueries;
     }
 
     public function mount(TableSession $tableSession): void
@@ -31,10 +37,7 @@ final class TableDetail extends Component
 
     public function render(): View
     {
-        $tableSession = TableSession::query()
-            ->select(['id', 'branch_id'])
-            ->whereKey($this->tableSessionId)
-            ->firstOrFail();
+        $tableSession = $this->waiterQueries->tableSession($this->tableSessionId);
         $payload = $this->buildWaiterTableDetail->handle($this->currentUser(), $tableSession);
 
         if (! $payload['has_access'] || ! is_array($payload['table'])) {

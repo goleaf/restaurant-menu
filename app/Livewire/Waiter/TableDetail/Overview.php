@@ -127,10 +127,7 @@ final class Overview extends TableDetailSection
             return null;
         }
 
-        return ServicePoint::query()
-            ->select(['id'])
-            ->whereKey($servicePointId)
-            ->first();
+        return $this->waiterQueries->servicePoint($servicePointId);
     }
 
     private function syncTransferTargetServicePoint(): void

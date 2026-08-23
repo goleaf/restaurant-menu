@@ -6,14 +6,11 @@ namespace App\Livewire\PublicQr;
 
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
-use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
-use App\Enums\TableSessionGuestStatus;
 use App\Enums\WaiterCallStatus;
-use App\Models\QrCode;
-use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -22,6 +19,8 @@ use Livewire\Component;
 
 class GuestActions extends Component
 {
+    private PublicQrQueryService $publicQrQueries;
+
     #[Locked]
     public int $tableSessionId;
 
@@ -49,6 +48,11 @@ class GuestActions extends Component
     public string $waiterCallMessage = '';
 
     public bool $waiterCallPending = false;
+
+    public function boot(PublicQrQueryService $publicQrQueries): void
+    {
+        $this->publicQrQueries = $publicQrQueries;
+    }
 
     public function mount(
         int $tableSessionId,
@@ -127,36 +131,7 @@ class GuestActions extends Component
 
     private function findCurrentTableSession(): ?TableSession
     {
-        $qrCode = QrCode::query()
-            ->select(['id', 'service_point_id', 'public_token', 'status'])
-            ->with(['servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'is_active'])])
-            ->where('public_token', $this->publicToken)
-            ->where('status', QrCodeStatus::Active->value)
-            ->first();
-
-        $servicePoint = $qrCode?->servicePoint;
-
-        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
-            return null;
-        }
-
-        return TableSession::query()
-            ->select([
-                'id',
-                'branch_id',
-                'service_point_id',
-                'opened_by_guest_id',
-                'status',
-                'source',
-                'started_at',
-                'ended_at',
-                'guest_invite_token',
-                'guest_invite_created_at',
-                'guest_invite_created_by_guest_id',
-            ])
-            ->whereKey($this->tableSessionId)
-            ->where('branch_id', $servicePoint->branch_id)
-            ->first();
+        return $this->publicQrQueries->activeTableSessionForQr($this->publicToken, $this->tableSessionId);
     }
 
     private function findCurrentActiveGuest(): ?TableSessionGuest
@@ -167,21 +142,7 @@ class GuestActions extends Component
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->whereKey($this->currentGuestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('guest_token', $guestToken)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->first();
+        return $this->publicQrQueries->activeGuest($this->currentGuestId, $this->tableSessionId, $guestToken);
     }
 
     private function fillGuestInviteShareState(TableSession $tableSession): void

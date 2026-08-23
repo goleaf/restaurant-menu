@@ -8,9 +8,9 @@ Restaurant Menu is a single Laravel application deployed as server-rendered HTML
 HTTP route / Livewire action
         -> authentication and authorization
         -> validated request or Livewire form state
-        -> one application Action
-        -> Eloquent transaction and domain invariants
-        -> audit/notification/file side effects
+        -> focused Eloquent read service or one application Action
+        -> Eloquent query shape or transaction and domain invariants
+        -> optional audit/notification/file side effects
         -> prepared view data / redirect / download
 ```
 
@@ -18,7 +18,7 @@ Blade is a terminal presentation boundary: it may render escaped prepared values
 
 ## Verified implementation inventory
 
-The 2026-08-23 completion audit observed 43 first-party Eloquent models with 43 factories, 175 focused Action classes, 42 class-based Livewire components, 16 policies, 73 forward migrations, and 123 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
+The refreshed 2026-08-23 completion audit observed 43 first-party Eloquent models with 43 factories, 177 focused Action classes, 54 class-based Livewire components (51 concrete and 3 abstract), one Livewire Form object, 16 policies, 73 forward migrations, and 123 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
 
 ## Domain modules
 
@@ -35,8 +35,9 @@ The 2026-08-23 completion audit observed 43 first-party Eloquent models with 43 
 ## Boundaries and dependencies
 
 - Routes declare middleware, names, bindings and constraints only.
-- Controllers and Livewire components validate and authorize, then invoke Actions. They do not own reusable domain rules.
+- Controllers and Livewire components validate and authorize, then invoke Actions or focused read services. They do not own Eloquent query construction or reusable domain rules.
 - Each Action represents one use case and owns the smallest necessary transaction. External or filesystem work must not leave persistence inconsistent.
+- Focused domain read services prepare bounded, selected and eager-loaded Eloquent data for a component. They are not repositories and do not hide write operations.
 - Models define typed casts, relationships, scopes and cohesive entity behavior. They do not make external network calls.
 - Policies are the canonical resource-authorization boundary; permission resolution is a supporting capability, not a replacement for resource ownership checks.
 - Presentation data that is non-trivial or reused crosses into Blade as typed data or explicit arrays, never raw service objects.

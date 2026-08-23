@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Menus\CatalogData;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -60,25 +61,19 @@ abstract class BranchMenuComponent extends Component
     #[Computed]
     public function organization(): Organization
     {
-        return Organization::query()
-            ->select(['id', 'name'])
-            ->findOrFail($this->organizationId);
+        return $this->catalogData()->organization($this->organizationId);
     }
 
     #[Computed]
     public function brand(): Brand
     {
-        return Brand::query()
-            ->select(['id', 'organization_id', 'name'])
-            ->findOrFail($this->brandId);
+        return $this->catalogData()->brand($this->brandId);
     }
 
     #[Computed]
     public function branch(): Branch
     {
-        return Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name', 'currency', 'timezone'])
-            ->findOrFail($this->branchId);
+        return $this->catalogData()->branch($this->branchId);
     }
 
     protected function currentUser(): User
@@ -91,4 +86,6 @@ abstract class BranchMenuComponent extends Component
 
         return $user;
     }
+
+    abstract protected function catalogData(): CatalogData;
 }

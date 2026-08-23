@@ -16,6 +16,7 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -29,6 +30,8 @@ use Livewire\Attributes\On;
 /** @property-read EloquentCollection<int, ModifierGroup> $groups */
 class Modifiers extends BranchMenuComponent
 {
+    private CatalogData $menuQueries;
+
     public string $modifierGroupName = '';
 
     public bool $modifierGroupIsRequired = false;
@@ -82,6 +85,11 @@ class Modifiers extends BranchMenuComponent
 
     #[Locked]
     public bool $canChangeAvailability = false;
+
+    public function boot(CatalogData $menuQueries): void
+    {
+        $this->menuQueries = $menuQueries;
+    }
 
     public function mount(int $organizationId, int $brandId, int $branchId): void
     {
@@ -292,13 +300,7 @@ class Modifiers extends BranchMenuComponent
     #[Computed]
     public function groups(): EloquentCollection
     {
-        return $this->branch->modifierGroups()
-            ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
-            ->with(['options' => fn ($query) => $query
-                ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
-                ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
-            ->withCount('items')
-            ->get();
+        return $this->menuQueries->modifierGroups($this->branch);
     }
 
     public function render(): View
@@ -332,29 +334,13 @@ class Modifiers extends BranchMenuComponent
     /** @return list<array{value: string, label: string}> */
     private function menuOptions(): array
     {
-        return $this->branch->menus()
-            ->select(['id', 'branch_id', 'name', 'sort_order'])
-            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
-            ->get()
-            ->map(fn (Menu $menu): array => ['value' => (string) $menu->id, 'label' => $menu->name])
-            ->all();
+        return $this->menuQueries->menuOptions($this->branch);
     }
 
     /** @return list<array{value: string, label: string}> */
     private function itemOptions(): array
     {
-        if ($this->modifierItemMenuId === '') {
-            return [];
-        }
-
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'name', 'sort_order'])
-            ->where('menu_id', (int) $this->modifierItemMenuId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
-            ->get()
-            ->map(fn (MenuItem $item): array => ['value' => (string) $item->id, 'label' => $item->name])
-            ->all();
+        return $this->menuQueries->itemOptions($this->branchId, $this->modifierItemMenuId);
     }
 
     /**
@@ -397,52 +383,32 @@ class Modifiers extends BranchMenuComponent
 
     private function findGroup(int $id): ModifierGroup
     {
-        return $this->branch->modifierGroups()
-            ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
-            ->whereKey($id)->firstOrFail();
+        return $this->menuQueries->findModifierGroup($this->branch, $id);
     }
 
     private function findOption(int $id): ModifierOption
     {
-        return ModifierOption::query()
-            ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
-            ->whereHas('group', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->whereKey($id)->firstOrFail();
+        return $this->menuQueries->findModifierOption($this->branchId, $id);
     }
 
     private function findItem(int $id): MenuItem
     {
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'name', 'sort_order', 'created_at', 'updated_at'])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->whereKey($id)->firstOrFail();
+        return $this->menuQueries->findModifierItem($this->branchId, $id);
     }
 
     private function firstMenuId(): string
     {
-        $id = $this->branch->menus()->select('menus.id')->oldest('sort_order')->oldest('name')->oldest('id')->value('menus.id');
-
-        return is_int($id) ? (string) $id : '';
+        return $this->menuQueries->firstMenuId($this->branch);
     }
 
     private function firstItemId(string $menuId): string
     {
-        if ($menuId === '') {
-            return '';
-        }
-        $id = MenuItem::query()->select('menu_items.id')->where('menu_id', (int) $menuId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->oldest('sort_order')->oldest('name')->oldest('id')->value('menu_items.id');
-
-        return is_int($id) ? (string) $id : '';
+        return $this->menuQueries->firstItemId($this->branchId, $menuId);
     }
 
     private function firstModifierGroupId(): string
     {
-        $id = $this->branch->modifierGroups()->select('modifier_groups.id')
-            ->oldest('sort_order')->oldest('name')->oldest('id')->value('modifier_groups.id');
-
-        return is_int($id) ? (string) $id : '';
+        return $this->menuQueries->firstModifierGroupId($this->branch);
     }
 
     private function resetGroupForm(): void
@@ -473,5 +439,10 @@ class Modifiers extends BranchMenuComponent
     {
         $this->canChangePrices = $this->branchAllows('changeMenuPrices');
         $this->canChangeAvailability = $this->branchAllows('changeMenuAvailability');
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->menuQueries;
     }
 }

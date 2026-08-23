@@ -10,11 +10,10 @@ use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Models\Branch;
 use App\Models\Brand;
-use App\Models\Order;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
-use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Superadmin\SuperadminDashboardQueryService;
 use App\Support\PlainText;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -31,6 +30,8 @@ class Dashboard extends Component
     use WithPagination;
 
     private BuildProductionSafetyReportAction $buildProductionSafetyReport;
+
+    private SuperadminDashboardQueryService $dashboardQueries;
 
     public string $cleanupMessage = '';
 
@@ -55,9 +56,12 @@ class Dashboard extends Component
         $this->backupRestoreError = (string) session()->pull('sqlite_backup_restore_error', '');
     }
 
-    public function boot(BuildProductionSafetyReportAction $buildProductionSafetyReport): void
-    {
+    public function boot(
+        BuildProductionSafetyReportAction $buildProductionSafetyReport,
+        SuperadminDashboardQueryService $dashboardQueries,
+    ): void {
         $this->buildProductionSafetyReport = $buildProductionSafetyReport;
+        $this->dashboardQueries = $dashboardQueries;
     }
 
     /**
@@ -66,14 +70,7 @@ class Dashboard extends Component
     #[Computed]
     public function stats(): array
     {
-        return [
-            'organizations' => Organization::query()->count(),
-            'brands' => Brand::query()->count(),
-            'branches' => Branch::query()->count(),
-            'service_points' => ServicePoint::query()->count(),
-            'orders' => Order::query()->count(),
-            'users' => User::query()->count(),
-        ];
+        return $this->dashboardQueries->stats();
     }
 
     /**
@@ -96,29 +93,7 @@ class Dashboard extends Component
     #[Computed]
     public function organizations(): CursorPaginator
     {
-        return Organization::query()
-            ->select(['id', 'owner_user_id', 'name', 'created_at'])
-            ->with([
-                'owner' => fn ($query) => $query->select(['id', 'name', 'email']),
-                'subscription' => fn ($query) => $query->select([
-                    'id',
-                    'organization_id',
-                    'status',
-                    'started_at',
-                    'next_payment_at',
-                    'payment_status',
-                    'created_at',
-                ]),
-            ])
-            ->withCount([
-                'brands',
-                'branches',
-                'servicePoints',
-                'orders',
-                'branches as active_branches_count' => fn ($query) => $query->where('is_active', true),
-            ])
-            ->orderBy('id')
-            ->cursorPaginate(10, ['id', 'owner_user_id', 'name', 'created_at'], 'organizationsCursor');
+        return $this->dashboardQueries->organizations();
     }
 
     public function activateOrganization(
@@ -266,11 +241,7 @@ class Dashboard extends Component
     #[Computed]
     public function brands(): CursorPaginator
     {
-        return Brand::query()
-            ->select(['id', 'organization_id', 'name', 'created_at'])
-            ->with(['organization' => fn ($query) => $query->select(['id', 'name'])])
-            ->orderBy('id')
-            ->cursorPaginate(10, ['id', 'organization_id', 'name', 'created_at'], 'brandsCursor');
+        return $this->dashboardQueries->brands();
     }
 
     /**
@@ -279,14 +250,7 @@ class Dashboard extends Component
     #[Computed]
     public function branches(): CursorPaginator
     {
-        return Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name', 'city', 'country', 'is_active', 'created_at'])
-            ->with([
-                'organization' => fn ($query) => $query->select(['id', 'name']),
-                'brand' => fn ($query) => $query->select(['id', 'name']),
-            ])
-            ->orderBy('id')
-            ->cursorPaginate(10, ['id', 'organization_id', 'brand_id', 'name', 'city', 'country', 'is_active', 'created_at'], 'branchesCursor');
+        return $this->dashboardQueries->branches();
     }
 
     /**
@@ -295,11 +259,7 @@ class Dashboard extends Component
     #[Computed]
     public function users(): CursorPaginator
     {
-        return User::query()
-            ->select(['id', 'name', 'email', 'created_at'])
-            ->with(['roles' => fn ($query) => $query->select(['roles.id', 'roles.code', 'roles.name'])])
-            ->orderBy('id')
-            ->cursorPaginate(10, ['id', 'name', 'email', 'created_at'], 'usersCursor');
+        return $this->dashboardQueries->users();
     }
 
     public function render(): View
@@ -438,10 +398,7 @@ class Dashboard extends Component
 
     private function findOrganization(int $organizationId): Organization
     {
-        return Organization::query()
-            ->select(['id', 'owner_user_id', 'name', 'created_at'])
-            ->whereKey($organizationId)
-            ->firstOrFail();
+        return $this->dashboardQueries->findOrganization($organizationId);
     }
 
     private function authorizeSuperadmin(): void

@@ -10,6 +10,7 @@ use App\Actions\KitchenDepartments\SetKitchenDepartmentActiveAction;
 use App\Actions\KitchenDepartments\UpdateKitchenDepartmentAction;
 use App\Enums\KitchenDepartmentType;
 use App\Models\KitchenDepartment;
+use App\Services\Menus\CatalogData;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -21,6 +22,8 @@ use Livewire\Attributes\On;
 /** @property-read EloquentCollection<int, KitchenDepartment> $departments */
 class KitchenDepartments extends BranchMenuComponent
 {
+    private CatalogData $menuQueries;
+
     public string $departmentName = '';
 
     public string $departmentType = 'kitchen';
@@ -38,6 +41,11 @@ class KitchenDepartments extends BranchMenuComponent
     public int $editingDepartmentSortOrder = 0;
 
     public bool $editingDepartmentIsActive = true;
+
+    public function boot(CatalogData $menuQueries): void
+    {
+        $this->menuQueries = $menuQueries;
+    }
 
     public function mount(int $organizationId, int $brandId, int $branchId): void
     {
@@ -140,10 +148,7 @@ class KitchenDepartments extends BranchMenuComponent
     #[Computed]
     public function departments(): EloquentCollection
     {
-        return $this->branch->kitchenDepartments()
-            ->select(['id', 'branch_id', 'type', 'name', 'sort_order', 'is_active', 'created_at', 'updated_at'])
-            ->withCount('menuItems')
-            ->get();
+        return $this->menuQueries->kitchenDepartments($this->branch);
     }
 
     public function render(): View
@@ -183,10 +188,7 @@ class KitchenDepartments extends BranchMenuComponent
 
     private function findDepartment(int $departmentId): KitchenDepartment
     {
-        return $this->branch->kitchenDepartments()
-            ->select(['id', 'branch_id', 'type', 'name', 'sort_order', 'is_active', 'created_at', 'updated_at'])
-            ->whereKey($departmentId)
-            ->firstOrFail();
+        return $this->menuQueries->findKitchenDepartment($this->branch, $departmentId);
     }
 
     private function resetCreateForm(): void
@@ -200,5 +202,10 @@ class KitchenDepartments extends BranchMenuComponent
     private function notifySiblings(): void
     {
         $this->dispatch('branch-menu-updated');
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->menuQueries;
     }
 }

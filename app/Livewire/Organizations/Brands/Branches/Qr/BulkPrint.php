@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Organizations\Brands\Branches\Qr;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
-use App\Enums\QrCodeStatus;
 use App\Enums\QrLabelPreset;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -14,6 +13,7 @@ use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodes\QrPrintQueryService;
 use App\Services\QrCodeSvgRenderer;
 use App\Services\QrPrintBrandingResolver;
 use Flux\Flux;
@@ -32,6 +32,8 @@ class BulkPrint extends Component
     private QrCodeSvgRenderer $qrCodeSvgRenderer;
 
     private QrPrintBrandingResolver $brandingResolver;
+
+    private QrPrintQueryService $qrPrintQueries;
 
     public Organization $organization;
 
@@ -56,9 +58,11 @@ class BulkPrint extends Component
     public function boot(
         QrCodeSvgRenderer $qrCodeSvgRenderer,
         QrPrintBrandingResolver $brandingResolver,
+        QrPrintQueryService $qrPrintQueries,
     ): void {
         $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
         $this->brandingResolver = $brandingResolver;
+        $this->qrPrintQueries = $qrPrintQueries;
     }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
@@ -171,22 +175,7 @@ class BulkPrint extends Component
     #[Computed]
     public function areaNodes(): EloquentCollection
     {
-        return $this->branch
-            ->areaNodes()
-            ->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->qrPrintQueries->areaNodes($this->branch);
     }
 
     /**
@@ -195,56 +184,7 @@ class BulkPrint extends Component
     #[Computed]
     public function servicePoints(): EloquentCollection
     {
-        return $this->branch
-            ->servicePoints()
-            ->select([
-                'id',
-                'branch_id',
-                'area_node_id',
-                'type',
-                'name',
-                'display_number',
-                'internal_code',
-                'capacity',
-                'icon',
-                'status',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->when(
-                $this->areaNodeId !== 'all' && $this->areaNodeId !== 'none',
-                fn ($query) => $query->where('area_node_id', (int) $this->areaNodeId),
-            )
-            ->when(
-                $this->areaNodeId === 'none',
-                fn ($query) => $query->whereNull('area_node_id'),
-            )
-            ->with([
-                'areaNode' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'parent_id',
-                    'type',
-                    'name',
-                    'icon',
-                    'sort_order',
-                    'is_active',
-                ]),
-                'activeQrCode' => fn ($query) => $query->select([
-                    'id',
-                    'service_point_id',
-                    'public_token',
-                    'short_code',
-                    'status',
-                    'created_at',
-                ])->where('status', QrCodeStatus::Active->value),
-            ])
-            ->orderBy('area_node_id')
-            ->orderBy('display_number')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->qrPrintQueries->servicePoints($this->branch, $this->areaNodeId);
     }
 
     /**
@@ -357,59 +297,16 @@ class BulkPrint extends Component
 
     private function reloadBranchContext(): void
     {
-        $branding = $this->brandingResolver;
+        $context = $this->qrPrintQueries->branchContext($this->organization, $this->brand, $this->branch);
 
-        $this->organization = Organization::query()
-            ->select($branding->columnsWithOptionalLogo(new Organization, ['id', 'owner_user_id', 'name']))
-            ->whereKey($this->organization->id)
-            ->firstOrFail();
-
-        $this->brand = Brand::query()
-            ->select($branding->columnsWithOptionalLogo(new Brand, ['id', 'organization_id', 'name']))
-            ->whereKey($this->brand->id)
-            ->where('organization_id', $this->organization->id)
-            ->firstOrFail();
-
-        $this->branch = Branch::query()
-            ->select($branding->columnsWithOptionalLogo(new Branch, [
-                'id',
-                'organization_id',
-                'brand_id',
-                'name',
-                'address',
-                'city',
-                'country',
-                'timezone',
-                'currency',
-                'is_active',
-            ]))
-            ->whereKey($this->branch->id)
-            ->where('organization_id', $this->organization->id)
-            ->where('brand_id', $this->brand->id)
-            ->firstOrFail();
+        $this->organization = $context['organization'];
+        $this->brand = $context['brand'];
+        $this->branch = $context['branch'];
     }
 
     private function findBranchServicePoint(int $servicePointId): ServicePoint
     {
-        return $this->branch
-            ->servicePoints()
-            ->select([
-                'id',
-                'branch_id',
-                'area_node_id',
-                'type',
-                'name',
-                'display_number',
-                'internal_code',
-                'capacity',
-                'icon',
-                'status',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($servicePointId)
-            ->firstOrFail();
+        return $this->qrPrintQueries->findBranchServicePoint($this->branch, $servicePointId);
     }
 
     /**

@@ -9,12 +9,10 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\PermissionOverrideState;
 use App\Enums\SystemPermission;
 use App\Models\Organization;
-use App\Models\OrganizationUser;
 use App\Models\Permission;
-use App\Models\PermissionRole;
-use App\Models\PermissionUserOverride;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\PermissionQueryService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +24,8 @@ use Livewire\Component;
 class Permissions extends Component
 {
     private SetUserPermissionOverrideAction $setUserPermissionOverride;
+
+    private PermissionQueryService $permissionQueries;
 
     public Organization $organization;
 
@@ -50,9 +50,12 @@ class Permissions extends Component
 
     public string $criticalPermissionChangeReason = '';
 
-    public function boot(SetUserPermissionOverrideAction $setUserPermissionOverride): void
-    {
+    public function boot(
+        SetUserPermissionOverrideAction $setUserPermissionOverride,
+        PermissionQueryService $permissionQueries,
+    ): void {
         $this->setUserPermissionOverride = $setUserPermissionOverride;
+        $this->permissionQueries = $permissionQueries;
     }
 
     public function mount(Organization $organization, User $staffMember): void
@@ -65,12 +68,7 @@ class Permissions extends Component
 
         $this->showTechnicalPermissionKeys = $currentUser->isSuperadmin();
 
-        $membership = OrganizationUser::query()
-            ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at'])
-            ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
-            ->where('organization_id', $organization->id)
-            ->where('user_id', $staffMember->id)
-            ->firstOrFail();
+        $membership = $this->permissionQueries->membership($organization, $staffMember);
 
         $this->membershipRoleId = $membership->role_id;
         $this->membershipRoleName = $this->roleLabel($membership->role);
@@ -109,10 +107,7 @@ class Permissions extends Component
             return;
         }
 
-        $permission = Permission::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->whereKey($permissionId)
-            ->firstOrFail();
+        $permission = $this->permissionQueries->permission($permissionId);
 
         $systemPermission = SystemPermission::tryFrom($permission->code);
         $reason = null;
@@ -155,26 +150,10 @@ class Permissions extends Component
     #[Computed]
     public function permissionRows(): array
     {
-        $roleDefaults = PermissionRole::query()
-            ->select(['permission_id', 'enabled'])
-            ->where('role_id', $this->membershipRoleId)
-            ->get()
-            ->mapWithKeys(fn (PermissionRole $assignment): array => [
-                $assignment->permission_id => $assignment->enabled,
-            ]);
+        $roleDefaults = $this->permissionQueries->roleDefaults($this->membershipRoleId);
+        $overrides = $this->permissionQueries->userOverrides($this->staffMember);
 
-        $overrides = PermissionUserOverride::query()
-            ->select(['permission_id', 'enabled'])
-            ->where('user_id', $this->staffMember->id)
-            ->get()
-            ->mapWithKeys(fn (PermissionUserOverride $override): array => [
-                $override->permission_id => $override->enabled,
-            ]);
-
-        return Permission::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->orderBy('sort_order')
-            ->get()
+        return $this->permissionQueries->permissions()
             ->map(function (Permission $permission) use ($roleDefaults, $overrides): array {
                 $hasOverride = $overrides->has($permission->id);
                 $overrideState = match (true) {

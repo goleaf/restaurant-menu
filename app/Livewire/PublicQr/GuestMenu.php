@@ -8,10 +8,10 @@ use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
-use App\Enums\TableSessionGuestStatus;
 use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
@@ -25,6 +25,8 @@ use Livewire\Component;
 class GuestMenu extends Component
 {
     private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+
+    private PublicQrQueryService $publicQrQueries;
 
     #[Locked]
     public int $branchId;
@@ -72,9 +74,12 @@ class GuestMenu extends Component
      */
     public array $configuredItems = [];
 
-    public function boot(GetGuestMenuForBranchAction $getGuestMenuForBranch): void
-    {
+    public function boot(
+        GetGuestMenuForBranchAction $getGuestMenuForBranch,
+        PublicQrQueryService $publicQrQueries,
+    ): void {
         $this->getGuestMenuForBranch = $getGuestMenuForBranch;
+        $this->publicQrQueries = $publicQrQueries;
     }
 
     public function mount(
@@ -614,16 +619,7 @@ class GuestMenu extends Component
             return null;
         }
 
-        return TableSession::query()
-            ->select([
-                'id',
-                'branch_id',
-                'service_point_id',
-                'status',
-                'ended_at',
-            ])
-            ->whereKey($this->tableSessionId)
-            ->first();
+        return $this->publicQrQueries->guestMenuTableSession($this->tableSessionId);
     }
 
     private function currentActiveGuest(): ?TableSessionGuest
@@ -638,21 +634,7 @@ class GuestMenu extends Component
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->whereKey($this->currentGuestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('guest_token', $guestToken)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->first();
+        return $this->publicQrQueries->activeGuest($this->currentGuestId, $this->tableSessionId, $guestToken);
     }
 
     /**
@@ -660,10 +642,7 @@ class GuestMenu extends Component
      */
     private function menuItemFor(array $item): ?MenuItem
     {
-        return MenuItem::query()
-            ->select(['id'])
-            ->whereKey((int) $item['id'])
-            ->first();
+        return $this->publicQrQueries->menuItem((int) $item['id']);
     }
 
     private function guestTokenFromCurrentState(): ?string

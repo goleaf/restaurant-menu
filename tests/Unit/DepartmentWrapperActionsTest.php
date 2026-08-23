@@ -72,11 +72,12 @@ test('kitchen dashboard action delegates the exact kitchen access contract', fun
 
 test('bar ticket update action delegates the exact bar transition contract', function (): void {
     $item = new KitchenTicketItem;
+    $item->id = 41;
     $user = new User;
     $delegate = Mockery::mock(UpdateDepartmentTicketItemStatusAction::class);
     $delegate->shouldReceive('handle')
         ->once()
-        ->withArgs(fn (KitchenTicketItem $actualItem, KitchenTicketItemStatus $status, User $actualUser, array $types, array $roles, array $permissions): bool => $actualItem === $item
+        ->withArgs(fn (int $actualItemId, KitchenTicketItemStatus $status, User $actualUser, array $types, array $roles, array $permissions): bool => $actualItemId === $item->id
             && $status === KitchenTicketItemStatus::Ready
             && $actualUser === $user
             && $types === [KitchenDepartmentType::Bar]
@@ -86,16 +87,17 @@ test('bar ticket update action delegates the exact bar transition contract', fun
 
     $action = new UpdateBarTicketItemStatusAction($delegate);
 
-    expect($action->handle($item, KitchenTicketItemStatus::Ready, $user))->toBe($item);
+    expect($action->handle($item->id, KitchenTicketItemStatus::Ready, $user))->toBe($item);
 });
 
 test('kitchen ticket update action delegates the exact kitchen transition contract', function (): void {
     $item = new KitchenTicketItem;
+    $item->id = 42;
     $user = new User;
     $delegate = Mockery::mock(UpdateDepartmentTicketItemStatusAction::class);
     $delegate->shouldReceive('handle')
         ->once()
-        ->withArgs(fn (KitchenTicketItem $actualItem, KitchenTicketItemStatus $status, User $actualUser, array $types, array $roles, array $permissions): bool => $actualItem === $item
+        ->withArgs(fn (int $actualItemId, KitchenTicketItemStatus $status, User $actualUser, array $types, array $roles, array $permissions): bool => $actualItemId === $item->id
             && $status === KitchenTicketItemStatus::InProgress
             && $actualUser === $user
             && $types === []
@@ -105,7 +107,7 @@ test('kitchen ticket update action delegates the exact kitchen transition contra
 
     $action = new UpdateKitchenTicketItemStatusAction($delegate);
 
-    expect($action->handle($item, KitchenTicketItemStatus::InProgress, $user))->toBe($item);
+    expect($action->handle($item->id, KitchenTicketItemStatus::InProgress, $user))->toBe($item);
 });
 
 test('paid table close action delegates to the canonical close action', function (): void {

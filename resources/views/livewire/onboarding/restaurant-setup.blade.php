@@ -80,7 +80,7 @@
                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.onboarding.restaurant_setup.napisite_nazvanie_kompanii_ili_vladelca_vy_a') }}</p>
                     </div>
 
-                    <flux:input wire:model="organizationName" :label="__('ui.onboarding.restaurant_setup.nazvanie_kompanii')" type="text" required maxlength="120" autocomplete="organization" />
+                    <flux:input wire:model="form.organizationName" :label="__('ui.onboarding.restaurant_setup.nazvanie_kompanii')" type="text" required maxlength="120" autocomplete="organization" />
 
                     <div class="flex flex-wrap gap-3">
                         <flux:button icon="arrow-right" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createOrganization">
@@ -96,7 +96,7 @@
                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('ui.onboarding.restaurant_setup.eto_nazvanie_gosti_i_sotrudniki_budut_uznava') }}</p>
                     </div>
 
-                    <flux:input wire:model="brandName" :label="__('ui.onboarding.restaurant_setup.nazvanie_restorana')" type="text" required maxlength="120" />
+                    <flux:input wire:model="form.brandName" :label="__('ui.onboarding.restaurant_setup.nazvanie_restorana')" type="text" required maxlength="120" />
 
                     <div class="flex flex-wrap gap-3">
                         <flux:button icon="arrow-left" type="button" wire:click="goToStep(1)">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
@@ -114,21 +114,21 @@
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2">
-                        <flux:input wire:model="branchName" :label="__('ui.onboarding.restaurant_setup.nazvanie_tocki')" type="text" required maxlength="160" />
-                        <flux:input wire:model="branchAddress" :label="__('ui.livewire.onboarding.restaurantsetup.adres')" type="text" required maxlength="255" />
-                        <flux:input wire:model="branchCity" :label="__('ui.onboarding.restaurant_setup.gorod')" type="text" required maxlength="120" />
-                        <flux:input wire:model="branchCountry" :label="__('ui.onboarding.restaurant_setup.strana')" type="text" required maxlength="120" />
-                        <flux:input wire:model="branchTimezone" :label="__('ui.onboarding.restaurant_setup.casovoi_poias')" type="text" required maxlength="64" />
+                        <flux:input wire:model="form.branchName" :label="__('ui.onboarding.restaurant_setup.nazvanie_tocki')" type="text" required maxlength="160" />
+                        <flux:input wire:model="form.branchAddress" :label="__('ui.livewire.onboarding.restaurantsetup.adres')" type="text" required maxlength="255" />
+                        <flux:input wire:model="form.branchCity" :label="__('ui.onboarding.restaurant_setup.gorod')" type="text" required maxlength="120" />
+                        <flux:input wire:model="form.branchCountry" :label="__('ui.onboarding.restaurant_setup.strana')" type="text" required maxlength="120" />
+                        <flux:input wire:model="form.branchTimezone" :label="__('ui.onboarding.restaurant_setup.casovoi_poias')" type="text" required maxlength="64" />
                         <flux:field>
                             <flux:label>{{ __('ui.onboarding.restaurant_setup.valiuta') }}</flux:label>
-                            <flux:select wire:model="branchCurrency">
+                            <flux:select wire:model="form.branchCurrency">
                                 @foreach ($currencyOptions as $currencyCode => $currencyLabel)
                                     <flux:select.option wire:key="onboarding-branch-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
                                         {{ $currencyLabel }}
                                     </flux:select.option>
                                 @endforeach
                             </flux:select>
-                            <flux:error name="branchCurrency" />
+                            <flux:error name="form.branchCurrency" />
                         </flux:field>
                     </div>
 
@@ -148,16 +148,16 @@
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-3">
-                        <flux:input wire:model="areaName" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
+                        <flux:input wire:model="form.areaName" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" type="text" required maxlength="160" />
 
-                        <flux:select wire:model="areaType" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
+                        <flux:select wire:model="form.areaType" :label="__('ui.onboarding.restaurant_setup.cto_eto')">
                             <flux:select.option value="hall">{{ __('ui.livewire.organizations.brands.branches.areas.zal') }}</flux:select.option>
                             <flux:select.option value="terrace">{{ __('ui.livewire.organizations.brands.branches.areas.terrasa') }}</flux:select.option>
                             <flux:select.option value="vip_room">{{ __('ui.livewire.organizations.brands.branches.areas.vip_zal') }}</flux:select.option>
                             <flux:select.option value="custom">{{ __('ui.livewire.organizations.brands.branches.areas.svoia_zona') }}</flux:select.option>
                         </flux:select>
 
-                        <flux:select wire:model="areaIcon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
+                        <flux:select wire:model="form.areaIcon" :label="__('ui.onboarding.restaurant_setup.ikonka')">
                             <flux:select.option value="rectangle-group">{{ __('ui.livewire.organizations.brands.branches.areas.zal') }}</flux:select.option>
                             <flux:select.option value="sparkles">{{ __('ui.livewire.organizations.brands.branches.areas.vip') }}</flux:select.option>
                             <flux:select.option value="sun">{{ __('ui.livewire.organizations.brands.branches.areas.terrasa') }}</flux:select.option>
@@ -181,9 +181,9 @@
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-3">
-                        <flux:input wire:model="tableCount" :label="__('ui.onboarding.restaurant_setup.skolko_stolov')" type="number" required min="1" max="20" />
-                        <flux:input wire:model="tablePrefix" :label="__('ui.onboarding.restaurant_setup.kak_nazvat')" type="text" required maxlength="40" />
-                        <flux:input wire:model="tableCapacity" :label="__('ui.onboarding.restaurant_setup.gostei_za_stolom')" type="number" required min="1" max="50" />
+                        <flux:input wire:model="form.tableCount" :label="__('ui.onboarding.restaurant_setup.skolko_stolov')" type="number" required min="1" max="20" />
+                        <flux:input wire:model="form.tablePrefix" :label="__('ui.onboarding.restaurant_setup.kak_nazvat')" type="text" required maxlength="40" />
+                        <flux:input wire:model="form.tableCapacity" :label="__('ui.onboarding.restaurant_setup.gostei_za_stolom')" type="number" required min="1" max="50" />
                     </div>
 
                     <div class="flex flex-wrap gap-3">
@@ -221,10 +221,10 @@
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2">
-                        <flux:input wire:model="menuName" :label="__('ui.onboarding.restaurant_setup.nazvanie_meniu')" type="text" required maxlength="160" />
-                        <flux:input wire:model="categoryName" :label="__('ui.onboarding.restaurant_setup.razdel_meniu')" type="text" required maxlength="160" />
-                        <flux:input wire:model="itemName" :label="__('ui.onboarding.restaurant_setup.pervoe_bliudo')" type="text" required maxlength="180" />
-                        <flux:input wire:model="itemPrice" :label="__('ui.onboarding.restaurant_setup.cena')" type="number" required min="0" max="999999.99" step="0.01" />
+                        <flux:input wire:model="form.menuName" :label="__('ui.onboarding.restaurant_setup.nazvanie_meniu')" type="text" required maxlength="160" />
+                        <flux:input wire:model="form.categoryName" :label="__('ui.onboarding.restaurant_setup.razdel_meniu')" type="text" required maxlength="160" />
+                        <flux:input wire:model="form.itemName" :label="__('ui.onboarding.restaurant_setup.pervoe_bliudo')" type="text" required maxlength="180" />
+                        <flux:input wire:model="form.itemPrice" :label="__('ui.onboarding.restaurant_setup.cena')" type="number" required min="0" max="999999.99" step="0.01" />
                     </div>
 
                     <div class="flex flex-wrap gap-3">

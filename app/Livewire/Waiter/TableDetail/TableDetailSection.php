@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Livewire\Waiter\TableDetail;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
-use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Services\Waiter\TableDetailChangeDetector;
+use App\Services\Waiter\WaiterTableQueryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -24,14 +25,17 @@ abstract class TableDetailSection extends Component
 
     protected TableDetailChangeDetector $changeDetector;
 
+    protected WaiterTableQueryService $waiterQueries;
+
     public function boot(
         BuildWaiterTableDetailAction $buildWaiterTableDetail,
         TableDetailChangeDetector $changeDetector,
+        WaiterTableQueryService $waiterQueries,
         BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
-        GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ): void {
         $this->buildWaiterTableDetail = $buildWaiterTableDetail;
         $this->changeDetector = $changeDetector;
+        $this->waiterQueries = $waiterQueries;
     }
 
     protected function currentUser(): User
@@ -47,10 +51,7 @@ abstract class TableDetailSection extends Component
 
     protected function currentTableSession(): TableSession
     {
-        return TableSession::query()
-            ->select(['id', 'branch_id'])
-            ->whereKey($this->tableSessionId)
-            ->firstOrFail();
+        return $this->waiterQueries->tableSession($this->tableSessionId);
     }
 
     protected function authorizeViewableTableSession(): TableSession

@@ -12,7 +12,6 @@ use App\Enums\OrderStatus;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\TableSession;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -131,11 +130,7 @@ final class OrderFulfilment extends TableDetailSection
             'orderItemCancellationReason.required' => __('orders.items.errors.reason_required'),
             'orderItemCancellationReason.min' => __('orders.items.errors.reason_min'),
         ]);
-        $orderItem = OrderItem::query()
-            ->select(['id', 'order_id'])
-            ->whereKey($orderItemId)
-            ->whereHas('order', fn ($query) => $query->where('table_session_id', $this->tableSessionId))
-            ->first();
+        $orderItem = $this->waiterQueries->orderItemForTable($orderItemId, $this->tableSessionId);
 
         if (! $orderItem instanceof OrderItem) {
             $this->addError('order_item_cancellation', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
@@ -167,10 +162,7 @@ final class OrderFulfilment extends TableDetailSection
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
         $this->authorizeWaiterTableSession();
-        $ticketItem = KitchenTicketItem::query()
-            ->select(['id'])
-            ->whereKey($ticketItemId)
-            ->first();
+        $ticketItem = $this->waiterQueries->kitchenTicketItem($ticketItemId);
 
         if (! $ticketItem instanceof KitchenTicketItem) {
             $this->addError('order_service', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
@@ -198,17 +190,7 @@ final class OrderFulfilment extends TableDetailSection
 
     private function currentOrder(): ?Order
     {
-        $tableSession = TableSession::query()
-            ->select(['id'])
-            ->with([
-                'draftOrder' => fn ($query) => $query
-                    ->select(['draft_orders.id', 'draft_orders.table_session_id'])
-                    ->with(['order' => fn ($orderQuery) => $orderQuery->select(['id', 'draft_order_id', 'status'])]),
-            ])
-            ->whereKey($this->tableSessionId)
-            ->firstOrFail();
-
-        return $tableSession->draftOrder?->order;
+        return $this->waiterQueries->currentOrder($this->tableSessionId);
     }
 
     /**

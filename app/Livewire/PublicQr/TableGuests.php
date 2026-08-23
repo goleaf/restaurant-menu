@@ -8,6 +8,7 @@ use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
@@ -17,6 +18,8 @@ use Livewire\Component;
 #[Isolate]
 class TableGuests extends Component
 {
+    private PublicQrQueryService $publicQrQueries;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -31,6 +34,11 @@ class TableGuests extends Component
      * @var list<array{id: int, guest_name: string, status: string, status_key: string, status_tone: string, is_ready: bool, ready_key: string, is_current: bool}>
      */
     public array $guests = [];
+
+    public function boot(PublicQrQueryService $publicQrQueries): void
+    {
+        $this->publicQrQueries = $publicQrQueries;
+    }
 
     public function mount(int $tableSessionId, int $currentGuestId, int $pollingIntervalSeconds = 1, string $language = 'ru'): void
     {
@@ -47,20 +55,8 @@ class TableGuests extends Component
     {
         $this->applyLocale();
 
-        $this->guests = TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'status',
-                'ready_at',
-                'joined_at',
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->orderBy('guest_name')
-            ->orderBy('id')
-            ->limit(50)
-            ->get()
+        $this->guests = $this->publicQrQueries
+            ->tableGuests($this->tableSessionId)
             ->map(fn (TableSessionGuest $guest): array => [
                 'id' => $guest->id,
                 'guest_name' => $guest->guest_name,

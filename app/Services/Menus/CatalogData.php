@@ -2,19 +2,23 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Organizations\Brands\Branches\Menu;
+namespace App\Services\Menus;
 
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuStatus;
 use App\Models\Branch;
+use App\Models\Brand;
 use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
+use App\Models\Organization;
 use App\Support\MoneyFormatter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -127,6 +131,234 @@ final readonly class CatalogData
             ->value('menu_categories.id');
 
         return is_int($categoryId) ? (string) $categoryId : '';
+    }
+
+    public function organization(int $organizationId): Organization
+    {
+        return Organization::query()
+            ->select(['id', 'name'])
+            ->findOrFail($organizationId);
+    }
+
+    public function brand(int $brandId): Brand
+    {
+        return Brand::query()
+            ->select(['id', 'organization_id', 'name'])
+            ->findOrFail($brandId);
+    }
+
+    public function branch(int $branchId): Branch
+    {
+        return Branch::query()
+            ->select(['id', 'organization_id', 'brand_id', 'name', 'currency', 'timezone'])
+            ->findOrFail($branchId);
+    }
+
+    /** @return EloquentCollection<int, Menu> */
+    public function availabilityMenus(Branch $branch): EloquentCollection
+    {
+        return $branch->menus()
+            ->select(['id', 'branch_id', 'name', 'sort_order'])
+            ->with(['items' => fn ($query) => $query
+                ->select([
+                    'id',
+                    'menu_id',
+                    'category_id',
+                    'kitchen_department_id',
+                    'name',
+                    'price_cents',
+                    'is_available',
+                    'sort_order',
+                    'updated_at',
+                ])
+                ->with([
+                    'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name']),
+                    'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'name']),
+                ])
+                ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
+            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
+            ->get();
+    }
+
+    /** @return EloquentCollection<int, ModifierGroup> */
+    public function modifierGroups(Branch $branch): EloquentCollection
+    {
+        return $branch->modifierGroups()
+            ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
+            ->with(['options' => fn ($query) => $query
+                ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+                ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
+            ->withCount('items')
+            ->get();
+    }
+
+    /** @return list<array{value: string, label: string}> */
+    public function menuOptions(Branch $branch): array
+    {
+        return $branch->menus()
+            ->select(['id', 'branch_id', 'name', 'sort_order'])
+            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
+            ->get()
+            ->map(fn (Menu $menu): array => ['value' => (string) $menu->id, 'label' => $menu->name])
+            ->all();
+    }
+
+    /** @return list<array{value: string, label: string}> */
+    public function itemOptions(int $branchId, string $menuId): array
+    {
+        if ($menuId === '') {
+            return [];
+        }
+
+        return MenuItem::query()
+            ->select(['id', 'menu_id', 'name', 'sort_order'])
+            ->where('menu_id', (int) $menuId)
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
+            ->get()
+            ->map(fn (MenuItem $item): array => ['value' => (string) $item->id, 'label' => $item->name])
+            ->all();
+    }
+
+    public function findModifierGroup(Branch $branch, int $groupId): ModifierGroup
+    {
+        return $branch->modifierGroups()
+            ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
+            ->whereKey($groupId)
+            ->firstOrFail();
+    }
+
+    public function findModifierOption(int $branchId, int $optionId): ModifierOption
+    {
+        return ModifierOption::query()
+            ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+            ->whereHas('group', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($optionId)
+            ->firstOrFail();
+    }
+
+    public function findModifierItem(int $branchId, int $itemId): MenuItem
+    {
+        return MenuItem::query()
+            ->select(['id', 'menu_id', 'category_id', 'name', 'sort_order', 'created_at', 'updated_at'])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($itemId)
+            ->firstOrFail();
+    }
+
+    public function firstMenuId(Branch $branch): string
+    {
+        $id = $branch->menus()->select('menus.id')
+            ->oldest('sort_order')->oldest('name')->oldest('id')->value('menus.id');
+
+        return is_int($id) ? (string) $id : '';
+    }
+
+    public function firstItemId(int $branchId, string $menuId): string
+    {
+        if ($menuId === '') {
+            return '';
+        }
+
+        $id = MenuItem::query()
+            ->select('menu_items.id')
+            ->where('menu_id', (int) $menuId)
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->oldest('sort_order')->oldest('name')->oldest('id')
+            ->value('menu_items.id');
+
+        return is_int($id) ? (string) $id : '';
+    }
+
+    public function firstModifierGroupId(Branch $branch): string
+    {
+        $id = $branch->modifierGroups()->select('modifier_groups.id')
+            ->oldest('sort_order')->oldest('name')->oldest('id')->value('modifier_groups.id');
+
+        return is_int($id) ? (string) $id : '';
+    }
+
+    /** @return EloquentCollection<int, MenuItemVariant> */
+    public function variants(int $branchId, string $itemId): EloquentCollection
+    {
+        if ($itemId === '') {
+            return new EloquentCollection;
+        }
+
+        return MenuItemVariant::query()
+            ->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'menu_item_variant_id', 'language_code', 'name'])
+                ->orderBy('language_code')])
+            ->where('menu_item_id', (int) $itemId)
+            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->orderByDesc('is_default')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function findVariantItem(int $branchId, int $itemId): MenuItem
+    {
+        return MenuItem::query()
+            ->select(['id', 'menu_id', 'name', 'price_cents'])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($itemId)
+            ->firstOrFail();
+    }
+
+    public function findVariant(int $branchId, int $variantId): MenuItemVariant
+    {
+        return MenuItemVariant::query()
+            ->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'menu_item_variant_id', 'language_code', 'name'])
+                ->orderBy('language_code')])
+            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($variantId)
+            ->firstOrFail();
+    }
+
+    public function selectedItemPrice(int $branchId, string $itemId): string
+    {
+        if ($itemId === '') {
+            return '0.00';
+        }
+
+        $priceCents = MenuItem::query()
+            ->select('price_cents')
+            ->whereKey((int) $itemId)
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->value('price_cents');
+
+        return is_numeric($priceCents) ? MoneyFormatter::centsToDecimal((int) $priceCents) : '0.00';
+    }
+
+    public function selectionExists(int $branchId, string $menuId, string $itemId): bool
+    {
+        return $itemId !== '' && MenuItem::query()
+            ->whereKey((int) $itemId)
+            ->where('menu_id', (int) $menuId)
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->exists();
+    }
+
+    /** @return EloquentCollection<int, KitchenDepartment> */
+    public function kitchenDepartments(Branch $branch): EloquentCollection
+    {
+        return $branch->kitchenDepartments()
+            ->select(['id', 'branch_id', 'type', 'name', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+            ->withCount('menuItems')
+            ->get();
+    }
+
+    public function findKitchenDepartment(Branch $branch, int $departmentId): KitchenDepartment
+    {
+        return $branch->kitchenDepartments()
+            ->select(['id', 'branch_id', 'type', 'name', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+            ->whereKey($departmentId)
+            ->firstOrFail();
     }
 
     /**

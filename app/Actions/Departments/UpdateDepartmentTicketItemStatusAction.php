@@ -39,7 +39,7 @@ class UpdateDepartmentTicketItemStatusAction
      * @param  list<SystemPermission>  $permissionCodes
      */
     public function handle(
-        KitchenTicketItem $item,
+        int $itemId,
         KitchenTicketItemStatus $status,
         User $user,
         array $departmentTypes,
@@ -64,7 +64,7 @@ class UpdateDepartmentTicketItemStatusAction
                         ]),
                     ]),
             ])
-            ->whereKey($item->id)
+            ->whereKey($itemId)
             ->firstOrFail();
 
         $departmentId = $item->kitchenTicket->kitchen_department_id;

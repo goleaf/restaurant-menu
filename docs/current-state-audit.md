@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; the current sequential suite runs 1,071 tests with 1,062 passing, 8 intentional feature-gated skips, 1 tracked issue #10 `todo` and 23,668 assertions. The parallel gate has identical results with process-unique SQLite restore database and local-filesystem sandboxes. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; the current sequential suite runs 1,078 tests with 1,069 passing, 8 intentional feature-gated skips, 1 tracked issue #10 `todo` and 23,707 assertions. The parallel gate has identical results with process-unique SQLite restore database and local-filesystem sandboxes. |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 43/43 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -41,7 +41,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | Unbounded lists/N+1 candidates | Bounded pagination/queries, selected/eager relations and executable budgets added: audit 10 constant, guest menu 15 cold / 2 warm, waiter dashboard at most 40. |
 | Float and duplicated money conversions | Decimal/minor-unit-safe formatting and domain arithmetic centralized and tested. |
 | Locale-sensitive cache keys | Cache ownership and invalidation now include the relevant branch/locale context; separation tests pass. |
-| 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; architecture scan passes. |
+| 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; focused read services now also keep Eloquent construction out of components; architecture scan passes. |
 | No strict Eloquent/static analysis | Strict local/test Eloquent enabled; configured Larastan level 5 analyses 502 files with 0 errors. |
 | Historical migrations use model backfills | Historical files preserved; corrections are forward-only/reversible; all 73 migrations pass from zero. |
 | Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
@@ -51,8 +51,8 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 ## Final state
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
-- 425 application PHP files, 52 Livewire component classes (49 concrete and 3 abstract bases), 43 models/factories, 73 migrations, 7 seeders plus one translation support class, 123 Blade templates and 143 PHP test files.
-- 1,071 sequential tests, 1,062 passed, 9 skipped, 23,668 assertions and 0 static-analysis errors. The fresh Unit/Feature coverage run used PHP 8.5.8 with Xdebug 3.5.0: 1,067 tests, 1,058 passed, 9 skipped including the tracked issue #10 `todo`, 23,555 assertions, 303.495 seconds and 93.3% application coverage.
+- 444 application PHP files, 54 Livewire component classes (51 concrete and 3 abstract bases), one Livewire Form object, 43 models/factories, 177 Actions, 73 migrations, 7 seeders plus one translation support class, 123 Blade templates and 143 PHP test files.
+- 1,078 sequential tests, 1,069 passed, 9 skipped, 23,707 assertions and 0 static-analysis errors. The fresh Unit/Feature coverage run used PHP 8.5.8 with Xdebug 3.5.0: 1,074 tests, 1,065 passed, 9 skipped including the tracked issue #10 `todo`, 23,594 assertions, 300.075 seconds and 93.3% application coverage.
 - 2,178 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
 - Production CSS 303.36 kB / 39.72 kB gzip; application JS is 4.56 kB / 1.73 kB gzip.
 

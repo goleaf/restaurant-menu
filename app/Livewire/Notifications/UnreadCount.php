@@ -4,6 +4,7 @@ namespace App\Livewire\Notifications;
 
 use App\Actions\Notifications\MarkUserNotificationsReadAction;
 use App\Models\User;
+use App\Services\Notifications\UserNotificationQueryService;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -11,6 +12,8 @@ use Livewire\Component;
 
 class UnreadCount extends Component
 {
+    private UserNotificationQueryService $notificationQueries;
+
     public int $unreadCount = 0;
 
     public bool $compact = false;
@@ -19,6 +22,11 @@ class UnreadCount extends Component
      * @var list<array{id: string, title: string, body: string, meta: string, tone: string, created_label: string}>
      */
     public array $notifications = [];
+
+    public function boot(UserNotificationQueryService $notificationQueries): void
+    {
+        $this->notificationQueries = $notificationQueries;
+    }
 
     public function mount(bool $compact = false): void
     {
@@ -30,9 +38,7 @@ class UnreadCount extends Component
     {
         $user = $this->currentUser();
 
-        $this->unreadCount = (int) $user
-            ->unreadNotifications()
-            ->count();
+        $this->unreadCount = $this->notificationQueries->unreadCount($user);
 
         if ($this->compact) {
             $this->notifications = [];
@@ -40,12 +46,7 @@ class UnreadCount extends Component
             return;
         }
 
-        $this->notifications = $user->unreadNotifications()
-            ->select(['id', 'type', 'notifiable_type', 'notifiable_id', 'data', 'read_at', 'created_at'])
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit(8)
-            ->get()
+        $this->notifications = $this->notificationQueries->recentUnread($user)
             ->map(fn (DatabaseNotification $notification): array => $this->presentNotification($notification))
             ->all();
     }

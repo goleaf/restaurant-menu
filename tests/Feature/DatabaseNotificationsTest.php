@@ -184,7 +184,7 @@ test('kitchen ready creates one unread database notification for waiter recipien
     $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $ticketItem,
+        itemId: $ticketItem->id,
         status: KitchenTicketItemStatus::Ready,
         user: $cook,
         departmentTypes: [],
@@ -197,7 +197,7 @@ test('kitchen ready creates one unread database notification for waiter recipien
         ->and(data_get($waiter->unreadNotifications()->firstOrFail()->data, 'item_name'))->toBe('Prompt 81 Soup');
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $ticketItem->fresh(),
+        itemId: $ticketItem->id,
         status: KitchenTicketItemStatus::Ready,
         user: $cook,
         departmentTypes: [],
@@ -216,7 +216,7 @@ test('kitchen in progress creates guest notification and guest notification ui s
     $ticketItem = createPrompt81KitchenTicketItem($branch, $servicePoint, $tableSession, $guest);
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $ticketItem,
+        itemId: $ticketItem->id,
         status: KitchenTicketItemStatus::InProgress,
         user: $cook,
         departmentTypes: [],
@@ -237,7 +237,7 @@ test('kitchen in progress creates guest notification and guest notification ui s
         ->assertSee('Prompt 81 Soup');
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $ticketItem->fresh(),
+        itemId: $ticketItem->id,
         status: KitchenTicketItemStatus::Ready,
         user: $cook,
         departmentTypes: [],

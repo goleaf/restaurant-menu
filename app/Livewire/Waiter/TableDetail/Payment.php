@@ -186,11 +186,7 @@ final class Payment extends TableDetailSection
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select(['id', 'table_session_id', 'guest_name'])
-            ->where('table_session_id', $this->tableSessionId)
-            ->whereKey($guestId)
-            ->first();
+        return $this->waiterQueries->guestForTable($guestId, $this->tableSessionId, includeName: true);
     }
 
     /**

@@ -25,6 +25,7 @@ use App\Enums\MenuStatus;
 use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -178,18 +179,12 @@ class Catalog extends BranchMenuComponent
         $this->canChangePrices = $this->branchAllows('changeMenuPrices');
         $this->canChangeAvailability = $this->branchAllows('changeMenuAvailability');
 
-        $firstMenuId = $this->branch
-            ->menus()
-            ->select('menus.id')
-            ->oldest('sort_order')
-            ->oldest('name')
-            ->oldest('id')
-            ->value('menus.id');
+        $firstMenuId = $this->catalogData->firstMenuId($this->branch);
 
-        if (is_int($firstMenuId)) {
-            $this->categoryMenuId = (string) $firstMenuId;
-            $this->scheduleMenuId = (string) $firstMenuId;
-            $this->itemMenuId = (string) $firstMenuId;
+        if ($firstMenuId !== '') {
+            $this->categoryMenuId = $firstMenuId;
+            $this->scheduleMenuId = $firstMenuId;
+            $this->itemMenuId = $firstMenuId;
             $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->itemMenuId);
             $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
         }
@@ -774,15 +769,7 @@ class Catalog extends BranchMenuComponent
 
     private function resetMenuSelections(): void
     {
-        $firstMenuId = $this->branch
-            ->menus()
-            ->select('menus.id')
-            ->oldest('sort_order')
-            ->oldest('name')
-            ->oldest('id')
-            ->value('menus.id');
-
-        $menuId = is_int($firstMenuId) ? (string) $firstMenuId : '';
+        $menuId = $this->catalogData->firstMenuId($this->branch);
 
         $this->categoryMenuId = $menuId;
         $this->scheduleMenuId = $menuId;
@@ -846,5 +833,10 @@ class Catalog extends BranchMenuComponent
         }
 
         return (int) $value;
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->catalogData;
     }
 }

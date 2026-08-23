@@ -16,6 +16,7 @@ use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
@@ -26,6 +27,8 @@ use Livewire\Component;
 #[Isolate]
 class OrderStatuses extends Component
 {
+    private PublicQrQueryService $publicQrQueries;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -72,6 +75,11 @@ class OrderStatuses extends Component
      * @var list<array{id: int, type: string, name: string, guest_name: string, quantity: int, status_value: string, status_key: string, status_description_key: string, tone: string, comment: ?string}>
      */
     public array $itemStatuses = [];
+
+    public function boot(PublicQrQueryService $publicQrQueries): void
+    {
+        $this->publicQrQueries = $publicQrQueries;
+    }
 
     public function mount(int $tableSessionId, int $pollingIntervalSeconds = 1, string $language = 'en'): void
     {
@@ -134,35 +142,12 @@ class OrderStatuses extends Component
 
     private function tableSession(): ?TableSession
     {
-        return TableSession::query()
-            ->select([
-                'id',
-                'status',
-            ])
-            ->whereKey($this->tableSessionId)
-            ->first();
+        return $this->publicQrQueries->statusTableSession($this->tableSessionId);
     }
 
     private function draftOrder(): ?DraftOrder
     {
-        return DraftOrder::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'status',
-                'rejection_reason',
-            ])
-            ->with([
-                'order' => fn ($query) => $query->select([
-                    'id',
-                    'draft_order_id',
-                    'status',
-                    'metadata',
-                ]),
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->latest('id')
-            ->first();
+        return $this->publicQrQueries->statusDraftOrder($this->tableSessionId);
     }
 
     /**
@@ -170,20 +155,7 @@ class OrderStatuses extends Component
      */
     private function recentOrders(): Collection
     {
-        return Order::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'draft_order_id',
-                'status',
-                'metadata',
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->latest('id')
-            ->limit(20)
-            ->get()
-            ->sortBy('id')
-            ->values();
+        return $this->publicQrQueries->recentOrders($this->tableSessionId);
     }
 
     /**
@@ -191,23 +163,7 @@ class OrderStatuses extends Component
      */
     private function orderTicketItems(?Order $order): Collection
     {
-        if (! $order instanceof Order) {
-            return collect();
-        }
-
-        return KitchenTicketItem::query()
-            ->select([
-                'id',
-                'kitchen_ticket_id',
-                'status',
-                'served_at',
-            ])
-            ->whereHas('kitchenTicket', function ($query) use ($order): void {
-                $query->where('order_id', $order->id);
-            })
-            ->orderBy('id')
-            ->limit(200)
-            ->get();
+        return $this->publicQrQueries->ticketItemsForOrder($order);
     }
 
     /**
@@ -233,20 +189,8 @@ class OrderStatuses extends Component
 
         $status = $this->draftItemGuestStatus($draftOrder->status);
 
-        return DraftOrderItem::query()
-            ->select([
-                'id',
-                'draft_order_id',
-                'table_session_guest_id',
-                'item_name',
-                'quantity',
-                'comment',
-            ])
-            ->with(['guest:id,guest_name'])
-            ->where('draft_order_id', $draftOrder->id)
-            ->orderBy('id')
-            ->limit(200)
-            ->get()
+        return $this->publicQrQueries
+            ->draftItems($draftOrder)
             ->map(fn (DraftOrderItem $item): array => $this->itemStatusPayload(
                 item: $item,
                 type: 'draft',
@@ -289,38 +233,12 @@ class OrderStatuses extends Component
      */
     private function orderItemStatuses(Collection $orders): array
     {
-        $orderIds = $orders->pluck('id');
-
-        if ($orderIds->isEmpty()) {
-            return [];
-        }
-
         $orderStatuses = $orders->mapWithKeys(
             fn (Order $order): array => [(int) $order->id => $this->orderStatus($order)],
         );
 
-        return OrderItem::query()
-            ->select([
-                'id',
-                'order_id',
-                'table_session_guest_id',
-                'guest_name',
-                'guest_name_snapshot',
-                'item_name',
-                'item_name_snapshot',
-                'quantity',
-                'comment',
-                'cancelled_at',
-            ])
-            ->with([
-                'guest:id,guest_name',
-                'kitchenTicketItem:id,order_item_id,status,served_at',
-            ])
-            ->whereIn('order_id', $orderIds->all())
-            ->orderBy('order_id')
-            ->orderBy('id')
-            ->limit(200)
-            ->get()
+        return $this->publicQrQueries
+            ->orderItems($orders)
             ->map(function (OrderItem $item) use ($orderStatuses): array {
                 $status = $this->orderItemGuestStatus(
                     $orderStatuses->get((int) $item->order_id),

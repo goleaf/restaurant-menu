@@ -7,6 +7,7 @@ namespace App\Livewire\Organizations\Brands\Branches\Menu;
 use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
+use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -17,6 +18,13 @@ use Livewire\Attributes\On;
 /** @property-read list<array<string, mixed>> $items */
 class Availability extends BranchMenuComponent
 {
+    private CatalogData $menuQueries;
+
+    public function boot(CatalogData $menuQueries): void
+    {
+        $this->menuQueries = $menuQueries;
+    }
+
     public function mount(int $organizationId, int $brandId, int $branchId): void
     {
         $this->initializeBranchContext($organizationId, $brandId, $branchId);
@@ -86,46 +94,16 @@ class Availability extends BranchMenuComponent
      */
     private function menus(): EloquentCollection
     {
-        return $this->branch->menus()
-            ->select(['id', 'branch_id', 'name', 'sort_order'])
-            ->with(['items' => fn ($query) => $query
-                ->select([
-                    'id',
-                    'menu_id',
-                    'category_id',
-                    'kitchen_department_id',
-                    'name',
-                    'price_cents',
-                    'is_available',
-                    'sort_order',
-                    'updated_at',
-                ])
-                ->with([
-                    'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name']),
-                    'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'name']),
-                ])
-                ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
-            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
-            ->get();
+        return $this->menuQueries->availabilityMenus($this->branch);
     }
 
     private function findBranchItem(int $itemId): MenuItem
     {
-        return MenuItem::query()
-            ->select([
-                'id',
-                'menu_id',
-                'category_id',
-                'kitchen_department_id',
-                'name',
-                'price_cents',
-                'is_available',
-                'sort_order',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->whereKey($itemId)
-            ->firstOrFail();
+        return $this->menuQueries->findBranchItem($this->branchId, $itemId);
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->menuQueries;
     }
 }

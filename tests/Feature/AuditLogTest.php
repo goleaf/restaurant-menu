@@ -309,7 +309,7 @@ test('order payment and table session actions create audit events', function () 
         ]);
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $ticketItem,
+        itemId: $ticketItem->id,
         status: KitchenTicketItemStatus::Ready,
         user: $manager,
         departmentTypes: [KitchenDepartmentType::Kitchen],

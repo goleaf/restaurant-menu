@@ -10,10 +10,8 @@ use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\MarkWaiterCallHandledAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\SystemPermission;
-use App\Models\Branch;
-use App\Models\ServicePoint;
 use App\Models\User;
-use App\Models\WaiterCall;
+use App\Services\Waiter\WaiterTableQueryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -23,6 +21,8 @@ use Livewire\Component;
 class Dashboard extends Component
 {
     private BuildWaiterDashboardAction $buildWaiterDashboard;
+
+    private WaiterTableQueryService $waiterQueries;
 
     /**
      * @var list<array<string, mixed>>
@@ -60,9 +60,12 @@ class Dashboard extends Component
 
     public string $zoneScope = 'mine';
 
-    public function boot(BuildWaiterDashboardAction $buildWaiterDashboard): void
-    {
+    public function boot(
+        BuildWaiterDashboardAction $buildWaiterDashboard,
+        WaiterTableQueryService $waiterQueries,
+    ): void {
         $this->buildWaiterDashboard = $buildWaiterDashboard;
+        $this->waiterQueries = $waiterQueries;
     }
 
     public function mount(): void
@@ -109,10 +112,11 @@ class Dashboard extends Component
         ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
     ): void {
         $user = $this->currentUser();
-        $servicePoint = ServicePoint::query()
-            ->select(['id', 'branch_id'])
-            ->whereKey($servicePointId)
-            ->firstOrFail();
+        $servicePoint = $this->waiterQueries->servicePoint($servicePointId);
+
+        if ($servicePoint === null) {
+            abort(404);
+        }
         $openTableBranchIds = $resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewOrders)
             ->merge($resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
@@ -135,10 +139,7 @@ class Dashboard extends Component
 
     public function markWaiterCallHandled(int $waiterCallId, MarkWaiterCallHandledAction $markHandled): void
     {
-        $waiterCall = WaiterCall::query()
-            ->select(['id'])
-            ->whereKey($waiterCallId)
-            ->firstOrFail();
+        $waiterCall = $this->waiterQueries->waiterCall($waiterCallId);
 
         try {
             $markHandled->handle($waiterCall, $this->currentUser());
@@ -166,10 +167,7 @@ class Dashboard extends Component
             abort(403);
         }
 
-        $branch = Branch::query()
-            ->select(['id', 'timezone', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until'])
-            ->whereKey($branchId)
-            ->firstOrFail();
+        $branch = $this->waiterQueries->branch($branchId);
 
         $updateBranchTemporaryClosure->handle($branch, false);
         $this->tableActionMessage = __('ui.livewire.waiter.dashboard.restoran_snova_otkryt_dlia_zakazov');

@@ -11,6 +11,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Models\QrCode;
 use App\Models\User;
+use App\Services\QrCodes\QrCodeQueryService;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,8 @@ class ShortCodeLookup extends Component
 {
     private ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds;
 
+    private QrCodeQueryService $qrCodeQueries;
+
     public string $shortCode = '';
 
     public bool $searched = false;
@@ -34,9 +37,12 @@ class ShortCodeLookup extends Component
 
     public string $qrReissueConfirmation = '';
 
-    public function boot(ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds): void
-    {
+    public function boot(
+        ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        QrCodeQueryService $qrCodeQueries,
+    ): void {
         $this->resolveAccessibleBranchIds = $resolveAccessibleBranchIds;
+        $this->qrCodeQueries = $qrCodeQueries;
     }
 
     public function mount(): void
@@ -139,70 +145,7 @@ class ShortCodeLookup extends Component
             abort(403);
         }
 
-        return QrCode::query()
-            ->select([
-                'id',
-                'service_point_id',
-                'public_token',
-                'short_code',
-                'status',
-                'created_by_user_id',
-                'revoked_at',
-                'revoked_by_user_id',
-                'created_at',
-                'updated_at',
-            ])
-            ->with([
-                'servicePoint' => fn ($query) => $query
-                    ->withTrashed()
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'area_node_id',
-                        'type',
-                        'name',
-                        'display_number',
-                        'capacity',
-                        'icon',
-                        'status',
-                        'is_active',
-                        'deleted_at',
-                    ])
-                    ->with([
-                        'areaNode' => fn ($query) => $query
-                            ->withTrashed()
-                            ->select([
-                                'id',
-                                'branch_id',
-                                'name',
-                                'deleted_at',
-                            ]),
-                        'branch' => fn ($query) => $query
-                            ->withTrashed()
-                            ->select([
-                                'id',
-                                'organization_id',
-                                'brand_id',
-                                'name',
-                                'city',
-                                'country',
-                                'deleted_at',
-                            ])
-                            ->with([
-                                'organization' => fn ($query) => $query
-                                    ->withTrashed()
-                                    ->select(['id', 'name', 'deleted_at']),
-                                'brand' => fn ($query) => $query
-                                    ->withTrashed()
-                                    ->select(['id', 'organization_id', 'name', 'deleted_at']),
-                            ]),
-                    ]),
-            ])
-            ->where('short_code', $this->shortCode)
-            ->whereHas('servicePoint', function ($query) use ($accessibleBranchIds): void {
-                $query->whereIn('branch_id', $accessibleBranchIds);
-            })
-            ->first();
+        return $this->qrCodeQueries->findAccessibleByShortCode($this->shortCode, $accessibleBranchIds);
     }
 
     #[Computed]

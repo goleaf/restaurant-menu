@@ -10,6 +10,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -21,6 +22,8 @@ use Livewire\Component;
 class Show extends Component
 {
     private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+
+    private PublicQrQueryService $publicQrQueries;
 
     #[Locked]
     public string $token = '';
@@ -44,9 +47,12 @@ class Show extends Component
      */
     public array $languageOptions = [];
 
-    public function boot(GetGuestMenuForBranchAction $getGuestMenuForBranch): void
-    {
+    public function boot(
+        GetGuestMenuForBranchAction $getGuestMenuForBranch,
+        PublicQrQueryService $publicQrQueries,
+    ): void {
         $this->getGuestMenuForBranch = $getGuestMenuForBranch;
+        $this->publicQrQueries = $publicQrQueries;
     }
 
     public function mount(string $token): void
@@ -137,32 +143,7 @@ class Show extends Component
 
     private function findQrCode(string $token): ?QrCode
     {
-        return QrCode::query()
-            ->select([
-                'id',
-                'service_point_id',
-                'public_token',
-                'short_code',
-                'status',
-            ])
-            ->with([
-                'servicePoint' => fn ($query) => $query
-                    ->select(['id', 'branch_id', 'is_active'])
-                    ->with([
-                        'branch' => fn ($branchQuery) => $branchQuery
-                            ->select(['id', 'organization_id', 'name', 'public_name'])
-                            ->with([
-                                'organization' => fn ($organizationQuery) => $organizationQuery
-                                    ->select(['id'])
-                                    ->with([
-                                        'subscription' => fn ($subscriptionQuery) => $subscriptionQuery
-                                            ->select(['id', 'organization_id', 'status']),
-                                    ]),
-                            ]),
-                    ]),
-            ])
-            ->where('public_token', $token)
-            ->first();
+        return $this->publicQrQueries->qrCodeForGuestPage($token);
     }
 
     private function showError(string $state, string $title, string $message): void

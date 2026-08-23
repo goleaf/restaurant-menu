@@ -15,6 +15,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\StaffQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -27,6 +28,8 @@ use Livewire\Component;
 
 class Index extends Component
 {
+    private StaffQueryService $staffQueries;
+
     public Organization $organization;
 
     public string $manualName = '';
@@ -48,6 +51,11 @@ class Index extends Component
     public bool $canManageStaff = false;
 
     public string $staffDeactivationReason = '';
+
+    public function boot(StaffQueryService $staffQueries): void
+    {
+        $this->staffQueries = $staffQueries;
+    }
 
     public function mount(Organization $organization): void
     {
@@ -151,16 +159,7 @@ class Index extends Component
     #[Computed]
     public function members(): EloquentCollection
     {
-        return OrganizationUser::query()
-            ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at'])
-            ->with([
-                'user' => fn ($query) => $query->select(['id', 'name', 'email']),
-                'role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order']),
-            ])
-            ->where('organization_id', $this->organization->id)
-            ->orderBy('status')
-            ->orderByDesc('id')
-            ->get();
+        return $this->staffQueries->organizationMembers($this->organization);
     }
 
     /**
@@ -169,14 +168,7 @@ class Index extends Component
     #[Computed]
     public function invitations(): EloquentCollection
     {
-        return Invitation::query()
-            ->select(['id', 'organization_id', 'brand_id', 'branch_id', 'role_id', 'email', 'phone', 'expires_at', 'status', 'invited_by_user_id', 'accepted_by_user_id', 'accepted_at', 'created_at', 'updated_at'])
-            ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
-            ->where('organization_id', $this->organization->id)
-            ->whereNull('brand_id')
-            ->whereNull('branch_id')
-            ->orderByDesc('id')
-            ->get();
+        return $this->staffQueries->organizationInvitations($this->organization);
     }
 
     /**
@@ -185,11 +177,7 @@ class Index extends Component
     #[Computed]
     public function roles(): EloquentCollection
     {
-        return Role::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->where('code', '!=', SystemRole::Superadmin->value)
-            ->orderBy('sort_order')
-            ->get();
+        return $this->staffQueries->assignableRoles();
     }
 
     public function render(): View
@@ -288,25 +276,17 @@ class Index extends Component
 
     private function defaultRoleId(): ?int
     {
-        return Role::query()
-            ->where('code', SystemRole::Waiter->value)
-            ->value('id');
+        return $this->staffQueries->defaultWaiterRoleId();
     }
 
     private function findAssignableRole(int $roleId): Role
     {
-        return Role::query()
-            ->where('code', '!=', SystemRole::Superadmin->value)
-            ->whereKey($roleId)
-            ->firstOrFail();
+        return $this->staffQueries->findAssignableRole($roleId);
     }
 
     private function findMembership(int $membershipId): OrganizationUser
     {
-        return OrganizationUser::query()
-            ->where('organization_id', $this->organization->id)
-            ->whereKey($membershipId)
-            ->firstOrFail();
+        return $this->staffQueries->findOrganizationMembership($this->organization, $membershipId);
     }
 
     private function authorizeStaffManagement(): void

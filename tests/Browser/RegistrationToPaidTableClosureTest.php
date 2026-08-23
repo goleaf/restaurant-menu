@@ -212,32 +212,32 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page): void
     $page
         ->navigate(route('onboarding.restaurant', absolute: false));
     $page->assertSee(__('ui.onboarding.restaurant_setup.nastroit_restoran'));
-    $page->fill('input[wire\\:model="organizationName"]', 'Browser E2E Food Group');
+    $page->fill('input[wire\\:model="form.organizationName"]', 'Browser E2E Food Group');
     clickBrowserElement($page, 'form[wire\\:submit="createOrganization"] button[type="submit"]');
     $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'));
 
-    $page->fill('input[wire\\:model="brandName"]', 'Browser E2E Bistro');
+    $page->fill('input[wire\\:model="form.brandName"]', 'Browser E2E Bistro');
     clickBrowserElement($page, 'form[wire\\:submit="createBrand"] button[type="submit"]');
     $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_tocki'));
 
     $page
-        ->fill('input[wire\\:model="branchName"]', 'Browser E2E Bistro Old Town')
-        ->fill('input[wire\\:model="branchAddress"]', 'Pilies 1')
-        ->fill('input[wire\\:model="branchCity"]', 'Vilnius')
-        ->fill('input[wire\\:model="branchCountry"]', 'Lithuania')
-        ->fill('input[wire\\:model="branchTimezone"]', 'Europe/Vilnius')
-        ->select('select[wire\\:model="branchCurrency"]', 'EUR');
+        ->fill('input[wire\\:model="form.branchName"]', 'Browser E2E Bistro Old Town')
+        ->fill('input[wire\\:model="form.branchAddress"]', 'Pilies 1')
+        ->fill('input[wire\\:model="form.branchCity"]', 'Vilnius')
+        ->fill('input[wire\\:model="form.branchCountry"]', 'Lithuania')
+        ->fill('input[wire\\:model="form.branchTimezone"]', 'Europe/Vilnius')
+        ->select('select[wire\\:model="form.branchCurrency"]', 'EUR');
     clickBrowserElement($page, 'form[wire\\:submit="createBranch"] button[type="submit"]');
     $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_zony'));
 
-    $page->fill('input[wire\\:model="areaName"]', 'Browser E2E Hall');
+    $page->fill('input[wire\\:model="form.areaName"]', 'Browser E2E Hall');
     clickBrowserElement($page, 'form[wire\\:submit="createArea"] button[type="submit"]');
     $page->assertSee(__('ui.onboarding.restaurant_setup.skolko_stolov'));
 
     $page
-        ->fill('input[wire\\:model="tableCount"]', '1')
-        ->fill('input[wire\\:model="tablePrefix"]', 'Browser E2E Table')
-        ->fill('input[wire\\:model="tableCapacity"]', '4');
+        ->fill('input[wire\\:model="form.tableCount"]', '1')
+        ->fill('input[wire\\:model="form.tablePrefix"]', 'Browser E2E Table')
+        ->fill('input[wire\\:model="form.tableCapacity"]', '4');
     clickBrowserElement($page, 'form[wire\\:submit="createServicePoints"] button[type="submit"]');
     $page->assertSee(__('ui.onboarding.restaurant_setup.sgenerirovat_qr'));
 
@@ -245,10 +245,10 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page): void
     $page->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_meniu'));
 
     $page
-        ->fill('input[wire\\:model="menuName"]', 'Browser E2E Menu')
-        ->fill('input[wire\\:model="categoryName"]', 'Browser E2E Main')
-        ->fill('input[wire\\:model="itemName"]', 'Browser E2E Pasta')
-        ->fill('input[wire\\:model="itemPrice"]', '8.50');
+        ->fill('input[wire\\:model="form.menuName"]', 'Browser E2E Menu')
+        ->fill('input[wire\\:model="form.categoryName"]', 'Browser E2E Main')
+        ->fill('input[wire\\:model="form.itemName"]', 'Browser E2E Pasta')
+        ->fill('input[wire\\:model="form.itemPrice"]', '8.50');
     clickBrowserElement($page, 'form[wire\\:submit="createStarterMenu"] button[type="submit"]');
     $page
         ->assertSee(__('ui.onboarding.restaurant_setup.restoran_gotov_k_proverke'))

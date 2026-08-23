@@ -23,6 +23,7 @@ use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Branches\BranchSettingsQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -38,6 +39,8 @@ use Livewire\WithFileUploads;
 class Settings extends Component
 {
     use WithFileUploads;
+
+    private BranchSettingsQueryService $branchSettingsQueries;
 
     public Organization $organization;
 
@@ -130,6 +133,11 @@ class Settings extends Component
      * @var array<string, string>
      */
     public array $currencyOptions = [];
+
+    public function boot(BranchSettingsQueryService $branchSettingsQueries): void
+    {
+        $this->branchSettingsQueries = $branchSettingsQueries;
+    }
 
     public function mount(
         Organization $organization,
@@ -496,30 +504,7 @@ class Settings extends Component
 
     private function findSettings(): BranchSetting
     {
-        return BranchSetting::query()
-            ->select([
-                'id',
-                'branch_id',
-                'require_waiter_confirmation_for_orders',
-                'allow_guest_created_sessions',
-                'allow_waiter_opened_sessions',
-                'allow_guest_invite_links',
-                'guest_join_requires_approval',
-                'polling_interval_seconds',
-                'inactivity_warning_minutes',
-                'pending_session_expire_minutes',
-                'default_language',
-                'default_currency',
-                'service_charge_enabled',
-                'tips_enabled',
-                'order_flow_mode',
-                'service_modes',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($this->settingsId)
-            ->where('branch_id', $this->branch->id)
-            ->firstOrFail();
+        return $this->branchSettingsQueries->find($this->branch, $this->settingsId);
     }
 
     /**

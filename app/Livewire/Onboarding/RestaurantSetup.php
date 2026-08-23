@@ -7,30 +7,32 @@ namespace App\Livewire\Onboarding;
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Brands\CreateBrandAction;
+use App\Actions\Onboarding\CreateOnboardingServicePointsAction;
 use App\Actions\Onboarding\CreateStarterMenuAction;
+use App\Actions\Onboarding\GenerateQrCodesForServicePointsAction;
 use App\Actions\Organizations\CreateOrganizationAction;
-use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
-use App\Actions\ServicePoints\CreateServicePointAction;
-use App\Enums\AreaNodeType;
-use App\Enums\ServicePointType;
 use App\Enums\SupportedCurrency;
+use App\Livewire\Forms\Onboarding\RestaurantSetupForm;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\Organization;
 use App\Models\QrCode;
-use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Onboarding\RestaurantSetupQueryService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class RestaurantSetup extends Component
 {
+    private RestaurantSetupQueryService $setupQueries;
+
+    public RestaurantSetupForm $form;
+
     public int $step = 1;
 
     public ?int $organizationId = null;
@@ -57,46 +59,15 @@ class RestaurantSetup extends Component
 
     public ?int $menuItemId = null;
 
-    public string $organizationName = '';
-
-    public string $brandName = '';
-
-    public string $branchName = '';
-
-    public string $branchAddress = '';
-
-    public string $branchCity = '';
-
-    public string $branchCountry = '';
-
-    public string $branchTimezone = 'Europe/Vilnius';
-
-    public string $branchCurrency = 'EUR';
-
-    public string $areaName = 'Главный зал';
-
-    public string $areaType = 'hall';
-
-    public string $areaIcon = 'rectangle-group';
-
-    public int $tableCount = 4;
-
-    public string $tablePrefix = 'Стол';
-
-    public int $tableCapacity = 4;
-
-    public string $menuName = 'Основное меню';
-
-    public string $categoryName = 'Основное';
-
-    public string $itemName = 'Тестовое блюдо';
-
-    public string $itemPrice = '10.00';
-
     /**
      * @var array<string, string>
      */
     public array $currencyOptions = [];
+
+    public function boot(RestaurantSetupQueryService $setupQueries): void
+    {
+        $this->setupQueries = $setupQueries;
+    }
 
     public function mount(): void
     {
@@ -105,17 +76,7 @@ class RestaurantSetup extends Component
 
     public function createOrganization(CreateOrganizationAction $createOrganization): void
     {
-        $this->organizationName = trim($this->organizationName);
-
-        $validated = $this->validate([
-            'organizationName' => [
-                'required',
-                'string',
-                'max:120',
-                Rule::unique((new Organization)->getTable(), 'name')
-                    ->where(fn ($query) => $query->where('owner_user_id', $this->currentUser()->id)),
-            ],
-        ]);
+        $validated = $this->form->validateOrganization($this->currentUser());
 
         $organization = $createOrganization->handle($this->currentUser(), [
             'name' => $validated['organizationName'],
@@ -131,17 +92,7 @@ class RestaurantSetup extends Component
     public function createBrand(CreateBrandAction $createBrand): void
     {
         $organization = $this->findOrganization();
-        $this->brandName = trim($this->brandName);
-
-        $validated = $this->validate([
-            'brandName' => [
-                'required',
-                'string',
-                'max:120',
-                Rule::unique((new Brand)->getTable(), 'name')
-                    ->where(fn ($query) => $query->where('organization_id', $organization->id)),
-            ],
-        ]);
+        $validated = $this->form->validateBrand($organization);
 
         $brand = $createBrand->handle($organization, [
             'name' => $validated['brandName'],
@@ -157,26 +108,7 @@ class RestaurantSetup extends Component
     public function createBranch(CreateBranchAction $createBranch): void
     {
         $brand = $this->findBrand();
-        $this->branchName = trim($this->branchName);
-        $this->branchAddress = trim($this->branchAddress);
-        $this->branchCity = trim($this->branchCity);
-        $this->branchCountry = trim($this->branchCountry);
-        $this->branchCurrency = SupportedCurrency::clean($this->branchCurrency);
-
-        $validated = $this->validate([
-            'branchName' => [
-                'required',
-                'string',
-                'max:160',
-                Rule::unique((new Branch)->getTable(), 'name')
-                    ->where(fn ($query) => $query->where('brand_id', $brand->id)),
-            ],
-            'branchAddress' => ['required', 'string', 'max:255'],
-            'branchCity' => ['required', 'string', 'max:120'],
-            'branchCountry' => ['required', 'string', 'max:120'],
-            'branchTimezone' => ['required', 'timezone', 'max:64'],
-            'branchCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
-        ]);
+        $validated = $this->form->validateBranch($brand);
 
         $branch = $createBranch->handle($brand, [
             'name' => $validated['branchName'],
@@ -198,14 +130,7 @@ class RestaurantSetup extends Component
     public function createArea(CreateAreaNodeAction $createAreaNode): void
     {
         $branch = $this->findBranch();
-        $this->areaName = trim($this->areaName);
-        $this->areaIcon = trim($this->areaIcon);
-
-        $validated = $this->validate([
-            'areaName' => ['required', 'string', 'max:160'],
-            'areaType' => ['required', Rule::in(AreaNodeType::values())],
-            'areaIcon' => ['nullable', 'string', 'max:80'],
-        ]);
+        $validated = $this->form->validateArea();
 
         $areaNode = $createAreaNode->handle($branch, [
             'parent_id' => null,
@@ -223,54 +148,26 @@ class RestaurantSetup extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.zona_dobavlena'));
     }
 
-    public function createServicePoints(CreateServicePointAction $createServicePoint): void
+    public function createServicePoints(CreateOnboardingServicePointsAction $createServicePoints): void
     {
         $branch = $this->findBranch();
         $areaNode = $this->findAreaNode();
-        $this->tablePrefix = trim($this->tablePrefix);
+        $validated = $this->form->validateServicePoints();
 
-        $validated = $this->validate([
-            'tableCount' => ['required', 'integer', 'min:1', 'max:20'],
-            'tablePrefix' => ['required', 'string', 'max:40'],
-            'tableCapacity' => ['required', 'integer', 'min:1', 'max:50'],
-        ]);
-
-        $servicePointIds = [];
-
-        for ($number = 1; $number <= (int) $validated['tableCount']; $number++) {
-            $servicePoint = $createServicePoint->handle($branch, [
-                'area_node_id' => $areaNode->id,
-                'type' => ServicePointType::Table->value,
-                'name' => $validated['tablePrefix'].' '.$number,
-                'display_number' => (string) $number,
-                'capacity' => (int) $validated['tableCapacity'],
-                'icon' => 'squares-2x2',
-                'is_active' => true,
-            ]);
-
-            $servicePointIds[] = $servicePoint->id;
-        }
-
-        $this->servicePointIds = $servicePointIds;
+        $this->servicePointIds = $createServicePoints->handle($branch, $areaNode, $validated);
         $this->step = 6;
         unset($this->summary, $this->steps);
 
         Flux::toast(variant: 'success', text: __('ui.livewire.onboarding.restaurantsetup.pervye_stoly_dobavleny'));
     }
 
-    public function generateQrCodes(GenerateQrCodeForServicePointAction $generateQrCode): void
+    public function generateQrCodes(GenerateQrCodesForServicePointsAction $generateQrCodes): void
     {
-        $this->findBranch();
-
-        $qrCodeIds = ServicePoint::query()
-            ->select(['id', 'branch_id'])
-            ->whereIn('id', $this->servicePointIds)
-            ->where('branch_id', $this->branchId)
-            ->orderBy('id')
-            ->get()
-            ->map(fn (ServicePoint $servicePoint): int => $generateQrCode->handle($servicePoint, $this->currentUser())->id)
-            ->values()
-            ->all();
+        $qrCodeIds = $generateQrCodes->handle(
+            $this->findBranch(),
+            $this->servicePointIds,
+            $this->currentUser(),
+        );
 
         if ($qrCodeIds === []) {
             $this->addError('servicePointIds', __('ui.livewire.onboarding.restaurantsetup.snacala_dobavte_stoly'));
@@ -288,17 +185,7 @@ class RestaurantSetup extends Component
     public function createStarterMenu(CreateStarterMenuAction $createStarterMenu): void
     {
         $branch = $this->findBranch();
-        $this->menuName = trim($this->menuName);
-        $this->categoryName = trim($this->categoryName);
-        $this->itemName = trim($this->itemName);
-        $this->itemPrice = trim($this->itemPrice);
-
-        $validated = $this->validate([
-            'menuName' => ['required', 'string', 'max:160'],
-            'categoryName' => ['required', 'string', 'max:160'],
-            'itemName' => ['required', 'string', 'max:180'],
-            'itemPrice' => ['required', 'numeric', 'min:0', 'max:999999.99'],
-        ]);
+        $validated = $this->form->validateStarterMenu();
 
         $starterMenu = $createStarterMenu->handle($branch, [
             'menu_name' => $validated['menuName'],
@@ -370,37 +257,21 @@ class RestaurantSetup extends Component
     #[Computed]
     public function summary(): array
     {
-        $organization = $this->organizationId === null ? null : Organization::query()
-            ->select(['id', 'owner_user_id', 'name'])
-            ->whereKey($this->organizationId)
-            ->first();
-
-        if ($organization instanceof Organization && ! $this->currentUser()->canAccessOrganization($organization)) {
-            $organization = null;
-        }
-
-        $brand = $organization instanceof Organization && $this->brandId !== null ? Brand::query()
-            ->select(['id', 'organization_id', 'name'])
-            ->where('organization_id', $organization->id)
-            ->whereKey($this->brandId)
-            ->first() : null;
-        $branch = $brand instanceof Brand && $this->branchId !== null ? Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name'])
-            ->where('organization_id', $organization->id)
-            ->where('brand_id', $brand->id)
-            ->whereKey($this->branchId)
-            ->first() : null;
-        $areaNode = $branch instanceof Branch && $this->areaNodeId !== null ? AreaNode::query()
-            ->select(['id', 'branch_id', 'name'])
-            ->where('branch_id', $branch->id)
-            ->whereKey($this->areaNodeId)
-            ->first() : null;
-        $menu = $branch instanceof Branch && $this->menuId !== null ? Menu::query()
-            ->select(['id', 'branch_id', 'name'])
-            ->where('branch_id', $branch->id)
-            ->whereKey($this->menuId)
-            ->first() : null;
-        $qrCode = $this->firstQrCode($branch);
+        $context = $this->setupQueries->summaryContext(
+            $this->currentUser(),
+            $this->organizationId,
+            $this->brandId,
+            $this->branchId,
+            $this->areaNodeId,
+            $this->menuId,
+            $this->qrCodeIds,
+        );
+        $organization = $context['organization'];
+        $brand = $context['brand'];
+        $branch = $context['branch'];
+        $areaNode = $context['areaNode'];
+        $menu = $context['menu'];
+        $qrCode = $context['qrCode'];
 
         return [
             'organization' => $organization?->name,
@@ -442,64 +313,22 @@ class RestaurantSetup extends Component
 
     private function findOrganization(): Organization
     {
-        if ($this->organizationId === null) {
-            abort(403);
-        }
-
-        $organization = Organization::query()
-            ->select(['id', 'owner_user_id', 'name'])
-            ->whereKey($this->organizationId)
-            ->firstOrFail();
-
-        if (! $this->currentUser()->canAccessOrganization($organization)) {
-            abort(403);
-        }
-
-        return $organization;
+        return $this->setupQueries->findOrganization($this->currentUser(), $this->organizationId);
     }
 
     private function findBrand(): Brand
     {
-        $organization = $this->findOrganization();
-
-        return $organization
-            ->brands()
-            ->select(['id', 'organization_id', 'name'])
-            ->whereKey($this->brandId)
-            ->firstOrFail();
+        return $this->setupQueries->findBrand($this->findOrganization(), $this->brandId);
     }
 
     private function findBranch(): Branch
     {
-        $brand = $this->findBrand();
-
-        return $brand
-            ->branches()
-            ->select([
-                'id',
-                'organization_id',
-                'brand_id',
-                'name',
-                'address',
-                'city',
-                'country',
-                'timezone',
-                'currency',
-                'is_active',
-            ])
-            ->whereKey($this->branchId)
-            ->firstOrFail();
+        return $this->setupQueries->findBranch($this->findBrand(), $this->branchId);
     }
 
     private function findAreaNode(): AreaNode
     {
-        $branch = $this->findBranch();
-
-        return $branch
-            ->areaNodes()
-            ->select(['id', 'branch_id', 'name'])
-            ->whereKey($this->areaNodeId)
-            ->firstOrFail();
+        return $this->setupQueries->findAreaNode($this->findBranch(), $this->areaNodeId);
     }
 
     private function highestAvailableStep(): int
@@ -514,21 +343,5 @@ class RestaurantSetup extends Component
             $this->organizationId !== null => 2,
             default => 1,
         };
-    }
-
-    private function firstQrCode(?Branch $branch = null): ?QrCode
-    {
-        if ($this->qrCodeIds === [] || ! $branch instanceof Branch) {
-            return null;
-        }
-
-        return QrCode::query()
-            ->select(['id', 'service_point_id', 'public_token', 'short_code', 'status'])
-            ->whereIn('id', $this->qrCodeIds)
-            ->whereHas('servicePoint', function ($query) use ($branch): void {
-                $query->where('branch_id', $branch->id);
-            })
-            ->oldest('id')
-            ->first();
     }
 }

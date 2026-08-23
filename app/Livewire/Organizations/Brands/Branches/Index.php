@@ -9,7 +9,6 @@ use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Branches\UpdateBranchLogoAction;
 use App\Actions\Media\StoreLocalImageAction;
-use App\Enums\QrCodeStatus;
 use App\Enums\SupportedCurrency;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -19,6 +18,7 @@ use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Branches\BranchQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -34,6 +34,8 @@ use Livewire\WithFileUploads;
 class Index extends Component
 {
     use WithFileUploads;
+
+    private BranchQueryService $branchQueries;
 
     public Organization $organization;
 
@@ -100,6 +102,11 @@ class Index extends Component
      * @var array<string, string>
      */
     public array $currencyOptions = [];
+
+    public function boot(BranchQueryService $branchQueries): void
+    {
+        $this->branchQueries = $branchQueries;
+    }
 
     public function mount(Organization $organization, Brand $brand): void
     {
@@ -286,56 +293,11 @@ class Index extends Component
     #[Computed]
     public function branches(): EloquentCollection
     {
-        return $this->brand
-            ->branches()
-            ->select([
-                'id',
-                'organization_id',
-                'brand_id',
-                'name',
-                'logo_path',
-                'address',
-                'city',
-                'country',
-                'timezone',
-                'currency',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->withCount([
-                'areaNodes as setup_active_area_nodes_count' => fn ($query) => $query->where('is_active', true),
-                'servicePoints as setup_active_service_points_count' => fn ($query) => $query->where('is_active', true),
-                'servicePoints as setup_active_qr_codes_count' => fn ($query) => $query
-                    ->where('is_active', true)
-                    ->whereHas('activeQrCode'),
-            ])
-            ->with([
-                'servicePoints' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'name',
-                        'is_active',
-                    ])
-                    ->where('is_active', true)
-                    ->with([
-                        'activeQrCode' => fn ($query) => $query
-                            ->select([
-                                'id',
-                                'service_point_id',
-                                'public_token',
-                                'short_code',
-                                'status',
-                            ])
-                            ->where('status', QrCodeStatus::Active->value),
-                    ])
-                    ->orderBy('id'),
-            ])
-            ->whereIn('id', $this->currentUser()->accessibleBranchIdsForOrganization($this->organization))
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->branchQueries->accessibleForBrand(
+            $this->currentUser(),
+            $this->organization,
+            $this->brand,
+        );
     }
 
     /**
@@ -591,25 +553,7 @@ class Index extends Component
 
     private function findBrandBranch(int $branchId): Branch
     {
-        $branch = $this->brand
-            ->branches()
-            ->select([
-                'id',
-                'organization_id',
-                'brand_id',
-                'name',
-                'logo_path',
-                'address',
-                'city',
-                'country',
-                'timezone',
-                'currency',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($branchId)
-            ->firstOrFail();
+        $branch = $this->branchQueries->findForBrand($this->brand, $branchId);
 
         Gate::forUser($this->currentUser())->authorize('view', $branch);
 

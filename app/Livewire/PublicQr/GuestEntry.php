@@ -11,7 +11,6 @@ use App\Actions\TableSessions\ExpireTableSessionJoinRequestAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
-use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\QrCode;
@@ -19,7 +18,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
-use App\Models\TableSessionServicePoint;
+use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\PublicQr\GuestEntryPresenter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
@@ -35,6 +34,8 @@ class GuestEntry extends Component
     private ExpireTableSessionJoinRequestAction $expireJoinRequest;
 
     private GuestEntryPresenter $presenter;
+
+    private PublicQrQueryService $publicQrQueries;
 
     #[Locked]
     public string $token = '';
@@ -92,10 +93,12 @@ class GuestEntry extends Component
         BuildGuestEntryContextAction $buildGuestEntryContext,
         ExpireTableSessionJoinRequestAction $expireJoinRequest,
         GuestEntryPresenter $presenter,
+        PublicQrQueryService $publicQrQueries,
     ): void {
         $this->buildGuestEntryContext = $buildGuestEntryContext;
         $this->expireJoinRequest = $expireJoinRequest;
         $this->presenter = $presenter;
+        $this->publicQrQueries = $publicQrQueries;
     }
 
     public function mount(string $token, string $language = ''): void
@@ -501,182 +504,27 @@ class GuestEntry extends Component
 
     private function findGuestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionGuest
     {
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->with([
-                'tableSession' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'service_point_id',
-                        'status',
-                        'ended_at',
-                    ])
-                    ->with([
-                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
-                            ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
-                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                    ]),
-            ])
-            ->where('guest_token', $guestToken)
-            ->whereHas('tableSession', fn ($query) => $query->where('branch_id', $servicePoint->branch_id))
-            ->first();
+        return $this->publicQrQueries->guestByToken($servicePoint, $guestToken);
     }
 
     private function findJoinRequestByToken(ServicePoint $servicePoint, string $guestToken): ?TableSessionJoinRequest
     {
-        return TableSessionJoinRequest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'approved_by_guest_id',
-                'rejected_by_guest_id',
-                'approved_by_user_id',
-                'rejected_by_user_id',
-                'expires_at',
-            ])
-            ->with([
-                'tableSession' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'service_point_id',
-                        'status',
-                        'ended_at',
-                    ])
-                    ->with([
-                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
-                            ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
-                            ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                    ]),
-            ])
-            ->where('guest_token', $guestToken)
-            ->whereHas('tableSession', fn ($query) => $query->where('branch_id', $servicePoint->branch_id))
-            ->first();
+        return $this->publicQrQueries->joinRequestByToken($servicePoint, $guestToken);
     }
 
     private function findTableSessionByInviteToken(ServicePoint $servicePoint, string $inviteToken): ?TableSession
     {
-        return TableSession::query()
-            ->select([
-                'id',
-                'branch_id',
-                'service_point_id',
-                'opened_by_guest_id',
-                'status',
-                'source',
-                'started_at',
-                'ended_at',
-                'guest_invite_token',
-                'guest_invite_created_at',
-                'guest_invite_created_by_guest_id',
-            ])
-            ->with([
-                'servicePoint' => fn ($servicePointQuery) => $servicePointQuery
-                    ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
-                    ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-            ])
-            ->where('branch_id', $servicePoint->branch_id)
-            ->where('guest_invite_token', $inviteToken)
-            ->first();
+        return $this->publicQrQueries->tableSessionByInviteToken($servicePoint, $inviteToken);
     }
 
     private function findTableSessionForGuestNameConflict(ServicePoint $servicePoint): ?TableSession
     {
-        return $this->findTableSessionForGuestNameConflictByStatus($servicePoint, TableSessionStatus::Active)
-            ?? $this->findTableSessionForGuestNameConflictByStatus($servicePoint, TableSessionStatus::Pending);
-    }
-
-    private function findTableSessionForGuestNameConflictByStatus(
-        ServicePoint $servicePoint,
-        TableSessionStatus $status,
-    ): ?TableSession {
-        $tableSession = TableSession::query()
-            ->select([
-                'id',
-                'branch_id',
-                'service_point_id',
-                'opened_by_guest_id',
-                'status',
-                'source',
-                'started_at',
-                'ended_at',
-            ])
-            ->where('branch_id', $servicePoint->branch_id)
-            ->where('service_point_id', $servicePoint->id)
-            ->where('status', $status->value)
-            ->whereHas('activeGuests')
-            ->orderBy('started_at')
-            ->orderBy('id')
-            ->first();
-
-        if ($tableSession instanceof TableSession || $status !== TableSessionStatus::Active) {
-            return $tableSession;
-        }
-
-        $link = TableSessionServicePoint::query()
-            ->select(['id', 'table_session_id', 'service_point_id', 'unlinked_at'])
-            ->with([
-                'tableSession' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'service_point_id',
-                        'opened_by_guest_id',
-                        'status',
-                        'source',
-                        'started_at',
-                        'ended_at',
-                    ])
-                    ->where('branch_id', $servicePoint->branch_id)
-                    ->where('status', $status->value)
-                    ->whereHas('activeGuests'),
-            ])
-            ->active()
-            ->where('service_point_id', $servicePoint->id)
-            ->first();
-
-        return $link?->tableSession;
+        return $this->publicQrQueries->tableSessionForGuestNameConflict($servicePoint);
     }
 
     private function findJoinRequestByIdAndToken(int $joinRequestId, string $guestToken): ?TableSessionJoinRequest
     {
-        return TableSessionJoinRequest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'approved_by_guest_id',
-                'rejected_by_guest_id',
-                'approved_by_user_id',
-                'rejected_by_user_id',
-                'expires_at',
-            ])
-            ->with([
-                'tableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'status',
-                    'ended_at',
-                ]),
-            ])
-            ->whereKey($joinRequestId)
-            ->where('guest_token', $guestToken)
-            ->first();
+        return $this->publicQrQueries->joinRequestByIdAndToken($joinRequestId, $guestToken);
     }
 
     private function findJoinRequestByCurrentState(int $joinRequestId): ?TableSessionJoinRequest
@@ -685,69 +533,21 @@ class GuestEntry extends Component
             return null;
         }
 
-        return TableSessionJoinRequest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'approved_by_guest_id',
-                'rejected_by_guest_id',
-                'approved_by_user_id',
-                'rejected_by_user_id',
-                'expires_at',
-            ])
-            ->with([
-                'tableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'status',
-                    'ended_at',
-                ]),
-            ])
-            ->whereKey($joinRequestId)
-            ->where('table_session_id', $this->currentTableSessionId)
-            ->where('guest_name', $this->preparedGuestName)
-            ->first();
+        return $this->publicQrQueries->joinRequestByCurrentState(
+            $joinRequestId,
+            $this->currentTableSessionId,
+            $this->preparedGuestName,
+        );
     }
 
     private function findGuestForJoinRequest(TableSessionJoinRequest $joinRequest): ?TableSessionGuest
     {
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->with([
-                'tableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'status',
-                    'ended_at',
-                ]),
-            ])
-            ->where('table_session_id', $joinRequest->table_session_id)
-            ->where('guest_token', $joinRequest->guest_token)
-            ->first();
+        return $this->publicQrQueries->guestForJoinRequest($joinRequest);
     }
 
     private function syncLandingServicePointFromTableSession(TableSession $tableSession): void
     {
-        $tableSession->loadMissing([
-            'servicePoint' => fn ($query) => $query
-                ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
-                ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-        ]);
-
-        $servicePoint = $tableSession->servicePoint;
+        $servicePoint = $this->publicQrQueries->servicePointForTableSession($tableSession);
 
         $this->landing['service_point_name'] = $servicePoint->name;
         $this->landing['service_point_display_number'] = $servicePoint->display_number;
@@ -865,20 +665,7 @@ class GuestEntry extends Component
      */
     private function guestNameConflictForTableSession(TableSession $tableSession, string $guestName): ?array
     {
-        $activeNames = TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'status',
-            ])
-            ->where('table_session_id', $tableSession->id)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->orderBy('guest_name')
-            ->orderBy('id')
-            ->limit(100)
-            ->pluck('guest_name')
-            ->all();
+        $activeNames = $this->publicQrQueries->activeGuestNames($tableSession->id);
 
         $normalizedGuestName = $this->presenter->normalizeGuestName($guestName);
 
@@ -886,7 +673,7 @@ class GuestEntry extends Component
             if ($this->presenter->normalizeGuestName((string) $activeName) === $normalizedGuestName) {
                 return [
                     'existing_name' => (string) $activeName,
-                    'active_names' => array_values(array_map('strval', $activeNames)),
+                    'active_names' => array_map('strval', $activeNames),
                 ];
             }
         }

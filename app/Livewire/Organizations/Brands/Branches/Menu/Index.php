@@ -7,13 +7,21 @@ namespace App\Livewire\Organizations\Brands\Branches\Menu;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
+use App\Services\Menus\CatalogData;
 use Illuminate\View\View;
 
 class Index extends BranchMenuComponent
 {
+    private CatalogData $menuQueries;
+
     public bool $canManageMenu = false;
 
     public bool $canChangeAvailability = false;
+
+    public function boot(CatalogData $menuQueries): void
+    {
+        $this->menuQueries = $menuQueries;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -33,5 +41,10 @@ class Index extends BranchMenuComponent
             'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
             'branchesUrl' => route('organizations.brands.branches.index', [$this->organizationId, $this->brandId]),
         ])->title(__('navigation.menu'));
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->menuQueries;
     }
 }

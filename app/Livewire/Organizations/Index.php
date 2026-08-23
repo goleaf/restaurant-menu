@@ -9,10 +9,9 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationLogoAction;
-use App\Enums\OrganizationSubscriptionStatus;
-use App\Enums\OrganizationUserStatus;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Organizations\OrganizationQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -29,6 +28,8 @@ class Index extends Component
 {
     use WithFileUploads;
 
+    private OrganizationQueryService $organizationQueries;
+
     public string $name = '';
 
     /**
@@ -43,6 +44,11 @@ class Index extends Component
     public ?int $deletingOrganizationId = null;
 
     public int $currentUserId = 0;
+
+    public function boot(OrganizationQueryService $organizationQueries): void
+    {
+        $this->organizationQueries = $organizationQueries;
+    }
 
     public function mount(): void
     {
@@ -169,27 +175,7 @@ class Index extends Component
     #[Computed]
     public function organizations(): EloquentCollection
     {
-        return $this->currentUser()
-            ->organizations()
-            ->wherePivot('status', OrganizationUserStatus::Active->value)
-            ->where(function ($query): void {
-                $query
-                    ->whereDoesntHave('subscription')
-                    ->orWhereHas('subscription', function ($subscriptionQuery): void {
-                        $subscriptionQuery->where('status', OrganizationSubscriptionStatus::Active->value);
-                    });
-            })
-            ->select([
-                'organizations.id',
-                'organizations.owner_user_id',
-                'organizations.name',
-                'organizations.logo_path',
-                'organizations.created_at',
-                'organizations.updated_at',
-            ])
-            ->orderBy('organizations.name')
-            ->orderBy('organizations.id')
-            ->get();
+        return $this->organizationQueries->accessibleTo($this->currentUser());
     }
 
     /**
@@ -255,17 +241,7 @@ class Index extends Component
 
     private function findOwnedOrganization(int $organizationId): Organization
     {
-        $organization = Organization::query()
-            ->select([
-                'id',
-                'owner_user_id',
-                'name',
-                'logo_path',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($organizationId)
-            ->firstOrFail();
+        $organization = $this->organizationQueries->find($organizationId);
 
         Gate::forUser($this->currentUser())->authorize('update', $organization);
 

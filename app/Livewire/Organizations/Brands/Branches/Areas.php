@@ -14,6 +14,7 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Branches\AreaNodeQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -28,6 +29,8 @@ use Livewire\Component;
 
 class Areas extends Component
 {
+    private AreaNodeQueryService $areaNodeQueries;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -63,6 +66,11 @@ class Areas extends Component
     public ?int $deletingAreaNodeId = null;
 
     public bool $canManageZones = false;
+
+    public function boot(AreaNodeQueryService $areaNodeQueries): void
+    {
+        $this->areaNodeQueries = $areaNodeQueries;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -227,26 +235,7 @@ class Areas extends Component
     #[Computed]
     public function areaNodes(): EloquentCollection
     {
-        return $this->branch
-            ->areaNodes()
-            ->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-                'metadata',
-                'created_at',
-                'updated_at',
-                'deleted_at',
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->areaNodeQueries->forBranch($this->branch);
     }
 
     /**
@@ -522,24 +511,7 @@ class Areas extends Component
 
     private function findBranchAreaNode(int $areaNodeId): AreaNode
     {
-        return $this->branch
-            ->areaNodes()
-            ->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-                'metadata',
-                'created_at',
-                'updated_at',
-                'deleted_at',
-            ])
-            ->whereKey($areaNodeId)
-            ->firstOrFail();
+        return $this->areaNodeQueries->findForBranch($this->branch, $areaNodeId);
     }
 
     private function authorizeZoneManagement(): void

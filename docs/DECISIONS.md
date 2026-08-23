@@ -37,3 +37,7 @@ Laravel 13's built-in health route preserves the required `DiagnosingHealth` eve
 ## D-009 — Make release tests safe under concurrency and long coverage runs
 
 Independent full and coverage processes may run in the shared checkout. SQLite restore tests therefore allocate unique database and local-filesystem roots per process/test instead of sharing candidates or safety snapshots. The canonical coverage script disables Composer's generic process timeout because the verified suite exceeds 300 seconds; Pest remains responsible for test failures and enforcing the unchanged 90% application floor.
+
+## D-010 — Keep Livewire as an orchestration boundary
+
+Livewire components authorize, validate and coordinate UI state, but no longer construct Eloquent or relationship queries and never persist models directly. Focused domain read services own bounded selected/eager-loaded query shapes, while Actions retain mutations and transaction boundaries. Substantial multi-field onboarding validation uses a dedicated `Livewire\\Form` and the shared `RestaurantValidationRules`; small single-action inputs remain typed component properties when extracting another object would not create a meaningful boundary.

@@ -12,7 +12,6 @@ use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
-use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
@@ -20,6 +19,7 @@ use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Staff\StaffQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -32,6 +32,8 @@ use Livewire\Component;
 
 class Index extends Component
 {
+    private StaffQueryService $staffQueries;
+
     public Organization $organization;
 
     public Brand $brand;
@@ -62,6 +64,11 @@ class Index extends Component
      * @var array<int, list<string>>
      */
     public array $areaAssignments = [];
+
+    public function boot(StaffQueryService $staffQueries): void
+    {
+        $this->staffQueries = $staffQueries;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -205,16 +212,7 @@ class Index extends Component
     #[Computed]
     public function members(): EloquentCollection
     {
-        return BranchUser::query()
-            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
-            ->with([
-                'user' => fn ($query) => $query->select(['id', 'name', 'email']),
-                'role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order']),
-            ])
-            ->where('branch_id', $this->branch->id)
-            ->orderBy('status')
-            ->orderByDesc('id')
-            ->get();
+        return $this->staffQueries->branchMembers($this->branch);
     }
 
     /**
@@ -223,13 +221,7 @@ class Index extends Component
     #[Computed]
     public function invitations(): EloquentCollection
     {
-        return Invitation::query()
-            ->select(['id', 'organization_id', 'brand_id', 'branch_id', 'role_id', 'email', 'phone', 'expires_at', 'status', 'invited_by_user_id', 'accepted_by_user_id', 'accepted_at', 'created_at', 'updated_at'])
-            ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
-            ->where('organization_id', $this->organization->id)
-            ->where('branch_id', $this->branch->id)
-            ->orderByDesc('id')
-            ->get();
+        return $this->staffQueries->branchInvitations($this->organization, $this->branch);
     }
 
     /**
@@ -238,11 +230,7 @@ class Index extends Component
     #[Computed]
     public function roles(): EloquentCollection
     {
-        return Role::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->where('code', '!=', SystemRole::Superadmin->value)
-            ->orderBy('sort_order')
-            ->get();
+        return $this->staffQueries->assignableRoles();
     }
 
     /**
@@ -251,14 +239,7 @@ class Index extends Component
     #[Computed]
     public function areaNodes(): EloquentCollection
     {
-        return AreaNode::query()
-            ->select(['id', 'branch_id', 'name', 'sort_order', 'is_active'])
-            ->where('branch_id', $this->branch->id)
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->staffQueries->activeAreaNodes($this->branch);
     }
 
     private function memberIsWaiter(BranchUser $member): bool
@@ -368,52 +349,27 @@ class Index extends Component
 
     private function defaultRoleId(): ?int
     {
-        return Role::query()
-            ->where('code', SystemRole::Waiter->value)
-            ->value('id');
+        return $this->staffQueries->defaultWaiterRoleId();
     }
 
     private function findAssignableRole(int $roleId): Role
     {
-        return Role::query()
-            ->where('code', '!=', SystemRole::Superadmin->value)
-            ->whereKey($roleId)
-            ->firstOrFail();
+        return $this->staffQueries->findAssignableRole($roleId);
     }
 
     private function findBranchUser(int $branchUserId): BranchUser
     {
-        return BranchUser::query()
-            ->where('branch_id', $this->branch->id)
-            ->whereKey($branchUserId)
-            ->firstOrFail();
+        return $this->staffQueries->findBranchUser($this->branch, $branchUserId);
     }
 
     private function findBranchUserByUser(int $userId): BranchUser
     {
-        return BranchUser::query()
-            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
-            ->with(['role' => fn ($query) => $query->select(['id', 'code', 'name', 'sort_order'])])
-            ->where('branch_id', $this->branch->id)
-            ->where('user_id', $userId)
-            ->firstOrFail();
+        return $this->staffQueries->findBranchUserByUser($this->branch, $userId);
     }
 
     private function loadAreaAssignments(): void
     {
-        $this->areaAssignments = AreaNodeWaiter::query()
-            ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
-            ->where('branch_id', $this->branch->id)
-            ->orderBy('user_id')
-            ->orderBy('area_node_id')
-            ->get()
-            ->groupBy('user_id')
-            ->map(fn (EloquentCollection $assignments): array => $assignments
-                ->pluck('area_node_id')
-                ->map(fn (int $areaNodeId): string => (string) $areaNodeId)
-                ->values()
-                ->all())
-            ->all();
+        $this->areaAssignments = $this->staffQueries->areaAssignments($this->branch);
     }
 
     private function authorizeStaffManagement(): void

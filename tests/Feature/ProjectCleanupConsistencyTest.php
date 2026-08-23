@@ -109,6 +109,26 @@ test('livewire components delegate persistence to application actions', function
     expect($matchingPaths->all())->toBe([]);
 });
 
+test('livewire components delegate eloquent access to application actions', function () {
+    $staticEloquentAccessPattern = '\\b[A-Z][A-Za-z0-9_]*::(?:query|find|findOrFail|where|with|select)\\s*\\(';
+    $relationshipQueryPattern = '(?:\\$(?!this\\b)[A-Za-z_][A-Za-z0-9_]*|\\$this->(?:organization|brand|branch|authenticatedUser)|\\$this->currentUser\\(\\))->(?:unreadNotifications|passkeys|organizations|brands|branches|areaNodes|servicePoints|menus|modifierGroups|kitchenDepartments)\\s*\\(\\)';
+    $eloquentAccessPattern = sprintf('/(?:%s|%s)/', $staticEloquentAccessPattern, $relationshipQueryPattern);
+
+    $matchingPaths = collect(File::allFiles(app_path('Livewire')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
+        ->mapWithKeys(function (SplFileInfo $file) use ($eloquentAccessPattern): array {
+            if (preg_match($eloquentAccessPattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
 test('livewire page metadata and action errors are localized', function () {
     $hardcodedPresentationPattern = '/#\[Title\s*\(|\baddError\s*\([^,]+,\s*[\'\"]/';
 

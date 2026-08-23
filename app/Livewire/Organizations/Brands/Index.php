@@ -12,6 +12,7 @@ use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Services\Organizations\BrandQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -27,6 +28,8 @@ use Livewire\WithFileUploads;
 class Index extends Component
 {
     use WithFileUploads;
+
+    private BrandQueryService $brandQueries;
 
     public Organization $organization;
 
@@ -44,6 +47,11 @@ class Index extends Component
     public ?int $deletingBrandId = null;
 
     public bool $canManageBrands = false;
+
+    public function boot(BrandQueryService $brandQueries): void
+    {
+        $this->brandQueries = $brandQueries;
+    }
 
     public function mount(Organization $organization): void
     {
@@ -187,19 +195,7 @@ class Index extends Component
     #[Computed]
     public function brands(): EloquentCollection
     {
-        return $this->organization
-            ->brands()
-            ->select([
-                'id',
-                'organization_id',
-                'name',
-                'logo_path',
-                'created_at',
-                'updated_at',
-            ])
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->brandQueries->forOrganization($this->organization);
     }
 
     public function render(): View
@@ -257,18 +253,7 @@ class Index extends Component
 
     private function findOrganizationBrand(int $brandId): Brand
     {
-        $brand = $this->organization
-            ->brands()
-            ->select([
-                'id',
-                'organization_id',
-                'name',
-                'logo_path',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($brandId)
-            ->firstOrFail();
+        $brand = $this->brandQueries->findForOrganization($this->organization, $brandId);
 
         Gate::forUser($this->currentUser())->authorize('update', $brand);
 

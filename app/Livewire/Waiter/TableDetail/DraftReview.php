@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Waiter\TableDetail;
 
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
-use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -14,12 +13,12 @@ use App\Actions\Waiter\EnsureWaiterCanEditDraftOrderAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Waiter\ReturnRejectedDraftOrderToDraftAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
-use App\Enums\MenuStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
-use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Services\Waiter\TableDetailChangeDetector;
+use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\ValidationException;
@@ -29,8 +28,6 @@ use Livewire\Attributes\Locked;
 final class DraftReview extends TableDetailSection
 {
     private BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots;
-
-    private GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus;
 
     #[Locked]
     public string $changeFingerprint = '';
@@ -102,17 +99,16 @@ final class DraftReview extends TableDetailSection
     public function boot(
         BuildWaiterTableDetailAction $buildWaiterTableDetail,
         TableDetailChangeDetector $changeDetector,
+        WaiterTableQueryService $waiterQueries,
         BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
-        GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ): void {
         parent::boot(
             $buildWaiterTableDetail,
             $changeDetector,
+            $waiterQueries,
             $buildModifierSnapshots,
-            $getMenuAvailabilityStatus,
         );
         $this->buildModifierSnapshots = $buildModifierSnapshots;
-        $this->getMenuAvailabilityStatus = $getMenuAvailabilityStatus;
     }
 
     /** @param array<string, mixed> $initialDraftReview */
@@ -474,13 +470,7 @@ final class DraftReview extends TableDetailSection
 
     private function currentDraftOrder(): ?DraftOrder
     {
-        $tableSession = TableSession::query()
-            ->select(['id'])
-            ->with(['draftOrder' => fn ($query) => $query->select(['draft_orders.id', 'draft_orders.table_session_id', 'draft_orders.status'])])
-            ->whereKey($this->tableSessionId)
-            ->firstOrFail();
-
-        return $tableSession->draftOrder;
+        return $this->waiterQueries->currentDraftOrder($this->tableSessionId);
     }
 
     /** @return array<string, list<mixed>> */
@@ -513,11 +503,7 @@ final class DraftReview extends TableDetailSection
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select(['id'])
-            ->whereKey($guestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->first();
+        return $this->waiterQueries->guestForTable($guestId, $this->tableSessionId);
     }
 
     private function selectedAddingMenuItem(): ?MenuItem
@@ -527,25 +513,7 @@ final class DraftReview extends TableDetailSection
 
     private function draftOrderItemForCurrentTable(int $itemId): ?DraftOrderItem
     {
-        $draftOrderItem = DraftOrderItem::query()
-            ->select([
-                'id', 'draft_order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'item_name',
-                'variant_name', 'variant_type', 'quantity',
-                'unit_price_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'comment',
-            ])
-            ->with([
-                'draftOrder' => fn ($query) => $query->select(['id', 'table_session_id', 'status']),
-                'menuItem' => fn ($query) => $query->select(['id']),
-            ])
-            ->whereKey($itemId)
-            ->first();
-
-        if (! $draftOrderItem instanceof DraftOrderItem
-            || $draftOrderItem->draftOrder->table_session_id !== $this->tableSessionId) {
-            return null;
-        }
-
-        return $draftOrderItem;
+        return $this->waiterQueries->draftOrderItemForTable($itemId, $this->tableSessionId);
     }
 
     /** @return list<array{value: string, label: string, price: string}> */
@@ -553,43 +521,7 @@ final class DraftReview extends TableDetailSection
     {
         $branchId = (int) data_get($this->draftReview, 'branch.id');
 
-        if ($branchId < 1) {
-            return [];
-        }
-
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'name', 'price_cents', 'is_available', 'sort_order'])
-            ->with([
-                'menu' => fn ($query) => $query->select(['id', 'branch_id', 'status', 'name'])
-                    ->with([
-                        'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
-                        'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
-                            'id', 'menu_id', 'day_of_week', 'starts_at', 'ends_at',
-                        ]),
-                    ]),
-                'category' => fn ($query) => $query->select(['id', 'menu_id', 'name', 'is_active']),
-            ])
-            ->whereHas('menu', function ($query) use ($branchId): void {
-                $query->where('branch_id', $branchId)->where('status', MenuStatus::Active->value);
-            })
-            ->whereHas('category', fn ($query) => $query->where('is_active', true))
-            ->where('is_available', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->limit(200)
-            ->get()
-            ->filter(function (MenuItem $menuItem): bool {
-                return $menuItem->menu !== null
-                    && $this->getMenuAvailabilityStatus->handle($menuItem->menu)['is_available'];
-            })
-            ->map(fn (MenuItem $menuItem): array => [
-                'value' => (string) $menuItem->id,
-                'label' => trim(($menuItem->category->name ? $menuItem->category->name.' · ' : '').$menuItem->name),
-                'price' => MoneyFormatter::centsToDecimal($menuItem->price_cents),
-            ])
-            ->values()
-            ->all();
+        return $this->waiterQueries->menuItemOptionsForBranch($branchId);
     }
 
     private function syncAddableMenuItems(): void
@@ -644,23 +576,12 @@ final class DraftReview extends TableDetailSection
 
     private function configuredMenuItem(int $menuItemId): ?MenuItem
     {
-        if ($menuItemId < 1) {
-            return null;
-        }
-
         $allowedMenuItemIds = collect($this->addableMenuItems)
             ->pluck('value')
             ->map(static fn (mixed $value): int => (int) $value)
             ->all();
 
-        if (! in_array($menuItemId, $allowedMenuItemIds, true)) {
-            return null;
-        }
-
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'name', 'price_cents', 'is_available'])
-            ->whereKey($menuItemId)
-            ->first();
+        return $this->waiterQueries->configuredMenuItem($menuItemId, $allowedMenuItemIds);
     }
 
     /** @return list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta_cents: int, formatted_price_delta: string}>}> */
@@ -704,26 +625,10 @@ final class DraftReview extends TableDetailSection
             return [];
         }
 
-        return $menuItem->variants()
-            ->select(['id', 'menu_item_id', 'name', 'price_cents', 'is_default', 'sort_order'])
-            ->where('is_available', true)
-            ->orderByDesc('is_default')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get()
-            ->map(fn ($variant): array => [
-                'id' => $variant->id,
-                'name' => $variant->name,
-                'price_cents' => $variant->price_cents,
-                'formatted_price' => MoneyFormatter::formatCents(
-                    $variant->price_cents,
-                    (string) data_get($this->draftReview, 'branch.currency', 'EUR'),
-                ),
-                'is_default' => $variant->is_default,
-            ])
-            ->values()
-            ->all();
+        return $this->waiterQueries->availableVariants(
+            $menuItem,
+            (string) data_get($this->draftReview, 'branch.currency', 'EUR'),
+        );
     }
 
     /**

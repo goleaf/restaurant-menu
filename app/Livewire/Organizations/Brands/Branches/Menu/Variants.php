@@ -13,6 +13,7 @@ use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -26,6 +27,8 @@ use Livewire\Attributes\On;
 /** @property-read EloquentCollection<int, MenuItemVariant> $variants */
 final class Variants extends BranchMenuComponent
 {
+    private CatalogData $menuQueries;
+
     public string $variantMenuId = '';
 
     public string $variantItemId = '';
@@ -76,6 +79,11 @@ final class Variants extends BranchMenuComponent
     #[Locked]
     public bool $canChangeAvailability = false;
 
+    public function boot(CatalogData $menuQueries): void
+    {
+        $this->menuQueries = $menuQueries;
+    }
+
     public function mount(int $organizationId, int $brandId, int $branchId): void
     {
         $this->initializeBranchContext($organizationId, $brandId, $branchId);
@@ -124,7 +132,7 @@ final class Variants extends BranchMenuComponent
     public function startEditingVariant(int $variantId): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $variant = $this->findVariant($variantId)->load('translations');
+        $variant = $this->findVariant($variantId);
         $this->editingVariantId = $variant->id;
         $this->editingVariantType = $variant->type->value;
         $this->editingVariantName = $variant->name;
@@ -210,22 +218,7 @@ final class Variants extends BranchMenuComponent
     #[Computed]
     public function variants(): EloquentCollection
     {
-        if ($this->variantItemId === '') {
-            return new EloquentCollection;
-        }
-
-        return MenuItemVariant::query()
-            ->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
-            ->with(['translations' => fn ($query) => $query
-                ->select(['id', 'menu_item_variant_id', 'language_code', 'name'])
-                ->orderBy('language_code')])
-            ->where('menu_item_id', (int) $this->variantItemId)
-            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->orderByDesc('is_default')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->menuQueries->variants($this->branchId, $this->variantItemId);
     }
 
     public function render(): View
@@ -301,29 +294,13 @@ final class Variants extends BranchMenuComponent
     /** @return list<array{value: string, label: string}> */
     private function menuOptions(): array
     {
-        return $this->branch->menus()
-            ->select(['id', 'branch_id', 'name', 'sort_order'])
-            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
-            ->get()
-            ->map(fn (Menu $menu): array => ['value' => (string) $menu->id, 'label' => $menu->name])
-            ->all();
+        return $this->menuQueries->menuOptions($this->branch);
     }
 
     /** @return list<array{value: string, label: string}> */
     private function itemOptions(): array
     {
-        if ($this->variantMenuId === '') {
-            return [];
-        }
-
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'name', 'sort_order'])
-            ->where('menu_id', (int) $this->variantMenuId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
-            ->get()
-            ->map(fn (MenuItem $item): array => ['value' => (string) $item->id, 'label' => $item->name])
-            ->all();
+        return $this->menuQueries->itemOptions($this->branchId, $this->variantMenuId);
     }
 
     private function menuRule(): mixed
@@ -350,65 +327,32 @@ final class Variants extends BranchMenuComponent
 
     private function findItem(int $itemId): MenuItem
     {
-        return MenuItem::query()
-            ->select(['id', 'menu_id', 'name', 'price_cents'])
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->whereKey($itemId)
-            ->firstOrFail();
+        return $this->menuQueries->findVariantItem($this->branchId, $itemId);
     }
 
     private function findVariant(int $variantId): MenuItemVariant
     {
-        return MenuItemVariant::query()
-            ->select(['id', 'menu_item_id', 'type', 'name', 'price_cents', 'weight', 'volume', 'is_default', 'is_available', 'sort_order'])
-            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->whereKey($variantId)
-            ->firstOrFail();
+        return $this->menuQueries->findVariant($this->branchId, $variantId);
     }
 
     private function firstMenuId(): string
     {
-        $id = $this->branch->menus()->select('menus.id')
-            ->oldest('sort_order')->oldest('name')->oldest('id')->value('menus.id');
-
-        return is_int($id) ? (string) $id : '';
+        return $this->menuQueries->firstMenuId($this->branch);
     }
 
     private function firstItemId(string $menuId): string
     {
-        if ($menuId === '') {
-            return '';
-        }
-
-        $id = MenuItem::query()->select('menu_items.id')->where('menu_id', (int) $menuId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->oldest('sort_order')->oldest('name')->oldest('id')->value('menu_items.id');
-
-        return is_int($id) ? (string) $id : '';
+        return $this->menuQueries->firstItemId($this->branchId, $menuId);
     }
 
     private function selectedItemPrice(): string
     {
-        if ($this->variantItemId === '') {
-            return '0.00';
-        }
-
-        $priceCents = MenuItem::query()
-            ->select('price_cents')
-            ->whereKey((int) $this->variantItemId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->value('price_cents');
-
-        return is_numeric($priceCents) ? MoneyFormatter::centsToDecimal((int) $priceCents) : '0.00';
+        return $this->menuQueries->selectedItemPrice($this->branchId, $this->variantItemId);
     }
 
     private function selectionExists(): bool
     {
-        return $this->variantItemId !== '' && MenuItem::query()
-            ->whereKey((int) $this->variantItemId)
-            ->where('menu_id', (int) $this->variantMenuId)
-            ->whereHas('menu', fn ($query) => $query->where('branch_id', $this->branchId))
-            ->exists();
+        return $this->menuQueries->selectionExists($this->branchId, $this->variantMenuId, $this->variantItemId);
     }
 
     /**
@@ -457,5 +401,10 @@ final class Variants extends BranchMenuComponent
     {
         $this->canChangePrices = $this->branchAllows('changeMenuPrices');
         $this->canChangeAvailability = $this->branchAllows('changeMenuAvailability');
+    }
+
+    protected function catalogData(): CatalogData
+    {
+        return $this->menuQueries;
     }
 }

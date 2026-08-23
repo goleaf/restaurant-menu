@@ -4,8 +4,8 @@ namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\Notifications\MarkGuestNotificationsReadAction;
-use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
@@ -15,6 +15,8 @@ use Livewire\Component;
 #[Isolate]
 class Notifications extends Component
 {
+    private PublicQrQueryService $publicQrQueries;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -34,6 +36,11 @@ class Notifications extends Component
      * @var list<array{id: string, title: string, body: string, meta: string, tone: string, created_label: string}>
      */
     public array $notifications = [];
+
+    public function boot(PublicQrQueryService $publicQrQueries): void
+    {
+        $this->publicQrQueries = $publicQrQueries;
+    }
 
     public function mount(int $tableSessionId, int $currentGuestId, string $publicToken, int $pollingIntervalSeconds = 1): void
     {
@@ -57,17 +64,10 @@ class Notifications extends Component
             return;
         }
 
-        $this->unreadCount = (int) $guest->unreadNotifications()
-            ->whereIn('type', $this->guestNotificationTypes())
-            ->count();
+        $this->unreadCount = $this->publicQrQueries->unreadNotificationCount($guest, $this->guestNotificationTypes());
 
-        $this->notifications = $guest->unreadNotifications()
-            ->select(['id', 'type', 'notifiable_type', 'notifiable_id', 'data', 'read_at', 'created_at'])
-            ->whereIn('type', $this->guestNotificationTypes())
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->limit(8)
-            ->get()
+        $this->notifications = $this->publicQrQueries
+            ->unreadNotifications($guest, $this->guestNotificationTypes())
             ->map(fn (DatabaseNotification $notification): array => $this->presentNotification($notification))
             ->all();
     }
@@ -115,21 +115,7 @@ class Notifications extends Component
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->whereKey($this->currentGuestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('guest_token', $guestToken)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->first();
+        return $this->publicQrQueries->activeGuest($this->currentGuestId, $this->tableSessionId, $guestToken);
     }
 
     private function guestTokenFromCookie(): ?string

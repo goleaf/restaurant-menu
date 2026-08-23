@@ -15,10 +15,10 @@ class UpdateKitchenTicketItemStatusAction
         private readonly UpdateDepartmentTicketItemStatusAction $updateDepartmentTicketItemStatus,
     ) {}
 
-    public function handle(KitchenTicketItem $item, KitchenTicketItemStatus $status, User $user): KitchenTicketItem
+    public function handle(int $itemId, KitchenTicketItemStatus $status, User $user): KitchenTicketItem
     {
         return $this->updateDepartmentTicketItemStatus->handle(
-            item: $item,
+            itemId: $itemId,
             status: $status,
             user: $user,
             departmentTypes: [],

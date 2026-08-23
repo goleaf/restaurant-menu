@@ -7,6 +7,7 @@ namespace App\Livewire\Settings;
 use App\Actions\Users\UpdateUserPasswordAction;
 use App\Concerns\PasswordValidationRules;
 use App\Models\User;
+use App\Services\Users\PasskeyQueryService;
 use Exception;
 use Flux\Flux;
 use Illuminate\Http\Request;
@@ -29,6 +30,8 @@ class Security extends Component
     use PasswordValidationRules;
 
     private User $authenticatedUser;
+
+    private PasskeyQueryService $passkeyQueries;
 
     public string $current_password = '';
 
@@ -72,7 +75,7 @@ class Security extends Component
     #[Locked]
     public string $deletingPasskeyName = '';
 
-    public function boot(Request $request): void
+    public function boot(Request $request, PasskeyQueryService $passkeyQueries): void
     {
         $user = $request->user();
 
@@ -81,6 +84,7 @@ class Security extends Component
         }
 
         $this->authenticatedUser = $user;
+        $this->passkeyQueries = $passkeyQueries;
     }
 
     /**
@@ -134,10 +138,7 @@ class Security extends Component
      */
     public function loadPasskeys(): void
     {
-        $this->passkeys = $this->authenticatedUser->passkeys()
-            ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])
-            ->latest()
-            ->get()
+        $this->passkeys = $this->passkeyQueries->forUser($this->authenticatedUser)
             ->map(fn ($passkey) => [
                 'id' => $passkey->id,
                 'name' => $passkey->name,
@@ -153,7 +154,7 @@ class Security extends Component
      */
     public function confirmDelete(int $passkeyId): void
     {
-        $passkey = $this->authenticatedUser->passkeys()->findOrFail($passkeyId);
+        $passkey = $this->passkeyQueries->findForUser($this->authenticatedUser, $passkeyId);
 
         $this->deletingPasskeyId = $passkey->id;
         $this->deletingPasskeyName = $passkey->name;
@@ -169,7 +170,7 @@ class Security extends Component
             return;
         }
 
-        $passkey = $this->authenticatedUser->passkeys()->findOrFail($this->deletingPasskeyId);
+        $passkey = $this->passkeyQueries->findForUser($this->authenticatedUser, $this->deletingPasskeyId);
 
         $deletePasskey($this->authenticatedUser, $passkey);
 

@@ -15,16 +15,14 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\SupportedLocale;
-use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder as DraftOrderModel;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\MenuItem;
-use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Collection;
@@ -47,6 +45,8 @@ class DraftOrder extends Component
     private DeleteGuestDraftOrderItemAction $deleteGuestDraftOrderItem;
 
     private BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots;
+
+    private PublicQrQueryService $publicQrQueries;
 
     #[Locked]
     public int $tableSessionId = 0;
@@ -175,12 +175,14 @@ class DraftOrder extends Component
         UpdateGuestDraftOrderItemAction $updateGuestDraftOrderItem,
         DeleteGuestDraftOrderItemAction $deleteGuestDraftOrderItem,
         BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
+        PublicQrQueryService $publicQrQueries,
     ): void {
         $this->toggleGuestReady = $toggleGuestReady;
         $this->sendDraftOrderToWaiter = $sendDraftOrderToWaiter;
         $this->updateGuestDraftOrderItem = $updateGuestDraftOrderItem;
         $this->deleteGuestDraftOrderItem = $deleteGuestDraftOrderItem;
         $this->buildModifierSnapshots = $buildModifierSnapshots;
+        $this->publicQrQueries = $publicQrQueries;
     }
 
     public function mount(
@@ -434,10 +436,7 @@ class DraftOrder extends Component
             return;
         }
 
-        $tableSession = TableSession::query()
-            ->select(['id'])
-            ->whereKey($this->tableSessionId)
-            ->first();
+        $tableSession = $this->publicQrQueries->statusTableSession($this->tableSessionId);
 
         if (! $tableSession instanceof TableSession) {
             $this->addError('bill_request', __('guest.table.session_not_found'));
@@ -717,103 +716,22 @@ class DraftOrder extends Component
      */
     private function activeGuests(): Collection
     {
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'status',
-                'ready_at',
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->orderBy('guest_name')
-            ->orderBy('id')
-            ->limit(100)
-            ->get();
+        return $this->publicQrQueries->activeGuestsForDraft($this->tableSessionId);
     }
 
     private function draftOrder(bool $includeOrderStatus = true): ?DraftOrderModel
     {
-        $relations = [
-            'items' => fn ($query) => $query
-                ->select([
-                    'id',
-                    'draft_order_id',
-                    'table_session_guest_id',
-                    'menu_item_id',
-                    'menu_item_variant_id',
-                    'item_name',
-                    'variant_name',
-                    'variant_type',
-                    'quantity',
-                    'unit_price_cents',
-                    'modifier_total_cents',
-                    'total_price_cents',
-                    'selected_modifiers',
-                    'comment',
-                    'created_at',
-                ])
-                ->with([
-                    'guest' => fn ($guestQuery) => $guestQuery->select([
-                        'id',
-                        'guest_name',
-                        'status',
-                    ]),
-                ])
-                ->orderBy('created_at')
-                ->orderBy('id'),
-        ];
-
-        if ($includeOrderStatus) {
-            $relations['order'] = fn ($query) => $query->select([
-                'id',
-                'draft_order_id',
-                'status',
-            ])
-                ->with(['kitchenTickets' => fn ($ticketQuery) => $ticketQuery
-                    ->select(['id', 'order_id'])
-                    ->with(['items' => fn ($itemQuery) => $itemQuery
-                        ->select([
-                            'id',
-                            'kitchen_ticket_id',
-                            'status',
-                            'served_at',
-                        ])])]);
-        }
-
-        return DraftOrderModel::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'status',
-                'rejection_reason',
-            ])
-            ->with($relations)
-            ->where('table_session_id', $this->tableSessionId)
-            ->latest('id')
-            ->first();
+        return $this->publicQrQueries->draftOrderWithCart($this->tableSessionId, $includeOrderStatus);
     }
 
     private function confirmedOrdersTotalCents(): int
     {
-        return Order::query()
-            ->select(['id', 'table_session_id', 'status', 'total_price_cents'])
-            ->where('table_session_id', $this->tableSessionId)
-            ->whereNotIn('status', [OrderStatus::Cancelled->value])
-            ->get()
-            ->sum('total_price_cents');
+        return $this->publicQrQueries->confirmedOrdersTotalCents($this->tableSessionId);
     }
 
     private function tableSessionForBillState(): ?TableSession
     {
-        return TableSession::query()
-            ->select([
-                'id',
-                'status',
-            ])
-            ->whereKey($this->tableSessionId)
-            ->first();
+        return $this->publicQrQueries->statusTableSession($this->tableSessionId);
     }
 
     /**
@@ -821,45 +739,7 @@ class DraftOrder extends Component
      */
     private function confirmedOrderItemGuestTotals(): array
     {
-        return OrderItem::query()
-            ->select([
-                'id',
-                'order_id',
-                'table_session_guest_id',
-                'guest_name',
-                'guest_name_snapshot',
-                'total_price_cents',
-            ])
-            ->with(['guest' => fn ($query) => $query->select(['id', 'guest_name'])])
-            ->active()
-            ->whereHas('order', function ($query): void {
-                $query
-                    ->where('table_session_id', $this->tableSessionId)
-                    ->whereNotIn('status', [OrderStatus::Cancelled->value]);
-            })
-            ->orderBy('id')
-            ->get()
-            ->groupBy(function (OrderItem $item): string {
-                if ((int) $item->table_session_guest_id > 0) {
-                    return 'guest-'.$item->table_session_guest_id;
-                }
-
-                return 'snapshot-'.$item->historicalGuestName();
-            })
-            ->map(function (Collection $items): array {
-                /** @var OrderItem $firstItem */
-                $firstItem = $items->first();
-
-                return [
-                    'guest_id' => (int) $firstItem->table_session_guest_id,
-                    'guest_name' => $firstItem->table_session_guest_id === null
-                        ? ($firstItem->historicalGuestName() ?? (string) __('guest.table.guest'))
-                        : $firstItem->guest->guest_name,
-                    'total_cents' => (int) $items->sum('total_price_cents'),
-                ];
-            })
-            ->values()
-            ->all();
+        return $this->publicQrQueries->confirmedOrderItemGuestTotals($this->tableSessionId);
     }
 
     private function openDraftTotalCents(?DraftOrderModel $draftOrder, int $draftTotalCents): int
@@ -931,16 +811,7 @@ class DraftOrder extends Component
 
     private function draftOrderForSending(): ?DraftOrderModel
     {
-        return DraftOrderModel::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'status',
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('status', DraftOrderStatus::Draft->value)
-            ->latest('id')
-            ->first();
+        return $this->publicQrQueries->draftOrderForSending($this->tableSessionId);
     }
 
     private function currentActiveGuest(): ?TableSessionGuest
@@ -955,61 +826,16 @@ class DraftOrder extends Component
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'ready_at',
-                'joined_at',
-                'left_at',
-            ])
-            ->whereKey($this->currentGuestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('guest_token', $guestToken)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->first();
+        return $this->publicQrQueries->activeGuest($this->currentGuestId, $this->tableSessionId, $guestToken);
     }
 
     private function editableDraftOrderItem(int $itemId): ?DraftOrderItem
     {
-        $draftOrderItem = DraftOrderItem::query()
-            ->select([
-                'id',
-                'draft_order_id',
-                'table_session_guest_id',
-                'menu_item_id',
-                'menu_item_variant_id',
-                'item_name',
-                'variant_name',
-                'variant_type',
-                'quantity',
-                'unit_price_cents',
-                'modifier_total_cents',
-                'total_price_cents',
-                'selected_modifiers',
-                'comment',
-            ])
-            ->with([
-                'draftOrder' => fn ($query) => $query->select([
-                    'id',
-                    'table_session_id',
-                    'status',
-                ]),
-                'menuItem' => fn ($query) => $query->select(['id']),
-            ])
-            ->whereKey($itemId)
-            ->where('table_session_guest_id', $this->currentGuestId)
-            ->first();
-
-        if (! $draftOrderItem instanceof DraftOrderItem
-            || $draftOrderItem->draftOrder->table_session_id !== $this->tableSessionId) {
-            return null;
-        }
-
-        return $draftOrderItem;
+        return $this->publicQrQueries->editableDraftOrderItem(
+            $itemId,
+            $this->currentGuestId,
+            $this->tableSessionId,
+        );
     }
 
     /**
@@ -1076,25 +902,7 @@ class DraftOrder extends Component
             return [];
         }
 
-        return $menuItem->variants()
-            ->select(['id', 'menu_item_id', 'name', 'price_cents', 'is_default', 'sort_order'])
-            ->where('is_available', true)
-            ->with(['translations' => fn ($query) => $query
-                ->select(['id', 'menu_item_variant_id', 'language_code', 'name'])
-                ->where('language_code', $this->language)])
-            ->orderByDesc('is_default')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get()
-            ->map(fn ($variant): array => [
-                'id' => $variant->id,
-                'name' => $variant->localizedName($this->language),
-                'price_cents' => $variant->price_cents,
-                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $this->currency),
-            ])
-            ->values()
-            ->all();
+        return $this->publicQrQueries->localizedAvailableVariants($menuItem, $this->language, $this->currency);
     }
 
     /**

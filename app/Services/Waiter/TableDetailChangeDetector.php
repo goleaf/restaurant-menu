@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Livewire\Waiter\TableDetail;
+namespace App\Services\Waiter;
 
 use App\Models\DraftOrder;
 use App\Models\KitchenTicket;

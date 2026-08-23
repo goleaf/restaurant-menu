@@ -6,10 +6,9 @@ use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\TableSessions\ApproveTableSessionJoinRequestAction;
 use App\Actions\TableSessions\RejectTableSessionJoinRequestAction;
 use App\Enums\SupportedLocale;
-use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionJoinRequestStatus;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -20,6 +19,8 @@ use Livewire\Component;
 #[Isolate]
 class JoinRequests extends Component
 {
+    private PublicQrQueryService $publicQrQueries;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -43,6 +44,11 @@ class JoinRequests extends Component
      * @var list<array{id: int, guest_name: string, created_label: string, expires_label: string|null}>
      */
     public array $pendingRequests = [];
+
+    public function boot(PublicQrQueryService $publicQrQueries): void
+    {
+        $this->publicQrQueries = $publicQrQueries;
+    }
 
     public function mount(int $tableSessionId, int $guestId, string $publicToken, int $pollingIntervalSeconds = 1, string $language = 'ru'): void
     {
@@ -68,26 +74,8 @@ class JoinRequests extends Component
             return;
         }
 
-        $this->pendingRequests = TableSessionJoinRequest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'status',
-                'expires_at',
-                'created_at',
-            ])
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('status', TableSessionJoinRequestStatus::Pending->value)
-            ->where(function ($query): void {
-                $query
-                    ->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            })
-            ->orderBy('created_at')
-            ->orderBy('id')
-            ->limit(20)
-            ->get()
+        $this->pendingRequests = $this->publicQrQueries
+            ->pendingJoinRequests($this->tableSessionId)
             ->map(fn (TableSessionJoinRequest $joinRequest): array => [
                 'id' => $joinRequest->id,
                 'guest_name' => $joinRequest->guest_name,
@@ -169,42 +157,12 @@ class JoinRequests extends Component
             return null;
         }
 
-        return TableSessionGuest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'joined_at',
-                'left_at',
-            ])
-            ->whereKey($this->guestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('guest_token', $guestToken)
-            ->where('status', TableSessionGuestStatus::Active->value)
-            ->first();
+        return $this->publicQrQueries->activeGuest($this->guestId, $this->tableSessionId, $guestToken);
     }
 
     private function pendingJoinRequest(int $joinRequestId): ?TableSessionJoinRequest
     {
-        return TableSessionJoinRequest::query()
-            ->select([
-                'id',
-                'table_session_id',
-                'guest_name',
-                'guest_token',
-                'status',
-                'approved_by_guest_id',
-                'rejected_by_guest_id',
-                'approved_by_user_id',
-                'rejected_by_user_id',
-                'expires_at',
-            ])
-            ->whereKey($joinRequestId)
-            ->where('table_session_id', $this->tableSessionId)
-            ->where('status', TableSessionJoinRequestStatus::Pending->value)
-            ->first();
+        return $this->publicQrQueries->pendingJoinRequest($joinRequestId, $this->tableSessionId);
     }
 
     private function guestTokenFromCookie(): ?string

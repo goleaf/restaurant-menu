@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodes\QrCodeQueryService;
 use App\Services\QrCodeSvgRenderer;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class Show extends Component
 {
     private QrCodeSvgRenderer $qrCodeSvgRenderer;
+
+    private QrCodeQueryService $qrCodeQueries;
 
     public Organization $organization;
 
@@ -44,9 +47,10 @@ class Show extends Component
 
     public string $qrReissueConfirmation = '';
 
-    public function boot(QrCodeSvgRenderer $qrCodeSvgRenderer): void
+    public function boot(QrCodeSvgRenderer $qrCodeSvgRenderer, QrCodeQueryService $qrCodeQueries): void
     {
         $this->qrCodeSvgRenderer = $qrCodeSvgRenderer;
+        $this->qrCodeQueries = $qrCodeQueries;
     }
 
     public function mount(
@@ -237,44 +241,7 @@ class Show extends Component
 
     private function reloadQrCode(): void
     {
-        $this->qrCode = QrCode::query()
-            ->select([
-                'id',
-                'service_point_id',
-                'public_token',
-                'short_code',
-                'status',
-                'created_by_user_id',
-                'revoked_at',
-                'revoked_by_user_id',
-                'created_at',
-                'updated_at',
-            ])
-            ->with([
-                'servicePoint' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'area_node_id',
-                        'type',
-                        'name',
-                        'display_number',
-                        'capacity',
-                        'icon',
-                        'status',
-                        'is_active',
-                    ])
-                    ->with([
-                        'areaNode' => fn ($query) => $query->select([
-                            'id',
-                            'branch_id',
-                            'name',
-                        ]),
-                    ]),
-            ])
-            ->whereKey($this->qrCode->id)
-            ->where('service_point_id', $this->servicePoint->id)
-            ->firstOrFail();
+        $this->qrCode = $this->qrCodeQueries->reloadForServicePoint($this->qrCode, $this->servicePoint);
 
         $this->servicePoint = $this->qrCode->servicePoint;
     }

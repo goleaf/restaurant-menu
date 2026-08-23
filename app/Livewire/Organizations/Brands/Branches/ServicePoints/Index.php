@@ -11,21 +11,18 @@ use App\Actions\ServicePoints\SetServicePointActiveAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
-use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
-use App\Enums\TableSessionStatus;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Branches\ServicePointQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -44,6 +41,8 @@ class Index extends Component
     use WithPagination;
 
     private const SERVICE_POINTS_PER_PAGE = 10;
+
+    private ServicePointQueryService $servicePointQueries;
 
     public Organization $organization;
 
@@ -141,6 +140,11 @@ class Index extends Component
      * @var array<int, string>
      */
     public array $statusSelections = [];
+
+    public function boot(ServicePointQueryService $servicePointQueries): void
+    {
+        $this->servicePointQueries = $servicePointQueries;
+    }
 
     public function mount(Organization $organization, Brand $brand, Branch $branch): void
     {
@@ -469,78 +473,18 @@ class Index extends Component
     #[Computed]
     public function servicePoints(): Paginator
     {
-        $servicePoints = $this->branch
-            ->servicePoints()
-            ->select([
-                'id',
-                'branch_id',
-                'area_node_id',
-                'type',
-                'name',
-                'display_number',
-                'internal_code',
-                'capacity',
-                'icon',
-                'status',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->with([
-                'areaNode' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'parent_id',
-                    'type',
-                    'name',
-                    'icon',
-                    'sort_order',
-                    'is_active',
-                ]),
-                'activeQrCode' => fn ($query) => $query->select([
-                    'id',
-                    'service_point_id',
-                    'public_token',
-                    'short_code',
-                    'status',
-                    'created_at',
-                ])->where('status', QrCodeStatus::Active->value),
-                'activeTableSession' => fn ($query) => $query->select([
-                    'id',
-                    'branch_id',
-                    'service_point_id',
-                    'opened_by_user_id',
-                    'status',
-                    'source',
-                    'started_at',
-                    'created_at',
-                ])->where('status', TableSessionStatus::Active->value),
-                'activeTableSessionServicePointLinks' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'table_session_id',
-                        'service_point_id',
-                        'unlinked_at',
-                    ])
-                    ->with(['tableSession' => fn ($tableSessionQuery) => $tableSessionQuery->select([
-                        'id',
-                        'branch_id',
-                        'service_point_id',
-                        'status',
-                        'started_at',
-                        'created_at',
-                    ])->where('status', TableSessionStatus::Active->value)])
-                    ->whereNull('unlinked_at'),
-            ]);
-
-        $this->applyServicePointFilters($servicePoints);
-
-        $servicePoints = $servicePoints
-            ->orderBy('area_node_id')
-            ->orderBy('display_number')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->simplePaginate(self::SERVICE_POINTS_PER_PAGE);
+        $servicePoints = $this->servicePointQueries->paginate(
+            $this->branch,
+            [
+                'search' => $this->servicePointSearch,
+                'area_node_id' => $this->filterAreaNodeId,
+                'type' => $this->filterType,
+                'status' => $this->filterStatus,
+                'active' => $this->filterActive,
+                'qr' => $this->filterQr,
+            ],
+            self::SERVICE_POINTS_PER_PAGE,
+        );
 
         $servicePoints->getCollection()->each(function (ServicePoint $servicePoint): void {
             $this->statusSelections[$servicePoint->id] ??= $servicePoint->status->value;
@@ -621,22 +565,7 @@ class Index extends Component
     #[Computed]
     public function areaNodes(): EloquentCollection
     {
-        return $this->branch
-            ->areaNodes()
-            ->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        return $this->servicePointQueries->areaNodes($this->branch);
     }
 
     /**
@@ -968,50 +897,6 @@ class Index extends Component
         $this->bulkPreviewRows = [];
     }
 
-    private function applyServicePointFilters(HasMany $query): void
-    {
-        $search = trim($this->servicePointSearch);
-
-        if ($search !== '') {
-            $like = '%'.$search.'%';
-
-            $query->where(function (Builder $query) use ($like): void {
-                $query
-                    ->where('name', 'like', $like)
-                    ->orWhere('display_number', 'like', $like)
-                    ->orWhere('internal_code', 'like', $like)
-                    ->orWhereHas('activeQrCode', fn (Builder $qrCodeQuery): Builder => $qrCodeQuery
-                        ->where('short_code', 'like', $like));
-            });
-        }
-
-        if ($this->filterAreaNodeId === 'none') {
-            $query->whereNull('area_node_id');
-        } elseif (ctype_digit($this->filterAreaNodeId)) {
-            $query->where('area_node_id', (int) $this->filterAreaNodeId);
-        }
-
-        if (in_array($this->filterType, ServicePointType::values(), true)) {
-            $query->where('type', $this->filterType);
-        }
-
-        if (in_array($this->filterStatus, ServicePointStatus::values(), true)) {
-            $query->where('status', $this->filterStatus);
-        }
-
-        if ($this->filterActive === 'active') {
-            $query->where('is_active', true);
-        } elseif ($this->filterActive === 'inactive') {
-            $query->where('is_active', false);
-        }
-
-        if ($this->filterQr === 'with') {
-            $query->whereHas('activeQrCode');
-        } elseif ($this->filterQr === 'without') {
-            $query->whereDoesntHave('activeQrCode');
-        }
-    }
-
     private function isServicePointFilterProperty(string $property): bool
     {
         return in_array($property, [
@@ -1158,25 +1043,7 @@ class Index extends Component
 
     private function findBranchServicePoint(int $servicePointId): ServicePoint
     {
-        return $this->branch
-            ->servicePoints()
-            ->select([
-                'id',
-                'branch_id',
-                'area_node_id',
-                'type',
-                'name',
-                'display_number',
-                'internal_code',
-                'capacity',
-                'icon',
-                'status',
-                'is_active',
-                'created_at',
-                'updated_at',
-            ])
-            ->whereKey($servicePointId)
-            ->firstOrFail();
+        return $this->servicePointQueries->findForBranch($this->branch, $servicePointId);
     }
 
     private function authorizeServicePointManagement(): void

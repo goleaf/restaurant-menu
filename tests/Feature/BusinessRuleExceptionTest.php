@@ -215,7 +215,7 @@ test('repeating a ready department item transition is idempotent', function () {
 
     $updatedAt = $item->updated_at;
     $result = app(UpdateDepartmentTicketItemStatusAction::class)->handle(
-        item: $item,
+        itemId: $item->id,
         status: KitchenTicketItemStatus::Ready,
         user: $chef,
         departmentTypes: [KitchenDepartmentType::Kitchen],

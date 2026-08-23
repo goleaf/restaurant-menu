@@ -10,7 +10,6 @@ use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Models\KitchenTicketItem;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -124,13 +123,8 @@ abstract class Dashboard extends Component
         }
 
         try {
-            $item = KitchenTicketItem::query()
-                ->select(['id'])
-                ->whereKey($itemId)
-                ->firstOrFail();
-
             $this->updateDepartmentTicketItemStatus->handle(
-                item: $item,
+                itemId: $itemId,
                 status: $statusEnum,
                 user: $this->currentUser(),
                 departmentTypes: $this->departmentTypes(),

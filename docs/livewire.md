@@ -1,6 +1,6 @@
 # Livewire 4
 
-All interactive UI uses 42 ordinary PHP classes under `app/Livewire` with separate templates under `resources/views/livewire`. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
+All interactive UI uses 54 class-based components under `app/Livewire` (51 concrete and 3 abstract) with separate templates under `resources/views/livewire`. One dedicated Livewire Form object owns the substantial onboarding form state and rules. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
 
 ## Component contract
 
@@ -9,7 +9,9 @@ All interactive UI uses 42 ordinary PHP classes under `app/Livewire` with separa
 - `#[Locked]` protects durable browser-visible identifiers but never replaces authorization.
 - Derived display data uses `#[Computed]`; shareable filters use stable `#[Url]` aliases and reset relevant pagination.
 - Lists are bounded and loops use durable keys. `.live` is reserved for actual server-reactive behavior.
-- Livewire `boot()`/method injection supplies Actions and the authenticated user; no service locator is used.
+- Livewire `boot()`/method injection supplies Actions, focused Eloquent read services and the authenticated user; no service locator is used.
+- Components do not construct Eloquent queries or persist models. Actions own mutations; read services return bounded, selected and eager-loaded presentation inputs.
+- Substantial multi-field state belongs in `Livewire\\Form` objects and reuses the shared domain validation-rule builder; small one-action inputs remain typed component state when a separate form would add no boundary.
 - Loading/cloak feedback targets the action in progress and prevents duplicate destructive mutations. Offline state is rendered inside the trusted authenticated Livewire shell and by a presentation-only Alpine component on guest/auth pages whose URL may contain bearer credentials.
 
 ## Feature applicability matrix

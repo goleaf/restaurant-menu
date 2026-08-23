@@ -117,6 +117,25 @@ test('opening status respects branch timezone and next interval', function () {
         ->and($closedStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']));
 });
 
+test('opening status labels a next opening on another weekday', function () {
+    [, , $branch] = createPrompt102Branch(withOwner: false);
+    BranchOpeningHour::factory()
+        ->for($branch)
+        ->create(['day_of_week' => 2, 'opens_at' => '09:00', 'closes_at' => '17:00']);
+
+    $status = app(GetBranchOpeningStatusAction::class)->handle(
+        $branch,
+        Carbon::parse('2026-06-01 18:00:00', 'Europe/Vilnius'),
+    );
+    $nextOpeningLabel = __('ui.actions.branches.getbranchopeningstatusaction.vt').' 09:00';
+
+    expect($status['is_open'])->toBeFalse()
+        ->and($status['next_opens_at'])->toBe('2026-06-02T09:00:00+03:00')
+        ->and($status['detail'])->toBe(
+            __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => $nextOpeningLabel]),
+        );
+});
+
 test('public qr opens when branch is closed and lets guest view the table without ordering', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-01 15:30:00', 'Europe/Vilnius'));
 

@@ -3,6 +3,7 @@
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\Orders\ChangeOrderStatusAction;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
@@ -19,9 +20,11 @@ use App\Enums\TableSessionStatus;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\DraftOrder;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\Permission;
@@ -69,6 +72,24 @@ test('order status log schema keeps actor and status history fields', function (
             'order_cancelled',
             'order_item_cancelled',
         ]);
+});
+
+test('order status log action infers order draft and system status types', function () {
+    [, $tableSession] = createPrompt57GuestDraftScenario();
+    $draftOrder = DraftOrder::factory()->for($tableSession)->create();
+    $order = Order::factory()
+        ->for($tableSession)
+        ->for($draftOrder, 'draftOrder')
+        ->create();
+    $action = app(CreateOrderStatusLogAction::class);
+
+    $orderLog = $action->handle(OrderStatusLogEvent::OrderStatusChanged, order: $order);
+    $draftLog = $action->handle(OrderStatusLogEvent::DraftEdited, draftOrder: $draftOrder);
+    $systemLog = $action->handle(OrderStatusLogEvent::DraftCreated);
+
+    expect($orderLog->status_type)->toBe('order')
+        ->and($draftLog->status_type)->toBe('draft_order')
+        ->and($systemLog->status_type)->toBeNull();
 });
 
 test('guest draft creation send and waiter confirmation create status logs', function () {

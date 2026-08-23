@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 use App\Actions\Departments\BuildDepartmentDashboardAction;
 use App\Actions\Departments\ResolveAccessibleDepartmentIdsAction;
+use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
+use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemRole;
+use App\Models\Branch;
 use App\Models\KitchenDepartment;
 use App\Models\Role;
 use App\Models\User;
@@ -30,4 +33,25 @@ test('department actions report access from the resolved active departments', fu
         ->and($resolveAccess->userHasAccess($outsider, $departmentTypes, [], []))->toBeFalse()
         ->and($buildDashboard->userHasAccess($superadmin, $departmentTypes, [], []))->toBeTrue()
         ->and($buildDashboard->userHasAccess($outsider, $departmentTypes, [], []))->toBeFalse();
+});
+
+test('default kitchen department falls back to the first active seeded department', function (): void {
+    $branch = Branch::factory()->create();
+    $bar = KitchenDepartment::factory()
+        ->for($branch)
+        ->forType(KitchenDepartmentType::Bar)
+        ->active()
+        ->make();
+    $seedDepartments = Mockery::mock(SeedKitchenDepartmentsForBranchAction::class);
+    $seedDepartments->shouldReceive('handle')
+        ->once()
+        ->with($branch)
+        ->andReturnUsing(function () use ($bar): void {
+            $bar->saveOrFail();
+        });
+
+    $resolved = (new ResolveDefaultKitchenDepartmentAction($seedDepartments))->handle($branch);
+
+    expect($resolved?->is($bar))->toBeTrue()
+        ->and($resolved?->type)->toBe(KitchenDepartmentType::Bar);
 });

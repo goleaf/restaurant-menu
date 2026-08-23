@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\DataExportType;
+use App\Enums\ManualPaymentMethod;
+use App\Enums\ManualPaymentScope;
 use App\Enums\QrCodeStatus;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\ManualPayment;
+use App\Models\Order;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
@@ -76,7 +81,25 @@ test('QR PDF selection rejects service points from another branch', function ():
 });
 
 test('authorized staff can download every existing report type as a PDF', function (): void {
-    [, , $branch, , , $owner] = createPdfDownloadContext();
+    [, , $branch, $servicePoint, , $owner] = createPdfDownloadContext();
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+    Order::factory()
+        ->forTableSession($tableSession)
+        ->create([
+            'confirmed_at' => CarbonImmutable::parse('2026-08-10 12:30:00'),
+            'total_price_cents' => 2450,
+            'currency' => 'EUR',
+        ]);
+    ManualPayment::factory()
+        ->forTableSession($tableSession)
+        ->for($owner, 'recordedBy')
+        ->create([
+            'payment_method' => ManualPaymentMethod::CardTerminal,
+            'scope' => ManualPaymentScope::Table,
+            'amount_cents' => 2450,
+            'currency' => 'EUR',
+            'paid_at' => CarbonImmutable::parse('2026-08-10 12:45:00'),
+        ]);
 
     foreach (DataExportType::cases() as $type) {
         $response = $this->actingAs($owner)

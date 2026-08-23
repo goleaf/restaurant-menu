@@ -59,6 +59,15 @@ beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
+test('audit log action returns an empty bounded paginator without access', function () {
+    $payload = app(BuildAuditLogIndexAction::class)->handle(User::factory()->create(), 1);
+
+    expect($payload['has_access'])->toBeFalse()
+        ->and($payload['branch_count'])->toBe(0)
+        ->and($payload['logs']->perPage())->toBe(10)
+        ->and($payload['logs']->items())->toBe([]);
+});
+
 test('audit log schema and page are restricted by view audit log permission', function () {
     [$organization, , $branch, , , , , $manager] = createPrompt71Context();
     $viewer = User::factory()->create(['name' => 'Audit Viewer']);

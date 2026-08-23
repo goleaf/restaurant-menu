@@ -159,6 +159,29 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
         ->assertSee('Заказ принят. Кухня и бар получили позиции.');
 });
 
+test('dispatch routes items without department snapshots to the default kitchen', function () {
+    [$organization, , , $draftOrder, , $kitchen] = createPrompt60SentDraftScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 60 Default Kitchen Waiter']);
+    attachPrompt60Staff($waiter, $organization, [
+        SystemPermission::ConfirmOrders,
+        SystemPermission::SendToKitchen,
+    ]);
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
+    $order->items()->update([
+        'kitchen_department_id' => null,
+        'kitchen_department_type' => null,
+        'kitchen_department_name' => null,
+    ]);
+
+    app(SendOrderToKitchenBarAction::class)->handle($order, $waiter);
+
+    $tickets = KitchenTicket::query()->where('order_id', $order->id)->get();
+
+    expect($tickets)->toHaveCount(1)
+        ->and($tickets->first()->kitchen_department_id)->toBe($kitchen->id)
+        ->and($tickets->first()->department_type)->toBe(KitchenDepartmentType::Kitchen->value);
+});
+
 test('waiter table detail dispatch action requires send to kitchen permission', function () {
     [$organization, , $tableSession, $draftOrder] = createPrompt60SentDraftScenario();
     $reviewer = User::factory()->create(['name' => 'Prompt 60 Reviewer']);

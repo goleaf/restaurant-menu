@@ -245,9 +245,10 @@ class DemoOperationalStateSeeder extends Seeder
             KitchenTicketItemStatus::InProgress,
             KitchenTicketItemStatus::Ready,
         ];
+        $menuItemCount = $menuItems->count();
         $workflowItems = collect($statuses)
             ->map(fn (KitchenTicketItemStatus $status, int $index): array => [
-                'menu_item' => $menuItems[$index % $menuItems->count()],
+                'menu_item' => $menuItems[$index % $menuItemCount],
                 'status' => $status,
             ]);
         $totalPriceCents = $workflowItems->sum(

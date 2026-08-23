@@ -20,7 +20,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\DraftReview;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -145,10 +145,10 @@ test('waiter edits sent draft before order creation and activity log records edi
     expect($context['draftOrder']->fresh()->status)->toBe(DraftOrderStatus::WaiterReview)
         ->and($updatedPizza->fresh()->quantity)->toBe(2)
         ->and($updatedPizza->fresh()->comment)->toBe('Extra basil')
-        ->and($updatedPizza->fresh()->total_price)->toBe('20.00')
+        ->and($updatedPizza->fresh()->total_price_cents)->toBe(2000)
         ->and($addedWater->fresh()->quantity)->toBe(3)
         ->and($addedWater->fresh()->comment)->toBe('Sparkling')
-        ->and($addedWater->fresh()->total_price)->toBe('12.00')
+        ->and($addedWater->fresh()->total_price_cents)->toBe(1200)
         ->and(DraftOrderItem::query()->whereKey($context['waterDraftItem']->id)->exists())->toBeFalse()
         ->and($tableDetail['table']['current_draft_total'])->toBe('32.00 EUR')
         ->and($tableDetail['table']['item_count'])->toBe(2)
@@ -173,7 +173,7 @@ test('waiter rejects draft with required reason and guests can see rejection rea
     $reason = 'Pizza is unavailable tonight.';
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $context['tableSession']])
+        ->test(DraftReview::class, ['tableSessionId' => $context['tableSession']->id])
         ->set('rejectionReason', '   ')
         ->call('rejectDraft')
         ->assertHasErrors('rejectionReason');
@@ -238,13 +238,13 @@ test('waiter confirms draft into order with snapshot data without department dis
     expect($context['draftOrder']->fresh()->status)->toBe(DraftOrderStatus::ConvertedToOrder)
         ->and($order->status)->toBe(OrderStatus::ConfirmedByWaiter)
         ->and($order->confirmed_by_user_id)->toBe($waiter->id)
-        ->and($order->total_price)->toBe('14.00')
+        ->and($order->total_price_cents)->toBe(1400)
         ->and($order->metadata['sent_to_kitchen'])->toBeFalse()
         ->and($order->metadata['sent_to_bar'])->toBeFalse()
         ->and($order->items)->toHaveCount(2)
         ->and($pizzaOrderItem->guest_name_snapshot)->toBe('Ana')
         ->and($pizzaOrderItem->original_menu_item_id)->toBe($context['pizzaItem']->id)
-        ->and($pizzaOrderItem->unit_price_snapshot)->toBe('10.00')
+        ->and($pizzaOrderItem->unit_price_snapshot_cents)->toBe(1000)
         ->and($pizzaOrderItem->item_description_snapshot)->toBe('Classic tomato pizza')
         ->and($pizzaOrderItem->kitchen_department_id)->toBe($context['kitchen']->id)
         ->and($pizzaOrderItem->kitchen_department_type)->toBe(KitchenDepartmentType::Kitchen->value)
@@ -252,7 +252,7 @@ test('waiter confirms draft into order with snapshot data without department dis
         ->and($pizzaOrderItem->modifiers_snapshot)->toBe([])
         ->and($waterOrderItem->guest_name_snapshot)->toBe('Boris')
         ->and($waterOrderItem->original_menu_item_id)->toBe($context['waterItem']->id)
-        ->and($waterOrderItem->unit_price_snapshot)->toBe('4.00')
+        ->and($waterOrderItem->unit_price_snapshot_cents)->toBe(400)
         ->and($waterOrderItem->item_description_snapshot)->toBe('Chilled bottled water')
         ->and($waterOrderItem->kitchen_department_id)->toBe($context['bar']->id)
         ->and($waterOrderItem->kitchen_department_type)->toBe(KitchenDepartmentType::Bar->value)
@@ -341,7 +341,7 @@ function createPrompt355WaiterReviewContext(): array
         ->create([
             'name' => 'Pizza Margherita',
             'description' => 'Classic tomato pizza',
-            'price' => '10.00',
+            'price_cents' => 1000,
             'is_available' => true,
         ]);
     $waterItem = MenuItem::factory()
@@ -351,7 +351,7 @@ function createPrompt355WaiterReviewContext(): array
         ->create([
             'name' => 'Still Water',
             'description' => 'Chilled bottled water',
-            'price' => '4.00',
+            'price_cents' => 400,
             'is_available' => true,
         ]);
     $draftOrder = DraftOrder::factory()
@@ -368,9 +368,9 @@ function createPrompt355WaiterReviewContext(): array
         ->create([
             'item_name' => 'Pizza Margherita',
             'quantity' => 1,
-            'unit_price' => '10.00',
-            'modifier_total' => '0.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1000,
             'selected_modifiers' => [],
             'comment' => 'No onion',
         ]);
@@ -381,9 +381,9 @@ function createPrompt355WaiterReviewContext(): array
         ->create([
             'item_name' => 'Still Water',
             'quantity' => 1,
-            'unit_price' => '4.00',
-            'modifier_total' => '0.00',
-            'total_price' => '4.00',
+            'unit_price_cents' => 400,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 400,
             'selected_modifiers' => [],
             'comment' => 'No ice',
         ]);

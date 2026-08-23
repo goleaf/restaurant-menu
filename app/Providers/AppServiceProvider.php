@@ -17,6 +17,8 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Order;
@@ -36,6 +38,8 @@ use App\Observers\MenuCategoryObserver;
 use App\Observers\MenuCategoryTranslationObserver;
 use App\Observers\MenuItemObserver;
 use App\Observers\MenuItemTranslationObserver;
+use App\Observers\MenuItemVariantObserver;
+use App\Observers\MenuItemVariantTranslationObserver;
 use App\Observers\MenuObserver;
 use App\Observers\ModifierGroupObserver;
 use App\Observers\ModifierOptionObserver;
@@ -120,6 +124,8 @@ class AppServiceProvider extends ServiceProvider
         MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);
         MenuItem::observe(MenuItemObserver::class);
         MenuItemTranslation::observe(MenuItemTranslationObserver::class);
+        MenuItemVariant::observe(MenuItemVariantObserver::class);
+        MenuItemVariantTranslation::observe(MenuItemVariantTranslationObserver::class);
         KitchenDepartment::observe(KitchenDepartmentObserver::class);
         ModifierGroup::observe(ModifierGroupObserver::class);
         ModifierOption::observe(ModifierOptionObserver::class);
@@ -182,6 +188,7 @@ class AppServiceProvider extends ServiceProvider
                 'stack' => config('logging.channels.stack'),
                 'single' => config('logging.channels.single'),
                 'daily' => config('logging.channels.daily'),
+                'deprecations' => config('logging.channels.deprecations'),
                 'stderr' => config('logging.channels.stderr'),
                 'syslog' => config('logging.channels.syslog'),
                 'errorlog' => config('logging.channels.errorlog'),

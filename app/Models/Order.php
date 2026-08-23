@@ -15,11 +15,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property OrderStatus $status
+ * @property int $total_price_cents
  * @property CarbonInterface|null $confirmed_at
  * @property array<string, mixed>|null $metadata
  * @property-read User|null $confirmedByUser
  */
-#[Fillable(['service_point_id', 'table_session_id', 'draft_order_id', 'confirmed_by_user_id', 'confirmed_at', 'total_price', 'currency', 'metadata'])]
+#[Fillable(['service_point_id', 'table_session_id', 'draft_order_id', 'confirmed_by_user_id', 'confirmed_at', 'total_price_cents', 'currency', 'metadata'])]
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
@@ -30,7 +31,7 @@ class Order extends Model
      */
     protected $attributes = [
         'status' => 'confirmed_by_waiter',
-        'total_price' => '0.00',
+        'total_price_cents' => 0,
         'currency' => 'EUR',
     ];
 
@@ -42,7 +43,7 @@ class Order extends Model
         return [
             'status' => OrderStatus::class,
             'confirmed_at' => 'datetime',
-            'total_price' => 'decimal:2',
+            'total_price_cents' => 'integer',
             'metadata' => 'array',
         ];
     }

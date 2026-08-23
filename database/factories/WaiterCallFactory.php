@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\WaiterCallStatus;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\User;
 use App\Models\WaiterCall;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -73,6 +76,24 @@ class WaiterCallFactory extends Factory
         return $this->state(fn (): array => [
             'status' => WaiterCallStatus::Handled,
             'handled_at' => now(),
+        ]);
+    }
+
+    public function pending(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => WaiterCallStatus::Pending,
+            'handled_at' => null,
+            'handled_by_user_id' => null,
+        ]);
+    }
+
+    public function handledBy(User $user): static
+    {
+        return $this->state(fn (): array => [
+            'status' => WaiterCallStatus::Handled,
+            'handled_at' => now(),
+            'handled_by_user_id' => $user->id,
         ]);
     }
 }

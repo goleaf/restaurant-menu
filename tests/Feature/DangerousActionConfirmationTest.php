@@ -17,6 +17,8 @@ test('dangerous action registry covers prompt 346 actions', function () {
         'delete_or_deactivate_menu_item',
         'clear_cache_all',
         'download_backup',
+        'download_media_backup',
+        'restore_backup',
         'delete_media_file',
     ]);
 });
@@ -27,8 +29,13 @@ test('dangerous actions declare consequences and required extra confirmation', f
         ->and(DangerousAction::DisableQr->requiresReason())->toBeTrue()
         ->and(DangerousAction::CancelOrder->requiresReason())->toBeTrue()
         ->and(DangerousAction::PaymentCorrection->requiresReason())->toBeTrue()
+        ->and(DangerousAction::DownloadBackup->requiresReason())->toBeTrue()
+        ->and(DangerousAction::DownloadMediaBackup->requiresReason())->toBeTrue()
+        ->and(DangerousAction::RestoreBackup->requiresReason())->toBeTrue()
         ->and(DangerousAction::CloseTableWithUnpaidAmount->requiresConfirmationText())->toBeTrue()
-        ->and(DangerousAction::DownloadBackup->requiresConfirmationText())->toBeTrue();
+        ->and(DangerousAction::DownloadBackup->requiresConfirmationText())->toBeTrue()
+        ->and(DangerousAction::DownloadMediaBackup->requiresConfirmationText())->toBeTrue()
+        ->and(DangerousAction::RestoreBackup->requiresConfirmationText())->toBeTrue();
 });
 
 test('dangerous confirmations use prompt 410 semantic translation keys', function () {
@@ -51,6 +58,10 @@ test('dangerous confirmations use prompt 410 semantic translation keys', functio
         'ui.confirmations.close_unpaid_session.description',
         'ui.confirmations.deactivate_staff.title',
         'ui.confirmations.deactivate_staff.description',
+        'ui.confirmations.download_media_backup.title',
+        'ui.confirmations.download_media_backup.description',
+        'ui.confirmations.download_media_backup.confirmation_required',
+        'ui.confirmations.download_media_backup.confirmation_match',
         'ui.actions.confirm',
         'ui.actions.cancel',
         'ui.actions.continue',

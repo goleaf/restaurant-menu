@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
-use App\Actions\Payments\ResolvePaymentAccessibleBranchIdsAction;
+use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
+use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Models\TableSession;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -21,18 +22,16 @@ abstract class TableDetailSection extends Component
 
     private BuildWaiterTableDetailAction $buildWaiterTableDetail;
 
-    private ResolveWaiterAccessibleBranchIdsAction $resolveWaiterAccessibleBranchIds;
-
-    private ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccessibleBranchIds;
+    protected TableDetailChangeDetector $changeDetector;
 
     public function boot(
         BuildWaiterTableDetailAction $buildWaiterTableDetail,
-        ResolveWaiterAccessibleBranchIdsAction $resolveWaiterAccessibleBranchIds,
-        ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccessibleBranchIds,
+        TableDetailChangeDetector $changeDetector,
+        BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
+        GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
     ): void {
         $this->buildWaiterTableDetail = $buildWaiterTableDetail;
-        $this->resolveWaiterAccessibleBranchIds = $resolveWaiterAccessibleBranchIds;
-        $this->resolvePaymentAccessibleBranchIds = $resolvePaymentAccessibleBranchIds;
+        $this->changeDetector = $changeDetector;
     }
 
     protected function currentUser(): User
@@ -54,21 +53,29 @@ abstract class TableDetailSection extends Component
             ->firstOrFail();
     }
 
-    protected function authorizeCurrentTableSession(): TableSession
+    protected function authorizeViewableTableSession(): TableSession
     {
         $tableSession = $this->currentTableSession();
-        $user = $this->currentUser();
-        $branchId = (int) $tableSession->branch_id;
-        $hasWaiterAccess = $this->resolveWaiterAccessibleBranchIds
-            ->handle($user)
-            ->contains($branchId);
-        $hasPaymentAccess = $this->resolvePaymentAccessibleBranchIds
-            ->viewableBranchIds($user)
-            ->contains($branchId);
 
-        if (! $hasWaiterAccess && ! $hasPaymentAccess) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('view', $tableSession);
+
+        return $tableSession;
+    }
+
+    protected function authorizeWaiterTableSession(): TableSession
+    {
+        $tableSession = $this->currentTableSession();
+
+        Gate::forUser($this->currentUser())->authorize('viewOrders', $tableSession);
+
+        return $tableSession;
+    }
+
+    protected function authorizePaymentTableSession(): TableSession
+    {
+        $tableSession = $this->currentTableSession();
+
+        Gate::forUser($this->currentUser())->authorize('viewPayments', $tableSession);
 
         return $tableSession;
     }
@@ -76,9 +83,20 @@ abstract class TableDetailSection extends Component
     /**
      * @return array<string, mixed>
      */
-    protected function freshTablePayload(): array
+    protected function freshViewableTablePayload(): array
     {
-        $tableSession = $this->authorizeCurrentTableSession();
+        return $this->buildTablePayload($this->authorizeViewableTableSession());
+    }
+
+    /** @return array<string, mixed> */
+    protected function freshWaiterTablePayload(): array
+    {
+        return $this->buildTablePayload($this->authorizeWaiterTableSession());
+    }
+
+    /** @return array<string, mixed> */
+    private function buildTablePayload(TableSession $tableSession): array
+    {
         $payload = $this->buildWaiterTableDetail->handle($this->currentUser(), $tableSession);
 
         if (! $payload['has_access'] || ! is_array($payload['table'])) {

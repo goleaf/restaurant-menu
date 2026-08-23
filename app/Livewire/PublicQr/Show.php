@@ -261,4 +261,3 @@ class Show extends Component
         session()->put('interface_locale', $this->language);
     }
 }
-

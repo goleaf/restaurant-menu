@@ -8,9 +8,9 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Livewire\PublicQr\JoinRequests;
-use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -37,7 +37,7 @@ test('first guest enters by qr name and receives guest token for a new table ses
         ->assertSee('data-page="guest-qr-landing"', false)
         ->assertSeeText('Prompt 353 Table');
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->set('guestName', '  Ana   Maria  ')
         ->call('enterTable')
@@ -72,7 +72,7 @@ test('first guest enters by qr name and receives guest token for a new table ses
 test('second guest on an existing active session creates join request without table access', function () {
     [$qrCode, , $tableSession] = createPrompt353ActiveTableContext();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Boris')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -123,7 +123,7 @@ test('active guest approves join request and approved guest sees table page', fu
         ->firstOrFail();
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $joinRequest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $approvedGuest->id)
         ->assertSet('guestCanViewTable', true)
@@ -148,7 +148,7 @@ test('active guest rejects join request and rejected guest cannot add items', fu
         ]);
 
     $waitingGuest = Livewire::withCookie(prompt353GuestCookieName($qrCode), $joinRequest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentJoinRequestId', $joinRequest->id)
         ->assertSet('guestCanAddItems', false);
 
@@ -195,7 +195,7 @@ test('active guest token refresh restores session without another approval', fun
     [$qrCode, , $tableSession, $activeGuest] = createPrompt353ActiveTableContext();
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('preparedGuestName', $activeGuest->guest_name)
         ->assertSet('currentTableSessionId', $tableSession->id)
@@ -221,7 +221,7 @@ test('closed session blocks old guest actions and fresh qr scan can start a new 
     ])->save();
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $activeGuest->id)
         ->assertSet('entryState', 'guest_blocked')
@@ -247,7 +247,7 @@ test('closed session blocks old guest actions and fresh qr scan can start a new 
     session()->forget('guest_entries.'.$qrCode->public_token);
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), 'fresh-scan-without-old-guest-token')
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Fresh Guest')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value)
@@ -344,7 +344,7 @@ function createPrompt353MenuItem(Branch $branch): MenuItem
         ->for($category, 'category')
         ->create([
             'name' => 'Prompt 353 Soup',
-            'price' => '7.50',
+            'price_cents' => 750,
             'is_available' => true,
         ]);
 }

@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\AreaNodes\DeleteAreaNodeAction;
+use App\Actions\AreaNodes\SetAreaNodeActiveAction;
 use App\Actions\AreaNodes\UpdateAreaNodeAction;
 use App\Enums\AreaNodeType;
 use App\Models\AreaNode;
@@ -179,14 +180,14 @@ class Areas extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_updated'));
     }
 
-    public function disable(int $areaNodeId): void
+    public function disable(int $areaNodeId, SetAreaNodeActiveAction $setActive): void
     {
-        $this->setActive($areaNodeId, false);
+        $this->setActive($areaNodeId, false, $setActive);
     }
 
-    public function enable(int $areaNodeId): void
+    public function enable(int $areaNodeId, SetAreaNodeActiveAction $setActive): void
     {
-        $this->setActive($areaNodeId, true);
+        $this->setActive($areaNodeId, true, $setActive);
     }
 
     public function confirmDelete(int $areaNodeId): void
@@ -509,12 +510,12 @@ class Areas extends Component
         };
     }
 
-    private function setActive(int $areaNodeId, bool $isActive): void
+    private function setActive(int $areaNodeId, bool $isActive, SetAreaNodeActiveAction $setActive): void
     {
         $this->authorizeZoneManagement();
 
         $areaNode = $this->findBranchAreaNode($areaNodeId);
-        $areaNode->update(['is_active' => $isActive]);
+        $setActive->handle($areaNode, $isActive);
 
         unset($this->areaNodes, $this->treeNodes);
     }

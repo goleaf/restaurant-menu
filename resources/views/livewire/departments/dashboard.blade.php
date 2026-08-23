@@ -44,7 +44,7 @@
     ]" />
 
     <div class="grid gap-5 2xl:grid-cols-2">
-        @forelse ($presentedTickets as $ticket)
+        @forelse ($tickets as $ticket)
             <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                 <header class="border-b border-zinc-200 p-5 dark:border-zinc-800">
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-start">
@@ -77,9 +77,30 @@
                             </div>
                         </div>
 
-                        <div class="rounded-lg border p-4 text-center {{ $ticket['timer_classes'] }}">
-                            <p class="text-sm font-medium">{{ __('ui.departments.dashboard.timer') }}</p>
-                            <p class="mt-1 text-4xl font-semibold tabular-nums">{{ $ticket['elapsed_label'] }}</p>
+                        <div
+                            data-kitchen-delay-timer
+                            data-elapsed-seconds="{{ $ticket['elapsed_seconds'] }}"
+                            data-attention-after-seconds="{{ $ticket['attention_after_seconds'] }}"
+                            data-delayed-after-seconds="{{ $ticket['delayed_after_seconds'] }}"
+                            data-delay-state="{{ $ticket['delay_state'] }}"
+                            data-label-on-track="{{ __('ui.departments.dashboard.delay_status.on_track') }}"
+                            data-label-attention="{{ __('ui.departments.dashboard.delay_status.attention') }}"
+                            data-label-delayed="{{ __('ui.departments.dashboard.delay_status.delayed') }}"
+                            data-delay-template="{{ __('ui.departments.dashboard.delay_by', ['time' => ':time']) }}"
+                            class="rounded-lg border p-4 text-center data-[delay-state=attention]:border-amber-200 data-[delay-state=attention]:bg-amber-50 data-[delay-state=attention]:text-amber-950 data-[delay-state=delayed]:border-rose-200 data-[delay-state=delayed]:bg-rose-50 data-[delay-state=delayed]:text-rose-950 data-[delay-state=on-track]:border-emerald-200 data-[delay-state=on-track]:bg-emerald-50 data-[delay-state=on-track]:text-emerald-950 dark:data-[delay-state=attention]:border-amber-900/60 dark:data-[delay-state=attention]:bg-amber-950/30 dark:data-[delay-state=attention]:text-amber-100 dark:data-[delay-state=delayed]:border-rose-900/60 dark:data-[delay-state=delayed]:bg-rose-950/30 dark:data-[delay-state=delayed]:text-rose-100 dark:data-[delay-state=on-track]:border-emerald-900/60 dark:data-[delay-state=on-track]:bg-emerald-950/30 dark:data-[delay-state=on-track]:text-emerald-100"
+                        >
+                            <p class="text-sm font-medium">{{ __('ui.departments.dashboard.preparation_time') }}</p>
+                            <time
+                                data-kitchen-delay-value
+                                datetime="PT{{ $ticket['elapsed_seconds'] }}S"
+                                class="mt-1 block text-4xl font-semibold tabular-nums"
+                            >{{ $ticket['elapsed_label'] }}</time>
+                            <p data-kitchen-delay-status role="status" aria-atomic="true" class="mt-2 text-sm font-semibold">
+                                {{ $ticket['delay_status_label'] }}
+                            </p>
+                            <p data-kitchen-delay-overrun class="mt-1 text-xs font-medium" @if ($ticket['delay_description'] === null) hidden @endif>
+                                {{ $ticket['delay_description'] }}
+                            </p>
                         </div>
                     </div>
                 </header>

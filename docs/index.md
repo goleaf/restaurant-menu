@@ -13,7 +13,7 @@
 7. [`localization.md`](localization.md), [`testing.md`](testing.md), [`seeding.md`](seeding.md) — contribution workflows.
 8. [`performance.md`](performance.md), [`caching.md`](caching.md), [`integrations.md`](integrations.md) — runtime behaviour.
 9. [`deployment.md`](deployment.md), [`operations.md`](operations.md) — shared-hosting delivery and operation.
-10. [`current-state-audit.md`](current-state-audit.md), [`implementation-plan.md`](implementation-plan.md), [`code-review.md`](code-review.md), [`known-limitations.md`](known-limitations.md) — modernization evidence.
+10. Root [`ROADMAP.md`](../ROADMAP.md) — the only active delivery roadmap; [`current-state-audit.md`](current-state-audit.md), [`code-review.md`](code-review.md), and [`known-limitations.md`](known-limitations.md) retain modernization evidence.
 11. [`decisions/`](decisions/) — accepted architecture decisions.
 
 ## Requirement views

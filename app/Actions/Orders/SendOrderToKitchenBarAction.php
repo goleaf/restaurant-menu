@@ -1,16 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Orders;
 
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
-use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
@@ -20,12 +20,12 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class SendOrderToKitchenBarAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly SeedKitchenDepartmentsForBranchAction $seedKitchenDepartments,
@@ -97,7 +97,7 @@ class SendOrderToKitchenBarAction
                 'status',
                 'confirmed_by_user_id',
                 'confirmed_at',
-                'total_price',
+                'total_price_cents',
                 'currency',
                 'metadata',
             ])
@@ -117,12 +117,14 @@ class SendOrderToKitchenBarAction
                         'guest_name_snapshot',
                         'item_name',
                         'item_name_snapshot',
+                        'variant_name',
                         'quantity',
                         'selected_modifiers',
                         'modifiers_snapshot',
                         'comment',
                         'created_at',
                     ])
+                    ->active()
                     ->with(['kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'type', 'name'])]),
                 'kitchenTickets' => fn ($query) => $query
                     ->select([
@@ -155,9 +157,7 @@ class SendOrderToKitchenBarAction
 
     private function ensureCanSend(Order $order, User $user): void
     {
-        $branchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::SendToKitchen);
-
-        if (! $branchIds->contains((int) $order->branch_id)) {
+        if (Gate::forUser($user)->denies('sendToKitchen', $order)) {
             throw ValidationException::withMessages([
                 'order_dispatch' => __('ui.actions.orders.sendordertokitchenbaraction.u_vas_net_prava_otpravliat_za'),
             ]);
@@ -207,7 +207,7 @@ class SendOrderToKitchenBarAction
                     'table_session_guest_id' => $item->table_session_guest_id,
                     'menu_item_id' => $item->menu_item_id,
                     'guest_name' => $item->historicalGuestName(),
-                    'item_name' => $item->historicalItemName(),
+                    'item_name' => $this->kitchenItemName($item),
                     'quantity' => $item->quantity,
                     'selected_modifiers' => $item->historicalModifiers(),
                     'comment' => $item->comment,
@@ -218,6 +218,13 @@ class SendOrderToKitchenBarAction
         }
 
         return $tickets;
+    }
+
+    private function kitchenItemName(OrderItem $item): string
+    {
+        $itemName = $item->historicalItemName();
+
+        return filled($item->variant_name) ? $itemName.' · '.$item->variant_name : $itemName;
     }
 
     /**

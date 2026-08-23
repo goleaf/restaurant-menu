@@ -14,7 +14,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\Organizations\Brands\Branches\Settings;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -124,7 +124,7 @@ test('public qr opens during temporary closed mode and guest can view menu witho
 
     [$qrCode] = createPrompt103GuestContext(withActiveSession: false);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('landing.opening_status_label', __('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->assertSet('landing.can_accept_orders', false)
         ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
@@ -268,7 +268,7 @@ function createPrompt103GuestContext(bool $withActiveSession = true): array
         ->for($category, 'category')
         ->create([
             'name' => 'Margherita',
-            'price' => '14.50',
+            'price_cents' => 1450,
             'is_available' => true,
         ]);
 

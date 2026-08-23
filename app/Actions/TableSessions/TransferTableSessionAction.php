@@ -1,24 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
 use App\Enums\ServicePointStatus;
-use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class TransferTableSessionAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
@@ -114,7 +114,7 @@ class TransferTableSessionAction
 
     private function ensureCanTransfer(TableSession $tableSession, ServicePoint $targetServicePoint, User $transferredBy): void
     {
-        if (! $this->userCanTransfer($transferredBy, (int) $tableSession->branch_id)) {
+        if (Gate::forUser($transferredBy)->denies('transfer', $tableSession)) {
             throw ValidationException::withMessages([
                 'table_session_transfer' => __('ui.actions.tablesessions.transfertablesessionaction.u_vas_net_prava_perenos'),
             ]);
@@ -150,19 +150,6 @@ class TransferTableSessionAction
                 'transferTargetServicePointId' => __('ui.actions.tablesessions.transfertablesessionaction.novoe_mesto_uze_zaniato'),
             ]);
         }
-    }
-
-    private function userCanTransfer(User $user, int $branchId): bool
-    {
-        $viewOrderBranchIds = $this->resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ViewOrders);
-        $confirmOrderBranchIds = $this->resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ConfirmOrders);
-
-        return $viewOrderBranchIds
-            ->merge($confirmOrderBranchIds)
-            ->unique()
-            ->contains($branchId);
     }
 
     private function targetHasOpenSession(ServicePoint $targetServicePoint): bool

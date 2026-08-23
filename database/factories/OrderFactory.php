@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\OrderStatus;
@@ -34,7 +36,7 @@ class OrderFactory extends Factory
             'status' => OrderStatus::ConfirmedByWaiter,
             'confirmed_by_user_id' => null,
             'confirmed_at' => now(),
-            'total_price' => '0.00',
+            'total_price_cents' => 0,
             'currency' => 'EUR',
             'metadata' => [],
         ];
@@ -77,6 +79,30 @@ class OrderFactory extends Factory
         return $this->state(fn (): array => [
             'status' => OrderStatus::Served,
             'confirmed_at' => now()->subMinutes(15),
+        ]);
+    }
+
+    public function paymentRequested(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::PaymentRequested,
+            'confirmed_at' => now()->subMinutes(20),
+        ]);
+    }
+
+    public function paid(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::Paid,
+            'confirmed_at' => now()->subMinutes(25),
+        ]);
+    }
+
+    public function closed(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => OrderStatus::Closed,
+            'confirmed_at' => now()->subMinutes(30),
         ]);
     }
 

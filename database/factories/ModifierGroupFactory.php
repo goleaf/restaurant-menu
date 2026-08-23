@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\Branch;
 use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -26,5 +29,28 @@ class ModifierGroupFactory extends Factory
             'max_select' => 1,
             'sort_order' => 0,
         ];
+    }
+
+    public function required(int $min = 1, int $max = 1): static
+    {
+        return $this->state(fn (): array => [
+            'is_required' => true,
+            'min_select' => max(1, $min),
+            'max_select' => max(max(1, $min), $max),
+        ]);
+    }
+
+    public function optional(int $max = 1): static
+    {
+        return $this->state(fn (): array => [
+            'is_required' => false,
+            'min_select' => 0,
+            'max_select' => max(1, $max),
+        ]);
+    }
+
+    public function withOptions(int $count = 2): static
+    {
+        return $this->has(ModifierOption::factory()->count($count), 'options');
     }
 }

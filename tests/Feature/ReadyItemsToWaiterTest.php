@@ -16,7 +16,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
+use App\Livewire\Waiter\TableDetail\OrderFulfilment;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -75,19 +75,18 @@ test('ready kitchen items appear for waiter and can be marked served', function 
         ->assertSee('Ready');
 
     Livewire::actingAs($waiter)
-        ->test(WaiterTableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.draft.order_status_value', OrderStatus::Ready->value)
-        ->assertSet('table.draft.ready_ticket_item_count', 1)
-        ->assertSet('table.draft.served_ticket_item_count', 0)
-        ->assertSee($organization->name)
+        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('orderFulfilment.draft.order_status_value', OrderStatus::Ready->value)
+        ->assertSet('orderFulfilment.draft.ready_ticket_item_count', 1)
+        ->assertSet('orderFulfilment.draft.served_ticket_item_count', 0)
         ->assertSee('Kitchen/bar positions')
         ->assertSee('Prompt 63 Pizza')
         ->assertSee('Ready')
         ->assertSee('Mark served')
         ->call('markTicketItemServed', $ticketItem->id)
         ->assertHasNoErrors()
-        ->assertSet('table.draft.order_status_value', OrderStatus::Served->value)
-        ->assertSet('table.draft.served_ticket_item_count', 1)
+        ->assertSet('orderFulfilment.draft.order_status_value', OrderStatus::Served->value)
+        ->assertSet('orderFulfilment.draft.served_ticket_item_count', 1)
         ->assertSee('Served')
         ->assertDontSee('Mark served');
 
@@ -164,7 +163,7 @@ function createPrompt63ReadyItemScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 63 Pizza',
-            'price' => '14.00',
+            'price_cents' => 1400,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -181,9 +180,9 @@ function createPrompt63ReadyItemScenario(): array
         ->create([
             'item_name' => 'Prompt 63 Pizza',
             'quantity' => 1,
-            'unit_price' => '14.00',
-            'modifier_total' => '0.00',
-            'total_price' => '14.00',
+            'unit_price_cents' => 1400,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1400,
             'selected_modifiers' => [],
             'comment' => 'Ready handoff test',
         ]);

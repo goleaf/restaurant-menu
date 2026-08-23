@@ -6,22 +6,20 @@ namespace App\Actions\TableSessions;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
 use App\Enums\ServicePointStatus;
-use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionServicePoint;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class MergeTableSessionServicePointAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
@@ -109,7 +107,7 @@ class MergeTableSessionServicePointAction
 
     private function ensureCanMerge(TableSession $tableSession, ServicePoint $servicePointToLink, User $linkedBy): void
     {
-        if (! $this->userCanMerge($linkedBy, (int) $tableSession->branch_id)) {
+        if (Gate::forUser($linkedBy)->denies('merge', $tableSession)) {
             throw ValidationException::withMessages([
                 'table_session_merge' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.u_vas_net_prav'),
             ]);
@@ -146,19 +144,6 @@ class MergeTableSessionServicePointAction
                 'mergeTargetServicePointId' => __('ui.actions.tablesessions.mergetablesessionservicepointaction.eto_mesto_uze'),
             ]);
         }
-    }
-
-    private function userCanMerge(User $user, int $branchId): bool
-    {
-        $viewOrderBranchIds = $this->resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ViewOrders);
-        $confirmOrderBranchIds = $this->resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ConfirmOrders);
-
-        return $viewOrderBranchIds
-            ->merge($confirmOrderBranchIds)
-            ->unique()
-            ->contains($branchId);
     }
 
     private function targetHasOpenSession(ServicePoint $servicePoint): bool

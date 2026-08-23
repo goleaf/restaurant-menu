@@ -60,6 +60,7 @@ test('manager sees restaurant dashboard metrics and quick actions', function () 
         ->and($dashboard['metrics']['ready_positions_count'])->toBe(1)
         ->and($dashboard['metrics']['orders_today_total'])->toBe('32.00 EUR')
         ->and($dashboard['popular_items'][0]['item_name'])->toBe('Pasta')
+        ->and(collect($dashboard['popular_items'])->pluck('item_name')->all())->not->toContain('Cancelled Burger')
         ->and(collect($dashboard['quick_actions'])->where('is_available', true)->pluck('label')->all())
         ->toContain('Menu', 'Tables', 'QR', 'Waiter screen', 'Kitchen', 'reports.title');
 
@@ -180,7 +181,7 @@ function createPrompt70DashboardContext(): array
         ->create([
             'status' => OrderStatus::SentToKitchenBar,
             'confirmed_at' => CarbonImmutable::parse('2026-06-04 12:10:00'),
-            'total_price' => '32.00',
+            'total_price_cents' => 3200,
             'currency' => 'EUR',
         ]);
     $orderItem = OrderItem::factory()
@@ -189,8 +190,16 @@ function createPrompt70DashboardContext(): array
             'guest_name' => 'Ana',
             'item_name' => 'Pasta',
             'quantity' => 2,
-            'unit_price' => '16.00',
-            'total_price' => '32.00',
+            'unit_price_cents' => 1600,
+            'total_price_cents' => 3200,
+        ]);
+    OrderItem::factory()
+        ->for($order)
+        ->cancelled()
+        ->create([
+            'item_name' => 'Cancelled Burger',
+            'quantity' => 100,
+            'total_price_cents' => 90000,
         ]);
     $department = KitchenDepartment::factory()
         ->for($branch)

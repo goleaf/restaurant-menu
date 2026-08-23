@@ -11,7 +11,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\Organizations\Brands\Branches\Settings;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Models\BranchOpeningHour;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -122,7 +122,7 @@ test('public qr opens when branch is closed and lets guest view the table withou
 
     [$qrCode] = createPrompt102GuestContext(scheduleIsClosedNow: true, withActiveSession: false);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('landing.opening_status_label', __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
         ->assertSet('landing.opening_status_detail', __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']))
         ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
@@ -238,7 +238,7 @@ function createPrompt102GuestContext(bool $scheduleIsClosedNow, bool $withActive
         ->for($category, 'category')
         ->create([
             'name' => 'Margherita',
-            'price' => '14.50',
+            'price_cents' => 1450,
             'is_available' => true,
         ]);
 

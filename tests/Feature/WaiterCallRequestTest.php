@@ -7,7 +7,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\WaiterCallStatus;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestActions;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -59,9 +59,11 @@ test('active guest can request waiter and waiter handles the database notificati
     [$qrCode, $servicePoint, $tableSession, $activeGuest, $waiter] = createPrompt65WaiterCallContext();
 
     $guestComponent = Livewire::withCookie(prompt65GuestCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentTableSessionId', $tableSession->id)
-        ->assertSet('currentGuestId', $activeGuest->id)
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+        ])
         ->assertSeeText('Call waiter')
         ->call('requestWaiter')
         ->assertSet('waiterCallPending', true)
@@ -107,10 +109,34 @@ test('non active guest cannot request waiter from an old guest token', function 
     $activeGuest->forceFill(['status' => TableSessionGuestStatus::Removed])->save();
 
     Livewire::withCookie(prompt65GuestCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestActions::class, [
+            'tableSessionId' => $activeGuest->table_session_id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+        ])
         ->call('requestWaiter')
         ->assertSet('waiterCallPending', false)
         ->assertSet('waiterCallMessage', 'Only an active guest at this table can call the waiter.');
+
+    expect(WaiterCall::query()->exists())->toBeFalse()
+        ->and($waiter->notifications()->exists())->toBeFalse();
+});
+
+test('guest cannot request waiter by pairing their token with another guest identifier', function () {
+    [$qrCode, , $tableSession, $activeGuest, $waiter] = createPrompt65WaiterCallContext();
+    $otherGuest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create(['status' => TableSessionGuestStatus::Active]);
+
+    Livewire::withCookie(prompt65GuestCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $otherGuest->id,
+            'publicToken' => $qrCode->public_token,
+        ])
+        ->call('requestWaiter')
+        ->assertSet('waiterCallPending', false)
+        ->assertSet('waiterCallMessage', __('guest.table.waiter_requires_active_guest'));
 
     expect(WaiterCall::query()->exists())->toBeFalse()
         ->and($waiter->notifications()->exists())->toBeFalse();

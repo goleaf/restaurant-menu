@@ -88,6 +88,14 @@ class BuildDataExportsIndexAction
                     ]),
                 ])
                 ->all(),
+            'pdf_downloads' => collect(DataExportType::cases())
+                ->mapWithKeys(fn (DataExportType $type): array => [
+                    $type->value => route('restaurant.exports.pdf', [
+                        'branch' => $branch,
+                        'export' => $type->value,
+                    ]),
+                ])
+                ->all(),
         ];
     }
 }

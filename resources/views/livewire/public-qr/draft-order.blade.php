@@ -179,6 +179,10 @@
                                     <div class="min-w-0">
                                         <x-ui.plain-text :text="$item['item_name']" class="block text-sm font-semibold leading-5 text-zinc-950 dark:text-white" :preserve-lines="false" />
 
+                                        @if ($item['variant_name'])
+                                            <p class="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">{{ $item['variant_name'] }}</p>
+                                        @endif
+
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                             {{ __('guest.cart.price') }}: {{ $item['total_price'] }} {{ $currency }}
 
@@ -377,6 +381,24 @@
                         @enderror
                     </label>
 
+                    @if ($editingVariants !== [])
+                        <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ __('menu.variants.guest.choose') }}</legend>
+                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                @foreach ($editingVariants as $variant)
+                                    <label wire:key="draft-order-edit-variant-{{ $variant['id'] }}" class="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-emerald-500/30 dark:border-zinc-800">
+                                        <span class="flex items-center gap-2">
+                                            <input type="radio" wire:model.live="editingItemVariantId" value="{{ $variant['id'] }}" class="size-4 accent-emerald-600">
+                                            <span class="font-medium">{{ $variant['name'] }}</span>
+                                        </span>
+                                        <span class="font-semibold">{{ $variant['formatted_price'] }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error('editingItemVariantId') <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                        </fieldset>
+                    @endif
+
                     @forelse ($editingModifierGroups as $modifierGroup)
                         <fieldset wire:key="draft-order-edit-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                             <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">
@@ -408,7 +430,7 @@
                                     >
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">
-                                            {{ ((float) $modifierOption['price_delta']) >= 0 ? '+' : '' }}{{ $modifierOption['price_delta'] }} {{ $currency }}
+                                            {{ $modifierOption['formatted_price_delta'] }}
                                         </span>
                                     </button>
                                 @empty

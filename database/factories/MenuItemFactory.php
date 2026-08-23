@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
+use App\Enums\MenuAllergen;
+use App\Enums\MenuDietaryLabel;
 use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -30,7 +35,9 @@ class MenuItemFactory extends Factory
             'kitchen_department_id' => null,
             'name' => fake()->unique()->words(3, true),
             'description' => fake()->optional()->sentence(),
-            'price' => fake()->randomFloat(2, 1, 80),
+            'price_cents' => fake()->numberBetween(100, 8000),
+            'allergens' => [],
+            'dietary_labels' => [],
             'image' => null,
             'weight' => fake()->optional()->randomFloat(2, 50, 1200),
             'volume' => fake()->optional()->randomFloat(2, 0.1, 2),
@@ -54,6 +61,34 @@ class MenuItemFactory extends Factory
         ]);
     }
 
+    public function withAllergens(MenuAllergen ...$allergens): static
+    {
+        if ($allergens === []) {
+            $allergens = [MenuAllergen::Gluten, MenuAllergen::Milk];
+        }
+
+        return $this->state(fn (): array => [
+            'allergens' => array_map(
+                fn (MenuAllergen $allergen): string => $allergen->value,
+                $allergens,
+            ),
+        ]);
+    }
+
+    public function withDietaryLabels(MenuDietaryLabel ...$labels): static
+    {
+        if ($labels === []) {
+            $labels = [MenuDietaryLabel::Vegetarian];
+        }
+
+        return $this->state(fn (): array => [
+            'dietary_labels' => array_map(
+                fn (MenuDietaryLabel $label): string => $label->value,
+                $labels,
+            ),
+        ]);
+    }
+
     public function withModifiers(int $groups = 1, int $optionsPerGroup = 2): static
     {
         return $this->afterCreating(function (MenuItem $menuItem) use ($groups, $optionsPerGroup): void {
@@ -73,12 +108,26 @@ class MenuItemFactory extends Factory
         });
     }
 
-    /**
-     * Menu variants are currently represented by modifier groups and options.
-     */
-    public function withVariants(int $groups = 1, int $optionsPerGroup = 2): static
+    public function withVariants(int $count = 2): static
     {
-        return $this->withModifiers($groups, $optionsPerGroup);
+        return $this->afterCreating(function (MenuItem $menuItem) use ($count): void {
+            foreach (range(1, max(1, $count)) as $position) {
+                MenuItemVariant::factory()
+                    ->for($menuItem, 'item')
+                    ->portion()
+                    ->state([
+                        'name' => match ($position) {
+                            1 => 'Regular portion',
+                            2 => 'Large portion',
+                            default => "Portion {$position}",
+                        },
+                        'price_cents' => $menuItem->price_cents + (($position - 1) * 300),
+                        'is_default' => $position === 1,
+                        'sort_order' => $position * 10,
+                    ])
+                    ->create();
+            }
+        });
     }
 
     public function assignedToDepartment(?KitchenDepartment $department = null): static

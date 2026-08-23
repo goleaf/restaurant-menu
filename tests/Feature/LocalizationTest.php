@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SupportedLocale;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\Settings\Profile;
 use App\Models\Branch;
@@ -75,7 +76,9 @@ test('guest qr page uses branch default language and can switch language', funct
         ->assertSee('Jūsų vardas')
         ->assertSee('Įveskite vardą, kad tęstumėte.')
         ->set('language', 'en')
-        ->assertSet('language', 'en')
+        ->assertSet('language', 'en');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token, 'language' => 'en'])
         ->assertSee('Your name')
         ->assertSee('Enter your name to continue.');
 });

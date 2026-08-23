@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property string $service_charge_percent
+ * @property int $service_charge_basis_points
  * @property BranchOrderFlowMode $order_flow_mode
  * @property list<string> $service_modes
  */
@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'default_language',
     'default_currency',
     'service_charge_enabled',
-    'service_charge_percent',
+    'service_charge_basis_points',
     'tips_enabled',
     'order_flow_mode',
     'service_modes',
@@ -55,7 +55,7 @@ class BranchSetting extends Model
         'default_language' => 'en',
         'default_currency' => 'EUR',
         'service_charge_enabled' => false,
-        'service_charge_percent' => '0.00',
+        'service_charge_basis_points' => 0,
         'tips_enabled' => false,
         'order_flow_mode' => 'waiter_confirmation',
         'service_modes' => '["dine_in"]',
@@ -76,7 +76,7 @@ class BranchSetting extends Model
             'inactivity_warning_minutes' => 'integer',
             'pending_session_expire_minutes' => 'integer',
             'service_charge_enabled' => 'boolean',
-            'service_charge_percent' => 'decimal:2',
+            'service_charge_basis_points' => 'integer',
             'tips_enabled' => 'boolean',
             'order_flow_mode' => BranchOrderFlowMode::class,
             'service_modes' => 'array',
@@ -104,7 +104,7 @@ class BranchSetting extends Model
      *     default_language: string,
      *     default_currency: string,
      *     service_charge_enabled: bool,
-     *     service_charge_percent: string,
+     *     service_charge_basis_points: int,
      *     tips_enabled: bool,
      *     order_flow_mode: string,
      *     service_modes: list<string>
@@ -124,7 +124,7 @@ class BranchSetting extends Model
             'default_language' => 'en',
             'default_currency' => SupportedCurrency::normalize($branch?->currency),
             'service_charge_enabled' => false,
-            'service_charge_percent' => '0.00',
+            'service_charge_basis_points' => 0,
             'tips_enabled' => false,
             'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,
             'service_modes' => BranchServiceMode::defaultValues(),

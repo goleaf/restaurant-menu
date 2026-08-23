@@ -38,10 +38,11 @@ class AddManualWaiterOrderItemAction
         MenuItem $menuItem,
         int $quantity,
         array $selectedModifierOptions,
+        ?int $menuItemVariantId = null,
         ?string $comment = null,
         ?string $itemName = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $waiter, $guest, $guestName, $menuItem, $quantity, $selectedModifierOptions, $comment, $itemName): DraftOrderItem {
+        return DB::transaction(function () use ($tableSession, $waiter, $guest, $guestName, $menuItem, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $itemName): DraftOrderItem {
             $tableSession = $this->reloadTableSession($tableSession);
 
             $this->ensureCanEnterManualOrder($tableSession, $waiter);
@@ -56,6 +57,7 @@ class AddManualWaiterOrderItemAction
                 editedBy: $waiter,
                 quantity: $quantity,
                 selectedModifierOptions: $selectedModifierOptions,
+                menuItemVariantId: $menuItemVariantId,
                 comment: $comment,
                 itemName: $itemName,
             );

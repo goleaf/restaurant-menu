@@ -232,7 +232,7 @@ class Show extends Component
 
     private function authorizeQrManagement(): void
     {
-        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
+        Gate::forUser($this->currentUser())->authorize('manage', $this->qrCode);
     }
 
     private function reloadQrCode(): void

@@ -24,6 +24,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionServicePoint;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 
 class BuildWaiterTableDetailAction
@@ -123,7 +124,7 @@ class BuildWaiterTableDetailAction
                                 'status',
                                 'confirmed_at',
                                 'confirmed_by_user_id',
-                                'total_price',
+                                'total_price_cents',
                                 'metadata',
                             ])
                             ->withCount('kitchenTickets')
@@ -155,11 +156,14 @@ class BuildWaiterTableDetailAction
                                 'draft_order_id',
                                 'table_session_guest_id',
                                 'menu_item_id',
+                                'menu_item_variant_id',
                                 'item_name',
+                                'variant_name',
+                                'variant_type',
                                 'quantity',
-                                'unit_price',
-                                'modifier_total',
-                                'total_price',
+                                'unit_price_cents',
+                                'modifier_total_cents',
+                                'total_price_cents',
                                 'selected_modifiers',
                                 'comment',
                                 'created_at',
@@ -169,19 +173,50 @@ class BuildWaiterTableDetailAction
                 'orders' => fn ($query) => $query
                     ->select([
                         'id',
+                        'branch_id',
                         'table_session_id',
                         'status',
-                        'total_price',
+                        'total_price_cents',
+                        'metadata',
+                        'created_at',
                     ])
-                    ->whereNotIn('status', [OrderStatus::Cancelled->value])
-                    ->with(['items' => fn ($itemQuery) => $itemQuery->select([
-                        'id',
-                        'order_id',
-                        'total_price',
-                    ])])
+                    ->with(['items' => fn ($itemQuery) => $itemQuery
+                        ->select([
+                            'id',
+                            'order_id',
+                            'table_session_guest_id',
+                            'guest_name',
+                            'guest_name_snapshot',
+                            'item_name',
+                            'item_name_snapshot',
+                            'variant_name',
+                            'variant_type',
+                            'quantity',
+                            'total_price_cents',
+                            'selected_modifiers',
+                            'modifiers_snapshot',
+                            'comment',
+                            'cancelled_at',
+                            'cancelled_by_user_id',
+                            'cancellation_reason',
+                            'created_at',
+                        ])
+                        ->with([
+                            'cancelledByUser:id,name',
+                            'kitchenTicketItem' => fn ($ticketItemQuery) => $ticketItemQuery
+                                ->select([
+                                    'id',
+                                    'kitchen_ticket_id',
+                                    'order_item_id',
+                                    'status',
+                                    'served_at',
+                                ])
+                                ->with(['kitchenTicket:id,department_name']),
+                        ])])
                     ->orderBy('created_at')
                     ->orderBy('id'),
             ])
+            ->withExists('manualPayments')
             ->whereKey($tableSession->id)
             ->firstOrFail();
 
@@ -245,6 +280,7 @@ class BuildWaiterTableDetailAction
             || ($canManagePayments && $sessionStatus === TableSessionStatus::Paid)
         );
         $canAddManualOrderItems = $canEditPendingDraft && $sessionStatus === TableSessionStatus::Active;
+        $hasRecordedPayments = (bool) $tableSession->getAttribute('manual_payments_exists');
 
         $guestSections = $this->guestSections(
             guests: $tableSession->guests,
@@ -302,6 +338,12 @@ class BuildWaiterTableDetailAction
                 canSendToKitchen: $canSendToKitchen,
                 canCancelOrder: $canCancelOrder,
             ),
+            'orders' => $this->fulfilmentOrdersPayload(
+                orders: $tableSession->orders,
+                currency: $currency,
+                canCancelOrder: $canCancelOrder,
+                hasRecordedPayments: $hasRecordedPayments,
+            ),
             'payment' => $this->paymentPayload(
                 summary: $paymentSummary,
                 sessionStatus: $sessionStatus,
@@ -316,7 +358,9 @@ class BuildWaiterTableDetailAction
             'guest_sections' => $guestSections,
             'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
             'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
-            'confirmed_order_count' => $tableSession->orders->count(),
+            'confirmed_order_count' => $tableSession->orders
+                ->filter(fn (Order $order): bool => $order->status !== OrderStatus::Cancelled)
+                ->count(),
             'table_total' => $this->formatCents($tableTotalCents).' '.$currency,
             'total' => $this->formatCents($tableTotalCents).' '.$currency,
             'guest_count' => count($guestSections),
@@ -559,11 +603,96 @@ class BuildWaiterTableDetailAction
      */
     private function confirmedOrdersTotalCents(Collection $orders): int
     {
-        return $orders->sum(
-            fn (Order $order): int => $order->items->sum(
-                fn (OrderItem $item): int => $this->decimalToCents($item->total_price),
-            ),
-        );
+        return $orders
+            ->filter(fn (Order $order): bool => $order->status !== OrderStatus::Cancelled)
+            ->sum(
+                fn (Order $order): int => $order->items
+                    ->filter(fn (OrderItem $item): bool => ! $item->isCancelled())
+                    ->sum('total_price_cents'),
+            );
+    }
+
+    /**
+     * @param  Collection<int, Order>  $orders
+     * @return list<array<string, mixed>>
+     */
+    private function fulfilmentOrdersPayload(
+        Collection $orders,
+        string $currency,
+        bool $canCancelOrder,
+        bool $hasRecordedPayments,
+    ): array {
+        return $orders
+            ->map(function (Order $order) use ($currency, $canCancelOrder, $hasRecordedPayments): array {
+                $orderCanBeCancelled = $canCancelOrder
+                    && ! $hasRecordedPayments
+                    && $this->orderCanBeCancelled($order->status);
+
+                return [
+                    'id' => $order->id,
+                    'status_value' => $order->status->value,
+                    'status_label' => $order->status->label(),
+                    'total' => $this->formatCents($order->total_price_cents).' '.$currency,
+                    'created_at' => $order->created_at?->format('Y-m-d H:i'),
+                    'items' => $order->items
+                        ->map(fn (OrderItem $item): array => $this->fulfilmentOrderItemPayload(
+                            order: $order,
+                            item: $item,
+                            currency: $currency,
+                            canCancel: $orderCanBeCancelled,
+                        ))
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fulfilmentOrderItemPayload(Order $order, OrderItem $item, string $currency, bool $canCancel): array
+    {
+        $ticketItem = $item->kitchenTicketItem;
+        $itemCancelled = $item->isCancelled();
+        $cancelled = $itemCancelled || $order->status === OrderStatus::Cancelled;
+        $served = ! $cancelled && $ticketItem?->served_at !== null;
+        $ticketStatus = $ticketItem?->status;
+        $ready = ! $cancelled && $ticketStatus === KitchenTicketItemStatus::Ready;
+        $status = match (true) {
+            $cancelled => ['label' => __('orders.items.cancelled'), 'color' => 'red'],
+            $served => ['label' => __('guest.statuses.items.served'), 'color' => 'sky'],
+            $ready => ['label' => __('guest.statuses.items.ready'), 'color' => 'emerald'],
+            $ticketStatus === KitchenTicketItemStatus::InProgress => ['label' => __('guest.statuses.items.cooking'), 'color' => 'amber'],
+            default => ['label' => __('guest.statuses.items.accepted'), 'color' => 'emerald'],
+        };
+        $orderMetadata = is_array($order->metadata) ? $order->metadata : [];
+        $orderCancellationReason = $orderMetadata['cancellation_reason'] ?? null;
+
+        return [
+            'id' => $item->id,
+            'ticket_item_id' => $ticketItem?->id,
+            'department_name' => $ticketItem?->kitchenTicket?->department_name,
+            'guest_name' => $item->historicalGuestName(),
+            'item_name' => $item->historicalItemName(),
+            'variant_name' => $item->variant_name,
+            'quantity' => $item->quantity,
+            'total' => $this->formatCents($item->total_price_cents).' '.$currency,
+            'status_label' => $status['label'],
+            'status_color' => $status['color'],
+            'is_cancelled' => $cancelled,
+            'is_ready' => $ready,
+            'is_served' => $served,
+            'served_at' => $ticketItem?->served_at?->format('Y-m-d H:i'),
+            'cancelled_at' => $item->cancelled_at?->format('Y-m-d H:i'),
+            'cancelled_by' => $item->cancelledByUser?->name,
+            'cancellation_reason' => $item->cancellation_reason
+                ?? (is_string($orderCancellationReason) ? $orderCancellationReason : null),
+            'can_cancel' => $canCancel && ! $cancelled,
+            'comment' => $item->comment,
+            'modifiers' => $this->modifierSummary($item->historicalModifiers(), $currency),
+        ];
     }
 
     private function openDraftTotalCents(?DraftOrder $draftOrder, int $draftTotalCents): int
@@ -612,16 +741,17 @@ class BuildWaiterTableDetailAction
                 ];
             }
 
-            $itemTotalCents = $this->decimalToCents($item->total_price);
-            $unitTotalCents = max(0, $this->decimalToCents($item->unit_price) + $this->decimalToCents($item->modifier_total));
+            $itemTotalCents = $item->total_price_cents;
+            $unitTotalCents = max(0, $item->unit_price_cents + $item->modifier_total_cents);
             $guestSections[$guestId]['total_cents'] += $itemTotalCents;
             $guestSections[$guestId]['items'][] = [
                 'id' => $item->id,
                 'menu_item_id' => $item->menu_item_id,
                 'item_name' => $item->item_name,
+                'variant_name' => $item->variant_name,
                 'quantity' => $item->quantity,
-                'unit_price' => $this->formatCents($this->decimalToCents($item->unit_price)).' '.$currency,
-                'modifier_total' => $this->formatCents($this->decimalToCents($item->modifier_total)).' '.$currency,
+                'unit_price' => $this->formatCents($item->unit_price_cents).' '.$currency,
+                'modifier_total' => $this->formatCents($item->modifier_total_cents).' '.$currency,
                 'unit_total_price' => $this->formatCents($unitTotalCents).' '.$currency,
                 'total_price' => $this->formatCents($itemTotalCents).' '.$currency,
                 'comment' => $item->comment,
@@ -654,13 +784,13 @@ class BuildWaiterTableDetailAction
             ->map(function (array $modifier) use ($currency): array {
                 $groupName = (string) ($modifier['group_name'] ?? $modifier['group'] ?? '');
                 $optionName = (string) ($modifier['option_name'] ?? $modifier['option'] ?? '');
-                $priceDelta = $modifier['price_delta'] ?? null;
+                $priceDeltaCents = $modifier['price_delta_cents'] ?? null;
 
                 return [
                     'label' => trim($groupName) === '' ? $optionName : $groupName.': '.$optionName,
-                    'price_delta' => $priceDelta === null
+                    'price_delta' => $priceDeltaCents === null
                         ? null
-                        : $this->formatCents($this->decimalToCents($priceDelta)).' '.$currency,
+                        : $this->formatCents((int) $priceDeltaCents).' '.$currency,
                 ];
             })
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')
@@ -825,23 +955,8 @@ class BuildWaiterTableDetailAction
         ];
     }
 
-    private function decimalToCents(string|int|float|null $amount): int
-    {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
-    }
-
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 }

@@ -14,11 +14,11 @@ Meaningful states cover workflow values actually used by each model: active/inac
 | Fixed permissions | `SystemPermissionsSeeder` | Idempotent permission code and deterministic role grants |
 | Fixed departments | `KitchenDepartmentsSeeder` | Stable defaults attached only in an explicit restaurant graph |
 | First superadmin | `FirstSuperadminSeeder` | Explicit environment/config input; never a committed production password |
-| Demo | `DemoRestaurantSeeder` | Realistic organization/branch/menu/QR/session/staff states; refuses production |
-| Operational demo | `DemoOperationalStateSeeder` | Idempotent live, payment-requested, completed, ticket, waiter-call, payment and audit histories |
+| Demo | `DemoRestaurantSeeder` | All roles plus a realistic four-branch restaurant/menu/QR/staff graph; writes one ready SVG QR image per demo service point after the database transaction; restores owned soft-deleted menu records; refuses production |
+| Operational demo | `DemoOperationalStateSeeder` | Idempotent live, payment-requested, completed, ticket, waiter-call, payment and audit histories, including a paid order in every branch |
 | Orchestrator | `DatabaseSeeder` | Safe dependency order; no truncation; deterministic option |
 
-Demo data is fictitious and covers every meaningful staff role, ownership/non-ownership, current/historical workflow states, localized menu data, empty/normal/heavy presentation cases and local file fixtures. No seeded capability depends on the internet.
+Demo data is fictitious and covers every meaningful staff role, ownership/non-ownership, current/historical workflow states, localized menu data, empty/normal/heavy presentation cases and local file fixtures. The current deterministic snapshot contains 12 roles, 1 organization, 3 brands, 4 branches, 9 areas, 19 service points and QR codes, 19 ready SVG QR images, 4 menus, 8 categories, 20 items, 6 orders and 5 immutable payments. The images are written to `storage/app/public/demo/qr/<service-point-internal-code>.svg`; filenames contain no bearer token, repeated seeding overwrites the same paths, and `php artisan storage:link` exposes them through the configured public disk. No seeded capability depends on the internet.
 
 ## Coverage matrix
 
@@ -36,6 +36,6 @@ Demo data is fictitious and covers every meaningful staff role, ownership/non-ow
 
 - 41 first-party Eloquent models, 41 factories and 105 explicit state/relationship helpers; no exemptions.
 - Seven seeders including the orchestrator and operational demo layer.
-- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards pass in the 694-test suite.
-- Fresh isolated SQLite completed all 66 migrations and `DatabaseSeeder`; `DemoRestaurantSeeder` then passed twice in 3.62 s and 7.06 s. Demo area/service-point/menu-category icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
-- Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data.
+- `ModelFactoryAuditTest`, `FactoryStatesTest` and demo/seeder safeguards cover the complete graph, ready QR SVG contents and repeated-run file hashes.
+- Fresh isolated SQLite completed all 70 migrations; `DemoRestaurantSeeder` then passed twice in 3.983 s and 6.992 s, creating 19 QR SVGs with unchanged file hashes on the second run. The second run also preserved exact graph counts and existing order/payment IDs. Demo area/service-point/menu-category icons are restricted to supported Flux names, while presentation safely falls back for historical invalid values.
+- Fixed natural keys, FK/unique constraints and production refusal remain enabled; seeders do not truncate unrestricted data. QR files are written only after the core demo transaction commits, and a failed filesystem write raises an exception instead of silently reporting a complete seed.

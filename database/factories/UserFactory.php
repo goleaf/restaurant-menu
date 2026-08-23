@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\SupportedLocale;
@@ -47,6 +49,13 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    public function forLocale(SupportedLocale $locale): static
+    {
+        return $this->state(fn (): array => [
+            'locale' => $locale->value,
         ]);
     }
 

@@ -320,6 +320,11 @@ class BulkPrint extends Component
                 $this->organization,
                 $this->brand,
             ]),
+            'pdfDownloadUrl' => route('organizations.brands.branches.qr.pdf', [
+                $this->organization,
+                $this->brand,
+                $this->branch,
+            ]),
             'areaOptions' => $this->areaOptions(),
             'presetOptions' => $this->presetOptions(),
             'visibleMissingQrCount' => $this->visibleMissingQrCount(),
@@ -347,7 +352,7 @@ class BulkPrint extends Component
 
     private function authorizeQrManagement(): void
     {
-        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
+        Gate::forUser($this->currentUser())->authorize('viewAny', [QrCode::class, $this->branch]);
     }
 
     private function reloadBranchContext(): void

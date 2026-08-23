@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Departments;
 
 use App\Enums\KitchenDepartmentType;
@@ -12,7 +14,7 @@ use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\User;
-use Carbon\CarbonInterface;
+use App\Support\MoneyFormatter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -20,6 +22,7 @@ class BuildDepartmentDashboardAction
 {
     public function __construct(
         private readonly ResolveAccessibleDepartmentIdsAction $resolveAccessibleDepartmentIds,
+        private readonly BuildDepartmentTicketDelayTimerAction $buildDepartmentTicketDelayTimer,
     ) {}
 
     /**
@@ -194,6 +197,7 @@ class BuildDepartmentDashboardAction
                         'created_at',
                         'updated_at',
                     ])
+                    ->where('status', '!=', KitchenTicketItemStatus::Cancelled->value)
                     ->orderBy('created_at')
                     ->orderBy('id'),
             ])
@@ -202,6 +206,7 @@ class BuildDepartmentDashboardAction
             ->whereHas('order', function ($query): void {
                 $query->where('status', '!=', OrderStatus::Cancelled->value);
             })
+            ->whereHas('items', fn ($query) => $query->where('status', '!=', KitchenTicketItemStatus::Cancelled->value))
             ->orderBy('sent_at')
             ->orderBy('id')
             ->limit(100)
@@ -237,7 +242,6 @@ class BuildDepartmentDashboardAction
         $displayNumber = trim((string) ($ticket->servicePoint->display_number ?? ''));
         $servicePointName = trim((string) $ticket->servicePoint->name);
         $startedAt = $ticket->sent_at ?? $ticket->created_at;
-        $elapsedSeconds = $this->elapsedSeconds($startedAt);
 
         return [
             'id' => $ticket->id,
@@ -251,9 +255,7 @@ class BuildDepartmentDashboardAction
             'work_status' => $this->workStatusPayload($ticket->items),
             'sent_at' => $startedAt?->format('Y-m-d H:i'),
             'created_time' => $ticket->created_at?->format('H:i'),
-            'elapsed_seconds' => $elapsedSeconds,
-            'elapsed_label' => $this->formatDuration($elapsedSeconds),
-            'timer_tone' => $this->timerTone($elapsedSeconds),
+            ...$this->buildDepartmentTicketDelayTimer->handle($startedAt),
             'items' => $items,
             'item_count' => count($items),
         ];
@@ -332,41 +334,6 @@ class BuildDepartmentDashboardAction
         return $name === '' ? __('guest.table.service_point') : $name;
     }
 
-    private function elapsedSeconds(?CarbonInterface $startedAt): int
-    {
-        if (! $startedAt instanceof CarbonInterface) {
-            return 0;
-        }
-
-        return max(0, (int) $startedAt->diffInSeconds(now()));
-    }
-
-    private function formatDuration(int $seconds): string
-    {
-        $hours = intdiv($seconds, 3600);
-        $minutes = intdiv($seconds % 3600, 60);
-        $remainingSeconds = $seconds % 60;
-
-        if ($hours > 0) {
-            return $hours.':'.str_pad((string) $minutes, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $remainingSeconds, 2, '0', STR_PAD_LEFT);
-        }
-
-        return str_pad((string) $minutes, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $remainingSeconds, 2, '0', STR_PAD_LEFT);
-    }
-
-    private function timerTone(int $seconds): string
-    {
-        if ($seconds >= 900) {
-            return 'rose';
-        }
-
-        if ($seconds >= 600) {
-            return 'amber';
-        }
-
-        return 'emerald';
-    }
-
     /**
      * @param  list<array<string, mixed>>  $selectedModifiers
      * @return list<array{label: string, price_delta: string|null}>
@@ -377,11 +344,13 @@ class BuildDepartmentDashboardAction
             ->map(function (array $modifier): array {
                 $groupName = (string) ($modifier['group_name'] ?? $modifier['group'] ?? '');
                 $optionName = (string) ($modifier['option_name'] ?? $modifier['option'] ?? '');
-                $priceDelta = $modifier['price_delta'] ?? null;
+                $priceDeltaCents = $modifier['price_delta_cents'] ?? null;
 
                 return [
                     'label' => trim($groupName) === '' ? $optionName : $groupName.': '.$optionName,
-                    'price_delta' => $priceDelta === null ? null : (string) $priceDelta,
+                    'price_delta' => $priceDeltaCents === null
+                        ? null
+                        : MoneyFormatter::centsToDecimal((int) $priceDeltaCents),
                 ];
             })
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')

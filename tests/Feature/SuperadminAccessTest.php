@@ -94,7 +94,7 @@ test('superadmin sees expanded organization controls and counts', function () {
         'service_point_id' => $firstServicePoint->id,
         'table_session_id' => $tableSession->id,
         'draft_order_id' => $draftOrder->id,
-        'total_price' => '25.00',
+        'total_price_cents' => 2500,
     ]);
 
     $this->actingAs($superadmin)

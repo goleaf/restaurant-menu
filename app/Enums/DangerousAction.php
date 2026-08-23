@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum DangerousAction: string
@@ -17,6 +19,8 @@ enum DangerousAction: string
     case DeleteOrDeactivateMenuItem = 'delete_or_deactivate_menu_item';
     case ClearCacheAll = 'clear_cache_all';
     case DownloadBackup = 'download_backup';
+    case DownloadMediaBackup = 'download_media_backup';
+    case RestoreBackup = 'restore_backup';
     case DeleteMediaFile = 'delete_media_file';
 
     public function title(): string
@@ -35,6 +39,8 @@ enum DangerousAction: string
             self::DeleteOrDeactivateMenuItem => __('ui.confirmations.delete_or_deactivate_menu_item.title'),
             self::ClearCacheAll => __('ui.confirmations.clear_cache_all.title'),
             self::DownloadBackup => __('ui.confirmations.download_backup.title'),
+            self::DownloadMediaBackup => __('ui.confirmations.download_media_backup.title'),
+            self::RestoreBackup => __('ui.confirmations.restore_backup.title'),
             self::DeleteMediaFile => __('ui.confirmations.delete_media_file.title'),
         };
     }
@@ -55,6 +61,8 @@ enum DangerousAction: string
             self::DeleteOrDeactivateMenuItem => __('ui.confirmations.delete_or_deactivate_menu_item.description'),
             self::ClearCacheAll => __('ui.confirmations.clear_cache_all.description'),
             self::DownloadBackup => __('ui.confirmations.download_backup.description'),
+            self::DownloadMediaBackup => __('ui.confirmations.download_media_backup.description'),
+            self::RestoreBackup => __('ui.confirmations.restore_backup.description'),
             self::DeleteMediaFile => __('ui.confirmations.delete_media_file.description'),
         };
     }
@@ -70,6 +78,9 @@ enum DangerousAction: string
             self::CancelOrder,
             self::VoidOrderItem,
             self::PaymentCorrection,
+            self::DownloadBackup,
+            self::DownloadMediaBackup,
+            self::RestoreBackup,
         ], true);
     }
 
@@ -80,6 +91,8 @@ enum DangerousAction: string
             self::CloseTableWithUnpaidAmount,
             self::ClearCacheAll,
             self::DownloadBackup,
+            self::DownloadMediaBackup,
+            self::RestoreBackup,
         ], true);
     }
 }

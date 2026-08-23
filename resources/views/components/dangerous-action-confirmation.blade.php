@@ -20,6 +20,8 @@
                     @endif
                 </span>
                 <textarea
+                    id="dangerous-action-{{ $name }}-reason"
+                    name="{{ $reasonModel }}"
                     wire:model="{{ $reasonModel }}"
                     rows="3"
                     maxlength="500"
@@ -39,6 +41,8 @@
                 <label class="grid gap-1">
                     <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __($confirmationLabel) }}</span>
                     <input
+                        id="dangerous-action-{{ $name }}-confirmation"
+                        name="{{ $confirmationModel }}"
                         wire:model="{{ $confirmationModel }}"
                         type="text"
                         autocomplete="off"

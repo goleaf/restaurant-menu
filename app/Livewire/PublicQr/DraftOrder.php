@@ -25,6 +25,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -147,6 +148,11 @@ class DraftOrder extends Component
 
     public string $editingUnitPrice = '0.00';
 
+    public string $editingItemVariantId = '';
+
+    /** @var list<array{id: int, name: string, price_cents: int, formatted_price: string}> */
+    public array $editingVariants = [];
+
     public string $editingModifierTotal = '0.00';
 
     public string $editingItemTotal = '0.00';
@@ -159,7 +165,7 @@ class DraftOrder extends Component
     public array $editingModifierOptions = [];
 
     /**
-     * @var list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}>
+     * @var list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta_cents: int, formatted_price_delta: string}>}>
      */
     public array $editingModifierGroups = [];
 
@@ -303,8 +309,8 @@ class DraftOrder extends Component
 
         $items = $draftItems
             ->map(function (DraftOrderItem $item) use (&$guestSections, &$totalCents): array {
-                $itemTotalCents = self::decimalToCents($item->total_price);
-                $unitTotalCents = max(0, self::decimalToCents($item->unit_price) + self::decimalToCents($item->modifier_total));
+                $itemTotalCents = $item->total_price_cents;
+                $unitTotalCents = max(0, $item->unit_price_cents + $item->modifier_total_cents);
                 $totalCents += $itemTotalCents;
                 $guestId = (int) $item->table_session_guest_id;
                 $guestName = $item->guest->guest_name;
@@ -332,11 +338,12 @@ class DraftOrder extends Component
                     'guest_id' => $guestId,
                     'guest_name' => $guestName,
                     'item_name' => $item->item_name,
+                    'variant_name' => $item->variant_name,
                     'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'modifier_total' => $item->modifier_total,
-                    'unit_total_price' => self::centsToDecimal($unitTotalCents),
-                    'total_price' => $item->total_price,
+                    'unit_price' => MoneyFormatter::centsToDecimal($item->unit_price_cents),
+                    'modifier_total' => MoneyFormatter::centsToDecimal($item->modifier_total_cents),
+                    'unit_total_price' => MoneyFormatter::centsToDecimal($unitTotalCents),
+                    'total_price' => MoneyFormatter::centsToDecimal($item->total_price_cents),
                     'modifiers' => $this->modifierSummary($item->selected_modifiers),
                     'comment' => $item->comment,
                     'is_current_guest' => $isCurrentGuest,
@@ -354,9 +361,9 @@ class DraftOrder extends Component
             ->map(fn (array $guestSection): array => [
                 'guest_id' => $guestSection['guest_id'],
                 'guest_name' => $guestSection['guest_name'],
-                'total' => self::centsToDecimal($guestSection['total_cents']),
-                'draft_total' => self::centsToDecimal($guestSection['draft_total_cents']),
-                'confirmed_total' => self::centsToDecimal($guestSection['confirmed_total_cents']),
+                'total' => MoneyFormatter::centsToDecimal($guestSection['total_cents']),
+                'draft_total' => MoneyFormatter::centsToDecimal($guestSection['draft_total_cents']),
+                'confirmed_total' => MoneyFormatter::centsToDecimal($guestSection['confirmed_total_cents']),
                 'has_draft_total' => $guestSection['draft_total_cents'] > 0,
                 'has_confirmed_total' => $guestSection['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestSection['is_current_guest'],
@@ -374,9 +381,9 @@ class DraftOrder extends Component
             ])
             ->all();
 
-        $this->totalAmount = self::centsToDecimal($totalCents);
-        $this->confirmedOrdersTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents);
-        $this->tableTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents));
+        $this->totalAmount = MoneyFormatter::centsToDecimal($totalCents);
+        $this->confirmedOrdersTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents);
+        $this->tableTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents));
         $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = count($this->items);
         $this->canSendDraftToWaiter = $this->canSendDraftToWaiter && $this->itemCount > 0;
@@ -521,8 +528,10 @@ class DraftOrder extends Component
         $this->editingItemId = $draftOrderItem->id;
         $this->editingItemName = $draftOrderItem->item_name;
         $this->editingQuantity = max(1, min(99, (int) $draftOrderItem->quantity));
-        $this->editingUnitPrice = $draftOrderItem->unit_price;
-        $this->editingModifierTotal = $draftOrderItem->modifier_total;
+        $this->editingUnitPrice = MoneyFormatter::centsToDecimal($draftOrderItem->unit_price_cents);
+        $this->editingItemVariantId = $draftOrderItem->menu_item_variant_id === null ? '' : (string) $draftOrderItem->menu_item_variant_id;
+        $this->editingVariants = $this->variantPayloadFor($draftOrderItem->menuItem);
+        $this->editingModifierTotal = MoneyFormatter::centsToDecimal($draftOrderItem->modifier_total_cents);
         $this->editingComment = (string) $draftOrderItem->comment;
         $this->editingModifierGroups = $this->modifierGroupPayloadFor($draftOrderItem->menuItem);
         $this->editingModifierOptions = $this->modifierOptionsFromSnapshots($draftOrderItem->selected_modifiers, $this->editingModifierGroups);
@@ -537,6 +546,8 @@ class DraftOrder extends Component
         $this->editingItemName = '';
         $this->editingQuantity = 1;
         $this->editingUnitPrice = '0.00';
+        $this->editingItemVariantId = '';
+        $this->editingVariants = [];
         $this->editingModifierTotal = '0.00';
         $this->editingItemTotal = '0.00';
         $this->editingComment = '';
@@ -546,6 +557,17 @@ class DraftOrder extends Component
 
     public function updatedEditingQuantity(): void
     {
+        $this->refreshEditingItemTotal();
+    }
+
+    public function updatedEditingItemVariantId(): void
+    {
+        $variant = collect($this->editingVariants)->firstWhere('id', (int) $this->editingItemVariantId);
+
+        if (is_array($variant)) {
+            $this->editingUnitPrice = MoneyFormatter::centsToDecimal((int) $variant['price_cents']);
+        }
+
         $this->refreshEditingItemTotal();
     }
 
@@ -621,6 +643,7 @@ class DraftOrder extends Component
                 guest: $guest,
                 quantity: (int) $this->editingQuantity,
                 selectedModifierOptions: $this->editingModifierOptions,
+                menuItemVariantId: $this->editingItemVariantId === '' ? null : (int) $this->editingItemVariantId,
                 comment: $this->editingComment,
             );
         } catch (ValidationException $exception) {
@@ -680,6 +703,7 @@ class DraftOrder extends Component
             ...RestaurantValidationRules::quantity('editingQuantity'),
             ...RestaurantValidationRules::guestComment('editingComment'),
             ...RestaurantValidationRules::selectedModifierOptions('editingModifierOptions'),
+            'editingItemVariantId' => ['nullable', 'integer', 'min:1'],
         ];
     }
 
@@ -718,11 +742,14 @@ class DraftOrder extends Component
                     'draft_order_id',
                     'table_session_guest_id',
                     'menu_item_id',
+                    'menu_item_variant_id',
                     'item_name',
+                    'variant_name',
+                    'variant_type',
                     'quantity',
-                    'unit_price',
-                    'modifier_total',
-                    'total_price',
+                    'unit_price_cents',
+                    'modifier_total_cents',
+                    'total_price_cents',
                     'selected_modifiers',
                     'comment',
                     'created_at',
@@ -771,11 +798,11 @@ class DraftOrder extends Component
     private function confirmedOrdersTotalCents(): int
     {
         return Order::query()
-            ->select(['id', 'table_session_id', 'status', 'total_price'])
+            ->select(['id', 'table_session_id', 'status', 'total_price_cents'])
             ->where('table_session_id', $this->tableSessionId)
             ->whereNotIn('status', [OrderStatus::Cancelled->value])
             ->get()
-            ->sum(fn (Order $order): int => self::decimalToCents($order->total_price));
+            ->sum('total_price_cents');
     }
 
     private function tableSessionForBillState(): ?TableSession
@@ -801,9 +828,10 @@ class DraftOrder extends Component
                 'table_session_guest_id',
                 'guest_name',
                 'guest_name_snapshot',
-                'total_price',
+                'total_price_cents',
             ])
             ->with(['guest' => fn ($query) => $query->select(['id', 'guest_name'])])
+            ->active()
             ->whereHas('order', function ($query): void {
                 $query
                     ->where('table_session_id', $this->tableSessionId)
@@ -827,7 +855,7 @@ class DraftOrder extends Component
                     'guest_name' => $firstItem->table_session_guest_id === null
                         ? ($firstItem->historicalGuestName() ?? (string) __('guest.table.guest'))
                         : $firstItem->guest->guest_name,
-                    'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
+                    'total_cents' => (int) $items->sum('total_price_cents'),
                 ];
             })
             ->values()
@@ -953,11 +981,14 @@ class DraftOrder extends Component
                 'draft_order_id',
                 'table_session_guest_id',
                 'menu_item_id',
+                'menu_item_variant_id',
                 'item_name',
+                'variant_name',
+                'variant_type',
                 'quantity',
-                'unit_price',
-                'modifier_total',
-                'total_price',
+                'unit_price_cents',
+                'modifier_total_cents',
+                'total_price_cents',
                 'selected_modifiers',
                 'comment',
             ])
@@ -1006,7 +1037,7 @@ class DraftOrder extends Component
     }
 
     /**
-     * @return list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}>
+     * @return list<array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta_cents: int, formatted_price_delta: string}>}>
      */
     private function modifierGroupPayloadFor(?MenuItem $menuItem): array
     {
@@ -1026,10 +1057,41 @@ class DraftOrder extends Component
                     ->map(fn ($modifierOption): array => [
                         'id' => $modifierOption->id,
                         'name' => $modifierOption->name,
-                        'price_delta' => $modifierOption->price_delta,
+                        'price_delta_cents' => $modifierOption->price_delta_cents,
+                        'formatted_price_delta' => MoneyFormatter::formatSignedCents($modifierOption->price_delta_cents, $this->currency),
                     ])
                     ->values()
                     ->all(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: int, name: string, price_cents: int, formatted_price: string}>
+     */
+    private function variantPayloadFor(?MenuItem $menuItem): array
+    {
+        if (! $menuItem instanceof MenuItem) {
+            return [];
+        }
+
+        return $menuItem->variants()
+            ->select(['id', 'menu_item_id', 'name', 'price_cents', 'is_default', 'sort_order'])
+            ->where('is_available', true)
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'menu_item_variant_id', 'language_code', 'name'])
+                ->where('language_code', $this->language)])
+            ->orderByDesc('is_default')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($variant): array => [
+                'id' => $variant->id,
+                'name' => $variant->localizedName($this->language),
+                'price_cents' => $variant->price_cents,
+                'formatted_price' => MoneyFormatter::formatCents($variant->price_cents, $this->currency),
             ])
             ->values()
             ->all();
@@ -1144,7 +1206,7 @@ class DraftOrder extends Component
     private function refreshEditingItemTotal(): void
     {
         $modifierTotalCents = $this->editingModifierGroups === []
-            ? self::decimalToCents($this->editingModifierTotal)
+            ? MoneyFormatter::decimalToCents($this->editingModifierTotal)
             : 0;
 
         foreach ($this->editingModifierGroups as $modifierGroup) {
@@ -1152,14 +1214,14 @@ class DraftOrder extends Component
 
             foreach ($modifierGroup['options'] as $modifierOption) {
                 if (in_array((int) $modifierOption['id'], $selectedOptionIds, true)) {
-                    $modifierTotalCents += self::decimalToCents((string) $modifierOption['price_delta']);
+                    $modifierTotalCents += (int) $modifierOption['price_delta_cents'];
                 }
             }
         }
 
         $quantity = max(1, min(99, (int) $this->editingQuantity));
-        $unitPriceCents = self::decimalToCents($this->editingUnitPrice);
-        $this->editingItemTotal = self::centsToDecimal(max(0, $unitPriceCents + $modifierTotalCents) * $quantity);
+        $unitPriceCents = MoneyFormatter::decimalToCents($this->editingUnitPrice);
+        $this->editingItemTotal = MoneyFormatter::centsToDecimal(max(0, $unitPriceCents + $modifierTotalCents) * $quantity);
     }
 
     private function guestTokenFromCurrentState(): ?string
@@ -1193,19 +1255,5 @@ class DraftOrder extends Component
         foreach ($exception->errors() as $field => $messages) {
             $this->addError($field, (string) collect($messages)->first());
         }
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return (int) round(((float) ($amount ?? 0)) * 100);
-    }
-
-    private static function centsToDecimal(int $amount): string
-    {
-        $negative = $amount < 0;
-        $absoluteAmount = abs($amount);
-        $formatted = intdiv($absoluteAmount, 100).'.'.str_pad((string) ($absoluteAmount % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

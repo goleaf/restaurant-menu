@@ -40,6 +40,9 @@ jobs:
       - name: Install Node Dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps --only-shell chromium
+
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
@@ -54,3 +57,6 @@ jobs:
 
       - name: Run Tests
         run: composer ci:check
+
+      - name: Enforce Test Coverage
+        run: composer test:coverage

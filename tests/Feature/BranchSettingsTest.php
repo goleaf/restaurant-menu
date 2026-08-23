@@ -31,7 +31,7 @@ test('branch settings table has safe operational fields', function () {
         'default_language',
         'default_currency',
         'service_charge_enabled',
-        'service_charge_percent',
+        'service_charge_basis_points',
         'tips_enabled',
         'order_flow_mode',
         'service_modes',
@@ -62,7 +62,7 @@ test('creating branch creates settings with safe defaults', function () {
     expect($settings->default_language)->toBe('en');
     expect($settings->default_currency)->toBe('EUR');
     expect($settings->service_charge_enabled)->toBeFalse();
-    expect($settings->service_charge_percent)->toBe('0.00');
+    expect($settings->service_charge_basis_points)->toBe(0);
     expect($settings->tips_enabled)->toBeFalse();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::WaiterConfirmation);
     expect($settings->service_modes)->toBe(['dine_in']);
@@ -115,7 +115,7 @@ test('owner can update branch settings', function () {
     expect($settings->default_currency)->toBe('USD');
     expect($branch->fresh()->currency)->toBe('USD');
     expect($settings->service_charge_enabled)->toBeTrue();
-    expect($settings->service_charge_percent)->toBe('12.50');
+    expect($settings->service_charge_basis_points)->toBe(1250);
     expect($settings->tips_enabled)->toBeTrue();
     expect($settings->order_flow_mode)->toBe(BranchOrderFlowMode::StaffManaged);
     expect($settings->service_modes)->toBe([

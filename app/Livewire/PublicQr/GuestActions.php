@@ -11,6 +11,7 @@ use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\WaiterCallStatus;
 use App\Models\QrCode;
+use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\App;
@@ -68,6 +69,8 @@ class GuestActions extends Component
 
     public function createGuestInviteLink(CreateGuestInviteLinkAction $createGuestInviteLink): void
     {
+        $this->applyGuestLocale();
+
         $tableSession = $this->findCurrentTableSession();
         $guest = $this->findCurrentActiveGuest();
 
@@ -90,6 +93,8 @@ class GuestActions extends Component
 
     public function requestWaiter(RequestWaiterForTableSessionAction $requestWaiter): void
     {
+        $this->applyGuestLocale();
+
         $tableSession = $this->findCurrentTableSession();
         $guest = $this->findCurrentActiveGuest();
 
@@ -122,16 +127,16 @@ class GuestActions extends Component
 
     private function findCurrentTableSession(): ?TableSession
     {
-        $branchId = QrCode::query()
+        $qrCode = QrCode::query()
             ->select(['id', 'service_point_id', 'public_token', 'status'])
             ->with(['servicePoint' => fn ($query) => $query->select(['id', 'branch_id', 'is_active'])])
             ->where('public_token', $this->publicToken)
             ->where('status', QrCodeStatus::Active->value)
-            ->first()
-            ?->servicePoint
-            ?->branch_id;
+            ->first();
 
-        if (! is_int($branchId)) {
+        $servicePoint = $qrCode?->servicePoint;
+
+        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
             return null;
         }
 
@@ -150,7 +155,7 @@ class GuestActions extends Component
                 'guest_invite_created_by_guest_id',
             ])
             ->whereKey($this->tableSessionId)
-            ->where('branch_id', $branchId)
+            ->where('branch_id', $servicePoint->branch_id)
             ->first();
     }
 

@@ -24,7 +24,7 @@ test('simple design system components render shared ui primitives', function () 
             <x-ui.danger-button label="ui.actions.delete" wire:click="deleteRecord" />
             <x-ui.status-badge tone="warning" dot>Waiting</x-ui.status-badge>
             <x-ui.status-badge status="paid" context="payment" />
-            <x-ui.money amount="14.5" currency="EUR" />
+            <x-ui.money cents="1450" currency="EUR" />
             <x-ui.alert tone="danger" heading="Careful">Danger copy</x-ui.alert>
             <x-ui.empty-state heading="ui.empty.no_results" description="ui.empty.no_service_points" icon="inbox" />
             <x-ui.page-header title="ui.headers.orders.title" description="ui.headers.orders.description">

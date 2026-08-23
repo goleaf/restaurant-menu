@@ -3,6 +3,7 @@
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
+use App\Actions\Notifications\MarkGuestNotificationsReadAction;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
 use Illuminate\Notifications\DatabaseNotification;
@@ -71,7 +72,7 @@ class Notifications extends Component
             ->all();
     }
 
-    public function markNotificationRead(string $notificationId): void
+    public function markNotificationRead(string $notificationId, MarkGuestNotificationsReadAction $markRead): void
     {
         $guest = $this->activeGuest();
 
@@ -81,18 +82,12 @@ class Notifications extends Component
             return;
         }
 
-        $notification = $guest->unreadNotifications()
-            ->whereKey($notificationId)
-            ->first();
-
-        if ($notification instanceof DatabaseNotification) {
-            $notification->markAsRead();
-        }
+        $markRead->one($guest, $notificationId, $this->guestNotificationTypes());
 
         $this->refreshNotifications();
     }
 
-    public function markAllRead(): void
+    public function markAllRead(MarkGuestNotificationsReadAction $markRead): void
     {
         $guest = $this->activeGuest();
 
@@ -102,9 +97,7 @@ class Notifications extends Component
             return;
         }
 
-        $guest->unreadNotifications()
-            ->whereIn('type', $this->guestNotificationTypes())
-            ->update(['read_at' => now()]);
+        $markRead->all($guest, $this->guestNotificationTypes());
 
         $this->refreshNotifications();
     }

@@ -72,7 +72,7 @@ test('old order snapshots survive soft deleted menu and venue records', function
             'branch_id' => $branch->id,
             'service_point_id' => $servicePoint->id,
             'status' => OrderStatus::ConfirmedByWaiter,
-            'total_price' => '18.50',
+            'total_price_cents' => 1850,
             'currency' => 'EUR',
         ]);
     $orderItem = OrderItem::factory()
@@ -83,14 +83,14 @@ test('old order snapshots survive soft deleted menu and venue records', function
             'guest_name' => 'Ana',
             'item_name' => 'Archived Steak',
             'quantity' => 2,
-            'unit_price' => '8.00',
-            'modifier_total' => '1.25',
-            'total_price' => '18.50',
+            'unit_price_cents' => 800,
+            'modifier_total_cents' => 125,
+            'total_price_cents' => 1850,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Sauce',
                     'option_name' => 'Pepper',
-                    'price_delta' => '1.25',
+                    'price_delta_cents' => 125,
                 ],
             ],
             'comment' => 'No onion',
@@ -118,14 +118,14 @@ test('old order snapshots survive soft deleted menu and venue records', function
         ->and($reloadedItem?->menuItem?->trashed())->toBeTrue()
         ->and($reloadedItem?->id)->toBe($orderItem->id)
         ->and($reloadedItem?->item_name)->toBe('Archived Steak')
-        ->and($reloadedItem?->unit_price)->toBe('8.00')
-        ->and($reloadedItem?->modifier_total)->toBe('1.25')
-        ->and($reloadedItem?->total_price)->toBe('18.50')
+        ->and($reloadedItem?->unit_price_cents)->toBe(800)
+        ->and($reloadedItem?->modifier_total_cents)->toBe(125)
+        ->and($reloadedItem?->total_price_cents)->toBe(1850)
         ->and($reloadedItem?->selected_modifiers)->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper',
-                'price_delta' => '1.25',
+                'price_delta_cents' => 125,
             ],
         ])
         ->and($reloadedItem?->comment)->toBe('No onion')
@@ -191,7 +191,7 @@ function createPrompt87ImportantEntityContext(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Prompt 87 Dish',
-            'price' => '8.00',
+            'price_cents' => 800,
         ]);
 
     return [

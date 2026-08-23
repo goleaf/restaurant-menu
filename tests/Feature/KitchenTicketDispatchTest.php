@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Orders\CancelOrderItemAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
@@ -16,7 +17,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\OrderFulfilment;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -27,6 +28,7 @@ use App\Models\KitchenTicket;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\Permission;
@@ -89,6 +91,13 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
 
     $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
 
+    OrderItem::query()
+        ->where('order_id', $order->id)
+        ->where('item_name_snapshot', 'Prompt 60 Pizza')
+        ->firstOrFail()
+        ->forceFill(['variant_name' => 'Large portion'])
+        ->save();
+
     $kitchen->update(['name' => 'Renamed kitchen after confirmation']);
     $bar->update(['name' => 'Renamed bar after confirmation']);
 
@@ -114,7 +123,7 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
         ->and($kitchenTicket->department_type)->toBe(KitchenDepartmentType::Kitchen->value)
         ->and($kitchenTicket->department_name)->toBe('Prompt 60 Kitchen')
         ->and($kitchenTicket->items)->toHaveCount(1)
-        ->and($kitchenTicket->items->first()->item_name)->toBe('Prompt 60 Pizza')
+        ->and($kitchenTicket->items->first()->item_name)->toBe('Prompt 60 Pizza · Large portion')
         ->and($barTicket)->not->toBeNull()
         ->and($barTicket->department_type)->toBe(KitchenDepartmentType::Bar->value)
         ->and($barTicket->department_name)->toBe('Prompt 60 Bar')
@@ -174,13 +183,13 @@ test('waiter table detail dispatch action requires send to kitchen permission', 
     app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $reviewer);
 
     Livewire::actingAs($reviewer)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
         ->assertDontSee('Send to kitchen/bar')
         ->call('sendOrderToKitchenBar')
         ->assertHasErrors('order_dispatch');
 
     Livewire::actingAs($dispatcher)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Send to kitchen/bar')
         ->call('sendOrderToKitchenBar')
         ->assertHasNoErrors()
@@ -190,6 +199,42 @@ test('waiter table detail dispatch action requires send to kitchen permission', 
 
     expect(KitchenTicket::query()->count())->toBe(2)
         ->and($servicePoint->status)->toBe(ServicePointStatus::Cooking);
+});
+
+test('cancelled order item is kept in history and excluded from a later kitchen dispatch', function () {
+    [$organization, , , $draftOrder, , $kitchen, $bar] = createPrompt60SentDraftScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 60 Pre-dispatch Canceller']);
+
+    attachPrompt60Staff($waiter, $organization, [
+        SystemPermission::ConfirmOrders,
+        SystemPermission::SendToKitchen,
+        SystemPermission::CancelOrders,
+    ]);
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
+    $pizza = OrderItem::query()
+        ->where('order_id', $order->id)
+        ->where('item_name_snapshot', 'Prompt 60 Pizza')
+        ->firstOrFail();
+
+    app(CancelOrderItemAction::class)->handle(
+        orderItem: $pizza,
+        cancelledBy: $waiter,
+        reason: 'Guest cancelled before preparation started.',
+    );
+    app(SendOrderToKitchenBarAction::class)->handle($order, $waiter);
+
+    expect($pizza->fresh()->cancelled_at)->not->toBeNull()
+        ->and(OrderItem::query()->where('order_id', $order->id)->count())->toBe(2)
+        ->and($order->fresh()->total_price_cents)->toBe(600)
+        ->and(KitchenTicket::query()
+            ->where('order_id', $order->id)
+            ->where('kitchen_department_id', $kitchen->id)
+            ->exists())->toBeFalse()
+        ->and(KitchenTicket::query()
+            ->where('order_id', $order->id)
+            ->where('kitchen_department_id', $bar->id)
+            ->exists())->toBeTrue();
 });
 
 function createPrompt60SentDraftScenario(): array
@@ -257,7 +302,7 @@ function createPrompt60SentDraftScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 60 Pizza',
-            'price' => '11.00',
+            'price_cents' => 1100,
         ]);
     $coffee = MenuItem::factory()
         ->for($menu)
@@ -265,7 +310,7 @@ function createPrompt60SentDraftScenario(): array
         ->for($bar, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 60 Coffee',
-            'price' => '3.00',
+            'price_cents' => 300,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -282,9 +327,9 @@ function createPrompt60SentDraftScenario(): array
         ->create([
             'item_name' => 'Prompt 60 Pizza',
             'quantity' => 1,
-            'unit_price' => '11.00',
-            'modifier_total' => '0.00',
-            'total_price' => '11.00',
+            'unit_price_cents' => 1100,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1100,
             'selected_modifiers' => [],
             'comment' => 'Crispy crust',
         ]);
@@ -296,9 +341,9 @@ function createPrompt60SentDraftScenario(): array
         ->create([
             'item_name' => 'Prompt 60 Coffee',
             'quantity' => 2,
-            'unit_price' => '3.00',
-            'modifier_total' => '0.00',
-            'total_price' => '6.00',
+            'unit_price_cents' => 300,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 600,
             'selected_modifiers' => [],
         ]);
 

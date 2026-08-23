@@ -7,8 +7,7 @@ namespace App\Livewire\Organizations\Brands;
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
 use App\Actions\Brands\UpdateBrandAction;
-use App\Actions\Media\RemoveLocalImageAction;
-use App\Actions\Media\ReplaceLocalImageAction;
+use App\Actions\Brands\UpdateBrandLogoAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Brand;
 use App\Models\Organization;
@@ -145,7 +144,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_deleted'));
     }
 
-    public function saveLogo(int $brandId, ReplaceLocalImageAction $replaceLocalImage): void
+    public function saveLogo(int $brandId, UpdateBrandLogoAction $updateLogo): void
     {
         $this->authorizeBrandManagement();
 
@@ -162,32 +161,20 @@ class Index extends Component
             return;
         }
 
-        $replaceLocalImage->handle(
-            file: $file,
-            directory: 'media/organizations/'.$this->organization->id.'/brands/'.$brand->id.'/logos',
-            oldPath: $brand->logo_path,
-            persist: function (string $path) use ($brand): void {
-                $brand->forceFill(['logo_path' => $path])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($brand, $file);
 
         unset($this->brandLogos[$brand->id], $this->brands);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $brandId, RemoveLocalImageAction $removeLocalImage): void
+    public function removeLogo(int $brandId, UpdateBrandLogoAction $updateLogo): void
     {
         $this->authorizeBrandManagement();
 
         $brand = $this->findOrganizationBrand($brandId);
 
-        $removeLocalImage->handle(
-            oldPath: $brand->logo_path,
-            persist: function () use ($brand): void {
-                $brand->forceFill(['logo_path' => null])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($brand, null);
 
         unset($this->brandLogos[$brand->id], $this->brands);
 

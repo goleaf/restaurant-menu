@@ -11,6 +11,7 @@ use App\Enums\SystemRole;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -191,6 +192,7 @@ class BuildDepartmentTicketPrintAction
                 KitchenTicketItemStatus::New => 'statuses.kitchen_ticket_item.new',
                 KitchenTicketItemStatus::InProgress => 'statuses.kitchen_ticket_item.in_progress',
                 KitchenTicketItemStatus::Ready => 'statuses.kitchen_ticket_item.ready',
+                KitchenTicketItemStatus::Cancelled => 'statuses.kitchen_ticket_item.cancelled',
             },
             'selected_modifiers' => $this->modifierSummary($item->selected_modifiers ?? []),
             'comment' => $item->comment,
@@ -207,11 +209,13 @@ class BuildDepartmentTicketPrintAction
             ->map(function (array $modifier): array {
                 $groupName = (string) ($modifier['group_name'] ?? $modifier['group'] ?? '');
                 $optionName = (string) ($modifier['option_name'] ?? $modifier['option'] ?? '');
-                $priceDelta = $modifier['price_delta'] ?? null;
+                $priceDeltaCents = $modifier['price_delta_cents'] ?? null;
 
                 return [
                     'label' => trim($groupName) === '' ? $optionName : $groupName.': '.$optionName,
-                    'price_delta' => $priceDelta === null ? null : (string) $priceDelta,
+                    'price_delta' => $priceDeltaCents === null
+                        ? null
+                        : MoneyFormatter::centsToDecimal((int) $priceDeltaCents),
                 ];
             })
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')

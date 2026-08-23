@@ -7,8 +7,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
-use App\Actions\Media\RemoveLocalImageAction;
-use App\Actions\Media\ReplaceLocalImageAction;
+use App\Actions\Branches\UpdateBranchLogoAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedCurrency;
@@ -244,7 +243,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_deleted'));
     }
 
-    public function saveLogo(int $branchId, ReplaceLocalImageAction $replaceLocalImage): void
+    public function saveLogo(int $branchId, UpdateBranchLogoAction $updateLogo): void
     {
         $this->authorizeBranchManagement();
 
@@ -261,32 +260,20 @@ class Index extends Component
             return;
         }
 
-        $replaceLocalImage->handle(
-            file: $file,
-            directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$branch->id.'/logos',
-            oldPath: $branch->logo_path,
-            persist: function (string $path) use ($branch): void {
-                $branch->forceFill(['logo_path' => $path])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($branch, $file);
 
         unset($this->branchLogos[$branch->id], $this->branches);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $branchId, RemoveLocalImageAction $removeLocalImage): void
+    public function removeLogo(int $branchId, UpdateBranchLogoAction $updateLogo): void
     {
         $this->authorizeBranchManagement();
 
         $branch = $this->findBrandBranch($branchId);
 
-        $removeLocalImage->handle(
-            oldPath: $branch->logo_path,
-            persist: function () use ($branch): void {
-                $branch->forceFill(['logo_path' => null])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($branch, null);
 
         unset($this->branchLogos[$branch->id], $this->branches);
 

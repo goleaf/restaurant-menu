@@ -27,11 +27,11 @@ class BranchFactory extends Factory
      */
     public function definition(): array
     {
-        $organization = Organization::factory();
-
         return [
-            'organization_id' => $organization,
-            'brand_id' => Brand::factory()->for($organization),
+            'organization_id' => Organization::factory(),
+            'brand_id' => fn (array $attributes): int => Brand::factory()
+                ->create(['organization_id' => $attributes['organization_id']])
+                ->id,
             'name' => fake()->company().' Branch',
             'address' => fake()->streetAddress(),
             'city' => fake()->city(),

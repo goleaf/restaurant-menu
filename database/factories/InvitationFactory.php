@@ -44,4 +44,66 @@ class InvitationFactory extends Factory
             'invited_by_user_id' => User::factory(),
         ];
     }
+
+    public function pending(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => InvitationStatus::Pending,
+            'expires_at' => now()->addDays(7),
+            'accepted_by_user_id' => null,
+            'accepted_at' => null,
+        ]);
+    }
+
+    public function acceptedBy(?User $user = null): static
+    {
+        return $this->state(fn (): array => [
+            'status' => InvitationStatus::Accepted,
+            'expires_at' => now()->addDays(7),
+            'accepted_by_user_id' => $user instanceof User ? $user->id : User::factory(),
+            'accepted_at' => now(),
+        ]);
+    }
+
+    public function expired(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => InvitationStatus::Expired,
+            'expires_at' => now()->subMinute(),
+            'accepted_by_user_id' => null,
+            'accepted_at' => null,
+        ]);
+    }
+
+    public function cancelled(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => InvitationStatus::Cancelled,
+            'accepted_by_user_id' => null,
+            'accepted_at' => null,
+        ]);
+    }
+
+    public function rejected(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => InvitationStatus::Rejected,
+            'accepted_by_user_id' => null,
+            'accepted_at' => null,
+        ]);
+    }
+
+    public function forOrganization(Organization $organization): static
+    {
+        return $this->state(fn (): array => [
+            'organization_id' => $organization->id,
+        ]);
+    }
+
+    public function forRole(Role $role): static
+    {
+        return $this->state(fn (): array => [
+            'role_id' => $role->id,
+        ]);
+    }
 }

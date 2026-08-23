@@ -93,7 +93,7 @@ class MenuItemObserver
         $context = $this->contextForMenuId($menuItem->menu_id);
         $actor = $this->currentUser();
 
-        if ($menuItem->wasChanged('price')) {
+        if ($menuItem->wasChanged('price_cents')) {
             $this->recordAuditLog->handle(
                 action: AuditLogAction::MenuPriceChanged,
                 entityType: 'menu_item',
@@ -103,11 +103,11 @@ class MenuItemObserver
                 branchId: $context['branch_id'],
                 oldValues: [
                     'name' => $menuItem->name,
-                    'price' => $menuItem->getOriginal('price'),
+                    'price_cents' => $menuItem->getOriginal('price_cents'),
                 ],
                 newValues: [
                     'name' => $menuItem->name,
-                    'price' => $menuItem->price,
+                    'price_cents' => $menuItem->price_cents,
                 ],
             );
         }
@@ -147,7 +147,7 @@ class MenuItemObserver
                 'menu_id' => $menuItem->menu_id,
                 'category_id' => $menuItem->category_id,
                 'name' => $menuItem->name,
-                'price' => $menuItem->price,
+                'price_cents' => $menuItem->price_cents,
                 'is_available' => (bool) $menuItem->is_available,
             ],
         );

@@ -1,28 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Orders;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Enums\SystemPermission;
-use App\Enums\SystemRole;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class ChangeOrderStatusAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
@@ -138,38 +137,19 @@ class ChangeOrderStatusAction
 
     private function ensureCanChangeStatus(Order $order, OrderStatus $newStatus, User $user): void
     {
-        if ($newStatus === OrderStatus::Cancelled && $this->canCancelByManagementRole($order, $user)) {
-            return;
-        }
-
-        $permission = $this->permissionFor($newStatus);
-        $branchIds = $this->resolveAccessibleBranchIds->handle($user, $permission);
-
-        if (! $branchIds->contains((int) $order->branch_id)) {
+        if (Gate::forUser($user)->denies($this->abilityFor($newStatus), $order)) {
             throw ValidationException::withMessages([
                 'order_status' => __('ui.actions.orders.changeorderstatusaction.u_vas_net_prava_meniat_etot_statu'),
             ]);
         }
     }
 
-    private function canCancelByManagementRole(Order $order, User $user): bool
-    {
-        $organizationId = $order->branch?->organization_id;
-
-        if ($organizationId === null) {
-            return false;
-        }
-
-        return $user->hasOrganizationRole($organizationId, SystemRole::Director)
-            || $user->hasOrganizationRole($organizationId, SystemRole::ShiftManager);
-    }
-
-    private function permissionFor(OrderStatus $newStatus): SystemPermission
+    private function abilityFor(OrderStatus $newStatus): string
     {
         return match ($newStatus) {
-            OrderStatus::SentToKitchenBar => SystemPermission::SendToKitchen,
-            OrderStatus::Cancelled => SystemPermission::CancelOrders,
-            default => SystemPermission::ConfirmOrders,
+            OrderStatus::SentToKitchenBar => 'sendToKitchen',
+            OrderStatus::Cancelled => 'cancel',
+            default => 'confirm',
         };
     }
 

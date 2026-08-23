@@ -5,8 +5,8 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\JoinRequests;
-use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -60,7 +60,7 @@ test('waiting guest becomes active after approval status polling', function () {
         ]);
 
     $waitingGuest = Livewire::withCookie(guestJoinApprovalCookieName($qrCode), $joinRequest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', null)
         ->assertSet('currentJoinRequestId', $joinRequest->id)
@@ -93,7 +93,7 @@ test('waiting guest sees rejection after a current guest rejects from the join r
         ]);
 
     $waitingGuest = Livewire::withCookie(guestJoinApprovalCookieName($qrCode), $joinRequest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentJoinRequestId', $joinRequest->id);
 
     Livewire::withCookie(guestJoinApprovalCookieName($qrCode), $activeGuest->guest_token)

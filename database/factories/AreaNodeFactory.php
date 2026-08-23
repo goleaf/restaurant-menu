@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\AreaNodeType;
@@ -35,6 +37,27 @@ class AreaNodeFactory extends Factory
     {
         return $this->state(fn (): array => [
             'branch_id' => $branch->id,
+        ]);
+    }
+
+    public function forType(AreaNodeType $type): static
+    {
+        return $this->state(fn (): array => [
+            'type' => $type,
+        ]);
+    }
+
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => true,
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
         ]);
     }
 

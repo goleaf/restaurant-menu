@@ -41,8 +41,8 @@ class AuditLogFactory extends Factory
             'action' => AuditLogAction::MenuPriceChanged,
             'entity_type' => 'menu_item',
             'entity_id' => fake()->numberBetween(1, 1000),
-            'old_values' => ['price' => '10.00'],
-            'new_values' => ['price' => '12.00'],
+            'old_values' => ['price_cents' => 1000],
+            'new_values' => ['price_cents' => 1200],
             'created_at' => now(),
         ];
     }

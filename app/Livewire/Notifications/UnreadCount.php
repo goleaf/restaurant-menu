@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Notifications;
 
+use App\Actions\Notifications\MarkUserNotificationsReadAction;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
@@ -49,25 +50,16 @@ class UnreadCount extends Component
             ->all();
     }
 
-    public function markNotificationRead(string $notificationId): void
+    public function markNotificationRead(string $notificationId, MarkUserNotificationsReadAction $markRead): void
     {
-        $notification = $this->currentUser()
-            ->unreadNotifications()
-            ->whereKey($notificationId)
-            ->first();
-
-        if ($notification instanceof DatabaseNotification) {
-            $notification->markAsRead();
-        }
+        $markRead->one($this->currentUser(), $notificationId);
 
         $this->refreshUnreadCount();
     }
 
-    public function markAllRead(): void
+    public function markAllRead(MarkUserNotificationsReadAction $markRead): void
     {
-        $this->currentUser()
-            ->unreadNotifications()
-            ->update(['read_at' => now()]);
+        $markRead->all($this->currentUser());
 
         $this->refreshUnreadCount();
     }

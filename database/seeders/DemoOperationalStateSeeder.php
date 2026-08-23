@@ -58,23 +58,57 @@ class DemoOperationalStateSeeder extends Seeder
             $organization = Organization::query()
                 ->where('name', self::ORGANIZATION_NAME)
                 ->firstOrFail();
-            $branch = Branch::query()
+            $branches = Branch::query()
+                ->select(['id', 'organization_id', 'name', 'currency'])
                 ->where('organization_id', $organization->id)
-                ->where('name', self::BRANCH_NAME)
-                ->firstOrFail();
+                ->with([
+                    'servicePoints' => fn ($query) => $query
+                        ->select(['id', 'branch_id', 'area_node_id', 'name', 'is_active'])
+                        ->where('is_active', true)
+                        ->orderBy('id'),
+                    'menus' => fn ($query) => $query
+                        ->select(['id', 'branch_id', 'name', 'sort_order'])
+                        ->with([
+                            'items' => fn ($itemQuery) => $itemQuery
+                                ->select([
+                                    'id',
+                                    'menu_id',
+                                    'kitchen_department_id',
+                                    'name',
+                                    'price_cents',
+                                    'sort_order',
+                                ])
+                                ->with([
+                                    'kitchenDepartment:id,branch_id,type,name',
+                                    'variants' => fn ($variantQuery) => $variantQuery
+                                        ->select([
+                                            'id',
+                                            'menu_item_id',
+                                            'type',
+                                            'name',
+                                            'price_cents',
+                                            'is_default',
+                                            'sort_order',
+                                        ]),
+                                ])
+                                ->orderBy('id'),
+                        ]),
+                ])
+                ->orderBy('id')
+                ->get();
+            $branch = $branches->firstWhere('name', self::BRANCH_NAME);
+
+            if (! $branch instanceof Branch) {
+                throw new RuntimeException('The primary demo branch must be seeded before operational states.');
+            }
+
             $waiter = User::query()->where('email', 'waiter@demo.test')->firstOrFail();
-            $servicePoints = ServicePoint::query()
-                ->where('branch_id', $branch->id)
-                ->where('is_active', true)
-                ->orderBy('id')
-                ->limit(4)
-                ->get();
-            $menuItems = MenuItem::query()
-                ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
-                ->with('kitchenDepartment')
-                ->orderBy('id')
-                ->limit(3)
-                ->get();
+            $manager = User::query()->where('email', 'manager@demo.test')->firstOrFail();
+            $servicePoints = $branch->servicePoints->take(4)->values();
+            $menuItems = $branch->menus
+                ->flatMap(fn ($menu) => $menu->items)
+                ->take(3)
+                ->values();
 
             if ($servicePoints->count() < 4 || $menuItems->count() < 3) {
                 throw new RuntimeException('The base demo restaurant must be seeded before operational states.');
@@ -85,6 +119,19 @@ class DemoOperationalStateSeeder extends Seeder
             $this->seedKitchenWorkflow($branch, $servicePoints[1], $menuItems, $waiter);
             $this->seedPaymentWorkflow($branch, $servicePoints[2], $menuItems[0], $waiter);
             $this->seedHistoricalVolume($branch, $servicePoints[3], $menuItems[1], $waiter);
+
+            foreach ($branches->where('id', '!=', $branch->id) as $secondaryBranch) {
+                $servicePoint = $secondaryBranch->servicePoints->first();
+                $menuItem = $secondaryBranch->menus
+                    ->flatMap(fn ($menu) => $menu->items)
+                    ->first();
+
+                if (! $servicePoint instanceof ServicePoint || ! $menuItem instanceof MenuItem) {
+                    throw new RuntimeException("Demo branch [{$secondaryBranch->name}] must have a service point and menu item.");
+                }
+
+                $this->seedPaidBranchWorkflow($secondaryBranch, $servicePoint, $menuItem, $manager);
+            }
         });
     }
 
@@ -113,8 +160,8 @@ class DemoOperationalStateSeeder extends Seeder
         $tomas = $this->guest($session, 'Tomas Demo', false);
         $draft = $this->draft($session, DraftOrderStatus::SentToWaiter, $anna);
 
-        $this->draftItem($draft, $anna, $menuItems[0], 2, '12.50', '25.00', 'No onions');
-        $this->draftItem($draft, $tomas, $menuItems[1], 1, '9.50', '9.50', null);
+        $this->draftItem($draft, $anna, $menuItems[0], 2, 1250, 2500, 'No onions');
+        $this->draftItem($draft, $tomas, $menuItems[1], 1, 950, 950, null);
         $this->waiterCall($branch, $session, $anna, WaiterCallStatus::Pending, 'active-draft-call');
     }
 
@@ -129,7 +176,7 @@ class DemoOperationalStateSeeder extends Seeder
     ): void {
         $session = $this->session($branch, $servicePoint, 'kitchen-progress', TableSessionStatus::Active, now()->subMinutes(45));
         $guest = $this->guest($session, 'Milda Demo', true);
-        $order = $this->order($session, $guest, $waiter, 'kitchen-progress-order', OrderStatus::InProgress, '30.00');
+        $order = $this->order($session, $guest, $waiter, 'kitchen-progress-order', OrderStatus::InProgress, 3000);
         $statuses = [
             KitchenTicketItemStatus::New,
             KitchenTicketItemStatus::InProgress,
@@ -142,7 +189,7 @@ class DemoOperationalStateSeeder extends Seeder
                 guest: $guest,
                 menuItem: $menuItem,
                 itemName: 'Kitchen demo '.($index + 1),
-                unitPrice: '10.00',
+                unitPriceCents: 1000,
             );
             $this->ticketItem($branch, $session, $order, $orderItem, $menuItem, $statuses[$index], $waiter);
         }
@@ -156,9 +203,9 @@ class DemoOperationalStateSeeder extends Seeder
     ): void {
         $session = $this->session($branch, $servicePoint, 'payment-requested', TableSessionStatus::PaymentRequested, now()->subHour());
         $guest = $this->guest($session, 'Jonas Demo', true);
-        $order = $this->order($session, $guest, $waiter, 'payment-requested-order', OrderStatus::PaymentRequested, '15.00');
-        $this->orderItem($order, $guest, $menuItem, 'Payment demo item', '15.00');
-        $this->payment($branch, $session, $guest, $waiter, 'partial-payment', '5.00');
+        $order = $this->order($session, $guest, $waiter, 'payment-requested-order', OrderStatus::PaymentRequested, 1500);
+        $this->orderItem($order, $guest, $menuItem, 'Payment demo item', 1500);
+        $this->payment($branch, $session, $guest, $waiter, 'partial-payment', 500);
         $this->waiterCall($branch, $session, $guest, WaiterCallStatus::Handled, 'handled-payment-call', $waiter);
     }
 
@@ -177,14 +224,44 @@ class DemoOperationalStateSeeder extends Seeder
             now()->subDays(2),
         );
         $guest = $this->guest($session, 'Živilė Demo', false, TableSessionGuestStatus::Left);
-        $order = $this->order($session, $guest, $waiter, 'closed-high-volume-order', OrderStatus::Closed, '105.00');
+        $order = $this->order($session, $guest, $waiter, 'closed-high-volume-order', OrderStatus::Closed, 10500);
 
         foreach (range(1, 21) as $index) {
-            $this->orderItem($order, $guest, $menuItem, 'Historical demo item '.str_pad((string) $index, 2, '0', STR_PAD_LEFT), '5.00');
+            $this->orderItem($order, $guest, $menuItem, 'Historical demo item '.str_pad((string) $index, 2, '0', STR_PAD_LEFT), 500);
         }
 
-        $this->payment($branch, $session, null, $waiter, 'closed-table-payment', '105.00');
+        $this->payment($branch, $session, null, $waiter, 'closed-table-payment', 10500);
         $this->audit($branch, $waiter, $session);
+    }
+
+    private function seedPaidBranchWorkflow(
+        Branch $branch,
+        ServicePoint $servicePoint,
+        MenuItem $menuItem,
+        User $manager,
+    ): void {
+        $branchKey = Str::slug($branch->name);
+        $session = $this->session(
+            $branch,
+            $servicePoint,
+            "$branchKey-paid",
+            TableSessionStatus::Closed,
+            now()->subDay()->subHour(),
+            now()->subDay(),
+        );
+        $guest = $this->guest($session, $branch->name.' Demo Guest', false, TableSessionGuestStatus::Left);
+        $amountCents = max(1, $menuItem->price_cents);
+        $order = $this->order(
+            $session,
+            $guest,
+            $manager,
+            "$branchKey-order",
+            OrderStatus::Closed,
+            $amountCents,
+        );
+
+        $this->orderItem($order, $guest, $menuItem, $branch->name.' demo item', $amountCents);
+        $this->payment($branch, $session, null, $manager, "$branchKey-payment", $amountCents);
     }
 
     private function session(
@@ -196,6 +273,7 @@ class DemoOperationalStateSeeder extends Seeder
         ?\DateTimeInterface $endedAt = null,
     ): TableSession {
         $session = TableSession::query()
+            ->where('branch_id', $branch->id)
             ->where('metadata->demo_key', $demoKey)
             ->first() ?? new TableSession;
 
@@ -208,6 +286,7 @@ class DemoOperationalStateSeeder extends Seeder
             'ended_at' => $endedAt,
             'metadata' => ['demo_key' => $demoKey],
         ])->save();
+        $session->setRelation('branch', $branch);
 
         return $session;
     }
@@ -265,10 +344,11 @@ class DemoOperationalStateSeeder extends Seeder
         TableSessionGuest $guest,
         MenuItem $menuItem,
         int $quantity,
-        string $unitPrice,
-        string $totalPrice,
+        int $unitPriceCents,
+        int $totalPriceCents,
         ?string $comment,
     ): void {
+        $variant = $menuItem->variants->firstWhere('is_default', true) ?? $menuItem->variants->first();
         $item = DraftOrderItem::query()
             ->where('draft_order_id', $draft->id)
             ->where('table_session_guest_id', $guest->id)
@@ -279,11 +359,14 @@ class DemoOperationalStateSeeder extends Seeder
             'draft_order_id' => $draft->id,
             'table_session_guest_id' => $guest->id,
             'menu_item_id' => $menuItem->id,
+            'menu_item_variant_id' => $variant?->id,
             'item_name' => $menuItem->name,
+            'variant_name' => $variant?->name,
+            'variant_type' => $variant?->type,
             'quantity' => $quantity,
-            'unit_price' => $unitPrice,
-            'modifier_total' => '0.00',
-            'total_price' => $totalPrice,
+            'unit_price_cents' => $unitPriceCents,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => $totalPriceCents,
             'selected_modifiers' => [],
             'comment' => $comment,
         ])->save();
@@ -295,18 +378,13 @@ class DemoOperationalStateSeeder extends Seeder
         User $waiter,
         string $demoKey,
         OrderStatus $status,
-        string $totalPrice,
+        int $totalPriceCents,
     ): Order {
         $order = Order::query()
+            ->where('branch_id', $session->branch_id)
             ->where('metadata->demo_key', $demoKey)
-            ->first();
-
-        if ($order instanceof Order) {
-            return $order;
-        }
-
+            ->first() ?? new Order;
         $draft = $this->draft($session, DraftOrderStatus::ConvertedToOrder, $guest, $waiter);
-        $order = new Order;
         $order->forceFill([
             'branch_id' => $session->branch_id,
             'service_point_id' => $session->service_point_id,
@@ -315,8 +393,8 @@ class DemoOperationalStateSeeder extends Seeder
             'status' => $status,
             'confirmed_by_user_id' => $waiter->id,
             'confirmed_at' => now()->subMinutes(12),
-            'total_price' => $totalPrice,
-            'currency' => 'EUR',
+            'total_price_cents' => $totalPriceCents,
+            'currency' => $session->branch->currency,
             'metadata' => ['demo_key' => $demoKey],
         ])->save();
 
@@ -328,8 +406,9 @@ class DemoOperationalStateSeeder extends Seeder
         TableSessionGuest $guest,
         MenuItem $menuItem,
         string $itemName,
-        string $unitPrice,
+        int $unitPriceCents,
     ): OrderItem {
+        $variant = $menuItem->variants->firstWhere('is_default', true) ?? $menuItem->variants->first();
         $item = OrderItem::query()
             ->where('order_id', $order->id)
             ->where('item_name_snapshot', $itemName)
@@ -340,6 +419,7 @@ class DemoOperationalStateSeeder extends Seeder
             'order_id' => $order->id,
             'table_session_guest_id' => $guest->id,
             'menu_item_id' => $menuItem->id,
+            'menu_item_variant_id' => $variant?->id,
             'original_menu_item_id' => $menuItem->id,
             'kitchen_department_id' => $department?->id,
             'kitchen_department_type' => $department?->type,
@@ -349,11 +429,13 @@ class DemoOperationalStateSeeder extends Seeder
             'item_name' => $itemName,
             'item_name_snapshot' => $itemName,
             'item_description_snapshot' => null,
+            'variant_name' => $variant?->name,
+            'variant_type' => $variant?->type,
             'quantity' => 1,
-            'unit_price' => $unitPrice,
-            'unit_price_snapshot' => $unitPrice,
-            'modifier_total' => '0.00',
-            'total_price' => $unitPrice,
+            'unit_price_cents' => $unitPriceCents,
+            'unit_price_snapshot_cents' => $unitPriceCents,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => $unitPriceCents,
             'selected_modifiers' => [],
             'modifiers_snapshot' => [],
             'tax_snapshot' => [],
@@ -406,7 +488,9 @@ class DemoOperationalStateSeeder extends Seeder
             'table_session_guest_id' => $orderItem->table_session_guest_id,
             'menu_item_id' => $menuItem->id,
             'guest_name' => $orderItem->guest_name,
-            'item_name' => $orderItem->item_name,
+            'item_name' => filled($orderItem->variant_name)
+                ? $orderItem->item_name.' · '.$orderItem->variant_name
+                : $orderItem->item_name,
             'quantity' => $orderItem->quantity,
             'status' => $status,
             'selected_modifiers' => [],
@@ -423,6 +507,7 @@ class DemoOperationalStateSeeder extends Seeder
         ?User $waiter = null,
     ): void {
         $call = WaiterCall::query()
+            ->where('branch_id', $branch->id)
             ->where('metadata->demo_key', $demoKey)
             ->first() ?? new WaiterCall;
         $call->forceFill([
@@ -444,9 +529,12 @@ class DemoOperationalStateSeeder extends Seeder
         ?TableSessionGuest $guest,
         User $waiter,
         string $demoKey,
-        string $amount,
+        int $amountCents,
     ): void {
-        if (ManualPayment::query()->where('metadata->demo_key', $demoKey)->exists()) {
+        if (ManualPayment::query()
+            ->where('branch_id', $branch->id)
+            ->where('metadata->demo_key', $demoKey)
+            ->exists()) {
             return;
         }
 
@@ -459,12 +547,12 @@ class DemoOperationalStateSeeder extends Seeder
             'recorded_by_user_id' => $waiter->id,
             'scope' => $guest instanceof TableSessionGuest ? ManualPaymentScope::Guest : ManualPaymentScope::Table,
             'payment_method' => ManualPaymentMethod::CardTerminal,
-            'covered_subtotal_amount' => $amount,
-            'service_charge_percent' => '0.00',
-            'service_charge_amount' => '0.00',
-            'tips_amount' => '0.00',
-            'amount' => $amount,
-            'currency' => 'EUR',
+            'covered_subtotal_cents' => $amountCents,
+            'service_charge_basis_points' => 0,
+            'service_charge_cents' => 0,
+            'tips_cents' => 0,
+            'amount_cents' => $amountCents,
+            'currency' => $branch->currency,
             'guest_name' => $guest?->guest_name,
             'note' => 'Deterministic demo payment',
             'paid_at' => now()->subMinutes(5),

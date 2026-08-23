@@ -1,5 +1,9 @@
 <?php
 
+use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailability;
+use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
+use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
 use App\Livewire\Organizations\Staff\Permissions;
 use App\Livewire\PublicQr\DraftOrder;
 use App\Livewire\PublicQr\DraftTotals;
@@ -50,6 +54,18 @@ test('livewire security boundary properties are locked', function (string $compo
     'guest table guests session id' => [TableGuests::class, 'tableSessionId'],
     'guest table guests current guest id' => [TableGuests::class, 'currentGuestId'],
     'guest order statuses table session id' => [OrderStatuses::class, 'tableSessionId'],
+    'menu availability organization id' => [MenuAvailability::class, 'organizationId'],
+    'menu availability brand id' => [MenuAvailability::class, 'brandId'],
+    'menu availability branch id' => [MenuAvailability::class, 'branchId'],
+    'menu catalog organization id' => [MenuCatalog::class, 'organizationId'],
+    'menu catalog brand id' => [MenuCatalog::class, 'brandId'],
+    'menu catalog branch id' => [MenuCatalog::class, 'branchId'],
+    'menu kitchen departments organization id' => [MenuKitchenDepartments::class, 'organizationId'],
+    'menu kitchen departments brand id' => [MenuKitchenDepartments::class, 'brandId'],
+    'menu kitchen departments branch id' => [MenuKitchenDepartments::class, 'branchId'],
+    'menu modifiers organization id' => [MenuModifiers::class, 'organizationId'],
+    'menu modifiers brand id' => [MenuModifiers::class, 'brandId'],
+    'menu modifiers branch id' => [MenuModifiers::class, 'branchId'],
     'waiter table detail session id' => [TableDetail::class, 'tableSessionId'],
     'waiter table overview session id' => [Overview::class, 'tableSessionId'],
     'waiter draft review session id' => [DraftReview::class, 'tableSessionId'],

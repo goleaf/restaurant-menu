@@ -72,6 +72,12 @@
             <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
         @enderror
 
+        @if ($guestMenu['has_allergen_information'] ?? false)
+            <x-ui.alert tone="warning" class="mt-4" :heading="__('menu.allergens.notice_title')">
+                {{ __('menu.allergens.safety_notice') }}
+            </x-ui.alert>
+        @endif
+
         <div class="mt-4 space-y-7">
             @forelse ($availableMenus as $menu)
                 <section wire:key="guest-menu-menu-{{ $menu['id'] }}" class="space-y-4">
@@ -142,6 +148,12 @@
                                                 <span>{{ $item['calories'] }} {{ __('menu.guest.unit_kcal') }}</span>
                                             @endif
                                         </div>
+
+                                        <x-menu.item-labels
+                                            class="mt-3"
+                                            :allergens="$item['allergens']"
+                                            :dietary-labels="$item['dietary_labels']"
+                                        />
 
                                         <div class="mt-3">
                                             @if ($item['is_available'] && $guestCanAddItems && $branchCanAcceptOrders)
@@ -270,7 +282,53 @@
                     </button>
                 </div>
 
+                <x-menu.item-labels
+                    class="mt-4"
+                    :allergens="$selectedItem['allergens']"
+                    :dietary-labels="$selectedItem['dietary_labels']"
+                />
+
                 <div class="mt-4 space-y-4">
+                    @if ($selectedItem['variants'] !== [])
+                        <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">
+                                {{ __('menu.variants.guest.choose') }}
+                            </legend>
+
+                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                @foreach ($selectedItem['variants'] as $variant)
+                                    <label
+                                        wire:key="guest-menu-selected-variant-{{ $variant['id'] }}"
+                                        @class([
+                                            'flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm transition focus-within:ring-2 focus-within:ring-emerald-500/30',
+                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => $selectedItemVariantId === $variant['id'],
+                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => $selectedItemVariantId !== $variant['id'],
+                                        ])
+                                    >
+                                        <span class="flex min-w-0 items-center gap-2">
+                                            <input type="radio" wire:model.live="selectedItemVariantId" value="{{ $variant['id'] }}" class="size-4 shrink-0 accent-emerald-600">
+                                            <span class="min-w-0">
+                                                <span class="block font-medium">{{ $variant['name'] }}</span>
+                                                @if ($variant['weight'] || $variant['volume'])
+                                                    <span class="block text-xs text-zinc-500 dark:text-zinc-400">
+                                                        @if ($variant['weight']) {{ $variant['weight'] }} {{ __('menu.guest.unit_grams') }} @endif
+                                                        @if ($variant['weight'] && $variant['volume']) · @endif
+                                                        @if ($variant['volume']) {{ $variant['volume'] }} {{ __('menu.guest.unit_liters') }} @endif
+                                                    </span>
+                                                @endif
+                                            </span>
+                                        </span>
+                                        <span class="shrink-0 font-semibold">{{ $variant['formatted_price'] }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            @error('selectedItemVariantId')
+                                <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            @enderror
+                        </fieldset>
+                    @endif
+
                     @forelse ($selectedItem['modifier_groups'] as $modifierGroup)
                         <fieldset wire:key="guest-menu-selected-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                             <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">

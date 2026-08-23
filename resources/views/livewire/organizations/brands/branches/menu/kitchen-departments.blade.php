@@ -1,3 +1,25 @@
+<div class="grid gap-4">
+    <form wire:submit="createKitchenDepartment" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div class="flex items-center justify-between gap-3">
+            <flux:heading size="lg">{{ __('reports.csv.kitchen_department') }}</flux:heading>
+            <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createKitchenDepartment">
+                {{ __('ui.organizations.brands.branches.menu.index.create') }}
+            </flux:button>
+        </div>
+        <div class="mt-4 grid gap-3">
+            <flux:input wire:model="departmentName" :label="__('reports.csv.name')" type="text" required maxlength="120" />
+            <flux:select wire:model="departmentType" :label="__('reports.csv.type')">
+                @foreach ($kitchenDepartmentTypeOptions as $value => $label)
+                    <flux:select.option wire:key="department-type-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <flux:input wire:model="departmentSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
+                <div class="flex items-end"><flux:switch wire:model="departmentIsActive" :label="__('qr.status.active')" /></div>
+            </div>
+        </div>
+    </form>
+
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.kitchen_departments') }}</flux:heading>
@@ -73,3 +95,4 @@
             @endforelse
         </div>
     </div>
+</div>

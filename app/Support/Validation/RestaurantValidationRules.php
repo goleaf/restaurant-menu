@@ -8,6 +8,9 @@ use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\ManualPaymentMethod;
+use App\Enums\MenuAllergen;
+use App\Enums\MenuDietaryLabel;
+use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
 use App\Enums\ServicePointType;
 use App\Enums\SupportedCurrency;
@@ -224,6 +227,10 @@ class RestaurantValidationRules
             self::field($prefix, 'itemWeight') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'itemVolume') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'itemCalories') => ['nullable', 'integer', 'min:0', 'max:999999'],
+            self::field($prefix, 'itemAllergens') => ['array', 'max:'.count(MenuAllergen::cases())],
+            self::field($prefix, 'itemAllergens').'.*' => ['string', 'distinct', Rule::in(MenuAllergen::values())],
+            self::field($prefix, 'itemDietaryLabels') => ['array', 'max:'.count(MenuDietaryLabel::cases())],
+            self::field($prefix, 'itemDietaryLabels').'.*' => ['string', 'distinct', Rule::in(MenuDietaryLabel::values())],
             self::field($prefix, 'itemSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
         ];
 
@@ -233,6 +240,36 @@ class RestaurantValidationRules
 
         if ($canChangeAvailability) {
             $rules[self::field($prefix, 'itemIsAvailable')] = ['boolean'];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function menuItemVariant(
+        string $prefix = '',
+        bool $canChangePrices = true,
+        bool $canChangeAvailability = true,
+    ): array {
+        $rules = [
+            self::field($prefix, 'variantType') => ['required', 'string', Rule::in(MenuItemVariantType::values())],
+            self::field($prefix, 'variantName') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'variantWeight') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            self::field($prefix, 'variantVolume') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
+            self::field($prefix, 'variantIsDefault') => ['boolean'],
+            self::field($prefix, 'variantSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'variantTranslations') => ['array:en,lt,ru'],
+            self::field($prefix, 'variantTranslations').'.*' => ['nullable', 'string', 'max:160'],
+        ];
+
+        if ($canChangePrices) {
+            $rules[self::field($prefix, 'variantPrice')] = self::moneyRules();
+        }
+
+        if ($canChangeAvailability) {
+            $rules[self::field($prefix, 'variantIsAvailable')] = ['boolean'];
         }
 
         return $rules;

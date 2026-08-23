@@ -35,22 +35,22 @@ final class Payment extends TableDetailSection
     public function mount(int $tableSessionId, array $initialPayment = []): void
     {
         $this->tableSessionId = $tableSessionId;
-        $this->authorizeCurrentTableSession();
+        $this->authorizeViewableTableSession();
         $this->payment = $initialPayment === []
-            ? $this->paymentPayload($this->freshTablePayload())
+            ? $this->paymentPayload($this->freshViewableTablePayload())
             : $initialPayment;
     }
 
     public function refreshPayment(): void
     {
-        $this->payment = $this->paymentPayload($this->freshTablePayload());
+        $this->payment = $this->paymentPayload($this->freshViewableTablePayload());
     }
 
     public function recordTablePayment(RecordManualPaymentAction $recordManualPayment): void
     {
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
-        $tableSession = $this->authorizeCurrentTableSession();
+        $tableSession = $this->authorizePaymentTableSession();
         $validated = $this->validate($this->manualPaymentRules(), $this->manualPaymentMessages());
 
         try {
@@ -78,7 +78,7 @@ final class Payment extends TableDetailSection
     {
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
-        $tableSession = $this->authorizeCurrentTableSession();
+        $tableSession = $this->authorizePaymentTableSession();
         $validated = $this->validate($this->manualPaymentRules(), $this->manualPaymentMessages());
         $guest = $this->paymentGuestForCurrentTable($guestId);
 
@@ -120,7 +120,7 @@ final class Payment extends TableDetailSection
         $this->resetValidation();
         $this->paymentFeedbackMessage = '';
 
-        $serverPayment = $this->paymentPayload($this->freshTablePayload());
+        $serverPayment = $this->paymentPayload($this->freshViewableTablePayload());
         $this->payment = $serverPayment;
 
         if ((bool) data_get($serverPayment, 'session.close_requires_warning')) {
@@ -133,7 +133,7 @@ final class Payment extends TableDetailSection
         }
 
         try {
-            $closeTableSession->handle($this->authorizeCurrentTableSession(), $this->currentUser());
+            $closeTableSession->handle($this->authorizeViewableTableSession(), $this->currentUser());
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
 

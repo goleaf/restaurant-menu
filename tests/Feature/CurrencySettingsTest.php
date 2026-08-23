@@ -67,8 +67,8 @@ test('guest menu displays prices in the branch currency without converting amoun
         ->call('toggleModifierOption', $modifierGroup->id, $largeOption->id)
         ->assertSeeText('$18.00');
 
-    expect($item->fresh()->price)->toBe('14.50')
-        ->and($largeOption->fresh()->price_delta)->toBe('3.50');
+    expect($item->fresh()->price_cents)->toBe(1450)
+        ->and($largeOption->fresh()->price_delta_cents)->toBe(350);
 });
 
 function createCurrencySettingsBranch(string $currency = 'EUR'): Branch
@@ -110,7 +110,7 @@ function createCurrencySettingsMenuRows(Branch $branch): array
         ->for($category, 'category')
         ->create([
             'name' => 'Currency pizza',
-            'price' => '14.50',
+            'price_cents' => 1450,
             'is_available' => true,
         ]);
     $modifierGroup = ModifierGroup::factory()
@@ -125,7 +125,7 @@ function createCurrencySettingsMenuRows(Branch $branch): array
         ->for($modifierGroup)
         ->create([
             'name' => 'Large',
-            'price_delta' => '3.50',
+            'price_delta_cents' => 350,
             'is_available' => true,
         ]);
 

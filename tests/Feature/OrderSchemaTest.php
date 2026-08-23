@@ -45,7 +45,7 @@ test('order schema stores real order links and item snapshots', function () {
             'status',
             'confirmed_by_user_id',
             'confirmed_at',
-            'total_price',
+            'total_price_cents',
             'currency',
             'metadata',
         ]))->toBeTrue()
@@ -54,6 +54,7 @@ test('order schema stores real order links and item snapshots', function () {
             'order_id',
             'table_session_guest_id',
             'menu_item_id',
+            'menu_item_variant_id',
             'original_menu_item_id',
             'kitchen_department_id',
             'kitchen_department_type',
@@ -63,17 +64,39 @@ test('order schema stores real order links and item snapshots', function () {
             'item_name',
             'item_name_snapshot',
             'item_description_snapshot',
+            'variant_name',
+            'variant_type',
             'quantity',
-            'unit_price',
-            'unit_price_snapshot',
-            'modifier_total',
-            'total_price',
+            'unit_price_cents',
+            'unit_price_snapshot_cents',
+            'modifier_total_cents',
+            'total_price_cents',
             'selected_modifiers',
             'modifiers_snapshot',
             'tax_snapshot',
             'service_snapshot',
             'comment',
+            'cancelled_at',
+            'cancelled_by_user_id',
+            'cancellation_reason',
         ]))->toBeTrue();
+
+    $orderItemIndexes = collect(Schema::getIndexes('order_items'));
+    $orderItemForeignKeys = collect(Schema::getForeignKeys('order_items'));
+
+    expect($orderItemIndexes->contains(
+        fn (array $index): bool => $index['columns'] === ['order_id', 'cancelled_at'],
+    ))->toBeTrue()
+        ->and($orderItemForeignKeys->contains(
+            fn (array $foreignKey): bool => $foreignKey['columns'] === ['cancelled_by_user_id']
+                && $foreignKey['foreign_table'] === 'users'
+                && mb_strtolower((string) $foreignKey['on_delete']) === 'set null',
+        ))->toBeTrue()
+        ->and($orderItemForeignKeys->contains(
+            fn (array $foreignKey): bool => $foreignKey['columns'] === ['menu_item_variant_id']
+                && $foreignKey['foreign_table'] === 'menu_item_variants'
+                && mb_strtolower((string) $foreignKey['on_delete']) === 'set null',
+        ))->toBeTrue();
 });
 
 test('order status enum contains the prepared order lifecycle', function () {
@@ -108,7 +131,7 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($order->service_point_id)->toBe($servicePoint->id)
         ->and($order->table_session_id)->toBe($draftOrder->table_session_id)
         ->and($order->draft_order_id)->toBe($draftOrder->id)
-        ->and($order->total_price)->toBe('17.00')
+        ->and($order->total_price_cents)->toBe(1700)
         ->and($order->currency)->toBe('EUR')
         ->and($orderItem->original_menu_item_id)->toBe($menuItem->id)
         ->and($orderItem->guest_name)->toBe('Ana')
@@ -117,22 +140,22 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($orderItem->item_name_snapshot)->toBe('Original Steak')
         ->and($orderItem->item_description_snapshot)->toBe('Original menu description')
         ->and($orderItem->quantity)->toBe(2)
-        ->and($orderItem->unit_price)->toBe('7.50')
-        ->and($orderItem->unit_price_snapshot)->toBe('7.50')
-        ->and($orderItem->modifier_total)->toBe('1.00')
-        ->and($orderItem->total_price)->toBe('17.00')
+        ->and($orderItem->unit_price_cents)->toBe(750)
+        ->and($orderItem->unit_price_snapshot_cents)->toBe(750)
+        ->and($orderItem->modifier_total_cents)->toBe(100)
+        ->and($orderItem->total_price_cents)->toBe(1700)
         ->and($orderItem->selected_modifiers)->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
-                'price_delta' => '1.00',
+                'price_delta_cents' => 100,
             ],
         ])
         ->and($orderItem->modifiers_snapshot)->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
-                'price_delta' => '1.00',
+                'price_delta_cents' => 100,
             ],
         ])
         ->and($orderItem->tax_snapshot)->toBe([])
@@ -146,13 +169,13 @@ test('confirming draft creates immutable order item snapshots', function () {
     $menuItem->update([
         'name' => 'Renamed Steak',
         'description' => 'Renamed menu description',
-        'price' => '99.00',
+        'price_cents' => 9900,
     ]);
     $guest->update(['guest_name' => 'Renamed Ana']);
     $modifierGroup->update(['name' => 'Premium sauce']);
     $modifierOption->update([
         'name' => 'Truffle sauce',
-        'price_delta' => '8.00',
+        'price_delta_cents' => 800,
     ]);
 
     $orderItem = $orderItem->fresh();
@@ -161,22 +184,22 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->and($orderItem->item_name_snapshot)->toBe('Original Steak')
         ->and($orderItem->item_description_snapshot)->toBe('Original menu description')
         ->and($orderItem->guest_name_snapshot)->toBe('Ana')
-        ->and($orderItem->unit_price)->toBe('7.50')
-        ->and($orderItem->unit_price_snapshot)->toBe('7.50')
-        ->and($orderItem->modifier_total)->toBe('1.00')
-        ->and($orderItem->total_price)->toBe('17.00')
+        ->and($orderItem->unit_price_cents)->toBe(750)
+        ->and($orderItem->unit_price_snapshot_cents)->toBe(750)
+        ->and($orderItem->modifier_total_cents)->toBe(100)
+        ->and($orderItem->total_price_cents)->toBe(1700)
         ->and($orderItem->selected_modifiers)->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
-                'price_delta' => '1.00',
+                'price_delta_cents' => 100,
             ],
         ])
         ->and($orderItem->modifiers_snapshot)->toBe([
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
-                'price_delta' => '1.00',
+                'price_delta_cents' => 100,
             ],
         ])
         ->and($orderItem->historicalGuestName())->toBe('Ana')
@@ -185,7 +208,7 @@ test('confirming draft creates immutable order item snapshots', function () {
             [
                 'group_name' => 'Sauce',
                 'option_name' => 'Pepper sauce',
-                'price_delta' => '1.00',
+                'price_delta_cents' => 100,
             ],
         ])
         ->and($order->fresh()->items()->count())->toBe(1);
@@ -236,7 +259,7 @@ function createPrompt56SentDraftScenario(): array
         ->create([
             'name' => 'Original Steak',
             'description' => 'Original menu description',
-            'price' => '7.50',
+            'price_cents' => 750,
         ]);
     $modifierGroup = ModifierGroup::factory()
         ->for($branch)
@@ -245,7 +268,7 @@ function createPrompt56SentDraftScenario(): array
         ->for($modifierGroup, 'modifierGroup')
         ->create([
             'name' => 'Pepper sauce',
-            'price_delta' => '1.00',
+            'price_delta_cents' => 100,
         ]);
 
     $menuItem->modifierGroups()->sync([$modifierGroup->id]);
@@ -265,14 +288,14 @@ function createPrompt56SentDraftScenario(): array
         ->create([
             'item_name' => 'Original Steak',
             'quantity' => 2,
-            'unit_price' => '7.50',
-            'modifier_total' => '1.00',
-            'total_price' => '17.00',
+            'unit_price_cents' => 750,
+            'modifier_total_cents' => 100,
+            'total_price_cents' => 1700,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Sauce',
                     'option_name' => 'Pepper sauce',
-                    'price_delta' => '1.00',
+                    'price_delta_cents' => 100,
                 ],
             ],
             'comment' => 'Medium rare',

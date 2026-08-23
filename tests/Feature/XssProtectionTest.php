@@ -54,7 +54,7 @@ test('guest menu escapes unsafe existing menu and category text', function () {
         'category_id' => $category->id,
         'name' => '<script>alert(3)</script>',
         'description' => "<script>alert(4)</script>\nDish line",
-        'price' => '12.50',
+        'price_cents' => 1250,
         'is_available' => true,
     ]);
 
@@ -98,7 +98,7 @@ test('guest order comments are stored as plain text and rendered without raw scr
         'category_id' => $category->id,
         'name' => 'Soup',
         'description' => 'Soup description',
-        'price' => '8.00',
+        'price_cents' => 800,
         'is_available' => true,
     ]);
 

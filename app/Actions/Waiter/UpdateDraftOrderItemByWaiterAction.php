@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -32,31 +34,36 @@ class UpdateDraftOrderItemByWaiterAction
         User $editedBy,
         int $quantity,
         array $selectedModifierOptions,
+        ?int $menuItemVariantId = null,
         ?string $comment = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($draftOrderItem, $editedBy, $quantity, $selectedModifierOptions, $comment): DraftOrderItem {
+        return DB::transaction(function () use ($draftOrderItem, $editedBy, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment): DraftOrderItem {
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $draftOrder = $draftOrderItem->draftOrder;
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
 
             $quantity = $this->normalizeQuantity($quantity);
-            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity);
+            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
 
             $previousStatus = $draftOrder->status;
             $oldValues = [
                 'operation' => 'waiter_item_updated',
                 'draft_order_id' => $draftOrder->id,
                 'quantity' => $draftOrderItem->quantity,
-                'total_price' => $draftOrderItem->total_price,
+                'total_price_cents' => $draftOrderItem->total_price_cents,
                 'comment' => $draftOrderItem->comment,
             ];
             $this->markAsWaiterReview($draftOrder);
 
             $draftOrderItem->update([
                 'quantity' => $quantity,
-                'modifier_total' => $linePrice['modifier_total'],
-                'total_price' => $linePrice['total_price'],
+                'menu_item_variant_id' => $linePrice['menu_item_variant_id'],
+                'variant_name' => $linePrice['variant_name'],
+                'variant_type' => $linePrice['variant_type'],
+                'unit_price_cents' => $linePrice['unit_price_cents'],
+                'modifier_total_cents' => $linePrice['modifier_total_cents'],
+                'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
             ]);
@@ -87,7 +94,7 @@ class UpdateDraftOrderItemByWaiterAction
                     'operation' => 'waiter_item_updated',
                     'draft_order_id' => $draftOrder->id,
                     'quantity' => $draftOrderItem->quantity,
-                    'total_price' => $draftOrderItem->total_price,
+                    'total_price_cents' => $draftOrderItem->total_price_cents,
                     'comment' => $draftOrderItem->comment,
                 ],
             );
@@ -104,11 +111,14 @@ class UpdateDraftOrderItemByWaiterAction
                 'draft_order_id',
                 'table_session_guest_id',
                 'menu_item_id',
+                'menu_item_variant_id',
                 'item_name',
+                'variant_name',
+                'variant_type',
                 'quantity',
-                'unit_price',
-                'modifier_total',
-                'total_price',
+                'unit_price_cents',
+                'modifier_total_cents',
+                'total_price_cents',
                 'selected_modifiers',
                 'comment',
             ])

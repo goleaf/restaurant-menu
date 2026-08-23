@@ -23,13 +23,14 @@ class AreaNodeWaiterFactory extends Factory
      */
     public function definition(): array
     {
-        $organization = Organization::factory();
-        $branch = Branch::factory()->for($organization);
-
         return [
-            'organization_id' => $organization,
-            'branch_id' => $branch,
-            'area_node_id' => AreaNode::factory()->for($branch),
+            'organization_id' => Organization::factory(),
+            'branch_id' => fn (array $attributes): int => Branch::factory()
+                ->create(['organization_id' => $attributes['organization_id']])
+                ->id,
+            'area_node_id' => fn (array $attributes): int => AreaNode::factory()
+                ->create(['branch_id' => $attributes['branch_id']])
+                ->id,
             'user_id' => User::factory(),
             'assigned_by_user_id' => User::factory(),
             'assigned_at' => now(),

@@ -13,7 +13,8 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
-use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
+use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -103,7 +104,7 @@ test('manager can manage kitchen departments and assign a dish department', func
     $category = MenuCategory::factory()->for($menu)->create(['name' => 'Main']);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuKitchenDepartments::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('departmentName', 'Hot kitchen')
         ->set('departmentType', KitchenDepartmentType::Kitchen->value)
         ->set('departmentSortOrder', 10)
@@ -118,7 +119,7 @@ test('manager can manage kitchen departments and assign a dish department', func
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('itemMenuId', (string) $menu->id)
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemKitchenDepartmentId', (string) $department->id)
@@ -137,7 +138,7 @@ test('manager can manage kitchen departments and assign a dish department', func
     expect($item->kitchen_department_id)->toBe($department->id);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuKitchenDepartments::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingKitchenDepartment', $department->id)
         ->set('editingDepartmentName', 'Main kitchen')
         ->set('editingDepartmentType', KitchenDepartmentType::Custom->value)
@@ -183,7 +184,7 @@ test('blank dish department uses default kitchen and department changes clear me
     expect($cache->has($cacheKey))->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('itemMenuId', (string) $menu->id)
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemKitchenDepartmentId', '')
@@ -205,7 +206,7 @@ test('blank dish department uses default kitchen and department changes clear me
     expect($cache->has($cacheKey))->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
         ->set('editingItemKitchenDepartmentId', (string) $bar->id)
         ->call('updateItem')
@@ -339,7 +340,7 @@ function createPrompt58SentDraftScenario(): array
         ->for($department, 'kitchenDepartment')
         ->create([
             'name' => 'House lemonade',
-            'price' => '5.50',
+            'price_cents' => 550,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -356,9 +357,9 @@ function createPrompt58SentDraftScenario(): array
         ->create([
             'item_name' => 'House lemonade',
             'quantity' => 1,
-            'unit_price' => '5.50',
-            'modifier_total' => '0.00',
-            'total_price' => '5.50',
+            'unit_price_cents' => 550,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 550,
             'selected_modifiers' => [],
         ]);
 

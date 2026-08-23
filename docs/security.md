@@ -20,7 +20,7 @@ Server validation covers type, boundary, ownership, enum, nested keys, dates, mo
 
 ## Files and backup
 
-Uploads use configured disks, MIME/content/size validation and generated names. Private downloads authorize at request time. Replacements write the new object and persist its path before deleting the old object; failure compensation avoids database/file divergence. A SQLite backup is a transactionally consistent snapshot and is restricted to superadmins; every download is audited without logging file contents.
+Uploads use configured disks, MIME/content/size validation and generated names. Private downloads authorize at request time. Replacements write the new object and persist its path before deleting the old object; failure compensation avoids database/file divergence. SQLite backup download and restore are restricted to superadmins behind recent password confirmation, typed confirmation and an audited reason. Restore authorization carries a server-side one-time nonce, and the uploaded SQLite header plus the complete table/column/index/foreign-key/view fingerprint must match the current release before live data can change. Restore runs under a filesystem lock and maintenance mode, creates a private consistent pre-restore snapshot, rolls back automatically on any post-replacement failure, clears cache and remember tokens, and invalidates all sessions. File contents, absolute paths and authorization nonces are not logged.
 
 ## Payments and races
 
@@ -32,6 +32,9 @@ Payment creation, correction and session closure acquire an appropriate database
 - Production cannot run demo seeders.
 - Composer and npm advisories are release gates.
 - Unexpected failures are reported with bounded, non-sensitive structured context; users receive localized safe messages.
+- Raw request paths are excluded from exception context; UUID request IDs and route templates provide correlation without logging QR/invitation credentials.
+- Production error email is opt-in, deduplicated and limited to safe incident metadata; exception messages, stack traces, request bodies and user data remain in neither the alert nor its deduplication key.
+- Log context is recursively redacted and production file logs rotate with bounded retention.
 - Destructive maintenance operations are explicit, authorized, confirmed and audited.
 - Dependency or environment exceptions are documented with an exact advisory/blocker and affected requirement ID.
 

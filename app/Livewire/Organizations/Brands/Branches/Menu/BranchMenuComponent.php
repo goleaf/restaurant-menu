@@ -14,6 +14,11 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
+/**
+ * @property-read Branch $branch
+ * @property-read Brand $brand
+ * @property-read Organization $organization
+ */
 abstract class BranchMenuComponent extends Component
 {
     #[Locked]

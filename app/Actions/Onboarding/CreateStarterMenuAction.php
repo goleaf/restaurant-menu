@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Onboarding;
 
 use App\Enums\KitchenDepartmentType;
@@ -9,12 +11,13 @@ use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\DB;
 
 class CreateStarterMenuAction
 {
     /**
-     * @param  array{menu_name: string, category_name: string, item_name: string, item_price: string|float|int}  $data
+     * @param  array{menu_name: string, category_name: string, item_name: string, item_price: string|int}  $data
      * @return array{menu: Menu, category: MenuCategory, item: MenuItem}
      */
     public function handle(Branch $branch, array $data): array
@@ -39,7 +42,7 @@ class CreateStarterMenuAction
                 'kitchen_department_id' => $this->defaultKitchenDepartmentId($branch),
                 'name' => $data['item_name'],
                 'description' => null,
-                'price' => number_format((float) $data['item_price'], 2, '.', ''),
+                'price_cents' => MoneyFormatter::decimalToCents($data['item_price']),
                 'is_available' => true,
                 'sort_order' => 0,
             ]);

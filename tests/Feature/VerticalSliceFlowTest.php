@@ -249,7 +249,7 @@ test('first vertical slice works from registration to closed table session', fun
 
     Livewire::actingAs($waiter)
         ->test(WaiterDraftReview::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('draftReview.status_value', DraftOrderStatus::SentToWaiter->value)
+        ->assertSet('draftReview.draft.status_value', DraftOrderStatus::SentToWaiter->value)
         ->assertSee('Vertical Pizza')
         ->assertSee('Vertical Lemonade')
         ->call('confirmDraft')
@@ -263,12 +263,12 @@ test('first vertical slice works from registration to closed table session', fun
         ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_otpravlen_na_kuxniu_bar_gosti_uvidiat'));
 
     $order = Order::query()
-        ->select(['id', 'draft_order_id', 'status', 'total_price'])
+        ->select(['id', 'draft_order_id', 'status', 'total_price_cents'])
         ->where('draft_order_id', $draftOrder->id)
         ->firstOrFail();
 
     expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
-        ->and($order->total_price)->toBe('16.50')
+        ->and($order->total_price_cents)->toBe(1650)
         ->and(KitchenTicket::query()->where('order_id', $order->id)->count())->toBe(2)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Cooking);
 
@@ -296,13 +296,13 @@ test('first vertical slice works from registration to closed table session', fun
 
     Livewire::actingAs($waiter)
         ->test(WaiterOrderFulfilment::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('orderFulfilment.ready_ticket_item_count', 2)
+        ->assertSet('orderFulfilment.draft.ready_ticket_item_count', 2)
         ->assertSee('Mark served')
         ->call('markTicketItemServed', $kitchenTicketItem->id)
         ->assertHasNoErrors()
         ->call('markTicketItemServed', $barTicketItem->id)
         ->assertHasNoErrors()
-        ->assertSet('orderFulfilment.order_status_value', OrderStatus::Served->value)
+        ->assertSet('orderFulfilment.draft.order_status_value', OrderStatus::Served->value)
         ->assertSee('Served');
 
     expect($order->fresh()->status)->toBe(OrderStatus::Served)
@@ -357,7 +357,7 @@ function createVerticalSliceBarItem(int $branchId, int $categoryId): MenuItem
             'kitchen_department_id' => $barDepartment->id,
             'name' => 'Vertical Lemonade',
             'description' => null,
-            'price' => '4.50',
+            'price_cents' => 450,
             'is_available' => true,
             'sort_order' => 20,
         ])

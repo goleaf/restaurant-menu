@@ -2,6 +2,7 @@
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\SupportedLocale;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
@@ -10,7 +11,12 @@ use App\Models\MenuItem;
 use App\Models\QrCode;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+
+beforeEach(function () {
+    Storage::fake('public');
+});
 
 test('translation audit passes for seeded demo ui', function () {
     $this->artisan('translations:audit')->assertSuccessful();
@@ -56,7 +62,12 @@ test('seeded guest language switcher persists and renders translated ui and menu
         ->assertSet('language', 'en')
         ->assertSeeText('Your name')
         ->set('language', 'lt')
-        ->assertSet('language', 'lt')
+        ->assertSet('language', 'lt');
+
+    Livewire::test(GuestEntry::class, [
+        'token' => $qrCode->public_token,
+        'language' => 'lt',
+    ])
         ->assertSeeText('Jūsų vardas');
 
     expect(session('interface_locale'))->toBe('lt')

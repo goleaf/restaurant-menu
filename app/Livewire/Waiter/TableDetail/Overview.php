@@ -34,9 +34,9 @@ final class Overview extends TableDetailSection
     public function mount(int $tableSessionId, array $initialOverview = []): void
     {
         $this->tableSessionId = $tableSessionId;
-        $this->authorizeCurrentTableSession();
+        $this->authorizeViewableTableSession();
         $this->overview = $initialOverview === []
-            ? $this->overviewPayload($this->freshTablePayload())
+            ? $this->overviewPayload($this->freshViewableTablePayload())
             : $initialOverview;
         $this->syncTransferTargetServicePoint();
         $this->syncMergeTargetServicePoint();
@@ -46,7 +46,7 @@ final class Overview extends TableDetailSection
     #[On('waiter-table-updated')]
     public function refreshOverview(): void
     {
-        $this->overview = $this->overviewPayload($this->freshTablePayload());
+        $this->overview = $this->overviewPayload($this->freshViewableTablePayload());
         $this->syncTransferTargetServicePoint();
         $this->syncMergeTargetServicePoint();
         $this->refreshedAt = now()->format('H:i:s');
@@ -56,7 +56,7 @@ final class Overview extends TableDetailSection
     {
         $this->resetValidation();
         $this->transferFeedbackMessage = '';
-        $tableSession = $this->authorizeCurrentTableSession();
+        $tableSession = $this->authorizeWaiterTableSession();
         $validated = $this->validate([
             'transferTargetServicePointId' => ['required', 'integer', 'min:1'],
         ], [
@@ -88,7 +88,7 @@ final class Overview extends TableDetailSection
     {
         $this->resetValidation();
         $this->mergeFeedbackMessage = '';
-        $tableSession = $this->authorizeCurrentTableSession();
+        $tableSession = $this->authorizeWaiterTableSession();
         $validated = $this->validate([
             'mergeTargetServicePointId' => ['required', 'integer', 'min:1'],
         ], [

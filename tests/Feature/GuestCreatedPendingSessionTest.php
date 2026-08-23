@@ -7,7 +7,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -23,7 +23,7 @@ use Livewire\Livewire;
 test('first guest creates pending table session and active session guest from qr landing', function () {
     [$qrCode, $servicePoint] = createGuestPendingQrContext();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->set('guestName', '  Ana   Maria  ')
         ->call('enterTable')
@@ -63,7 +63,7 @@ test('first guest creates pending table session and active session guest from qr
 test('guest token cookie restores table session after page refresh', function () {
     [$qrCode] = createGuestPendingQrContext();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Lina')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value);
@@ -72,7 +72,7 @@ test('guest token cookie restores table session after page refresh', function ()
     $guest = TableSessionGuest::query()->firstOrFail();
 
     Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('preparedGuestName', 'Lina')
         ->assertSet('currentTableSessionId', $tableSession->id)
@@ -109,7 +109,7 @@ test('guest token restore shows message when table session is closed', function 
     $tableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
 
     Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $guest->id)
         ->assertSet('guestCanAddItems', false)
@@ -131,7 +131,7 @@ test('blocked guest statuses cannot add items after token restore', function (Ta
         ]);
 
     Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $guest->id)
         ->assertSet('guestCanAddItems', false)
@@ -145,7 +145,7 @@ test('blocked guest statuses cannot add items after token restore', function (Ta
 test('guest-created sessions setting can block first guest session creation', function () {
     [$qrCode] = createGuestPendingQrContext(allowGuestCreatedSessions: false);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Mila')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -166,7 +166,7 @@ test('guest entering table does not create pending session when active session a
         ->waiterOpened()
         ->create();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Jonas')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -191,7 +191,7 @@ test('guest entering active session with active guests creates pending join requ
         ->for($activeTableSession)
         ->create(['guest_name' => 'Ana']);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Jonas')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -233,7 +233,7 @@ test('guest sees duplicate name warning before join request is created', functio
             'status' => TableSessionGuestStatus::Active,
         ]);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', '  Анна  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -264,7 +264,7 @@ test('guest can choose suggested display name for duplicate table name', functio
             'status' => TableSessionGuestStatus::Active,
         ]);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Анна')
         ->call('enterTable')
         ->assertSet('hasGuestNameConflict', true)
@@ -297,7 +297,7 @@ test('guest can continue with duplicate display name when it is intentional', fu
             'status' => TableSessionGuestStatus::Active,
         ]);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Анна')
         ->call('enterTable')
         ->assertSet('hasGuestNameConflict', true)
@@ -316,7 +316,7 @@ test('guest can continue with duplicate display name when it is intentional', fu
 test('guest entering again does not create duplicate pending session or guest', function () {
     [$qrCode] = createGuestPendingQrContext();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Lina')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value)
@@ -330,12 +330,12 @@ test('guest entering again does not create duplicate pending session or guest', 
 test('fresh guest landing sees existing pending session without creating another first guest', function () {
     [$qrCode] = createGuestPendingQrContext();
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'First')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Second')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::JoinRequestCreated->value)

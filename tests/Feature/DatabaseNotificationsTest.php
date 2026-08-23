@@ -326,9 +326,9 @@ function createPrompt81DraftOrder(TableSession $tableSession, TableSessionGuest 
             'menu_item_id' => null,
             'item_name' => 'Prompt 81 Soup',
             'quantity' => 1,
-            'unit_price' => '8.50',
-            'modifier_total' => '0.00',
-            'total_price' => '8.50',
+            'unit_price_cents' => 850,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 850,
             'selected_modifiers' => [],
         ]);
 
@@ -354,7 +354,7 @@ function createPrompt81KitchenTicketItem(
         ->for($tableSession)
         ->create([
             'status' => OrderStatus::SentToKitchenBar,
-            'total_price' => '8.50',
+            'total_price_cents' => 850,
             'currency' => 'EUR',
         ]);
     $orderItem = OrderItem::factory()
@@ -364,9 +364,9 @@ function createPrompt81KitchenTicketItem(
             'item_name' => 'Prompt 81 Soup',
             'guest_name' => 'Ana',
             'quantity' => 1,
-            'unit_price' => '8.50',
-            'modifier_total' => '0.00',
-            'total_price' => '8.50',
+            'unit_price_cents' => 850,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 850,
             'selected_modifiers' => [],
         ]);
     $ticket = KitchenTicket::factory()

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -19,7 +21,6 @@ use App\Models\Order;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\DraftOrderConfirmedNotification;
-use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -61,7 +62,7 @@ class ConfirmDraftOrderByWaiterAction
                 'status' => OrderStatus::ConfirmedByWaiter,
                 'confirmed_by_user_id' => $confirmedBy->id,
                 'confirmed_at' => now(),
-                'total_price' => $this->formatCents($totalCents),
+                'total_price_cents' => $totalCents,
                 'currency' => $currency,
                 'metadata' => [
                     'source' => 'draft_order',
@@ -75,11 +76,12 @@ class ConfirmDraftOrderByWaiterAction
                 $kitchenDepartment = $item->menuItem?->kitchenDepartment;
                 $guestNameSnapshot = $item->guest->guest_name;
                 $modifiersSnapshot = $item->selected_modifiers ?? [];
-                $lineTotal = $this->formatCents((int) $lineTotals->get($item->id, 0));
+                $lineTotalCents = (int) $lineTotals->get($item->id, 0);
 
                 $order->items()->create([
                     'table_session_guest_id' => $item->table_session_guest_id,
                     'menu_item_id' => $item->menu_item_id,
+                    'menu_item_variant_id' => $item->menu_item_variant_id,
                     'original_menu_item_id' => $item->menu_item_id,
                     'kitchen_department_id' => $kitchenDepartment?->id,
                     'kitchen_department_type' => $kitchenDepartment?->type?->value,
@@ -89,11 +91,13 @@ class ConfirmDraftOrderByWaiterAction
                     'item_name' => $item->item_name,
                     'item_name_snapshot' => $item->item_name,
                     'item_description_snapshot' => $item->menuItem?->description,
+                    'variant_name' => $item->variant_name,
+                    'variant_type' => $item->variant_type?->value,
                     'quantity' => $item->quantity,
-                    'unit_price' => $item->unit_price,
-                    'unit_price_snapshot' => $item->unit_price,
-                    'modifier_total' => $item->modifier_total,
-                    'total_price' => $lineTotal,
+                    'unit_price_cents' => $item->unit_price_cents,
+                    'unit_price_snapshot_cents' => $item->unit_price_cents,
+                    'modifier_total_cents' => $item->modifier_total_cents,
+                    'total_price_cents' => $lineTotalCents,
                     'selected_modifiers' => $modifiersSnapshot,
                     'modifiers_snapshot' => $modifiersSnapshot,
                     'tax_snapshot' => [],
@@ -146,7 +150,7 @@ class ConfirmDraftOrderByWaiterAction
                 newValues: [
                     'order_id' => $order->id,
                     'order_status' => OrderStatus::ConfirmedByWaiter,
-                    'total_price' => $order->total_price,
+                    'total_price_cents' => $order->total_price_cents,
                     'currency' => $order->currency,
                 ],
             );
@@ -189,11 +193,14 @@ class ConfirmDraftOrderByWaiterAction
                         'draft_order_id',
                         'table_session_guest_id',
                         'menu_item_id',
+                        'menu_item_variant_id',
                         'item_name',
+                        'variant_name',
+                        'variant_type',
                         'quantity',
-                        'unit_price',
-                        'modifier_total',
-                        'total_price',
+                        'unit_price_cents',
+                        'modifier_total_cents',
+                        'total_price_cents',
                         'selected_modifiers',
                         'comment',
                         'created_at',
@@ -320,7 +327,7 @@ class ConfirmDraftOrderByWaiterAction
                 'status',
                 'confirmed_by_user_id',
                 'confirmed_at',
-                'total_price',
+                'total_price_cents',
                 'currency',
             ])
             ->with([
@@ -333,8 +340,8 @@ class ConfirmDraftOrderByWaiterAction
     private function lineTotalCents(DraftOrderItem $item): int
     {
         $quantity = (int) $item->quantity;
-        $unitPriceCents = $this->decimalToCents($item->unit_price);
-        $modifierTotalCents = $this->decimalToCents($item->modifier_total);
+        $unitPriceCents = $item->unit_price_cents;
+        $modifierTotalCents = $item->modifier_total_cents;
         $lineUnitTotalCents = $unitPriceCents + $modifierTotalCents;
 
         if ($quantity < 1 || $unitPriceCents < 0 || $lineUnitTotalCents < 0) {
@@ -344,15 +351,5 @@ class ConfirmDraftOrderByWaiterAction
         }
 
         return $lineUnitTotalCents * $quantity;
-    }
-
-    private function decimalToCents(string|int|float|null $amount): int
-    {
-        return MoneyFormatter::decimalToCents($amount);
-    }
-
-    private function formatCents(int $cents): string
-    {
-        return MoneyFormatter::centsToDecimal($cents);
     }
 }

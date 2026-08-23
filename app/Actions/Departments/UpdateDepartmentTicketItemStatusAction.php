@@ -89,6 +89,14 @@ class UpdateDepartmentTicketItemStatusAction
             );
         }
 
+        if ($item->status === KitchenTicketItemStatus::Cancelled || $status === KitchenTicketItemStatus::Cancelled) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::OrderItemAlreadyCancelled,
+                'ticket_item_status',
+                __('orders.items.errors.kitchen_cancelled'),
+            );
+        }
+
         $order = $item->kitchenTicket->order;
 
         if ($order->status === OrderStatus::Cancelled) {

@@ -79,7 +79,7 @@ test('new user can create restaurant setup from onboarding wizard', function () 
         ->and(QrCode::query()->count())->toBe(3)
         ->and(Menu::query()->where('name', 'Основное меню')->count())->toBe(1)
         ->and(MenuCategory::query()->where('name', 'Завтраки')->count())->toBe(1)
-        ->and(MenuItem::query()->where('name', 'Сырники')->value('price'))->toBe('8.50');
+        ->and(MenuItem::query()->where('name', 'Сырники')->value('price_cents'))->toBe(850);
 
     $qrCountBeforeSecondClick = QrCode::query()->count();
 

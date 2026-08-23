@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\DraftOrderStatus;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonInterface;
 use Database\Factories\DraftOrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -112,9 +113,7 @@ class DraftOrder extends Model
     {
         $items = $this->loadedItems();
 
-        return self::formatCents($items->sum(
-            fn (DraftOrderItem $item): int => self::decimalToCents($item->total_price),
-        ));
+        return MoneyFormatter::centsToDecimal((int) $items->sum('total_price_cents'));
     }
 
     /**
@@ -131,9 +130,7 @@ class DraftOrder extends Model
                 return [
                     'guest_id' => (int) $firstItem?->table_session_guest_id,
                     'guest_name' => (string) $firstItem?->guest?->guest_name,
-                    'total' => self::formatCents($items->sum(
-                        fn (DraftOrderItem $item): int => self::decimalToCents($item->total_price),
-                    )),
+                    'total' => MoneyFormatter::centsToDecimal((int) $items->sum('total_price_cents')),
                 ];
             })
             ->sortBy(fn (array $guestTotal): string => mb_strtolower($guestTotal['guest_name']))
@@ -153,28 +150,8 @@ class DraftOrder extends Model
         }
 
         return $this->items()
-            ->select(['id', 'draft_order_id', 'table_session_guest_id', 'total_price', 'created_at'])
+            ->select(['id', 'draft_order_id', 'table_session_guest_id', 'total_price_cents', 'created_at'])
             ->with(['guest:id,guest_name'])
             ->get();
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
-    }
-
-    private static function formatCents(int $cents): string
-    {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

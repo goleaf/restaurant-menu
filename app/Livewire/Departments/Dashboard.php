@@ -147,19 +147,7 @@ abstract class Dashboard extends Component
 
     public function render(): View
     {
-        return view('livewire.departments.dashboard', [
-            'presentedTickets' => collect($this->tickets)
-                ->map(function (array $ticket): array {
-                    $ticket['timer_classes'] = match ($ticket['timer_tone']) {
-                        'rose' => 'border-rose-200 bg-rose-50 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-100',
-                        'amber' => 'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100',
-                        default => 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100',
-                    };
-
-                    return $ticket;
-                })
-                ->all(),
-        ])->title($this->screenTitle());
+        return view('livewire.departments.dashboard')->title($this->screenTitle());
     }
 
     /**

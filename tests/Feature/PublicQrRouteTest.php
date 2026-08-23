@@ -2,7 +2,7 @@
 
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -112,7 +112,7 @@ test('guest can enter name on qr landing without registration', function () {
             'status' => QrCodeStatus::Active,
         ]);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->set('guestName', '  Ana   Maria  ')
         ->call('enterTable')
@@ -137,7 +137,7 @@ test('guest name is required before entering table', function () {
             'status' => QrCodeStatus::Active,
         ]);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', '')
         ->call('enterTable')
         ->assertHasErrors(['guestName' => 'required']);

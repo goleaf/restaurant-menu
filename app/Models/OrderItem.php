@@ -1,15 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
+use App\Enums\MenuItemVariantType;
+use Carbon\CarbonInterface;
 use Database\Factories\OrderItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'original_menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'guest_name_snapshot', 'item_name', 'item_name_snapshot', 'item_description_snapshot', 'quantity', 'unit_price', 'unit_price_snapshot', 'modifier_total', 'total_price', 'selected_modifiers', 'modifiers_snapshot', 'tax_snapshot', 'service_snapshot', 'comment'])]
+/**
+ * @property CarbonInterface|null $cancelled_at
+ * @property int $unit_price_cents
+ * @property int $unit_price_snapshot_cents
+ * @property int $modifier_total_cents
+ * @property int $total_price_cents
+ * @property MenuItemVariantType|null $variant_type
+ * @property-read User|null $cancelledByUser
+ */
+#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'original_menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'guest_name_snapshot', 'item_name', 'item_name_snapshot', 'item_description_snapshot', 'variant_name', 'variant_type', 'quantity', 'unit_price_cents', 'unit_price_snapshot_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'modifiers_snapshot', 'tax_snapshot', 'service_snapshot', 'comment', 'cancelled_at', 'cancelled_by_user_id', 'cancellation_reason'])]
 class OrderItem extends Model
 {
     /** @use HasFactory<OrderItemFactory> */
@@ -20,9 +34,10 @@ class OrderItem extends Model
      */
     protected $attributes = [
         'quantity' => 1,
-        'unit_price' => '0.00',
-        'modifier_total' => '0.00',
-        'total_price' => '0.00',
+        'unit_price_cents' => 0,
+        'unit_price_snapshot_cents' => 0,
+        'modifier_total_cents' => 0,
+        'total_price_cents' => 0,
         'selected_modifiers' => '[]',
         'modifiers_snapshot' => '[]',
         'tax_snapshot' => '[]',
@@ -36,14 +51,16 @@ class OrderItem extends Model
     {
         return [
             'quantity' => 'integer',
-            'unit_price' => 'decimal:2',
-            'unit_price_snapshot' => 'decimal:2',
-            'modifier_total' => 'decimal:2',
-            'total_price' => 'decimal:2',
+            'unit_price_cents' => 'integer',
+            'unit_price_snapshot_cents' => 'integer',
+            'modifier_total_cents' => 'integer',
+            'total_price_cents' => 'integer',
             'selected_modifiers' => 'array',
             'modifiers_snapshot' => 'array',
             'tax_snapshot' => 'array',
             'service_snapshot' => 'array',
+            'variant_type' => MenuItemVariantType::class,
+            'cancelled_at' => 'datetime',
         ];
     }
 
@@ -72,6 +89,14 @@ class OrderItem extends Model
     }
 
     /**
+     * @return BelongsTo<MenuItemVariant, $this>
+     */
+    public function menuItemVariant(): BelongsTo
+    {
+        return $this->belongsTo(MenuItemVariant::class);
+    }
+
+    /**
      * @return BelongsTo<KitchenDepartment, $this>
      */
     public function kitchenDepartment(): BelongsTo
@@ -85,6 +110,37 @@ class OrderItem extends Model
     public function kitchenTicketItem(): HasOne
     {
         return $this->hasOne(KitchenTicketItem::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function cancelledByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by_user_id');
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
+
+    /**
+     * @param  Builder<OrderItem>  $query
+     * @return Builder<OrderItem>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNull('cancelled_at');
+    }
+
+    /**
+     * @param  Builder<OrderItem>  $query
+     * @return Builder<OrderItem>
+     */
+    public function scopeCancelled(Builder $query): Builder
+    {
+        return $query->whereNotNull('cancelled_at');
     }
 
     public function historicalGuestName(): ?string

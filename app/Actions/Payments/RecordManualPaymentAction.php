@@ -21,13 +21,13 @@ use App\Support\MoneyFormatter;
 use App\Support\PlainText;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class RecordManualPaymentAction
 {
     public function __construct(
-        private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
         private readonly BuildManualPaymentSummaryAction $buildPaymentSummary,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly RecordAuditLogAction $recordAuditLog,
@@ -97,25 +97,25 @@ class RecordManualPaymentAction
                 'recorded_by_user_id' => $recordedBy->id,
                 'scope' => $scope,
                 'payment_method' => $method,
-                'covered_subtotal_amount' => $this->formatCents($breakdown['covered_subtotal_cents']),
-                'service_charge_percent' => $breakdown['service_charge_percent'],
-                'service_charge_amount' => $this->formatCents($breakdown['service_charge_cents']),
-                'tips_amount' => $this->formatCents($breakdown['tips_cents']),
-                'amount' => $this->formatCents($breakdown['amount_cents']),
+                'covered_subtotal_cents' => $breakdown['covered_subtotal_cents'],
+                'service_charge_basis_points' => $breakdown['service_charge_basis_points'],
+                'service_charge_cents' => $breakdown['service_charge_cents'],
+                'tips_cents' => $breakdown['tips_cents'],
+                'amount_cents' => $breakdown['amount_cents'],
                 'currency' => (string) $summary['currency'],
                 'guest_name' => $guest?->guest_name,
                 'note' => $this->normalizeNote($note),
                 'paid_at' => now(),
                 'metadata' => [
                     'bill_snapshot' => [
-                        'confirmed_total' => $this->formatCents((int) $summary['confirmed_total_cents']),
-                        'covered_subtotal_amount' => $this->formatCents($breakdown['covered_subtotal_cents']),
+                        'confirmed_total_cents' => (int) $summary['confirmed_total_cents'],
+                        'covered_subtotal_cents' => $breakdown['covered_subtotal_cents'],
                         'service_charge_enabled' => (bool) $summary['service_charge_enabled'],
-                        'service_charge_percent' => $breakdown['service_charge_percent'],
-                        'service_charge_amount' => $this->formatCents($breakdown['service_charge_cents']),
+                        'service_charge_basis_points' => $breakdown['service_charge_basis_points'],
+                        'service_charge_cents' => $breakdown['service_charge_cents'],
                         'tips_enabled' => (bool) $summary['tips_enabled'],
-                        'tips_amount' => $this->formatCents($breakdown['tips_cents']),
-                        'total_amount' => $this->formatCents($breakdown['amount_cents']),
+                        'tips_cents' => $breakdown['tips_cents'],
+                        'total_cents' => $breakdown['amount_cents'],
                     ],
                 ],
             ])->save();
@@ -134,16 +134,16 @@ class RecordManualPaymentAction
                 organizationId: $tableSession->branch->organization_id,
                 branchId: $manualPayment->branch_id,
                 oldValues: [
-                    'remaining_total' => $summary['remaining_total'],
+                    'remaining_total_cents' => $summary['remaining_total_cents'],
                 ],
                 newValues: [
                     'scope' => $manualPayment->scope,
                     'payment_method' => $manualPayment->payment_method,
-                    'covered_subtotal_amount' => $manualPayment->covered_subtotal_amount,
-                    'service_charge_percent' => $manualPayment->service_charge_percent,
-                    'service_charge_amount' => $manualPayment->service_charge_amount,
-                    'tips_amount' => $manualPayment->tips_amount,
-                    'amount' => $manualPayment->amount,
+                    'covered_subtotal_cents' => $manualPayment->covered_subtotal_cents,
+                    'service_charge_basis_points' => $manualPayment->service_charge_basis_points,
+                    'service_charge_cents' => $manualPayment->service_charge_cents,
+                    'tips_cents' => $manualPayment->tips_cents,
+                    'amount_cents' => $manualPayment->amount_cents,
                     'currency' => $manualPayment->currency,
                     'table_session_guest_id' => $manualPayment->table_session_guest_id,
                 ],
@@ -178,7 +178,7 @@ class RecordManualPaymentAction
 
     private function ensureCanRecord(TableSession $tableSession, User $recordedBy): void
     {
-        if (! $this->resolvePaymentAccess->canManage($recordedBy, (int) $tableSession->branch_id)) {
+        if (Gate::forUser($recordedBy)->denies('create', [ManualPayment::class, $tableSession->branch])) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::BranchInaccessible,
                 'manual_payment',
@@ -216,7 +216,7 @@ class RecordManualPaymentAction
 
     /**
      * @param  array<string, mixed>  $summary
-     * @return array{covered_subtotal_cents: int, service_charge_cents: int, tips_cents: int, bill_cents: int, amount_cents: int, service_charge_percent: string}
+     * @return array{covered_subtotal_cents: int, service_charge_cents: int, tips_cents: int, bill_cents: int, amount_cents: int, service_charge_basis_points: int}
      */
     private function paymentBreakdownCents(
         array $summary,
@@ -286,7 +286,7 @@ class RecordManualPaymentAction
             'tips_cents' => $tipsCents,
             'bill_cents' => $billCents,
             'amount_cents' => $billCents + $tipsCents,
-            'service_charge_percent' => $this->formatPercent($summary['service_charge_percent'] ?? '0.00'),
+            'service_charge_basis_points' => (int) ($summary['service_charge_basis_points'] ?? 0),
         ];
     }
 
@@ -364,18 +364,8 @@ class RecordManualPaymentAction
         return ManualPaymentMethod::from((string) $validated['paymentMethod']);
     }
 
-    private function formatCents(int $cents): string
-    {
-        return MoneyFormatter::centsToDecimal($cents);
-    }
-
     private function decimalToCents(string|int|null $amount): int
     {
         return MoneyFormatter::decimalToCents($amount);
-    }
-
-    private function formatPercent(string|int|null $percent): string
-    {
-        return MoneyFormatter::centsToDecimal(MoneyFormatter::decimalToCents($percent));
     }
 }

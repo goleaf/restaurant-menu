@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
+use App\Enums\MenuAllergen;
+use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuStatus;
 use App\Enums\SupportedLocale;
 use App\Models\BranchSetting;
@@ -12,6 +14,8 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -62,7 +66,7 @@ class GetGuestMenuForBranchAction
 
     public static function cacheKey(int $branchId, string $languageCode = 'en'): string
     {
-        return 'guest-menu:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v4:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
@@ -87,6 +91,10 @@ class GetGuestMenuForBranchAction
         return [
             ...array_map(
                 fn (string $languageCode): string => self::cacheKey($branchId, $languageCode),
+                self::supportedLanguageCodes(),
+            ),
+            ...array_map(
+                fn (string $languageCode): string => self::previousCacheKey($branchId, $languageCode),
                 self::supportedLanguageCodes(),
             ),
             self::legacyCacheKey($branchId),
@@ -127,6 +135,11 @@ class GetGuestMenuForBranchAction
     private static function legacyCacheKey(int $branchId): string
     {
         return 'guest-menu:branch:'.$branchId;
+    }
+
+    private static function previousCacheKey(int $branchId, string $languageCode): string
+    {
+        return 'guest-menu:v3:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     /**
@@ -172,6 +185,7 @@ class GetGuestMenuForBranchAction
                 'menus' => [],
                 'unavailable_menus' => $unavailableMenus,
                 'categories' => [],
+                'has_allergen_information' => false,
             ];
         }
 
@@ -211,7 +225,9 @@ class GetGuestMenuForBranchAction
                             'category_id',
                             'name',
                             'description',
-                            'price',
+                            'price_cents',
+                            'allergens',
+                            'dietary_labels',
                             'image',
                             'weight',
                             'volume',
@@ -219,6 +235,11 @@ class GetGuestMenuForBranchAction
                             'is_available',
                             'sort_order',
                         ])
+                            ->withExists([
+                                'variants as has_variants',
+                                'variants as has_available_variants' => fn ($variantQuery) => $variantQuery
+                                    ->where('is_available', true),
+                            ])
                             ->with([
                                 'translations' => fn ($translationQuery) => $translationQuery->select([
                                     'id',
@@ -240,7 +261,7 @@ class GetGuestMenuForBranchAction
                                         'id',
                                         'modifier_group_id',
                                         'name',
-                                        'price_delta',
+                                        'price_delta_cents',
                                         'is_available',
                                         'sort_order',
                                     ])
@@ -264,6 +285,8 @@ class GetGuestMenuForBranchAction
             ->orderBy('id')
             ->get();
 
+        $this->loadAvailableVariants($menus, $languageCode);
+
         if ($menus->isEmpty()) {
             return [
                 'language' => $languageCode,
@@ -273,11 +296,16 @@ class GetGuestMenuForBranchAction
                 'menus' => [],
                 'unavailable_menus' => $unavailableMenus,
                 'categories' => [],
+                'has_allergen_information' => false,
             ];
         }
 
         $menuPayloads = $menus
-            ->map(fn (Menu $menu): array => $this->menuPayload($menu, $availableMenuStatuses[$menu->id] ?? $this->emptyAvailabilityStatus()))
+            ->map(fn (Menu $menu): array => $this->menuPayload(
+                $menu,
+                $availableMenuStatuses[$menu->id] ?? $this->emptyAvailabilityStatus(),
+                $languageCode,
+            ))
             ->values()
             ->all();
         $firstMenuPayload = $menuPayloads[0] ?? null;
@@ -293,6 +321,7 @@ class GetGuestMenuForBranchAction
             'menus' => $menuPayloads,
             'unavailable_menus' => $unavailableMenus,
             'categories' => $firstMenuPayload['categories'] ?? [],
+            'has_allergen_information' => $this->hasAllergenInformation($menuPayloads),
         ];
     }
 
@@ -450,14 +479,14 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{id: int, name: string, availability: array<string, mixed>, categories: list<array<string, mixed>>}
      */
-    private function menuPayload(Menu $menu, array $availability): array
+    private function menuPayload(Menu $menu, array $availability, string $languageCode): array
     {
         return [
             'id' => $menu->id,
             'name' => $menu->name,
             'availability' => $availability,
             'categories' => $menu->categories
-                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category))
+                ->map(fn (MenuCategory $category): array => $this->categoryPayload($category, $languageCode))
                 ->values()
                 ->all(),
         ];
@@ -466,7 +495,7 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{id: int, name: string, description: string|null, icon: string|null, items: list<array<string, mixed>>}
      */
-    private function categoryPayload(MenuCategory $category): array
+    private function categoryPayload(MenuCategory $category, string $languageCode): array
     {
         /** @var MenuCategoryTranslation|null $translation */
         $translation = $category->translations->first();
@@ -477,16 +506,16 @@ class GetGuestMenuForBranchAction
             'description' => $this->translatedText($translation?->description, $category->description),
             'icon' => $category->icon,
             'items' => $category->items
-                ->map(fn (MenuItem $item): array => $this->itemPayload($item))
+                ->map(fn (MenuItem $item): array => $this->itemPayload($item, $languageCode))
                 ->values()
                 ->all(),
         ];
     }
 
     /**
-     * @return array{id: int, name: string, description: string|null, price: string, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool, modifier_groups: list<array<string, mixed>>}
+     * @return array{id: int, name: string, description: string|null, price_cents: int, allergens: list<array{value: string, label: string}>, dietary_labels: list<array{value: string, label: string}>, image_url: string|null, weight: string|null, volume: string|null, calories: int|null, is_available: bool, variants: list<array<string, mixed>>, modifier_groups: list<array<string, mixed>>}
      */
-    private function itemPayload(MenuItem $item): array
+    private function itemPayload(MenuItem $item, string $languageCode): array
     {
         /** @var MenuItemTranslation|null $translation */
         $translation = $item->translations->first();
@@ -495,12 +524,35 @@ class GetGuestMenuForBranchAction
             'id' => $item->id,
             'name' => $this->translatedText($translation?->name, $item->name),
             'description' => $this->translatedText($translation?->description, $item->description),
-            'price' => $item->price,
+            'price_cents' => $item->price_cents,
+            'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options($languageCode)),
+            'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options($languageCode)),
             'image_url' => $item->imageUrl(),
             'weight' => $item->weight,
             'volume' => $item->volume,
             'calories' => $item->calories,
-            'is_available' => $item->is_available,
+            'is_available' => $item->is_available && (
+                ! (bool) $item->getAttribute('has_variants')
+                || (bool) $item->getAttribute('has_available_variants')
+            ),
+            'variants' => $item->variants
+                ->map(fn (MenuItemVariant $variant): array => [
+                    'id' => $variant->id,
+                    'type' => $variant->type->value,
+                    'type_label' => $variant->type->label($languageCode),
+                    'name' => $this->translatedText(
+                        is_string($variant->getAttribute('localized_name'))
+                            ? $variant->getAttribute('localized_name')
+                            : null,
+                        $variant->name,
+                    ),
+                    'price_cents' => $variant->price_cents,
+                    'weight' => $variant->weight,
+                    'volume' => $variant->volume,
+                    'is_default' => $variant->is_default,
+                ])
+                ->values()
+                ->all(),
             'modifier_groups' => $item->modifierGroups
                 ->map(fn (ModifierGroup $modifierGroup): array => $this->modifierGroupPayload($modifierGroup))
                 ->values()
@@ -509,7 +561,93 @@ class GetGuestMenuForBranchAction
     }
 
     /**
-     * @return array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta: string}>}
+     * @param  EloquentCollection<int, Menu>  $menus
+     */
+    private function loadAvailableVariants(EloquentCollection $menus, string $languageCode): void
+    {
+        /** @var EloquentCollection<int, MenuItem> $items */
+        $items = new EloquentCollection(
+            $menus
+                ->flatMap(fn (Menu $menu) => $menu->categories->flatMap(
+                    fn (MenuCategory $category) => $category->items,
+                ))
+                ->all(),
+        );
+
+        $itemsWithoutVariants = $items->filter(
+            fn (MenuItem $item): bool => ! (bool) $item->getAttribute('has_available_variants'),
+        );
+
+        $itemsWithoutVariants->each(
+            fn (MenuItem $item): MenuItem => $item->setRelation('variants', new EloquentCollection),
+        );
+
+        $itemsWithVariants = $items->filter(
+            fn (MenuItem $item): bool => (bool) $item->getAttribute('has_available_variants'),
+        );
+
+        if ($itemsWithVariants->isEmpty()) {
+            return;
+        }
+
+        $itemsWithVariants->load([
+            'variants' => fn ($variantQuery) => $variantQuery
+                ->select([
+                    'id',
+                    'menu_item_id',
+                    'type',
+                    'name',
+                    'price_cents',
+                    'weight',
+                    'volume',
+                    'is_default',
+                    'is_available',
+                    'sort_order',
+                ])
+                ->addSelect([
+                    'localized_name' => MenuItemVariantTranslation::query()
+                        ->select('name')
+                        ->whereColumn('menu_item_variant_id', 'menu_item_variants.id')
+                        ->where('language_code', $languageCode)
+                        ->limit(1),
+                ])
+                ->where('is_available', true),
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $selectedValues
+     * @param  list<array{value: string, label: string}>  $options
+     * @return list<array{value: string, label: string}>
+     */
+    private function selectedLabelOptions(array $selectedValues, array $options): array
+    {
+        return array_values(array_filter(
+            $options,
+            fn (array $option): bool => in_array($option['value'], $selectedValues, true),
+        ));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $menuPayloads
+     */
+    private function hasAllergenInformation(array $menuPayloads): bool
+    {
+        foreach ($menuPayloads as $menu) {
+            foreach ($menu['categories'] ?? [] as $category) {
+                foreach ($category['items'] ?? [] as $item) {
+                    if (($item['allergens'] ?? []) !== []) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array{id: int, name: string, is_required: bool, min_select: int, max_select: int, options: list<array{id: int, name: string, price_delta_cents: int}>}
      */
     private function modifierGroupPayload(ModifierGroup $modifierGroup): array
     {
@@ -523,7 +661,7 @@ class GetGuestMenuForBranchAction
                 ->map(fn (ModifierOption $modifierOption): array => [
                     'id' => $modifierOption->id,
                     'name' => $modifierOption->name,
-                    'price_delta' => $modifierOption->price_delta,
+                    'price_delta_cents' => $modifierOption->price_delta_cents,
                 ])
                 ->values()
                 ->all(),

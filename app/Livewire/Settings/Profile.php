@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
+use App\Actions\Users\UpdateUserProfileAction;
 use App\Concerns\ProfileValidationRules;
 use App\Enums\SupportedLocale;
 use Flux\Flux;
@@ -42,19 +43,13 @@ class Profile extends Component
     /**
      * Update the profile information for the currently authenticated user.
      */
-    public function updateProfileInformation(): void
+    public function updateProfileInformation(UpdateUserProfileAction $updateProfile): void
     {
         $user = Auth::user();
 
         $validated = $this->validate($this->profileRules($user->id, includeLocale: true));
 
-        $user->fill($validated);
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        $user->save();
+        $updateProfile->handle($user, $validated);
 
         Flux::toast(variant: 'success', text: __('ui.livewire.settings.profile.profile_updated'));
     }

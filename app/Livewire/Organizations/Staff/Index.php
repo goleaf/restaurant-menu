@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Staff;
 
-use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddOrganizationStaffMemberAction;
-use App\Enums\AuditLogAction;
+use App\Actions\Staff\SetOrganizationStaffStatusAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
@@ -102,22 +101,21 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
-    public function activateMember(int $membershipId): void
+    public function activateMember(int $membershipId, SetOrganizationStaffStatusAction $setStaffStatus): void
     {
         $this->authorizeStaffManagement();
-
         $membership = $this->findMembership($membershipId);
-        $membership->forceFill([
-            'status' => OrganizationUserStatus::Active,
-            'joined_at' => $membership->joined_at ?? now(),
-        ])->save();
+
+        Gate::forUser($this->currentUser())->authorize('update', $membership);
+
+        $setStaffStatus->activate($membership);
 
         unset($this->members);
 
         Flux::toast(variant: 'success', text: __('staff.messages.staff_reactivated'));
     }
 
-    public function deactivateMember(int $membershipId, RecordAuditLogAction $recordAuditLog): void
+    public function deactivateMember(int $membershipId, SetOrganizationStaffStatusAction $setStaffStatus): void
     {
         $this->authorizeStaffManagement();
 
@@ -128,31 +126,17 @@ class Index extends Component
 
         $membership = $this->findMembership($membershipId);
 
-        if ($membership->user_id === $this->currentUser()->id) {
+        Gate::forUser($this->currentUser())->authorize('deactivate', $membership);
+
+        if (! $setStaffStatus->suspend(
+            $membership,
+            $this->currentUser(),
+            (string) $validated['staffDeactivationReason'],
+        )) {
             Flux::toast(variant: 'warning', text: __('staff.errors.self_deactivation_blocked'));
 
             return;
         }
-
-        $previousStatus = $membership->status;
-        $membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
-
-        $recordAuditLog->handle(
-            action: AuditLogAction::StaffDeactivated,
-            entityType: 'organization_user',
-            entityId: $membership->id,
-            actorUser: $this->currentUser(),
-            organizationId: $this->organization->id,
-            oldValues: [
-                'staff_user_id' => $membership->user_id,
-                'status' => $previousStatus,
-            ],
-            newValues: [
-                'staff_user_id' => $membership->user_id,
-                'status' => OrganizationUserStatus::Suspended,
-                'reason' => (string) $validated['staffDeactivationReason'],
-            ],
-        );
 
         $this->staffDeactivationReason = '';
         unset($this->members);

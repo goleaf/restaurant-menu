@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
@@ -34,6 +36,14 @@ class MarkKitchenTicketItemServedAction
                     BusinessRuleCode::OrderAlreadyCancelled,
                     'order_service',
                     __('ui.actions.waiter.markkitchenticketitemservedaction.zakaz_otmenen_pozicii_b'),
+                );
+            }
+
+            if ($item->status === KitchenTicketItemStatus::Cancelled) {
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::OrderItemAlreadyCancelled,
+                    'order_service',
+                    __('orders.items.errors.kitchen_cancelled'),
                 );
             }
 

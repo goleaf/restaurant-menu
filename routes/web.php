@@ -5,8 +5,13 @@ declare(strict_types=1);
 use App\Enums\DataExportType;
 use App\Http\Controllers\Invitations\AcceptInvitationController;
 use App\Http\Controllers\Invitations\ShowInvitationController;
+use App\Http\Controllers\Organizations\DownloadBranchQrPdfController;
 use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
+use App\Http\Controllers\Restaurant\DownloadBranchPdfReportController;
+use App\Http\Controllers\Superadmin\DownloadMediaBackupController;
 use App\Http\Controllers\Superadmin\DownloadSqliteBackupController;
+use App\Http\Controllers\Superadmin\RestoreSqliteBackupController;
+use App\Http\Controllers\Superadmin\ShowSqliteBackupRestoreController;
 use App\Livewire\AuditLogs\Index as AuditLogIndex;
 use App\Livewire\Bar\Dashboard as BarDashboard;
 use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
@@ -110,6 +115,7 @@ Route::middleware(['auth'])
                             ->name('qr.')
                             ->group(function () {
                                 Route::livewire('print', OrganizationBrandBranchQrBulkPrint::class)->name('print');
+                                Route::post('pdf', DownloadBranchQrPdfController::class)->name('pdf');
                             });
 
                         Route::prefix('{branch}/service-points')
@@ -156,6 +162,9 @@ Route::middleware(['auth'])
                 Route::get('branches/{branch}/{export}', DownloadBranchCsvExportController::class)
                     ->whereIn('export', DataExportType::values())
                     ->name('download');
+                Route::get('pdf/branches/{branch}/{export}', DownloadBranchPdfReportController::class)
+                    ->whereIn('export', DataExportType::values())
+                    ->name('pdf');
             });
 
         Route::prefix('kitchen')
@@ -192,6 +201,15 @@ Route::middleware(['auth'])
                         Route::get('sqlite', DownloadSqliteBackupController::class)
                             ->middleware('password.confirm')
                             ->name('sqlite.download');
+                        Route::get('media', DownloadMediaBackupController::class)
+                            ->middleware('password.confirm')
+                            ->name('media.download');
+                        Route::get('sqlite/restore', ShowSqliteBackupRestoreController::class)
+                            ->middleware('password.confirm')
+                            ->name('sqlite.restore');
+                        Route::post('sqlite/restore', RestoreSqliteBackupController::class)
+                            ->middleware('password.confirm')
+                            ->name('sqlite.restore.store');
                     });
             });
     });

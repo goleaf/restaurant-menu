@@ -12,7 +12,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Exceptions\BusinessRuleViolation;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\Payment;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -47,22 +47,24 @@ test('payment manager can mark whole table paid and close the session', function
     attachPrompt67PaymentManager($manager, $organization);
 
     $component = Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.can_view', true)
-        ->assertSet('table.payment.can_manage', true)
-        ->assertSet('table.payment.can_record_table_payment', true)
-        ->assertSet('table.payment.remaining_total', '32.00 EUR')
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.can_view', true)
+        ->assertSet('payment.can_manage', true)
+        ->assertSet('payment.can_record_table_payment', true)
+        ->assertSet('payment.remaining_total', '32.00 EUR')
+        ->assertSee('id="waiter-payment-note"', false)
+        ->assertSee('name="paymentNote"', false)
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
         ->assertSee(__('payments.messages.payment_recorded'))
-        ->assertSet('table.payment.is_fully_paid', true)
-        ->assertSet('table.payment.remaining_total', '0.00 EUR');
+        ->assertSet('payment.is_fully_paid', true)
+        ->assertSet('payment.remaining_total', '0.00 EUR');
 
     $payment = ManualPayment::query()->firstOrFail();
 
     expect($payment->scope)->toBe(ManualPaymentScope::Table)
         ->and($payment->payment_method)->toBe(ManualPaymentMethod::CardTerminal)
-        ->and($payment->amount)->toBe('32.00')
+        ->and($payment->amount_cents)->toBe(3200)
         ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid)
         ->and($tableSession->fresh()->active_service_point_id)->toBeNull()
         ->and((int) data_get($tableSession->fresh()->metadata, 'paid_by_user_id'))->toBe($manager->id)
@@ -84,27 +86,27 @@ test('cashier role can mark individual guest payments without manage payments pe
     attachPrompt67Cashier($cashier, $organization);
 
     Livewire::actingAs($cashier)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.can_manage', true)
-        ->assertSet('table.payment.guest_balances.0.guest_name', 'Ana')
-        ->assertSet('table.payment.guest_balances.0.remaining', '20.00 EUR')
-        ->assertSet('table.payment.guest_balances.1.guest_name', 'Boris')
-        ->assertSet('table.payment.unpaid_guests_count', 2)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.can_manage', true)
+        ->assertSet('payment.guest_balances.0.guest_name', 'Ana')
+        ->assertSet('payment.guest_balances.0.remaining', '20.00 EUR')
+        ->assertSet('payment.guest_balances.1.guest_name', 'Boris')
+        ->assertSet('payment.unpaid_guests_count', 2)
         ->set('paymentMethod', ManualPaymentMethod::Cash->value)
         ->call('recordGuestPayment', $ana->id)
         ->assertSee(__('payments.messages.payment_recorded'))
-        ->assertSet('table.payment.remaining_total', '12.00 EUR')
-        ->assertSet('table.payment.unpaid_guests_count', 1)
-        ->assertSet('table.payment.unpaid_guests.0.guest_name', 'Boris')
+        ->assertSet('payment.remaining_total', '12.00 EUR')
+        ->assertSet('payment.unpaid_guests_count', 1)
+        ->assertSet('payment.unpaid_guests.0.guest_name', 'Boris')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordGuestPayment', $boris->id)
-        ->assertSet('table.payment.is_fully_paid', true)
-        ->assertSet('table.payment.unpaid_guests_count', 0);
+        ->assertSet('payment.is_fully_paid', true)
+        ->assertSet('payment.unpaid_guests_count', 0);
 
     expect(ManualPayment::query()->count())->toBe(2)
         ->and(ManualPayment::query()->where('scope', ManualPaymentScope::Guest->value)->count())->toBe(2)
-        ->and(ManualPayment::query()->where('table_session_guest_id', $ana->id)->value('amount'))->toBe('20.00')
-        ->and(ManualPayment::query()->where('table_session_guest_id', $boris->id)->value('amount'))->toBe('12.00')
+        ->and(ManualPayment::query()->where('table_session_guest_id', $ana->id)->value('amount_cents'))->toBe(2000)
+        ->and(ManualPayment::query()->where('table_session_guest_id', $boris->id)->value('amount_cents'))->toBe(1200)
         ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid);
 });
@@ -114,16 +116,15 @@ test('split bill summary is based on confirmed guest order items', function () {
     $manager = User::factory()->create(['name' => 'Split Bill Manager']);
     attachPrompt67PaymentManager($manager, $organization);
 
-    $tableSession->orders()->firstOrFail()->forceFill(['total_price' => '99.00'])->save();
+    $tableSession->orders()->firstOrFail()->forceFill(['total_price_cents' => 9900])->save();
 
     Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.confirmed_orders_total', '32.00 EUR')
-        ->assertSet('table.payment.confirmed_total', '32.00 EUR')
-        ->assertSet('table.payment.remaining_total', '32.00 EUR')
-        ->assertSet('table.payment.guest_balances.0.due', '20.00 EUR')
-        ->assertSet('table.payment.guest_balances.1.due', '12.00 EUR')
-        ->assertSet('table.payment.unpaid_guests_count', 2);
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.confirmed_total', '32.00 EUR')
+        ->assertSet('payment.remaining_total', '32.00 EUR')
+        ->assertSet('payment.guest_balances.0.due', '20.00 EUR')
+        ->assertSet('payment.guest_balances.1.due', '12.00 EUR')
+        ->assertSet('payment.unpaid_guests_count', 2);
 });
 
 test('manual service charge and tips are visible and stored as payment snapshot', function () {
@@ -135,36 +136,36 @@ test('manual service charge and tips are visible and stored as payment snapshot'
     $branch->settings()->create([
         ...BranchSetting::defaults($branch),
         'service_charge_enabled' => true,
-        'service_charge_percent' => '10.00',
+        'service_charge_basis_points' => 1000,
         'tips_enabled' => true,
     ]);
 
     Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.confirmed_total', '32.00 EUR')
-        ->assertSet('table.payment.service_charge_enabled', true)
-        ->assertSet('table.payment.service_charge_percent', '10.00')
-        ->assertSet('table.payment.service_charge_total', '3.20 EUR')
-        ->assertSet('table.payment.tips_enabled', true)
-        ->assertSet('table.payment.remaining_total', '35.20 EUR')
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.confirmed_total', '32.00 EUR')
+        ->assertSet('payment.service_charge_enabled', true)
+        ->assertSet('payment.service_charge_percent', '10.00')
+        ->assertSet('payment.service_charge_total', '3.20 EUR')
+        ->assertSet('payment.tips_enabled', true)
+        ->assertSet('payment.remaining_total', '35.20 EUR')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->set('tipsAmount', '5.00')
         ->call('recordTablePayment')
         ->assertSee(__('payments.messages.payment_recorded'))
-        ->assertSet('table.payment.is_fully_paid', true)
-        ->assertSet('table.payment.remaining_total', '0.00 EUR')
-        ->assertSet('table.payment.tips_paid_total', '5.00 EUR');
+        ->assertSet('payment.is_fully_paid', true)
+        ->assertSet('payment.remaining_total', '0.00 EUR')
+        ->assertSet('payment.tips_paid_total', '5.00 EUR');
 
     $payment = ManualPayment::query()->firstOrFail();
 
-    expect($payment->amount)->toBe('40.20')
-        ->and($payment->covered_subtotal_amount)->toBe('32.00')
-        ->and($payment->service_charge_percent)->toBe('10.00')
-        ->and($payment->service_charge_amount)->toBe('3.20')
-        ->and($payment->tips_amount)->toBe('5.00')
-        ->and($payment->metadata['bill_snapshot']['confirmed_total'])->toBe('32.00')
-        ->and($payment->metadata['bill_snapshot']['service_charge_amount'])->toBe('3.20')
-        ->and($payment->metadata['bill_snapshot']['tips_amount'])->toBe('5.00');
+    expect($payment->amount_cents)->toBe(4020)
+        ->and($payment->covered_subtotal_cents)->toBe(3200)
+        ->and($payment->service_charge_basis_points)->toBe(1000)
+        ->and($payment->service_charge_cents)->toBe(320)
+        ->and($payment->tips_cents)->toBe(500)
+        ->and($payment->metadata['bill_snapshot']['confirmed_total_cents'])->toBe(3200)
+        ->and($payment->metadata['bill_snapshot']['service_charge_cents'])->toBe(320)
+        ->and($payment->metadata['bill_snapshot']['tips_cents'])->toBe(500);
 });
 
 test('manual payment amounts are server calculated and reject negative or duplicate payments', function () {
@@ -173,7 +174,7 @@ test('manual payment amounts are server calculated and reject negative or duplic
     attachPrompt67PaymentManager($manager, $organization);
 
     Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
         ->set('tipsAmount', '-1.00')
         ->call('recordTablePayment')
         ->assertHasErrors(['tipsAmount']);
@@ -187,10 +188,10 @@ test('manual payment amounts are server calculated and reject negative or duplic
         paymentMethod: ManualPaymentMethod::Cash,
     );
 
-    expect($firstGuestPayment->amount)->toBe('20.00');
+    expect($firstGuestPayment->amount_cents)->toBe(2000);
 
     Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
         ->call('recordGuestPayment', $ana->id)
         ->assertHasErrors(['manual_payment']);
 
@@ -230,9 +231,9 @@ test('manual payments cannot be silently corrected through ordinary model paths'
         paymentMethod: ManualPaymentMethod::CardTerminal,
     );
 
-    expect($payment->amount)->toBe('32.00')
-        ->and($payment->update(['amount' => '-100.00', 'note' => null]))->toBeFalse()
-        ->and($payment->fresh()->amount)->toBe('32.00')
+    expect($payment->amount_cents)->toBe(3200)
+        ->and($payment->update(['amount_cents' => -10000, 'note' => null]))->toBeFalse()
+        ->and($payment->fresh()->amount_cents)->toBe(3200)
         ->and($payment->delete())->toBeFalse()
         ->and(ManualPayment::query()->whereKey($payment->id)->exists())->toBeTrue();
 });
@@ -249,9 +250,9 @@ test('view payments permission can see payment summary but cannot record payment
         ->assertSeeText('32.00 EUR');
 
     Livewire::actingAs($viewer)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.can_view', true)
-        ->assertSet('table.payment.can_manage', false)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.can_view', true)
+        ->assertSet('payment.can_manage', false)
         ->call('recordTablePayment')
         ->assertHasErrors(['manual_payment']);
 
@@ -265,9 +266,9 @@ test('manual payment is blocked while the latest draft is still open', function 
     attachPrompt67PaymentManager($manager, $organization);
 
     Livewire::actingAs($manager)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.payment.has_open_draft', true)
-        ->assertSet('table.payment.can_record_table_payment', false)
+        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('payment.has_open_draft', true)
+        ->assertSet('payment.can_record_table_payment', false)
         ->call('recordTablePayment')
         ->assertHasErrors(['manual_payment']);
 
@@ -330,7 +331,7 @@ function createPrompt67ManualPaymentContext(bool $withOpenDraft = false): array
         ->for($convertedDraft, 'draftOrder')
         ->create([
             'status' => OrderStatus::Served,
-            'total_price' => '32.00',
+            'total_price_cents' => 3200,
             'currency' => 'EUR',
         ]);
 
@@ -340,8 +341,8 @@ function createPrompt67ManualPaymentContext(bool $withOpenDraft = false): array
         ->create([
             'guest_name' => 'Ana',
             'item_name' => 'Dinner',
-            'unit_price' => '20.00',
-            'total_price' => '20.00',
+            'unit_price_cents' => 2000,
+            'total_price_cents' => 2000,
         ]);
     OrderItem::factory()
         ->for($order)
@@ -349,8 +350,8 @@ function createPrompt67ManualPaymentContext(bool $withOpenDraft = false): array
         ->create([
             'guest_name' => 'Boris',
             'item_name' => 'Dessert',
-            'unit_price' => '12.00',
-            'total_price' => '12.00',
+            'unit_price_cents' => 1200,
+            'total_price_cents' => 1200,
         ]);
 
     if ($withOpenDraft) {

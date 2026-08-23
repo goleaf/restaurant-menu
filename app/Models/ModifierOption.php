@@ -11,9 +11,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property string $price_delta
+ * @property int $price_delta_cents
  */
-#[Fillable(['modifier_group_id', 'name', 'price_delta', 'is_available', 'sort_order'])]
+#[Fillable(['modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order'])]
 class ModifierOption extends Model
 {
     /** @use HasFactory<ModifierOptionFactory> */
@@ -23,7 +23,7 @@ class ModifierOption extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'price_delta' => '0.00',
+        'price_delta_cents' => 0,
         'is_available' => true,
         'sort_order' => 0,
     ];
@@ -34,7 +34,7 @@ class ModifierOption extends Model
     protected function casts(): array
     {
         return [
-            'price_delta' => 'decimal:2',
+            'price_delta_cents' => 'integer',
             'is_available' => 'boolean',
             'sort_order' => 'integer',
         ];

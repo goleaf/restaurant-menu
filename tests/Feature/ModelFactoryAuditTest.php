@@ -1,98 +1,53 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
-use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
-use App\Models\AuditLog;
-use App\Models\Branch;
-use App\Models\BranchOpeningHour;
-use App\Models\BranchSetting;
 use App\Models\BranchUser;
-use App\Models\Brand;
-use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
-use App\Models\Invitation;
-use App\Models\KitchenDepartment;
-use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
-use App\Models\Menu;
-use App\Models\MenuAvailabilitySchedule;
-use App\Models\MenuCategory;
-use App\Models\MenuCategoryTranslation;
-use App\Models\MenuItem;
-use App\Models\MenuItemTranslation;
-use App\Models\ModifierGroup;
-use App\Models\ModifierOption;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\OrderStatusLog;
-use App\Models\Organization;
-use App\Models\OrganizationSubscription;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\PermissionRole;
 use App\Models\PermissionUserOverride;
-use App\Models\QrCode;
 use App\Models\Role;
-use App\Models\ServicePoint;
-use App\Models\TableSession;
-use App\Models\TableSessionGuest;
-use App\Models\TableSessionJoinRequest;
 use App\Models\TableSessionServicePoint;
-use App\Models\User;
 use App\Models\WaiterCall;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\File;
 
 /**
  * @return list<class-string<Model>>
  */
 function firstPartyFactoryModels(): array
 {
-    return [
-        User::class,
-        Organization::class,
-        Brand::class,
-        Branch::class,
-        BranchSetting::class,
-        Role::class,
-        Permission::class,
-        OrganizationUser::class,
-        BranchUser::class,
-        Invitation::class,
-        AreaNode::class,
-        AreaNodeWaiter::class,
-        ServicePoint::class,
-        QrCode::class,
-        TableSession::class,
-        TableSessionGuest::class,
-        TableSessionJoinRequest::class,
-        TableSessionServicePoint::class,
-        Menu::class,
-        MenuAvailabilitySchedule::class,
-        MenuCategory::class,
-        MenuCategoryTranslation::class,
-        MenuItem::class,
-        MenuItemTranslation::class,
-        ModifierGroup::class,
-        ModifierOption::class,
-        DraftOrder::class,
-        DraftOrderItem::class,
-        Order::class,
-        OrderItem::class,
-        OrderStatusLog::class,
-        AuditLog::class,
-        KitchenDepartment::class,
-        KitchenTicket::class,
-        KitchenTicketItem::class,
-        ManualPayment::class,
-        OrganizationSubscription::class,
-        PermissionRole::class,
-        PermissionUserOverride::class,
-        BranchOpeningHour::class,
-        WaiterCall::class,
-    ];
+    $models = [];
+
+    foreach (File::allFiles(app_path('Models')) as $file) {
+        $relativePath = str_replace(
+            [app_path('Models').DIRECTORY_SEPARATOR, DIRECTORY_SEPARATOR, '.php'],
+            ['', '\\', ''],
+            $file->getPathname(),
+        );
+        $model = 'App\\Models\\'.$relativePath;
+
+        if (! class_exists($model) || ! is_subclass_of($model, Model::class)) {
+            continue;
+        }
+
+        $reflection = new ReflectionClass($model);
+
+        if (! $reflection->isAbstract()) {
+            $models[] = $model;
+        }
+    }
+
+    sort($models);
+
+    return $models;
 }
 
 test('core flow models expose factories', function () {
@@ -141,4 +96,26 @@ test('permission and membership factories create valid defaults', function () {
         ->and($membership->role_id)->toBe($role->id)
         ->and($permissionRole->enabled)->toBeTrue()
         ->and($override->enabled)->toBeFalse();
+});
+
+test('relationship factory defaults preserve ownership and session boundaries', function () {
+    $areaAssignment = AreaNodeWaiter::factory()->create();
+    $branchMembership = BranchUser::factory()->create();
+    $draftItem = DraftOrderItem::factory()->create();
+    $ticketItem = KitchenTicketItem::factory()->create();
+    $payment = ManualPayment::factory()->create();
+    $servicePointLink = TableSessionServicePoint::factory()->create();
+    $waiterCall = WaiterCall::factory()->create();
+
+    expect($areaAssignment->branch->organization_id)->toBe($areaAssignment->organization_id)
+        ->and($areaAssignment->areaNode->branch_id)->toBe($areaAssignment->branch_id)
+        ->and($branchMembership->branch->organization_id)->toBe($branchMembership->organization_id)
+        ->and($draftItem->guest->table_session_id)->toBe($draftItem->draftOrder->table_session_id)
+        ->and($draftItem->menuItem->menu->branch_id)->toBe($draftItem->draftOrder->tableSession->branch_id)
+        ->and($ticketItem->orderItem->order_id)->toBe($ticketItem->kitchenTicket->order_id)
+        ->and($payment->branch_id)->toBe($payment->tableSession->branch_id)
+        ->and($payment->service_point_id)->toBe($payment->tableSession->service_point_id)
+        ->and($servicePointLink->servicePoint->branch_id)->toBe($servicePointLink->tableSession->branch_id)
+        ->and($waiterCall->requestedByGuest->table_session_id)->toBe($waiterCall->table_session_id)
+        ->and($waiterCall->service_point_id)->toBe($waiterCall->tableSession->service_point_id);
 });

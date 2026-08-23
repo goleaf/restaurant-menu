@@ -16,7 +16,7 @@
     </header>
 
     <section class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/60 dark:bg-amber-950/30">
-        <p class="text-sm font-medium text-amber-950 dark:text-amber-100">{{ __('reports.exports.csv_only') }}</p>
+        <p class="text-sm font-medium text-amber-950 dark:text-amber-100">{{ __('reports.exports.csv_and_pdf') }}</p>
         <p class="mt-1 text-sm text-amber-900 dark:text-amber-100">
             {{ __('reports.exports.warning') }}
         </p>
@@ -35,15 +35,17 @@
                     @endif
                 </div>
 
-                <div class="mt-4 grid gap-2 sm:grid-cols-2">
+                <div class="mt-4 grid gap-3 sm:grid-cols-2">
                     @foreach ($exports['export_types'] as $type)
-                        <flux:button
-                            wire:key="export-branch-{{ $branch['id'] }}-{{ $type['value'] }}"
-                            icon="arrow-down-tray"
-                            :href="$branch['downloads'][$type['value']]"
-                        >
-                            {{ __('reports.actions.export_type_csv', ['type' => $type['label']]) }}
-                        </flux:button>
+                        <div wire:key="export-branch-{{ $branch['id'] }}-{{ $type['value'] }}" class="grid gap-2">
+                            <flux:button icon="arrow-down-tray" :href="$branch['pdf_downloads'][$type['value']]">
+                                {{ __('reports.actions.export_type_pdf', ['type' => $type['label']]) }}
+                            </flux:button>
+
+                            <flux:button icon="table-cells" variant="ghost" :href="$branch['downloads'][$type['value']]">
+                                {{ __('reports.actions.export_type_csv', ['type' => $type['label']]) }}
+                            </flux:button>
+                        </div>
                     @endforeach
                 </div>
             </article>

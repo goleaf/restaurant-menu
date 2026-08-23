@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\ServicePointStatus;
@@ -56,6 +58,46 @@ class ServicePointFactory extends Factory
         ]);
     }
 
+    public function reserved(): static
+    {
+        return $this->withStatus(ServicePointStatus::Reserved);
+    }
+
+    public function waitingForWaiter(): static
+    {
+        return $this->withStatus(ServicePointStatus::WaitingWaiter);
+    }
+
+    public function withNewOrder(): static
+    {
+        return $this->withStatus(ServicePointStatus::HasNewOrder);
+    }
+
+    public function cooking(): static
+    {
+        return $this->withStatus(ServicePointStatus::Cooking);
+    }
+
+    public function readyToServe(): static
+    {
+        return $this->withStatus(ServicePointStatus::ReadyToServe);
+    }
+
+    public function paymentRequested(): static
+    {
+        return $this->withStatus(ServicePointStatus::PaymentRequested);
+    }
+
+    public function paid(): static
+    {
+        return $this->withStatus(ServicePointStatus::Paid);
+    }
+
+    public function closed(): static
+    {
+        return $this->withStatus(ServicePointStatus::Closed);
+    }
+
     public function blocked(): static
     {
         return $this->state(fn (): array => [
@@ -108,5 +150,13 @@ class ServicePointFactory extends Factory
                 'status' => ServicePointStatus::Occupied,
             ])->save();
         });
+    }
+
+    private function withStatus(ServicePointStatus $status): static
+    {
+        return $this->state(fn (): array => [
+            'status' => $status,
+            'is_active' => $status !== ServicePointStatus::Blocked,
+        ]);
     }
 }

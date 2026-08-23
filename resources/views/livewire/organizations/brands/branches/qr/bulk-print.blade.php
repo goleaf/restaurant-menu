@@ -13,6 +13,19 @@
             <flux:button icon="printer" variant="primary" type="button" x-on:click="window.print()" :disabled="count($printItems) === 0">
                 {{ __('qr.actions.print') }}
             </flux:button>
+
+            <form method="POST" action="{{ $pdfDownloadUrl }}">
+                @csrf
+                <input type="hidden" name="preset" value="{{ $selectedPresetValue }}">
+                <input type="hidden" name="print_table_number" value="{{ $printTableNumber ? '1' : '0' }}">
+                @foreach ($printItems as $item)
+                    <input type="hidden" name="service_points[]" value="{{ $item['service_point_id'] }}">
+                @endforeach
+
+                <flux:button icon="arrow-down-tray" type="submit" :disabled="count($printItems) === 0">
+                    {{ __('qr.actions.download_pdf') }}
+                </flux:button>
+            </form>
         </div>
     </div>
 

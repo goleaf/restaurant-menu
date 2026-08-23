@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Orders;
 
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
@@ -115,6 +117,7 @@ class SyncOrderStatusFromTicketItemsAction
             ->whereHas('kitchenTicket', function ($query) use ($order): void {
                 $query->where('order_id', $order->id);
             })
+            ->where('status', '!=', KitchenTicketItemStatus::Cancelled->value)
             ->orderBy('id')
             ->limit(1000)
             ->get();

@@ -7,6 +7,7 @@ namespace App\Actions\Branches;
 use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use App\Models\BranchSetting;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Facades\DB;
 
 class UpdateBranchSettingsAction
@@ -38,7 +39,8 @@ class UpdateBranchSettingsAction
     {
         return DB::transaction(function () use ($settings, $data): BranchSetting {
             $data['default_currency'] = SupportedCurrency::normalize($data['default_currency']);
-            $data['service_charge_percent'] = number_format((float) ($data['service_charge_percent'] ?? '0.00'), 2, '.', '');
+            $data['service_charge_basis_points'] = MoneyFormatter::decimalToBasisPoints($data['service_charge_percent'] ?? '0.00');
+            unset($data['service_charge_percent']);
             $data['service_modes'] = BranchServiceMode::normalizeList($data['service_modes'] ?? null);
 
             $settings->fill($data);

@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations;
 
-use App\Actions\Media\RemoveLocalImageAction;
-use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
+use App\Actions\Organizations\UpdateOrganizationLogoAction;
 use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Models\Organization;
@@ -131,7 +130,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_deleted'));
     }
 
-    public function saveLogo(int $organizationId, ReplaceLocalImageAction $replaceLocalImage): void
+    public function saveLogo(int $organizationId, UpdateOrganizationLogoAction $updateLogo): void
     {
         $organization = $this->findOwnedOrganization($organizationId);
 
@@ -146,30 +145,18 @@ class Index extends Component
             return;
         }
 
-        $replaceLocalImage->handle(
-            file: $file,
-            directory: 'media/organizations/'.$organization->id.'/logos',
-            oldPath: $organization->logo_path,
-            persist: function (string $path) use ($organization): void {
-                $organization->forceFill(['logo_path' => $path])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($organization, $file);
 
         unset($this->organizationLogos[$organization->id], $this->organizations);
 
         Flux::toast(variant: 'success', text: __('uploads.messages.uploaded'));
     }
 
-    public function removeLogo(int $organizationId, RemoveLocalImageAction $removeLocalImage): void
+    public function removeLogo(int $organizationId, UpdateOrganizationLogoAction $updateLogo): void
     {
         $organization = $this->findOwnedOrganization($organizationId);
 
-        $removeLocalImage->handle(
-            oldPath: $organization->logo_path,
-            persist: function () use ($organization): void {
-                $organization->forceFill(['logo_path' => null])->saveOrFail();
-            },
-        );
+        $updateLogo->handle($organization, null);
 
         unset($this->organizationLogos[$organization->id], $this->organizations);
 

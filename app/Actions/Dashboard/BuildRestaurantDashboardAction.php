@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Dashboard;
 
 use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
@@ -19,6 +21,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
@@ -283,7 +286,7 @@ class BuildRestaurantDashboardAction
         }
 
         return Order::query()
-            ->select(['id', 'branch_id', 'status', 'confirmed_at', 'total_price', 'currency'])
+            ->select(['id', 'branch_id', 'status', 'confirmed_at', 'total_price_cents', 'currency'])
             ->whereIn('branch_id', $branchIds)
             ->whereNotIn('status', [OrderStatus::Cancelled->value])
             ->whereBetween('confirmed_at', [$periodStart, $periodEnd])
@@ -374,9 +377,7 @@ class BuildRestaurantDashboardAction
         return $orders
             ->groupBy(fn (Order $order): string => $order->currency ?: 'EUR')
             ->map(function (Collection $currencyOrders, string $currency): array {
-                $totalCents = $currencyOrders->sum(
-                    fn (Order $order): int => $this->decimalToCents($order->total_price),
-                );
+                $totalCents = (int) $currencyOrders->sum('total_price_cents');
 
                 return [
                     'currency' => $currency,
@@ -399,15 +400,16 @@ class BuildRestaurantDashboardAction
         }
 
         return OrderItem::query()
-            ->select(['id', 'order_id', 'item_name', 'item_name_snapshot', 'quantity', 'total_price'])
+            ->select(['id', 'order_id', 'item_name', 'item_name_snapshot', 'quantity', 'total_price_cents'])
             ->whereIn('order_id', $orderIds)
+            ->active()
             ->orderBy('item_name')
             ->orderBy('id')
             ->get()
             ->groupBy(fn (OrderItem $item): string => mb_strtolower($item->historicalItemName()))
             ->map(function (Collection $items): array {
                 $firstItem = $items->first();
-                $totalCents = $items->sum(fn (OrderItem $item): int => $this->decimalToCents($item->total_price));
+                $totalCents = (int) $items->sum('total_price_cents');
 
                 return [
                     'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish'),
@@ -594,23 +596,8 @@ class BuildRestaurantDashboardAction
         });
     }
 
-    private function decimalToCents(string|int|float|null $amount): int
-    {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
-    }
-
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 }

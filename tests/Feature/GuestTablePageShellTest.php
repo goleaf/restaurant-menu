@@ -7,10 +7,10 @@ use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\PublicQr\DraftOrder;
 use App\Livewire\PublicQr\DraftTotals;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\JoinRequests;
 use App\Livewire\PublicQr\Notifications;
 use App\Livewire\PublicQr\OrderStatuses;
-use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\PublicQr\TableGuests;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -26,7 +26,7 @@ test('active guest sees the guest table page shell', function () {
     [$qrCode, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
 
     Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('currentTableSessionId', $tableSession->id)
         ->assertSet('currentGuestId', $activeGuest->id)
         ->assertSet('guestCanAddItems', true)
@@ -55,7 +55,7 @@ test('guest table polling blocks use branch settings interval', function () {
         ->update(['polling_interval_seconds' => 3]);
 
     Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('landing.polling_interval_seconds', 3)
         ->assertSee('wire:poll.visible.3s="refreshGuests"', false)
         ->assertSee('wire:poll.visible.3s="refreshNotifications"', false)

@@ -1,12 +1,15 @@
 <?php
 
+use App\Actions\Monitoring\ReportProductionExceptionAction;
 use App\Exceptions\BusinessRuleViolation;
+use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
 use App\Http\Middleware\SetInterfaceLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(AssignRequestId::class);
+
         $middleware->web(append: [
             SetInterfaceLocale::class,
         ]);
@@ -28,14 +33,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontReport([
             BusinessRuleViolation::class,
         ]);
+        $exceptions->report(function (Throwable $exception): void {
+            app(ReportProductionExceptionAction::class)->handle($exception);
+        });
         $exceptions->context(function (): array {
             $request = request();
             $route = $request->route();
 
             return [
                 'http_method' => $request->method(),
-                'request_path' => $request->path(),
+                'request_id' => $request->attributes->get('request_id'),
                 'route_name' => $route?->getName(),
+                'route_uri' => $route?->uri(),
                 'guest_surface' => $request->is('q/*') || $request->is('guest*'),
             ];
         });
@@ -55,5 +64,19 @@ return Application::configure(basePath: dirname(__DIR__))
                 ],
                 'errors' => $exception->errors(),
             ], $exception->errorType()->statusCode());
+        });
+        $exceptions->respond(function (Response $response): Response {
+            $request = request();
+            $requestId = $request->attributes->get('request_id');
+
+            if (is_string($requestId) && $requestId !== '') {
+                $response->headers->set('X-Request-Id', $requestId);
+            }
+
+            if ($request->is('up')) {
+                $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
+            }
+
+            return $response;
         });
     })->create();

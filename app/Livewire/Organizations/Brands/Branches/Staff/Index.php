@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Staff;
 
-use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Invitations\CreateInvitationAction;
 use App\Actions\Staff\AddBranchStaffMemberAction;
-use App\Enums\AuditLogAction;
+use App\Actions\Staff\SetBranchStaffStatusAction;
+use App\Actions\Staff\SyncWaiterAreaAssignmentsAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
@@ -122,22 +122,18 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
-    public function activateMember(int $branchUserId): void
+    public function activateMember(int $branchUserId, SetBranchStaffStatusAction $setStaffStatus): void
     {
         $this->authorizeStaffManagement();
 
-        $branchUser = $this->findBranchUser($branchUserId);
-        $branchUser->forceFill([
-            'status' => OrganizationUserStatus::Active,
-            'assigned_at' => $branchUser->assigned_at ?? now(),
-        ])->save();
+        $setStaffStatus->activate($this->findBranchUser($branchUserId));
 
         unset($this->members);
 
         Flux::toast(variant: 'success', text: __('staff.messages.staff_reactivated'));
     }
 
-    public function deactivateMember(int $branchUserId, RecordAuditLogAction $recordAuditLog): void
+    public function deactivateMember(int $branchUserId, SetBranchStaffStatusAction $setStaffStatus): void
     {
         $this->authorizeStaffManagement();
 
@@ -148,32 +144,15 @@ class Index extends Component
 
         $branchUser = $this->findBranchUser($branchUserId);
 
-        if ($branchUser->user_id === $this->currentUser()->id) {
+        if (! $setStaffStatus->suspend(
+            $branchUser,
+            $this->currentUser(),
+            (string) $validated['staffDeactivationReason'],
+        )) {
             Flux::toast(variant: 'warning', text: __('staff.errors.self_deactivation_blocked'));
 
             return;
         }
-
-        $previousStatus = $branchUser->status;
-        $branchUser->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
-
-        $recordAuditLog->handle(
-            action: AuditLogAction::StaffDeactivated,
-            entityType: 'branch_user',
-            entityId: $branchUser->id,
-            actorUser: $this->currentUser(),
-            organizationId: $this->organization->id,
-            branchId: $this->branch->id,
-            oldValues: [
-                'staff_user_id' => $branchUser->user_id,
-                'status' => $previousStatus,
-            ],
-            newValues: [
-                'staff_user_id' => $branchUser->user_id,
-                'status' => OrganizationUserStatus::Suspended,
-                'reason' => (string) $validated['staffDeactivationReason'],
-            ],
-        );
 
         $this->staffDeactivationReason = '';
         unset($this->members);
@@ -182,7 +161,7 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.staff_deactivated'));
     }
 
-    public function saveAreaAssignments(int $userId): void
+    public function saveAreaAssignments(int $userId, SyncWaiterAreaAssignmentsAction $syncAssignments): void
     {
         $this->authorizeStaffManagement();
 
@@ -205,33 +184,12 @@ class Index extends Component
             return;
         }
 
-        $existingAssignments = AreaNodeWaiter::query()
-            ->where('branch_id', $this->branch->id)
-            ->where('user_id', $userId);
-
-        if ($selectedAreaIds->isEmpty()) {
-            $existingAssignments->delete();
-        } else {
-            $existingAssignments
-                ->whereNotIn('area_node_id', $selectedAreaIds)
-                ->delete();
-        }
-
-        foreach ($selectedAreaIds as $areaNodeId) {
-            $assignment = AreaNodeWaiter::query()
-                ->where('area_node_id', $areaNodeId)
-                ->where('user_id', $userId)
-                ->first() ?? new AreaNodeWaiter;
-
-            $assignment->forceFill([
-                'organization_id' => $this->organization->id,
-                'branch_id' => $this->branch->id,
-                'area_node_id' => $areaNodeId,
-                'user_id' => $userId,
-                'assigned_by_user_id' => $this->currentUser()->id,
-                'assigned_at' => now(),
-            ])->save();
-        }
+        $selectedAreaIds = collect($syncAssignments->handle(
+            $this->branch,
+            $branchUser,
+            $this->currentUser(),
+            $selectedAreaIds->all(),
+        ));
 
         $this->areaAssignments[$userId] = $selectedAreaIds
             ->map(fn (int $areaNodeId): string => (string) $areaNodeId)

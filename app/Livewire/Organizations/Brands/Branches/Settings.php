@@ -6,11 +6,12 @@ namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\EnsureBranchSettingsAction;
 use App\Actions\Branches\GetBranchOpeningStatusAction;
+use App\Actions\Branches\UpdateBranchCoverImageAction;
+use App\Actions\Branches\UpdateBranchLogoAction;
 use App\Actions\Branches\UpdateBranchOpeningHoursAction;
 use App\Actions\Branches\UpdateBranchPublicProfileAction;
 use App\Actions\Branches\UpdateBranchSettingsAction;
 use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
-use App\Actions\Media\ReplaceLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\BranchOrderFlowMode;
@@ -22,6 +23,7 @@ use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
@@ -162,7 +164,8 @@ class Settings extends Component
         UpdateBranchPublicProfileAction $updateBranchPublicProfile,
         UpdateBranchOpeningHoursAction $updateBranchOpeningHours,
         UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
-        ReplaceLocalImageAction $replaceLocalImage,
+        UpdateBranchLogoAction $updateBranchLogo,
+        UpdateBranchCoverImageAction $updateBranchCoverImage,
     ): void {
         $this->authorizeSettingsManagement();
         $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
@@ -206,25 +209,11 @@ class Settings extends Component
         ];
 
         if ($this->publicLogo instanceof UploadedFile) {
-            $profilePayload['logo_path'] = $replaceLocalImage->handle(
-                file: $this->publicLogo,
-                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/logos',
-                oldPath: $this->branch->logo_path,
-                persist: function (string $path): void {
-                    $this->branch->forceFill(['logo_path' => $path])->saveOrFail();
-                },
-            );
+            $profilePayload['logo_path'] = $updateBranchLogo->handle($this->branch, $this->publicLogo)->logo_path;
         }
 
         if ($this->coverImage instanceof UploadedFile) {
-            $profilePayload['cover_image_path'] = $replaceLocalImage->handle(
-                file: $this->coverImage,
-                directory: 'media/organizations/'.$this->organization->id.'/brands/'.$this->brand->id.'/branches/'.$this->branch->id.'/covers',
-                oldPath: $this->branch->cover_image_path,
-                persist: function (string $path): void {
-                    $this->branch->forceFill(['cover_image_path' => $path])->saveOrFail();
-                },
-            );
+            $profilePayload['cover_image_path'] = $updateBranchCoverImage->handle($this->branch, $this->coverImage)->cover_image_path;
         }
 
         $branch = $updateBranchPublicProfile->handle($this->branch, $profilePayload);
@@ -349,7 +338,7 @@ class Settings extends Component
         $this->defaultLanguage = $settings->default_language;
         $this->defaultCurrency = SupportedCurrency::normalize($settings->default_currency);
         $this->serviceChargeEnabled = $settings->service_charge_enabled;
-        $this->serviceChargePercent = $settings->service_charge_percent;
+        $this->serviceChargePercent = MoneyFormatter::centsToDecimal($settings->service_charge_basis_points);
         $this->tipsEnabled = $settings->tips_enabled;
         $this->orderFlowMode = $settings->order_flow_mode->value;
         $this->serviceModes = BranchServiceMode::normalizeList($settings->service_modes);

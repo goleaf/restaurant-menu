@@ -92,6 +92,21 @@ test('download routes have the required access middleware boundary', function ()
         ->and($backupRoute?->getActionName())->toBe('App\Http\Controllers\Superadmin\DownloadSqliteBackupController');
 });
 
+test('sqlite restore routes require superadmin password confirmation', function (): void {
+    $showRoute = prompt334RouteByName('superadmin.backups.sqlite.restore');
+    $storeRoute = prompt334RouteByName('superadmin.backups.sqlite.restore.store');
+
+    expect($showRoute)->not->toBeNull()
+        ->and(prompt334RouteMethods($showRoute))->toContain('GET')
+        ->and(prompt334RouteMiddleware($showRoute))->toContain('web', 'auth', 'superadmin', 'password.confirm')
+        ->and($showRoute?->getActionName())->toBe('App\Http\Controllers\Superadmin\ShowSqliteBackupRestoreController');
+
+    expect($storeRoute)->not->toBeNull()
+        ->and(prompt334RouteMethods($storeRoute))->toContain('POST')
+        ->and(prompt334RouteMiddleware($storeRoute))->toContain('web', 'auth', 'superadmin', 'password.confirm')
+        ->and($storeRoute?->getActionName())->toBe('App\Http\Controllers\Superadmin\RestoreSqliteBackupController');
+});
+
 test('private local storage is not exposed as an unauthenticated file route', function (): void {
     expect(prompt334RouteByName('storage.local'))->toBeNull()
         ->and(prompt334RouteByName('storage.local.upload'))->toBeNull()

@@ -9,7 +9,6 @@ use App\Exceptions\BusinessRuleViolation;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
-use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -36,7 +35,7 @@ class BuildDraftOrderItemModifierSnapshots
                         'id',
                         'modifier_group_id',
                         'name',
-                        'price_delta',
+                        'price_delta_cents',
                         'is_available',
                         'sort_order',
                     ])
@@ -51,7 +50,7 @@ class BuildDraftOrderItemModifierSnapshots
     /**
      * @param  Collection<int, ModifierGroup>  $modifierGroups
      * @param  array<string, mixed>  $selectedModifierOptions
-     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>
+     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>
      */
     public function snapshotsFor(Collection $modifierGroups, array $selectedModifierOptions): array
     {
@@ -63,12 +62,12 @@ class BuildDraftOrderItemModifierSnapshots
     }
 
     /**
-     * @param  list<array{price_delta: string}>  $selectedModifiers
+     * @param  list<array{price_delta_cents: int}>  $selectedModifiers
      */
     public function modifierTotalCents(array $selectedModifiers): int
     {
         return collect($selectedModifiers)
-            ->sum(fn (array $modifier): int => self::decimalToCents($modifier['price_delta']));
+            ->sum(fn (array $modifier): int => $modifier['price_delta_cents']);
     }
 
     /**
@@ -159,7 +158,7 @@ class BuildDraftOrderItemModifierSnapshots
     /**
      * @param  Collection<int, ModifierGroup>  $modifierGroups
      * @param  array<int, list<int>>  $selection
-     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>
+     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>
      */
     private function selectedModifierSnapshots(Collection $modifierGroups, array $selection): array
     {
@@ -178,16 +177,11 @@ class BuildDraftOrderItemModifierSnapshots
                     'group_name' => $modifierGroup->name,
                     'option_id' => $modifierOption->id,
                     'option_name' => $modifierOption->name,
-                    'price_delta' => $modifierOption->price_delta,
+                    'price_delta_cents' => $modifierOption->price_delta_cents,
                 ];
             });
         });
 
         return $snapshots;
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return MoneyFormatter::decimalToCents($amount);
     }
 }

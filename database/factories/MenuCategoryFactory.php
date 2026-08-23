@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\Menu;
@@ -28,5 +30,27 @@ class MenuCategoryFactory extends Factory
             'sort_order' => 0,
             'is_active' => true,
         ];
+    }
+
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => true,
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
+        ]);
+    }
+
+    public function childOf(MenuCategory $parent): static
+    {
+        return $this->state(fn (): array => [
+            'menu_id' => $parent->menu_id,
+            'parent_id' => $parent->id,
+        ]);
     }
 }

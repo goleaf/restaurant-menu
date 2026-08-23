@@ -16,11 +16,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property ManualPaymentScope $scope
  * @property ManualPaymentMethod $payment_method
+ * @property int $covered_subtotal_cents
+ * @property int $service_charge_basis_points
+ * @property int $service_charge_cents
+ * @property int $tips_cents
+ * @property int $amount_cents
  * @property CarbonInterface|null $paid_at
  * @property-read TableSessionGuest|null $guest
  * @property-read User|null $recordedBy
  */
-#[Fillable(['service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_amount', 'service_charge_percent', 'service_charge_amount', 'tips_amount', 'amount', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
+#[Fillable(['service_point_id', 'table_session_id', 'table_session_guest_id', 'recorded_by_user_id', 'scope', 'payment_method', 'covered_subtotal_cents', 'service_charge_basis_points', 'service_charge_cents', 'tips_cents', 'amount_cents', 'currency', 'guest_name', 'note', 'paid_at', 'metadata'])]
 class ManualPayment extends Model
 {
     /** @use HasFactory<ManualPaymentFactory> */
@@ -32,11 +37,11 @@ class ManualPayment extends Model
     protected $attributes = [
         'scope' => 'table',
         'payment_method' => 'cash',
-        'covered_subtotal_amount' => '0.00',
-        'service_charge_percent' => '0.00',
-        'service_charge_amount' => '0.00',
-        'tips_amount' => '0.00',
-        'amount' => '0.00',
+        'covered_subtotal_cents' => 0,
+        'service_charge_basis_points' => 0,
+        'service_charge_cents' => 0,
+        'tips_cents' => 0,
+        'amount_cents' => 0,
         'currency' => 'EUR',
         'metadata' => '[]',
     ];
@@ -76,11 +81,11 @@ class ManualPayment extends Model
         return [
             'scope' => ManualPaymentScope::class,
             'payment_method' => ManualPaymentMethod::class,
-            'covered_subtotal_amount' => 'decimal:2',
-            'service_charge_percent' => 'decimal:2',
-            'service_charge_amount' => 'decimal:2',
-            'tips_amount' => 'decimal:2',
-            'amount' => 'decimal:2',
+            'covered_subtotal_cents' => 'integer',
+            'service_charge_basis_points' => 'integer',
+            'service_charge_cents' => 'integer',
+            'tips_cents' => 'integer',
+            'amount_cents' => 'integer',
             'paid_at' => 'datetime',
             'metadata' => 'array',
         ];

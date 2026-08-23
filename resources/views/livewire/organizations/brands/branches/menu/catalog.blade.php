@@ -1,5 +1,5 @@
 <div data-section="menu-catalog" class="contents">
-        <div class="grid gap-4 xl:grid-cols-5">
+        <div class="grid gap-4 xl:grid-cols-3">
             <form wire:submit="createMenu" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_menu') }}</flux:heading>
@@ -119,6 +119,14 @@
                         <flux:input wire:model="itemVolume" :label="__('reports.csv.volume')" type="number" min="0" step="0.01" />
                         <flux:input wire:model="itemCalories" :label="__('reports.csv.calories')" type="number" min="0" max="999999" />
                     </div>
+
+                    <x-menu.item-label-fields
+                        id-prefix="create-menu-item"
+                        allergens-model="itemAllergens"
+                        dietary-labels-model="itemDietaryLabels"
+                        :allergen-options="$allergenOptions"
+                        :dietary-label-options="$dietaryLabelOptions"
+                    />
     
                     @if ($canChangeAvailability)
                         <flux:switch wire:model="itemIsAvailable" :label="__('menu.guest.available')" />
@@ -126,56 +134,6 @@
                 </div>
             </form>
     
-            <form wire:submit="createKitchenDepartment" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex items-center justify-between gap-3">
-                    <flux:heading size="lg">{{ __('reports.csv.kitchen_department') }}</flux:heading>
-                    <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createKitchenDepartment">
-                        {{ __('ui.organizations.brands.branches.menu.index.create') }}
-                    </flux:button>
-                </div>
-    
-                <div class="mt-4 grid gap-3">
-                    <flux:input wire:model="departmentName" :label="__('reports.csv.name')" type="text" required maxlength="120" />
-    
-                    <flux:select wire:model="departmentType" :label="__('reports.csv.type')">
-                        @foreach ($kitchenDepartmentTypeOptions as $value => $label)
-                            <flux:select.option wire:key="department-type-create-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-    
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="departmentSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
-                        <div class="flex items-end">
-                            <flux:switch wire:model="departmentIsActive" :label="__('qr.status.active')" />
-                        </div>
-                    </div>
-                </div>
-            </form>
-    
-            <form wire:submit="createModifierGroup" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-                <div class="flex items-center justify-between gap-3">
-                    <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_modifier') }}</flux:heading>
-                    <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createModifierGroup">
-                        {{ __('ui.organizations.brands.branches.menu.index.create') }}
-                    </flux:button>
-                </div>
-    
-                <div class="mt-4 grid gap-3">
-                    <flux:input wire:model="modifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
-    
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="modifierGroupMinSelect" :label="__('ui.organizations.brands.branches.menu.index.min')" type="number" required min="0" max="50" />
-                        <flux:input wire:model="modifierGroupMaxSelect" :label="__('ui.organizations.brands.branches.menu.index.max')" type="number" required min="0" max="50" />
-                    </div>
-    
-                    <div class="grid gap-3 sm:grid-cols-2">
-                        <flux:input wire:model="modifierGroupSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
-                        <div class="flex items-end">
-                            <flux:switch wire:model="modifierGroupIsRequired" :label="__('guest.cart.required')" />
-                        </div>
-                    </div>
-                </div>
-            </form>
         </div>
     
         <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -411,6 +369,14 @@
                                                         <flux:input wire:model="editingItemCalories" :label="__('reports.csv.calories')" type="number" min="0" max="999999" />
                                                         <flux:input wire:model="editingItemSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
                                                     </div>
+
+                                                    <x-menu.item-label-fields
+                                                        id-prefix="edit-menu-item-{{ $item['id'] }}"
+                                                        allergens-model="editingItemAllergens"
+                                                        dietary-labels-model="editingItemDietaryLabels"
+                                                        :allergen-options="$allergenOptions"
+                                                        :dietary-label-options="$dietaryLabelOptions"
+                                                    />
     
                                                     <div class="flex items-center justify-between gap-3">
                                                         @if ($canChangeAvailability)
@@ -458,6 +424,12 @@
                                                         @if ($item['description'])
                                                             <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                         @endif
+
+                                                        <x-menu.item-labels
+                                                            class="mt-3"
+                                                            :allergens="$item['allergens']"
+                                                            :dietary-labels="$item['dietary_labels']"
+                                                        />
     
                                                         <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
                                                             {{ __('guest.cart.price') }}: {{ $item['formatted_price'] }} / {{ __('ui.departments.dashboard.sort') }} {{ $item['sort_order'] }}

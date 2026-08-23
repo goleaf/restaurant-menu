@@ -310,6 +310,7 @@ class OrderStatuses extends Component
                 'item_name_snapshot',
                 'quantity',
                 'comment',
+                'cancelled_at',
             ])
             ->with([
                 'guest:id,guest_name',
@@ -324,6 +325,7 @@ class OrderStatuses extends Component
                 $status = $this->orderItemGuestStatus(
                     $orderStatuses->get((int) $item->order_id),
                     $item->kitchenTicketItem,
+                    $item->isCancelled(),
                 );
 
                 $guestName = $item->table_session_guest_id === null
@@ -532,9 +534,9 @@ class OrderStatuses extends Component
     /**
      * @return array{value: string, key: string, description_key: string, tone: string}
      */
-    private function orderItemGuestStatus(?OrderStatus $orderStatus, ?KitchenTicketItem $ticketItem): array
+    private function orderItemGuestStatus(?OrderStatus $orderStatus, ?KitchenTicketItem $ticketItem, bool $isCancelled): array
     {
-        if ($orderStatus === OrderStatus::Cancelled) {
+        if ($isCancelled || $orderStatus === OrderStatus::Cancelled) {
             return [
                 'value' => 'cancelled',
                 'key' => 'guest.statuses.items.cancelled',

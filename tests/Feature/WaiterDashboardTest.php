@@ -48,6 +48,24 @@ test('waiter dashboard requires view orders permission', function () {
         ->assertForbidden();
 });
 
+test('waiter dashboard exposes accessible persistent notification sound controls', function () {
+    [$organization] = createPrompt52Branch();
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+
+    Livewire::actingAs($waiter)
+        ->test(WaiterDashboard::class)
+        ->assertSee('data-waiter-sounds', false)
+        ->assertSee('data-waiter-sound-controls', false)
+        ->assertSee('data-waiter-sound-toggle', false)
+        ->assertSee('data-waiter-sound-test', false)
+        ->assertSee('aria-pressed="false"', false)
+        ->assertSee(__('ui.waiter.dashboard.enable_sounds'))
+        ->assertSee(__('ui.waiter.dashboard.test_sound'))
+        ->assertDontSee('playNotice()', false)
+        ->assertDontSee('new AudioContext', false);
+});
+
 test('waiter dashboard shows branch service points sessions and sent drafts', function () {
     [$organization, $brand, $branch] = createPrompt52Branch();
     $waiter = User::factory()->create();
@@ -85,8 +103,8 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
             'menu_item_id' => null,
             'item_name' => 'Pasta',
             'quantity' => 2,
-            'unit_price' => '9.75',
-            'total_price' => '19.50',
+            'unit_price_cents' => 975,
+            'total_price_cents' => 1950,
         ]);
 
     Livewire::actingAs($waiter)
@@ -159,6 +177,7 @@ test('waiter dashboard refresh shows newly sent draft without websockets', funct
     $component = Livewire::actingAs($waiter)
         ->test(WaiterDashboard::class)
         ->assertSet('newDraftCount', 0)
+        ->assertNotDispatched('waiter-new-draft')
         ->assertSee('Polling table');
 
     $draftOrder = DraftOrder::factory()
@@ -175,14 +194,43 @@ test('waiter dashboard refresh shows newly sent draft without websockets', funct
         ->create([
             'menu_item_id' => null,
             'item_name' => 'Soup',
-            'total_price' => '7.00',
+            'total_price_cents' => 700,
         ]);
 
     $component
         ->call('refreshDashboard')
         ->assertSet('newDraftCount', 1)
+        ->assertDispatched('waiter-new-draft')
         ->assertSee('Marta')
         ->assertSee('7.00 EUR');
+
+    $component
+        ->call('refreshDashboard')
+        ->assertSet('newDraftCount', 1)
+        ->assertNotDispatched('waiter-new-draft');
+
+    $draftOrder->forceFill(['status' => DraftOrderStatus::Rejected])->save();
+    $replacementDraft = DraftOrder::factory()
+        ->for($tableSession)
+        ->create([
+            'status' => DraftOrderStatus::SentToWaiter,
+            'sent_to_waiter_at' => now()->addSecond(),
+            'sent_by_guest_id' => $guest->id,
+        ]);
+
+    DraftOrderItem::factory()
+        ->for($replacementDraft, 'draftOrder')
+        ->for($guest, 'guest')
+        ->create([
+            'menu_item_id' => null,
+            'item_name' => 'Replacement soup',
+            'total_price_cents' => 800,
+        ]);
+
+    $component
+        ->call('refreshDashboard')
+        ->assertSet('newDraftCount', 1)
+        ->assertDispatched('waiter-new-draft');
 });
 
 test('waiter dashboard groups tables by zones and surfaces urgent work', function () {
@@ -260,8 +308,8 @@ test('waiter dashboard groups tables by zones and surfaces urgent work', functio
             'menu_item_id' => null,
             'item_name' => 'Prompt 91 Pasta',
             'quantity' => 1,
-            'unit_price' => '12.00',
-            'total_price' => '12.00',
+            'unit_price_cents' => 1200,
+            'total_price_cents' => 1200,
         ]);
 
     $callSession = TableSession::factory()

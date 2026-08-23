@@ -16,26 +16,36 @@ use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
+use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Models\OrganizationUser;
 use App\Models\QrCode;
+use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Models\WaiterCall;
+use App\Services\QrCodeSvgRenderer;
 use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+
+beforeEach(function () {
+    Storage::fake('public');
+});
 
 test('demo restaurant seeder creates a runnable demo restaurant', function () {
     $this->seed(DemoRestaurantSeeder::class);
@@ -76,7 +86,13 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
 
     expect(MenuCategory::query()->where('menu_id', $menu->id)->count())->toBe(3)
         ->and(MenuCategory::query()->where('menu_id', $menu->id)->whereIn('icon', ['pizza', 'cup-soda', 'cake-slice'])->doesntExist())->toBeTrue()
-        ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7);
+        ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7)
+        ->and(MenuItem::query()->where('menu_id', $menu->id)->get()->contains(fn (MenuItem $item): bool => $item->allergens !== []))->toBeTrue()
+        ->and(MenuItem::query()->where('menu_id', $menu->id)->get()->contains(fn (MenuItem $item): bool => $item->dietary_labels !== []))->toBeTrue()
+        ->and(MenuItemVariant::query()->whereHas('item', fn ($query) => $query->where('menu_id', $menu->id))->count())->toBe(11)
+        ->and(MenuItemVariantTranslation::query()
+            ->whereHas('variant.item', fn ($query) => $query->where('menu_id', $menu->id))
+            ->count())->toBe(33);
 
     foreach (demoRestaurantUsers() as $email => $identity) {
         $user = User::query()->where('email', $email)->firstOrFail();
@@ -173,6 +189,48 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
         ->assertSee('Bella Pizza Old Town');
 });
 
+test('demo restaurant seeder creates an idempotent ready qr image for every service point', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $qrCodes = QrCode::query()
+        ->select(['id', 'service_point_id', 'public_token'])
+        ->with(['servicePoint:id,internal_code'])
+        ->orderBy('service_point_id')
+        ->get();
+    $expectedFiles = $qrCodes
+        ->map(fn (QrCode $qrCode): string => 'demo/qr/'.strtolower((string) $qrCode->servicePoint->internal_code).'.svg')
+        ->all();
+
+    expect($qrCodes)->toHaveCount(19)
+        ->and(Storage::disk('public')->allFiles('demo/qr'))->toEqualCanonicalizing($expectedFiles);
+
+    $firstHashes = [];
+
+    foreach ($qrCodes as $qrCode) {
+        $path = 'demo/qr/'.strtolower((string) $qrCode->servicePoint->internal_code).'.svg';
+        $expectedSvg = app(QrCodeSvgRenderer::class)->render(
+            route('public.qr.show', ['token' => $qrCode->public_token]),
+        );
+        $svg = Storage::disk('public')->get($path);
+
+        expect($path)->not->toContain($qrCode->public_token)
+            ->and($svg)->toBe($expectedSvg)
+            ->and($svg)->toContain('<svg')
+            ->and($svg)->not->toContain('<script')
+            ->and($svg)->not->toContain('<foreignObject');
+
+        $firstHashes[$path] = hash('sha256', $svg);
+    }
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect(Storage::disk('public')->allFiles('demo/qr'))->toEqualCanonicalizing($expectedFiles);
+
+    foreach ($firstHashes as $path => $hash) {
+        expect(hash('sha256', Storage::disk('public')->get($path)))->toBe($hash);
+    }
+});
+
 test('demo restaurant seeder provides representative operational workflows', function () {
     $this->seed(DemoRestaurantSeeder::class);
 
@@ -194,6 +252,8 @@ test('demo restaurant seeder provides representative operational workflows', fun
         ->and(Order::query()->where('branch_id', $branch->id)->where('status', OrderStatus::PaymentRequested->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(Order::query()->where('branch_id', $branch->id)->where('status', OrderStatus::Closed->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(OrderItem::query()->whereHas('order', fn ($query) => $query->where('branch_id', $branch->id))->count())->toBeGreaterThanOrEqual(25)
+        ->and(DraftOrderItem::query()->whereNotNull('menu_item_variant_id')->exists())->toBeTrue()
+        ->and(OrderItem::query()->whereNotNull('menu_item_variant_id')->exists())->toBeTrue()
         ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::New->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::InProgress->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::Ready->value)->count())->toBeGreaterThanOrEqual(1)
@@ -323,6 +383,42 @@ test('branch settings have translated labels and descriptions', function () {
 
 test('demo restaurant seeder is idempotent', function () {
     $this->seed(DemoRestaurantSeeder::class);
+
+    $firstCounts = demoSeedGraphCounts();
+
+    expect($firstCounts)->toBe([
+        'roles' => count(SystemRole::cases()),
+        'organizations' => 1,
+        'brands' => 3,
+        'branches' => 4,
+        'areas' => 9,
+        'service_points' => 19,
+        'qr_codes' => 19,
+        'menus' => 4,
+        'menu_categories' => 8,
+        'menu_items' => 20,
+        'menu_item_variants' => 30,
+        'menu_item_variant_translations' => 90,
+        'table_sessions' => 7,
+        'draft_orders' => 7,
+        'orders' => 6,
+        'order_items' => 28,
+        'manual_payments' => 5,
+    ]);
+
+    $firstOrderIds = Order::query()
+        ->whereNotNull('metadata')
+        ->orderBy('id')
+        ->get(['id', 'metadata'])
+        ->mapWithKeys(fn (Order $order): array => [(string) data_get($order->metadata, 'demo_key') => $order->id])
+        ->all();
+    $firstPaymentIds = ManualPayment::query()
+        ->whereNotNull('metadata')
+        ->orderBy('id')
+        ->get(['id', 'metadata'])
+        ->mapWithKeys(fn (ManualPayment $payment): array => [(string) data_get($payment->metadata, 'demo_key') => $payment->id])
+        ->all();
+
     $this->seed(DemoRestaurantSeeder::class);
 
     $organization = Organization::query()
@@ -344,6 +440,16 @@ test('demo restaurant seeder is idempotent', function () {
         ->where('branch_id', $branch->id)
         ->orderBy('id')
         ->pluck('id');
+    $branches = Branch::query()
+        ->where('organization_id', $organization->id)
+        ->withCount(['areaNodes', 'servicePoints', 'menus', 'orders'])
+        ->orderBy('id')
+        ->get();
+    $branchesWithPayments = ManualPayment::query()
+        ->whereIn('branch_id', $branches->pluck('id'))
+        ->distinct()
+        ->orderBy('branch_id')
+        ->pluck('branch_id');
 
     expect(Organization::query()->where('name', 'Demo Food Group')->count())->toBe(1)
         ->and(Brand::query()->where('organization_id', $organization->id)->where('name', 'Bella Pizza')->count())->toBe(1)
@@ -361,8 +467,112 @@ test('demo restaurant seeder is idempotent', function () {
         ->and(MenuItem::query()->where('menu_id', $menu->id)->count())->toBe(7)
         ->and(User::query()->whereIn('email', array_keys(demoRestaurantUsers()))->count())->toBe(count(demoRestaurantUsers()))
         ->and(OrganizationUser::query()->where('organization_id', $organization->id)->count())->toBe(count(demoRestaurantUsers()) - 1)
-        ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount());
+        ->and(BranchUser::query()->where('organization_id', $organization->id)->count())->toBe(demoExpectedBranchAssignmentCount())
+        ->and(demoSeedGraphCounts())->toBe($firstCounts)
+        ->and(Order::query()
+            ->whereNotNull('metadata')
+            ->orderBy('id')
+            ->get(['id', 'metadata'])
+            ->mapWithKeys(fn (Order $order): array => [(string) data_get($order->metadata, 'demo_key') => $order->id])
+            ->all())->toBe($firstOrderIds)
+        ->and(ManualPayment::query()
+            ->whereNotNull('metadata')
+            ->orderBy('id')
+            ->get(['id', 'metadata'])
+            ->mapWithKeys(fn (ManualPayment $payment): array => [(string) data_get($payment->metadata, 'demo_key') => $payment->id])
+            ->all())->toBe($firstPaymentIds);
+
+    expect($branchesWithPayments->all())->toEqualCanonicalizing($branches->pluck('id')->all());
+
+    foreach ($branches as $seededBranch) {
+        expect($seededBranch->area_nodes_count)->toBeGreaterThan(0)
+            ->and($seededBranch->service_points_count)->toBeGreaterThan(0)
+            ->and($seededBranch->menus_count)->toBeGreaterThan(0)
+            ->and($seededBranch->orders_count)->toBeGreaterThan(0);
+    }
 });
+
+test('demo restaurant seeder restores its soft deleted menu graph without duplicates', function () {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $branch = Branch::query()
+        ->where('name', 'Sushi Master Center')
+        ->firstOrFail();
+    $menu = Menu::query()
+        ->where('branch_id', $branch->id)
+        ->where('name', 'Sushi Master Demo Menu')
+        ->firstOrFail();
+    $category = MenuCategory::query()
+        ->where('menu_id', $menu->id)
+        ->firstOrFail();
+    $item = MenuItem::query()
+        ->where('menu_id', $menu->id)
+        ->firstOrFail();
+
+    $item->delete();
+    $category->delete();
+    $menu->delete();
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect(Menu::query()->whereKey($menu->id)->exists())->toBeTrue()
+        ->and(MenuCategory::query()->whereKey($category->id)->exists())->toBeTrue()
+        ->and(MenuItem::query()->whereKey($item->id)->exists())->toBeTrue()
+        ->and(Menu::withTrashed()
+            ->where('branch_id', $branch->id)
+            ->where('name', 'Sushi Master Demo Menu')
+            ->count())->toBe(1)
+        ->and(MenuCategory::withTrashed()
+            ->where('menu_id', $menu->id)
+            ->where('name', $category->name)
+            ->count())->toBe(1)
+        ->and(MenuItem::withTrashed()
+            ->where('menu_id', $menu->id)
+            ->where('name', $item->name)
+            ->count())->toBe(1);
+});
+
+test('demo restaurant seeder does not claim an operational key from another restaurant', function () {
+    $unrelatedServicePoint = ServicePoint::factory()->create();
+    $unrelatedSession = TableSession::factory()
+        ->forServicePoint($unrelatedServicePoint)
+        ->active()
+        ->create(['metadata' => ['demo_key' => 'active-draft']]);
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect($unrelatedSession->refresh()->branch_id)->toBe($unrelatedServicePoint->branch_id)
+        ->and(TableSession::query()
+            ->where('branch_id', '!=', $unrelatedServicePoint->branch_id)
+            ->where('metadata->demo_key', 'active-draft')
+            ->exists())->toBeTrue();
+});
+
+/**
+ * @return array<string, int>
+ */
+function demoSeedGraphCounts(): array
+{
+    return [
+        'roles' => Role::query()->count(),
+        'organizations' => Organization::query()->count(),
+        'brands' => Brand::query()->count(),
+        'branches' => Branch::query()->count(),
+        'areas' => AreaNode::query()->count(),
+        'service_points' => ServicePoint::query()->count(),
+        'qr_codes' => QrCode::query()->count(),
+        'menus' => Menu::query()->count(),
+        'menu_categories' => MenuCategory::query()->count(),
+        'menu_items' => MenuItem::query()->count(),
+        'menu_item_variants' => MenuItemVariant::query()->count(),
+        'menu_item_variant_translations' => MenuItemVariantTranslation::query()->count(),
+        'table_sessions' => TableSession::query()->count(),
+        'draft_orders' => DraftOrder::query()->count(),
+        'orders' => Order::query()->count(),
+        'order_items' => OrderItem::query()->count(),
+        'manual_payments' => ManualPayment::query()->count(),
+    ];
+}
 
 /**
  * @return array<string, array{name: string, role: SystemRole}>
@@ -502,7 +712,7 @@ function demoBranchSettingValues(Branch $branch): array
         'default_language' => 'en',
         'default_currency' => $branch->currency,
         'service_charge_enabled' => false,
-        'service_charge_percent' => '0.00',
+        'service_charge_basis_points' => 0,
         'tips_enabled' => false,
         'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation,
         'service_modes' => BranchServiceMode::defaultValues(),

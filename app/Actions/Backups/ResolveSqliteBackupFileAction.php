@@ -4,15 +4,18 @@ namespace App\Actions\Backups;
 
 use RuntimeException;
 
-class ResolveSqliteBackupFileAction
+final class ResolveSqliteBackupFileAction
 {
     public function handle(): string
     {
-        if (config('database.default') !== 'sqlite') {
+        $connectionName = (string) config('database.default');
+        $connection = config("database.connections.{$connectionName}");
+
+        if (! is_array($connection) || ($connection['driver'] ?? null) !== 'sqlite') {
             throw new RuntimeException('SQLite backup is available only when the sqlite connection is active.');
         }
 
-        $database = trim((string) config('database.connections.sqlite.database', ''));
+        $database = trim((string) ($connection['database'] ?? ''));
 
         if ($database === '' || $database === ':memory:') {
             throw new RuntimeException('SQLite database file is not configured.');

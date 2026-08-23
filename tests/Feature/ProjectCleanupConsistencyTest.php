@@ -91,6 +91,24 @@ test('application operations use explicit dependency injection', function () {
     expect($matchingPaths->all())->toBe([]);
 });
 
+test('livewire components delegate persistence to application actions', function () {
+    $directPersistencePattern = '/(?:(?:::|->)(?:create|updateOrCreate|firstOrCreate|save|saveOrFail|delete|update|attach|detach|sync|syncWithoutDetaching)\s*\()/';
+
+    $matchingPaths = collect(File::allFiles(app_path('Livewire')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
+        ->mapWithKeys(function (SplFileInfo $file) use ($directPersistencePattern): array {
+            if (preg_match($directPersistencePattern, File::get($file->getPathname())) !== 1) {
+                return [];
+            }
+
+            return [str_replace(base_path().'/', '', $file->getPathname()) => true];
+        })
+        ->keys()
+        ->values();
+
+    expect($matchingPaths->all())->toBe([]);
+});
+
 test('livewire page metadata and action errors are localized', function () {
     $hardcodedPresentationPattern = '/#\[Title\s*\(|\baddError\s*\([^,]+,\s*[\'\"]/';
 

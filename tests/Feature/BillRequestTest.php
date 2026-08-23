@@ -170,7 +170,7 @@ function createPrompt66BillRequestContext(): array
         ->for($convertedDraft, 'draftOrder')
         ->create([
             'status' => OrderStatus::Served,
-            'total_price' => '32.00',
+            'total_price_cents' => 3200,
             'currency' => 'EUR',
         ]);
 
@@ -180,8 +180,8 @@ function createPrompt66BillRequestContext(): array
             'table_session_guest_id' => $ana->id,
             'guest_name' => 'Ana',
             'item_name' => 'Dinner',
-            'unit_price' => '20.00',
-            'total_price' => '20.00',
+            'unit_price_cents' => 2000,
+            'total_price_cents' => 2000,
         ]);
     OrderItem::factory()
         ->for($order)
@@ -189,8 +189,8 @@ function createPrompt66BillRequestContext(): array
             'table_session_guest_id' => $boris->id,
             'guest_name' => 'Boris',
             'item_name' => 'Dessert',
-            'unit_price' => '12.00',
-            'total_price' => '12.00',
+            'unit_price_cents' => 1200,
+            'total_price_cents' => 1200,
         ]);
 
     $openDraft = DraftOrder::factory()
@@ -201,8 +201,8 @@ function createPrompt66BillRequestContext(): array
         ->create([
             'table_session_guest_id' => $ana->id,
             'item_name' => 'Tea',
-            'unit_price' => '5.50',
-            'total_price' => '5.50',
+            'unit_price_cents' => 550,
+            'total_price_cents' => 550,
         ]);
 
     $waiter = User::factory()->create([

@@ -16,7 +16,8 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\OrderFulfilment;
+use App\Livewire\Waiter\TableDetail\Overview;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -62,7 +63,7 @@ test('guests can make repeat orders in the same table session', function () {
 
     $pizza->update([
         'name' => 'Prompt 64 Renamed Pizza',
-        'price' => '99.00',
+        'price_cents' => 9900,
     ]);
 
     $firstOrderItem = OrderItem::query()
@@ -72,8 +73,8 @@ test('guests can make repeat orders in the same table session', function () {
     expect($firstDraft->fresh()->status)->toBe(DraftOrderStatus::ConvertedToOrder)
         ->and($firstOrder->fresh()->status)->toBe(OrderStatus::SentToKitchenBar)
         ->and($firstOrderItem->item_name)->toBe('Prompt 64 Pizza')
-        ->and($firstOrderItem->unit_price)->toBe('12.00')
-        ->and($firstOrderItem->total_price)->toBe('12.00')
+        ->and($firstOrderItem->unit_price_cents)->toBe(1200)
+        ->and($firstOrderItem->total_price_cents)->toBe(1200)
         ->and(KitchenTicket::query()->where('table_session_id', $tableSession->id)->count())->toBe(1);
 
     Livewire::test(GuestDraftOrder::class, [
@@ -119,11 +120,11 @@ test('guests can make repeat orders in the same table session', function () {
     app(SendDraftOrderToWaiterAction::class)->handle($secondDraft, $guest);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSet('table.draft.id', $secondDraft->id)
-        ->assertSet('table.current_draft_total', '5.00 EUR')
-        ->assertSet('table.confirmed_orders_total', '12.00 EUR')
-        ->assertSet('table.total', '17.00 EUR')
+        ->test(Overview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('overview.draft.id', $secondDraft->id)
+        ->assertSet('overview.current_draft_total', '5.00 EUR')
+        ->assertSet('overview.confirmed_orders_total', '12.00 EUR')
+        ->assertSet('overview.total', '17.00 EUR')
         ->assertSee(__('ui.waiter.table_detail.confirmed_orders'))
         ->assertSee(__('ui.waiter.table_detail.current_draft_total'));
 
@@ -136,7 +137,7 @@ test('guests can make repeat orders in the same table session', function () {
         ->get();
 
     expect($orders)->toHaveCount(2)
-        ->and($orders->pluck('total_price')->values()->all())->toBe(['12.00', '5.00'])
+        ->and($orders->pluck('total_price_cents')->values()->all())->toBe([1200, 500])
         ->and($orders->pluck('status')->values()->all())->toBe([
             OrderStatus::SentToKitchenBar,
             OrderStatus::SentToKitchenBar,
@@ -153,6 +154,61 @@ test('guests can make repeat orders in the same table session', function () {
         ->assertSet('draftStatusValue', DraftOrderStatus::ConvertedToOrder->value)
         ->assertSet('confirmedOrdersTotalAmount', '17.00')
         ->assertSet('tableTotalAmount', '17.00');
+});
+
+test('waiter can cancel an item from an earlier repeat order without removing either order', function () {
+    [$organization, , $tableSession, $guest, $pizza, $pasta] = createPrompt64RepeatOrderScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 64 Repeat Order Canceller']);
+    attachPrompt64Waiter($waiter, $organization);
+
+    $firstDraftItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $tableSession,
+        guest: $guest,
+        menuItem: $pizza,
+        selectedModifierOptions: [],
+    );
+    $firstDraft = $firstDraftItem->draftOrder()->firstOrFail();
+    app(SendDraftOrderToWaiterAction::class)->handle($firstDraft, $guest);
+    $firstOrder = app(ConfirmDraftOrderByWaiterAction::class)->handle($firstDraft, $waiter);
+    app(SendOrderToKitchenBarAction::class)->handle($firstOrder, $waiter);
+
+    $secondDraftItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $tableSession,
+        guest: $guest,
+        menuItem: $pasta,
+        selectedModifierOptions: [],
+    );
+    $secondDraft = $secondDraftItem->draftOrder()->firstOrFail();
+    app(SendDraftOrderToWaiterAction::class)->handle($secondDraft, $guest);
+    $secondOrder = app(ConfirmDraftOrderByWaiterAction::class)->handle($secondDraft, $waiter);
+    app(SendOrderToKitchenBarAction::class)->handle($secondOrder, $waiter);
+    $firstOrderItem = $firstOrder->items()->firstOrFail();
+
+    Livewire::actingAs($waiter)
+        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('orderFulfilment.orders.0.items.0.item_name', 'Prompt 64 Pizza')
+        ->assertSet('orderFulfilment.orders.1.items.0.item_name', 'Prompt 64 Pasta')
+        ->set('orderItemCancellationReason', 'Guest cancelled the first round item.')
+        ->call('cancelOrderItem', $firstOrderItem->id)
+        ->assertHasNoErrors()
+        ->assertSet('orderFulfilment.orders.0.items.0.is_cancelled', true)
+        ->assertSet('orderFulfilment.orders.1.items.0.is_cancelled', false);
+
+    expect(Order::query()->where('table_session_id', $tableSession->id)->count())->toBe(2)
+        ->and(OrderItem::query()->whereIn('order_id', [$firstOrder->id, $secondOrder->id])->count())->toBe(2)
+        ->and($firstOrder->fresh()->status)->toBe(OrderStatus::Cancelled)
+        ->and($firstOrder->fresh()->total_price_cents)->toBe(0)
+        ->and($secondOrder->fresh()->status)->toBe(OrderStatus::SentToKitchenBar)
+        ->and($secondOrder->fresh()->total_price_cents)->toBe(500);
+
+    Livewire::test(GuestDraftOrder::class, [
+        'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $guest->id,
+        'currency' => 'EUR',
+        'publicToken' => 'prompt64publictoken',
+    ])
+        ->assertSet('confirmedOrdersTotalAmount', '5.00')
+        ->assertSet('tableTotalAmount', '5.00');
 });
 
 function createPrompt64RepeatOrderScenario(): array
@@ -207,7 +263,7 @@ function createPrompt64RepeatOrderScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 64 Pizza',
-            'price' => '12.00',
+            'price_cents' => 1200,
         ]);
     $pasta = MenuItem::factory()
         ->for($menu)
@@ -215,7 +271,7 @@ function createPrompt64RepeatOrderScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 64 Pasta',
-            'price' => '5.00',
+            'price_cents' => 500,
         ]);
 
     return [$organization, $servicePoint, $tableSession, $guest, $pizza, $pasta];
@@ -227,7 +283,7 @@ function attachPrompt64Waiter(User $user, Organization $organization): Role
         ->where('code', SystemRole::Waiter->value)
         ->firstOrFail();
 
-    foreach ([SystemPermission::ViewOrders, SystemPermission::ConfirmOrders, SystemPermission::SendToKitchen] as $permission) {
+    foreach ([SystemPermission::ViewOrders, SystemPermission::ConfirmOrders, SystemPermission::SendToKitchen, SystemPermission::CancelOrders] as $permission) {
         $permissionModel = Permission::query()
             ->where('code', $permission->value)
             ->firstOrFail();

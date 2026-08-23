@@ -5,8 +5,10 @@ use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
 use App\Actions\Payments\BuildManualPaymentSummaryAction;
+use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
@@ -23,6 +25,7 @@ use App\Models\DraftOrderItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Order;
@@ -66,8 +69,8 @@ test('active guest adds a menu item to the table draft and totals recalculate', 
         ->and($draftOrderItem->menu_item_id)->toBe($context['pizzaItem']->id)
         ->and($draftOrderItem->item_name)->toBe('Pizza Margherita')
         ->and($draftOrderItem->quantity)->toBe(1)
-        ->and($draftOrderItem->unit_price)->toBe('12.50')
-        ->and($draftOrderItem->total_price)->toBe('12.50')
+        ->and($draftOrderItem->unit_price_cents)->toBe(1250)
+        ->and($draftOrderItem->total_price_cents)->toBe(1250)
         ->and($draftOrderItem->comment)->toBe('First round')
         ->and($draftOrder->totalAmount())->toBe('12.50')
         ->and($draftOrder->guestTotals())->toBe([
@@ -112,7 +115,7 @@ test('guest can update quantity comment and delete only own draft items', functi
 
     expect($updatedItem->quantity)->toBe(3)
         ->and($updatedItem->comment)->toBe('Cut into small slices')
-        ->and($updatedItem->total_price)->toBe('37.50')
+        ->and($updatedItem->total_price_cents)->toBe(3750)
         ->and(DraftOrderItem::query()->whereKey($waterDraftItem->id)->exists())->toBeFalse()
         ->and($draftOrder->items)->toHaveCount(1)
         ->and($draftOrder->totalAmount())->toBe('37.50')
@@ -137,7 +140,7 @@ test('guest draft item prices are server calculated and keep price at add time',
         ->for($modifierGroup, 'modifierGroup')
         ->create([
             'name' => 'Large',
-            'price_delta' => '3.25',
+            'price_delta_cents' => 325,
         ]);
     $context['pizzaItem']->modifierGroups()->attach($modifierGroup->id);
 
@@ -151,12 +154,12 @@ test('guest draft item prices are server calculated and keep price at add time',
     );
 
     expect($draftOrderItem->item_name)->toBe('Pizza Margherita')
-        ->and($draftOrderItem->unit_price)->toBe('12.50')
-        ->and($draftOrderItem->modifier_total)->toBe('3.25')
-        ->and($draftOrderItem->total_price)->toBe('15.75');
+        ->and($draftOrderItem->unit_price_cents)->toBe(1250)
+        ->and($draftOrderItem->modifier_total_cents)->toBe(325)
+        ->and($draftOrderItem->total_price_cents)->toBe(1575);
 
-    $context['pizzaItem']->forceFill(['price' => '99.00'])->save();
-    $largeOption->forceFill(['price_delta' => '50.00'])->save();
+    $context['pizzaItem']->forceFill(['price_cents' => 9900])->save();
+    $largeOption->forceFill(['price_delta_cents' => 5000])->save();
 
     $updatedItem = app(UpdateGuestDraftOrderItemAction::class)->handle(
         draftOrderItem: $draftOrderItem,
@@ -165,15 +168,137 @@ test('guest draft item prices are server calculated and keep price at add time',
         selectedModifierOptions: [(string) $modifierGroup->id => [$largeOption->id]],
     );
 
-    expect($updatedItem->unit_price)->toBe('12.50')
-        ->and($updatedItem->modifier_total)->toBe('3.25')
-        ->and($updatedItem->total_price)->toBe('31.50');
+    expect($updatedItem->unit_price_cents)->toBe(1250)
+        ->and($updatedItem->modifier_total_cents)->toBe(325)
+        ->and($updatedItem->total_price_cents)->toBe(3150);
+});
+
+test('guest selects an available dish variant and its price and name are snapshotted', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $small = MenuItemVariant::factory()
+        ->for($context['pizzaItem'], 'item')
+        ->portion()
+        ->default()
+        ->create(['name' => 'Small', 'price_cents' => 1250]);
+    $large = MenuItemVariant::factory()
+        ->for($context['pizzaItem'], 'item')
+        ->portion()
+        ->create(['name' => 'Large', 'price_cents' => 1800]);
+
+    $draftOrderItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        menuItemVariantId: $large->id,
+        selectedModifierOptions: [],
+    );
+
+    expect($draftOrderItem->menu_item_variant_id)->toBe($large->id)
+        ->and($draftOrderItem->variant_name)->toBe('Large')
+        ->and($draftOrderItem->variant_type)->toBe(MenuItemVariantType::Portion)
+        ->and($draftOrderItem->unit_price_cents)->toBe(1800)
+        ->and($draftOrderItem->total_price_cents)->toBe(1800);
+
+    $large->updateOrFail(['name' => 'Renamed', 'price_cents' => 2400]);
+
+    $updatedItem = app(UpdateGuestDraftOrderItemAction::class)->handle(
+        draftOrderItem: $draftOrderItem,
+        guest: $context['ana'],
+        quantity: 2,
+        menuItemVariantId: $large->id,
+        selectedModifierOptions: [],
+    );
+
+    expect($updatedItem->variant_name)->toBe('Large')
+        ->and($updatedItem->unit_price_cents)->toBe(1800)
+        ->and($updatedItem->total_price_cents)->toBe(3600)
+        ->and($small->is_default)->toBeTrue();
+});
+
+test('server requires an available variant and rejects ids from another dish', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $unavailable = MenuItemVariant::factory()
+        ->for($context['pizzaItem'], 'item')
+        ->portion()
+        ->unavailable()
+        ->create();
+    $foreignVariant = MenuItemVariant::factory()
+        ->for($context['waterItem'], 'item')
+        ->portion()
+        ->create();
+
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+            tableSession: $context['tableSession'],
+            guest: $context['ana'],
+            menuItem: $context['pizzaItem'],
+            selectedModifierOptions: [],
+        ),
+        'selectedItemVariantId',
+    );
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+            tableSession: $context['tableSession'],
+            guest: $context['ana'],
+            menuItem: $context['pizzaItem'],
+            menuItemVariantId: $unavailable->id,
+            selectedModifierOptions: [],
+        ),
+        'selectedItemVariantId',
+    );
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+            tableSession: $context['tableSession'],
+            guest: $context['ana'],
+            menuItem: $context['pizzaItem'],
+            menuItemVariantId: $foreignVariant->id,
+            selectedModifierOptions: [],
+        ),
+        'selectedItemVariantId',
+    );
+
+    expect(DraftOrderItem::query()->exists())->toBeFalse();
+});
+
+test('waiter confirmation preserves variant snapshot in immutable order history', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $waiter = createPrompt354Waiter($context['organization']);
+    $large = MenuItemVariant::factory()
+        ->for($context['pizzaItem'], 'item')
+        ->portion()
+        ->default()
+        ->create(['name' => 'Large', 'price_cents' => 1800]);
+    $draftItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        menuItemVariantId: $large->id,
+        selectedModifierOptions: [],
+    );
+    $sentDraft = app(SendDraftOrderToWaiterAction::class)->handle($draftItem->draftOrder, $context['ana']);
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($sentDraft, $waiter);
+    $orderItem = $order->items()->firstOrFail();
+
+    expect($orderItem->menu_item_variant_id)->toBe($large->id)
+        ->and($orderItem->variant_name)->toBe('Large')
+        ->and($orderItem->variant_type)->toBe(MenuItemVariantType::Portion)
+        ->and($orderItem->unit_price_cents)->toBe(1800)
+        ->and($orderItem->unit_price_snapshot_cents)->toBe(1800)
+        ->and($orderItem->total_price_cents)->toBe(1800);
+
+    $large->deleteOrFail();
+
+    expect($orderItem->refresh()->menu_item_variant_id)->toBeNull()
+        ->and($orderItem->variant_name)->toBe('Large')
+        ->and($orderItem->variant_type)->toBe(MenuItemVariantType::Portion)
+        ->and($orderItem->total_price_cents)->toBe(1800);
 });
 
 test('server rejects negative menu or modifier totals for draft prices', function (): void {
     $context = createPrompt354DraftOrderContext();
 
-    $context['pizzaItem']->forceFill(['price' => '-12.50'])->save();
+    $context['pizzaItem']->forceFill(['price_cents' => -1250])->save();
 
     expectPrompt354ValidationError(
         fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
@@ -191,7 +316,7 @@ test('server rejects negative menu or modifier totals for draft prices', functio
         ->create(['max_select' => 1]);
     $discountOption = ModifierOption::factory()
         ->for($modifierGroup, 'modifierGroup')
-        ->create(['price_delta' => '-20.00']);
+        ->create(['price_delta_cents' => -2000]);
     $context['pizzaItem']->modifierGroups()->attach($modifierGroup->id);
 
     expectPrompt354ValidationError(
@@ -235,12 +360,12 @@ test('server-side guard forbids editing or deleting another guest draft item', f
     expect($borisDraftItem)->toBeInstanceOf(DraftOrderItem::class)
         ->and($borisDraftItem->table_session_guest_id)->toBe($context['boris']->id)
         ->and($borisDraftItem->quantity)->toBe(1)
-        ->and($borisDraftItem->total_price)->toBe('12.50');
+        ->and($borisDraftItem->total_price_cents)->toBe(1250);
 });
 
 test('shared item allocations split one item between selected guests and keep table totals correct', function (): void {
     //
-})->todo();
+})->todo(issue: 10);
 
 test('any active guest can send the draft to waiter and guests cannot edit it anymore', function (): void {
     $context = createPrompt354DraftOrderContext();
@@ -425,7 +550,7 @@ function createPrompt354DraftOrderContext(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Pizza Margherita',
-            'price' => '12.50',
+            'price_cents' => 1250,
             'is_available' => true,
         ]);
     $waterItem = MenuItem::factory()
@@ -433,7 +558,7 @@ function createPrompt354DraftOrderContext(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Still Water',
-            'price' => '4.00',
+            'price_cents' => 400,
             'is_available' => true,
         ]);
 

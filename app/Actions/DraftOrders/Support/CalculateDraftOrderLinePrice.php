@@ -1,30 +1,41 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\DraftOrders\Support;
 
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
-use App\Support\MoneyFormatter;
+use App\Models\MenuItemVariant;
 use Illuminate\Validation\ValidationException;
 
 class CalculateDraftOrderLinePrice
 {
     public function __construct(
         private readonly BuildDraftOrderItemModifierSnapshots $modifierSnapshots,
+        private readonly ResolveMenuItemVariantSelectionAction $resolveVariant,
     ) {}
 
     /**
      * @param  array<string, mixed>  $selectedModifierOptions
-     * @return array{unit_price: string, modifier_total: string, total_price: string, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>}
+     * @return array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}
      */
-    public function forMenuItem(MenuItem $menuItem, array $selectedModifierOptions, int $quantity): array
-    {
+    public function forMenuItem(
+        MenuItem $menuItem,
+        array $selectedModifierOptions,
+        int $quantity,
+        ?int $menuItemVariantId = null,
+    ): array {
+        $variant = $this->resolveVariant->handle($menuItem, $menuItemVariantId);
         $modifierGroups = $this->modifierSnapshots->groupsFor($menuItem);
         $selectedModifiers = $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions);
-        $unitPriceCents = MoneyFormatter::decimalToCents($menuItem->price);
+        $unitPriceCents = $variant instanceof MenuItemVariant ? $variant->price_cents : $menuItem->price_cents;
         $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
 
         return $this->payload(
+            menuItemVariantId: $variant instanceof MenuItemVariant ? $variant->id : null,
+            variantName: $variant instanceof MenuItemVariant ? $variant->name : null,
+            variantType: $variant instanceof MenuItemVariant ? $variant->type->value : null,
             unitPriceCents: $unitPriceCents,
             modifierTotalCents: $modifierTotalCents,
             quantity: $quantity,
@@ -34,12 +45,20 @@ class CalculateDraftOrderLinePrice
 
     /**
      * @param  array<string, mixed>  $selectedModifierOptions
-     * @return array{unit_price: string, modifier_total: string, total_price: string, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>}
+     * @return array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}
      */
-    public function forDraftOrderItem(DraftOrderItem $draftOrderItem, array $selectedModifierOptions, int $quantity): array
-    {
+    public function forDraftOrderItem(
+        DraftOrderItem $draftOrderItem,
+        array $selectedModifierOptions,
+        int $quantity,
+        ?int $menuItemVariantId = null,
+    ): array {
         $selectedModifiers = $this->existingModifierSnapshots($draftOrderItem->selected_modifiers);
         $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
+        $selectedVariantId = $draftOrderItem->menu_item_variant_id;
+        $variantName = $draftOrderItem->variant_name;
+        $variantType = $draftOrderItem->variant_type?->value;
+        $unitPriceCents = $draftOrderItem->unit_price_cents;
 
         if ($draftOrderItem->menuItem instanceof MenuItem) {
             $modifierGroups = $this->modifierSnapshots->groupsFor($draftOrderItem->menuItem);
@@ -48,10 +67,28 @@ class CalculateDraftOrderLinePrice
                 existingSnapshots: $selectedModifiers,
             );
             $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
+
+            if ($menuItemVariantId !== null && $menuItemVariantId !== $selectedVariantId) {
+                $variant = $this->resolveVariant->handle($draftOrderItem->menuItem, $menuItemVariantId);
+
+                if (! $variant instanceof MenuItemVariant) {
+                    throw ValidationException::withMessages([
+                        'selectedItemVariantId' => __('menu.variants.validation.unavailable'),
+                    ]);
+                }
+
+                $selectedVariantId = $variant->id;
+                $variantName = $variant->name;
+                $variantType = $variant->type->value;
+                $unitPriceCents = $variant->price_cents;
+            }
         }
 
         return $this->payload(
-            unitPriceCents: MoneyFormatter::decimalToCents($draftOrderItem->unit_price),
+            menuItemVariantId: $selectedVariantId,
+            variantName: $variantName,
+            variantType: $variantType,
+            unitPriceCents: $unitPriceCents,
             modifierTotalCents: $modifierTotalCents,
             quantity: $quantity,
             selectedModifiers: $selectedModifiers,
@@ -59,11 +96,18 @@ class CalculateDraftOrderLinePrice
     }
 
     /**
-     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>  $selectedModifiers
-     * @return array{unit_price: string, modifier_total: string, total_price: string, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>}
+     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>  $selectedModifiers
+     * @return array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}
      */
-    private function payload(int $unitPriceCents, int $modifierTotalCents, int $quantity, array $selectedModifiers): array
-    {
+    private function payload(
+        ?int $menuItemVariantId,
+        ?string $variantName,
+        ?string $variantType,
+        int $unitPriceCents,
+        int $modifierTotalCents,
+        int $quantity,
+        array $selectedModifiers,
+    ): array {
         if ($unitPriceCents < 0) {
             throw ValidationException::withMessages([
                 'menu_item' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.cena_pozicii_ne'),
@@ -79,15 +123,18 @@ class CalculateDraftOrderLinePrice
         }
 
         return [
-            'unit_price' => MoneyFormatter::centsToDecimal($unitPriceCents),
-            'modifier_total' => MoneyFormatter::centsToDecimal($modifierTotalCents),
-            'total_price' => MoneyFormatter::centsToDecimal($lineUnitTotalCents * $quantity),
+            'menu_item_variant_id' => $menuItemVariantId,
+            'variant_name' => $variantName,
+            'variant_type' => $variantType,
+            'unit_price_cents' => $unitPriceCents,
+            'modifier_total_cents' => $modifierTotalCents,
+            'total_price_cents' => $lineUnitTotalCents * $quantity,
             'selected_modifiers' => $selectedModifiers,
         ];
     }
 
     /**
-     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>
+     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>
      */
     private function existingModifierSnapshots(mixed $selectedModifiers): array
     {
@@ -113,9 +160,7 @@ class CalculateDraftOrderLinePrice
                     'group_name' => (string) ($modifier['group_name'] ?? ''),
                     'option_id' => $optionId,
                     'option_name' => (string) ($modifier['option_name'] ?? ''),
-                    'price_delta' => MoneyFormatter::centsToDecimal(
-                        MoneyFormatter::decimalToCents($modifier['price_delta'] ?? '0.00'),
-                    ),
+                    'price_delta_cents' => (int) ($modifier['price_delta_cents'] ?? 0),
                 ];
             })
             ->filter()
@@ -124,9 +169,9 @@ class CalculateDraftOrderLinePrice
     }
 
     /**
-     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>  $currentSnapshots
-     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>  $existingSnapshots
-     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta: string}>
+     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>  $currentSnapshots
+     * @param  list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>  $existingSnapshots
+     * @return list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>
      */
     private function preserveExistingModifierPrices(array $currentSnapshots, array $existingSnapshots): array
     {

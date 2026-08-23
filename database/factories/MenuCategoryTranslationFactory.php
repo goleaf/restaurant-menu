@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
+use App\Enums\SupportedLocale;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,5 +27,12 @@ class MenuCategoryTranslationFactory extends Factory
             'name' => fake()->unique()->words(2, true),
             'description' => fake()->optional()->sentence(),
         ];
+    }
+
+    public function forLocale(SupportedLocale $locale): static
+    {
+        return $this->state(fn (): array => [
+            'language_code' => $locale->value,
+        ]);
     }
 }

@@ -1,38 +1,7 @@
 <section
     data-page="waiter-dashboard"
+    data-waiter-sounds
     wire:poll.visible.1s="refreshDashboard"
-    x-data="{
-        playNotice() {
-            try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-
-                if (! AudioContext) {
-                    return;
-                }
-
-                const context = new AudioContext();
-                const oscillator = context.createOscillator();
-                const gain = context.createGain();
-
-                oscillator.frequency.value = 880;
-                gain.gain.value = 0.08;
-                oscillator.connect(gain);
-                gain.connect(context.destination);
-                oscillator.start();
-
-                setTimeout(() => {
-                    oscillator.stop();
-                    context.close();
-                }, 140);
-            } catch (error) {
-                return;
-            }
-        },
-    }"
-    x-on:waiter-new-draft.window="playNotice()"
-    x-on:waiter-called.window="playNotice()"
-    x-on:waiter-bill-requested.window="playNotice()"
-    x-on:waiter-item-ready.window="playNotice()"
     class="flex h-full w-full flex-1 flex-col gap-5"
 >
     <header class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -42,6 +11,37 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+            <div data-waiter-sound-controls class="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 bg-white p-1.5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+                <flux:button
+                    data-waiter-sound-toggle
+                    type="button"
+                    size="sm"
+                    icon="speaker-wave"
+                    aria-pressed="false"
+                    aria-describedby="waiter-sound-status"
+                >
+                    <span data-waiter-sound-label="enable">{{ __('ui.waiter.dashboard.enable_sounds') }}</span>
+                    <span data-waiter-sound-label="disable" hidden>{{ __('ui.waiter.dashboard.disable_sounds') }}</span>
+                </flux:button>
+
+                <flux:button
+                    data-waiter-sound-test
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    icon="musical-note"
+                >
+                    {{ __('ui.waiter.dashboard.test_sound') }}
+                </flux:button>
+
+                <p id="waiter-sound-status" class="basis-full px-1 text-xs text-zinc-500 dark:text-zinc-400" role="status" aria-live="polite">
+                    <span data-waiter-sound-status="unavailable" hidden>{{ __('ui.waiter.dashboard.sounds_unavailable') }}</span>
+                    <span data-waiter-sound-status="failed" hidden>{{ __('ui.waiter.dashboard.sound_playback_failed') }}</span>
+                    <span data-waiter-sound-status="enabled" hidden>{{ __('ui.waiter.dashboard.sounds_enabled') }}</span>
+                    <span data-waiter-sound-status="disabled">{{ __('ui.waiter.dashboard.sounds_disabled') }}</span>
+                </p>
+            </div>
+
             <div class="flex overflow-hidden rounded-lg border border-zinc-200 bg-white text-sm font-medium shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
                 <button
                     type="button"

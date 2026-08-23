@@ -15,12 +15,12 @@ use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\DraftOrder;
-use App\Models\DraftOrderItem;
 use App\Models\KitchenTicketItem;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use App\Models\WaiterCall;
+use App\Support\MoneyFormatter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -278,7 +278,7 @@ class BuildWaiterDashboardAction
             ->withCount(['items'])
             ->with([
                 'sentByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
-                'items' => fn ($query) => $query->select(['id', 'draft_order_id', 'total_price']),
+                'items' => fn ($query) => $query->select(['id', 'draft_order_id', 'total_price_cents']),
             ])
             ->whereIn('status', [DraftOrderStatus::SentToWaiter->value, DraftOrderStatus::WaiterReview->value])
             ->whereIn('table_session_id', $tableSessionIds)
@@ -677,9 +677,7 @@ class BuildWaiterDashboardAction
      */
     private function draftPayload(DraftOrder $draftOrder, string $currency): array
     {
-        $totalCents = $draftOrder->items->sum(
-            fn (DraftOrderItem $item): int => $this->decimalToCents($item->total_price),
-        );
+        $totalCents = (int) $draftOrder->items->sum('total_price_cents');
 
         return [
             'id' => $draftOrder->id,
@@ -803,23 +801,8 @@ class BuildWaiterDashboardAction
         return $closedUntil->format('d.m H:i');
     }
 
-    private function decimalToCents(string|int|float|null $amount): int
-    {
-        $normalized = number_format((float) ($amount ?? 0), 2, '.', '');
-        $negative = str_starts_with($normalized, '-');
-        $normalized = ltrim($normalized, '-');
-        [$whole, $fraction] = explode('.', $normalized);
-        $cents = ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
-
-        return $negative ? -$cents : $cents;
-    }
-
     private function formatCents(int $cents): string
     {
-        $negative = $cents < 0;
-        $absoluteCents = abs($cents);
-        $formatted = intdiv($absoluteCents, 100).'.'.str_pad((string) ($absoluteCents % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
+        return MoneyFormatter::centsToDecimal($cents);
     }
 }

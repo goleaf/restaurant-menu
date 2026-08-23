@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum OrderStatusLogEvent: string
@@ -13,6 +15,7 @@ enum OrderStatusLogEvent: string
     case OrderStatusChanged = 'order_status_changed';
     case OrderSentToKitchenBar = 'order_sent_to_kitchen_bar';
     case OrderCancelled = 'order_cancelled';
+    case OrderItemCancelled = 'order_item_cancelled';
 
     public function label(): string
     {
@@ -26,6 +29,7 @@ enum OrderStatusLogEvent: string
             self::OrderStatusChanged => 'Order status changed',
             self::OrderSentToKitchenBar => 'Order sent to kitchen/bar',
             self::OrderCancelled => 'Order cancelled',
+            self::OrderItemCancelled => 'Order item cancelled',
         };
     }
 

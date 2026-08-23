@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\TableSessionSource;
@@ -90,6 +92,26 @@ class TableSessionFactory extends Factory
         ]);
     }
 
+    public function pending(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::Pending,
+            'started_at' => null,
+            'ended_at' => null,
+            'closed_by_user_id' => null,
+        ]);
+    }
+
+    public function waitingForWaiterConfirmation(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::WaitingWaiterConfirmation,
+            'started_at' => null,
+            'ended_at' => null,
+            'closed_by_user_id' => null,
+        ]);
+    }
+
     public function paymentRequested(): static
     {
         return $this->state(fn (): array => [
@@ -113,6 +135,15 @@ class TableSessionFactory extends Factory
         return $this->state(fn (): array => [
             'status' => TableSessionStatus::Closed,
             'started_at' => now()->subHours(2),
+            'ended_at' => now(),
+        ]);
+    }
+
+    public function cancelled(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => TableSessionStatus::Cancelled,
+            'started_at' => now()->subHour(),
             'ended_at' => now(),
         ]);
     }

@@ -5,6 +5,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -82,7 +83,7 @@ test('guest error page is shown when restored table session is closed', function
         ]);
 
     Livewire::withCookie(prompt86GuestTokenCookieName($qrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('entryState', 'guest_blocked')
         ->assertSet('entryIssueCode', 'session_closed')
         ->assertSet('guestCanAddItems', false)
@@ -106,7 +107,7 @@ test('guest error page is shown when guest was rejected', function () {
         ]);
 
     Livewire::withCookie(prompt86GuestTokenCookieName($qrCode), $guest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('entryState', 'guest_blocked')
         ->assertSet('entryIssueCode', 'guest_rejected')
         ->assertSet('guestCanAddItems', false)
@@ -120,7 +121,7 @@ test('guest error page is shown when invite link is stale', function () {
     [$qrCode] = createPrompt86GuestErrorContext();
 
     Livewire::withQueryParams(['invite' => str_repeat('A', 64)])
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Jonas')
         ->call('enterTable')

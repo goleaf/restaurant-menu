@@ -8,8 +8,11 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 
 test('menu tables expose the required columns', function () {
@@ -47,7 +50,9 @@ test('menu tables expose the required columns', function () {
             'kitchen_department_id',
             'name',
             'description',
-            'price',
+            'price_cents',
+            'allergens',
+            'dietary_labels',
             'image',
             'weight',
             'volume',
@@ -89,6 +94,30 @@ test('menu tables expose the required columns', function () {
             'created_at',
             'updated_at',
         ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_item_variants'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_item_variants', [
+            'id',
+            'menu_item_id',
+            'type',
+            'name',
+            'price_cents',
+            'weight',
+            'volume',
+            'is_default',
+            'is_available',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_item_variant_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_item_variant_translations', [
+            'id',
+            'menu_item_variant_id',
+            'language_code',
+            'name',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
         ->and(Schema::hasTable('modifier_groups'))->toBeTrue()
         ->and(Schema::hasColumns('modifier_groups', [
             'id',
@@ -106,7 +135,7 @@ test('menu tables expose the required columns', function () {
             'id',
             'modifier_group_id',
             'name',
-            'price_delta',
+            'price_delta_cents',
             'is_available',
             'sort_order',
             'created_at',
@@ -143,7 +172,7 @@ test('menu models keep branch category and item relationships', function () {
         ->for(KitchenDepartment::factory()->for($branch), 'kitchenDepartment')
         ->create([
             'name' => 'Margherita',
-            'price' => '12.50',
+            'price_cents' => 1250,
             'weight' => '450.00',
             'volume' => null,
             'calories' => 720,
@@ -159,7 +188,9 @@ test('menu models keep branch category and item relationships', function () {
         ->and($item->menu->id)->toBe($menu->id)
         ->and($item->category->id)->toBe($childCategory->id)
         ->and($item->kitchenDepartment?->branch_id)->toBe($branch->id)
-        ->and($item->price)->toBe('12.50')
+        ->and($item->price_cents)->toBe(1250)
+        ->and($item->allergens)->toBe([])
+        ->and($item->dietary_labels)->toBe([])
         ->and($item->weight)->toBe('450.00')
         ->and($item->volume)->toBeNull()
         ->and($item->calories)->toBe(720)
@@ -194,6 +225,52 @@ test('menu category and item translations belong to their base records', functio
         ->and($itemTranslation->item->id)->toBe($item->id);
 });
 
+test('menu item variants enforce ownership translation uniqueness and lookup indexes', function () {
+    $variant = MenuItemVariant::factory()->portion()->default()->create([
+        'name' => 'Regular',
+    ]);
+    MenuItemVariantTranslation::factory()->for($variant, 'variant')->create([
+        'language_code' => 'en',
+        'name' => 'Regular',
+    ]);
+
+    expect(fn () => MenuItemVariant::factory()
+        ->for($variant->item, 'item')
+        ->portion()
+        ->create(['name' => 'Regular']))
+        ->toThrow(QueryException::class)
+        ->and(fn () => MenuItemVariantTranslation::factory()
+            ->for($variant, 'variant')
+            ->create(['language_code' => 'en']))
+        ->toThrow(QueryException::class);
+
+    $variantIndexes = collect(Schema::getIndexes('menu_item_variants'));
+    $variantForeignKeys = collect(Schema::getForeignKeys('menu_item_variants'));
+    $translationForeignKeys = collect(Schema::getForeignKeys('menu_item_variant_translations'));
+
+    expect($variantIndexes->contains(
+        fn (array $index): bool => $index['columns'] === ['menu_item_id', 'is_available', 'sort_order'],
+    ))->toBeTrue()
+        ->and($variantIndexes->contains(
+            fn (array $index): bool => $index['columns'] === ['menu_item_id', 'type', 'name'] && $index['unique'],
+        ))->toBeTrue()
+        ->and($variantForeignKeys->contains(
+            fn (array $foreignKey): bool => $foreignKey['columns'] === ['menu_item_id']
+                && $foreignKey['foreign_table'] === 'menu_items'
+                && mb_strtolower((string) $foreignKey['on_delete']) === 'cascade',
+        ))->toBeTrue()
+        ->and($translationForeignKeys->contains(
+            fn (array $foreignKey): bool => $foreignKey['columns'] === ['menu_item_variant_id']
+                && $foreignKey['foreign_table'] === 'menu_item_variants'
+                && mb_strtolower((string) $foreignKey['on_delete']) === 'cascade',
+        ))->toBeTrue();
+
+    $variant->item->forceDelete();
+
+    expect(MenuItemVariant::query()->whereKey($variant->id)->exists())->toBeFalse()
+        ->and(MenuItemVariantTranslation::query()->where('menu_item_variant_id', $variant->id)->exists())->toBeFalse();
+});
+
 test('menu items can be assigned reusable branch modifier groups with options', function () {
     $branch = Branch::factory()->create();
     $menu = Menu::factory()->for($branch)->create(['status' => MenuStatus::Active]);
@@ -216,7 +293,7 @@ test('menu items can be assigned reusable branch modifier groups with options', 
         ->for($group)
         ->create([
             'name' => 'Large',
-            'price_delta' => '3.50',
+            'price_delta_cents' => 350,
             'is_available' => true,
             'sort_order' => 20,
         ]);
@@ -226,7 +303,7 @@ test('menu items can be assigned reusable branch modifier groups with options', 
     expect($branch->modifierGroups()->pluck('modifier_groups.id')->all())->toBe([$group->id])
         ->and($group->options()->pluck('modifier_options.id')->all())->toBe([$option->id])
         ->and($item->modifierGroups()->pluck('modifier_groups.id')->all())->toBe([$group->id])
-        ->and($option->price_delta)->toBe('3.50')
+        ->and($option->price_delta_cents)->toBe(350)
         ->and($option->is_available)->toBeTrue();
 });
 

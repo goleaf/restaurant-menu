@@ -40,10 +40,11 @@ class AddGuestDraftOrderItemAction
         TableSessionGuest $guest,
         MenuItem $menuItem,
         array $selectedModifierOptions,
+        ?int $menuItemVariantId = null,
         ?string $comment = null,
         ?string $itemName = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $comment): DraftOrderItem {
+        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $menuItemVariantId, $comment): DraftOrderItem {
             $tableSession = $this->reloadTableSession($tableSession);
             $guest = $this->reloadGuest($guest);
             $menuItem = $this->reloadMenuItem($menuItem);
@@ -51,18 +52,21 @@ class AddGuestDraftOrderItemAction
             $this->ensureGuestCanAddItems($tableSession, $guest);
             $this->ensureMenuItemCanBeAdded($tableSession, $menuItem);
 
-            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1);
+            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1, $menuItemVariantId);
             $draftOrder = $this->draftOrderFor($tableSession);
             $draftWasCreated = $draftOrder->wasRecentlyCreated;
 
             $draftOrderItem = $draftOrder->items()->create([
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
+                'menu_item_variant_id' => $linePrice['menu_item_variant_id'],
                 'item_name' => $this->snapshotName($menuItem),
+                'variant_name' => $linePrice['variant_name'],
+                'variant_type' => $linePrice['variant_type'],
                 'quantity' => 1,
-                'unit_price' => $linePrice['unit_price'],
-                'modifier_total' => $linePrice['modifier_total'],
-                'total_price' => $linePrice['total_price'],
+                'unit_price_cents' => $linePrice['unit_price_cents'],
+                'modifier_total_cents' => $linePrice['modifier_total_cents'],
+                'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
             ])->refresh();
@@ -142,7 +146,7 @@ class AddGuestDraftOrderItemAction
                 'menu_id',
                 'category_id',
                 'name',
-                'price',
+                'price_cents',
                 'is_available',
             ])
             ->with([

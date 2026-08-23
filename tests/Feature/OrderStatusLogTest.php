@@ -67,6 +67,7 @@ test('order status log schema keeps actor and status history fields', function (
             'order_status_changed',
             'order_sent_to_kitchen_bar',
             'order_cancelled',
+            'order_item_cancelled',
         ]);
 });
 
@@ -289,7 +290,7 @@ function createPrompt57GuestDraftScenario(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Soup',
-            'price' => '6.00',
+            'price_cents' => 600,
         ]);
 
     return [$organization, $tableSession, $guest, $menuItem];

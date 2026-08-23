@@ -11,6 +11,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -74,7 +75,7 @@ test('guest tokens stay hidden and cannot authenticate staff routes', function (
     [, , , $servicePoint] = prompt333BranchContext();
     $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint);
 
-    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', '  Ana  ')
         ->call('enterTable')
         ->assertHasNoErrors()
@@ -147,7 +148,7 @@ test('revoked qr and closed session invite tokens cannot create guest access', f
         ->create(['status' => TableSessionGuestStatus::Active]);
 
     Livewire::withQueryParams(['invite' => $closedInviteToken])
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Jonas')
         ->call('enterTable')
@@ -164,7 +165,9 @@ test('revoked qr and closed session invite tokens cannot create guest access', f
     ])->save();
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('state', 'revoked')
+        ->assertSet('state', 'revoked');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Mila')
         ->call('enterTable')
         ->assertSet('currentTableSessionId', null)
@@ -204,7 +207,7 @@ test('branch csv exports do not include raw security tokens', function (): void 
         'table_session_id' => $tableSession->id,
         'draft_order_id' => $draftOrder->id,
         'status' => OrderStatus::Served,
-        'total_price' => '12.00',
+        'total_price_cents' => 1200,
     ]);
     OrderItem::factory()
         ->for($order)
@@ -212,7 +215,7 @@ test('branch csv exports do not include raw security tokens', function (): void 
         ->create([
             'guest_name' => 'Export Guest',
             'item_name' => 'Token safe soup',
-            'total_price' => '12.00',
+            'total_price_cents' => 1200,
         ]);
     ManualPayment::factory()
         ->forGuest($guest)

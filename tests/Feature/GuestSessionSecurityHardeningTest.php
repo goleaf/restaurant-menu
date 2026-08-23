@@ -12,6 +12,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -108,7 +109,7 @@ test('expired join request restore is blocked and marked expired', function () {
         ]);
 
     Livewire::withCookie(prompt85GuestTokenCookieName($qrCode), $joinRequest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('currentJoinRequestId', $joinRequest->id)
         ->assertSet('guestCanAddItems', false)
@@ -126,7 +127,9 @@ test('disabled qr shows a safe error and cannot open guest ordering', function (
 
     Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'disabled')
-        ->assertSeeText('QR code is temporarily disabled')
+        ->assertSeeText('QR code is temporarily disabled');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Ana')
         ->call('enterTable')
         ->assertSet('currentTableSessionId', null)
@@ -209,7 +212,7 @@ function createPrompt85MenuItem(Branch $branch): MenuItem
         ->for($category, 'category')
         ->create([
             'name' => 'Security soup',
-            'price' => '6.50',
+            'price_cents' => 650,
             'is_available' => true,
         ]);
 }

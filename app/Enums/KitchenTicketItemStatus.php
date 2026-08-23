@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum KitchenTicketItemStatus: string
@@ -7,6 +9,7 @@ enum KitchenTicketItemStatus: string
     case New = 'new';
     case InProgress = 'in_progress';
     case Ready = 'ready';
+    case Cancelled = 'cancelled';
 
     public function label(): string
     {
@@ -14,6 +17,7 @@ enum KitchenTicketItemStatus: string
             self::New => 'New',
             self::InProgress => 'In progress',
             self::Ready => 'Ready',
+            self::Cancelled => 'Cancelled',
         };
     }
 
@@ -23,6 +27,7 @@ enum KitchenTicketItemStatus: string
             self::New => 'rose',
             self::InProgress => 'amber',
             self::Ready => 'emerald',
+            self::Cancelled => 'zinc',
         };
     }
 
@@ -43,6 +48,7 @@ enum KitchenTicketItemStatus: string
     public static function options(): array
     {
         return collect(self::cases())
+            ->reject(fn (self $status): bool => $status === self::Cancelled)
             ->mapWithKeys(fn (self $status): array => [$status->value => $status->label()])
             ->all();
     }

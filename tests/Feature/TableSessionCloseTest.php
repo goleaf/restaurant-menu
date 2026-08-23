@@ -56,6 +56,8 @@ test('staff with close table sessions permission can close an active session and
         ->test(Payment::class, ['tableSessionId' => $tableSession->id])
         ->assertSet('payment.session.can_close', true)
         ->assertSet('payment.session.close_requires_warning', true)
+        ->assertSee('id="dangerous-action-close-table-session-confirmation"', false)
+        ->assertSee('name="closeTableConfirmation"', false)
         ->set('closeTableConfirmation', 'CLOSE')
         ->call('closeTableSession')
         ->assertSee(__('payments.messages.session_closed'));
@@ -176,7 +178,7 @@ function createPrompt68CloseContext(): array
         ->for($draftOrder, 'draftOrder')
         ->create([
             'status' => OrderStatus::Served,
-            'total_price' => '12.00',
+            'total_price_cents' => 1200,
             'currency' => 'EUR',
         ]);
     OrderItem::factory()
@@ -185,8 +187,8 @@ function createPrompt68CloseContext(): array
         ->create([
             'guest_name' => $guest->guest_name,
             'item_name' => 'Saved dinner',
-            'unit_price' => '12.00',
-            'total_price' => '12.00',
+            'unit_price_cents' => 1200,
+            'total_price_cents' => 1200,
         ]);
 
     $menu = Menu::factory()
@@ -203,7 +205,7 @@ function createPrompt68CloseContext(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Future tea',
-            'price' => '3.00',
+            'price_cents' => 300,
             'is_available' => true,
         ]);
 

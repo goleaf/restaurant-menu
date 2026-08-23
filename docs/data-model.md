@@ -2,7 +2,7 @@
 
 ## Database contract
 
-SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 66 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
+SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 70 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
 
 ## Entity groups
 

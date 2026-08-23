@@ -8,6 +8,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
+use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Models\Branch;
@@ -82,7 +83,7 @@ test('branch assigned employees cannot see or open another branch without access
     Livewire::actingAs($employee->fresh())
         ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $assignedBranch])
         ->assertOk()
-        ->assertSet('branch.id', $assignedBranch->id);
+        ->assertSet('branchId', $assignedBranch->id);
 
     Livewire::actingAs($employee->fresh())
         ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $hiddenBranch])
@@ -109,12 +110,12 @@ test('waiter can manage menu labels without changing prices when change prices i
         ->for($category, 'category')
         ->create([
             'name' => 'Prompt 96 Dish',
-            'price' => '9.00',
+            'price_cents' => 900,
             'is_available' => true,
         ]);
 
     Livewire::actingAs($waiter->fresh())
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
         ->set('editingItemName', 'Prompt 96 Dish Renamed')
         ->set('editingItemPrice', '99.99')
@@ -124,7 +125,7 @@ test('waiter can manage menu labels without changing prices when change prices i
     $item->refresh();
 
     expect($item->name)->toBe('Prompt 96 Dish Renamed')
-        ->and($item->price)->toBe('9.00')
+        ->and($item->price_cents)->toBe(900)
         ->and($waiter->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeFalse();
 });
 

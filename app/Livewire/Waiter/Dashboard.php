@@ -17,6 +17,7 @@ use App\Models\WaiterCall;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class Dashboard extends Component
@@ -40,13 +41,16 @@ class Dashboard extends Component
 
     public int $readyItemCount = 0;
 
-    public ?int $previousNewDraftCount = null;
-
-    public ?int $previousWaiterCallCount = null;
-
-    public ?int $previousBillRequestCount = null;
-
-    public ?int $previousReadyItemCount = null;
+    /**
+     * @var array{
+     *     new_drafts: list<int>,
+     *     waiter_calls: list<int>,
+     *     bill_requests: list<int>,
+     *     ready_items: list<int>
+     * }|null
+     */
+    #[Locked]
+    public ?array $knownWorkIds = null;
 
     public string $waiterCallMessage = '';
 
@@ -64,10 +68,6 @@ class Dashboard extends Component
     public function mount(): void
     {
         $this->refreshDashboard();
-        $this->previousNewDraftCount = $this->newDraftCount;
-        $this->previousWaiterCallCount = $this->waiterCallCount;
-        $this->previousBillRequestCount = $this->billRequestCount;
-        $this->previousReadyItemCount = $this->readyItemCount;
     }
 
     public function refreshDashboard(): void
@@ -78,11 +78,6 @@ class Dashboard extends Component
             abort(403);
         }
 
-        $previousNewDraftCount = $this->previousNewDraftCount;
-        $previousWaiterCallCount = $this->previousWaiterCallCount;
-        $previousBillRequestCount = $this->previousBillRequestCount;
-        $previousReadyItemCount = $this->previousReadyItemCount;
-
         $this->branches = $payload['branches'];
         $this->servicePointCount = $payload['service_point_count'];
         $this->activeSessionCount = $payload['active_session_count'];
@@ -92,31 +87,19 @@ class Dashboard extends Component
         $this->readyItemCount = $payload['ready_item_count'];
         $this->refreshedAt = now()->format('H:i:s');
 
-        if ($previousNewDraftCount !== null && $this->newDraftCount > $previousNewDraftCount) {
-            $this->dispatch('waiter-new-draft');
+        $currentWorkIds = $this->currentWorkIds($this->branches);
+
+        if ($this->knownWorkIds !== null) {
+            $this->dispatchNewWorkEvents($currentWorkIds, $this->knownWorkIds);
         }
 
-        if ($previousWaiterCallCount !== null && $this->waiterCallCount > $previousWaiterCallCount) {
-            $this->dispatch('waiter-called');
-        }
-
-        if ($previousBillRequestCount !== null && $this->billRequestCount > $previousBillRequestCount) {
-            $this->dispatch('waiter-bill-requested');
-        }
-
-        if ($previousReadyItemCount !== null && $this->readyItemCount > $previousReadyItemCount) {
-            $this->dispatch('waiter-item-ready');
-        }
-
-        $this->previousNewDraftCount = $this->newDraftCount;
-        $this->previousWaiterCallCount = $this->waiterCallCount;
-        $this->previousBillRequestCount = $this->billRequestCount;
-        $this->previousReadyItemCount = $this->readyItemCount;
+        $this->knownWorkIds = $currentWorkIds;
     }
 
     public function setZoneScope(string $zoneScope): void
     {
         $this->zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
+        $this->knownWorkIds = null;
         $this->refreshDashboard();
     }
 
@@ -225,5 +208,72 @@ class Dashboard extends Component
         }
 
         return $this->zoneScope;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $branches
+     * @return array{
+     *     new_drafts: list<int>,
+     *     waiter_calls: list<int>,
+     *     bill_requests: list<int>,
+     *     ready_items: list<int>
+     * }
+     */
+    private function currentWorkIds(array $branches): array
+    {
+        return [
+            'new_drafts' => $this->branchItemIds($branches, 'drafts'),
+            'waiter_calls' => $this->branchItemIds($branches, 'waiter_calls'),
+            'bill_requests' => $this->branchItemIds($branches, 'bill_requests'),
+            'ready_items' => $this->branchItemIds($branches, 'ready_items'),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $branches
+     * @return list<int>
+     */
+    private function branchItemIds(array $branches, string $payloadKey): array
+    {
+        $ids = [];
+
+        foreach ($branches as $branch) {
+            $items = $branch[$payloadKey] ?? [];
+
+            if (! is_array($items)) {
+                continue;
+            }
+
+            foreach ($items as $item) {
+                if (is_array($item) && isset($item['id'])) {
+                    $ids[] = (int) $item['id'];
+                }
+            }
+        }
+
+        $ids = array_values(array_unique($ids));
+        sort($ids, SORT_NUMERIC);
+
+        return $ids;
+    }
+
+    /**
+     * @param  array<string, list<int>>  $currentWorkIds
+     * @param  array<string, list<int>>  $knownWorkIds
+     */
+    private function dispatchNewWorkEvents(array $currentWorkIds, array $knownWorkIds): void
+    {
+        $eventsByWorkType = [
+            'new_drafts' => 'waiter-new-draft',
+            'waiter_calls' => 'waiter-called',
+            'bill_requests' => 'waiter-bill-requested',
+            'ready_items' => 'waiter-item-ready',
+        ];
+
+        foreach ($eventsByWorkType as $workType => $eventName) {
+            if (array_diff($currentWorkIds[$workType] ?? [], $knownWorkIds[$workType] ?? []) !== []) {
+                $this->dispatch($eventName);
+            }
+        }
     }
 }

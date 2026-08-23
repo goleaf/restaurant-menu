@@ -68,7 +68,7 @@ class DraftOrderConfirmedNotification extends Notification
             'confirmed_by_user_id' => $order->confirmed_by_user_id,
             'confirmed_by_user_name' => $confirmedByName,
             'confirmed_at' => $order->confirmed_at?->toISOString(),
-            'total_price' => $order->total_price,
+            'total_price_cents' => $order->total_price_cents,
             'currency' => $order->currency,
             'message' => __('ui.livewire.publicqr.notifications.oficiant_podtverdil_zakaz'),
         ];

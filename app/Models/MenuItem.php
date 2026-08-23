@@ -15,14 +15,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * @property string $price
+ * @property int $price_cents
+ * @property list<string> $allergens
+ * @property list<string> $dietary_labels
  * @property string|null $weight
  * @property string|null $volume
  * @property int|null $kitchen_department_id
  * @property-read MenuCategory $category
  * @property-read KitchenDepartment|null $kitchenDepartment
  */
-#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
+#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
 class MenuItem extends Model
 {
     /** @use HasFactory<MenuItemFactory> */
@@ -32,7 +34,9 @@ class MenuItem extends Model
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'price' => '0.00',
+        'price_cents' => 0,
+        'allergens' => '[]',
+        'dietary_labels' => '[]',
         'is_available' => true,
         'sort_order' => 0,
     ];
@@ -43,7 +47,9 @@ class MenuItem extends Model
     protected function casts(): array
     {
         return [
-            'price' => 'decimal:2',
+            'price_cents' => 'integer',
+            'allergens' => 'array',
+            'dietary_labels' => 'array',
             'weight' => 'decimal:2',
             'volume' => 'decimal:2',
             'calories' => 'integer',
@@ -82,6 +88,18 @@ class MenuItem extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(MenuItemTranslation::class);
+    }
+
+    /**
+     * @return HasMany<MenuItemVariant, $this>
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(MenuItemVariant::class)
+            ->orderByDesc('is_default')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->orderBy('id');
     }
 
     /**

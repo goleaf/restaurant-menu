@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Livewire\PublicQr;
 
 use App\Actions\Branches\GetBranchPollingIntervalAction;
@@ -17,6 +19,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
@@ -193,7 +196,7 @@ class DraftTotals extends Component
         }
 
         $draftItems->each(function (DraftOrderItem $item) use (&$guestTotals, &$draftTotalCents): void {
-            $itemTotalCents = self::decimalToCents($item->total_price);
+            $itemTotalCents = $item->total_price_cents;
             $draftTotalCents += $itemTotalCents;
             $guestId = (int) $item->table_session_guest_id;
             $guestName = $item->guest->guest_name;
@@ -221,9 +224,9 @@ class DraftTotals extends Component
             ->map(fn (array $guestTotal): array => [
                 'guest_id' => $guestTotal['guest_id'],
                 'guest_name' => $guestTotal['guest_name'],
-                'total' => self::centsToDecimal($guestTotal['total_cents']),
-                'draft_total' => self::centsToDecimal($guestTotal['draft_total_cents']),
-                'confirmed_total' => self::centsToDecimal($guestTotal['confirmed_total_cents']),
+                'total' => MoneyFormatter::centsToDecimal($guestTotal['total_cents']),
+                'draft_total' => MoneyFormatter::centsToDecimal($guestTotal['draft_total_cents']),
+                'confirmed_total' => MoneyFormatter::centsToDecimal($guestTotal['confirmed_total_cents']),
                 'has_draft_total' => $guestTotal['draft_total_cents'] > 0,
                 'has_confirmed_total' => $guestTotal['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestTotal['is_current_guest'],
@@ -232,9 +235,9 @@ class DraftTotals extends Component
             ->values()
             ->all();
 
-        $this->currentDraftTotalAmount = self::centsToDecimal($openDraftTotalCents);
-        $this->confirmedOrdersTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents);
-        $this->tableTotalAmount = self::centsToDecimal($confirmedOrdersTotalCents + $openDraftTotalCents);
+        $this->currentDraftTotalAmount = MoneyFormatter::centsToDecimal($openDraftTotalCents);
+        $this->confirmedOrdersTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents);
+        $this->tableTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents + $openDraftTotalCents);
         $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = $draftOrder instanceof DraftOrder && $draftOrder->status === DraftOrderStatus::Draft
             ? $draftItems->count()
@@ -396,7 +399,7 @@ class DraftTotals extends Component
                         'id',
                         'draft_order_id',
                         'table_session_guest_id',
-                        'total_price',
+                        'total_price_cents',
                         'created_at',
                     ])
                     ->with([
@@ -428,11 +431,11 @@ class DraftTotals extends Component
     private function confirmedOrdersTotalCents(): int
     {
         return Order::query()
-            ->select(['id', 'table_session_id', 'status', 'total_price'])
+            ->select(['id', 'table_session_id', 'status', 'total_price_cents'])
             ->where('table_session_id', $this->tableSessionId)
             ->whereNotIn('status', [OrderStatus::Cancelled->value])
             ->get()
-            ->sum(fn (Order $order): int => self::decimalToCents($order->total_price));
+            ->sum('total_price_cents');
     }
 
     /**
@@ -447,9 +450,10 @@ class DraftTotals extends Component
                 'table_session_guest_id',
                 'guest_name',
                 'guest_name_snapshot',
-                'total_price',
+                'total_price_cents',
             ])
             ->with(['guest' => fn ($query) => $query->select(['id', 'guest_name'])])
+            ->active()
             ->whereHas('order', function ($query): void {
                 $query
                     ->where('table_session_id', $this->tableSessionId)
@@ -473,7 +477,7 @@ class DraftTotals extends Component
                     'guest_name' => $firstItem->table_session_guest_id === null
                         ? ($firstItem->historicalGuestName() ?? (string) __('guest.table.guest'))
                         : $firstItem->guest->guest_name,
-                    'total_cents' => $items->sum(fn (OrderItem $item): int => self::decimalToCents($item->total_price)),
+                    'total_cents' => (int) $items->sum('total_price_cents'),
                 ];
             })
             ->values()
@@ -564,19 +568,5 @@ class DraftTotals extends Component
         foreach ($exception->errors() as $field => $messages) {
             $this->addError($field, (string) collect($messages)->first());
         }
-    }
-
-    private static function decimalToCents(string|int|float|null $amount): int
-    {
-        return (int) round(((float) ($amount ?? 0)) * 100);
-    }
-
-    private static function centsToDecimal(int $amount): string
-    {
-        $negative = $amount < 0;
-        $absoluteAmount = abs($amount);
-        $formatted = intdiv($absoluteAmount, 100).'.'.str_pad((string) ($absoluteAmount % 100), 2, '0', STR_PAD_LEFT);
-
-        return $negative ? '-'.$formatted : $formatted;
     }
 }

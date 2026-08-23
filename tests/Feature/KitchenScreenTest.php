@@ -49,6 +49,12 @@ test('kitchen ticket items have kitchen work statuses', function () {
             'new',
             'in_progress',
             'ready',
+            'cancelled',
+        ])
+        ->and(array_keys(KitchenTicketItemStatus::options()))->toBe([
+            'new',
+            'in_progress',
+            'ready',
         ])
         ->and(SystemPermission::ViewKitchen->value)->toBe('view_kitchen');
 });
@@ -212,6 +218,46 @@ test('department tickets are sorted by oldest sent time first', function () {
     expect(collect($component->get('tickets'))->pluck('id')->first())->toBe($olderTicket->id);
 });
 
+test('kitchen delay timer exposes attention and delayed states at their exact thresholds', function () {
+    $this->travelTo('2026-08-23 12:00:00');
+
+    [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
+    $headChef = User::factory()->create(['name' => 'Prompt 61 Delay Chef']);
+
+    attachPrompt61Staff($headChef, $organization, SystemRole::HeadChef);
+
+    $ticket = $kitchenItem->kitchenTicket()->firstOrFail();
+    $ticket->update(['sent_at' => now()->subMinutes(9)->subSeconds(59)]);
+
+    $component = Livewire::actingAs($headChef)
+        ->test(KitchenDashboard::class)
+        ->assertSet('selectedDepartmentId', (string) $kitchen->id)
+        ->assertSet('tickets.0.delay_state', 'on-track')
+        ->assertSet('tickets.0.elapsed_label', '09:59')
+        ->assertSet('tickets.0.delay_label', null)
+        ->assertSee(__('ui.departments.dashboard.delay_status.on_track'))
+        ->assertSeeHtml('data-kitchen-delay-timer');
+
+    $ticket->update(['sent_at' => now()->subMinutes(10)]);
+
+    $component
+        ->call('refreshDepartment')
+        ->assertSet('tickets.0.delay_state', 'attention')
+        ->assertSet('tickets.0.elapsed_label', '10:00')
+        ->assertSet('tickets.0.delay_label', null)
+        ->assertSee(__('ui.departments.dashboard.delay_status.attention'));
+
+    $ticket->update(['sent_at' => now()->subMinutes(15)->subSeconds(5)]);
+
+    $component
+        ->call('refreshDepartment')
+        ->assertSet('tickets.0.delay_state', 'delayed')
+        ->assertSet('tickets.0.elapsed_label', '15:05')
+        ->assertSet('tickets.0.delay_label', '00:05')
+        ->assertSee(__('ui.departments.dashboard.delay_status.delayed'))
+        ->assertSee(__('ui.departments.dashboard.delay_by', ['time' => '00:05']));
+});
+
 function createPrompt61KitchenScenario(): array
 {
     $owner = User::factory()->create();
@@ -278,7 +324,7 @@ function createPrompt61KitchenScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 61 Pizza',
-            'price' => '11.00',
+            'price_cents' => 1100,
         ]);
     $coffee = MenuItem::factory()
         ->for($menu)
@@ -286,7 +332,7 @@ function createPrompt61KitchenScenario(): array
         ->for($bar, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 61 Coffee',
-            'price' => '3.00',
+            'price_cents' => 300,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -303,14 +349,14 @@ function createPrompt61KitchenScenario(): array
         ->create([
             'item_name' => 'Prompt 61 Pizza',
             'quantity' => 1,
-            'unit_price' => '11.00',
-            'modifier_total' => '2.00',
-            'total_price' => '13.00',
+            'unit_price_cents' => 1100,
+            'modifier_total_cents' => 200,
+            'total_price_cents' => 1300,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Size',
                     'option_name' => 'Large',
-                    'price_delta' => '2.00',
+                    'price_delta_cents' => 200,
                 ],
             ],
             'comment' => 'Crispy crust',
@@ -323,9 +369,9 @@ function createPrompt61KitchenScenario(): array
         ->create([
             'item_name' => 'Prompt 61 Coffee',
             'quantity' => 2,
-            'unit_price' => '3.00',
-            'modifier_total' => '0.00',
-            'total_price' => '6.00',
+            'unit_price_cents' => 300,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 600,
             'selected_modifiers' => [],
         ]);
 

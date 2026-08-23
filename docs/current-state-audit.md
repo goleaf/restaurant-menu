@@ -28,7 +28,7 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 
 | Initial finding | Final resolution and evidence |
 |---|---|
-| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 694 tests, with only 9 intentional feature-gated skips. |
+| 64 failures and 15 errors | TDD fixes and regression coverage; final sequential/parallel suites both pass 757 tests, with 8 intentional feature-gated skips and 1 explicit todo tracked by [GitHub issue #10](https://github.com/goleaf/restaurant-menu/issues/10). |
 | 17 Composer and 4 npm advisories | Stable targeted lock upgrades; both final audits report zero advisories. |
 | Invalid factory/mass-assignment graphs | Explicit relationship defaults/guarded persistence; 41/41 factories and meaningful states persist. |
 | No formal policy layer | Added aggregate Organization, Brand, Branch and Invitation policies, scoped bindings and negative tenant/action tests. |
@@ -42,8 +42,8 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 | Float and duplicated money conversions | Decimal/minor-unit-safe formatting and domain arithmetic centralized and tested. |
 | Locale-sensitive cache keys | Cache ownership and invalidation now include the relevant branch/locale context; separation tests pass. |
 | 66 `app()` service-locator calls in 32 PHP files | Application operations use constructor/Livewire `boot()` injection; architecture scan passes. |
-| No strict Eloquent/static analysis | Strict local/test Eloquent enabled; Larastan level 8 added and final analysis reports 0 errors. |
-| Historical migrations use model backfills | Historical files preserved; new correction is forward-only/reversible; all 66 migrations pass from zero. |
+| No strict Eloquent/static analysis | Strict local/test Eloquent enabled; configured Larastan level 5 analyses 502 files with 0 errors. |
+| Historical migrations use model backfills | Historical files preserved; corrections are forward-only/reversible; all 70 migrations pass from zero. |
 | Global Livewire offline root could serialize bearer invitation/reset URLs | Restricted `wire:offline` to authenticated bearer-free pages, added a snapshot-free guest/auth indicator and a token non-disclosure regression test; both paths passed isolated browser offline/online checks. |
 | Generic equal-weight dashboard/card hierarchy and over-expanded waiter branches | Public, guest, restaurant, waiter and department surfaces now expose one primary path, compact related metrics and native progressive disclosure; responsive/browser regressions pass. |
 | Persisted legacy area/service-point/menu-category icon names could address missing dynamic Flux components and return HTTP 500 | All three presentation boundaries enforce explicit supported-icon lists with type-safe fallback; demo values are corrected and regressions cover legacy records. |
@@ -51,14 +51,14 @@ The authoritative detailed views are [`architecture.md`](architecture.md), [`dom
 ## Final state
 
 - PHP 8.5.8; Laravel 13.26.1; Livewire 4.4.1; Flux Free 2.17.0; Tailwind/plugin 4.3.3; Laravel Vite plugin 3.2.0; Vite 8.2.2; Pest 4.7.8 / PHPUnit 12.5.33; Larastan 3.10.0.
-- 303 application PHP files, 42 class Livewire components, 41 models/factories, 66 migrations, 7 seeders, 107 Blade templates and 121 PHP test files.
-- 694 tests, 20,597 assertions, 0 static-analysis errors and 0 dependency advisories. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
+- 376 application PHP files, 56 class Livewire components, 41 models/factories, 70 migrations, 7 seeders, 117 Blade templates and 124 PHP test files.
+- 757 passing tests, 21,231 assertions, 8 skips, 1 todo ([#10](https://github.com/goleaf/restaurant-menu/issues/10)) and 0 static-analysis errors. The last verified pre-UI application coverage is 90.4%; fresh collection is currently blocked by the absent PHP coverage driver.
 - 2,039 semantic keys per locale; no missing, invalid, legacy or phrase-style keys.
 - Production CSS 296.99 kB / 39.02 kB gzip; application JS remains 0.00 kB.
 
 ## First-party Markdown inventory
 
-All 58 files were reviewed during the modernization and UI synchronization passes. `Canonical` means the file defines current truth; `pointer` preserves an old path without duplicating requirements; `history` is intentionally chronological and may describe obsolete past states as dated history.
+The current 57-file first-party Markdown set was reviewed during modernization and documentation consolidation. `Canonical` means the file defines current truth; `pointer` preserves an old path without duplicating requirements; `history` is intentionally chronological and may describe obsolete past states as dated history.
 
 | Path | Purpose / owner | Status, conflict, history, requirement gap | Final action |
 |---|---|---|---|
@@ -76,7 +76,7 @@ All 58 files were reviewed during the modernization and UI synchronization passe
 | `docs/system-requirements.md` | system summary / engineering | pointer to catalogue | created and preserved |
 | `docs/non-functional-requirements.md` | quality summary / engineering | pointer to catalogue | created and preserved |
 | `docs/compliance-matrix.md` | traceability / engineering | canonical evidence; 47 verified, 1 feature-gated N/A | created and finalized |
-| `docs/implementation-plan.md` | execution state / engineering | canonical completed plan | created and finalized |
+| `ROADMAP.md` | current delivery sequence / product+engineering | only active roadmap; completed work stays in evidence and changelog | created from the retired implementation plan and prompt queue |
 | `docs/current-state-audit.md` | baseline/resolution / engineering | canonical evidence | created and finalized |
 | `docs/architecture.md` | boundaries/applicability / architecture | canonical, current | created and synchronized |
 | `docs/domain-model.md` | roles/workflows/states / domain | canonical, current | created and preserved |
@@ -112,7 +112,6 @@ All 58 files were reviewed during the modernization and UI synchronization passe
 | `docs/FIELD_TRANSLATION_AUDIT.md` | audit snapshot | old counts | synchronized with final command |
 | `docs/FUNCTIONAL_TEST_STRATEGY.md` | legacy test strategy | duplicated testing contract | rewritten as pointer |
 | `docs/MIGRATION_AUDIT.md` | legacy migration audit | old 65-migration count/proposal | rewritten with final evidence/pointer |
-| `docs/NEXT_STEPS.md` | legacy prompt queue | obsolete parallel backlog | rewritten as completed-plan pointer |
 | `docs/SCHEMA_SNAPSHOT.md` | schema supplement | old 65-migration count | synchronized with final evidence/pointer |
 | `docs/SECURITY_RULES.md` | legacy security rules | duplicated canonical controls | rewritten as pointer |
 | `docs/SEEDERS.md` | legacy seeder reference | duplicated canonical seeding | rewritten as pointer |
@@ -121,4 +120,4 @@ All 58 files were reviewed during the modernization and UI synchronization passe
 | `docs/TRANSLATION_KEY_MAP.md` | namespace supplement | current | preserved |
 | `docs/TRANSLATION_STANDARD.md` | legacy localization standard | useful allow-list boundary | preserved and verified empty |
 
-Generated skill trees under `.agents`, `.claude` and `.cursor` are tool instructions, not first-party application requirements, and were excluded from this 56-file inventory as defined by the audit scope.
+Generated skill trees under `.agents`, `.claude` and `.cursor` are tool instructions, not first-party application requirements, and were excluded from this 57-file inventory as defined by the audit scope. The obsolete `docs/NEXT_STEPS.md` and completed `docs/implementation-plan.md` paths were removed during roadmap consolidation.

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\AuditLogs;
 
 use App\Actions\AuditLogs\BuildAuditLogIndexAction;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -25,9 +27,7 @@ class Index extends Component
 
     public function mount(): void
     {
-        if (! $this->buildAuditLogIndex->userHasAccess($this->currentUser())) {
-            abort(403);
-        }
+        Gate::forUser($this->currentUser())->authorize('viewAny', AuditLog::class);
     }
 
     public function refreshAuditLog(): void

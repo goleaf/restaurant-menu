@@ -71,8 +71,8 @@ test('audit log schema and page are restricted by view audit log permission', fu
         'action' => AuditLogAction::MenuPriceChanged,
         'entity_type' => 'menu_item',
         'entity_id' => 777,
-        'old_values' => ['price' => '10.00'],
-        'new_values' => ['price' => '12.00'],
+        'old_values' => ['price_cents' => 1000],
+        'new_values' => ['price_cents' => 1200],
     ]);
 
     expect(Schema::hasTable('audit_logs'))->toBeTrue()
@@ -116,8 +116,8 @@ test('audit log schema and page are restricted by view audit log permission', fu
 test('audit logs are immutable through ordinary model edit and delete paths', function () {
     $auditLog = AuditLog::factory()->create([
         'entity_type' => 'menu_item',
-        'old_values' => ['price' => '10.00'],
-        'new_values' => ['price' => '12.00'],
+        'old_values' => ['price_cents' => 1000],
+        'new_values' => ['price_cents' => 1200],
     ]);
 
     expect($auditLog->update(['entity_type' => 'tampered']))->toBeFalse()
@@ -186,7 +186,7 @@ test('menu service point qr and staff changes create audit events', function () 
 
     $this->actingAs($manager);
 
-    $menuItem->update(['price' => '14.50']);
+    $menuItem->update(['price_cents' => 1450]);
     $menuItem->update(['is_available' => false]);
     $menuItemId = $menuItem->id;
     $menuItem->delete();
@@ -255,8 +255,8 @@ test('order payment and table session actions create audit events', function () 
         ->for($menuItem)
         ->create([
             'item_name' => $menuItem->name,
-            'unit_price' => '18.00',
-            'total_price' => '18.00',
+            'unit_price_cents' => 1800,
+            'total_price_cents' => 1800,
         ]);
 
     app(UpdateDraftOrderItemByWaiterAction::class)->handle(
@@ -324,7 +324,7 @@ test('order payment and table session actions create audit events', function () 
     expect(expectPrompt71Audit(AuditLogAction::DraftOrderEditedByWaiter, 'draft_order_item', $draftOrderItem->id)->new_values['operation'])->toBe('waiter_item_updated')
         ->and(expectPrompt71Audit(AuditLogAction::OrderConfirmed, 'order', $order->id)->new_values['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
         ->and(expectPrompt71Audit(AuditLogAction::DepartmentItemReady, 'kitchen_ticket_item', $ticketItem->id)->new_values['status'])->toBe(KitchenTicketItemStatus::Ready->value)
-        ->and(expectPrompt71Audit(AuditLogAction::PaymentRecorded, 'manual_payment')->new_values['amount'])->toBe('18.00')
+        ->and(expectPrompt71Audit(AuditLogAction::PaymentRecorded, 'manual_payment')->new_values['amount_cents'])->toBe(1800)
         ->and(expectPrompt71Audit(AuditLogAction::OrderCancelled, 'order', $order->id)->new_values['reason'])->toBe('Audit test cancellation')
         ->and(expectPrompt71Audit(AuditLogAction::TableSessionClosed, 'table_session', $tableSession->id)->new_values['status'])->toBe(TableSessionStatus::Closed->value);
 });
@@ -358,8 +358,8 @@ test('waiter rejected drafts create audit events', function () {
         ->for($menuItem)
         ->create([
             'item_name' => $menuItem->name,
-            'unit_price' => '18.00',
-            'total_price' => '18.00',
+            'unit_price_cents' => 1800,
+            'total_price_cents' => 1800,
         ]);
 
     app(RejectDraftOrderByWaiterAction::class)->handle(
@@ -415,7 +415,7 @@ function createPrompt71Context(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Audit pasta',
-            'price' => '12.00',
+            'price_cents' => 1200,
             'is_available' => true,
         ]);
     $qrCode = QrCode::factory()

@@ -48,7 +48,8 @@ test('reports viewer sees cached basic analytics for demo data', function () {
         ->and($analytics['closed_sessions_count'])->toBe(1)
         ->and($analytics['cancelled_orders_count'])->toBe(1)
         ->and($analytics['popular_items'][0]['item_name'])->toBe('Pizza')
-        ->and($analytics['popular_items'][0]['quantity'])->toBe(2);
+        ->and($analytics['popular_items'][0]['quantity'])->toBe(2)
+        ->and(collect($analytics['popular_items'])->pluck('item_name')->all())->not->toContain('Cancelled Burger');
 
     $this->actingAs($user)
         ->get(route('restaurant.dashboard'))
@@ -107,7 +108,7 @@ test('order changes invalidate the cached analytics snapshot', function () {
         tableSession: $activeSession,
         itemName: 'Tea',
         quantity: 1,
-        totalPrice: '7.00',
+        totalPriceCents: 700,
         confirmedAt: CarbonImmutable::parse('2026-06-04 11:30:00'),
     );
 
@@ -132,7 +133,7 @@ test('payment and session changes invalidate analytics cache', function () {
         ->for($servicePoint)
         ->for($activeSession, 'tableSession')
         ->create([
-            'amount' => '30.00',
+            'amount_cents' => 3000,
             'currency' => 'EUR',
             'paid_at' => now(),
         ]);
@@ -190,23 +191,31 @@ function createPrompt69AnalyticsContext(): array
             'ended_at' => CarbonImmutable::parse('2026-06-04 10:00:00'),
         ]);
 
-    createPrompt69Order(
+    $pizzaOrder = createPrompt69Order(
         branch: $branch,
         servicePoint: $servicePoint,
         tableSession: $activeSession,
         itemName: 'Pizza',
         quantity: 2,
-        totalPrice: '20.00',
+        totalPriceCents: 2000,
         confirmedAt: CarbonImmutable::parse('2026-06-04 10:15:00'),
         status: OrderStatus::Served,
     );
+    OrderItem::factory()
+        ->for($pizzaOrder)
+        ->cancelled()
+        ->create([
+            'item_name' => 'Cancelled Burger',
+            'quantity' => 100,
+            'total_price_cents' => 90000,
+        ]);
     createPrompt69Order(
         branch: $branch,
         servicePoint: $servicePoint,
         tableSession: $activeSession,
         itemName: 'Coffee',
         quantity: 1,
-        totalPrice: '10.00',
+        totalPriceCents: 1000,
         confirmedAt: CarbonImmutable::parse('2026-06-04 10:45:00'),
     );
     createPrompt69Order(
@@ -215,7 +224,7 @@ function createPrompt69AnalyticsContext(): array
         tableSession: $activeSession,
         itemName: 'Old Dinner',
         quantity: 1,
-        totalPrice: '99.00',
+        totalPriceCents: 9900,
         confirmedAt: CarbonImmutable::parse('2026-06-03 20:00:00'),
     );
     createPrompt69Order(
@@ -224,7 +233,7 @@ function createPrompt69AnalyticsContext(): array
         tableSession: $activeSession,
         itemName: 'Cancelled Soup',
         quantity: 1,
-        totalPrice: '5.00',
+        totalPriceCents: 500,
         confirmedAt: CarbonImmutable::parse('2026-06-04 11:00:00'),
         status: OrderStatus::Cancelled,
     )->update([
@@ -243,7 +252,7 @@ function createPrompt69Order(
     TableSession $tableSession,
     string $itemName,
     int $quantity,
-    string $totalPrice,
+    int $totalPriceCents,
     CarbonImmutable $confirmedAt,
     OrderStatus $status = OrderStatus::ConfirmedByWaiter,
 ): Order {
@@ -258,7 +267,7 @@ function createPrompt69Order(
         ->create([
             'status' => $status,
             'confirmed_at' => $confirmedAt,
-            'total_price' => $totalPrice,
+            'total_price_cents' => $totalPriceCents,
             'currency' => 'EUR',
         ]);
 
@@ -268,8 +277,8 @@ function createPrompt69Order(
             'guest_name' => 'Ana',
             'item_name' => $itemName,
             'quantity' => $quantity,
-            'unit_price' => number_format((float) $totalPrice / max($quantity, 1), 2, '.', ''),
-            'total_price' => $totalPrice,
+            'unit_price_cents' => intdiv($totalPriceCents, max($quantity, 1)),
+            'total_price_cents' => $totalPriceCents,
         ]);
 
     return $order;

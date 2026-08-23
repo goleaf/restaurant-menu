@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum BusinessRuleCode: string
@@ -9,6 +11,9 @@ enum BusinessRuleCode: string
     case GuestNotActive = 'guest_not_active';
     case GuestNotApproved = 'guest_not_approved';
     case OrderAlreadyCancelled = 'order_already_cancelled';
+    case OrderItemAlreadyCancelled = 'order_item_already_cancelled';
+    case OrderItemNotCancellable = 'order_item_not_cancellable';
+    case PaymentAlreadyRecorded = 'payment_already_recorded';
     case DepartmentAlreadyReady = 'department_already_ready';
     case PaymentExceedsRemaining = 'payment_exceeds_remaining';
     case QrDisabled = 'qr_disabled';
@@ -35,6 +40,9 @@ enum BusinessRuleCode: string
             self::GuestNotActive => __('ui.actions.waiter.adddraftorderitembywaiteraction.vyberite_aktivnogo_gostia'),
             self::GuestNotApproved => __('ui.actions.waiter.adddraftorderitembywaiteraction.gost_eshhe_ne_podtverzden'),
             self::OrderAlreadyCancelled => __('ui.actions.orders.changeorderstatusaction.zakaz_uze_otmenen'),
+            self::OrderItemAlreadyCancelled => __('orders.items.errors.already_cancelled'),
+            self::OrderItemNotCancellable => __('orders.items.errors.not_cancellable'),
+            self::PaymentAlreadyRecorded => __('orders.items.errors.payment_recorded'),
             self::DepartmentAlreadyReady => __('ui.actions.departments.updatedepartmentticketitemstatusaction.poziciia_uze'),
             self::PaymentExceedsRemaining => __('payments.errors.amount_exceeds_remaining'),
             self::QrDisabled => __('qr.errors.disabled.title'),
@@ -52,6 +60,9 @@ enum BusinessRuleCode: string
             self::GuestNotActive,
             self::GuestNotApproved => ApplicationErrorType::GuestRejectedOrRemoved,
             self::OrderAlreadyCancelled,
+            self::OrderItemAlreadyCancelled,
+            self::OrderItemNotCancellable,
+            self::PaymentAlreadyRecorded,
             self::DepartmentAlreadyReady => ApplicationErrorType::OrderInvalidTransition,
             self::PaymentExceedsRemaining => ApplicationErrorType::PaymentInvalidAmount,
             self::QrDisabled => ApplicationErrorType::QrDisabled,

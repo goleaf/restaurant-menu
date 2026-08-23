@@ -12,6 +12,8 @@
     "license": "MIT",
     "require": {
         "php": ">=8.5.0 <8.6.0",
+        "ext-zip": "*",
+        "dompdf/dompdf": "^3.1.6",
         "laravel/fortify": "^1.38",
         "laravel/framework": "^13.0",
         "laravel/tinker": "^3.0",
@@ -28,6 +30,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.9.3",
         "pestphp/pest": "^4.7.8",
+        "pestphp/pest-plugin-browser": "^4.3.1",
         "pestphp/pest-plugin-laravel": "^4.1"
     },
     "autoload": {
@@ -74,6 +77,13 @@
             "@php artisan config:clear --ansi",
             "@lint:check",
             "@php artisan test"
+        ],
+        "test:browser": [
+            "@php vendor/bin/pest tests/Browser --compact"
+        ],
+        "test:coverage": [
+            "@putenv XDEBUG_MODE=coverage",
+            "@php vendor/bin/pest tests/Unit tests/Feature --compact --coverage --min=90 --only-summary-for-coverage-text"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

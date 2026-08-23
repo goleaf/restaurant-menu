@@ -1,20 +1,27 @@
 <?php
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Menus\UpdateMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AuditLogAction;
+use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Index as BranchesIndex;
-use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
+use App\Livewire\Organizations\Brands\Branches\Menu\Availability as MenuAvailability;
+use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
+use App\Livewire\Organizations\Brands\Branches\Menu\KitchenDepartments as MenuKitchenDepartments;
+use App\Livewire\Organizations\Brands\Branches\Menu\Modifiers as MenuModifiers;
+use App\Livewire\Organizations\Brands\Branches\Menu\Variants as MenuVariants;
 use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
@@ -54,6 +61,32 @@ test('menu page requires manage menu permission', function () {
         ->assertSee('Menu');
 });
 
+test('menu workflow children independently enforce their permissions', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ChangeAvailability]);
+    $parameters = [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ];
+
+    Livewire::actingAs($manager)
+        ->test(MenuAvailability::class, $parameters)
+        ->assertOk();
+
+    Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, $parameters)
+        ->assertForbidden();
+
+    Livewire::actingAs($manager)
+        ->test(MenuKitchenDepartments::class, $parameters)
+        ->assertForbidden();
+
+    Livewire::actingAs($manager)
+        ->test(MenuModifiers::class, $parameters)
+        ->assertForbidden();
+});
+
 test('menu page safely falls back from unsupported persisted category icons', function () {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
@@ -64,10 +97,36 @@ test('menu page safely falls back from unsupported persisted category icons', fu
     ]);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('Legacy Category')
         ->call('startEditingCategory', $category->id)
         ->assertSet('editingCategoryIcon', 'bookmark');
+});
+
+test('dependent menu selectors never expose ids from another branch', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $ownMenu = Menu::factory()->for($branch)->create();
+    MenuCategory::factory()->for($ownMenu)->create();
+    [, , $foreignBranch] = createMenuCrudBranch('Foreign Group', 'Foreign Brand');
+    $foreignMenu = Menu::factory()->for($foreignBranch)->create();
+    $foreignCategory = MenuCategory::factory()->for($foreignMenu)->create();
+    MenuItem::factory()->for($foreignMenu)->for($foreignCategory, 'category')->create();
+    $parameters = [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ];
+
+    Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, $parameters)
+        ->set('itemMenuId', (string) $foreignMenu->id)
+        ->assertSet('itemCategoryId', '');
+
+    Livewire::actingAs($manager)
+        ->test(MenuModifiers::class, $parameters)
+        ->set('modifierItemMenuId', (string) $foreignMenu->id)
+        ->assertSet('modifierItemId', '');
 });
 
 test('branch list shows menu link to users with manage menu permission', function () {
@@ -103,7 +162,7 @@ test('manager can create menu categories dishes and upload local dish photo', fu
     ]);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('No menus yet.')
         ->set('menuName', 'Dinner Menu')
         ->set('menuStatus', MenuStatus::Active->value)
@@ -118,7 +177,7 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('categoryMenuId', (string) $menu->id)
         ->set('categoryName', 'Pizza')
         ->set('categoryDescription', 'Classic pizza selection')
@@ -134,7 +193,7 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('itemMenuId', (string) $menu->id)
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemName', 'Margherita')
@@ -142,6 +201,8 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->set('itemPrice', '12.50')
         ->set('itemWeight', '450')
         ->set('itemCalories', '720')
+        ->set('itemAllergens', ['gluten', 'milk'])
+        ->set('itemDietaryLabels', ['vegetarian'])
         ->set('itemSortOrder', 30)
         ->set('itemIsAvailable', true)
         ->call('createItem')
@@ -155,7 +216,7 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->firstOrFail();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('itemImages.'.$item->id, UploadedFile::fake()->image('margherita.jpg')->size(512))
         ->call('saveItemImage', $item->id)
         ->assertHasNoErrors();
@@ -167,13 +228,55 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->and($category->refresh()->description)->toBe('Classic pizza selection')
         ->and($category->icon)->toBe('cake')
         ->and($category->sort_order)->toBe(20)
-        ->and($item->price)->toBe('12.50')
+        ->and($item->price_cents)->toBe(1250)
+        ->and($item->allergens)->toBe(['gluten', 'milk'])
+        ->and($item->dietary_labels)->toBe(['vegetarian'])
         ->and($item->weight)->toBe('450.00')
         ->and($item->calories)->toBe(720)
         ->and($item->sort_order)->toBe(30)
         ->and($item->image)->toStartWith('media/organizations/'.$organization->id.'/brands/'.$brand->id.'/branches/'.$branch->id.'/menu-items/'.$item->id.'/images/');
 
     Storage::disk('public')->assertExists($item->image);
+});
+
+test('menu item allergen and dietary selections reject unknown values and normalize updates', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create([
+            'allergens' => ['eggs'],
+            'dietary_labels' => ['vegetarian'],
+        ]);
+    $parameters = [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ];
+
+    $component = Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, $parameters)
+        ->assertSeeText('Gluten-containing cereals')
+        ->assertSeeText('Dietary labels')
+        ->call('startEditingItem', $item->id)
+        ->assertSet('editingItemAllergens', ['eggs'])
+        ->assertSet('editingItemDietaryLabels', ['vegetarian'])
+        ->set('editingItemAllergens', ['unknown-allergen'])
+        ->set('editingItemDietaryLabels', ['unknown-diet'])
+        ->call('updateItem')
+        ->assertHasErrors(['editingItemAllergens.0', 'editingItemDietaryLabels.0']);
+
+    $component
+        ->set('editingItemAllergens', ['milk', 'gluten'])
+        ->set('editingItemDietaryLabels', ['vegan', 'vegetarian'])
+        ->call('updateItem')
+        ->assertHasNoErrors();
+
+    expect($item->refresh()->allergens)->toBe(['gluten', 'milk'])
+        ->and($item->dietary_labels)->toBe(['vegetarian', 'vegan']);
 });
 
 test('manager can manage modifier groups options and item assignments', function () {
@@ -198,7 +301,7 @@ test('manager can manage modifier groups options and item assignments', function
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('modifierGroupName', 'Pizza size')
         ->set('modifierGroupIsRequired', true)
         ->set('modifierGroupMinSelect', 1)
@@ -218,7 +321,7 @@ test('manager can manage modifier groups options and item assignments', function
     app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('modifierOptionGroupId', (string) $group->id)
         ->set('modifierOptionName', 'Large')
         ->set('modifierOptionPriceDelta', '3.50')
@@ -233,13 +336,13 @@ test('manager can manage modifier groups options and item assignments', function
         ->where('name', 'Large')
         ->firstOrFail();
 
-    expect($option->price_delta)->toBe('3.50')
+    expect($option->price_delta_cents)->toBe(350)
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 
     app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('modifierItemMenuId', (string) $menu->id)
         ->set('modifierItemId', (string) $item->id)
         ->set('modifierItemGroupId', (string) $group->id)
@@ -251,7 +354,7 @@ test('manager can manage modifier groups options and item assignments', function
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingModifierGroup', $group->id)
         ->set('editingModifierGroupName', 'Choose size')
         ->set('editingModifierGroupMinSelect', 1)
@@ -276,6 +379,76 @@ test('manager can manage modifier groups options and item assignments', function
         ->and($item->modifierGroups()->exists())->toBeFalse();
 });
 
+test('manager can manage localized dish variants and portion sizes', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [
+        SystemPermission::ManageMenu,
+        SystemPermission::ChangePrices,
+        SystemPermission::ChangeAvailability,
+    ]);
+    $menu = Menu::factory()->for($branch)->create(['name' => 'Portion Menu']);
+    $category = MenuCategory::factory()->for($menu)->create(['name' => 'Pizza']);
+    $item = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create(['name' => 'Margherita', 'price_cents' => 1100]);
+    $parameters = [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ];
+
+    Livewire::actingAs($manager)
+        ->test(MenuVariants::class, $parameters)
+        ->set('variantMenuId', (string) $menu->id)
+        ->set('variantItemId', (string) $item->id)
+        ->set('variantType', MenuItemVariantType::Portion->value)
+        ->set('variantName', 'Large')
+        ->set('variantPrice', '18.90')
+        ->set('variantWeight', '650')
+        ->set('variantIsDefault', true)
+        ->set('variantTranslations.en', 'Large')
+        ->set('variantTranslations.lt', 'Didelė')
+        ->set('variantTranslations.ru', 'Большая')
+        ->call('createVariant')
+        ->assertHasNoErrors()
+        ->assertSee('Large')
+        ->assertSee('Didelė');
+
+    $variant = MenuItemVariant::query()->where('menu_item_id', $item->id)->firstOrFail();
+
+    expect($variant->type)->toBe(MenuItemVariantType::Portion)
+        ->and($variant->price_cents)->toBe(1890)
+        ->and($variant->is_default)->toBeTrue()
+        ->and($variant->localizedName('lt'))->toBe('Didelė');
+
+    Livewire::actingAs($manager)
+        ->test(MenuVariants::class, $parameters)
+        ->set('variantMenuId', (string) $menu->id)
+        ->set('variantItemId', (string) $item->id)
+        ->set('variantType', MenuItemVariantType::Portion->value)
+        ->set('variantName', 'Large')
+        ->set('variantPrice', '19.50')
+        ->call('createVariant')
+        ->assertHasErrors(['variantName']);
+
+    expect(MenuItemVariant::query()->where('menu_item_id', $item->id)->count())->toBe(1);
+
+    Livewire::actingAs($manager)
+        ->test(MenuVariants::class, $parameters)
+        ->call('startEditingVariant', $variant->id)
+        ->set('editingVariantName', 'Family')
+        ->set('editingVariantPrice', '24.50')
+        ->set('editingVariantTranslations.lt', 'Šeimos')
+        ->call('updateVariant')
+        ->assertHasNoErrors()
+        ->assertSee('Family')
+        ->call('deleteVariant', $variant->id)
+        ->assertHasNoErrors();
+
+    expect($variant->fresh())->toBeNull();
+});
+
 test('price and availability changes require dedicated permissions', function () {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
@@ -286,12 +459,12 @@ test('price and availability changes require dedicated permissions', function ()
         ->for($category, 'category')
         ->create([
             'name' => 'Soup',
-            'price' => '8.00',
+            'price_cents' => 800,
             'is_available' => true,
         ]);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSet('canChangePrices', false)
         ->assertSet('canChangeAvailability', false)
         ->call('startEditingItem', $item->id)
@@ -302,11 +475,11 @@ test('price and availability changes require dedicated permissions', function ()
 
     $item->refresh();
 
-    expect($item->price)->toBe('8.00')
+    expect($item->price_cents)->toBe(800)
         ->and($item->is_available)->toBeTrue();
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('setItemAvailability', $item->id, false)
         ->assertForbidden();
 
@@ -316,7 +489,7 @@ test('price and availability changes require dedicated permissions', function ()
     ]);
 
     Livewire::actingAs($manager->fresh())
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSet('canChangePrices', true)
         ->assertSet('canChangeAvailability', true)
         ->call('startEditingItem', $item->id)
@@ -328,8 +501,44 @@ test('price and availability changes require dedicated permissions', function ()
 
     $item->refresh();
 
-    expect($item->price)->toBe('9.50')
+    expect($item->price_cents)->toBe(950)
         ->and($item->is_available)->toBeFalse();
+});
+
+test('menu item action independently preserves restricted price and availability fields', function () {
+    [$organization, , $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->create([
+            'price_cents' => 800,
+            'is_available' => true,
+        ]);
+
+    app(UpdateMenuItemAction::class)->handle(
+        actor: $manager,
+        branch: $branch,
+        item: $item,
+        menu: $menu,
+        category: $category,
+        kitchenDepartmentId: null,
+        data: [
+            'name' => 'Server-authorized item',
+            'description' => null,
+            'price' => '99.99',
+            'weight' => null,
+            'volume' => null,
+            'calories' => null,
+            'is_available' => false,
+            'sort_order' => 0,
+        ],
+    );
+
+    expect($item->refresh()->price_cents)->toBe(800)
+        ->and($item->is_available)->toBeTrue();
 });
 
 test('head chef can manage stop list without menu crud access', function () {
@@ -359,7 +568,7 @@ test('head chef can manage stop list without menu crud access', function () {
         ->for($category, 'category')
         ->create([
             'name' => 'Grilled fish',
-            'price' => '17.00',
+            'price_cents' => 1700,
             'is_available' => true,
         ]);
     $stopListItem = MenuItem::factory()
@@ -367,7 +576,7 @@ test('head chef can manage stop list without menu crud access', function () {
         ->for($category, 'category')
         ->create([
             'name' => 'Sold out steak',
-            'price' => '22.00',
+            'price_cents' => 2200,
             'is_available' => false,
         ]);
     $cacheKey = GetGuestMenuForBranchAction::cacheKey($branch->id, 'en');
@@ -387,9 +596,7 @@ test('head chef can manage stop list without menu crud access', function () {
         ->assertDontSeeText('New dish');
 
     Livewire::actingAs($headChef->fresh())
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('canManageMenu', false)
-        ->assertSet('canChangeAvailability', true)
+        ->test(MenuAvailability::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('data-section="menu-stop-list"', false)
         ->assertSee('Add to stop-list')
         ->assertSee('Return to menu')
@@ -415,7 +622,7 @@ test('head chef can manage stop list without menu crud access', function () {
     expect($guestItemPayload['is_available'])->toBeFalse();
 
     Livewire::actingAs($headChef->fresh())
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuAvailability::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('setItemAvailability', $availableItem->id, true)
         ->assertHasNoErrors();
 
@@ -443,12 +650,24 @@ test('manager can delete dishes categories and menus while cleaning local dish p
             'name' => 'Second cleanup dish',
             'image' => 'media/test/second-cleanup.jpg',
         ]);
+    $childCategory = MenuCategory::factory()->for($menu)->create([
+        'parent_id' => $category->id,
+        'name' => 'Nested cleanup category',
+    ]);
+    $nestedItem = MenuItem::factory()
+        ->for($menu)
+        ->for($childCategory, 'category')
+        ->create([
+            'name' => 'Nested cleanup dish',
+            'image' => 'media/test/nested-cleanup.jpg',
+        ]);
 
     Storage::disk('public')->put($firstItem->image, 'first');
     Storage::disk('public')->put($secondItem->image, 'second');
+    Storage::disk('public')->put($nestedItem->image, 'nested');
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteItem', $firstItem->id)
         ->assertHasNoErrors();
 
@@ -457,15 +676,17 @@ test('manager can delete dishes categories and menus while cleaning local dish p
     Storage::disk('public')->assertMissing($firstItem->image);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteCategory', $category->id)
         ->assertHasNoErrors();
 
     expect(MenuCategory::query()->whereKey($category->id)->exists())->toBeFalse()
         ->and(MenuItem::query()->whereKey($secondItem->id)->exists())->toBeFalse()
+        ->and(MenuItem::query()->whereKey($nestedItem->id)->exists())->toBeFalse()
         ->and(MenuCategory::withTrashed()->findOrFail($category->id)->trashed())->toBeTrue()
         ->and(MenuItem::withTrashed()->findOrFail($secondItem->id)->trashed())->toBeTrue();
     Storage::disk('public')->assertMissing($secondItem->image);
+    Storage::disk('public')->assertMissing($nestedItem->image);
 
     $remainingCategory = MenuCategory::factory()->for($menu)->create(['name' => 'Remaining Category']);
     $remainingItem = MenuItem::factory()
@@ -478,7 +699,7 @@ test('manager can delete dishes categories and menus while cleaning local dish p
     Storage::disk('public')->put($remainingItem->image, 'remaining');
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteMenu', $menu->id)
         ->assertHasNoErrors();
 
@@ -497,7 +718,7 @@ test('branch must belong to route brand and organization on menu page', function
     [, , $otherBranch] = createMenuCrudBranch('Other Menu Group', 'Other Menu Brand');
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $otherBranch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $otherBranch->id])
         ->assertForbidden();
 });
 

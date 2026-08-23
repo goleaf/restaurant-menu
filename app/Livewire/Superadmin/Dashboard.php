@@ -20,6 +20,7 @@ use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -38,6 +39,21 @@ class Dashboard extends Component
     public string $backupDownloadConfirmation = '';
 
     public string $backupDownloadReason = '';
+
+    public string $mediaBackupDownloadConfirmation = '';
+
+    public string $mediaBackupDownloadReason = '';
+
+    public string $backupRestoreConfirmation = '';
+
+    public string $backupRestoreReason = '';
+
+    public string $backupRestoreError = '';
+
+    public function mount(): void
+    {
+        $this->backupRestoreError = (string) session()->pull('sqlite_backup_restore_error', '');
+    }
 
     public function boot(BuildProductionSafetyReportAction $buildProductionSafetyReport): void
     {
@@ -186,6 +202,62 @@ class Dashboard extends Component
         Flux::modals()->close();
 
         $this->redirectRoute('superadmin.backups.sqlite.download');
+    }
+
+    public function downloadMediaBackup(): void
+    {
+        $this->authorizeSuperadmin();
+
+        $this->mediaBackupDownloadReason = trim($this->mediaBackupDownloadReason);
+        $validated = $this->validate([
+            ...RestaurantValidationRules::auditReason('mediaBackupDownloadReason'),
+            'mediaBackupDownloadConfirmation' => ['required', 'string', 'in:MEDIA'],
+        ], [
+            'mediaBackupDownloadReason.required' => __('ui.confirmations.reason.required'),
+            'mediaBackupDownloadReason.min' => __('ui.confirmations.reason.min'),
+            'mediaBackupDownloadConfirmation.required' => __('ui.confirmations.download_media_backup.confirmation_required'),
+            'mediaBackupDownloadConfirmation.in' => __('ui.confirmations.download_media_backup.confirmation_match'),
+        ]);
+
+        session()->put('media_backup_download_authorization', [
+            'issued_at' => now()->timestamp,
+            'nonce' => Str::random(64),
+            'reason' => PlainText::required((string) $validated['mediaBackupDownloadReason'], 500),
+            'user_id' => $this->currentUser()->id,
+        ]);
+
+        $this->reset('mediaBackupDownloadConfirmation', 'mediaBackupDownloadReason');
+        Flux::modals()->close();
+
+        $this->redirectRoute('superadmin.backups.media.download');
+    }
+
+    public function prepareBackupRestore(): void
+    {
+        $this->authorizeSuperadmin();
+
+        $this->backupRestoreReason = trim($this->backupRestoreReason);
+        $validated = $this->validate([
+            ...RestaurantValidationRules::auditReason('backupRestoreReason'),
+            'backupRestoreConfirmation' => ['required', 'string', 'in:RESTORE'],
+        ], [
+            'backupRestoreReason.required' => __('ui.confirmations.reason.required'),
+            'backupRestoreReason.min' => __('ui.confirmations.reason.min'),
+            'backupRestoreConfirmation.required' => __('ui.confirmations.restore_backup.confirmation_required'),
+            'backupRestoreConfirmation.in' => __('ui.confirmations.restore_backup.confirmation_match'),
+        ]);
+
+        session()->put('sqlite_backup_restore_authorization', [
+            'issued_at' => now()->timestamp,
+            'nonce' => Str::random(64),
+            'reason' => PlainText::required((string) $validated['backupRestoreReason'], 500),
+            'user_id' => $this->currentUser()->id,
+        ]);
+
+        $this->reset('backupRestoreConfirmation', 'backupRestoreReason');
+        Flux::modals()->close();
+
+        $this->redirectRoute('superadmin.backups.sqlite.restore');
     }
 
     /**

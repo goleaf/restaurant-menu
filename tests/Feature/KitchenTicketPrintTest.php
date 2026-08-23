@@ -171,7 +171,7 @@ function createPrompt127TicketScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 127 Pizza',
-            'price' => '11.00',
+            'price_cents' => 1100,
         ]);
     $coffee = MenuItem::factory()
         ->for($menu)
@@ -179,7 +179,7 @@ function createPrompt127TicketScenario(): array
         ->for($bar, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 127 Coffee',
-            'price' => '3.00',
+            'price_cents' => 300,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -196,14 +196,14 @@ function createPrompt127TicketScenario(): array
         ->create([
             'item_name' => 'Prompt 127 Pizza',
             'quantity' => 1,
-            'unit_price' => '11.00',
-            'modifier_total' => '2.00',
-            'total_price' => '13.00',
+            'unit_price_cents' => 1100,
+            'modifier_total_cents' => 200,
+            'total_price_cents' => 1300,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Size',
                     'option_name' => 'Large',
-                    'price_delta' => '2.00',
+                    'price_delta_cents' => 200,
                 ],
             ],
             'comment' => 'Crispy crust',
@@ -216,14 +216,14 @@ function createPrompt127TicketScenario(): array
         ->create([
             'item_name' => 'Prompt 127 Coffee',
             'quantity' => 2,
-            'unit_price' => '3.00',
-            'modifier_total' => '1.00',
-            'total_price' => '7.00',
+            'unit_price_cents' => 300,
+            'modifier_total_cents' => 100,
+            'total_price_cents' => 700,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Milk',
                     'option_name' => 'Oat',
-                    'price_delta' => '0.50',
+                    'price_delta_cents' => 50,
                 ],
             ],
             'comment' => 'No ice',

@@ -5,23 +5,19 @@ declare(strict_types=1);
 namespace App\Actions\TableSessions;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
-use App\Actions\Payments\ResolvePaymentAccessibleBranchIdsAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
 use App\Enums\ServicePointStatus;
-use App\Enums\SystemPermission;
 use App\Enums\TableSessionStatus;
 use App\Models\TableSession;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class CloseTableSessionAction
 {
     public function __construct(
-        private readonly ResolvePaymentAccessibleBranchIdsAction $resolvePaymentAccess,
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
@@ -139,15 +135,7 @@ class CloseTableSessionAction
             ]);
         }
 
-        if ($sessionStatus === TableSessionStatus::Paid
-            && $this->resolvePaymentAccess->canManage($closedBy, (int) $tableSession->branch_id)) {
-            return;
-        }
-
-        $closableBranchIds = $this->resolveAccessibleBranchIds
-            ->handle($closedBy, SystemPermission::CloseTableSessions);
-
-        if ($closableBranchIds->contains((int) $tableSession->branch_id)) {
+        if (Gate::forUser($closedBy)->allows('close', $tableSession)) {
             return;
         }
 

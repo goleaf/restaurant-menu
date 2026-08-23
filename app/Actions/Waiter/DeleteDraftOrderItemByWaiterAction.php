@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
@@ -33,7 +35,7 @@ class DeleteDraftOrderItemByWaiterAction
                 'operation' => 'waiter_item_deleted',
                 'draft_order_id' => $draftOrder->id,
                 'quantity' => $draftOrderItem->quantity,
-                'total_price' => $draftOrderItem->total_price,
+                'total_price_cents' => $draftOrderItem->total_price_cents,
                 'comment' => $draftOrderItem->comment,
             ];
 
@@ -76,7 +78,7 @@ class DeleteDraftOrderItemByWaiterAction
                 'id',
                 'draft_order_id',
                 'quantity',
-                'total_price',
+                'total_price_cents',
                 'comment',
             ])
             ->with([

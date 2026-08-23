@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\KitchenTicketItemStatus;
@@ -69,6 +71,15 @@ class KitchenTicketItemFactory extends Factory
     {
         return $this->state(fn (): array => [
             'status' => KitchenTicketItemStatus::Ready,
+            'served_at' => null,
+            'served_by_user_id' => null,
+        ]);
+    }
+
+    public function cancelled(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => KitchenTicketItemStatus::Cancelled,
             'served_at' => null,
             'served_by_user_id' => null,
         ]);

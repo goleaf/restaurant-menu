@@ -24,6 +24,11 @@
             :brand-id="$brandId"
             :branch-id="$branchId"
         />
+        <livewire:organizations.brands.branches.menu.variants
+            :organization-id="$organizationId"
+            :brand-id="$brandId"
+            :branch-id="$branchId"
+        />
         <livewire:organizations.brands.branches.menu.kitchen-departments
             :organization-id="$organizationId"
             :brand-id="$brandId"

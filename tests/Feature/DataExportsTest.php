@@ -120,7 +120,7 @@ test('orders csv export includes selected branch orders only', function () {
         'draft_order_id' => $draftOrder->id,
         'status' => OrderStatus::Served,
         'confirmed_at' => CarbonImmutable::parse('2026-06-04 10:00:00'),
-        'total_price' => '25.00',
+        'total_price_cents' => 2500,
         'currency' => 'EUR',
     ]);
     $oldOrder = Order::factory()->create([
@@ -130,7 +130,7 @@ test('orders csv export includes selected branch orders only', function () {
         'draft_order_id' => $oldDraftOrder->id,
         'status' => OrderStatus::Served,
         'confirmed_at' => CarbonImmutable::parse('2026-04-01 10:00:00'),
-        'total_price' => '11.00',
+        'total_price_cents' => 1100,
         'currency' => 'EUR',
     ]);
     $otherOrder = Order::factory()->create([
@@ -139,7 +139,7 @@ test('orders csv export includes selected branch orders only', function () {
         'table_session_id' => $otherTableSession->id,
         'draft_order_id' => $otherDraftOrder->id,
         'status' => OrderStatus::Served,
-        'total_price' => '99.00',
+        'total_price_cents' => 9900,
     ]);
 
     OrderItem::factory()
@@ -148,7 +148,17 @@ test('orders csv export includes selected branch orders only', function () {
             'guest_name' => 'Ana',
             'item_name' => 'Margherita',
             'quantity' => 2,
-            'total_price' => '25.00',
+            'total_price_cents' => 2500,
+        ]);
+    OrderItem::factory()
+        ->for($order)
+        ->cancelled()
+        ->create([
+            'guest_name' => 'Ana',
+            'item_name' => 'Cancelled soup',
+            'quantity' => 1,
+            'total_price_cents' => 700,
+            'cancellation_reason' => 'Guest changed their mind.',
         ]);
     OrderItem::factory()
         ->for($oldOrder)
@@ -156,7 +166,7 @@ test('orders csv export includes selected branch orders only', function () {
             'guest_name' => 'Ben',
             'item_name' => 'Old branch soup',
             'quantity' => 1,
-            'total_price' => '11.00',
+            'total_price_cents' => 1100,
         ]);
     OrderItem::factory()
         ->for($otherOrder)
@@ -185,6 +195,8 @@ test('orders csv export includes selected branch orders only', function () {
         ->toContain(__('reports.statuses.orders.served'))
         ->toContain('Window table #7')
         ->toContain('Ana: Margherita x2 = 25.00')
+        ->toContain(__('reports.csv.cancelled_order_item', ['reason' => 'Guest changed their mind.']))
+        ->toContain('Cancelled soup')
         ->not->toContain('Old branch soup')
         ->not->toContain('Other branch steak');
 });
@@ -239,7 +251,7 @@ test('payments menu and tables csv exports stream branch data', function () {
         'recorded_by_user_id' => $recorder->id,
         'scope' => ManualPaymentScope::Table,
         'payment_method' => ManualPaymentMethod::CardTerminal,
-        'amount' => '42.00',
+        'amount_cents' => 4200,
         'currency' => 'EUR',
         'paid_at' => CarbonImmutable::parse('2026-06-04 11:00:00'),
         'note' => 'Terminal approved',
@@ -251,7 +263,7 @@ test('payments menu and tables csv exports stream branch data', function () {
         'recorded_by_user_id' => $recorder->id,
         'scope' => ManualPaymentScope::Table,
         'payment_method' => ManualPaymentMethod::Cash,
-        'amount' => '9.00',
+        'amount_cents' => 900,
         'currency' => 'EUR',
         'paid_at' => CarbonImmutable::parse('2026-04-01 11:00:00'),
         'note' => 'Old cash payment',
@@ -272,7 +284,7 @@ test('payments menu and tables csv exports stream branch data', function () {
         ->create([
             'name' => 'Pepperoni',
             'description' => 'Tomato and cheese',
-            'price' => '13.50',
+            'price_cents' => 1350,
             'is_available' => true,
         ]);
 

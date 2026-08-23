@@ -25,11 +25,14 @@ test('draft order tables expose the required shared draft columns', function () 
             'draft_order_id',
             'table_session_guest_id',
             'menu_item_id',
+            'menu_item_variant_id',
             'item_name',
+            'variant_name',
+            'variant_type',
             'quantity',
-            'unit_price',
-            'modifier_total',
-            'total_price',
+            'unit_price_cents',
+            'modifier_total_cents',
+            'total_price_cents',
             'selected_modifiers',
             'comment',
             'created_at',
@@ -57,7 +60,7 @@ test('table session has one common draft order with guest item totals sorted alp
         ->create(['guest_name' => 'Ana']);
     $menuItem = MenuItem::factory()->create([
         'name' => 'Margherita',
-        'price' => '12.50',
+        'price_cents' => 1250,
     ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -70,9 +73,9 @@ test('table session has one common draft order with guest item totals sorted alp
         ->create([
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'unit_price' => '12.50',
-            'modifier_total' => '0.00',
-            'total_price' => '12.50',
+            'unit_price_cents' => 1250,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1250,
             'selected_modifiers' => [],
         ]);
     $anaItem = DraftOrderItem::factory()
@@ -82,14 +85,14 @@ test('table session has one common draft order with guest item totals sorted alp
         ->create([
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'unit_price' => '7.25',
-            'modifier_total' => '0.00',
-            'total_price' => '7.25',
+            'unit_price_cents' => 725,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 725,
             'selected_modifiers' => [
                 [
                     'group' => 'Pizza size',
                     'option' => 'Small',
-                    'price_delta' => '0.00',
+                    'price_delta_cents' => 0,
                 ],
             ],
             'comment' => 'No garlic',
@@ -101,9 +104,9 @@ test('table session has one common draft order with guest item totals sorted alp
         ->create([
             'item_name' => 'Water',
             'quantity' => 1,
-            'unit_price' => '2.75',
-            'modifier_total' => '0.00',
-            'total_price' => '2.75',
+            'unit_price_cents' => 275,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 275,
         ]);
 
     $draftOrder = $draftOrder->fresh()->load(['items.guest']);
@@ -114,7 +117,7 @@ test('table session has one common draft order with guest item totals sorted alp
             [
                 'group' => 'Pizza size',
                 'option' => 'Small',
-                'price_delta' => '0.00',
+                'price_delta_cents' => 0,
             ],
         ])
         ->and($draftOrder->guestTotals())->toBe([

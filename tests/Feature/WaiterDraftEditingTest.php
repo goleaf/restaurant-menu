@@ -12,7 +12,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\DraftReview;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -22,6 +22,7 @@ use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Order;
@@ -59,7 +60,7 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
     attachPrompt55Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Edit draft')
         ->call('editDraftItem', $pizzaDraftItem->id)
         ->assertSet('editingItemName', 'Pizza Margherita')
@@ -74,8 +75,8 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
     $pizzaDraftItem = $pizzaDraftItem->fresh();
 
     expect($pizzaDraftItem->quantity)->toBe(2)
-        ->and($pizzaDraftItem->modifier_total)->toBe('2.50')
-        ->and($pizzaDraftItem->total_price)->toBe('25.00')
+        ->and($pizzaDraftItem->modifier_total_cents)->toBe(250)
+        ->and($pizzaDraftItem->total_price_cents)->toBe(2500)
         ->and($pizzaDraftItem->comment)->toBe('No onion, cut in slices')
         ->and($pizzaDraftItem->selected_modifiers[0]['option_name'])->toBe('Large')
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::WaiterReview);
@@ -95,10 +96,10 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->assertSee('Waiter review')
         ->assertSee('25.00 EUR');
 
-    $pizzaDraftItem->forceFill(['total_price' => '0.01'])->save();
+    $pizzaDraftItem->forceFill(['total_price_cents' => 1])->save();
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->call('confirmDraft')
         ->assertHasNoErrors()
         ->assertSee(__('guest.table.order').' #');
@@ -108,9 +109,9 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->where('draft_order_id', $draftOrder->id)
         ->firstOrFail();
 
-    expect($order->total_price)->toBe('25.00')
+    expect($order->total_price_cents)->toBe(2500)
         ->and($order->items)->toHaveCount(1)
-        ->and($order->items->first()->total_price)->toBe('25.00')
+        ->and($order->items->first()->total_price_cents)->toBe(2500)
         ->and($order->items->first()->comment)->toBe('No onion, cut in slices')
         ->and($order->items->first()->selected_modifiers[0]['option_name'])->toBe('Large');
 });
@@ -129,14 +130,14 @@ test('waiter can add and delete draft positions before confirmation', function (
     attachPrompt55Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->set('addingGuestId', (string) $zara->id)
         ->set('addingMenuItemId', (string) $waterItem->id)
         ->set('addingQuantity', 3)
         ->set('addingComment', 'Still water')
         ->call('addDraftItem')
         ->assertHasNoErrors()
-        ->assertSee('22.00 EUR')
+        ->assertSet('draftReview.total', '22.00 EUR')
         ->call('deleteDraftItem', $pizzaDraftItem->id)
         ->assertHasNoErrors()
         ->assertSee('12.00 EUR');
@@ -151,7 +152,7 @@ test('waiter can add and delete draft positions before confirmation', function (
 
     expect($waterDraftItem->table_session_guest_id)->toBe($zara->id)
         ->and($waterDraftItem->quantity)->toBe(3)
-        ->and($waterDraftItem->total_price)->toBe('12.00')
+        ->and($waterDraftItem->total_price_cents)->toBe(1200)
         ->and($waterDraftItem->comment)->toBe('Still water');
 
     Livewire::test(GuestDraftOrder::class, [
@@ -172,15 +173,17 @@ test('waiter can manually create guest draft item and confirm it from active tab
         'pizzaItem' => $pizzaItem,
         'sizeGroup' => $sizeGroup,
         'largeOption' => $largeOption,
+        'largeVariant' => $largeVariant,
     ] = createPrompt113ManualOrderScenario();
     $waiter = User::factory()->create(['name' => 'Prompt 113 Waiter']);
     attachPrompt55Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Manual waiter order')
         ->set('manualGuestName', 'Mrs Ona')
         ->set('addingMenuItemId', (string) $pizzaItem->id)
+        ->assertSet('addingItemVariantId', (string) $largeVariant->id)
         ->set('addingQuantity', 2)
         ->set('addingComment', 'Less salt')
         ->set('addingModifierOptions.'.(string) $sizeGroup->id, [$largeOption->id])
@@ -189,7 +192,7 @@ test('waiter can manually create guest draft item and confirm it from active tab
         ->assertSee('Mrs Ona')
         ->assertSee('Waiter review')
         ->assertSee('Less salt')
-        ->assertSee('25.00 EUR')
+        ->assertSee('41.00 EUR')
         ->assertSee('Confirm order')
         ->call('confirmDraft')
         ->assertHasNoErrors()
@@ -212,11 +215,13 @@ test('waiter can manually create guest draft item and confirm it from active tab
         ->and($manualGuest->metadata['source'])->toBe('waiter_manual_entry')
         ->and($draftOrder->status)->toBe(DraftOrderStatus::ConvertedToOrder)
         ->and($draftOrder->sent_by_guest_id)->toBeNull()
-        ->and($order->total_price)->toBe('25.00')
+        ->and($order->total_price_cents)->toBe(4100)
         ->and($order->items)->toHaveCount(1)
         ->and($order->items->first()->guest_name_snapshot)->toBe('Mrs Ona')
         ->and($order->items->first()->item_name_snapshot)->toBe('Pizza Margherita')
-        ->and($order->items->first()->unit_price_snapshot)->toBe('10.00')
+        ->and($order->items->first()->menu_item_variant_id)->toBe($largeVariant->id)
+        ->and($order->items->first()->variant_name)->toBe('Large portion')
+        ->and($order->items->first()->unit_price_snapshot_cents)->toBe(1800)
         ->and($order->items->first()->modifiers_snapshot[0]['option_name'])->toBe('Large')
         ->and($order->items->first()->comment)->toBe('Less salt');
 });
@@ -243,7 +248,7 @@ test('waiter cannot add draft item from menu outside current schedule', function
         ]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSet('addableMenuItems', []);
 
     expect(fn () => app(AddDraftOrderItemByWaiterAction::class)->handle(
@@ -272,7 +277,7 @@ test('edit pending orders permission can edit sent draft without confirming it',
     attachPrompt55Staff($staff, $organization, [SystemPermission::ViewOrders, SystemPermission::EditPendingOrders]);
 
     Livewire::actingAs($staff)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Edit draft')
         ->assertDontSee('Confirm order')
         ->call('editDraftItem', $pizzaDraftItem->id)
@@ -283,7 +288,7 @@ test('edit pending orders permission can edit sent draft without confirming it',
         ->call('confirmDraft')
         ->assertHasErrors('draft_review');
 
-    expect($pizzaDraftItem->fresh()->total_price)->toBe('20.00')
+    expect($pizzaDraftItem->fresh()->total_price_cents)->toBe(2000)
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::WaiterReview)
         ->and(Order::query()->count())->toBe(0);
 });
@@ -305,7 +310,7 @@ test('user with view orders only cannot edit sent draft', function () {
         ->and($viewer->fresh()->hasPermission(SystemPermission::EditPendingOrders, $organization))->toBeFalse();
 
     Livewire::actingAs($viewer)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertDontSee('Edit draft')
         ->call('editDraftItem', $pizzaDraftItem->id)
         ->assertHasErrors('draft_edit')
@@ -365,8 +370,25 @@ function createPrompt113ManualOrderScenario(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Pizza Margherita',
-            'price' => '10.00',
+            'price_cents' => 1000,
             'is_available' => true,
+        ]);
+    MenuItemVariant::factory()
+        ->for($pizzaItem, 'item')
+        ->portion()
+        ->create([
+            'name' => 'Small portion',
+            'price_cents' => 1000,
+            'sort_order' => 10,
+        ]);
+    $largeVariant = MenuItemVariant::factory()
+        ->for($pizzaItem, 'item')
+        ->portion()
+        ->default()
+        ->create([
+            'name' => 'Large portion',
+            'price_cents' => 1800,
+            'sort_order' => 20,
         ]);
     $sizeGroup = ModifierGroup::factory()
         ->for($branch)
@@ -380,7 +402,7 @@ function createPrompt113ManualOrderScenario(): array
         ->for($sizeGroup)
         ->create([
             'name' => 'Large',
-            'price_delta' => '2.50',
+            'price_delta_cents' => 250,
             'is_available' => true,
         ]);
     $pizzaItem->modifierGroups()->attach($sizeGroup->id);
@@ -391,6 +413,7 @@ function createPrompt113ManualOrderScenario(): array
         'pizzaItem' => $pizzaItem,
         'sizeGroup' => $sizeGroup,
         'largeOption' => $largeOption,
+        'largeVariant' => $largeVariant,
     ];
 }
 
@@ -451,7 +474,7 @@ function createPrompt55SentDraftScenario(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Pizza Margherita',
-            'price' => '10.00',
+            'price_cents' => 1000,
             'is_available' => true,
         ]);
     $waterItem = MenuItem::factory()
@@ -459,7 +482,7 @@ function createPrompt55SentDraftScenario(): array
         ->for($category, 'category')
         ->create([
             'name' => 'Still Water',
-            'price' => '4.00',
+            'price_cents' => 400,
             'is_available' => true,
         ]);
     $sizeGroup = ModifierGroup::factory()
@@ -474,14 +497,14 @@ function createPrompt55SentDraftScenario(): array
         ->for($sizeGroup)
         ->create([
             'name' => 'Small',
-            'price_delta' => '0.00',
+            'price_delta_cents' => 0,
             'is_available' => true,
         ]);
     $largeOption = ModifierOption::factory()
         ->for($sizeGroup)
         ->create([
             'name' => 'Large',
-            'price_delta' => '2.50',
+            'price_delta_cents' => 250,
             'is_available' => true,
         ]);
     $pizzaItem->modifierGroups()->attach($sizeGroup->id);
@@ -501,16 +524,16 @@ function createPrompt55SentDraftScenario(): array
         ->create([
             'item_name' => 'Pizza Margherita',
             'quantity' => 1,
-            'unit_price' => '10.00',
-            'modifier_total' => '0.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1000,
             'selected_modifiers' => [
                 [
                     'group_id' => $sizeGroup->id,
                     'group_name' => 'Size',
                     'option_id' => $smallOption->id,
                     'option_name' => 'Small',
-                    'price_delta' => '0.00',
+                    'price_delta_cents' => 0,
                 ],
             ],
             'comment' => 'No garlic',

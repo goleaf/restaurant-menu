@@ -4,27 +4,23 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
-use App\Actions\Branches\GetBranchOpeningStatusAction;
-use App\Actions\Branches\GetBranchPollingIntervalAction;
-use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\PublicQr\BuildGuestEntryContextAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
+use App\Actions\TableSessions\ExpireTableSessionJoinRequestAction;
 use App\Enums\GuestTableEntryState;
-use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\QrCodeStatus;
-use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Enums\TableSessionStatus;
-use App\Models\BranchSetting;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Models\TableSessionServicePoint;
-use App\Support\GuestEntryPresenter;
+use App\Support\PublicQr\GuestEntryPresenter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
@@ -34,11 +30,9 @@ use Livewire\Component;
 
 class GuestEntry extends Component
 {
-    private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+    private BuildGuestEntryContextAction $buildGuestEntryContext;
 
-    private GetBranchOpeningStatusAction $getBranchOpeningStatus;
-
-    private GetBranchPollingIntervalAction $getBranchPollingInterval;
+    private ExpireTableSessionJoinRequestAction $expireJoinRequest;
 
     private GuestEntryPresenter $presenter;
 
@@ -90,55 +84,17 @@ class GuestEntry extends Component
 
     public string $language = '';
 
-    /**
-     * @var array{organization_name: string, brand_name: string, brand_initial: string, branch_id: int, branch_name: string, branch_city: string, branch_country: string, branch_address: string, branch_currency: string, default_language: string, default_language_label: string, default_currency: string, polling_interval_seconds: int, venue_name: string, public_description: string, logo_url: string|null, cover_image_url: string|null, phone: string|null, email: string|null, website_url: string|null, instagram_url: string|null, facebook_url: string|null, tiktok_url: string|null, has_contact_details: bool, opening_status_label: string, opening_status_detail: string, opening_status_tone: string, can_accept_orders: bool, service_point_name: string, service_point_display_number: string|null, service_point_type: string, area_name: string|null, short_code: string}
-     */
+    /** @var array<string, mixed> */
     #[Locked]
-    public array $landing = [
-        'organization_name' => '',
-        'brand_name' => '',
-        'brand_initial' => '',
-        'branch_id' => 0,
-        'branch_name' => '',
-        'branch_city' => '',
-        'branch_country' => '',
-        'branch_address' => '',
-        'branch_currency' => 'EUR',
-        'default_language' => 'en',
-        'default_language_label' => 'English',
-        'default_currency' => 'EUR',
-        'polling_interval_seconds' => 1,
-        'venue_name' => '',
-        'public_description' => '',
-        'logo_url' => null,
-        'cover_image_url' => null,
-        'phone' => null,
-        'email' => null,
-        'website_url' => null,
-        'instagram_url' => null,
-        'facebook_url' => null,
-        'tiktok_url' => null,
-        'has_contact_details' => false,
-        'opening_status_label' => '',
-        'opening_status_detail' => '',
-        'opening_status_tone' => 'muted',
-        'can_accept_orders' => true,
-        'service_point_name' => '',
-        'service_point_display_number' => null,
-        'service_point_type' => '',
-        'area_name' => null,
-        'short_code' => '',
-    ];
+    public array $landing = [];
 
     public function boot(
-        GetGuestMenuForBranchAction $getGuestMenuForBranch,
-        GetBranchOpeningStatusAction $getBranchOpeningStatus,
-        GetBranchPollingIntervalAction $getBranchPollingInterval,
+        BuildGuestEntryContextAction $buildGuestEntryContext,
+        ExpireTableSessionJoinRequestAction $expireJoinRequest,
         GuestEntryPresenter $presenter,
     ): void {
-        $this->getGuestMenuForBranch = $getGuestMenuForBranch;
-        $this->getBranchOpeningStatus = $getBranchOpeningStatus;
-        $this->getBranchPollingInterval = $getBranchPollingInterval;
+        $this->buildGuestEntryContext = $buildGuestEntryContext;
+        $this->expireJoinRequest = $expireJoinRequest;
         $this->presenter = $presenter;
     }
 
@@ -147,139 +103,35 @@ class GuestEntry extends Component
         $this->token = $token;
         $this->setCurrentInviteToken($this->inviteTokenFromRequest());
         $requestedLanguage = request()->query('lang');
-        $hasRequestedLanguage = is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage);
-        $this->language = $hasRequestedLanguage
+        $hasQueryLanguage = is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage);
+        $hasComponentLanguage = SupportedLocale::isSupported($language);
+        $hasRequestedLanguage = $hasQueryLanguage || $hasComponentLanguage;
+        $this->language = $hasQueryLanguage
             ? SupportedLocale::normalize($requestedLanguage)
             : SupportedLocale::normalize($language, App::currentLocale());
         $this->applyGuestLocale();
 
-        $qrCode = $this->findQrCode($token);
-
-        if (! $qrCode instanceof QrCode) {
-            $this->showError(
-                state: 'not_found',
-                title: __('qr.errors.not_found.title'),
-                message: __('qr.errors.not_found.description'),
-            );
-
-            return;
-        }
-
-        if ($qrCode->status === QrCodeStatus::Disabled) {
-            $this->showError(
-                state: 'disabled',
-                title: __('qr.errors.disabled.title'),
-                message: __('qr.errors.disabled.description'),
-            );
-
-            return;
-        }
-
-        if ($qrCode->status === QrCodeStatus::Revoked) {
-            $this->showError(
-                state: 'revoked',
-                title: __('qr.errors.revoked.title'),
-                message: __('qr.errors.revoked.description'),
-            );
-
-            return;
-        }
-
-        $servicePoint = $qrCode->servicePoint;
-
-        if (! $servicePoint instanceof ServicePoint || ! $servicePoint->is_active) {
-            $this->showError(
-                state: 'inactive_service_point',
-                title: __('qr.errors.service_point_unavailable.title'),
-                message: __('qr.errors.service_point_unavailable.description'),
-            );
-
-            return;
-        }
-
-        $branch = $servicePoint->branch;
-        $brand = $branch->brand;
-        $organization = $branch->organization;
-
-        if ($organization->subscription?->status === OrganizationSubscriptionStatus::Inactive) {
-            $this->showError(
-                state: 'restaurant_unavailable',
-                title: __('guest.table.restaurant_unavailable_title'),
-                message: __('guest.table.restaurant_unavailable_message'),
-            );
-
-            return;
-        }
-
-        $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch(
-            $branch->id,
-            $hasRequestedLanguage ? $this->language : null,
+        $context = $this->buildGuestEntryContext->handle(
+            $token,
+            $this->language,
+            $hasRequestedLanguage,
+            $this->hasCurrentInviteToken,
         );
+
+        $this->state = $context['state'];
+        $this->title = $context['title'];
+        $this->message = $context['message'];
+        $this->language = $context['language'];
+
+        if (is_array($context['landing'])) {
+            $this->landing = $context['landing'];
+        }
+
         $this->applyGuestLocale();
 
-        $branchSettingsRelation = $branch->getRelation('settings');
-        $branchSettings = $branchSettingsRelation instanceof BranchSetting ? $branchSettingsRelation : null;
-        $openingStatus = $this->getBranchOpeningStatus->handle($branch);
-        $defaultLanguage = SupportedLocale::normalize($branchSettings?->default_language);
-        $defaultCurrency = SupportedCurrency::normalize(
-            $branchSettings instanceof BranchSetting ? $branchSettings->default_currency : $branch->currency,
-        );
-        $languageLabels = SupportedLocale::labels();
-        $venueName = $branch->publicDisplayName();
-        $publicDescription = filled($branch->public_description)
-            ? (string) $branch->public_description
-            : __('guest.table.restaurant_description_placeholder');
-        $logoUrl = $branch->logoUrl() ?? $brand->logoUrl() ?? $organization->logoUrl();
-        $contactLinks = [
-            'phone' => $this->nullableLandingString($branch->phone),
-            'email' => $this->nullableLandingString($branch->email),
-            'website_url' => $this->nullableLandingString($branch->website_url),
-            'instagram_url' => $this->nullableLandingString($branch->instagram_url),
-            'facebook_url' => $this->nullableLandingString($branch->facebook_url),
-            'tiktok_url' => $this->nullableLandingString($branch->tiktok_url),
-        ];
-
-        $this->state = 'ready';
-        $this->message = ! $this->hasCurrentInviteToken
-            ? __('guest.table.enter_name')
-            : __('guest.table.invite_request_name');
-        $this->landing = [
-            'organization_name' => $organization->name,
-            'brand_name' => $brand->name,
-            'brand_initial' => str($brand->name)->substr(0, 1)->upper()->toString(),
-            'branch_id' => $branch->id,
-            'branch_name' => $branch->name,
-            'branch_city' => $branch->city,
-            'branch_country' => $branch->country,
-            'branch_address' => (string) $branch->address,
-            'branch_currency' => $defaultCurrency,
-            'default_language' => $defaultLanguage,
-            'default_language_label' => $languageLabels[$defaultLanguage] ?? $defaultLanguage,
-            'default_currency' => $defaultCurrency,
-            'polling_interval_seconds' => $this->getBranchPollingInterval->handle($branch->id),
-            'venue_name' => $venueName,
-            'public_description' => $publicDescription,
-            'logo_url' => $logoUrl,
-            'cover_image_url' => $branch->coverImageUrl(),
-            'phone' => $contactLinks['phone'],
-            'email' => $contactLinks['email'],
-            'website_url' => $contactLinks['website_url'],
-            'instagram_url' => $contactLinks['instagram_url'],
-            'facebook_url' => $contactLinks['facebook_url'],
-            'tiktok_url' => $contactLinks['tiktok_url'],
-            'has_contact_details' => collect($contactLinks)->filter()->isNotEmpty(),
-            'opening_status_label' => $openingStatus['label'],
-            'opening_status_detail' => $openingStatus['detail'],
-            'opening_status_tone' => $openingStatus['tone'],
-            'can_accept_orders' => $openingStatus['can_accept_orders'],
-            'service_point_name' => $servicePoint->name,
-            'service_point_display_number' => $servicePoint->display_number,
-            'service_point_type' => $servicePoint->type->label(),
-            'area_name' => $servicePoint->areaNode?->name,
-            'short_code' => $qrCode->short_code,
-        ];
-
-        $this->restoreGuestFromCookie($qrCode);
+        if ($context['qr_code'] instanceof QrCode) {
+            $this->restoreGuestFromCookie($context['qr_code']);
+        }
     }
 
     public function updatedGuestName(): void
@@ -334,7 +186,7 @@ class GuestEntry extends Component
         $this->preparedGuestName = str($validated['guestName'])->squish()->toString();
         $this->guestName = $this->preparedGuestName;
 
-        $qrCode = $this->findQrCode($this->token);
+        $qrCode = $this->buildGuestEntryContext->findQrCode($this->token);
 
         if (! $qrCode instanceof QrCode || $qrCode->status !== QrCodeStatus::Active) {
             $this->showError(
@@ -390,10 +242,10 @@ class GuestEntry extends Component
         $this->currentJoinRequestId = $joinRequest instanceof TableSessionJoinRequest ? $joinRequest->id : null;
         $this->guestCanAddItems = $guest instanceof TableSessionGuest
             && $tableSession instanceof TableSession
-            && $this->canGuestAddItems($guest, $tableSession);
+            && $this->presenter->guestCanAddItems($guest, $tableSession, (bool) ($this->landing['can_accept_orders'] ?? false));
         $this->guestCanViewTable = $guest instanceof TableSessionGuest
             && $tableSession instanceof TableSession
-            && $this->canGuestViewTable($guest, $tableSession);
+            && $this->presenter->guestCanViewTable($guest, $tableSession);
 
         if ($tableSession instanceof TableSession) {
             $this->syncLandingServicePointFromTableSession($tableSession);
@@ -464,8 +316,8 @@ class GuestEntry extends Component
             $this->currentTableSessionId = $tableSession->id;
             $this->currentGuestId = $guest->id;
             $this->currentJoinRequestId = null;
-            $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
-            $this->guestCanViewTable = $this->canGuestViewTable($guest, $tableSession);
+            $this->guestCanAddItems = $this->presenter->guestCanAddItems($guest, $tableSession, (bool) ($this->landing['can_accept_orders'] ?? false));
+            $this->guestCanViewTable = $this->presenter->guestCanViewTable($guest, $tableSession);
             $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
             $this->entryMessage = $this->presenter->messageForGuestAccess($guest, $tableSession);
             $this->entryIssueCode = $this->presenter->guestAccessIssueCode($guest, $tableSession);
@@ -474,7 +326,7 @@ class GuestEntry extends Component
             return;
         }
 
-        if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending || $this->joinRequestIsExpired($joinRequest)) {
+        if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending || $this->presenter->joinRequestIsExpired($joinRequest)) {
             $this->entryState = 'join_request_blocked';
             $this->entryIssueCode = $this->presenter->joinRequestAccessIssueCode($joinRequest);
             $this->guestCanAddItems = false;
@@ -501,91 +353,6 @@ class GuestEntry extends Component
                 $this->currentPublicQrUrl(withoutInvite: true),
             ),
         ]);
-    }
-
-    private function findQrCode(string $token): ?QrCode
-    {
-        return QrCode::query()
-            ->select([
-                'id',
-                'service_point_id',
-                'public_token',
-                'short_code',
-                'status',
-                'created_at',
-                'updated_at',
-            ])
-            ->with([
-                'servicePoint' => fn ($query) => $query
-                    ->select([
-                        'id',
-                        'branch_id',
-                        'area_node_id',
-                        'type',
-                        'name',
-                        'display_number',
-                        'is_active',
-                    ])
-                    ->with([
-                        'areaNode' => fn ($query) => $query->select([
-                            'id',
-                            'branch_id',
-                            'name',
-                        ]),
-                        'branch' => fn ($query) => $query
-                            ->select([
-                                'id',
-                                'organization_id',
-                                'brand_id',
-                                'name',
-                                'public_name',
-                                'public_description',
-                                'logo_path',
-                                'cover_image_path',
-                                'address',
-                                'phone',
-                                'email',
-                                'website_url',
-                                'instagram_url',
-                                'facebook_url',
-                                'tiktok_url',
-                                'city',
-                                'country',
-                                'timezone',
-                                'currency',
-                                'is_temporarily_closed',
-                                'temporary_closed_reason',
-                                'temporary_closed_until',
-                            ])
-                            ->with([
-                                'settings' => fn ($query) => $query->select([
-                                    'id',
-                                    'branch_id',
-                                    'default_language',
-                                    'default_currency',
-                                ]),
-                                'brand' => fn ($query) => $query->select([
-                                    'id',
-                                    'organization_id',
-                                    'name',
-                                    'logo_path',
-                                ]),
-                                'organization' => fn ($query) => $query->select([
-                                    'id',
-                                    'name',
-                                    'logo_path',
-                                ])->with([
-                                    'subscription' => fn ($query) => $query->select([
-                                        'id',
-                                        'organization_id',
-                                        'status',
-                                    ]),
-                                ]),
-                            ]),
-                    ]),
-            ])
-            ->where('public_token', $token)
-            ->first();
     }
 
     private function restoreGuestFromCookie(QrCode $qrCode): void
@@ -616,8 +383,8 @@ class GuestEntry extends Component
         $this->preparedGuestName = $guest->guest_name;
         $this->currentGuestId = $guest->id;
         $this->currentTableSessionId = $tableSession->id;
-        $this->guestCanAddItems = $this->canGuestAddItems($guest, $tableSession);
-        $this->guestCanViewTable = $this->canGuestViewTable($guest, $tableSession);
+        $this->guestCanAddItems = $this->presenter->guestCanAddItems($guest, $tableSession, (bool) ($this->landing['can_accept_orders'] ?? false));
+        $this->guestCanViewTable = $this->presenter->guestCanViewTable($guest, $tableSession);
         $this->entryState = $this->guestCanViewTable ? 'guest_restored' : 'guest_blocked';
         $this->entryMessage = $this->presenter->messageForGuestAccess($guest, $tableSession);
         $this->entryIssueCode = $this->presenter->guestAccessIssueCode($guest, $tableSession);
@@ -996,15 +763,6 @@ class GuestEntry extends Component
         $this->entryIssueCode = '';
     }
 
-    private function nullableLandingString(mixed $value): ?string
-    {
-        if (! is_string($value) || blank($value)) {
-            return null;
-        }
-
-        return $value;
-    }
-
     private function inviteTokenFromRequest(): ?string
     {
         $inviteToken = request()->query('invite');
@@ -1147,43 +905,13 @@ class GuestEntry extends Component
         }
     }
 
-    private function canGuestAddItems(TableSessionGuest $guest, TableSession $tableSession): bool
-    {
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
-            return false;
-        }
-
-        return $guest->status === TableSessionGuestStatus::Active
-            && (bool) $this->landing['can_accept_orders'];
-    }
-
-    private function canGuestViewTable(TableSessionGuest $guest, TableSession $tableSession): bool
-    {
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
-            return false;
-        }
-
-        return $guest->status === TableSessionGuestStatus::Active;
-    }
-
-    private function joinRequestIsExpired(TableSessionJoinRequest $joinRequest): bool
-    {
-        return $joinRequest->status === TableSessionJoinRequestStatus::Pending
-            && $joinRequest->expires_at !== null
-            && $joinRequest->expires_at->isPast();
-    }
-
     private function expireJoinRequestIfNeeded(TableSessionJoinRequest $joinRequest): TableSessionJoinRequest
     {
-        if (! $this->joinRequestIsExpired($joinRequest)) {
+        if (! $this->presenter->joinRequestIsExpired($joinRequest)) {
             return $joinRequest;
         }
 
-        $joinRequest
-            ->forceFill(['status' => TableSessionJoinRequestStatus::Expired])
-            ->save();
-
-        return $joinRequest->refresh();
+        return $this->expireJoinRequest->handle($joinRequest);
     }
 
     private function currentPublicQrUrl(bool $withoutInvite = false): string
@@ -1210,4 +938,3 @@ class GuestEntry extends Component
         session()->put('interface_locale', $this->language);
     }
 }
-

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
+use App\Actions\KitchenDepartments\CreateKitchenDepartmentAction;
+use App\Actions\KitchenDepartments\DeleteKitchenDepartmentAction;
+use App\Actions\KitchenDepartments\SetKitchenDepartmentActiveAction;
+use App\Actions\KitchenDepartments\UpdateKitchenDepartmentAction;
 use App\Enums\KitchenDepartmentType;
 use App\Models\KitchenDepartment;
 use App\Support\Validation\RestaurantValidationRules;
@@ -14,6 +18,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
+/** @property-read EloquentCollection<int, KitchenDepartment> $departments */
 class KitchenDepartments extends BranchMenuComponent
 {
     public string $departmentName = '';
@@ -40,13 +45,13 @@ class KitchenDepartments extends BranchMenuComponent
         $this->authorizeBranchAbility('manageMenu');
     }
 
-    public function createKitchenDepartment(): void
+    public function createKitchenDepartment(CreateKitchenDepartmentAction $createDepartment): void
     {
         $this->authorizeBranchAbility('manageMenu');
         $this->departmentName = trim($this->departmentName);
         $validated = $this->validate($this->rulesForDepartment());
 
-        $this->branch->kitchenDepartments()->create([
+        $createDepartment->handle($this->branch, [
             'type' => $validated['departmentType'],
             'name' => $validated['departmentName'],
             'sort_order' => (int) $validated['departmentSortOrder'],
@@ -79,7 +84,7 @@ class KitchenDepartments extends BranchMenuComponent
         $this->editingDepartmentIsActive = true;
     }
 
-    public function updateKitchenDepartment(): void
+    public function updateKitchenDepartment(UpdateKitchenDepartmentAction $updateDepartment): void
     {
         $this->authorizeBranchAbility('manageMenu');
 
@@ -90,7 +95,7 @@ class KitchenDepartments extends BranchMenuComponent
         $this->editingDepartmentName = trim($this->editingDepartmentName);
         $validated = $this->validate($this->rulesForDepartment('editing'));
 
-        $this->findDepartment($this->editingDepartmentId)->update([
+        $updateDepartment->handle($this->findDepartment($this->editingDepartmentId), [
             'type' => $validated['editingDepartmentType'],
             'name' => $validated['editingDepartmentName'],
             'sort_order' => (int) $validated['editingDepartmentSortOrder'],
@@ -103,19 +108,19 @@ class KitchenDepartments extends BranchMenuComponent
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_upd'));
     }
 
-    public function setKitchenDepartmentActive(int $departmentId, bool $isActive): void
+    public function setKitchenDepartmentActive(int $departmentId, bool $isActive, SetKitchenDepartmentActiveAction $setActive): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $this->findDepartment($departmentId)->update(['is_active' => $isActive]);
+        $setActive->handle($this->findDepartment($departmentId), $isActive);
         $this->refreshDepartments();
         $this->notifySiblings();
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.kitchen_department_upd'));
     }
 
-    public function deleteKitchenDepartment(int $departmentId): void
+    public function deleteKitchenDepartment(int $departmentId, DeleteKitchenDepartmentAction $deleteDepartment): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $this->findDepartment($departmentId)->delete();
+        $deleteDepartment->handle($this->findDepartment($departmentId));
         $this->cancelKitchenDepartmentEditing();
         $this->refreshDepartments();
         $this->notifySiblings();

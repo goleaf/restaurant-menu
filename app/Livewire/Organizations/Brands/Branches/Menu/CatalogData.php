@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
+use App\Enums\MenuAllergen;
+use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuStatus;
 use App\Models\Branch;
 use App\Models\KitchenDepartment;
@@ -32,6 +34,8 @@ final readonly class CatalogData
             'menuRows' => $menus->map(fn (Menu $menu): array => $this->presentMenu($menu, $branch))->all(),
             'menuStatusOptions' => MenuStatus::options(),
             'iconOptions' => self::iconOptions(),
+            'allergenOptions' => MenuAllergen::options(),
+            'dietaryLabelOptions' => MenuDietaryLabel::options(),
             'menuOptions' => $menus->map(fn (Menu $menu): array => [
                 'value' => (string) $menu->id,
                 'label' => $menu->name,
@@ -61,6 +65,70 @@ final readonly class CatalogData
         ];
     }
 
+    public static function supportedCategoryIcon(?string $icon): string
+    {
+        return array_key_exists((string) $icon, self::iconOptions()) ? (string) $icon : 'bookmark';
+    }
+
+    public function findBranchMenu(Branch $branch, int $menuId): Menu
+    {
+        return $branch->menus()
+            ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
+            ->whereKey($menuId)
+            ->firstOrFail();
+    }
+
+    public function findBranchCategory(int $branchId, int $categoryId): MenuCategory
+    {
+        return MenuCategory::query()
+            ->select(['id', 'menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($categoryId)
+            ->firstOrFail();
+    }
+
+    public function findBranchMenuSchedule(int $branchId, int $scheduleId): MenuAvailabilitySchedule
+    {
+        return MenuAvailabilitySchedule::query()
+            ->select(['id', 'menu_id', 'day_of_week', 'starts_at', 'ends_at', 'created_at', 'updated_at'])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($scheduleId)
+            ->firstOrFail();
+    }
+
+    public function findMenuCategory(Menu $menu, int $categoryId): MenuCategory
+    {
+        return $menu->categories()
+            ->select(['id', 'menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+            ->whereKey($categoryId)
+            ->firstOrFail();
+    }
+
+    public function findBranchItem(int $branchId, int $itemId): MenuItem
+    {
+        return MenuItem::query()
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($itemId)
+            ->firstOrFail();
+    }
+
+    public function firstCategoryIdForMenu(Branch $branch, string $menuId): string
+    {
+        if ($menuId === '') {
+            return '';
+        }
+
+        $categoryId = MenuCategory::query()
+            ->select('menu_categories.id')
+            ->where('menu_id', (int) $menuId)
+            ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
+            ->oldest('sort_order')->oldest('name')->oldest('id')
+            ->value('menu_categories.id');
+
+        return is_int($categoryId) ? (string) $categoryId : '';
+    }
+
     /**
      * @return EloquentCollection<int, Menu>
      */
@@ -76,7 +144,7 @@ final readonly class CatalogData
                     ->select(['id', 'menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active', 'created_at', 'updated_at'])
                     ->orderBy('sort_order')->orderBy('name')->orderBy('id'),
                 'items' => fn ($query) => $query
-                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'created_at', 'updated_at'])
                     ->with([
                         'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name', 'is_active']),
                         'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'type', 'name', 'is_active']),
@@ -205,7 +273,9 @@ final readonly class CatalogData
             'department_name' => $department?->name,
             'is_available' => $item->is_available,
             'description' => $item->description,
-            'formatted_price' => MoneyFormatter::format($item->price, $branch->currency),
+            'formatted_price' => MoneyFormatter::formatCents($item->price_cents, $branch->currency),
+            'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options()),
+            'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options()),
             'sort_order' => $item->sort_order,
             'weight' => $item->weight ?? '—',
             'volume' => $item->volume ?? '—',
@@ -214,5 +284,18 @@ final readonly class CatalogData
                 fn (ModifierGroup $group): array => ['id' => $group->id, 'name' => $group->name],
             )->all(),
         ];
+    }
+
+    /**
+     * @param  list<string>  $selectedValues
+     * @param  list<array{value: string, label: string}>  $options
+     * @return list<array{value: string, label: string}>
+     */
+    private function selectedLabelOptions(array $selectedValues, array $options): array
+    {
+        return array_values(array_filter(
+            $options,
+            fn (array $option): bool => in_array($option['value'], $selectedValues, true),
+        ));
     }
 }

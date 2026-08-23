@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Support\MoneyFormatter;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -94,14 +95,14 @@ class StreamBranchCsvExportAction
                 'status',
                 'confirmed_by_user_id',
                 'confirmed_at',
-                'total_price',
+                'total_price_cents',
                 'currency',
                 'created_at',
             ])
             ->with([
                 'servicePoint:id,name,display_number,internal_code',
                 'confirmedByUser:id,name,email',
-                'items:id,order_id,guest_name,guest_name_snapshot,item_name,item_name_snapshot,quantity,total_price',
+                'items:id,order_id,guest_name,guest_name_snapshot,item_name,item_name_snapshot,quantity,total_price_cents,cancelled_at,cancellation_reason',
             ])
             ->where('branch_id', $branch->id)
             ->when($startedAt instanceof CarbonInterface && $endedAt instanceof CarbonInterface, function ($query) use ($startedAt, $endedAt): void {
@@ -117,7 +118,7 @@ class StreamBranchCsvExportAction
                         $order->table_session_id,
                         $this->dateValue($order->confirmed_at),
                         $order->confirmed_by_user_id === null ? '' : $order->confirmedByUser->name,
-                        $order->total_price,
+                        MoneyFormatter::centsToDecimal($order->total_price_cents),
                         $order->currency,
                         $this->orderItemsSummary($order->items),
                         $this->dateValue($order->created_at),
@@ -155,7 +156,7 @@ class StreamBranchCsvExportAction
                 'recorded_by_user_id',
                 'scope',
                 'payment_method',
-                'amount',
+                'amount_cents',
                 'currency',
                 'guest_name',
                 'note',
@@ -180,7 +181,7 @@ class StreamBranchCsvExportAction
                         $payment->table_session_id,
                         $payment->guest_name ?? '',
                         $payment->recorded_by_user_id === null ? '' : $payment->recordedBy->name,
-                        $payment->amount,
+                        MoneyFormatter::centsToDecimal($payment->amount_cents),
                         $payment->currency,
                         $this->dateValue($payment->paid_at),
                         $payment->note ?? '',
@@ -221,7 +222,7 @@ class StreamBranchCsvExportAction
                 'kitchen_department_id',
                 'name',
                 'description',
-                'price',
+                'price_cents',
                 'weight',
                 'volume',
                 'calories',
@@ -249,7 +250,7 @@ class StreamBranchCsvExportAction
                         $item->id,
                         $item->name,
                         $item->description ?? '',
-                        $item->price,
+                        MoneyFormatter::centsToDecimal($item->price_cents),
                         $item->kitchen_department_id === null ? '' : $item->kitchenDepartment->name,
                         $item->weight ?? '',
                         $item->volume ?? '',
@@ -401,8 +402,13 @@ class StreamBranchCsvExportAction
             ->map(function (OrderItem $item): string {
                 $guestName = $item->historicalGuestName();
                 $guest = filled($guestName) ? $guestName.': ' : '';
+                $cancellation = $item->isCancelled()
+                    ? ' ['.__('reports.csv.cancelled_order_item', [
+                        'reason' => $item->cancellation_reason,
+                    ]).']'
+                    : '';
 
-                return $guest.$item->historicalItemName().' x'.$item->quantity.' = '.$item->total_price;
+                return $guest.$item->historicalItemName().' x'.$item->quantity.' = '.MoneyFormatter::centsToDecimal($item->total_price_cents).$cancellation;
             })
             ->implode('; ');
     }

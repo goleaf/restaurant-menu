@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum AuditLogAction: string
@@ -15,6 +17,8 @@ enum AuditLogAction: string
     case BranchSuspended = 'branch_suspended';
     case OrganizationSubscriptionChanged = 'organization_subscription_changed';
     case BackupDownloaded = 'backup_downloaded';
+    case MediaBackupDownloaded = 'media_backup_downloaded';
+    case BackupRestored = 'backup_restored';
     case DraftOrderEditedByWaiter = 'draft_order_edited_by_waiter';
     case OrderConfirmed = 'order_confirmed';
     case DraftOrderRejected = 'draft_order_rejected';
@@ -41,6 +45,8 @@ enum AuditLogAction: string
             self::BranchSuspended => 'Branch suspended',
             self::OrganizationSubscriptionChanged => 'Organization subscription changed',
             self::BackupDownloaded => 'Backup downloaded',
+            self::MediaBackupDownloaded => __('audit.actions.media_backup_downloaded'),
+            self::BackupRestored => 'Backup restored',
             self::DraftOrderEditedByWaiter => 'Waiter draft edited',
             self::OrderConfirmed => 'Order confirmed',
             self::DraftOrderRejected => 'Draft order rejected',

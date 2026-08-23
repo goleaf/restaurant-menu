@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
@@ -9,6 +10,8 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\DraftReview;
+use App\Livewire\Waiter\TableDetail\OrderFulfilment;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
@@ -24,6 +27,7 @@ use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
@@ -63,18 +67,31 @@ test('waiter sees table detail with guests positions modifiers comments and tota
         ->assertSee('No garlic')
         ->assertSee('Pizza size: Large')
         ->assertSee('Water')
-        ->assertSee('22.50 EUR')
-        ->assertSet('table.guest_sections.0.guest_name', 'Ana')
-        ->assertSet('table.guest_sections.0.total', '10.00 EUR')
-        ->assertSet('table.guest_sections.1.guest_name', 'Zara')
-        ->assertSet('table.guest_sections.1.total', '12.50 EUR')
-        ->assertSet('table.draft.id', $draftOrder->id)
-        ->assertSet('table.draft.sent_by_guest_name', $ana->guest_name);
+        ->assertSee('22.50 EUR');
+
+    $draftReviewComponent = Livewire::actingAs($waiter)
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('draftReview.guest_sections.0.guest_name', 'Ana')
+        ->assertSet('draftReview.guest_sections.0.total', '10.00 EUR')
+        ->assertSet('draftReview.guest_sections.1.guest_name', 'Zara')
+        ->assertSet('draftReview.guest_sections.1.total', '12.50 EUR')
+        ->assertSet('draftReview.draft.id', $draftOrder->id)
+        ->assertSet('draftReview.draft.sent_by_guest_name', $ana->guest_name)
+        ->assertSee('id="waiter-draft-adding-comment"', false)
+        ->assertSee('name="addingComment"', false)
+        ->assertSee('id="waiter-draft-rejection-reason"', false)
+        ->assertSee('name="rejectionReason"', false);
+
+    $draftReviewComponent
+        ->call('editDraftItem', $draftOrder->items()->firstOrFail()->id)
+        ->assertSee('id="waiter-draft-editing-comment"', false)
+        ->assertSee('name="editingComment"', false);
 
     $this->actingAs($waiter)
         ->get(route('restaurant.waiter.tables.show', $tableSession))
         ->assertOk()
-        ->assertSee('wire:poll.visible.1s="refreshTable"', false)
+        ->assertSee('wire:poll.visible.1s="refreshDraftReview"', false)
+        ->assertSee('wire:poll.visible.1s="refreshOrderFulfilment"', false)
         ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
         ->assertSeeText('22.50 EUR');
 });
@@ -121,8 +138,8 @@ test('waiter table detail refresh shows newly added draft item without websocket
     [$ana, , $draftOrder] = createPrompt53Draft($tableSession);
 
     $component = Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
-        ->assertSee('22.50 EUR');
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('draftReview.total', '22.50 EUR');
 
     DraftOrderItem::factory()
         ->for($draftOrder, 'draftOrder')
@@ -131,19 +148,59 @@ test('waiter table detail refresh shows newly added draft item without websocket
             'menu_item_id' => null,
             'item_name' => 'Tea',
             'quantity' => 1,
-            'unit_price' => '3.00',
-            'modifier_total' => '0.00',
-            'total_price' => '3.00',
+            'unit_price_cents' => 300,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 300,
             'selected_modifiers' => [],
             'comment' => 'Warm',
         ]);
 
     $component
-        ->call('refreshTable')
+        ->call('refreshDraftReview')
         ->assertSee('Tea')
         ->assertSee('Warm')
-        ->assertSet('table.guest_sections.0.total', '13.00 EUR')
-        ->assertSet('table.total', '25.50 EUR');
+        ->assertSet('draftReview.guest_sections.0.total', '13.00 EUR')
+        ->assertSet('draftReview.total', '25.50 EUR');
+});
+
+test('unchanged polling sections do not rebuild the complete waiter table graph', function () {
+    [$organization, , , $tableSession] = createPrompt53TableDetailScenario();
+    $waiter = User::factory()->create();
+    attachPrompt53Waiter($waiter, $organization);
+
+    $this->mock(BuildWaiterTableDetailAction::class, function (MockInterface $mock): void {
+        $mock->shouldNotReceive('handle');
+    });
+
+    Livewire::actingAs($waiter)
+        ->test(DraftReview::class, [
+            'tableSessionId' => $tableSession->id,
+            'initialDraftReview' => ['manual_order' => ['can_add' => false]],
+        ])
+        ->call('refreshDraftReview')
+        ->assertOk();
+
+    Livewire::actingAs($waiter)
+        ->test(OrderFulfilment::class, [
+            'tableSessionId' => $tableSession->id,
+            'initialOrderFulfilment' => ['draft' => []],
+        ])
+        ->call('refreshOrderFulfilment')
+        ->assertOk();
+});
+
+test('payment-only access cannot invoke waiter draft mutations directly', function () {
+    [$organization, , , $tableSession] = createPrompt53TableDetailScenario();
+    $paymentViewer = User::factory()->create();
+    attachPrompt53PaymentViewer($paymentViewer, $organization);
+
+    Livewire::actingAs($paymentViewer)
+        ->test(DraftReview::class, [
+            'tableSessionId' => $tableSession->id,
+            'initialDraftReview' => ['manual_order' => ['can_add' => false]],
+        ])
+        ->call('confirmDraft')
+        ->assertForbidden();
 });
 
 function createPrompt53Branch(
@@ -216,14 +273,14 @@ function createPrompt53Draft(TableSession $tableSession): array
             'menu_item_id' => null,
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'unit_price' => '10.50',
-            'modifier_total' => '2.00',
-            'total_price' => '12.50',
+            'unit_price_cents' => 1050,
+            'modifier_total_cents' => 200,
+            'total_price_cents' => 1250,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Pizza size',
                     'option_name' => 'Large',
-                    'price_delta' => '2.00',
+                    'price_delta_cents' => 200,
                 ],
             ],
             'comment' => 'No garlic',
@@ -236,9 +293,9 @@ function createPrompt53Draft(TableSession $tableSession): array
             'menu_item_id' => null,
             'item_name' => 'Water',
             'quantity' => 1,
-            'unit_price' => '10.00',
-            'modifier_total' => '0.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1000,
             'selected_modifiers' => [],
         ]);
 
@@ -266,4 +323,32 @@ function attachPrompt53Waiter(User $user, Organization $organization): Role
     ]);
 
     return $waiterRole;
+}
+
+function attachPrompt53PaymentViewer(User $user, Organization $organization): Role
+{
+    $role = Role::query()
+        ->where('code', SystemRole::Accountant->value)
+        ->firstOrFail();
+    $viewPayments = Permission::query()
+        ->where('code', SystemPermission::ViewPayments->value)
+        ->firstOrFail();
+    $viewOrders = Permission::query()
+        ->where('code', SystemPermission::ViewOrders->value)
+        ->firstOrFail();
+
+    $role->permissions()->updateExistingPivot($viewPayments->id, ['enabled' => true]);
+    $organization->users()->syncWithoutDetachingOrFail([
+        $user->id => [
+            'role_id' => $role->id,
+            'status' => OrganizationUserStatus::Active->value,
+            'joined_at' => now(),
+            'invited_by_user_id' => null,
+        ],
+    ]);
+    $user->permissionOverrides()->syncWithoutDetaching([
+        $viewOrders->id => ['enabled' => false],
+    ]);
+
+    return $role;
 }

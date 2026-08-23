@@ -130,7 +130,7 @@ function createPrompt93CachedBranch(): Branch
         ->for($category, 'category')
         ->create([
             'name' => 'Prompt 93 Dish',
-            'price' => '9.50',
+            'price_cents' => 950,
             'is_available' => true,
         ]);
 

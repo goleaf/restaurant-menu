@@ -128,7 +128,7 @@
 
                     <label class="grid gap-1 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('payments.forms.note') }}</span>
-                        <textarea wire:model="paymentNote" rows="2" maxlength="500" class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
+                        <textarea id="waiter-payment-note" name="paymentNote" wire:model="paymentNote" rows="2" maxlength="500" class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
                     </label>
 
                     @if (data_get($payment, 'tips_enabled'))

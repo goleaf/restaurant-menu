@@ -10,7 +10,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail;
+use App\Livewire\Waiter\TableDetail\DraftReview;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -41,7 +41,7 @@ test('waiter with view orders but without confirm orders cannot confirm sent dra
     );
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertDontSee('Confirm order')
         ->call('confirmDraft')
         ->assertHasErrors('draft_review');
@@ -56,7 +56,7 @@ test('waiter can confirm sent draft into real order without sending kitchen or b
     attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Confirm order')
         ->call('confirmDraft')
         ->assertHasNoErrors()
@@ -72,7 +72,7 @@ test('waiter can confirm sent draft into real order without sending kitchen or b
         ->and($order->branch_id)->toBe($tableSession->branch_id)
         ->and($order->service_point_id)->toBe($tableSession->service_point_id)
         ->and($order->confirmed_by_user_id)->toBe($waiter->id)
-        ->and($order->total_price)->toBe('22.50')
+        ->and($order->total_price_cents)->toBe(2250)
         ->and($order->metadata['sent_to_kitchen'])->toBeFalse()
         ->and($order->metadata['sent_to_bar'])->toBeFalse()
         ->and($order->items)->toHaveCount(2)
@@ -87,7 +87,7 @@ test('waiter can reject sent draft with reason and guests see it', function () {
     attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->set('rejectionReason', 'Please remove the unavailable pizza.')
         ->call('rejectDraft')
         ->assertHasNoErrors()
@@ -127,7 +127,7 @@ test('waiter can return rejected draft to draft for guest edits', function () {
     ])->save();
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Return to draft')
         ->call('returnRejectedDraftToDraft')
         ->assertHasNoErrors()
@@ -156,7 +156,7 @@ test('waiter must provide reason before rejecting draft', function () {
     attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
-        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->set('rejectionReason', '   ')
         ->call('rejectDraft')
         ->assertHasErrors('rejectionReason');
@@ -215,14 +215,14 @@ function createPrompt54SentDraftScenario(): array
             'menu_item_id' => null,
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'unit_price' => '10.50',
-            'modifier_total' => '2.00',
-            'total_price' => '12.50',
+            'unit_price_cents' => 1050,
+            'modifier_total_cents' => 200,
+            'total_price_cents' => 1250,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Pizza size',
                     'option_name' => 'Large',
-                    'price_delta' => '2.00',
+                    'price_delta_cents' => 200,
                 ],
             ],
             'comment' => 'No garlic',
@@ -235,9 +235,9 @@ function createPrompt54SentDraftScenario(): array
             'menu_item_id' => null,
             'item_name' => 'Water',
             'quantity' => 1,
-            'unit_price' => '10.00',
-            'modifier_total' => '0.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1000,
             'selected_modifiers' => [],
         ]);
 

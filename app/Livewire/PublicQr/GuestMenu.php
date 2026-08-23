@@ -56,6 +56,8 @@ class GuestMenu extends Component
 
     public ?int $selectedItemId = null;
 
+    public ?int $selectedItemVariantId = null;
+
     /**
      * @var array<int, list<int>>
      */
@@ -123,6 +125,7 @@ class GuestMenu extends Component
 
         $this->resetValidation();
         $this->selectedItemId = $itemId;
+        $this->selectedItemVariantId = $this->defaultVariantId($item);
         $this->selectedModifierOptions = [];
         $this->itemComment = '';
 
@@ -135,6 +138,7 @@ class GuestMenu extends Component
     {
         $this->resetValidation();
         $this->selectedItemId = null;
+        $this->selectedItemVariantId = null;
         $this->selectedModifierOptions = [];
         $this->itemComment = '';
     }
@@ -212,6 +216,7 @@ class GuestMenu extends Component
         $validated = $this->validate([
             ...RestaurantValidationRules::guestComment('itemComment'),
             ...RestaurantValidationRules::selectedModifierOptions('selectedModifierOptions'),
+            'selectedItemVariantId' => ['nullable', 'integer', 'min:1'],
         ]);
         $this->itemComment = (string) ($validated['itemComment'] ?? '');
         $this->selectedModifierOptions = $validated['selectedModifierOptions'] ?? [];
@@ -233,6 +238,7 @@ class GuestMenu extends Component
                 tableSession: $tableSession,
                 guest: $guest,
                 menuItem: $menuItem,
+                menuItemVariantId: $this->selectedItemVariantId,
                 selectedModifierOptions: $this->selectedModifierOptions,
                 comment: $this->itemComment,
                 itemName: $item['name'],
@@ -245,8 +251,8 @@ class GuestMenu extends Component
 
         $this->configuredItems[$item['id']] = [
             'name' => $draftOrderItem->item_name,
-            'total_price' => MoneyFormatter::format($draftOrderItem->total_price, $this->currency),
-            'modifier_summary' => $this->selectedModifierSummary($item),
+            'total_price' => MoneyFormatter::formatCents($draftOrderItem->total_price_cents, $this->currency),
+            'modifier_summary' => $this->selectedConfigurationSummary($item),
             'comment' => $draftOrderItem->comment,
         ];
         $this->feedbackMessage = __('menu.guest.item_added');
@@ -277,7 +283,7 @@ class GuestMenu extends Component
             'availableMenuCount' => count($availableMenus),
             'unavailableMenus' => $guestMenu['unavailable_menus'] ?? [],
             'selectedItem' => $selectedItem === null ? null : $this->displayItem($selectedItem),
-            'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::format(0, $this->currency) : $this->selectedItemTotal($selectedItem),
+            'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::formatCents(0, $this->currency) : $this->selectedItemTotal($selectedItem),
         ]);
     }
 
@@ -426,14 +432,15 @@ class GuestMenu extends Component
      */
     private function selectedItemTotal(array $item): string
     {
-        $totalCents = MoneyFormatter::decimalToCents((string) $item['price']);
+        $selectedVariant = $this->selectedVariantInItem($item);
+        $totalCents = (int) ($selectedVariant['price_cents'] ?? $item['price_cents']);
 
         foreach ($item['modifier_groups'] as $modifierGroup) {
             $selectedOptionIds = $this->selectedOptionIdsForGroup((int) $modifierGroup['id'], $item);
 
             foreach ($modifierGroup['options'] as $modifierOption) {
                 if (in_array((int) $modifierOption['id'], $selectedOptionIds, true)) {
-                    $totalCents += MoneyFormatter::decimalToCents((string) $modifierOption['price_delta']);
+                    $totalCents += (int) $modifierOption['price_delta_cents'];
                 }
             }
         }
@@ -457,6 +464,22 @@ class GuestMenu extends Component
                     $summary[] = $modifierOption['name'];
                 }
             }
+        }
+
+        return $summary;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return list<string>
+     */
+    private function selectedConfigurationSummary(array $item): array
+    {
+        $summary = $this->selectedModifierSummary($item);
+        $selectedVariant = $this->selectedVariantInItem($item);
+
+        if ($selectedVariant !== null) {
+            array_unshift($summary, (string) $selectedVariant['name']);
         }
 
         return $summary;
@@ -519,13 +542,28 @@ class GuestMenu extends Component
      */
     private function displayItem(array $item): array
     {
-        $item['formatted_price'] = MoneyFormatter::format((string) $item['price'], $this->currency);
+        $item['variants'] = collect($item['variants'] ?? [])
+            ->map(function (array $variant): array {
+                $variant['formatted_price'] = MoneyFormatter::formatCents((int) $variant['price_cents'], $this->currency);
+
+                return $variant;
+            })
+            ->values()
+            ->all();
+        $lowestPriceCents = collect($item['variants'])->min('price_cents');
+        $formattedPrice = MoneyFormatter::formatCents(
+            is_numeric($lowestPriceCents) ? (int) $lowestPriceCents : (int) $item['price_cents'],
+            $this->currency,
+        );
+        $item['formatted_price'] = $item['variants'] === []
+            ? $formattedPrice
+            : __('menu.guest.from_price', ['price' => $formattedPrice]);
         $item['modifier_groups'] = collect($item['modifier_groups'])
             ->map(function (array $modifierGroup): array {
                 $modifierGroup['options'] = collect($modifierGroup['options'])
                     ->map(function (array $modifierOption): array {
-                        $modifierOption['formatted_price_delta'] = MoneyFormatter::formatSigned(
-                            (string) $modifierOption['price_delta'],
+                        $modifierOption['formatted_price_delta'] = MoneyFormatter::formatSignedCents(
+                            (int) $modifierOption['price_delta_cents'],
                             $this->currency,
                         );
 
@@ -540,6 +578,34 @@ class GuestMenu extends Component
             ->all();
 
         return $item;
+    }
+
+    /** @param array<string, mixed> $item */
+    private function defaultVariantId(array $item): ?int
+    {
+        $variants = collect($item['variants'] ?? []);
+        $variant = $variants->firstWhere('is_default', true) ?? $variants->first();
+
+        return is_array($variant) ? (int) $variant['id'] : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @return array<string, mixed>|null
+     */
+    private function selectedVariantInItem(array $item): ?array
+    {
+        if ($this->selectedItemVariantId === null) {
+            return null;
+        }
+
+        foreach ($item['variants'] ?? [] as $variant) {
+            if ((int) $variant['id'] === $this->selectedItemVariantId) {
+                return $variant;
+            }
+        }
+
+        return null;
     }
 
     private function currentTableSession(): ?TableSession

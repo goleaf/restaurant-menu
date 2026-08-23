@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Enums\KitchenDepartmentType;
@@ -26,5 +28,27 @@ class KitchenDepartmentFactory extends Factory
             'sort_order' => 0,
             'is_active' => true,
         ];
+    }
+
+    public function forType(KitchenDepartmentType $type): static
+    {
+        return $this->state(fn (): array => [
+            'type' => $type,
+            'name' => $type->label(),
+        ]);
+    }
+
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => true,
+        ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
+        ]);
     }
 }

@@ -42,7 +42,7 @@ class BranchSettingFactory extends Factory
                 'default_language' => 'en',
                 'default_currency' => $branch->currency,
                 'service_charge_enabled' => false,
-                'service_charge_percent' => '0.00',
+                'service_charge_basis_points' => 0,
                 'tips_enabled' => false,
                 'order_flow_mode' => BranchOrderFlowMode::WaiterConfirmation->value,
                 'service_modes' => BranchServiceMode::defaultValues(),

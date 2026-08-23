@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Restaurant;
 
+use App\Models\Branch;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Validator;
 
 class DownloadBranchCsvExportRequest extends FormRequest
@@ -19,7 +22,12 @@ class DownloadBranchCsvExportRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+        $branch = $this->route('branch');
+
+        return $user instanceof User
+            && $branch instanceof Branch
+            && Gate::forUser($user)->allows('export', $branch);
     }
 
     /**

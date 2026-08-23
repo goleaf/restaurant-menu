@@ -134,11 +134,17 @@ class PrintTemplate extends Component
                 $this->servicePoint,
                 $this->qrCode,
             ]),
+            'pdfDownloadUrl' => route('organizations.brands.branches.qr.pdf', [
+                $this->organization,
+                $this->brand,
+                $this->branch,
+            ]),
             'presetOptions' => $this->presetOptions(),
             'selectedPresetCssClass' => $selectedPreset->cssClass(),
             'selectedPresetValue' => $selectedPreset->value,
             'restaurantLogoUrl' => $this->restaurantLogoUrl(),
             'brandName' => $this->brand->name,
+            'servicePointId' => $this->servicePoint->id,
             'qrImageDataUri' => $this->qrImageDataUri(),
             'qrShortCode' => $this->qrCode->short_code,
             'tableLabel' => $this->tableLabel(),
@@ -161,7 +167,7 @@ class PrintTemplate extends Component
 
     private function authorizeQrManagement(): void
     {
-        Gate::forUser($this->currentUser())->authorize('generateQr', $this->branch);
+        Gate::forUser($this->currentUser())->authorize('print', $this->qrCode);
     }
 
     private function reloadPrintContext(): void

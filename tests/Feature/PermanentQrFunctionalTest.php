@@ -3,6 +3,7 @@
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointType;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\AreaNode;
 use App\Models\Branch;
@@ -153,7 +154,9 @@ test('disabled and revoked qr codes show friendly errors and revoked qr does not
         ->assertDontSeeText($revokedServicePoint->name);
 
     Livewire::test(PublicQrShow::class, ['token' => $revokedQrCode->public_token])
-        ->assertSet('state', 'revoked')
+        ->assertSet('state', 'revoked');
+
+    Livewire::test(GuestEntry::class, ['token' => $revokedQrCode->public_token])
         ->set('guestName', 'Ana')
         ->call('enterTable')
         ->assertSet('state', 'revoked');

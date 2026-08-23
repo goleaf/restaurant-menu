@@ -13,17 +13,14 @@ final class Money extends Component
     public readonly string $displayAmount;
 
     public function __construct(
-        int|float|string|null $amount = 0,
+        int $cents = 0,
         public readonly ?string $currency = null,
         bool $signed = false,
-        bool $cents = false,
         public readonly ?string $label = null,
     ) {
-        $this->displayAmount = match (true) {
-            $cents => MoneyFormatter::formatCents((int) $amount, $currency),
-            $signed => MoneyFormatter::formatSigned($amount, $currency),
-            default => MoneyFormatter::format($amount, $currency),
-        };
+        $this->displayAmount = $signed
+            ? MoneyFormatter::formatSignedCents($cents, $currency)
+            : MoneyFormatter::formatCents($cents, $currency);
     }
 
     public function render(): View

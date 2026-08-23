@@ -2,13 +2,14 @@
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\PublicQr\DraftOrder as DraftOrderComponent;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
-use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -19,6 +20,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
@@ -38,7 +40,7 @@ test('active guest sees active branch menu on guest table page', function () {
     Storage::disk('public')->put((string) $availableItem->image, 'image');
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('guestCanAddItems', true)
         ->assertSee('data-component="guest-draft-order"', false)
         ->assertSee('data-component="guest-menu"', false)
@@ -111,10 +113,10 @@ test('guest menu component uses cached active menu payload', function () {
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 
     $action->handle($branch->id);
-    $availableItem->update(['price' => '18.75']);
+    $availableItem->update(['price_cents' => 1875]);
 
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
-        ->and($action->handle($branch->id)['categories'][0]['items'][0]['price'])->toBe('18.75');
+        ->and($action->handle($branch->id)['categories'][0]['items'][0]['price_cents'])->toBe(1875);
 
     Livewire::test(GuestMenu::class, [
         'branchId' => $branch->id,
@@ -198,6 +200,53 @@ test('guest menu uses selected language translations with default fallback', fun
         ->and($unavailableItem->name)->toBe('Truffle pizza');
 });
 
+test('guest menu exposes localized allergen and dietary labels with a safety notice', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $availableItem->update([
+        'allergens' => ['gluten', 'milk'],
+        'dietary_labels' => ['vegetarian'],
+    ]);
+
+    $action = app(GetGuestMenuForBranchAction::class);
+    $payload = $action->handle($branch->id, 'en');
+    $itemPayload = $payload['categories'][0]['items'][0];
+
+    expect($itemPayload['allergens'])->toBe([
+        ['value' => 'gluten', 'label' => 'Gluten-containing cereals'],
+        ['value' => 'milk', 'label' => 'Milk'],
+    ])->and($itemPayload['dietary_labels'])->toBe([
+        ['value' => 'vegetarian', 'label' => 'Vegetarian'],
+    ])->and($action->handle($branch->id, 'lt')['categories'][0]['items'][0]['allergens'])->toBe([
+        ['value' => 'gluten', 'label' => 'Glitimo turintys javai'],
+        ['value' => 'milk', 'label' => 'Pienas'],
+    ])->and($action->handle($branch->id, 'ru')['categories'][0]['items'][0]['dietary_labels'])->toBe([
+        ['value' => 'vegetarian', 'label' => 'Вегетарианское'],
+    ]);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+    ])
+        ->assertSeeText('Allergens')
+        ->assertSeeText('Gluten')
+        ->assertSeeText('Milk')
+        ->assertSeeText('Vegetarian')
+        ->assertSeeText('Tell staff about severe allergies. Labels do not guarantee the absence of traces or cross-contact.')
+        ->set('language', 'lt')
+        ->assertSeeText('Alergenai')
+        ->assertSeeText('Glitimo turintys javai')
+        ->assertSeeText('Pienas')
+        ->assertSeeText('Vegetariškas')
+        ->assertSeeText('Jei alergija sunki, informuokite darbuotojus. Žymos negarantuoja, kad nėra pėdsakų ar kryžminio kontakto.')
+        ->set('language', 'ru')
+        ->assertSeeText('Аллергены')
+        ->assertSeeText('Злаки, содержащие глютен')
+        ->assertSeeText('Молоко')
+        ->assertSeeText('Вегетарианское')
+        ->assertSeeText('При тяжёлой аллергии сообщите персоналу. Метки не гарантируют отсутствие следов или перекрёстного контакта.');
+});
+
 test('guest menu starts with branch default language', function () {
     [, $branch] = createGuestMenuDisplayContext('lt');
     [, $category, $availableItem] = createGuestMenuRows($branch);
@@ -244,10 +293,10 @@ test('guest menu exposes available modifiers in cached payload', function () {
         ->and($itemPayload['modifier_groups'][0]['options'][0]['id'])->toBe($largeOption->id)
         ->and(collect($itemPayload['modifier_groups'][0]['options'])->pluck('id')->contains($soldOutOption->id))->toBeFalse();
 
-    $largeOption->update(['price_delta' => '4.25']);
+    $largeOption->update(['price_delta_cents' => 425]);
 
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
-        ->and($action->handle($branch->id, 'en')['categories'][0]['items'][0]['modifier_groups'][0]['options'][0]['price_delta'])->toBe('4.25');
+        ->and($action->handle($branch->id, 'en')['categories'][0]['items'][0]['modifier_groups'][0]['options'][0]['price_delta_cents'])->toBe(425);
 });
 
 test('guest menu lets active guest add configured item to the shared draft', function () {
@@ -299,9 +348,9 @@ test('guest menu lets active guest add configured item to the shared draft', fun
     expect($draftOrderItem->table_session_guest_id)->toBe($activeGuest->id)
         ->and($draftOrderItem->menu_item_id)->toBe($availableItem->id)
         ->and($draftOrderItem->item_name)->toBe('Margherita')
-        ->and($draftOrderItem->unit_price)->toBe('14.50')
-        ->and($draftOrderItem->modifier_total)->toBe('4.75')
-        ->and($draftOrderItem->total_price)->toBe('19.25')
+        ->and($draftOrderItem->unit_price_cents)->toBe(1450)
+        ->and($draftOrderItem->modifier_total_cents)->toBe(475)
+        ->and($draftOrderItem->total_price_cents)->toBe(1925)
         ->and($draftOrderItem->comment)->toBe('No garlic please')
         ->and(collect($draftOrderItem->selected_modifiers)->pluck('option_name')->all())->toBe([
             'Large',
@@ -336,6 +385,68 @@ test('guest menu blocks rejected guest from adding draft items', function () {
         ->and(DraftOrderItem::query()->exists())->toBeFalse();
 });
 
+test('guest chooses a dish variant and sees its absolute price before adding', function () {
+    [$qrCode, $branch, , $tableSession, $activeGuest] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $small = MenuItemVariant::factory()
+        ->for($availableItem, 'item')
+        ->portion()
+        ->default()
+        ->create(['name' => 'Small', 'price_cents' => 1450, 'sort_order' => 10]);
+    $large = MenuItemVariant::factory()
+        ->for($availableItem, 'item')
+        ->portion()
+        ->create(['name' => 'Large', 'price_cents' => 1890, 'sort_order' => 20]);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestMenu::class, [
+            'branchId' => $branch->id,
+            'currency' => 'EUR',
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'guestCanAddItems' => true,
+        ])
+        ->assertSeeText('From €14.50')
+        ->call('openItem', $availableItem->id)
+        ->assertSet('selectedItemVariantId', $small->id)
+        ->assertSeeText('Small')
+        ->assertSeeText('Large')
+        ->set('selectedItemVariantId', $large->id)
+        ->assertSeeText('€18.90')
+        ->call('saveConfiguredItem')
+        ->assertHasNoErrors()
+        ->assertSeeText('Large');
+
+    $draftItem = DraftOrderItem::query()->latest('id')->firstOrFail();
+
+    expect($draftItem->menu_item_variant_id)->toBe($large->id)
+        ->and($draftItem->variant_name)->toBe('Large')
+        ->and($draftItem->variant_type)->toBe(MenuItemVariantType::Portion)
+        ->and($draftItem->unit_price_cents)->toBe(1890)
+        ->and($draftItem->total_price_cents)->toBe(1890);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
+        ->test(DraftOrderComponent::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'currency' => 'EUR',
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+        ])
+        ->call('editItem', $draftItem->id)
+        ->assertSet('editingItemVariantId', (string) $large->id)
+        ->set('editingItemVariantId', (string) $small->id)
+        ->call('updateItem')
+        ->assertHasNoErrors()
+        ->assertSeeText('Small');
+
+    expect($draftItem->refresh()->menu_item_variant_id)->toBe($small->id)
+        ->and($draftItem->variant_name)->toBe('Small')
+        ->and($draftItem->unit_price_cents)->toBe(1450)
+        ->and($draftItem->total_price_cents)->toBe(1450);
+});
+
 test('draft order component shows shared items and guest totals through polling block', function () {
     [$qrCode, , , $tableSession, $ana] = createGuestMenuDisplayContext();
     $zara = TableSessionGuest::factory()
@@ -353,9 +464,9 @@ test('draft order component shows shared items and guest totals through polling 
         ->for($zara, 'guest')
         ->create([
             'item_name' => 'Margherita',
-            'unit_price' => '12.50',
-            'modifier_total' => '0.00',
-            'total_price' => '12.50',
+            'unit_price_cents' => 1250,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1250,
             'selected_modifiers' => [
                 [
                     'option_name' => 'Large',
@@ -367,9 +478,9 @@ test('draft order component shows shared items and guest totals through polling 
         ->for($ana, 'guest')
         ->create([
             'item_name' => 'Water',
-            'unit_price' => '10.00',
-            'modifier_total' => '0.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1000,
         ]);
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
@@ -492,7 +603,7 @@ test('draft order component asks confirmation when not all guests are ready befo
         ->for($ana, 'guest')
         ->create([
             'item_name' => 'Water',
-            'total_price' => '10.00',
+            'total_price_cents' => 1000,
         ]);
 
     $component = Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
@@ -555,7 +666,7 @@ test('any active guest can send the shared draft to waiter when everyone is read
         ->for($ana, 'guest')
         ->create([
             'item_name' => 'Margherita',
-            'total_price' => '12.50',
+            'total_price_cents' => 1250,
         ]);
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $zara->guest_token)
@@ -599,16 +710,16 @@ test('draft order component lets active guest edit own draft item modifiers quan
         ->create([
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'unit_price' => '14.50',
-            'modifier_total' => '3.50',
-            'total_price' => '18.00',
+            'unit_price_cents' => 1450,
+            'modifier_total_cents' => 350,
+            'total_price_cents' => 1800,
             'selected_modifiers' => [
                 [
                     'group_id' => $requiredGroup->id,
                     'group_name' => 'Pizza size',
                     'option_id' => $largeOption->id,
                     'option_name' => 'Large',
-                    'price_delta' => '3.50',
+                    'price_delta_cents' => 350,
                 ],
             ],
         ]);
@@ -639,8 +750,8 @@ test('draft order component lets active guest edit own draft item modifiers quan
     $draftOrderItem = $draftOrderItem->fresh();
 
     expect($draftOrderItem->quantity)->toBe(2)
-        ->and($draftOrderItem->modifier_total)->toBe('4.75')
-        ->and($draftOrderItem->total_price)->toBe('38.50')
+        ->and($draftOrderItem->modifier_total_cents)->toBe(475)
+        ->and($draftOrderItem->total_price_cents)->toBe(3850)
         ->and($draftOrderItem->comment)->toBe('Cut in half')
         ->and(collect($draftOrderItem->selected_modifiers)->pluck('option_name')->all())->toBe([
             'Large',
@@ -724,7 +835,7 @@ test('draft order component blocks edits after draft is sent to waiter', functio
         ->create([
             'item_name' => 'Margherita',
             'quantity' => 1,
-            'total_price' => '14.50',
+            'total_price_cents' => 1450,
         ]);
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
@@ -812,7 +923,7 @@ function createGuestMenuRows(Branch $branch): array
         ->create([
             'name' => 'Margherita',
             'description' => 'Tomato, mozzarella, basil',
-            'price' => '14.50',
+            'price_cents' => 1450,
             'image' => 'media/test/margherita.jpg',
             'weight' => '450',
             'calories' => 720,
@@ -824,7 +935,7 @@ function createGuestMenuRows(Branch $branch): array
         ->for($category, 'category')
         ->create([
             'name' => 'Truffle pizza',
-            'price' => '21.00',
+            'price_cents' => 2100,
             'is_available' => false,
             'sort_order' => 20,
         ]);
@@ -875,7 +986,7 @@ function createGuestMenuModifierRows(Branch $branch, MenuItem $item): array
         ->for($requiredGroup)
         ->create([
             'name' => 'Large',
-            'price_delta' => '3.50',
+            'price_delta_cents' => 350,
             'is_available' => true,
             'sort_order' => 10,
         ]);
@@ -883,7 +994,7 @@ function createGuestMenuModifierRows(Branch $branch, MenuItem $item): array
         ->for($requiredGroup)
         ->create([
             'name' => 'Sold out',
-            'price_delta' => '9.00',
+            'price_delta_cents' => 900,
             'is_available' => false,
             'sort_order' => 20,
         ]);
@@ -900,7 +1011,7 @@ function createGuestMenuModifierRows(Branch $branch, MenuItem $item): array
         ->for($optionalGroup)
         ->create([
             'name' => 'Extra cheese',
-            'price_delta' => '1.25',
+            'price_delta_cents' => 125,
             'is_available' => true,
             'sort_order' => 10,
         ]);

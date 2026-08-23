@@ -7,6 +7,12 @@
         </p>
     </header>
 
+    @if ($backupRestoreError !== '')
+        <x-ui.alert tone="danger" heading="ui.superadmin.backup_restore.failed_title">
+            {{ $backupRestoreError }}
+        </x-ui.alert>
+    @endif
+
     <section class="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         @foreach ($statRows as $stat)
             <div wire:key="platform-stat-{{ $stat['key'] }}" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -76,9 +82,45 @@
                     </x-slot:trigger>
                 </x-dangerous-action-confirmation>
 
-                <flux:button icon="archive-box" disabled>
-                    {{ __('ui.superadmin.dashboard.media_zip_later') }}
-                </flux:button>
+                <x-dangerous-action-confirmation
+                    name="sqlite-backup-restore"
+                    action="restore_backup"
+                    confirm-action="prepareBackupRestore"
+                    submit-target="prepareBackupRestore"
+                    confirm-label="ui.superadmin.backup_restore.continue"
+                    reason-model="backupRestoreReason"
+                    reason-required
+                    confirmation-model="backupRestoreConfirmation"
+                    confirmation-text="RESTORE"
+                    confirmation-label="ui.confirmations.confirmation_text.label"
+                    confirmation-help="ui.confirmations.typed_confirmation_help"
+                >
+                    <x-slot:trigger>
+                        <flux:button icon="arrow-path" variant="danger" type="button">
+                            {{ __('ui.superadmin.dashboard.restore_sqlite') }}
+                        </flux:button>
+                    </x-slot:trigger>
+                </x-dangerous-action-confirmation>
+
+                <x-dangerous-action-confirmation
+                    name="media-backup-download"
+                    action="download_media_backup"
+                    confirm-action="downloadMediaBackup"
+                    submit-target="downloadMediaBackup"
+                    confirm-label="ui.actions.i_understand"
+                    reason-model="mediaBackupDownloadReason"
+                    reason-required
+                    confirmation-model="mediaBackupDownloadConfirmation"
+                    confirmation-text="MEDIA"
+                    confirmation-label="ui.confirmations.confirmation_text.label"
+                    confirmation-help="ui.confirmations.typed_confirmation_help"
+                >
+                    <x-slot:trigger>
+                        <flux:button icon="archive-box-arrow-down" type="button">
+                            {{ __('ui.superadmin.dashboard.download_media_zip') }}
+                        </flux:button>
+                    </x-slot:trigger>
+                </x-dangerous-action-confirmation>
             </div>
         </div>
     </section>

@@ -7,6 +7,7 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
+use App\Actions\ServicePoints\SetServicePointActiveAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
@@ -387,14 +388,14 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.servicepoints.index.service__c89ead5d'));
     }
 
-    public function disable(int $servicePointId): void
+    public function disable(int $servicePointId, SetServicePointActiveAction $setActive): void
     {
-        $this->setActive($servicePointId, false);
+        $this->setActive($servicePointId, false, $setActive);
     }
 
-    public function enable(int $servicePointId): void
+    public function enable(int $servicePointId, SetServicePointActiveAction $setActive): void
     {
-        $this->setActive($servicePointId, true);
+        $this->setActive($servicePointId, true, $setActive);
     }
 
     public function changeStatus(int $servicePointId, UpdateServicePointStatusAction $updateServicePointStatus): void
@@ -1128,12 +1129,12 @@ class Index extends Component
         };
     }
 
-    private function setActive(int $servicePointId, bool $isActive): void
+    private function setActive(int $servicePointId, bool $isActive, SetServicePointActiveAction $setActive): void
     {
         $this->authorizeServicePointManagement();
 
         $servicePoint = $this->findBranchServicePoint($servicePointId);
-        $servicePoint->update(['is_active' => $isActive]);
+        $setActive->handle($servicePoint, $isActive);
 
         $this->forgetServicePointDisplays();
     }

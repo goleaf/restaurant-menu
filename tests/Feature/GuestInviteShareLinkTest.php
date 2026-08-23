@@ -4,7 +4,8 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
-use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Livewire\PublicQr\GuestActions;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -29,9 +30,12 @@ test('active guest can create an invite share link for current table session', f
     [$qrCode, , $tableSession, $activeGuest] = createGuestInviteShareContext();
 
     $component = Livewire::withCookie(guestInviteShareCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentTableSessionId', $tableSession->id)
-        ->assertSet('currentGuestId', $activeGuest->id)
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'venueName' => 'Guest Invite Branch',
+        ])
         ->assertSeeText('Invite guest')
         ->call('createGuestInviteLink')
         ->assertSeeText('Invite link is ready.')
@@ -53,14 +57,18 @@ test('guest invite link opens landing and creates a pending join request', funct
     [$qrCode, , $tableSession, $activeGuest] = createGuestInviteShareContext();
 
     Livewire::withCookie(guestInviteShareCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+        ])
         ->call('createGuestInviteLink');
 
     $inviteToken = $tableSession->fresh()->guest_invite_token;
 
     $component = Livewire::withQueryParams(['invite' => $inviteToken])
         ->withCookie(guestInviteShareCookieName($qrCode), str_repeat('x', 64))
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('state', 'ready')
         ->assertSet('hasCurrentInviteToken', true)
         ->assertSeeText('Enter your name to ask to join this table.');
@@ -90,10 +98,31 @@ test('branch setting can disable guest invite links', function () {
     [$qrCode, , $tableSession, $activeGuest] = createGuestInviteShareContext(allowGuestInviteLinks: false);
 
     Livewire::withCookie(guestInviteShareCookieName($qrCode), $activeGuest->guest_token)
-        ->test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+        ])
         ->call('createGuestInviteLink')
         ->assertSet('guestInviteUrl', '')
         ->assertSeeText(__('ui.actions.tablesessions.createguestinvitelinkaction.priglaseniia_gostei_po'));
+
+    expect($tableSession->fresh()->guest_invite_token)->toBeNull();
+});
+
+test('guest invite action rejects a table session outside the public qr branch', function () {
+    [$qrCode, , $tableSession, $activeGuest] = createGuestInviteShareContext();
+    [$otherQrCode] = createGuestInviteShareContext();
+
+    Livewire::withCookie(guestInviteShareCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestActions::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $otherQrCode->public_token,
+        ])
+        ->call('createGuestInviteLink')
+        ->assertSet('guestInviteUrl', '')
+        ->assertSet('guestInviteMessage', __('guest.table.invite_requires_active_guest'));
 
     expect($tableSession->fresh()->guest_invite_token)->toBeNull();
 });

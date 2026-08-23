@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
-use App\Actions\Branches\ForgetBranchCacheAction;
-use App\Models\KitchenDepartment;
+use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Models\Menu;
-use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Support\MoneyFormatter;
 use Flux\Flux;
@@ -16,27 +14,20 @@ use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 
+/** @property-read list<array<string, mixed>> $items */
 class Availability extends BranchMenuComponent
 {
-    private ForgetBranchCacheAction $forgetBranchCache;
-
-    public function boot(ForgetBranchCacheAction $forgetBranchCache): void
-    {
-        $this->forgetBranchCache = $forgetBranchCache;
-    }
-
     public function mount(int $organizationId, int $brandId, int $branchId): void
     {
         $this->initializeBranchContext($organizationId, $brandId, $branchId);
         $this->authorizeBranchAbility('changeMenuAvailability');
     }
 
-    public function setItemAvailability(int $itemId, bool $isAvailable): void
+    public function setItemAvailability(int $itemId, bool $isAvailable, SetMenuItemAvailabilityAction $setAvailability): void
     {
         $this->authorizeBranchAbility('changeMenuAvailability');
 
-        $this->findBranchItem($itemId)->update(['is_available' => $isAvailable]);
-        $this->forgetBranchCache->handle($this->branchId);
+        $setAvailability->handle($this->currentUser(), $this->branch, $this->findBranchItem($itemId), $isAvailable);
         unset($this->items);
         $this->dispatch('branch-menu-updated');
 
@@ -71,7 +62,7 @@ class Availability extends BranchMenuComponent
                     'department_name' => $item->kitchen_department_id === null
                         ? __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen')
                         : $item->kitchenDepartment->name,
-                    'price' => MoneyFormatter::format($item->price, $this->branch->currency),
+                    'price' => MoneyFormatter::formatCents($item->price_cents, $this->branch->currency),
                     'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
                     'is_available' => $item->is_available,
                 ])->values()->all();
@@ -104,7 +95,7 @@ class Availability extends BranchMenuComponent
                     'category_id',
                     'kitchen_department_id',
                     'name',
-                    'price',
+                    'price_cents',
                     'is_available',
                     'sort_order',
                     'updated_at',
@@ -127,7 +118,7 @@ class Availability extends BranchMenuComponent
                 'category_id',
                 'kitchen_department_id',
                 'name',
-                'price',
+                'price_cents',
                 'is_available',
                 'sort_order',
                 'created_at',

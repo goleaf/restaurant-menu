@@ -4,25 +4,33 @@ declare(strict_types=1);
 
 namespace App\Livewire\Waiter\TableDetail;
 
+use App\Actions\Orders\CancelOrderItemAction;
 use App\Actions\Orders\ChangeOrderStatusAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Enums\OrderStatus;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 
 final class OrderFulfilment extends TableDetailSection
 {
+    #[Locked]
+    public string $changeFingerprint = '';
+
     /**
      * @var array<string, mixed>
      */
     public array $orderFulfilment = [];
 
     public string $orderCancellationReason = '';
+
+    public string $orderItemCancellationReason = '';
 
     public string $fulfilmentFeedbackMessage = '';
 
@@ -32,22 +40,31 @@ final class OrderFulfilment extends TableDetailSection
     public function mount(int $tableSessionId, array $initialOrderFulfilment = []): void
     {
         $this->tableSessionId = $tableSessionId;
-        $this->authorizeCurrentTableSession();
+        $this->authorizeViewableTableSession();
         $this->orderFulfilment = $initialOrderFulfilment === []
-            ? $this->orderFulfilmentPayload($this->freshTablePayload())
+            ? $this->orderFulfilmentPayload($this->freshViewableTablePayload())
             : $initialOrderFulfilment;
+        $this->changeFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
     }
 
     public function refreshOrderFulfilment(): void
     {
-        $this->orderFulfilment = $this->orderFulfilmentPayload($this->freshTablePayload());
+        $this->authorizeViewableTableSession();
+        $currentFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
+
+        if ($this->changeFingerprint !== '' && hash_equals($this->changeFingerprint, $currentFingerprint)) {
+            return;
+        }
+
+        $this->orderFulfilment = $this->orderFulfilmentPayload($this->freshViewableTablePayload());
+        $this->changeFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
     }
 
     public function sendOrderToKitchenBar(SendOrderToKitchenBarAction $sendOrderToKitchenBar): void
     {
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
-        $this->authorizeCurrentTableSession();
+        $this->authorizeWaiterTableSession();
         $order = $this->currentOrder();
 
         if (! $order instanceof Order) {
@@ -73,7 +90,7 @@ final class OrderFulfilment extends TableDetailSection
     {
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
-        $this->authorizeCurrentTableSession();
+        $this->authorizeWaiterTableSession();
         $validated = $this->validate(RestaurantValidationRules::auditReason('orderCancellationReason'), [
             'orderCancellationReason.required' => __('ui.confirmations.cancel_order.reason_required'),
             'orderCancellationReason.min' => __('ui.confirmations.cancel_order.reason_min'),
@@ -105,11 +122,51 @@ final class OrderFulfilment extends TableDetailSection
         $this->dispatch('waiter-table-updated');
     }
 
+    public function cancelOrderItem(int $orderItemId, CancelOrderItemAction $cancelOrderItem): void
+    {
+        $this->resetValidation();
+        $this->fulfilmentFeedbackMessage = '';
+        $this->authorizeWaiterTableSession();
+        $validated = $this->validate(RestaurantValidationRules::auditReason('orderItemCancellationReason'), [
+            'orderItemCancellationReason.required' => __('orders.items.errors.reason_required'),
+            'orderItemCancellationReason.min' => __('orders.items.errors.reason_min'),
+        ]);
+        $orderItem = OrderItem::query()
+            ->select(['id', 'order_id'])
+            ->whereKey($orderItemId)
+            ->whereHas('order', fn ($query) => $query->where('table_session_id', $this->tableSessionId))
+            ->first();
+
+        if (! $orderItem instanceof OrderItem) {
+            $this->addError('order_item_cancellation', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
+
+            return;
+        }
+
+        try {
+            $cancelOrderItem->handle(
+                orderItem: $orderItem,
+                cancelledBy: $this->currentUser(),
+                reason: (string) $validated['orderItemCancellationReason'],
+            );
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->orderItemCancellationReason = '';
+        $this->fulfilmentFeedbackMessage = __('orders.items.messages.cancelled');
+        $this->changeFingerprint = '';
+        $this->refreshOrderFulfilment();
+        $this->dispatch('waiter-table-updated');
+    }
+
     public function markTicketItemServed(int $ticketItemId, MarkKitchenTicketItemServedAction $markKitchenTicketItemServed): void
     {
         $this->resetValidation();
         $this->fulfilmentFeedbackMessage = '';
-        $this->authorizeCurrentTableSession();
+        $this->authorizeWaiterTableSession();
         $ticketItem = KitchenTicketItem::query()
             ->select(['id'])
             ->whereKey($ticketItemId)
@@ -160,6 +217,9 @@ final class OrderFulfilment extends TableDetailSection
      */
     private function orderFulfilmentPayload(array $table): array
     {
-        return ['draft' => data_get($table, 'draft', [])];
+        return [
+            'draft' => data_get($table, 'draft', []),
+            'orders' => data_get($table, 'orders', []),
+        ];
     }
 }

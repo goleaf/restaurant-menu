@@ -10,7 +10,7 @@ use App\Enums\MenuStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
-use App\Livewire\Organizations\Brands\Branches\Menu\Index as MenuIndex;
+use App\Livewire\Organizations\Brands\Branches\Menu\Catalog as MenuCatalog;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -204,7 +204,7 @@ test('manager can add and delete menu schedule from menu admin', function () {
     grantPrompt104MenuPermission($manager, $organization, SystemPermission::ManageMenu);
 
     Livewire::actingAs($manager)
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSeeText('Menu schedule')
         ->set('scheduleMenuId', (string) $menu->id)
         ->set('scheduleDayOfWeek', '1')
@@ -224,7 +224,7 @@ test('manager can add and delete menu schedule from menu admin', function () {
         ->and($schedule->ends_at)->toBe('12:00');
 
     Livewire::actingAs($manager->fresh())
-        ->test(MenuIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteMenuSchedule', $schedule->id)
         ->assertHasNoErrors();
 
@@ -307,7 +307,7 @@ function createPrompt104MenuRows(Menu $menu, string $itemName): array
         ->for($category, 'category')
         ->create([
             'name' => $itemName,
-            'price' => '10.00',
+            'price_cents' => 1000,
             'is_available' => true,
             'sort_order' => 10,
         ]);

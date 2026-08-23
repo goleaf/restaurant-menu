@@ -32,7 +32,7 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
         ->create([
             'item_name' => 'Маргарита',
             'quantity' => 2,
-            'total_price' => '18.00',
+            'total_price_cents' => 1800,
         ]);
 
     $component = Livewire::test(OrderStatuses::class, [
@@ -177,7 +177,7 @@ function createPrompt124Order(TableSession $tableSession, DraftOrder $draftOrder
             'table_session_id' => $tableSession->id,
             'draft_order_id' => $draftOrder->id,
             'status' => $status,
-            'total_price' => '10.00',
+            'total_price_cents' => 1000,
         ]);
 }
 
@@ -192,9 +192,9 @@ function createPrompt124OrderItem(Order $order, TableSessionGuest $guest, string
             'guest_name' => $guest->guest_name,
             'guest_name_snapshot' => $guest->guest_name,
             'quantity' => 1,
-            'unit_price' => '10.00',
-            'unit_price_snapshot' => '10.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 1000,
+            'unit_price_snapshot_cents' => 1000,
+            'total_price_cents' => 1000,
         ]);
 }
 

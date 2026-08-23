@@ -54,7 +54,8 @@ test('bartender sees only bar department drinks and updates item status', functi
         ->assertSee('Milk: Oat')
         ->assertSee('No ice')
         ->assertSee('T-62')
-        ->assertSee('Timer')
+        ->assertSee(__('ui.departments.dashboard.preparation_time'))
+        ->assertSee(__('ui.departments.dashboard.delay_status.on_track'))
         ->assertSee(__('ui.departments.dashboard.nacat'))
         ->assertSee(__('ui.departments.dashboard.gotovo'))
         ->assertSee('oldest first')
@@ -172,7 +173,7 @@ function createPrompt62BarScenario(): array
         ->for($kitchen, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 62 Pizza',
-            'price' => '12.00',
+            'price_cents' => 1200,
         ]);
     $coffee = MenuItem::factory()
         ->for($menu)
@@ -180,7 +181,7 @@ function createPrompt62BarScenario(): array
         ->for($bar, 'kitchenDepartment')
         ->create([
             'name' => 'Prompt 62 Coffee',
-            'price' => '4.00',
+            'price_cents' => 400,
         ]);
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -197,9 +198,9 @@ function createPrompt62BarScenario(): array
         ->create([
             'item_name' => 'Prompt 62 Pizza',
             'quantity' => 1,
-            'unit_price' => '12.00',
-            'modifier_total' => '0.00',
-            'total_price' => '12.00',
+            'unit_price_cents' => 1200,
+            'modifier_total_cents' => 0,
+            'total_price_cents' => 1200,
             'selected_modifiers' => [],
         ]);
 
@@ -210,14 +211,14 @@ function createPrompt62BarScenario(): array
         ->create([
             'item_name' => 'Prompt 62 Coffee',
             'quantity' => 2,
-            'unit_price' => '4.00',
-            'modifier_total' => '1.00',
-            'total_price' => '10.00',
+            'unit_price_cents' => 400,
+            'modifier_total_cents' => 100,
+            'total_price_cents' => 1000,
             'selected_modifiers' => [
                 [
                     'group_name' => 'Milk',
                     'option_name' => 'Oat',
-                    'price_delta' => '0.50',
+                    'price_delta_cents' => 50,
                 ],
             ],
             'comment' => 'No ice',

@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-08-23. This is the repository's only active roadmap. It schedules work but does not redefine behaviour: [`docs/requirements.md`](docs/requirements.md) remains authoritative and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) records implementation evidence.
+Updated 2026-08-23. This is the external delivery priority index. It schedules work but does not redefine behaviour: [`docs/requirements.md`](docs/requirements.md) remains authoritative and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) records implementation evidence. The bounded repository-completion run requested on 2026-08-23 is tracked separately in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) and [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ## Current state
 
@@ -24,6 +24,6 @@ The external evidence gaps are summarized in [`docs/known-limitations.md`](docs/
 ## Roadmap hygiene
 
 - Keep only links to open GitHub issues here; move shipped outcomes to `CHANGELOG.md` and close the issue with evidence.
-- Do not recreate `NEXT_STEPS`, implementation-plan, prompt queues, or parallel roadmaps.
+- Do not create competing product roadmaps, prompt queues, or duplicate issue backlogs. `docs/IMPLEMENTATION_PLAN.md` is a temporary evidence-backed completion plan, not a second source of product requirements.
 - Keep acceptance criteria, discussion, ownership, and status in GitHub Issues.
 - Never use roadmap text to weaken active requirements, security controls, or tests.

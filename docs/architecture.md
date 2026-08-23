@@ -16,6 +16,10 @@ HTTP route / Livewire action
 
 Blade is a terminal presentation boundary: it may render escaped prepared values and localized text, but it may not query models, resolve services, authorize mutations, calculate money, or construct business/SEO payloads. JavaScript is limited to local DOM behavior that does not make business decisions; Livewire owns persisted mutations.
 
+## Verified implementation inventory
+
+The 2026-08-23 completion audit observed 43 first-party Eloquent models with 43 factories, 175 focused Action classes, 42 class-based Livewire components, 16 policies, 73 forward migrations, and 123 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
+
 ## Domain modules
 
 | Module | Responsibilities | Principal code |
@@ -70,4 +74,4 @@ No worker, cron, Redis, WebSocket, S3, Docker or SSH-only runtime capability is 
 | AI/vector/realtime features | Not applicable to product requirements | none | requirements catalogue |
 | Image manipulation additions | Not needed for current MIME-validated local logo storage | media Actions | upload tests |
 
-Important choices are recorded in [`decisions/`](decisions/). The requirement-to-code relationship is authoritative in [`compliance-matrix.md`](compliance-matrix.md).
+Important long-lived architecture choices are recorded in [`decisions/`](decisions/); completion-audit choices are summarized in [`DECISIONS.md`](DECISIONS.md). The requirement-to-code relationship is authoritative in [`compliance-matrix.md`](compliance-matrix.md).

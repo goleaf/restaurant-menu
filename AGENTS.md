@@ -15,6 +15,8 @@ Before changing code, read:
 5. The topic document for the affected area, then relevant tests and implementation.
 6. Root `ROADMAP.md` when scheduled work remains open.
 
+For repository-completion work, also read `docs/IMPLEMENTATION_PLAN.md`, `docs/PROGRESS.md`, and `docs/DECISIONS.md`. They are execution and evidence ledgers only: `docs/requirements.md` remains the sole active requirement catalogue, and GitHub Issues remain the external delivery backlog.
+
 For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend.md`, `docs/design-system.md`, `docs/accessibility.md`, and `docs/tailwind.md`. They define product/design context without overriding `docs/requirements.md`.
 
 `docs/requirements.md` is the canonical active requirement catalogue. `CHANGELOG.md` is historical and must not override current requirements.

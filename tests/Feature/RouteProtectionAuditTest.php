@@ -50,6 +50,7 @@ test('staff and admin route groups require authenticated sessions', function (st
     'restaurant.bar.dashboard',
     'restaurant.waiter.dashboard',
     'restaurant.waiter.tables.show',
+    'settings.index',
     'profile.edit',
     'appearance.edit',
     'security.edit',

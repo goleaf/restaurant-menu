@@ -4,6 +4,8 @@
 
 This is the only canonical active requirement catalogue. Stable identifiers must not be renumbered. Exact implementation, migration, translation, factory, test, command, and status evidence is recorded by the same identifier in `compliance-matrix.md`.
 
+The 2026-08-23 completion audit verified 49 active requirement rows against the current implementation. Execution status belongs in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) and [`PROGRESS.md`](PROGRESS.md), not in this catalogue. Proposed shared draft-item allocations remain outside active scope until an approved requirement is added through normal change control.
+
 For the compact tables below, **control contract** combines authorization, validation, success, and failure behaviour. **Cross-cutting contract** combines security, data, localization, accessibility, and performance implications. Unless a row says otherwise, user-visible success and error text must exist in `en`, `lt`, and `ru`; controls must be keyboard/touch accessible; outputs must be escaped; and queries must be tenant-scoped, eager-loaded, and bounded.
 
 ## Functional requirements

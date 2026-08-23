@@ -8,6 +8,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Livewire\PublicQr\DraftOrder as DraftOrderComponent;
+use App\Livewire\PublicQr\DraftTotals;
 use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Models\Branch;
@@ -629,6 +630,10 @@ test('draft order component asks confirmation when not all guests are ready befo
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
 
     $component
+        ->call('cancelSendDraftConfirmation')
+        ->assertSet('sendNeedsReadyConfirmation', false)
+        ->call('sendDraftToWaiter')
+        ->assertSet('sendNeedsReadyConfirmation', true)
         ->call('sendDraftToWaiter', true)
         ->assertHasNoErrors()
         ->assertSet('canEditDraft', false)
@@ -648,6 +653,60 @@ test('draft order component asks confirmation when not all guests are ready befo
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::HasNewOrder)
         ->and($ana->fresh()->ready_at)->toBeNull()
         ->and($zara->fresh()->ready_at)->toBeNull();
+});
+
+test('isolated draft totals handles ready confirmation sending and bill validation', function () {
+    [$qrCode, , $servicePoint, $tableSession, $ana] = createGuestMenuDisplayContext();
+    TableSessionGuest::factory()
+        ->for($tableSession)
+        ->create([
+            'guest_name' => 'Zara',
+            'status' => TableSessionGuestStatus::Active,
+            'ready_at' => null,
+        ]);
+    $draftOrder = DraftOrderModel::factory()->for($tableSession)->create();
+    DraftOrderItem::factory()
+        ->for($draftOrder)
+        ->for($ana, 'guest')
+        ->create([
+            'item_name' => 'Water',
+            'total_price_cents' => 1000,
+        ]);
+
+    $component = Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $ana->guest_token)
+        ->test(DraftTotals::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $ana->id,
+            'publicToken' => $qrCode->public_token,
+            'currency' => 'EUR',
+            'language' => 'en',
+        ])
+        ->call('toggleReadyStatus')
+        ->assertHasNoErrors()
+        ->assertSet('currentGuestReady', true)
+        ->assertSet('allGuestsReady', false)
+        ->call('sendDraftToWaiter')
+        ->assertSet('sendNeedsReadyConfirmation', true)
+        ->call('cancelSendDraftConfirmation')
+        ->assertSet('sendNeedsReadyConfirmation', false)
+        ->call('sendDraftToWaiter', true)
+        ->assertHasNoErrors()
+        ->assertSet('sendNeedsReadyConfirmation', false);
+
+    expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::SentToWaiter);
+
+    $servicePoint->update(['is_active' => false]);
+
+    $component
+        ->call('requestBill')
+        ->assertHasErrors(['bill_request']);
+
+    $servicePoint->update(['is_active' => true]);
+
+    $component
+        ->call('requestBill')
+        ->assertHasNoErrors()
+        ->assertSet('billRequested', true);
 });
 
 test('any active guest can send the shared draft to waiter when everyone is ready', function () {

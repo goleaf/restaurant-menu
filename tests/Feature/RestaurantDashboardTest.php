@@ -114,6 +114,19 @@ test('waiter sees operational dashboard without report totals', function () {
         ->assertDontSeeText('32.00 EUR');
 });
 
+test('restaurant dashboard reports direct access for authorized and unauthorized users', function () {
+    [$organization] = createPrompt70DashboardContext();
+    $manager = User::factory()->create(['name' => 'Direct Access Manager']);
+    $outsider = User::factory()->create(['name' => 'Direct Access Outsider']);
+    attachPrompt70Staff($manager, $organization, SystemRole::Director, [
+        SystemPermission::ViewReports,
+    ]);
+    $action = app(BuildRestaurantDashboardAction::class);
+
+    expect($action->userHasAccess($manager))->toBeTrue()
+        ->and($action->userHasAccess($outsider))->toBeFalse();
+});
+
 test('restaurant dashboard cache is invalidated by draft and kitchen ticket item changes', function () {
     [$organization, , , , $sentDraft, $ticketItem] = createPrompt70DashboardContext();
     $manager = User::factory()->create(['name' => 'Cache Manager']);

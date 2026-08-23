@@ -121,6 +121,18 @@ test('order changes invalidate the cached analytics snapshot', function () {
         ->and($updatedAnalytics['average_check'])->toBe('12.33 EUR');
 });
 
+test('analytics cache can be invalidated for several branches at once', function () {
+    [$user, $branch] = createPrompt69AnalyticsContext();
+    $action = app(BuildBasicAnalyticsDashboardAction::class);
+    $cacheKey = $action->handle($user)['analytics']['cache_key'];
+
+    expect(analyticsCacheStore()->has($cacheKey))->toBeTrue();
+
+    BuildBasicAnalyticsDashboardAction::forgetForBranches([$branch->id, 0]);
+
+    expect(analyticsCacheStore()->has($cacheKey))->toBeFalse();
+});
+
 test('payment and session changes invalidate analytics cache', function () {
     [$user, $branch, $servicePoint, $activeSession] = createPrompt69AnalyticsContext();
     $action = app(BuildBasicAnalyticsDashboardAction::class);

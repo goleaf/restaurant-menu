@@ -33,6 +33,20 @@ test('central branch cache action forgets guest menu and polling interval keys',
         ->and($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
 });
 
+test('polling interval cache can be forgotten directly', function () {
+    $branch = createPrompt93CachedBranch();
+    $cache = prompt93BranchCache();
+
+    app(GetBranchPollingIntervalAction::class)->handle($branch->id);
+
+    expect($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeTrue();
+
+    GetBranchPollingIntervalAction::forgetForBranch($branch->id);
+    GetBranchPollingIntervalAction::forgetForBranch(0);
+
+    expect($cache->has(GetBranchPollingIntervalAction::cacheKey($branch->id)))->toBeFalse();
+});
+
 test('menu changes clear the centralized branch cache', function () {
     $branch = createPrompt93CachedBranch();
     $category = MenuCategory::query()

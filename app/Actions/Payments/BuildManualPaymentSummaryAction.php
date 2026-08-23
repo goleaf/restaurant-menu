@@ -18,9 +18,12 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class BuildManualPaymentSummaryAction
 {
+    private const int NORMALIZED_FIELD_LIMIT = 50;
+
     /**
      * @return array<string, mixed>
      */
@@ -29,8 +32,15 @@ class BuildManualPaymentSummaryAction
         $tableSession = $this->reloadTableSession($tableSession);
         $branch = $tableSession->branch;
         $currency = $branch->currency;
+        $normalization = ['count' => 0, 'fields' => []];
+        $this->normalizeNullableBranchSettings($branch, $normalization);
         $confirmedTotalCents = $this->confirmedOrderItemsTotalCents($tableSession->orders);
         $settings = $this->settingsPayload($this->loadedSettings($branch), $branch);
+        $this->normalizeNullablePaymentSnapshots(
+            payments: $tableSession->manualPayments,
+            serviceChargeBasisPointsFallback: $settings['service_charge_basis_points'],
+            normalization: $normalization,
+        );
         $serviceChargeTotalCents = $settings['service_charge_enabled']
             ? MoneyFormatter::percentageOf($confirmedTotalCents, $settings['service_charge_basis_points'])
             : 0;
@@ -61,7 +71,7 @@ class BuildManualPaymentSummaryAction
         );
         $unpaidGuests = $this->unpaidGuests($guestBalances);
 
-        return [
+        $summary = [
             'currency' => $currency,
             'payment_methods' => $this->paymentMethodPayload(),
             'service_charge_enabled' => $settings['service_charge_enabled'],
@@ -94,6 +104,10 @@ class BuildManualPaymentSummaryAction
             'unpaid_guests_count' => count($unpaidGuests),
             'payments' => $this->paymentRows($tableSession->manualPayments, $currency),
         ];
+
+        $this->warnAboutNormalizedSnapshots($tableSession, $normalization);
+
+        return $summary;
     }
 
     private function reloadTableSession(TableSession $tableSession): TableSession
@@ -354,6 +368,103 @@ class BuildManualPaymentSummaryAction
         $settings = $branch->getRelation('settings');
 
         return $settings instanceof BranchSetting ? $settings : null;
+    }
+
+    /**
+     * @param  array{count: int, fields: list<array{record_type: string, record_id: int, column: string}>}  $normalization
+     */
+    private function normalizeNullableBranchSettings(Branch $branch, array &$normalization): void
+    {
+        $settings = $this->loadedSettings($branch);
+
+        if (! $settings instanceof BranchSetting || $settings->getAttribute('service_charge_basis_points') !== null) {
+            return;
+        }
+
+        $settings->setAttribute(
+            'service_charge_basis_points',
+            (int) BranchSetting::defaults($branch)['service_charge_basis_points'],
+        );
+        $this->recordNormalizedField(
+            normalization: $normalization,
+            recordType: 'branch_setting',
+            recordId: $settings->id,
+            column: 'service_charge_basis_points',
+        );
+    }
+
+    /**
+     * @param  Collection<int, ManualPayment>  $payments
+     * @param  array{count: int, fields: list<array{record_type: string, record_id: int, column: string}>}  $normalization
+     */
+    private function normalizeNullablePaymentSnapshots(
+        Collection $payments,
+        int $serviceChargeBasisPointsFallback,
+        array &$normalization,
+    ): void {
+        $fallbacks = [
+            'covered_subtotal_cents' => 0,
+            'service_charge_basis_points' => $serviceChargeBasisPointsFallback,
+            'service_charge_cents' => 0,
+            'tips_cents' => 0,
+            'amount_cents' => 0,
+        ];
+
+        $payments->each(function (ManualPayment $payment) use ($fallbacks, &$normalization): void {
+            foreach ($fallbacks as $column => $fallback) {
+                if ($payment->getAttribute($column) !== null) {
+                    continue;
+                }
+
+                $payment->setAttribute($column, $fallback);
+                $this->recordNormalizedField(
+                    normalization: $normalization,
+                    recordType: 'manual_payment',
+                    recordId: $payment->id,
+                    column: $column,
+                );
+            }
+        });
+    }
+
+    /**
+     * @param  array{count: int, fields: list<array{record_type: string, record_id: int, column: string}>}  $normalization
+     */
+    private function recordNormalizedField(
+        array &$normalization,
+        string $recordType,
+        int $recordId,
+        string $column,
+    ): void {
+        $normalization['count']++;
+
+        if (count($normalization['fields']) >= self::NORMALIZED_FIELD_LIMIT) {
+            return;
+        }
+
+        $normalization['fields'][] = [
+            'record_type' => $recordType,
+            'record_id' => $recordId,
+            'column' => $column,
+        ];
+    }
+
+    /**
+     * @param  array{count: int, fields: list<array{record_type: string, record_id: int, column: string}>}  $normalization
+     */
+    private function warnAboutNormalizedSnapshots(TableSession $tableSession, array $normalization): void
+    {
+        if ($normalization['count'] === 0) {
+            return;
+        }
+
+        Log::warning('manual_payment_summary_nullable_snapshots_normalized', [
+            'event' => 'manual_payment_summary_nullable_snapshots_normalized',
+            'table_session_id' => $tableSession->id,
+            'normalized_count' => $normalization['count'],
+            'normalized_fields' => $normalization['fields'],
+            'normalized_fields_truncated' => $normalization['count'] > count($normalization['fields']),
+        ]);
     }
 
     private function coveredSubtotalCents(ManualPayment $payment): int

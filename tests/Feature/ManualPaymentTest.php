@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\Payments\BuildManualPaymentSummaryAction;
 use App\Actions\Payments\RecordManualPaymentAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\ManualPaymentMethod;
@@ -28,6 +29,9 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -125,6 +129,194 @@ test('split bill summary is based on confirmed guest order items', function () {
         ->assertSet('payment.guest_balances.0.due', '20.00 EUR')
         ->assertSet('payment.guest_balances.1.due', '12.00 EUR')
         ->assertSet('payment.unpaid_guests_count', 2);
+});
+
+test('payment summary fails closed and warns once for nullable legacy money snapshots', function (): void {
+    [, , $tableSession] = createPrompt67ManualPaymentContext();
+    $branch = $tableSession->branch()->firstOrFail();
+
+    setPrompt67LegacyPaymentColumnsNullable(true);
+
+    try {
+        $settings = BranchSetting::factory()
+            ->for($branch)
+            ->create([
+                'service_charge_enabled' => true,
+                'service_charge_basis_points' => null,
+                'tips_enabled' => true,
+            ]);
+        $payment = ManualPayment::factory()
+            ->forTableSession($tableSession)
+            ->create([
+                'covered_subtotal_cents' => null,
+                'service_charge_basis_points' => null,
+                'service_charge_cents' => null,
+                'tips_cents' => null,
+                'amount_cents' => null,
+                'guest_name' => 'Sensitive legacy guest',
+                'note' => 'Sensitive legacy payment note',
+            ]);
+
+        Log::spy();
+
+        $summary = [];
+        $queryCount = countDatabaseQueries(function () use (&$summary, $tableSession): void {
+            $summary = app(BuildManualPaymentSummaryAction::class)->handle($tableSession);
+        });
+
+        expect($queryCount)
+            ->toBe(9)
+            ->and($summary)
+            ->toMatchArray([
+                'service_charge_basis_points' => 0,
+                'service_charge_total_cents' => 0,
+                'service_charge_paid_cents' => 0,
+                'tips_paid_total_cents' => 0,
+                'covered_subtotal_cents' => 0,
+                'paid_total_cents' => 0,
+                'remaining_subtotal_cents' => 3200,
+                'remaining_total_cents' => 3200,
+                'is_fully_paid' => false,
+            ])
+            ->and($summary['payments'][0])
+            ->toMatchArray([
+                'covered_subtotal' => '0.00 EUR',
+                'service_charge_percent' => '0.00',
+                'service_charge_amount' => '0.00 EUR',
+                'tips_amount' => '0.00 EUR',
+                'amount' => '0.00 EUR',
+            ])
+            ->and($settings->fresh()?->getAttribute('service_charge_basis_points'))
+            ->toBeNull()
+            ->and($payment->fresh()?->only([
+                'covered_subtotal_cents',
+                'service_charge_basis_points',
+                'service_charge_cents',
+                'tips_cents',
+                'amount_cents',
+            ]))
+            ->toBe([
+                'covered_subtotal_cents' => null,
+                'service_charge_basis_points' => null,
+                'service_charge_cents' => null,
+                'tips_cents' => null,
+                'amount_cents' => null,
+            ]);
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'manual_payment_summary_nullable_snapshots_normalized',
+                Mockery::on(function (array $context) use ($settings, $payment, $tableSession): bool {
+                    $encodedContext = json_encode($context, JSON_THROW_ON_ERROR);
+
+                    return $context === [
+                        'event' => 'manual_payment_summary_nullable_snapshots_normalized',
+                        'table_session_id' => $tableSession->id,
+                        'normalized_count' => 6,
+                        'normalized_fields' => [
+                            [
+                                'record_type' => 'branch_setting',
+                                'record_id' => $settings->id,
+                                'column' => 'service_charge_basis_points',
+                            ],
+                            [
+                                'record_type' => 'manual_payment',
+                                'record_id' => $payment->id,
+                                'column' => 'covered_subtotal_cents',
+                            ],
+                            [
+                                'record_type' => 'manual_payment',
+                                'record_id' => $payment->id,
+                                'column' => 'service_charge_basis_points',
+                            ],
+                            [
+                                'record_type' => 'manual_payment',
+                                'record_id' => $payment->id,
+                                'column' => 'service_charge_cents',
+                            ],
+                            [
+                                'record_type' => 'manual_payment',
+                                'record_id' => $payment->id,
+                                'column' => 'tips_cents',
+                            ],
+                            [
+                                'record_type' => 'manual_payment',
+                                'record_id' => $payment->id,
+                                'column' => 'amount_cents',
+                            ],
+                        ],
+                        'normalized_fields_truncated' => false,
+                    ]
+                        && ! str_contains($encodedContext, 'Sensitive legacy guest')
+                        && ! str_contains($encodedContext, 'Sensitive legacy payment note');
+                }),
+            );
+    } finally {
+        ManualPayment::query()
+            ->where('table_session_id', $tableSession->id)
+            ->delete();
+        BranchSetting::query()
+            ->where('branch_id', $branch->id)
+            ->delete();
+
+        setPrompt67LegacyPaymentColumnsNullable(false);
+    }
+});
+
+test('nullable payment summary warning bounds normalized field references', function (): void {
+    [, , $tableSession] = createPrompt67ManualPaymentContext();
+    $branch = $tableSession->branch()->firstOrFail();
+
+    setPrompt67LegacyPaymentColumnsNullable(true);
+
+    try {
+        BranchSetting::factory()
+            ->for($branch)
+            ->create([
+                'service_charge_basis_points' => null,
+            ]);
+        ManualPayment::factory()
+            ->count(11)
+            ->forTableSession($tableSession)
+            ->create([
+                'covered_subtotal_cents' => null,
+                'service_charge_basis_points' => null,
+                'service_charge_cents' => null,
+                'tips_cents' => null,
+                'amount_cents' => null,
+                'guest_name' => 'Sensitive legacy guest',
+                'note' => 'Sensitive legacy payment note',
+            ]);
+
+        Log::spy();
+
+        app(BuildManualPaymentSummaryAction::class)->handle($tableSession);
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'manual_payment_summary_nullable_snapshots_normalized',
+                Mockery::on(function (array $context): bool {
+                    $encodedContext = json_encode($context, JSON_THROW_ON_ERROR);
+
+                    return $context['normalized_count'] === 56
+                        && count($context['normalized_fields']) === 50
+                        && ($context['normalized_fields_truncated'] ?? null) === true
+                        && ! str_contains($encodedContext, 'Sensitive legacy guest')
+                        && ! str_contains($encodedContext, 'Sensitive legacy payment note');
+                }),
+            );
+    } finally {
+        ManualPayment::query()
+            ->where('table_session_id', $tableSession->id)
+            ->delete();
+        BranchSetting::query()
+            ->where('branch_id', $branch->id)
+            ->delete();
+
+        setPrompt67LegacyPaymentColumnsNullable(false);
+    }
 });
 
 test('manual service charge and tips are visible and stored as payment snapshot', function () {
@@ -384,6 +576,41 @@ function attachPrompt67PaymentManager(User $user, Organization $organization): R
     ]);
 
     return $role;
+}
+
+function setPrompt67LegacyPaymentColumnsNullable(bool $nullable): void
+{
+    Schema::withoutForeignKeyConstraints(function () use ($nullable): void {
+        Schema::table('branch_settings', function (Blueprint $table) use ($nullable): void {
+            $table->unsignedSmallInteger('service_charge_basis_points')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+        });
+
+        Schema::table('manual_payments', function (Blueprint $table) use ($nullable): void {
+            $table->unsignedBigInteger('covered_subtotal_cents')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+            $table->unsignedSmallInteger('service_charge_basis_points')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+            $table->unsignedBigInteger('service_charge_cents')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+            $table->unsignedBigInteger('tips_cents')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+            $table->unsignedBigInteger('amount_cents')
+                ->default(0)
+                ->nullable($nullable)
+                ->change();
+        });
+    });
 }
 
 function attachPrompt67PaymentViewer(User $user, Organization $organization): Role

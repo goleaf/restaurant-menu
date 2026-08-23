@@ -8,6 +8,8 @@ Every HTTP response includes an `X-Request-Id` UUID. Logs use the same `request_
 
 Unexpected reportable production exceptions may send an immediate on-demand mail alert without a queue worker. Set `ERROR_NOTIFICATIONS_ENABLED=true`, a valid `ERROR_NOTIFICATION_EMAIL`, an available `ERROR_NOTIFICATION_CACHE_STORE` and the cooldown in seconds. Identical exception class/file/line/route fingerprints are notified once per cooldown. The email intentionally contains no exception message, stack trace, raw URL, user data or request body; correlate it to the retained log with its request and incident IDs. A delivery failure does not replace the original exception and emits only a sanitized `production_error_notification_failed` log event.
 
+If a waiter payment summary encounters nullable legacy/intermediate payment snapshots after a SQLite file replacement, it fails closed by treating missing paid cents as zero and emits one `manual_payment_summary_nullable_snapshots_normalized` warning. The event contains only the table-session ID, affected record IDs and column names; the field list is capped at 50 entries with a total count and truncation flag. Investigate the source database before the next restore or migration, because the summary does not rewrite historical records or relax canonical constraints.
+
 ## Backups
 
 Backups must be consistent SQLite snapshots that include committed data under WAL/concurrent use, written to a private temporary location, downloaded only after superadmin authorization, audited and deleted after response/failure. Operators separately back up local uploaded files. A backup is not accepted until restoration is tested in an isolated environment.

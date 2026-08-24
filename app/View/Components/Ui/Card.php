@@ -29,6 +29,7 @@ final class Card extends Component
             'subtle' => 'border-border-subtle bg-surface-muted',
             'warning' => 'border-warning-border bg-warning-surface',
             'success' => 'border-success-border bg-success-surface',
+            'danger' => 'border-danger-border bg-danger-surface',
             default => 'border-border-subtle bg-surface',
         };
     }

@@ -11,6 +11,7 @@ use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -109,7 +110,7 @@ abstract class Dashboard extends Component
         $this->newItemCount = $payload['new_item_count'];
         $this->inProgressItemCount = $payload['in_progress_item_count'];
         $this->readyItemCount = $payload['ready_item_count'];
-        $this->refreshedAt = now()->format('H:i:s');
+        $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
     }
 
     public function setItemStatus(int $itemId, string $status): void

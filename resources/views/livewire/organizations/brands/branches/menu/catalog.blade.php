@@ -151,7 +151,7 @@
                     />
     
                     @if ($canChangeAvailability)
-                        <div class="grid gap-3 sm:grid-cols-2">
+                        <div class="grid gap-3 2xl:grid-cols-2">
                             <flux:switch wire:model="itemIsAvailable" :label="__('menu.guest.available')" />
                             <flux:input wire:model="itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
                         </div>

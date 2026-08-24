@@ -122,9 +122,9 @@ test('guests can make repeat orders in the same table session', function () {
     Livewire::actingAs($waiter)
         ->test(Overview::class, ['tableSessionId' => $tableSession->id])
         ->assertSet('overview.draft.id', $secondDraft->id)
-        ->assertSet('overview.current_draft_total', '5.00 EUR')
-        ->assertSet('overview.confirmed_orders_total', '12.00 EUR')
-        ->assertSet('overview.total', '17.00 EUR')
+        ->assertSet('overview.current_draft_total', '€5.00')
+        ->assertSet('overview.confirmed_orders_total', '€12.00')
+        ->assertSet('overview.total', '€17.00')
         ->assertSee(__('ui.waiter.table_detail.confirmed_orders'))
         ->assertSee(__('ui.waiter.table_detail.current_draft_total'));
 

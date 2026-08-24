@@ -16,6 +16,7 @@ use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\QrCodes\QrCodeQueryService;
 use App\Services\QrCodeSvgRenderer;
+use App\Support\LocalizedDateFormatter;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -208,7 +209,7 @@ class Show extends Component
             'qrShortCode' => $this->qrCode->short_code,
             'qrLocalizedStatus' => __($this->qrCode->status->label()),
             'qrStatusColor' => $this->statusColor(),
-            'qrCreatedAt' => $this->qrCode->created_at?->format('Y-m-d H:i'),
+            'qrCreatedAt' => LocalizedDateFormatter::dateTime($this->qrCode->created_at),
             'qrIsActive' => $this->qrCode->status === QrCodeStatus::Active,
             'publicUrl' => $publicUrl,
             'qrImageDataUri' => $this->qrImageDataUri(),

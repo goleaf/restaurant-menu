@@ -72,7 +72,7 @@ test('waiter sees sent draft in dashboard and can open it for review', function 
         ->and($draftPayload['status_label'])->toBe(DraftOrderStatus::SentToWaiter->label())
         ->and($draftPayload['sent_by_guest_name'])->toBe('Ana')
         ->and($draftPayload['items_count'])->toBe(2)
-        ->and($draftPayload['total'])->toBe('14.00 EUR')
+        ->and($draftPayload['total'])->toBe('€14.00')
         ->and($servicePointPayload['new_draft_count'])->toBe(1)
         ->and($servicePointDraftPayload['id'])->toBe($context['draftOrder']->id);
 
@@ -86,7 +86,7 @@ test('waiter sees sent draft in dashboard and can open it for review', function 
         ->and($tableDetail['table']['draft']['can_confirm'])->toBeTrue()
         ->and($tableDetail['table']['draft']['can_reject'])->toBeTrue()
         ->and($tableDetail['table']['draft']['can_edit'])->toBeTrue()
-        ->and($tableDetail['table']['current_draft_total'])->toBe('14.00 EUR');
+        ->and($tableDetail['table']['current_draft_total'])->toBe('€14.00');
 });
 
 test('waiter dashboard query count stays within its eager loaded budget', function () {
@@ -150,10 +150,10 @@ test('waiter edits sent draft before order creation and activity log records edi
         ->and($addedWater->fresh()->comment)->toBe('Sparkling')
         ->and($addedWater->fresh()->total_price_cents)->toBe(1200)
         ->and(DraftOrderItem::query()->whereKey($context['waterDraftItem']->id)->exists())->toBeFalse()
-        ->and($tableDetail['table']['current_draft_total'])->toBe('32.00 EUR')
+        ->and($tableDetail['table']['current_draft_total'])->toBe('€32.00')
         ->and($tableDetail['table']['item_count'])->toBe(2)
-        ->and($anaSection['total'])->toBe('20.00 EUR')
-        ->and($borisSection['total'])->toBe('12.00 EUR')
+        ->and($anaSection['total'])->toBe('€20.00')
+        ->and($borisSection['total'])->toBe('€12.00')
         ->and(Order::query()->count())->toBe(0)
         ->and(OrderItem::query()->count())->toBe(0)
         ->and(KitchenTicket::query()->count())->toBe(0)
@@ -210,7 +210,7 @@ test('waiter rejects draft with required reason and guests can see rejection rea
         ->assertSee($reason);
 });
 
-test('waiter confirms draft into order with snapshot data without department dispatch', function () {
+test('waiter confirms draft into immutable snapshots and dispatches department tickets atomically', function () {
     $context = createPrompt355WaiterReviewContext();
     $waiter = createPrompt355Waiter($context['organization']);
 
@@ -236,11 +236,11 @@ test('waiter confirms draft into order with snapshot data without department dis
         ->firstOrFail();
 
     expect($context['draftOrder']->fresh()->status)->toBe(DraftOrderStatus::ConvertedToOrder)
-        ->and($order->status)->toBe(OrderStatus::ConfirmedByWaiter)
+        ->and($order->status)->toBe(OrderStatus::SentToKitchenBar)
         ->and($order->confirmed_by_user_id)->toBe($waiter->id)
         ->and($order->total_price_cents)->toBe(1400)
-        ->and($order->metadata['sent_to_kitchen'])->toBeFalse()
-        ->and($order->metadata['sent_to_bar'])->toBeFalse()
+        ->and($order->metadata['sent_to_kitchen'])->toBeTrue()
+        ->and($order->metadata['sent_to_bar'])->toBeTrue()
         ->and($order->items)->toHaveCount(2)
         ->and($pizzaOrderItem->guest_name_snapshot)->toBe('Ana')
         ->and($pizzaOrderItem->original_menu_item_id)->toBe($context['pizzaItem']->id)
@@ -259,9 +259,9 @@ test('waiter confirms draft into order with snapshot data without department dis
         ->and($waterOrderItem->kitchen_department_name)->toBe('Main Bar')
         ->and($confirmationLog->actor_user_id)->toBe($waiter->id)
         ->and($confirmationLog->new_status)->toBe(DraftOrderStatus::ConvertedToOrder->value)
-        ->and($confirmationLog->metadata['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
-        ->and(KitchenTicket::query()->count())->toBe(0)
-        ->and(KitchenTicketItem::query()->count())->toBe(0);
+        ->and($confirmationLog->metadata['order_status'])->toBe(OrderStatus::SentToKitchenBar->value)
+        ->and(KitchenTicket::query()->count())->toBe(2)
+        ->and(KitchenTicketItem::query()->count())->toBe(2);
 });
 
 /**

@@ -35,6 +35,7 @@ test('draft order tables expose the required shared draft columns', function () 
             'total_price_cents',
             'selected_modifiers',
             'comment',
+            'idempotency_key',
             'created_at',
             'updated_at',
         ]))->toBeTrue();

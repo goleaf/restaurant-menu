@@ -9,6 +9,12 @@
         <p class="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
     @enderror
 
+    @if (data_get($payment, 'session.close_blocked_by_workflow'))
+        <p class="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            {{ __('orders.errors.table_has_unfinished_work') }}
+        </p>
+    @endif
+
     @if (data_get($payment, 'session.can_close'))
         <div id="close-table">
             <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('payments.close_session') }}</h2>

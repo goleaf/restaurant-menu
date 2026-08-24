@@ -8,11 +8,10 @@ use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
+use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +22,7 @@ class UpdateGuestDraftOrderItemAction
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
+        private readonly EnsureGuestOwnsEditableDraftItemAction $ensureGuestOwnsEditableDraftItem,
     ) {}
 
     /**
@@ -40,7 +40,7 @@ class UpdateGuestDraftOrderItemAction
         return DB::transaction(function () use ($draftOrderItem, $guest, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $languageCode): DraftOrderItem {
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $guest = $this->reloadGuest($guest);
-            $this->ensureGuestCanEditItem($draftOrderItem, $guest);
+            $this->ensureGuestOwnsEditableDraftItem->handle($draftOrderItem, $guest);
             $menuItem = $draftOrderItem->menuItem;
 
             if (! $menuItem instanceof MenuItem) {
@@ -54,7 +54,7 @@ class UpdateGuestDraftOrderItemAction
                 (int) $draftOrderItem->draftOrder->tableSession->branch_id,
             );
 
-            $quantity = $this->normalizeQuantity($quantity);
+            $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
             $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId, $languageCode);
 
             $draftOrderItem->update([
@@ -164,40 +164,6 @@ class UpdateGuestDraftOrderItemAction
             ])
             ->whereKey($guest->id)
             ->firstOrFail();
-    }
-
-    private function ensureGuestCanEditItem(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
-    {
-        $draftOrder = $draftOrderItem->draftOrder;
-        $tableSession = $draftOrder->tableSession;
-        $servicePoint = $tableSession->servicePoint;
-
-        if ($draftOrderItem->table_session_guest_id !== $guest->id
-            || $draftOrder->table_session_id !== $guest->table_session_id
-            || $guest->status !== TableSessionGuestStatus::Active
-            || ! $servicePoint->is_active
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
-            throw ValidationException::withMessages([
-                'draft_item' => __('ui.actions.draftorders.updateguestdraftorderitemaction.mozno_izmeniat_tolko'),
-            ]);
-        }
-
-        if ($draftOrder->status !== DraftOrderStatus::Draft) {
-            throw ValidationException::withMessages([
-                'draft_order' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.etot_cernovik_uze_ot'),
-            ]);
-        }
-    }
-
-    private function normalizeQuantity(int $quantity): int
-    {
-        if ($quantity < 1 || $quantity > 99) {
-            throw ValidationException::withMessages([
-                'editingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
-            ]);
-        }
-
-        return $quantity;
     }
 
     private function normalizeComment(?string $comment): ?string

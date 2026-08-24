@@ -8,9 +8,7 @@ enum KitchenTicketStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Sent => 'Sent',
-        };
+        return __('statuses.kitchen_ticket.sent');
     }
 
     /**

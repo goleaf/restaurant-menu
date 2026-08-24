@@ -71,6 +71,8 @@ test('order status log schema keeps actor and status history fields', function (
             'order_sent_to_kitchen_bar',
             'order_cancelled',
             'order_item_cancelled',
+            'ticket_item_status_changed',
+            'ticket_item_served',
         ]);
 });
 
@@ -150,7 +152,7 @@ test('guest draft creation send and waiter confirmation create status logs', fun
         ->and($confirmLog->actor_name)->toBe('Prompt 57 Waiter')
         ->and($confirmLog->previous_status)->toBe(DraftOrderStatus::SentToWaiter->value)
         ->and($confirmLog->new_status)->toBe(DraftOrderStatus::ConvertedToOrder->value)
-        ->and($confirmLog->metadata['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
+        ->and($confirmLog->metadata['order_status'])->toBe(OrderStatus::SentToKitchenBar->value)
         ->and($confirmLog->metadata['items_count'])->toBe(1);
 });
 
@@ -189,26 +191,10 @@ test('manual order status change updates order and writes status log', function 
     expect($order->status)->toBe(OrderStatus::InProgress)
         ->and($statusLog->actor_user_id)->toBe($manager->id)
         ->and($statusLog->actor_name)->toBe('Prompt 57 Manager')
-        ->and($statusLog->previous_status)->toBe(OrderStatus::ConfirmedByWaiter->value)
+        ->and($statusLog->previous_status)->toBe(OrderStatus::SentToKitchenBar->value)
         ->and($statusLog->new_status)->toBe(OrderStatus::InProgress->value)
         ->and($statusLog->reason)->toBe('Kitchen started')
         ->and($statusLog->metadata['source'])->toBe('manual_status_change');
-
-    $order = app(ChangeOrderStatusAction::class)->handle(
-        order: $order,
-        newStatus: OrderStatus::SentToKitchenBar,
-        changedBy: $manager,
-        reason: 'Send to kitchen and bar',
-    );
-
-    $kitchenLog = $order->statusLogs()
-        ->where('event', OrderStatusLogEvent::OrderSentToKitchenBar->value)
-        ->firstOrFail();
-
-    expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
-        ->and($kitchenLog->previous_status)->toBe(OrderStatus::InProgress->value)
-        ->and($kitchenLog->new_status)->toBe(OrderStatus::SentToKitchenBar->value)
-        ->and($kitchenLog->reason)->toBe('Send to kitchen and bar');
 
     $order = app(ChangeOrderStatusAction::class)->handle(
         order: $order,
@@ -222,7 +208,7 @@ test('manual order status change updates order and writes status log', function 
         ->firstOrFail();
 
     expect($order->status)->toBe(OrderStatus::Cancelled)
-        ->and($cancelLog->previous_status)->toBe(OrderStatus::SentToKitchenBar->value)
+        ->and($cancelLog->previous_status)->toBe(OrderStatus::InProgress->value)
         ->and($cancelLog->new_status)->toBe(OrderStatus::Cancelled->value)
         ->and($cancelLog->reason)->toBe('Guest changed plans');
 });

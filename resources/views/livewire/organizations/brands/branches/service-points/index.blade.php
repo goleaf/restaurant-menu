@@ -263,7 +263,7 @@
                                             <flux:button size="sm" icon="check" type="button" class="min-h-touch" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                             </flux:button>
-                                        @elseif ($servicePoint['is_active'])
+                                        @elseif ($servicePoint['can_open_table'])
                                             <flux:button size="sm" icon="play" variant="primary" type="button" class="min-h-touch" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                                 {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                             </flux:button>
@@ -535,7 +535,7 @@
                                         {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.table_opened') }}</span>
                                     </flux:button>
-                                @elseif ($servicePoint['is_active'])
+                                @elseif ($servicePoint['can_open_table'])
                                     <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.open_table') }}</span>

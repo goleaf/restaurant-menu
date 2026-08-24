@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\PublicQr;
 
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
+use App\Actions\Localization\UpdateGuestLocaleAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
@@ -15,6 +16,7 @@ use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -28,6 +30,8 @@ class GuestMenu extends Component
 
     private PublicQrQueryService $publicQrQueries;
 
+    private UpdateGuestLocaleAction $updateGuestLocale;
+
     #[Locked]
     public int $branchId;
 
@@ -39,6 +43,9 @@ class GuestMenu extends Component
 
     #[Locked]
     public string $publicToken = '';
+
+    #[Locked]
+    public string $itemAddAttemptId = '';
 
     public bool $guestCanAddItems = false;
 
@@ -77,9 +84,11 @@ class GuestMenu extends Component
     public function boot(
         GetGuestMenuForBranchAction $getGuestMenuForBranch,
         PublicQrQueryService $publicQrQueries,
+        UpdateGuestLocaleAction $updateGuestLocale,
     ): void {
         $this->getGuestMenuForBranch = $getGuestMenuForBranch;
         $this->publicQrQueries = $publicQrQueries;
+        $this->updateGuestLocale = $updateGuestLocale;
     }
 
     public function mount(
@@ -111,6 +120,12 @@ class GuestMenu extends Component
     {
         $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $this->language);
         $this->applyLocale();
+        $guest = $this->currentActiveGuest();
+
+        if ($guest instanceof TableSessionGuest) {
+            $this->updateGuestLocale->handle($guest, $this->language);
+        }
+
         unset($this->guestMenu);
         $this->configuredItems = [];
         $this->closeItemSheet();
@@ -129,6 +144,7 @@ class GuestMenu extends Component
         }
 
         $this->resetValidation();
+        $this->itemAddAttemptId = (string) Str::uuid();
         $this->selectedItemId = $itemId;
         $this->selectedItemVariantId = $this->defaultVariantId($item);
         $this->selectedModifierOptions = [];
@@ -142,6 +158,7 @@ class GuestMenu extends Component
     public function closeItemSheet(): void
     {
         $this->resetValidation();
+        $this->itemAddAttemptId = '';
         $this->selectedItemId = null;
         $this->selectedItemVariantId = null;
         $this->selectedModifierOptions = [];
@@ -239,6 +256,10 @@ class GuestMenu extends Component
         }
 
         try {
+            if ($this->itemAddAttemptId === '') {
+                $this->itemAddAttemptId = (string) Str::uuid();
+            }
+
             $draftOrderItem = $addGuestDraftOrderItem->handle(
                 tableSession: $tableSession,
                 guest: $guest,
@@ -248,6 +269,7 @@ class GuestMenu extends Component
                 comment: $this->itemComment,
                 itemName: $item['name'],
                 languageCode: $this->language,
+                idempotencyKey: $this->itemAddAttemptId,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);

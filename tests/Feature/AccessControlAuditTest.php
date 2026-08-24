@@ -118,6 +118,9 @@ test('waiter can manage menu labels without changing prices when change prices i
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('startEditingItem', $item->id)
         ->set('editingItemName', 'Prompt 96 Dish Renamed')
+        ->set('editingItemTranslations.en.name', 'Prompt 96 Dish Renamed')
+        ->set('editingItemTranslations.lt.name', 'Prompt 96 Dish Renamed LT')
+        ->set('editingItemTranslations.ru.name', 'Prompt 96 Dish Renamed RU')
         ->set('editingItemPrice', '99.99')
         ->call('updateItem')
         ->assertHasNoErrors();

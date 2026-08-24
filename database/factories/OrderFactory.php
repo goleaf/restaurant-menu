@@ -114,6 +114,21 @@ class OrderFactory extends Factory
         ]);
     }
 
+    public function forStatus(OrderStatus $status): static
+    {
+        return match ($status) {
+            OrderStatus::ConfirmedByWaiter => $this->confirmedByWaiter(),
+            OrderStatus::SentToKitchenBar => $this->sentToDepartments(),
+            OrderStatus::InProgress => $this->preparing(),
+            OrderStatus::Ready => $this->ready(),
+            OrderStatus::Served => $this->served(),
+            OrderStatus::PaymentRequested => $this->paymentRequested(),
+            OrderStatus::Paid => $this->paid(),
+            OrderStatus::Closed => $this->closed(),
+            OrderStatus::Cancelled => $this->cancelled(),
+        };
+    }
+
     public function forTableSession(TableSession $tableSession): static
     {
         return $this->state(fn (): array => [

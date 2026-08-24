@@ -39,11 +39,9 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
@@ -65,6 +63,19 @@ final class DemoOrganizationCrudSeeder extends Seeder
     private const TEMPORARILY_CLOSED_BRANCH_NAME = 'Bella Pizza Terrace';
 
     private const PNG_PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+    /**
+     * Digests produced by the retired deterministic demo invitation fixtures.
+     *
+     * @var array<string, array{token: string, code: string}>
+     */
+    private const array LEGACY_INVITATION_HASHES = [
+        'pending' => ['token' => '4ab20bc0f974fd08f420d9ded8d56037be89140c077edfb0e205de00d37b8212', 'code' => 'b5a094034e93afe2f4e4954538700fcfddcbab92473c6007f82e9425aa6b427d'],
+        'accepted' => ['token' => '1cb2c01b0fb115c4afbfc9f2a0107963403855bf7689a3deec8c65993af24c7d', 'code' => '889311e1e1c14256e9719ce0677e9c549d8f00f3247de21ca388120d828d6030'],
+        'expired' => ['token' => 'cf6e536db110fab2af776b77b61794ef52b6d079772ce237995e64d8485d8a32', 'code' => 'f0532760378f1262f0bfd1e957349494a5e5250e4257276dd41beaa8d01c8b31'],
+        'cancelled' => ['token' => 'aca12dccb81f3b64ec33d95d1053a8719c6f570f9f5462c79ab1c54fb52ffc6f', 'code' => '9975448eb682333ea4deb656e96b3a50bbe246125d9085346674b1508e156cec'],
+        'rejected' => ['token' => 'a9830bac017be106eb1f0504181b3f3f47cba3707e04767e3351c4f7750a98e3', 'code' => 'afb9d53fdd7305bdf0899c0c076b83b896866015c397718c2fdcb724e24031f1'],
+    ];
 
     public function __construct(
         private readonly AssignModifierGroupToMenuItemAction $assignModifierGroup,
@@ -368,7 +379,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
     private function seedLifecycleUser(string $name, string $email): User
     {
         $user = User::query()
-            ->select(['id', 'name', 'email', 'locale', 'email_verified_at', 'password'])
+            ->select(['id', 'name', 'email', 'locale', 'email_verified_at'])
             ->where('email', $email)
             ->first();
         $factory = User::factory()->demoIdentity($name, $email);
@@ -379,9 +390,7 @@ final class DemoOrganizationCrudSeeder extends Seeder
 
         $attributes = $factory->make()->getAttributes();
 
-        if (Hash::check(UserFactory::DEMO_PASSWORD, (string) $user->password)) {
-            unset($attributes['password']);
-        }
+        unset($attributes['password']);
 
         $user->forceFill($attributes)->save();
 
@@ -482,9 +491,15 @@ final class DemoOrganizationCrudSeeder extends Seeder
     ): void {
         $profiles = [
             ['email' => 'pending.invitation@demo.test', 'state' => 'pending', 'branch' => 'Bella Pizza Old Town'],
+            ['email' => 'permission.staff@demo.test', 'state' => 'accepted', 'branch' => 'Bella Pizza Old Town'],
             ['email' => 'expired.invitation@demo.test', 'state' => 'expired', 'branch' => 'Bella Pizza Terrace'],
-            ['email' => 'cancelled.invitation@demo.test', 'state' => 'cancelled', 'branch' => self::INACTIVE_BRANCH_NAME],
+            ['email' => 'revoked.invitation@demo.test', 'state' => 'cancelled', 'branch' => self::INACTIVE_BRANCH_NAME],
+            ['email' => 'rejected.invitation@demo.test', 'state' => 'rejected', 'branch' => 'Bella Pizza Terrace'],
         ];
+        $acceptedUser = User::query()
+            ->select(['id', 'email'])
+            ->where('email', 'permission.staff@demo.test')
+            ->firstOrFail();
 
         foreach ($profiles as $index => $profile) {
             $branch = $branches->get($profile['branch']);
@@ -498,24 +513,32 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 ->where('email', $profile['email'])
                 ->first();
             $state = $profile['state'];
+
+            if (! $invitation instanceof Invitation && $state === 'cancelled') {
+                $invitation = Invitation::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('email', 'cancelled.invitation@demo.test')
+                    ->first();
+            }
+
             $factory = Invitation::factory()
                 ->forOrganization($organization)
-                ->forRole($role)
-                ->{$state}()
-                ->state(fn (): array => [
-                    'brand_id' => $branch->brand_id,
-                    'branch_id' => $branch->id,
-                    'email' => $profile['email'],
-                    'phone' => null,
-                    'invite_token_hash' => hash('sha256', 'demo-crud-token-'.$profile['state']),
-                    'invite_code_hash' => hash('sha256', 'demo-crud-code-'.$profile['state']),
-                    'expires_at' => $state === 'expired'
-                        ? CarbonImmutable::parse('2026-08-22 09:00:00', 'UTC')
-                        : CarbonImmutable::parse('2035-01-15 18:00:00', 'UTC'),
-                    'invited_by_user_id' => $owner->id,
-                    'created_at' => CarbonImmutable::parse('2026-08-23 09:00:00', 'UTC')->addMinutes($index),
-                    'updated_at' => CarbonImmutable::parse('2026-08-23 09:00:00', 'UTC')->addMinutes($index),
-                ]);
+                ->forRole($role);
+            $factory = $state === 'accepted'
+                ? $factory->acceptedBy($acceptedUser)
+                : $factory->{$state}();
+            $factory = $factory->state(fn (): array => [
+                'brand_id' => $branch->brand_id,
+                'branch_id' => $branch->id,
+                'email' => $profile['email'],
+                'phone' => null,
+                'expires_at' => $state === 'expired'
+                    ? CarbonImmutable::parse('2026-08-22 09:00:00', 'UTC')
+                    : CarbonImmutable::parse('2035-01-15 18:00:00', 'UTC'),
+                'invited_by_user_id' => $owner->id,
+                'created_at' => CarbonImmutable::parse('2026-08-23 09:00:00', 'UTC')->addMinutes($index),
+                'updated_at' => CarbonImmutable::parse('2026-08-23 09:00:00', 'UTC')->addMinutes($index),
+            ]);
 
             if (! $invitation instanceof Invitation) {
                 $factory->create();
@@ -523,8 +546,22 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 continue;
             }
 
-            $invitation->forceFill($factory->make()->getAttributes())->save();
+            $attributes = $factory->make()->getAttributes();
+
+            if (! $this->usesLegacyInvitationCredential($invitation, $state)) {
+                unset($attributes['invite_token_hash'], $attributes['invite_code_hash']);
+            }
+
+            $invitation->forceFill($attributes)->save();
         }
+    }
+
+    private function usesLegacyInvitationCredential(Invitation $invitation, string $state): bool
+    {
+        $legacyHashes = self::LEGACY_INVITATION_HASHES[$state];
+
+        return hash_equals($legacyHashes['token'], (string) $invitation->getRawOriginal('invite_token_hash'))
+            || hash_equals($legacyHashes['code'], (string) $invitation->getRawOriginal('invite_code_hash'));
     }
 
     private function seedPermissionOverrides(): void

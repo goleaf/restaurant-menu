@@ -14,6 +14,7 @@ use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -39,6 +40,7 @@ use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\Permission;
+use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -53,7 +55,7 @@ beforeEach(function () {
 });
 
 test('waiter cancels order with required reason and guests see cancellation', function () {
-    [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem] = createPrompt121SentOrderScenario();
+    [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem, $guest, $qrCode] = createPrompt121SentOrderScenario();
     $waiter = User::factory()->create(['name' => 'Prompt 121 Waiter']);
     $chef = User::factory()->create(['name' => 'Prompt 121 Chef']);
 
@@ -98,10 +100,13 @@ test('waiter cancels order with required reason and guests see cancellation', fu
         ->and($statusLog->metadata['ready_ticket_items_count'])->toBe(1)
         ->and($auditLog->new_values['reason'])->toBe('Guest asked to cancel after a long wait.');
 
-    Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    Livewire::withCookie(prompt121GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('serviceStatusValue', 'cancelled')
         ->assertSet('cancellationReason', 'Guest asked to cancel after a long wait.')
         ->assertSee(__('guest.statuses.service.cancelled_order'))
@@ -139,7 +144,7 @@ test('director and shift manager can cancel an order without an explicit cancel 
 ]);
 
 test('waiter cancels one order item without deleting its history', function () {
-    [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem] = createPrompt121SentOrderScenario();
+    [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem, $guest, $qrCode] = createPrompt121SentOrderScenario();
     $waiter = User::factory()->create(['name' => 'Prompt 121 Item Canceller']);
     $chef = User::factory()->create(['name' => 'Prompt 121 Item Cancellation Chef']);
 
@@ -199,15 +204,18 @@ test('waiter cancels one order item without deleting its history', function () {
         ->and($cancelledItem->cancellation_reason)->toBe('Guest no longer wants this dish.')
         ->and($ticketItem->fresh()->status)->toBe(KitchenTicketItemStatus::Cancelled)
         ->and($order->fresh()->total_price_cents)->toBe(500)
-        ->and($summary['confirmed_total'])->toBe('5.00 EUR')
+        ->and($summary['confirmed_total'])->toBe('€5.00')
         ->and($statusLog->reason)->toBe('Guest no longer wants this dish.')
         ->and($statusLog->metadata['order_item_id'])->toBe($cancelledItem->id)
         ->and($auditLog->new_values['reason'])->toBe('Guest no longer wants this dish.');
 
-    Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    Livewire::withCookie(prompt121GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('itemStatuses.0.status_value', 'cancelled')
         ->assertSet('itemStatuses.1.status_value', 'accepted')
         ->assertSeeText('Prompt 121 Pizza')
@@ -412,6 +420,9 @@ function createPrompt121SentOrderScenario(): array
             'guest_name' => 'Ana',
             'status' => TableSessionGuestStatus::Active,
         ]);
+    $qrCode = QrCode::factory()
+        ->for($servicePoint)
+        ->create(['status' => QrCodeStatus::Active]);
     $kitchenDepartment = KitchenDepartment::factory()
         ->for($branch)
         ->create([
@@ -472,7 +483,12 @@ function createPrompt121SentOrderScenario(): array
         })
         ->firstOrFail();
 
-    return [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem];
+    return [$organization, $tableSession, $order, $kitchenDepartment, $ticketItem, $guest, $qrCode];
+}
+
+function prompt121GuestCookieName(QrCode $qrCode): string
+{
+    return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
 }
 
 /**

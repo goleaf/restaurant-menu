@@ -3,7 +3,6 @@
 namespace App\Actions\TableSessions;
 
 use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -55,7 +54,7 @@ class ToggleTableSessionGuestReadyAction
 
         if ($guest->status !== TableSessionGuestStatus::Active
             || $tableSession === null
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            || ! $tableSession->status->allowsGuestParticipation()) {
             throw ValidationException::withMessages([
                 'ready_status' => __('ui.actions.tablesessions.toggletablesessionguestreadyaction.tolko_aktivnyi'),
             ]);

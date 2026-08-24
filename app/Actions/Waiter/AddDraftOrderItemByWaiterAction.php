@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\DraftOrders\CreateDraftOrderItemIdempotentlyAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
-use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
@@ -20,9 +20,10 @@ use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\Orders\IdempotencyKey;
+use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class AddDraftOrderItemByWaiterAction
 {
@@ -32,6 +33,8 @@ class AddDraftOrderItemByWaiterAction
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
         private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        private readonly MoveDraftOrderToWaiterReviewAction $moveDraftOrderToWaiterReview,
+        private readonly CreateDraftOrderItemIdempotentlyAction $createDraftOrderItemIdempotently,
     ) {}
 
     /**
@@ -47,23 +50,35 @@ class AddDraftOrderItemByWaiterAction
         ?int $menuItemVariantId = null,
         ?string $comment = null,
         ?string $itemName = null,
+        ?string $idempotencyKey = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($draftOrder, $guest, $menuItem, $editedBy, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment): DraftOrderItem {
+        $idempotencyKey = IdempotencyKey::from($idempotencyKey);
+
+        return DB::transaction(function () use ($draftOrder, $guest, $menuItem, $editedBy, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $idempotencyKey): DraftOrderItem {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
-            $guest = $this->reloadGuest($guest);
-            $menuItem = $this->reloadMenuItem($menuItem);
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
+
+            if ($idempotencyKey instanceof IdempotencyKey) {
+                $existingItem = $this->createDraftOrderItemIdempotently->existing($draftOrder, $idempotencyKey);
+
+                if ($existingItem instanceof DraftOrderItem) {
+                    return $existingItem;
+                }
+            }
+
+            $guest = $this->reloadGuest($guest);
+            $menuItem = $this->reloadMenuItem($menuItem);
             $this->ensureGuestCanReceiveItem($draftOrder, $guest);
             $this->ensureMenuItemCanBeAdded($draftOrder, $menuItem);
 
-            $quantity = $this->normalizeQuantity($quantity);
+            $quantity = OrderItemQuantity::from($quantity, 'addingQuantity')->value;
             $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
 
             $previousStatus = $draftOrder->status;
-            $this->markAsWaiterReview($draftOrder);
+            $this->moveDraftOrderToWaiterReview->handle($draftOrder);
 
-            $draftOrderItem = $draftOrder->items()->create([
+            $draftOrderItem = $this->createDraftOrderItemIdempotently->handle($draftOrder, [
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
                 'menu_item_variant_id' => $linePrice['menu_item_variant_id'],
@@ -76,7 +91,11 @@ class AddDraftOrderItemByWaiterAction
                 'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
-            ])->refresh();
+            ], $idempotencyKey);
+
+            if (! $draftOrderItem->wasRecentlyCreated) {
+                return $draftOrderItem;
+            }
 
             $this->createOrderStatusLog->handle(
                 event: OrderStatusLogEvent::DraftEdited,
@@ -238,17 +257,6 @@ class AddDraftOrderItemByWaiterAction
         }
     }
 
-    private function normalizeQuantity(int $quantity): int
-    {
-        if ($quantity < 1 || $quantity > 99) {
-            throw ValidationException::withMessages([
-                'addingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
-            ]);
-        }
-
-        return $quantity;
-    }
-
     private function snapshotName(MenuItem $menuItem): string
     {
         return $menuItem->name;
@@ -263,14 +271,5 @@ class AddDraftOrderItemByWaiterAction
         }
 
         return $normalizedComment;
-    }
-
-    private function markAsWaiterReview(DraftOrder $draftOrder): void
-    {
-        if ($draftOrder->status === DraftOrderStatus::SentToWaiter) {
-            $draftOrder
-                ->forceFill(['status' => DraftOrderStatus::WaiterReview])
-                ->save();
-        }
     }
 }

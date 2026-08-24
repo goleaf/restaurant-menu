@@ -40,7 +40,7 @@ class CreateAreaNodeAction
             ->exists();
 
         if (! $parentExists) {
-            throw new InvalidArgumentException('The selected parent area is not available.');
+            throw new InvalidArgumentException('errors.domain.selected_parent_area_unavailable');
         }
     }
 }

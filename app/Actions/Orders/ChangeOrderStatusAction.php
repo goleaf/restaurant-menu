@@ -51,6 +51,12 @@ class ChangeOrderStatusAction
                 return $order;
             }
 
+            if (! $previousStatus->canTransitionTo($newStatus)) {
+                throw ValidationException::withMessages([
+                    'order_status' => __('errors.types.order_invalid_transition.message'),
+                ]);
+            }
+
             if ($newStatus === OrderStatus::Cancelled && $normalizedReason === null) {
                 throw ValidationException::withMessages([
                     'orderCancellationReason' => __('ui.actions.orders.changeorderstatusaction.ukazite_pricinu_otmeny_zakaza'),
@@ -132,6 +138,7 @@ class ChangeOrderStatusAction
             ])
             ->with(['branch:id,organization_id'])
             ->whereKey($order->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 

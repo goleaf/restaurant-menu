@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 
@@ -131,6 +132,20 @@ test('first party web route file does not disable csrf protection', function ():
     expect($bootstrap)->not->toContain('preventRequestForgery(except:')
         ->and($bootstrap)->not->toContain('withoutMiddleware')
         ->and(prompt334RouteByName('default-livewire.update')?->gatherMiddleware())->toContain('web');
+});
+
+test('state changing invitation requests reject a missing csrf token', function (): void {
+    $originalEnvironment = app()->environment();
+
+    try {
+        app()->instance('env', 'local');
+
+        $this->withMiddleware(PreventRequestForgery::class)
+            ->post(route('invitations.register'), [])
+            ->assertStatus(419);
+    } finally {
+        app()->instance('env', $originalEnvironment);
+    }
 });
 
 test('demo login routes keep their public authentication boundary', function (): void {

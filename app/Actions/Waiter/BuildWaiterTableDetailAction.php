@@ -12,6 +12,7 @@ use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -24,6 +25,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionServicePoint;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 
@@ -264,6 +266,10 @@ class BuildWaiterTableDetailAction
         $closeTableSessionBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::CloseTableSessions);
         $canManuallyCloseTableSession = $closeTableSessionBranchIds->contains((int) $tableSession->branch_id);
+        $canManageGuests = $this->resolveAccessibleBranchIds
+            ->handle($user, SystemPermission::ManageTableSessions)
+            ->contains((int) $tableSession->branch_id)
+            && $sessionStatus->allowsGuestViewing();
         $transferBranchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewOrders)
             ->merge($this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
@@ -272,13 +278,10 @@ class BuildWaiterTableDetailAction
         $canTransferTableSession = $sessionStatus === TableSessionStatus::Active
             && $transferBranchIds->contains((int) $tableSession->branch_id);
         $canMergeTableSession = $canTransferTableSession;
-        $canCloseTableSession = ! in_array($sessionStatus, [
-            TableSessionStatus::Closed,
-            TableSessionStatus::Cancelled,
-        ], true) && (
-            $canManuallyCloseTableSession
-            || ($canManagePayments && $sessionStatus === TableSessionStatus::Paid)
-        );
+        $hasClosePermission = $canManuallyCloseTableSession
+            || ($canManagePayments && $sessionStatus === TableSessionStatus::Paid);
+        $workflowAllowsClosure = $this->workflowAllowsClosure($draftOrder, $tableSession->orders);
+        $canCloseTableSession = $workflowAllowsClosure && ! $sessionStatus->isTerminal() && $hasClosePermission;
         $canAddManualOrderItems = $canEditPendingDraft && $sessionStatus === TableSessionStatus::Active;
         $hasRecordedPayments = (bool) $tableSession->getAttribute('manual_payments_exists');
 
@@ -323,14 +326,16 @@ class BuildWaiterTableDetailAction
                 'id' => $tableSession->id,
                 'status_label' => $sessionStatus->label(),
                 'source_label' => $sessionSource->label(),
-                'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
+                'started_at' => LocalizedDateFormatter::dateTime($tableSession->started_at ?? $tableSession->created_at),
                 'opened_by' => $this->openedByName($tableSession),
                 'can_close' => $canCloseTableSession,
                 'can_close_manually' => $canManuallyCloseTableSession,
+                'close_blocked_by_workflow' => $hasClosePermission && ! $workflowAllowsClosure,
                 'close_requires_warning' => $canCloseTableSession && $sessionStatus !== TableSessionStatus::Paid,
             ],
             'draft' => $this->draftPayload(
                 draftOrder: $draftOrder,
+                sessionStatus: $sessionStatus,
                 currency: $currency,
                 totalCents: $draftTotalCents,
                 canReviewDraft: $canReviewDraft,
@@ -355,14 +360,26 @@ class BuildWaiterTableDetailAction
             ],
             'transfer' => $this->transferPayload($tableSession, $canTransferTableSession),
             'merge' => $this->mergePayload($tableSession, $canMergeTableSession),
+            'participants' => [
+                'can_manage' => $canManageGuests,
+                'guests' => $tableSession->guests
+                    ->map(fn (TableSessionGuest $guest): array => [
+                        'id' => $guest->id,
+                        'name' => $guest->guest_name,
+                        'status_key' => 'guest.statuses.'.$guest->status->value,
+                        'can_remove' => $canManageGuests && $guest->status === TableSessionGuestStatus::Active,
+                    ])
+                    ->values()
+                    ->all(),
+            ],
             'guest_sections' => $guestSections,
-            'current_draft_total' => $this->formatCents($draftTotalCents).' '.$currency,
-            'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents).' '.$currency,
+            'current_draft_total' => $this->formatCents($draftTotalCents, $currency),
+            'confirmed_orders_total' => $this->formatCents($confirmedOrdersTotalCents, $currency),
             'confirmed_order_count' => $tableSession->orders
                 ->filter(fn (Order $order): bool => $order->status !== OrderStatus::Cancelled)
                 ->count(),
-            'table_total' => $this->formatCents($tableTotalCents).' '.$currency,
-            'total' => $this->formatCents($tableTotalCents).' '.$currency,
+            'table_total' => $this->formatCents($tableTotalCents, $currency),
+            'total' => $this->formatCents($tableTotalCents, $currency),
             'guest_count' => count($guestSections),
             'item_count' => collect($guestSections)->sum(fn (array $guestSection): int => count($guestSection['items'])),
         ];
@@ -542,11 +559,7 @@ class BuildWaiterTableDetailAction
             && (bool) ($summary['has_payable_total'] ?? false)
             && ! (bool) ($summary['has_open_draft'] ?? false)
             && (int) ($summary['remaining_total_cents'] ?? 0) > 0
-            && ! in_array($sessionStatus, [
-                TableSessionStatus::Paid,
-                TableSessionStatus::Closed,
-                TableSessionStatus::Cancelled,
-            ], true);
+            && $sessionStatus->allowsPaymentRecording();
 
         $guestBalances = collect($summary['guest_balances'] ?? [])
             ->map(function (array $guestBalance) use ($canRecord): array {
@@ -632,8 +645,8 @@ class BuildWaiterTableDetailAction
                     'id' => $order->id,
                     'status_value' => $order->status->value,
                     'status_label' => $order->status->label(),
-                    'total' => $this->formatCents($order->total_price_cents).' '.$currency,
-                    'created_at' => $order->created_at?->format('Y-m-d H:i'),
+                    'total' => $this->formatCents($order->total_price_cents, $currency),
+                    'created_at' => LocalizedDateFormatter::dateTime($order->created_at),
                     'items' => $order->items
                         ->map(fn (OrderItem $item): array => $this->fulfilmentOrderItemPayload(
                             order: $order,
@@ -678,14 +691,14 @@ class BuildWaiterTableDetailAction
             'item_name' => $item->historicalItemName(),
             'variant_name' => $item->variant_name,
             'quantity' => $item->quantity,
-            'total' => $this->formatCents($item->total_price_cents).' '.$currency,
+            'total' => $this->formatCents($item->total_price_cents, $currency),
             'status_label' => $status['label'],
             'status_color' => $status['color'],
             'is_cancelled' => $cancelled,
             'is_ready' => $ready,
             'is_served' => $served,
-            'served_at' => $ticketItem?->served_at?->format('Y-m-d H:i'),
-            'cancelled_at' => $item->cancelled_at?->format('Y-m-d H:i'),
+            'served_at' => LocalizedDateFormatter::dateTime($ticketItem?->served_at),
+            'cancelled_at' => LocalizedDateFormatter::dateTime($item->cancelled_at),
             'cancelled_by' => $item->cancelledByUser?->name,
             'cancellation_reason' => $item->cancellation_reason
                 ?? (is_string($orderCancellationReason) ? $orderCancellationReason : null),
@@ -750,10 +763,10 @@ class BuildWaiterTableDetailAction
                 'item_name' => $item->item_name,
                 'variant_name' => $item->variant_name,
                 'quantity' => $item->quantity,
-                'unit_price' => $this->formatCents($item->unit_price_cents).' '.$currency,
-                'modifier_total' => $this->formatCents($item->modifier_total_cents).' '.$currency,
-                'unit_total_price' => $this->formatCents($unitTotalCents).' '.$currency,
-                'total_price' => $this->formatCents($itemTotalCents).' '.$currency,
+                'unit_price' => $this->formatCents($item->unit_price_cents, $currency),
+                'modifier_total' => $this->formatCents($item->modifier_total_cents, $currency),
+                'unit_total_price' => $this->formatCents($unitTotalCents, $currency),
+                'total_price' => $this->formatCents($itemTotalCents, $currency),
                 'comment' => $item->comment,
                 'modifiers' => $this->modifierSummary($item->selected_modifiers ?? [], $currency),
             ];
@@ -767,7 +780,7 @@ class BuildWaiterTableDetailAction
                 'status_label' => $guestSection['status_label'],
                 'is_ready' => $guestSection['is_ready'],
                 'total_cents' => $guestSection['total_cents'],
-                'total' => $this->formatCents((int) $guestSection['total_cents']).' '.$currency,
+                'total' => $this->formatCents((int) $guestSection['total_cents'], $currency),
                 'items' => $guestSection['items'],
             ])
             ->values()
@@ -790,7 +803,7 @@ class BuildWaiterTableDetailAction
                     'label' => trim($groupName) === '' ? $optionName : $groupName.': '.$optionName,
                     'price_delta' => $priceDeltaCents === null
                         ? null
-                        : $this->formatCents((int) $priceDeltaCents).' '.$currency,
+                        : $this->formatCents((int) $priceDeltaCents, $currency),
                 ];
             })
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')
@@ -803,6 +816,7 @@ class BuildWaiterTableDetailAction
      */
     private function draftPayload(
         ?DraftOrder $draftOrder,
+        TableSessionStatus $sessionStatus,
         string $currency,
         int $totalCents,
         bool $canReviewDraft,
@@ -868,17 +882,18 @@ class BuildWaiterTableDetailAction
         $cancellationReason = $draftOrder->order instanceof Order
             ? ($draftOrder->order->metadata['cancellation_reason'] ?? null)
             : null;
+        $sessionAllowsOrderChanges = ! $sessionStatus->locksOrderChanges();
 
         return [
             'id' => $draftOrder->id,
             'status_value' => $status->value,
             'status_label' => $status->label(),
-            'sent_at' => $draftOrder->sent_to_waiter_at?->format('Y-m-d H:i'),
+            'sent_at' => LocalizedDateFormatter::dateTime($draftOrder->sent_to_waiter_at),
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
-            'rejected_at' => $draftOrder->rejected_at?->format('Y-m-d H:i'),
+            'rejected_at' => LocalizedDateFormatter::dateTime($draftOrder->rejected_at),
             'rejected_by_user_name' => $draftOrder->rejectedByUser?->name,
             'rejection_reason' => $draftOrder->rejection_reason,
-            'converted_to_order_at' => $draftOrder->converted_to_order_at?->format('Y-m-d H:i'),
+            'converted_to_order_at' => LocalizedDateFormatter::dateTime($draftOrder->converted_to_order_at),
             'converted_by_user_name' => $draftOrder->convertedByUser?->name,
             'order_id' => $draftOrder->order?->id,
             'order_status_value' => $orderStatus?->value,
@@ -890,13 +905,13 @@ class BuildWaiterTableDetailAction
             'served_ticket_item_count' => $servedTicketItemCount,
             'cancellation_reason' => is_string($cancellationReason) ? $cancellationReason : null,
             'has_ready_or_served_warning' => $hasReadyOrServedWarning,
-            'total' => $this->formatCents($totalCents).' '.$currency,
-            'can_confirm' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
-            'can_reject' => $canReviewDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
-            'can_return_to_draft' => $canReviewDraft && $status === DraftOrderStatus::Rejected,
-            'can_edit' => $canEditPendingDraft && in_array($status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true),
-            'can_send_to_kitchen' => $canSendToKitchen && $orderStatus === OrderStatus::ConfirmedByWaiter,
-            'can_cancel' => $canCancelOrder && $this->orderCanBeCancelled($orderStatus),
+            'total' => $this->formatCents($totalCents, $currency),
+            'can_confirm' => $sessionAllowsOrderChanges && $canReviewDraft && $status->isWaiterEditable(),
+            'can_reject' => $sessionAllowsOrderChanges && $canReviewDraft && $status->isWaiterEditable(),
+            'can_return_to_draft' => $sessionAllowsOrderChanges && $canReviewDraft && $status === DraftOrderStatus::Rejected,
+            'can_edit' => $sessionAllowsOrderChanges && $canEditPendingDraft && $status->isWaiterEditable(),
+            'can_send_to_kitchen' => $sessionAllowsOrderChanges && $canSendToKitchen && $orderStatus === OrderStatus::ConfirmedByWaiter,
+            'can_cancel' => $sessionAllowsOrderChanges && $canCancelOrder && $this->orderCanBeCancelled($orderStatus),
         ];
     }
 
@@ -911,6 +926,23 @@ class BuildWaiterTableDetailAction
             OrderStatus::Paid,
             OrderStatus::Closed,
         ], true);
+    }
+
+    /** @param Collection<int, Order> $orders */
+    private function workflowAllowsClosure(?DraftOrder $draftOrder, Collection $orders): bool
+    {
+        if ($draftOrder instanceof DraftOrder
+            && in_array($draftOrder->status, [
+                DraftOrderStatus::Draft,
+                DraftOrderStatus::SentToWaiter,
+                DraftOrderStatus::WaiterReview,
+                DraftOrderStatus::Rejected,
+            ], true)
+            && $draftOrder->items->isNotEmpty()) {
+            return false;
+        }
+
+        return $orders->every(fn (Order $order): bool => $order->status->allowsTableClosure());
     }
 
     /**
@@ -949,14 +981,14 @@ class BuildWaiterTableDetailAction
             'status_color' => $item->served_at === null ? $status->badgeColor() : 'sky',
             'is_ready' => $status === KitchenTicketItemStatus::Ready,
             'is_served' => $item->served_at !== null,
-            'served_at' => $item->served_at?->format('Y-m-d H:i'),
+            'served_at' => LocalizedDateFormatter::dateTime($item->served_at),
             'comment' => $item->comment,
             'modifiers' => $this->modifierSummary($item->selected_modifiers ?? [], $currency),
         ];
     }
 
-    private function formatCents(int $cents): string
+    private function formatCents(int $cents, string $currency): string
     {
-        return MoneyFormatter::centsToDecimal($cents);
+        return MoneyFormatter::formatCents($cents, $currency);
     }
 }

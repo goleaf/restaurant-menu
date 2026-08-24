@@ -16,7 +16,10 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 test('menu tables expose the required columns', function () {
@@ -242,10 +245,43 @@ test('temporary menu hiding is indexed and cast as an immutable deadline', funct
     $indexes = collect(Schema::getIndexes('menu_items'));
 
     expect($item->isTemporarilyHidden())->toBeTrue()
-        ->and($item->hidden_until)->toBeInstanceOf(\Carbon\CarbonImmutable::class)
+        ->and($item->hidden_until)->toBeInstanceOf(CarbonImmutable::class)
         ->and($indexes->contains(
             fn (array $index): bool => $index['columns'] === ['hidden_until'],
         ))->toBeTrue();
+});
+
+test('temporary menu hiding migration rolls back cleanly on SQLite', function () {
+    $connectionName = 'menu-hidden-until-rollback';
+    $databasePath = tempnam(sys_get_temp_dir(), 'restaurant-menu-hidden-until-');
+    $originalConnection = DB::getDefaultConnection();
+
+    expect($databasePath)->toBeString();
+
+    config()->set("database.connections.{$connectionName}", [
+        ...config('database.connections.sqlite'),
+        'database' => $databasePath,
+    ]);
+
+    try {
+        DB::setDefaultConnection($connectionName);
+        Schema::create('menu_items', function ($table): void {
+            $table->id();
+            $table->boolean('is_available')->default(true);
+        });
+        $migration = require database_path('migrations/2026_08_24_034106_add_hidden_until_to_menu_items_table.php');
+
+        $migration->up();
+        expect(Schema::hasColumn('menu_items', 'hidden_until'))->toBeTrue();
+
+        $migration->down();
+        expect(Schema::hasColumn('menu_items', 'hidden_until'))->toBeFalse();
+    } finally {
+        DB::setDefaultConnection($originalConnection);
+        DB::purge($connectionName);
+        config()->set("database.connections.{$connectionName}", null);
+        File::delete($databasePath);
+    }
 });
 
 test('menu item image records are constrained ordered and factory backed', function () {

@@ -9,6 +9,7 @@ use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
+use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
@@ -145,9 +146,34 @@ test('new owner can onboard and close a fully paid table through the browser', f
         ->where('draft_order_id', $draftOrder->id)
         ->sole();
 
-    expect($order->status)->toBe(OrderStatus::ConfirmedByWaiter)
+    expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
         ->and($order->total_price_cents)->toBe(1250)
         ->and($order->items()->sole()->variant_name)->toBe('Large portion');
+
+    $ticketItem = KitchenTicketItem::query()
+        ->whereHas('kitchenTicket', fn ($query) => $query->where('order_id', $order->id))
+        ->sole();
+
+    $page
+        ->navigate(route('restaurant.kitchen.dashboard', absolute: false))
+        ->assertSee('Browser E2E Pasta');
+    clickBrowserElement($page, 'button[wire\\:click="setItemStatus('.$ticketItem->id.', \'in_progress\')"]');
+    $page->assertPresent('[data-ticket-item-status="in_progress"]');
+    clickBrowserElement($page, 'button[wire\\:click="setItemStatus('.$ticketItem->id.', \'ready\')"]');
+    $page
+        ->assertPresent('[data-ticket-item-status="ready"]')
+        ->assertSee(__('ui.departments.dashboard.gotovo'))
+        ->assertNoJavaScriptErrors();
+
+    $page
+        ->navigate($waiterTablePath)
+        ->assertSee(__('ui.waiter.dashboard.mark_served'));
+    clickBrowserElement($page, 'button[wire\\:click="markTicketItemServed('.$ticketItem->id.')"]');
+    $page
+        ->assertSee(__('ui.waiter.table_detail.served_at'))
+        ->assertNoJavaScriptErrors();
+
+    expect($order->fresh()->status)->toBe(OrderStatus::Served);
 
     $page
         ->navigate(route('public.qr.show', ['token' => $qrCode->public_token], false))
@@ -162,10 +188,10 @@ test('new owner can onboard and close a fully paid table through the browser', f
 
     $page
         ->navigate($waiterTablePath)
-        ->assertSee('12.50 EUR')
+        ->assertSee('€12.50')
         ->select('select[wire\\:model="paymentMethod"]', ManualPaymentMethod::CardTerminal->value)
         ->fill('paymentNote', 'Browser E2E card payment');
-    clickBrowserButtonContaining($page, __('payments.pay_whole_table').' · 12.50 EUR');
+    clickBrowserButtonContaining($page, __('payments.pay_whole_table').' · €12.50');
     clickBrowserElement($page, 'button[wire\\:click="recordTablePayment"]');
     $page
         ->assertSee(__('payments.messages.payment_recorded'))
@@ -181,7 +207,8 @@ test('new owner can onboard and close a fully paid table through the browser', f
         ->and($payment->payment_method)->toBe(ManualPaymentMethod::CardTerminal)
         ->and($payment->amount_cents)->toBe(1250)
         ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid)
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Paid);
 
     clickBrowserElement($page, '#close-table button');
     clickBrowserElement($page, 'button[wire\\:click="closeTableSession"]');
@@ -192,14 +219,15 @@ test('new owner can onboard and close a fully paid table through the browser', f
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Closed)
         ->and($tableSession->fresh()->ended_at)->not->toBeNull()
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Closed);
 });
 
 function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $registeredOwner): void
 {
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'lt', 'en');
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'ru', 'lt');
-    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'en', 'ru');
+    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'lt');
+    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'ru');
+    assertBrowserOnboardingLocaleLayout($page, $registeredOwner, 'en');
 
     $page
         ->resize(390, 844)
@@ -380,12 +408,11 @@ function assertBrowserOnboardingLocaleLayout(
     PendingAwaitablePage $page,
     User $registeredOwner,
     string $locale,
-    string $requestLocale,
 ): void {
     $page->navigate(route('profile.edit', absolute: false));
     $page->select('select[wire\\:model="locale"]', $locale);
     clickBrowserElement($page, 'form[wire\\:submit="updateProfileInformation"] button[type="submit"]');
-    $page->assertSee(__('ui.livewire.settings.profile.profile_updated', [], $requestLocale));
+    $page->assertSee(__('ui.livewire.settings.profile.profile_updated', [], $locale));
 
     expect($registeredOwner->refresh()->locale)->toBe($locale);
 

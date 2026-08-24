@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\QrCodeStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\OrderStatuses;
@@ -15,13 +16,14 @@ use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use Livewire\Livewire;
 
 test('guest sees friendly draft sent and waiter review statuses', function () {
-    [$tableSession, $guest] = createPrompt124TableSession();
+    [$tableSession, $guest, $qrCode] = createPrompt124TableSession();
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create(['status' => DraftOrderStatus::Draft]);
@@ -35,10 +37,13 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
             'total_price_cents' => 1800,
         ]);
 
-    $component = Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    $component = Livewire::withCookie(prompt124GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('overallStatusLabel', 'Choosing items')
         ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.draft')
         ->assertSeeText('Choosing items')
@@ -74,17 +79,20 @@ test('guest sees friendly draft sent and waiter review statuses', function () {
 });
 
 test('guest sees accepted cooking ready and served item statuses', function () {
-    [$tableSession, $guest] = createPrompt124TableSession();
+    [$tableSession, $guest, $qrCode] = createPrompt124TableSession();
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
         ->create(['status' => DraftOrderStatus::ConvertedToOrder]);
     $order = createPrompt124Order($tableSession, $draftOrder, OrderStatus::ConfirmedByWaiter);
     $acceptedItem = createPrompt124OrderItem($order, $guest, 'Суп дня');
 
-    Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    Livewire::withCookie(prompt124GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('overallStatusLabel', 'Order accepted')
         ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.accepted')
         ->assertSeeText('Order accepted')
@@ -107,10 +115,13 @@ test('guest sees accepted cooking ready and served item statuses', function () {
     createPrompt124TicketItem($ticket, $readyItem, KitchenTicketItemStatus::Ready);
     createPrompt124TicketItem($ticket, $servedItem, KitchenTicketItemStatus::Ready, now());
 
-    Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    Livewire::withCookie(prompt124GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('overallStatusLabel', 'Cooking')
         ->assertSet('itemStatuses.0.status_key', 'guest.statuses.items.accepted')
         ->assertSet('itemStatuses.1.status_key', 'guest.statuses.items.cooking')
@@ -123,14 +134,17 @@ test('guest sees accepted cooking ready and served item statuses', function () {
 });
 
 test('guest sees whole table bill and paid statuses', function () {
-    [$tableSession] = createPrompt124TableSession();
+    [$tableSession, $guest, $qrCode] = createPrompt124TableSession();
 
     $tableSession->forceFill(['status' => TableSessionStatus::PaymentRequested])->save();
 
-    $component = Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 1,
-    ])
+    $component = Livewire::withCookie(prompt124GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ])
         ->assertSet('overallStatusLabel', 'Bill requested')
         ->assertSeeText('Bill requested');
 
@@ -144,6 +158,40 @@ test('guest sees whole table bill and paid statuses', function () {
         ->assertSeeText('Paid');
 
     expect(collect($component->get('guestSteps'))->firstWhere('key', 'paid')['state'])->toBe('current');
+});
+
+test('guest order polling query count stays constant as draft items grow', function (): void {
+    [$tableSession, $guest, $qrCode] = createPrompt124TableSession();
+    $draftOrder = DraftOrder::factory()
+        ->for($tableSession)
+        ->create(['status' => DraftOrderStatus::Draft]);
+    DraftOrderItem::factory()
+        ->for($draftOrder, 'draftOrder')
+        ->for($guest, 'guest')
+        ->create();
+    $component = Livewire::withCookie(prompt124GuestCookieName($qrCode), $guest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $guest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 1,
+        ]);
+    $initialQueryCount = countDatabaseQueries(
+        fn () => $component->call('refreshOrderStatuses'),
+    );
+
+    DraftOrderItem::factory()
+        ->count(20)
+        ->for($draftOrder, 'draftOrder')
+        ->for($guest, 'guest')
+        ->create();
+
+    $grownQueryCount = countDatabaseQueries(
+        fn () => $component->call('refreshOrderStatuses'),
+    );
+
+    expect($initialQueryCount)->toBeLessThanOrEqual(12)
+        ->and($grownQueryCount)->toBe($initialQueryCount);
 });
 
 function createPrompt124TableSession(): array
@@ -162,8 +210,16 @@ function createPrompt124TableSession(): array
             'guest_name' => 'Анна',
             'status' => TableSessionGuestStatus::Active,
         ]);
+    $qrCode = QrCode::factory()
+        ->for($servicePoint)
+        ->create(['status' => QrCodeStatus::Active]);
 
-    return [$tableSession, $guest];
+    return [$tableSession, $guest, $qrCode];
+}
+
+function prompt124GuestCookieName(QrCode $qrCode): string
+{
+    return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
 }
 
 function createPrompt124Order(TableSession $tableSession, DraftOrder $draftOrder, OrderStatus $status): Order

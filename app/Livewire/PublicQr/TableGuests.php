@@ -8,6 +8,7 @@ use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSessionGuest;
+use App\Services\PublicQr\ActiveGuestAccessService;
 use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
@@ -20,11 +21,18 @@ class TableGuests extends Component
 {
     private PublicQrQueryService $publicQrQueries;
 
+    private ActiveGuestAccessService $activeGuestAccess;
+
     #[Locked]
     public int $tableSessionId = 0;
 
     #[Locked]
     public int $currentGuestId = 0;
+
+    #[Locked]
+    public string $publicToken = '';
+
+    public bool $canRead = false;
 
     public int $pollingIntervalSeconds = 1;
 
@@ -35,15 +43,24 @@ class TableGuests extends Component
      */
     public array $guests = [];
 
-    public function boot(PublicQrQueryService $publicQrQueries): void
-    {
+    public function boot(
+        PublicQrQueryService $publicQrQueries,
+        ActiveGuestAccessService $activeGuestAccess,
+    ): void {
         $this->publicQrQueries = $publicQrQueries;
+        $this->activeGuestAccess = $activeGuestAccess;
     }
 
-    public function mount(int $tableSessionId, int $currentGuestId, int $pollingIntervalSeconds = 1, string $language = 'ru'): void
-    {
+    public function mount(
+        int $tableSessionId,
+        int $currentGuestId,
+        string $publicToken,
+        int $pollingIntervalSeconds = 1,
+        string $language = 'ru',
+    ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
+        $this->publicToken = $publicToken;
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->language = SupportedLocale::normalize($language, 'ru');
         $this->applyLocale();
@@ -54,6 +71,18 @@ class TableGuests extends Component
     public function refreshGuests(): void
     {
         $this->applyLocale();
+
+        $this->canRead = $this->activeGuestAccess->findAuthorizedGuest(
+            $this->publicToken,
+            $this->tableSessionId,
+            $this->currentGuestId,
+        ) instanceof TableSessionGuest;
+
+        if (! $this->canRead) {
+            $this->guests = [];
+
+            return;
+        }
 
         $this->guests = $this->publicQrQueries
             ->tableGuests($this->tableSessionId)

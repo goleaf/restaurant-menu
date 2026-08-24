@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property TableSessionJoinRequestStatus $status
  * @property CarbonInterface|null $expires_at
  */
-#[Fillable(['table_session_id', 'guest_name', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
+#[Fillable(['table_session_id', 'guest_name', 'locale', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
 class TableSessionJoinRequest extends Model
 {
     /** @use HasFactory<TableSessionJoinRequestFactory> */

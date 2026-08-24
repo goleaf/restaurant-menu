@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -165,7 +166,7 @@ class BuildBasicAnalyticsDashboardAction
 
         return [
             'cache_key' => $cacheKey,
-            'cached_at' => $now->format('Y-m-d H:i:s'),
+            'cached_at' => LocalizedDateFormatter::dateTime($now),
             'period_label' => $periodStart->toDateString(),
             'branch_count' => $branches->count(),
             'branch_names' => $branches
@@ -174,11 +175,11 @@ class BuildBasicAnalyticsDashboardAction
                 ->all(),
             'orders_today_count' => $ordersTodayCount,
             'orders_today_total' => $singleCurrency !== null
-                ? $this->formatCents($totalOrderCents).' '.$singleCurrency
+                ? $this->formatCents($totalOrderCents, $singleCurrency)
                 : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies'),
             'average_check' => $singleCurrency !== null && $ordersTodayCount > 0
-                ? $this->formatCents(MoneyFormatter::roundedDivide($totalOrderCents, $ordersTodayCount)).' '.$singleCurrency
-                : ($ordersTodayCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : $this->formatCents(0).' '.$defaultCurrency),
+                ? $this->formatCents(MoneyFormatter::roundedDivide($totalOrderCents, $ordersTodayCount), $singleCurrency)
+                : ($ordersTodayCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : $this->formatCents(0, $defaultCurrency)),
             'currency_totals' => $currencyTotals->values()->all(),
             'popular_items' => $this->popularItems($todayOrderIds, $singleCurrency),
             'active_tables_count' => $this->activeTablesCount($branchIds),
@@ -217,7 +218,7 @@ class BuildBasicAnalyticsDashboardAction
                 return [
                     'currency' => $currency,
                     'total_cents' => $totalCents,
-                    'total' => $this->formatCents($totalCents).' '.$currency,
+                    'total' => $this->formatCents($totalCents, $currency),
                 ];
             })
             ->sortKeys()
@@ -258,7 +259,7 @@ class BuildBasicAnalyticsDashboardAction
                 'item_name' => $item['item_name'],
                 'quantity' => (int) $item['quantity'],
                 'total' => $singleCurrency !== null
-                    ? $this->formatCents((int) $item['total_cents']).' '.$singleCurrency
+                    ? $this->formatCents((int) $item['total_cents'], $singleCurrency)
                     : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
             ])
             ->values()
@@ -331,9 +332,9 @@ class BuildBasicAnalyticsDashboardAction
         });
     }
 
-    private function formatCents(int $cents): string
+    private function formatCents(int $cents, string $currency): string
     {
-        return MoneyFormatter::centsToDecimal($cents);
+        return MoneyFormatter::formatCents($cents, $currency);
     }
 
     /**

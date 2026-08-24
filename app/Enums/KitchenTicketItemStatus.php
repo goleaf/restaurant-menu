@@ -11,14 +11,27 @@ enum KitchenTicketItemStatus: string
     case Ready = 'ready';
     case Cancelled = 'cancelled';
 
+    public function canTransitionTo(self $next): bool
+    {
+        if ($this === $next) {
+            return true;
+        }
+
+        return in_array($next, match ($this) {
+            self::New => [self::InProgress, self::Ready, self::Cancelled],
+            self::InProgress => [self::Ready, self::Cancelled],
+            self::Ready, self::Cancelled => [],
+        }, true);
+    }
+
     public function label(): string
     {
-        return match ($this) {
-            self::New => 'New',
-            self::InProgress => 'In progress',
-            self::Ready => 'Ready',
-            self::Cancelled => 'Cancelled',
-        };
+        return __(match ($this) {
+            self::New => 'statuses.kitchen_ticket_item.new',
+            self::InProgress => 'statuses.kitchen_ticket_item.in_progress',
+            self::Ready => 'statuses.kitchen_ticket_item.ready',
+            self::Cancelled => 'statuses.kitchen_ticket_item.cancelled',
+        });
     }
 
     public function badgeColor(): string

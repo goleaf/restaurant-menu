@@ -50,35 +50,35 @@ test('waiter with view orders but without confirm orders cannot confirm sent dra
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::SentToWaiter);
 });
 
-test('waiter can confirm sent draft into real order without sending kitchen or bar', function () {
+test('waiter confirmation creates and dispatches the real order atomically', function () {
     [$organization, , $servicePoint, $tableSession, $draftOrder] = createPrompt54SentDraftScenario();
     $waiter = User::factory()->create(['name' => 'Prompt 54 Waiter']);
     attachPrompt54Staff($waiter, $organization, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
 
     Livewire::actingAs($waiter)
         ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
-        ->assertSee('Confirm order')
+        ->assertSee(__('ui.waiter.table_detail.confirm_and_send_order'))
         ->call('confirmDraft')
         ->assertHasNoErrors()
         ->assertSee('Order #')
-        ->assertSee('Confirmed by waiter');
+        ->assertSee(OrderStatus::SentToKitchenBar->label());
 
     $order = Order::query()
         ->with(['items'])
         ->where('draft_order_id', $draftOrder->id)
         ->firstOrFail();
 
-    expect($order->status)->toBe(OrderStatus::ConfirmedByWaiter)
+    expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
         ->and($order->branch_id)->toBe($tableSession->branch_id)
         ->and($order->service_point_id)->toBe($tableSession->service_point_id)
         ->and($order->confirmed_by_user_id)->toBe($waiter->id)
         ->and($order->total_price_cents)->toBe(2250)
-        ->and($order->metadata['sent_to_kitchen'])->toBeFalse()
+        ->and($order->metadata['sent_to_kitchen'])->toBeTrue()
         ->and($order->metadata['sent_to_bar'])->toBeFalse()
         ->and($order->items)->toHaveCount(2)
         ->and($order->items->pluck('item_name')->all())->toContain('Margherita', 'Water')
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::ConvertedToOrder)
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Cooking);
 });
 
 test('waiter can reject sent draft with reason and guests see it', function () {
@@ -106,6 +106,7 @@ test('waiter can reject sent draft with reason and guests see it', function () {
         'currentGuestId' => $ana->id,
         'currency' => 'EUR',
         'publicToken' => 'prompt54publictoken',
+        'language' => 'ru',
     ])
         ->assertSet('draftStatusValue', DraftOrderStatus::Rejected->value)
         ->assertSet('rejectionReason', 'Please remove the unavailable pizza.')
@@ -144,6 +145,7 @@ test('waiter can return rejected draft to draft for guest edits', function () {
         'currentGuestId' => $ana->id,
         'currency' => 'EUR',
         'publicToken' => 'prompt54publictoken',
+        'language' => 'ru',
     ])
         ->assertSet('draftStatusValue', DraftOrderStatus::Draft->value)
         ->assertSet('canEditDraft', true)

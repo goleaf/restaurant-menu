@@ -1,12 +1,16 @@
 <?php
 
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\DraftOrderStatus;
+use App\Enums\InvitationStatus;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\QrCodeStatus;
+use App\Enums\ServicePointStatus;
+use App\Enums\ServicePointType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
@@ -19,6 +23,7 @@ use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\Invitation;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
@@ -48,7 +53,6 @@ use App\Models\User;
 use App\Models\WaiterCall;
 use App\Services\QrCodeSvgRenderer;
 use App\Support\DemoLogin\DemoAccountCatalog;
-use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Hash;
@@ -133,8 +137,7 @@ test('demo restaurant seeder creates a runnable demo restaurant', function () {
         $role = $identity['role'];
 
         expect($user->hasSystemRole($role))->toBeTrue()
-            ->and($user->name)->toBe($identity['name'])
-            ->and(Hash::check(UserFactory::DEMO_PASSWORD, $user->password))->toBeTrue();
+            ->and($user->name)->toBe($identity['name']);
 
         if ($role === SystemRole::Superadmin) {
             expect($user->canAccessOrganization($organization))->toBeTrue()
@@ -228,20 +231,20 @@ test('demo restaurant seeder creates an idempotent ready qr image for every serv
 
     $qrCodes = QrCode::query()
         ->select(['id', 'service_point_id', 'public_token'])
-        ->with(['servicePoint:id,internal_code'])
         ->orderBy('service_point_id')
         ->get();
+    $storeQrCodeImage = app(StoreQrCodeImageAction::class);
     $expectedFiles = $qrCodes
-        ->map(fn (QrCode $qrCode): string => 'demo/qr/'.strtolower((string) $qrCode->servicePoint->internal_code).'.svg')
+        ->map(fn (QrCode $qrCode): string => $storeQrCodeImage->pathFor($qrCode))
         ->all();
 
-    expect($qrCodes)->toHaveCount(19)
-        ->and(Storage::disk('public')->allFiles('demo/qr'))->toEqualCanonicalizing($expectedFiles);
+    expect($qrCodes)->toHaveCount(24)
+        ->and(Storage::disk('public')->allFiles('qr'))->toEqualCanonicalizing($expectedFiles);
 
     $firstHashes = [];
 
     foreach ($qrCodes as $qrCode) {
-        $path = 'demo/qr/'.strtolower((string) $qrCode->servicePoint->internal_code).'.svg';
+        $path = $storeQrCodeImage->pathFor($qrCode);
         $expectedSvg = app(QrCodeSvgRenderer::class)->render(
             route('public.qr.show', ['token' => $qrCode->public_token]),
         );
@@ -258,11 +261,64 @@ test('demo restaurant seeder creates an idempotent ready qr image for every serv
 
     $this->seed(DemoRestaurantSeeder::class);
 
-    expect(Storage::disk('public')->allFiles('demo/qr'))->toEqualCanonicalizing($expectedFiles);
+    expect(Storage::disk('public')->allFiles('qr'))->toEqualCanonicalizing($expectedFiles);
 
     foreach ($firstHashes as $path => $hash) {
         expect(hash('sha256', Storage::disk('public')->get($path)))->toBe($hash);
     }
+});
+
+test('demo restaurant seeder creates several isolated companies with permanent qr files for every table', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $organizations = Organization::query()
+        ->select(['id', 'name'])
+        ->withCount(['brands', 'branches'])
+        ->orderBy('name')
+        ->get();
+    $tables = ServicePoint::query()
+        ->select(['id', 'branch_id', 'type'])
+        ->where('type', ServicePointType::Table->value)
+        ->with('activeQrCode:id,service_point_id,public_token')
+        ->orderBy('id')
+        ->get();
+    $storeQrCodeImage = app(StoreQrCodeImageAction::class);
+
+    expect($organizations)->toHaveCount(3)
+        ->and($organizations->pluck('brands_count')->min())->toBeGreaterThanOrEqual(1)
+        ->and($organizations->pluck('branches_count')->min())->toBeGreaterThanOrEqual(1)
+        ->and($tables)->not->toBeEmpty();
+
+    foreach ($tables as $table) {
+        expect($table->activeQrCode)->toBeInstanceOf(QrCode::class);
+        Storage::disk('public')->assertExists($storeQrCodeImage->pathFor($table->activeQrCode));
+    }
+});
+
+test('demo restaurant seeder covers every order draft and invitation lifecycle status', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect(Order::query()->distinct()->orderBy('status')->pluck('status')->all())
+        ->toEqualCanonicalizing(OrderStatus::cases())
+        ->and(DraftOrder::query()->distinct()->orderBy('status')->pluck('status')->all())
+        ->toEqualCanonicalizing(DraftOrderStatus::cases())
+        ->and(Invitation::query()->distinct()->orderBy('status')->pluck('status')->all())
+        ->toEqualCanonicalizing(InvitationStatus::cases());
+});
+
+test('demo restaurant seeder never replaces an existing identity password', function (): void {
+    $identity = DemoAccountCatalog::forRole(SystemRole::Waiter);
+    $user = User::factory()->create([
+        'name' => 'Existing Demo Waiter',
+        'email' => $identity['email'],
+        'password' => 'existing-local-password',
+    ]);
+    $passwordHash = $user->password;
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect($user->refresh()->password)->toBe($passwordHash)
+        ->and(Hash::check('existing-local-password', $user->password))->toBeTrue();
 });
 
 test('demo restaurant seeder provides representative operational workflows', function () {
@@ -294,6 +350,27 @@ test('demo restaurant seeder provides representative operational workflows', fun
         ->and(WaiterCall::query()->where('branch_id', $branch->id)->where('status', WaiterCallStatus::Pending->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(WaiterCall::query()->where('branch_id', $branch->id)->where('status', WaiterCallStatus::Handled->value)->count())->toBeGreaterThanOrEqual(1)
         ->and(ManualPayment::query()->where('branch_id', $branch->id)->count())->toBeGreaterThanOrEqual(2);
+
+    $openSessions = TableSession::query()
+        ->select(['id', 'service_point_id', 'status'])
+        ->with('servicePoint:id,status')
+        ->whereIn('status', TableSessionStatus::guestViewableValues())
+        ->orderBy('id')
+        ->get();
+
+    foreach ($openSessions as $openSession) {
+        $expectedServicePointStatus = match ($openSession->status) {
+            TableSessionStatus::Pending => ServicePointStatus::WaitingWaiter,
+            TableSessionStatus::Active => ServicePointStatus::Occupied,
+            TableSessionStatus::WaitingWaiterConfirmation => ServicePointStatus::HasNewOrder,
+            TableSessionStatus::PaymentRequested => ServicePointStatus::PaymentRequested,
+            TableSessionStatus::Paid => ServicePointStatus::Paid,
+            TableSessionStatus::Closed,
+            TableSessionStatus::Cancelled => ServicePointStatus::Free,
+        };
+
+        expect($openSession->servicePoint->status)->toBe($expectedServicePointStatus);
+    }
 });
 
 test('demo restaurant seeder creates a maximum operational graph for every seeded branch', function (): void {
@@ -301,6 +378,7 @@ test('demo restaurant seeder creates a maximum operational graph for every seede
 
     $organizations = Organization::query()
         ->select(['id'])
+        ->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)
         ->withCount(['memberships', 'brands', 'branches', 'servicePoints', 'orders'])
         ->orderBy('id')
         ->get();
@@ -511,13 +589,15 @@ test('demo restaurant seeder applies complete branch settings to every demo bran
         ->count())->toBe(4);
 });
 
-test('branch settings have translated labels and descriptions', function () {
+test('branch settings view translation keys exist in every locale', function () {
+    $source = file_get_contents(resource_path('views/livewire/organizations/brands/branches/settings.blade.php'));
+    preg_match_all('/__\(\s*([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)\1/u', $source, $matches);
+    $keys = array_values(array_unique($matches[2]));
+
     foreach (demoBranchSettingsTranslationLines() as $locale => $lines) {
-        foreach (demoBranchSettingTranslationFields() as $field) {
-            expect($lines)->toHaveKey("fields.branch_settings.$field.label")
-                ->and($lines["fields.branch_settings.$field.label"])->not->toBe('')
-                ->and($lines)->toHaveKey("fields.branch_settings.$field.description")
-                ->and($lines["fields.branch_settings.$field.description"])->not->toBe('');
+        foreach ($keys as $key) {
+            expect($lines)->toHaveKey($key)
+                ->and($lines[$key])->not->toBe('', "$locale translation [$key] is empty.");
         }
     }
 });
@@ -529,30 +609,30 @@ test('demo restaurant seeder is idempotent', function () {
 
     expect($firstCounts)->toBe([
         'roles' => count(SystemRole::cases()),
-        'organizations' => 1,
-        'brands' => 3,
-        'branches' => 4,
-        'areas' => 10,
-        'service_points' => 20,
-        'qr_codes' => 19,
-        'menus' => 4,
-        'menu_translations' => 12,
-        'menu_categories' => 9,
-        'menu_category_translations' => 27,
-        'menu_items' => 22,
-        'menu_item_translations' => 66,
-        'menu_item_variants' => 33,
-        'menu_item_variant_translations' => 99,
+        'organizations' => 3,
+        'brands' => 5,
+        'branches' => 6,
+        'areas' => 12,
+        'service_points' => 24,
+        'qr_codes' => 24,
+        'menus' => 6,
+        'menu_translations' => 18,
+        'menu_categories' => 11,
+        'menu_category_translations' => 33,
+        'menu_items' => 24,
+        'menu_item_translations' => 72,
+        'menu_item_variants' => 35,
+        'menu_item_variant_translations' => 105,
         'modifier_group_translations' => 24,
         'modifier_option_translations' => 72,
-        'table_sessions' => 11,
-        'draft_orders' => 11,
-        'orders' => 10,
-        'order_items' => 40,
-        'kitchen_tickets' => 5,
-        'kitchen_ticket_items' => 15,
+        'table_sessions' => 20,
+        'draft_orders' => 24,
+        'orders' => 19,
+        'order_items' => 49,
+        'kitchen_tickets' => 13,
+        'kitchen_ticket_items' => 23,
         'manual_payments' => 5,
-        'order_status_logs' => 4,
+        'order_status_logs' => 12,
         'audit_logs' => 4,
     ]);
 
@@ -896,34 +976,6 @@ function demoOptionalBranchSettingValues(): array
         'allow_guest_waiter_call' => true,
         'allow_repeat_orders_before_payment_request' => true,
         'manual_payment_only' => true,
-    ];
-}
-
-/**
- * @return list<string>
- */
-function demoBranchSettingTranslationFields(): array
-{
-    return [
-        'allow_guest_created_sessions',
-        'allow_waiter_opened_sessions',
-        'guest_join_requires_approval',
-        'allow_guest_invite_links',
-        'require_waiter_confirmation_for_orders',
-        'polling_interval_seconds',
-        'inactivity_warning_minutes',
-        'pending_session_expire_minutes',
-        'default_language',
-        'default_currency',
-        'allow_guest_bill_request',
-        'allow_guest_waiter_call',
-        'allow_repeat_orders_before_payment_request',
-        'manual_payment_only',
-        'service_charge_enabled',
-        'service_charge_percent',
-        'tips_enabled',
-        'order_flow_mode',
-        'service_modes',
     ];
 }
 

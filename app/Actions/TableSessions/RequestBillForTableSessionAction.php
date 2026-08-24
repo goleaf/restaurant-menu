@@ -2,8 +2,10 @@
 
 namespace App\Actions\TableSessions;
 
+use App\Actions\Orders\TransitionTableOrdersAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
+use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
@@ -19,6 +21,9 @@ class RequestBillForTableSessionAction
     public function __construct(
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
+        private readonly TransitionTableOrdersAction $transitionTableOrders,
+        private readonly CanRequestBillForTableSessionAction $canRequestBill,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
     ) {}
 
     public function handle(TableSession $tableSession, TableSessionGuest $guest): TableSession
@@ -29,7 +34,19 @@ class RequestBillForTableSessionAction
 
             $this->ensureGuestCanRequestBill($tableSession, $guest);
 
+            if (! $this->canRequestBill->handle($tableSession)) {
+                throw ValidationException::withMessages([
+                    'bill_request' => __('orders.errors.table_has_unfinished_work'),
+                ]);
+            }
+
             if ($tableSession->status === TableSessionStatus::PaymentRequested) {
+                $this->transitionTableOrders->handle(
+                    tableSession: $tableSession,
+                    targetStatus: OrderStatus::PaymentRequested,
+                    actorGuest: $guest,
+                    errorField: 'bill_request',
+                );
                 $this->markServicePointPaymentRequested($tableSession);
 
                 return [$tableSession->refresh(), false];
@@ -39,10 +56,15 @@ class RequestBillForTableSessionAction
             $metadata['bill_requested_at'] = now()->toISOString();
             $metadata['bill_requested_by_guest_id'] = $guest->id;
 
-            $tableSession->forceFill([
-                'status' => TableSessionStatus::PaymentRequested,
-                'metadata' => $metadata,
-            ])->save();
+            $this->transitionTableSessionStatus->handle($tableSession, TableSessionStatus::PaymentRequested);
+            $tableSession->forceFill(['metadata' => $metadata])->save();
+
+            $this->transitionTableOrders->handle(
+                tableSession: $tableSession,
+                targetStatus: OrderStatus::PaymentRequested,
+                actorGuest: $guest,
+                errorField: 'bill_request',
+            );
 
             $this->markServicePointPaymentRequested($tableSession);
 
@@ -88,6 +110,7 @@ class RequestBillForTableSessionAction
                 ]),
             ])
             ->whereKey($tableSession->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -125,6 +148,7 @@ class RequestBillForTableSessionAction
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -140,7 +164,8 @@ class RequestBillForTableSessionAction
 
         if ($guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
-            || in_array($tableSession->status, [TableSessionStatus::Paid, TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            || ($tableSession->status !== TableSessionStatus::PaymentRequested
+                && $tableSession->status->locksOrderChanges())) {
             throw ValidationException::withMessages([
                 'bill_request' => __('ui.actions.tablesessions.requestbillfortablesessionaction.tolko_aktivnyi_go'),
             ]);

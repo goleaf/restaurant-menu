@@ -2,6 +2,7 @@
 
 namespace App\Actions\Waiter;
 
+use App\Actions\DraftOrders\CreateDraftOrderItemIdempotentlyAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
@@ -14,6 +15,7 @@ use App\Models\MenuItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Support\Orders\IdempotencyKey;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -25,6 +27,7 @@ class AddManualWaiterOrderItemAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly AddDraftOrderItemByWaiterAction $addDraftOrderItem,
+        private readonly CreateDraftOrderItemIdempotentlyAction $createDraftOrderItemIdempotently,
     ) {}
 
     /**
@@ -41,13 +44,25 @@ class AddManualWaiterOrderItemAction
         ?int $menuItemVariantId = null,
         ?string $comment = null,
         ?string $itemName = null,
+        ?string $idempotencyKey = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $waiter, $guest, $guestName, $menuItem, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $itemName): DraftOrderItem {
+        $idempotencyKey = IdempotencyKey::from($idempotencyKey);
+
+        return DB::transaction(function () use ($tableSession, $waiter, $guest, $guestName, $menuItem, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $itemName, $idempotencyKey): DraftOrderItem {
             $tableSession = $this->reloadTableSession($tableSession);
 
             $this->ensureCanEnterManualOrder($tableSession, $waiter);
 
             $draftOrder = $this->draftOrderFor($tableSession, $waiter);
+
+            if ($idempotencyKey instanceof IdempotencyKey) {
+                $existingItem = $this->createDraftOrderItemIdempotently->existing($draftOrder, $idempotencyKey);
+
+                if ($existingItem instanceof DraftOrderItem) {
+                    return $existingItem;
+                }
+            }
+
             $guest = $this->guestFor($tableSession, $waiter, $guest, $guestName);
 
             return $this->addDraftOrderItem->handle(
@@ -60,6 +75,7 @@ class AddManualWaiterOrderItemAction
                 menuItemVariantId: $menuItemVariantId,
                 comment: $comment,
                 itemName: $itemName,
+                idempotencyKey: $idempotencyKey?->value,
             );
         });
     }
@@ -139,7 +155,8 @@ class AddManualWaiterOrderItemAction
             return $draftOrder;
         }
 
-        if ($draftOrder->status === DraftOrderStatus::Draft) {
+        if ($draftOrder->status === DraftOrderStatus::Draft
+            && $draftOrder->status->canTransitionTo(DraftOrderStatus::WaiterReview)) {
             $previousStatus = $draftOrder->status;
 
             $draftOrder

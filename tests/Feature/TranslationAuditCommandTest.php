@@ -31,7 +31,13 @@ test('translation audit passes for aligned semantic json keys and clean code sca
     ]);
 
     File::ensureDirectoryExists($scanDir);
-    File::put($scanDir.'/CleanComponent.php', "<?php\n\n__('ui.actions.save');\n");
+    File::put($scanDir.'/CleanComponent.php', <<<'PHP'
+<?php
+
+__('guest.forms.name');
+__('qr.errors.not_found.title');
+__('ui.actions.save');
+PHP);
 
     $this->artisan('translations:audit', [
         '--lang-dir' => $langDir,
@@ -51,6 +57,8 @@ test('translation audit fails for phrase keys missing keys empty values and phra
         'orders.status.pending' => 'Pending',
         'placeholder.value' => 'TODO',
         'qr.errors.not_found.description' => '',
+        'ui.actions.unused' => 'Unused',
+        'ui.messages.saved' => 'Saved :name',
         'QR code not found' => 'QR code not found',
         'Ваше имя' => 'Your name',
     ]);
@@ -59,12 +67,16 @@ test('translation audit fails for phrase keys missing keys empty values and phra
         'orders.status.pending' => 'Laukiama',
         'placeholder.value' => 'TODO',
         'qr.errors.not_found.description' => '',
+        'ui.actions.unused' => 'Nenaudojama',
+        'ui.messages.saved' => 'Išsaugota',
         'QR code not found' => 'QR kodas nerastas',
     ]);
     translationAuditWriteJson($langDir, 'ru', [
         'guest.forms.name' => 'Ваше имя',
         'placeholder.value' => 'TODO',
         'qr.errors.not_found.description' => '',
+        'ui.actions.unused' => 'Не используется',
+        'ui.messages.saved' => 'Сохранено :name',
         'QR code not found' => 'QR-код не найден',
         'Ваше имя' => 'Ваше имя',
     ]);
@@ -86,6 +98,10 @@ test('translation audit fails for phrase keys missing keys empty values and phra
         ->expectsOutputToContain('placeholder.value')
         ->expectsOutputToContain('Potential phrase-style translation calls')
         ->expectsOutputToContain('Please ask the staff for a fresh QR code.')
+        ->expectsOutputToContain('Unused keys')
+        ->expectsOutputToContain('ui.actions.unused')
+        ->expectsOutputToContain('Placeholder mismatches')
+        ->expectsOutputToContain('ui.messages.saved')
         ->assertFailed();
 });
 

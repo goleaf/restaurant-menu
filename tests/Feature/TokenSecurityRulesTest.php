@@ -141,8 +141,9 @@ test('revoked qr and closed session invite tokens cannot create guest access', f
             'status' => TableSessionStatus::Closed,
             'started_at' => now()->subHour(),
             'ended_at' => now()->subMinute(),
-            'guest_invite_token' => $closedInviteToken,
+            'guest_invite_token_hash' => hash('sha256', $closedInviteToken),
             'guest_invite_created_at' => now()->subHour(),
+            'guest_invite_expires_at' => now()->addHour(),
         ]);
     TableSessionGuest::factory()
         ->for($closedTableSession)
@@ -153,7 +154,7 @@ test('revoked qr and closed session invite tokens cannot create guest access', f
         ->assertSet('hasCurrentInviteToken', true)
         ->set('guestName', 'Jonas')
         ->call('enterTable')
-        ->assertSet('entryState', 'guest_invite_closed')
+        ->assertSet('entryState', 'guest_invite_invalid')
         ->assertSet('currentGuestId', null)
         ->assertSet('currentJoinRequestId', null)
         ->assertSet('guestCanAddItems', false);
@@ -189,9 +190,11 @@ test('branch csv exports do not include raw security tokens', function (): void 
         ->forServicePoint($servicePoint)
         ->active()
         ->create();
+    $guestInviteToken = str_repeat('S', 64);
     $tableSession->forceFill([
-        'guest_invite_token' => str_repeat('S', 64),
+        'guest_invite_token_hash' => hash('sha256', $guestInviteToken),
         'guest_invite_created_at' => now(),
+        'guest_invite_expires_at' => now()->addHour(),
     ])->save();
     $guest = TableSessionGuest::factory()
         ->for($tableSession)
@@ -249,7 +252,7 @@ test('branch csv exports do not include raw security tokens', function (): void 
     expect($content)
         ->not->toContain($qrCode->public_token)
         ->not->toContain($guest->guest_token)
-        ->not->toContain($tableSession->guest_invite_token)
+        ->not->toContain($guestInviteToken)
         ->not->toContain(str_repeat('I', 64))
         ->not->toContain('guest_token')
         ->not->toContain('invite_token')

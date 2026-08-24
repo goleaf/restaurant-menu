@@ -3,6 +3,13 @@
     wire:poll.visible.{{ $pollingIntervalSeconds }}s="refreshGuests"
     class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
+    @if (! $canRead)
+        <div class="p-4">
+            <x-ui.alert tone="danger">
+                {{ __('guest.table.guest_access_unavailable_title') }}
+            </x-ui.alert>
+        </div>
+    @else
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
@@ -51,4 +58,5 @@
             </p>
         @endforelse
     </div>
+    @endif
 </section>

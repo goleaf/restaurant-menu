@@ -6,13 +6,14 @@ namespace App\Actions\Waiter;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
+use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\TableSessions\TransitionTableSessionStatusAction;
 use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
-use App\Enums\SystemPermission;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
@@ -21,17 +22,20 @@ use App\Models\Order;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\DraftOrderConfirmedNotification;
+use App\Support\Orders\OrderItemQuantity;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 class ConfirmDraftOrderByWaiterAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly SendOrderToKitchenBarAction $sendOrderToKitchenBar,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $confirmedBy): Order
@@ -44,7 +48,9 @@ class ConfirmDraftOrderByWaiterAction
             $this->ensureCanConfirm($draftOrder, $confirmedBy);
 
             if ($draftOrder->status === DraftOrderStatus::ConvertedToOrder && $draftOrder->order instanceof Order) {
-                return $draftOrder->order;
+                $this->transitionTableSessionStatus->handle($draftOrder->tableSession, TableSessionStatus::Active);
+
+                return $this->sendOrderToKitchenBar->handleAfterWaiterConfirmation($draftOrder->order, $confirmedBy);
             }
 
             $previousStatus = $draftOrder->status;
@@ -117,6 +123,7 @@ class ConfirmDraftOrderByWaiterAction
                 ])
                 ->save();
             $shouldNotifyGuests = true;
+            $this->transitionTableSessionStatus->handle($draftOrder->tableSession, TableSessionStatus::Active);
 
             if ($draftOrder->tableSession?->servicePoint !== null) {
                 $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
@@ -131,7 +138,8 @@ class ConfirmDraftOrderByWaiterAction
                 newStatus: DraftOrderStatus::ConvertedToOrder,
                 statusType: 'draft_order',
                 metadata: [
-                    'order_status' => OrderStatus::ConfirmedByWaiter->value,
+                    'order_status' => OrderStatus::SentToKitchenBar->value,
+                    'dispatch' => 'atomic_with_confirmation',
                     'items_count' => $draftOrder->items->count(),
                 ],
             );
@@ -149,14 +157,14 @@ class ConfirmDraftOrderByWaiterAction
                 ],
                 newValues: [
                     'order_id' => $order->id,
-                    'order_status' => OrderStatus::ConfirmedByWaiter,
+                    'order_status' => OrderStatus::SentToKitchenBar,
                     'total_price_cents' => $order->total_price_cents,
                     'currency' => $order->currency,
                 ],
             );
 
-            return $order->refresh();
-        });
+            return $this->sendOrderToKitchenBar->handleAfterWaiterConfirmation($order, $confirmedBy);
+        }, attempts: 3);
 
         if ($shouldNotifyGuests) {
             $this->notifyActiveGuests($draftOrder, $order);
@@ -216,6 +224,7 @@ class ConfirmDraftOrderByWaiterAction
                 'order:id,draft_order_id,status',
             ])
             ->whereKey($draftOrder->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -230,15 +239,13 @@ class ConfirmDraftOrderByWaiterAction
             ]);
         }
 
-        $confirmableBranchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders);
-
-        if (! $confirmableBranchIds->contains((int) $tableSession->branch_id)) {
+        if (Gate::forUser($user)->denies('confirm', $draftOrder)) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.u_vas_net_prava_podtverzd'),
             ]);
         }
 
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if ($tableSession->status->locksOrderChanges()) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.nelzia_podtverdit_zakaz_d'),
             ]);
@@ -248,7 +255,8 @@ class ConfirmDraftOrderByWaiterAction
             return;
         }
 
-        if (! in_array($draftOrder->status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true)) {
+        if (! $draftOrder->status->isWaiterEditable()
+            || ! $draftOrder->status->canTransitionTo(DraftOrderStatus::ConvertedToOrder)) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.confirmdraftorderbywaiteraction.podtverdit_mozno_tolko_ce'),
             ]);
@@ -339,12 +347,12 @@ class ConfirmDraftOrderByWaiterAction
 
     private function lineTotalCents(DraftOrderItem $item): int
     {
-        $quantity = (int) $item->quantity;
+        $quantity = OrderItemQuantity::from((int) $item->quantity, 'draft_review')->value;
         $unitPriceCents = $item->unit_price_cents;
         $modifierTotalCents = $item->modifier_total_cents;
         $lineUnitTotalCents = $unitPriceCents + $modifierTotalCents;
 
-        if ($quantity < 1 || $unitPriceCents < 0 || $lineUnitTotalCents < 0) {
+        if ($unitPriceCents < 0 || $lineUnitTotalCents < 0) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.itogovaia_cena'),
             ]);

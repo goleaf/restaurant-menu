@@ -7,17 +7,15 @@ namespace App\Actions\DraftOrders;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class DeleteGuestDraftOrderItemAction
 {
     public function __construct(
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly EnsureGuestOwnsEditableDraftItemAction $ensureGuestOwnsEditableDraftItem,
     ) {}
 
     public function handle(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
@@ -26,7 +24,7 @@ class DeleteGuestDraftOrderItemAction
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $guest = $this->reloadGuest($guest);
 
-            $this->ensureGuestCanDeleteItem($draftOrderItem, $guest);
+            $this->ensureGuestOwnsEditableDraftItem->handle($draftOrderItem, $guest);
 
             $draftOrderItem->delete();
 
@@ -93,28 +91,5 @@ class DeleteGuestDraftOrderItemAction
             ])
             ->whereKey($guest->id)
             ->firstOrFail();
-    }
-
-    private function ensureGuestCanDeleteItem(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
-    {
-        $draftOrder = $draftOrderItem->draftOrder;
-        $tableSession = $draftOrder->tableSession;
-        $servicePoint = $tableSession->servicePoint;
-
-        if ($draftOrderItem->table_session_guest_id !== $guest->id
-            || $draftOrder->table_session_id !== $guest->table_session_id
-            || $guest->status !== TableSessionGuestStatus::Active
-            || ! $servicePoint->is_active
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
-            throw ValidationException::withMessages([
-                'draft_item' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.mozno_udalit_tolko_s'),
-            ]);
-        }
-
-        if ($draftOrder->status !== DraftOrderStatus::Draft) {
-            throw ValidationException::withMessages([
-                'draft_order' => __('ui.actions.draftorders.deleteguestdraftorderitemaction.etot_cernovik_uze_ot'),
-            ]);
-        }
     }
 }

@@ -75,6 +75,36 @@ test('join request action creates pending request only when session has active g
     expect($joinRequest->expires_at)->not->toBeNull();
 });
 
+test('join request creation is idempotent for the same guest credential', function () {
+    $tableSession = TableSession::factory()->active()->create();
+    TableSessionGuest::factory()->for($tableSession)->active()->create();
+    $credential = str_repeat('J', 64);
+    $action = app(CreateTableSessionJoinRequestAction::class);
+
+    $first = $action->handle($tableSession, 'Mira', $credential);
+    $second = $action->handle($tableSession, 'Mira', $credential);
+
+    expect($first)->toBeInstanceOf(TableSessionJoinRequest::class)
+        ->and($second?->id)->toBe($first->id)
+        ->and($tableSession->joinRequests()->count())->toBe(1);
+});
+
+test('pending join requests are bounded per table session', function () {
+    $tableSession = TableSession::factory()->active()->create();
+    TableSessionGuest::factory()->for($tableSession)->active()->create();
+    TableSessionJoinRequest::factory()
+        ->count(20)
+        ->for($tableSession)
+        ->pending()
+        ->create();
+
+    $joinRequest = app(CreateTableSessionJoinRequestAction::class)
+        ->handle($tableSession, 'Overflow guest', str_repeat('B', 64));
+
+    expect($joinRequest)->toBeNull()
+        ->and($tableSession->joinRequests()->count())->toBe(20);
+});
+
 test('active guest can approve pending join request into active table guest', function () {
     $tableSession = TableSession::factory()->create();
     $approver = TableSessionGuest::factory()
@@ -98,6 +128,20 @@ test('active guest can approve pending join request into active table guest', fu
     expect($joinRequest->fresh()->approved_by_guest_id)->toBe($approver->id);
 });
 
+test('repeated approval returns the same guest without duplicating membership', function () {
+    $tableSession = TableSession::factory()->active()->create();
+    $approver = TableSessionGuest::factory()->for($tableSession)->active()->create();
+    $joinRequest = TableSessionJoinRequest::factory()->for($tableSession)->pending()->create();
+    $action = app(ApproveTableSessionJoinRequestAction::class);
+
+    $first = $action->handle($joinRequest, $approver);
+    $second = $action->handle($joinRequest->fresh(), $approver);
+
+    expect($second->id)->toBe($first->id)
+        ->and(TableSessionGuest::query()->where('guest_token', $joinRequest->guest_token)->count())->toBe(1)
+        ->and($joinRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Approved);
+});
+
 test('active guest can reject pending join request without creating table guest', function () {
     $tableSession = TableSession::factory()->create();
     $rejecter = TableSessionGuest::factory()
@@ -116,6 +160,20 @@ test('active guest can reject pending join request without creating table guest'
             ->where('guest_token', $joinRequest->guest_token)
             ->exists()
     )->toBeFalse();
+});
+
+test('repeated rejection is idempotent for the same decided request', function () {
+    $tableSession = TableSession::factory()->active()->create();
+    $rejecter = TableSessionGuest::factory()->for($tableSession)->active()->create();
+    $joinRequest = TableSessionJoinRequest::factory()->for($tableSession)->pending()->create();
+    $action = app(RejectTableSessionJoinRequestAction::class);
+
+    $first = $action->handle($joinRequest, $rejecter);
+    $second = $action->handle($joinRequest->fresh(), $rejecter);
+
+    expect($second->id)->toBe($first->id)
+        ->and($second->status)->toBe(TableSessionJoinRequestStatus::Rejected)
+        ->and(TableSessionGuest::query()->where('guest_token', $joinRequest->guest_token)->count())->toBe(0);
 });
 
 test('non active guest cannot approve or reject join request', function () {

@@ -16,21 +16,25 @@ enum OrderStatusLogEvent: string
     case OrderSentToKitchenBar = 'order_sent_to_kitchen_bar';
     case OrderCancelled = 'order_cancelled';
     case OrderItemCancelled = 'order_item_cancelled';
+    case TicketItemStatusChanged = 'ticket_item_status_changed';
+    case TicketItemServed = 'ticket_item_served';
 
     public function label(): string
     {
-        return match ($this) {
-            self::DraftCreated => 'Draft created',
-            self::DraftEdited => 'Draft edited',
-            self::DraftSentToWaiter => 'Draft sent to waiter',
-            self::DraftConfirmed => 'Draft confirmed',
-            self::DraftRejected => 'Draft rejected',
-            self::DraftReturnedToDraft => 'Draft returned to draft',
-            self::OrderStatusChanged => 'Order status changed',
-            self::OrderSentToKitchenBar => 'Order sent to kitchen/bar',
-            self::OrderCancelled => 'Order cancelled',
-            self::OrderItemCancelled => 'Order item cancelled',
-        };
+        return __(match ($this) {
+            self::DraftCreated => 'statuses.order_event.draft_created',
+            self::DraftEdited => 'statuses.order_event.draft_edited',
+            self::DraftSentToWaiter => 'statuses.order_event.draft_sent_to_waiter',
+            self::DraftConfirmed => 'statuses.order_event.draft_confirmed',
+            self::DraftRejected => 'statuses.order_event.draft_rejected',
+            self::DraftReturnedToDraft => 'statuses.order_event.draft_returned_to_draft',
+            self::OrderStatusChanged => 'statuses.order_event.order_status_changed',
+            self::OrderSentToKitchenBar => 'statuses.order_event.order_sent_to_kitchen_bar',
+            self::OrderCancelled => 'statuses.order_event.order_cancelled',
+            self::OrderItemCancelled => 'statuses.order_event.order_item_cancelled',
+            self::TicketItemStatusChanged => 'statuses.order_event.ticket_item_status_changed',
+            self::TicketItemServed => 'statuses.order_event.ticket_item_served',
+        });
     }
 
     /**

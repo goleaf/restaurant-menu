@@ -1,7 +1,10 @@
 <?php
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
+use App\Actions\QrCodes\ReissueQrCodeForServicePointAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
@@ -18,11 +21,14 @@ use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\QrCodeSvgRenderer;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+    Storage::fake('public');
 });
 
 test('qr generation action creates active permanent qr identity', function () {
@@ -35,7 +41,7 @@ test('qr generation action creates active permanent qr identity', function () {
             'display_number' => 'TABLE-IMPOSSIBLE-LABEL',
         ]);
 
-    $qrCode = (new GenerateQrCodeForServicePointAction)->handle($servicePoint, $manager);
+    $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $manager);
 
     expect($qrCode->service_point_id)->toBe($servicePoint->id);
     expect($qrCode->created_by_user_id)->toBe($manager->id);
@@ -45,12 +51,22 @@ test('qr generation action creates active permanent qr identity', function () {
     expect($qrCode->publicPath())->toBe('/q/'.$qrCode->public_token);
     expect($qrCode->publicPath())->not->toContain($servicePoint->name);
     expect($qrCode->publicPath())->not->toContain((string) $servicePoint->display_number);
+
+    $imagePath = app(StoreQrCodeImageAction::class)->pathFor($qrCode);
+
+    Storage::disk('public')->assertExists($imagePath);
+    expect(Storage::disk('public')->get($imagePath))
+        ->toBe(app(QrCodeSvgRenderer::class)->render(
+            route('public.qr.show', ['token' => $qrCode->public_token]),
+        ))
+        ->not->toContain('<script')
+        ->not->toContain('<foreignObject');
 });
 
 test('qr generation action returns existing active qr instead of creating another', function () {
     [, , $branch, $manager] = createPrompt23Branch();
     $servicePoint = ServicePoint::factory()->for($branch)->create();
-    $action = new GenerateQrCodeForServicePointAction;
+    $action = app(GenerateQrCodeForServicePointAction::class);
 
     $firstQrCode = $action->handle($servicePoint, $manager);
     $secondQrCode = $action->handle($servicePoint, $manager);
@@ -61,6 +77,23 @@ test('qr generation action returns existing active qr instead of creating anothe
         ->where('service_point_id', $servicePoint->id)
         ->where('status', QrCodeStatus::Active->value)
         ->count())->toBe(1);
+    expect(Storage::disk('public')->allFiles('qr'))->toHaveCount(1);
+});
+
+test('requesting an existing qr regenerates its missing image without changing identity', function () {
+    [, , $branch, $manager] = createPrompt23Branch();
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $action = app(GenerateQrCodeForServicePointAction::class);
+    $qrCode = $action->handle($servicePoint, $manager);
+    $imagePath = app(StoreQrCodeImageAction::class)->pathFor($qrCode);
+    Storage::disk('public')->delete($imagePath);
+
+    $regenerated = $action->handle($servicePoint->fresh(), $manager);
+
+    expect($regenerated->id)->toBe($qrCode->id)
+        ->and($regenerated->public_token)->toBe($qrCode->public_token);
+    Storage::disk('public')->assertExists($imagePath);
+    expect(Storage::disk('public')->allFiles('qr'))->toHaveCount(1);
 });
 
 test('generated qr identity remains stable when service point is renamed or moved', function () {
@@ -74,7 +107,7 @@ test('generated qr identity remains stable when service point is renamed or move
             'name' => 'Table 18',
             'display_number' => '18',
         ]);
-    $qrCode = (new GenerateQrCodeForServicePointAction)->handle($servicePoint, $manager);
+    $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $manager);
 
     $originalToken = $qrCode->public_token;
     $originalShortCode = $qrCode->short_code;
@@ -90,6 +123,28 @@ test('generated qr identity remains stable when service point is renamed or move
     expect($qrCode->service_point_id)->toBe($servicePoint->id);
     expect($qrCode->public_token)->toBe($originalToken);
     expect($qrCode->short_code)->toBe($originalShortCode);
+});
+
+test('failed qr reissue removes the uncommitted replacement image', function () {
+    [, , $branch, $manager] = createPrompt23Branch();
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $generateQrCode = app(GenerateQrCodeForServicePointAction::class);
+    $storeQrCodeImage = app(StoreQrCodeImageAction::class);
+    $qrCode = $generateQrCode->handle($servicePoint, $manager);
+    $recordAuditLog = Mockery::mock(RecordAuditLogAction::class);
+    $recordAuditLog->shouldReceive('handle')->once()->andThrow(new RuntimeException('Audit failed.'));
+    $reissueQrCode = new ReissueQrCodeForServicePointAction(
+        $generateQrCode,
+        $storeQrCodeImage,
+        $recordAuditLog,
+    );
+
+    expect(fn () => $reissueQrCode->handle($qrCode, $manager))
+        ->toThrow(RuntimeException::class, 'Audit failed.');
+
+    expect($qrCode->fresh()->status)->toBe(QrCodeStatus::Active)
+        ->and(QrCode::query()->where('service_point_id', $servicePoint->id)->count())->toBe(1)
+        ->and(Storage::disk('public')->allFiles('qr'))->toBe([$storeQrCodeImage->pathFor($qrCode)]);
 });
 
 test('generate qr permission can access service points and create qr from ui', function () {

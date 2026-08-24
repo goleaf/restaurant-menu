@@ -16,6 +16,8 @@ use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
+use App\Models\TableSessionGuest;
+use App\Services\PublicQr\ActiveGuestAccessService;
 use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
@@ -29,8 +31,18 @@ class OrderStatuses extends Component
 {
     private PublicQrQueryService $publicQrQueries;
 
+    private ActiveGuestAccessService $activeGuestAccess;
+
     #[Locked]
     public int $tableSessionId = 0;
+
+    #[Locked]
+    public int $currentGuestId = 0;
+
+    #[Locked]
+    public string $publicToken = '';
+
+    public bool $canRead = false;
 
     public int $pollingIntervalSeconds = 1;
 
@@ -76,14 +88,24 @@ class OrderStatuses extends Component
      */
     public array $itemStatuses = [];
 
-    public function boot(PublicQrQueryService $publicQrQueries): void
-    {
+    public function boot(
+        PublicQrQueryService $publicQrQueries,
+        ActiveGuestAccessService $activeGuestAccess,
+    ): void {
         $this->publicQrQueries = $publicQrQueries;
+        $this->activeGuestAccess = $activeGuestAccess;
     }
 
-    public function mount(int $tableSessionId, int $pollingIntervalSeconds = 1, string $language = 'en'): void
-    {
+    public function mount(
+        int $tableSessionId,
+        int $currentGuestId,
+        string $publicToken,
+        int $pollingIntervalSeconds = 1,
+        string $language = 'en',
+    ): void {
         $this->tableSessionId = $tableSessionId;
+        $this->currentGuestId = $currentGuestId;
+        $this->publicToken = $publicToken;
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->language = SupportedLocale::normalize($language, 'en');
         $this->applyLocale();
@@ -94,6 +116,18 @@ class OrderStatuses extends Component
     public function refreshOrderStatuses(): void
     {
         $this->applyLocale();
+
+        $this->canRead = $this->activeGuestAccess->findAuthorizedGuest(
+            $this->publicToken,
+            $this->tableSessionId,
+            $this->currentGuestId,
+        ) instanceof TableSessionGuest;
+
+        if (! $this->canRead) {
+            $this->clearStatusState();
+
+            return;
+        }
 
         $tableSession = $this->tableSession();
         $draftOrder = $this->draftOrder();
@@ -577,5 +611,26 @@ class OrderStatuses extends Component
     private function ticketItemStatus(KitchenTicketItem $item): KitchenTicketItemStatus
     {
         return $item->status;
+    }
+
+    private function clearStatusState(): void
+    {
+        $this->tableSessionStatusValue = null;
+        $this->tableSessionStatusLabel = '';
+        $this->draftStatusValue = null;
+        $this->draftStatusLabel = '';
+        $this->orderStatusValue = null;
+        $this->orderStatusLabel = '';
+        $this->serviceStatusValue = '';
+        $this->serviceStatusLabel = '';
+        $this->serviceStatusTone = 'zinc';
+        $this->rejectionReason = null;
+        $this->cancellationReason = null;
+        $this->overallStatusValue = 'draft';
+        $this->overallStatusLabel = '';
+        $this->overallStatusDescription = '';
+        $this->overallStatusTone = 'zinc';
+        $this->guestSteps = [];
+        $this->itemStatuses = [];
     }
 }

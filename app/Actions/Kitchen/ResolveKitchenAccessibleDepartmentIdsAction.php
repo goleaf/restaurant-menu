@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Kitchen;
 
 use App\Actions\Departments\ResolveAccessibleDepartmentIdsAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\User;
@@ -21,7 +24,7 @@ class ResolveKitchenAccessibleDepartmentIdsAction
     {
         return $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
-            departmentTypes: [],
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
             roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
             permissionCodes: [SystemPermission::ViewKitchen],
         );

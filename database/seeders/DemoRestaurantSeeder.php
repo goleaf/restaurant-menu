@@ -8,7 +8,7 @@ use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\Branches\EnsureBranchSettingsAction;
 use App\Actions\KitchenDepartments\SeedKitchenDepartmentsForBranchAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
-use App\Actions\QrCodes\StoreDemoQrCodeImageAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
 use App\Enums\AreaNodeType;
 use App\Enums\KitchenDepartmentType;
@@ -35,17 +35,14 @@ use App\Models\MenuTranslation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
-use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use App\Support\MoneyFormatter;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use RuntimeException;
 
 class DemoRestaurantSeeder extends Seeder
@@ -62,7 +59,7 @@ class DemoRestaurantSeeder extends Seeder
         private readonly CreateAreaNodeAction $createAreaNode,
         private readonly CreateServicePointAction $createServicePoint,
         private readonly GenerateQrCodeForServicePointAction $generateQrCode,
-        private readonly StoreDemoQrCodeImageAction $storeQrCodeImage,
+        private readonly StoreQrCodeImageAction $storeQrCodeImage,
     ) {}
 
     /**
@@ -76,9 +73,7 @@ class DemoRestaurantSeeder extends Seeder
 
         $this->call(SystemPermissionsSeeder::class);
 
-        /** @var list<array{qr_code: QrCode, service_point: ServicePoint}> $qrImageSources */
-        $qrImageSources = DB::transaction(function (): array {
-            $qrImageSources = [];
+        DB::transaction(function (): void {
             $superadmin = $this->demoUser(SystemRole::Superadmin);
             $this->syncPermissions($superadmin, []);
 
@@ -96,19 +91,15 @@ class DemoRestaurantSeeder extends Seeder
             foreach ($branches as $branchKey => $branch) {
                 $areas = $this->seedAreas($branch, $branchKey);
                 $servicePoints = $this->seedServicePoints($branch, $areas, $branchKey);
-                array_push($qrImageSources, ...$this->seedQrCodes($servicePoints, $owner));
+                $this->seedQrCodes($servicePoints, $owner);
                 $this->seedMenu($branch, $branchKey);
             }
-
-            return $qrImageSources;
         });
-
-        foreach ($qrImageSources as $source) {
-            $this->storeQrCodeImage->handle($source['qr_code'], $source['service_point']);
-        }
 
         $this->call(DemoOperationalStateSeeder::class);
         $this->call(DemoOrganizationCrudSeeder::class);
+        $this->call(DemoTenantPortfolioSeeder::class);
+        $this->storeDemoQrCodeImages();
     }
 
     private function demoOrganization(User $owner): Organization
@@ -271,7 +262,7 @@ class DemoRestaurantSeeder extends Seeder
     {
         $identity = DemoAccountCatalog::forRole($role);
         $user = User::query()
-            ->select(['id', 'name', 'email', 'locale', 'email_verified_at', 'password'])
+            ->select(['id', 'name', 'email', 'locale', 'email_verified_at'])
             ->where('email', $identity['email'])
             ->first();
 
@@ -285,9 +276,7 @@ class DemoRestaurantSeeder extends Seeder
                 ->make()
                 ->getAttributes();
 
-            if (Hash::check(UserFactory::DEMO_PASSWORD, (string) $user->password)) {
-                unset($attributes['password']);
-            }
+            unset($attributes['password']);
 
             $user->forceFill($attributes)->save();
         }
@@ -652,20 +641,32 @@ class DemoRestaurantSeeder extends Seeder
 
     /**
      * @param  list<ServicePoint>  $servicePoints
-     * @return list<array{qr_code: QrCode, service_point: ServicePoint}>
      */
-    private function seedQrCodes(array $servicePoints, User $owner): array
+    private function seedQrCodes(array $servicePoints, User $owner): void
     {
-        $sources = [];
-
         foreach ($servicePoints as $servicePoint) {
-            $sources[] = [
-                'qr_code' => $this->generateQrCode->handle($servicePoint, $owner),
-                'service_point' => $servicePoint,
-            ];
+            $this->generateQrCode->handle($servicePoint, $owner, storeImage: false);
         }
+    }
 
-        return $sources;
+    private function storeDemoQrCodeImages(): void
+    {
+        $organizationIds = Organization::query()
+            ->whereIn('name', [self::ORGANIZATION_NAME, ...DemoTenantPortfolioSeeder::organizationNames()])
+            ->pluck('id');
+
+        ServicePoint::query()
+            ->select(['id', 'branch_id'])
+            ->whereHas('branch', fn ($query) => $query->whereIn('organization_id', $organizationIds))
+            ->with('branch.organization.owner:id,name,email')
+            ->orderBy('id')
+            ->lazyById()
+            ->each(function (ServicePoint $servicePoint): void {
+                $owner = $servicePoint->branch->organization->owner;
+                $qrCode = $this->generateQrCode->handle($servicePoint, $owner, storeImage: false);
+
+                $this->storeQrCodeImage->handle($qrCode);
+            });
     }
 
     private function seedMenu(Branch $branch, string $branchKey): void

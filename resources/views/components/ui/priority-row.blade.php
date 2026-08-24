@@ -11,7 +11,7 @@
     @if ($selected) aria-current="true" @endif
     {{ $attributes->class([
         'flex min-h-operational-touch min-w-0 flex-col gap-3 rounded-control border p-3 transition-[background-color,border-color,color] duration-state ease-product sm:flex-row sm:items-center sm:justify-between motion-reduce:transition-none',
-        'border-strong bg-surface-selected text-text-primary' => $selected,
+        'border-border-strong bg-surface-selected text-text-primary' => $selected,
         'border-danger-border bg-danger-surface text-danger' => ! $selected && $tone === 'danger',
         'border-warning-border bg-warning-surface text-warning' => ! $selected && $tone === 'warning',
         'border-information-border bg-information-surface text-information' => ! $selected && $tone === 'information',

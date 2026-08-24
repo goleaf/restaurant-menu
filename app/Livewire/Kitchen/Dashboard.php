@@ -16,7 +16,7 @@ class Dashboard extends DepartmentDashboard
      */
     protected function departmentTypes(): array
     {
-        return [];
+        return KitchenDepartmentType::kitchenProductionTypes();
     }
 
     /**

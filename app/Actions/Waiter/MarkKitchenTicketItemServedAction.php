@@ -4,23 +4,25 @@ declare(strict_types=1);
 
 namespace App\Actions\Waiter;
 
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
 use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
-use App\Enums\SystemPermission;
+use App\Enums\OrderStatusLogEvent;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class MarkKitchenTicketItemServedAction
 {
     public function __construct(
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly SyncOrderStatusFromTicketItemsAction $syncOrderStatus,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     public function handle(KitchenTicketItem $item, User $servedBy): KitchenTicketItem
@@ -64,6 +66,20 @@ class MarkKitchenTicketItemServedAction
                 ])
                 ->save();
 
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::TicketItemServed,
+                order: $order,
+                actorUser: $servedBy,
+                previousStatus: KitchenTicketItemStatus::Ready,
+                newStatus: 'served',
+                statusType: 'kitchen_ticket_item',
+                metadata: [
+                    'kitchen_ticket_id' => $item->kitchen_ticket_id,
+                    'kitchen_ticket_item_id' => $item->id,
+                    'served_by_user_id' => $servedBy->id,
+                ],
+            );
+
             $this->syncOrderStatus->handle($order, $servedBy);
 
             return $item->refresh();
@@ -94,14 +110,13 @@ class MarkKitchenTicketItemServedAction
                     ])]),
             ])
             ->whereKey($item->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
     private function ensureCanServe(Order $order, User $user): void
     {
-        $branchIds = $this->resolveAccessibleBranchIds->handle($user, SystemPermission::ViewOrders);
-
-        if (! $branchIds->contains((int) $order->branch_id)) {
+        if (Gate::forUser($user)->denies('markServed', $order)) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::BranchInaccessible,
                 'order_service',

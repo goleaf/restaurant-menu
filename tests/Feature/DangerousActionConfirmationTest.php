@@ -46,8 +46,6 @@ test('dangerous confirmations use prompt 410 semantic translation keys', functio
     $requiredKeys = [
         'ui.confirmations.danger.title',
         'ui.confirmations.danger.description',
-        'ui.confirmations.delete.title',
-        'ui.confirmations.delete.description',
         'qr.confirmations.disable.title',
         'qr.confirmations.disable.description',
         'qr.confirmations.reissue.title',

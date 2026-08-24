@@ -20,6 +20,8 @@ class ScanTranslationsCommand extends Command
 
     private const LOCALES = ['en', 'lt', 'ru'];
 
+    private const RUNTIME_DYNAMIC_PREFIXES = ['validation.attributes.'];
+
     /**
      * Execute the console command.
      */
@@ -57,7 +59,7 @@ class ScanTranslationsCommand extends Command
         $jsonKeysByLocale = $this->jsonKeysByLocale($this->langDirectory());
         $allJsonKeys = $this->uniqueSorted(array_merge(...array_values($jsonKeysByLocale)));
         $scanFiles = $this->scanFiles($this->scanPaths());
-        $usages = $this->extractUsages($scanFiles);
+        $usages = $this->extractUsages($scanFiles, $allJsonKeys);
         $usedKeys = $this->uniqueSorted(array_keys($usages));
         $semanticUsedKeys = $this->filterSemanticKeys($usedKeys);
         $phraseUsedKeys = $this->rejectSemanticKeys($usedKeys);
@@ -132,11 +134,13 @@ class ScanTranslationsCommand extends Command
 
     /**
      * @param  list<SplFileInfo>  $files
+     * @param  list<string>  $catalogKeys
      * @return array<string, list<string>>
      */
-    private function extractUsages(array $files): array
+    private function extractUsages(array $files, array $catalogKeys): array
     {
         $usages = [];
+        $catalogLookup = array_fill_keys($catalogKeys, true);
 
         foreach ($files as $file) {
             $contents = File::get($file->getPathname());
@@ -149,11 +153,28 @@ class ScanTranslationsCommand extends Command
             );
 
             foreach ($matches[2] as [$key, $offset]) {
-                $usages[$key][] = sprintf(
-                    '%s:%d',
-                    $this->relativePath($file->getPathname()),
-                    substr_count(substr($contents, 0, $offset), "\n") + 1,
-                );
+                $this->recordTranslationUsage($usages, $key, $file, $contents, $offset);
+            }
+
+            preg_match_all(
+                '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)\1/u',
+                $contents,
+                $literalMatches,
+                PREG_OFFSET_CAPTURE,
+            );
+
+            foreach ($literalMatches[2] as [$key, $offset]) {
+                if (isset($catalogLookup[$key])) {
+                    $this->recordTranslationUsage($usages, $key, $file, $contents, $offset);
+                }
+            }
+
+            foreach ($this->dynamicPrefixes($contents) as [$prefix, $offset]) {
+                foreach ($catalogKeys as $key) {
+                    if (str_starts_with($key, $prefix)) {
+                        $this->recordTranslationUsage($usages, $key, $file, $contents, $offset);
+                    }
+                }
             }
         }
 
@@ -164,6 +185,58 @@ class ScanTranslationsCommand extends Command
         }
 
         return $usages;
+    }
+
+    /**
+     * @param  array<string, list<string>>  $usages
+     */
+    private function recordTranslationUsage(
+        array &$usages,
+        string $key,
+        SplFileInfo $file,
+        string $contents,
+        int $offset,
+    ): void {
+        $usages[$key][] = sprintf(
+            '%s:%d',
+            $this->relativePath($file->getPathname()),
+            substr_count(substr($contents, 0, $offset), "\n") + 1,
+        );
+    }
+
+    /**
+     * @return list<array{string, int}>
+     */
+    private function dynamicPrefixes(string $contents): array
+    {
+        $prefixes = array_map(
+            fn (string $prefix): array => [$prefix, 0],
+            self::RUNTIME_DYNAMIC_PREFIXES,
+        );
+
+        preg_match_all(
+            '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.)\1\s*(?:\.|,)/u',
+            $contents,
+            $concatenatedMatches,
+            PREG_OFFSET_CAPTURE,
+        );
+
+        foreach ($concatenatedMatches[2] as [$prefix, $offset]) {
+            $prefixes[] = [$prefix, $offset];
+        }
+
+        preg_match_all(
+            '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.)%s(?:[^\'"]*)\1/u',
+            $contents,
+            $formattedMatches,
+            PREG_OFFSET_CAPTURE,
+        );
+
+        foreach ($formattedMatches[2] as [$prefix, $offset]) {
+            $prefixes[] = [$prefix, $offset];
+        }
+
+        return $prefixes;
     }
 
     /**
@@ -208,7 +281,10 @@ class ScanTranslationsCommand extends Command
     {
         $path = $file->getPathname();
 
-        return str_ends_with($path, '.php') || str_ends_with($path, '.blade.php');
+        return str_ends_with($path, '.php')
+            || str_ends_with($path, '.blade.php')
+            || str_ends_with($path, '.js')
+            || str_ends_with($path, '.mjs');
     }
 
     /**
@@ -298,6 +374,7 @@ class ScanTranslationsCommand extends Command
         return [
             app_path(),
             resource_path('views'),
+            resource_path('js'),
             base_path('routes'),
         ];
     }

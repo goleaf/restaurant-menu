@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Actions\TableSessions\ApproveTableSessionJoinRequestAction;
+use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SupportedLocale;
 use App\Livewire\PublicQr\GuestEntry;
+use App\Livewire\PublicQr\GuestMenu;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Livewire\Settings\Profile;
 use App\Models\Branch;
@@ -14,7 +17,12 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use App\Models\TableSessionGuest;
+use App\Models\TableSessionJoinRequest;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
+use Carbon\CarbonImmutable;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -22,9 +30,108 @@ use Livewire\Livewire;
 
 test('localization foundation supports fixed interface languages', function () {
     expect(Schema::hasColumn('users', 'locale'))->toBeTrue()
+        ->and(Schema::hasColumn('table_session_guests', 'locale'))->toBeTrue()
+        ->and(Schema::hasColumn('table_session_join_requests', 'locale'))->toBeTrue()
         ->and(SupportedLocale::values())->toBe(['ru', 'en', 'lt'])
         ->and(SupportedLocale::normalize('lt_LT'))->toBe('lt')
         ->and(SupportedLocale::normalize('de', 'ru'))->toBe('ru');
+});
+
+test('language labels are translated through the shared json catalog', function () {
+    $expected = [
+        'en' => ['ru' => 'Russian', 'en' => 'English', 'lt' => 'Lithuanian'],
+        'lt' => ['ru' => 'Rusų', 'en' => 'Anglų', 'lt' => 'Lietuvių'],
+        'ru' => ['ru' => 'Русский', 'en' => 'Английский', 'lt' => 'Литовский'],
+    ];
+
+    foreach ($expected as $interfaceLocale => $labels) {
+        App::setLocale($interfaceLocale);
+
+        expect(SupportedLocale::labels())->toBe($labels);
+    }
+});
+
+test('dates times and relative labels follow the active interface locale', function () {
+    $value = CarbonImmutable::parse('2026-08-24 14:05:00');
+
+    App::setLocale('en');
+    $english = LocalizedDateFormatter::dateTime($value);
+
+    App::setLocale('lt');
+    $lithuanian = LocalizedDateFormatter::dateTime($value);
+
+    App::setLocale('ru');
+    $russian = LocalizedDateFormatter::dateTime($value);
+
+    expect($english)->not->toBe($lithuanian)
+        ->and($lithuanian)->not->toBe($russian)
+        ->and(LocalizedDateFormatter::date($value))->not->toBeNull()
+        ->and(LocalizedDateFormatter::time($value))->not->toBeNull()
+        ->and(LocalizedDateFormatter::relative($value))->not->toBeNull()
+        ->and(LocalizedDateFormatter::dateTime(null))->toBeNull();
+});
+
+test('livewire pagination uses semantic localized labels instead of vendor phrase fallbacks', function () {
+    App::setLocale('ru');
+
+    $paginator = new LengthAwarePaginator(
+        items: range(11, 20),
+        total: 30,
+        perPage: 10,
+        currentPage: 2,
+        options: ['path' => '/organizations', 'pageName' => 'page'],
+    );
+    $html = view('livewire::tailwind', [
+        'paginator' => $paginator,
+        'elements' => [[
+            1 => '/organizations?page=1',
+            2 => '/organizations?page=2',
+            3 => '/organizations?page=3',
+        ]],
+    ])->render();
+
+    expect($html)->toContain('Навигация по страницам')
+        ->toContain('Предыдущая')
+        ->toContain('Следующая')
+        ->toContain('Результаты 11–20 из 30')
+        ->not->toContain('Showing');
+});
+
+test('lithuanian and russian plural forms handle compound counts', function () {
+    $expected = [
+        'lt' => [
+            0 => 'Nėra pozicijų',
+            1 => '1 pozicija',
+            2 => '2 pozicijos',
+            5 => '5 pozicijos',
+            10 => '10 pozicijų',
+            11 => '11 pozicijų',
+            20 => '20 pozicijų',
+            21 => '21 pozicija',
+            22 => '22 pozicijos',
+            25 => '25 pozicijos',
+        ],
+        'ru' => [
+            0 => 'Нет позиций',
+            1 => '1 позиция',
+            2 => '2 позиции',
+            5 => '5 позиций',
+            10 => '10 позиций',
+            11 => '11 позиций',
+            20 => '20 позиций',
+            21 => '21 позиция',
+            22 => '22 позиции',
+            25 => '25 позиций',
+        ],
+    ];
+
+    foreach ($expected as $locale => $forms) {
+        App::setLocale($locale);
+
+        foreach ($forms as $count => $label) {
+            expect(trans_choice('guest.cart.item_count', $count, ['count' => $count]))->toBe($label);
+        }
+    }
 });
 
 test('authenticated interface locale comes from user profile', function () {
@@ -37,6 +144,27 @@ test('authenticated interface locale comes from user profile', function () {
         ->get('/__locale-probe')
         ->assertOk()
         ->assertSee('lt');
+});
+
+test('authenticated language switch persists the selected locale and ignores unsupported values', function () {
+    Route::middleware(['web', 'auth'])->get('/__locale-switch-probe', fn () => App::currentLocale())
+        ->name('localization.locale-switch-probe');
+
+    $user = User::factory()->create(['locale' => 'en']);
+
+    $this->actingAs($user)
+        ->get('/__locale-switch-probe?lang=lt')
+        ->assertOk()
+        ->assertSee('lt');
+
+    expect($user->fresh()->locale)->toBe('lt')
+        ->and(session('interface_locale'))->toBe('lt');
+
+    $this->get('/__locale-switch-probe?lang=de')
+        ->assertOk()
+        ->assertSee('lt');
+
+    expect($user->fresh()->locale)->toBe('lt');
 });
 
 test('profile settings can update user interface language', function () {
@@ -53,7 +181,52 @@ test('profile settings can update user interface language', function () {
     $user->refresh();
 
     expect($user->locale)->toBe('ru')
-        ->and($user->preferredLocale())->toBe('ru');
+        ->and($user->preferredLocale())->toBe('ru')
+        ->and(App::currentLocale())->toBe('ru')
+        ->and(session('interface_locale'))->toBe('ru');
+});
+
+test('guest and pending join locale values are persisted independently', function () {
+    expect(TableSessionGuest::factory()->create(['locale' => 'lt'])->locale)->toBe('lt')
+        ->and(TableSessionJoinRequest::factory()->create(['locale' => 'ru'])->locale)->toBe('ru');
+});
+
+test('guest entry approval and menu switch preserve the guest locale', function () {
+    [$qrCode, , $servicePoint] = createPrompt77GuestQrContext();
+    $createGuestSession = app(CreateGuestPendingTableSessionAction::class);
+    $firstToken = str_repeat('A', 64);
+    $secondToken = str_repeat('B', 64);
+
+    $firstEntry = $createGuestSession->handle($servicePoint, 'First guest', $firstToken, 'lt');
+    $joinEntry = $createGuestSession->handle($servicePoint, 'Second guest', $secondToken, 'ru');
+
+    $firstGuest = $firstEntry['guest'];
+    $joinRequest = $joinEntry['join_request'];
+
+    expect($firstGuest)->toBeInstanceOf(TableSessionGuest::class)
+        ->and($firstGuest->locale)->toBe('lt')
+        ->and($joinRequest)->toBeInstanceOf(TableSessionJoinRequest::class)
+        ->and($joinRequest->locale)->toBe('ru');
+
+    $approvedGuest = app(ApproveTableSessionJoinRequestAction::class)->handle($joinRequest, $firstGuest);
+
+    expect($approvedGuest->locale)->toBe('ru');
+
+    session()->put('guest_entries.'.$qrCode->public_token, [
+        'table_session_id' => $firstEntry['table_session']->id,
+        'guest_id' => $firstGuest->id,
+        'guest_token' => $firstToken,
+    ]);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $servicePoint->branch_id,
+        'tableSessionId' => $firstEntry['table_session']->id,
+        'currentGuestId' => $firstGuest->id,
+        'publicToken' => $qrCode->public_token,
+        'language' => 'lt',
+    ])->set('language', 'ru');
+
+    expect($firstGuest->fresh()->locale)->toBe('ru');
 });
 
 test('profile settings rejects unsupported interface language', function () {
@@ -116,10 +289,7 @@ test('payment ui uses semantic json translation keys in every locale', function 
         'payments.guest_remaining',
         'payments.pay_whole_table',
         'payments.pay_guest',
-        'payments.record_payment',
         'payments.payment_history',
-        'payments.payment_correction',
-        'payments.correction_reason',
         'payments.close_session',
         'payments.close_session_warning',
         'payments.fully_paid',
@@ -133,9 +303,7 @@ test('payment ui uses semantic json translation keys in every locale', function 
         'payments.forms.method',
         'payments.forms.note',
         'payments.forms.guest',
-        'payments.forms.reason',
         'payments.messages.payment_recorded',
-        'payments.messages.payment_corrected',
         'payments.messages.session_paid',
         'payments.errors.amount_required',
         'payments.errors.amount_invalid',
@@ -154,7 +322,6 @@ test('payment ui uses semantic json translation keys in every locale', function 
 
 test('staff and permission ui uses semantic json translation keys in every locale', function () {
     $staffKeys = [
-        'staff.title',
         'staff.list',
         'staff.add',
         'staff.invite',
@@ -164,7 +331,6 @@ test('staff and permission ui uses semantic json translation keys in every local
         'staff.deactivate',
         'staff.reactivate',
         'staff.role',
-        'staff.status',
         'staff.branch_access',
         'staff.organization_access',
         'staff.actions.update_permissions',
@@ -225,38 +391,18 @@ test('staff and permission ui uses semantic json translation keys in every local
 test('reports ui uses semantic json translation keys in every locale', function () {
     $reportKeys = [
         'reports.title',
-        'reports.filters.date_range',
         'reports.filters.today',
-        'reports.filters.yesterday',
-        'reports.filters.last_7_days',
-        'reports.filters.this_month',
         'reports.filters.custom',
         'reports.filters.branch',
         'reports.filters.status',
-        'reports.actions.apply_filters',
-        'reports.actions.reset_filters',
-        'reports.actions.export_csv',
-        'reports.revenue.title',
         'reports.revenue.total_paid',
         'reports.revenue.net_total',
-        'reports.revenue.by_payment_method',
         'reports.orders.title',
-        'reports.orders.total_orders',
-        'reports.orders.confirmed',
-        'reports.orders.cancelled',
-        'reports.orders.average_order_amount',
-        'reports.average_check.title',
-        'reports.average_check.table_average',
-        'reports.average_check.guest_average',
         'reports.popular_items.title',
         'reports.popular_items.quantity_sold',
-        'reports.popular_items.total_amount',
         'reports.payments.title',
         'reports.payments.method',
         'reports.payments.amount',
-        'reports.cancelled.title',
-        'reports.cancelled.reason',
-        'reports.cancelled.cancelled_by',
     ];
 
     $reportSupportKeys = [
@@ -272,7 +418,6 @@ test('reports ui uses semantic json translation keys in every locale', function 
         'reports.quick_actions.view_cached_branch_analytics',
         'reports.exports.title',
         'reports.exports.description',
-        'reports.exports.csv_only',
         'reports.exports.warning',
         'reports.exports.menu',
         'reports.exports.tables',

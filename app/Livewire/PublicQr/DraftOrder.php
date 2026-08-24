@@ -9,6 +9,7 @@ use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\Support\BuildDraftOrderItemModifierSnapshots;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
+use App\Actions\TableSessions\CanRequestBillForTableSessionAction;
 use App\Actions\TableSessions\RequestBillForTableSessionAction;
 use App\Actions\TableSessions\ToggleTableSessionGuestReadyAction;
 use App\Enums\DraftOrderStatus;
@@ -48,6 +49,8 @@ class DraftOrder extends Component
 
     private PublicQrQueryService $publicQrQueries;
 
+    private CanRequestBillForTableSessionAction $canRequestBillForTableSession;
+
     #[Locked]
     public int $tableSessionId = 0;
 
@@ -59,7 +62,7 @@ class DraftOrder extends Component
 
     public string $currency = 'EUR';
 
-    public string $language = 'ru';
+    public string $language = 'en';
 
     public int $pollingIntervalSeconds = 1;
 
@@ -74,12 +77,12 @@ class DraftOrder extends Component
     public bool $showStatuses = true;
 
     /**
-     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
+     * @var list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, unit_total_price_label: string, total_price: string, total_price_label: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>
      */
     public array $items = [];
 
     /**
-     * @var list<array{guest_id: int, guest_name: string, total: string, draft_total: string, confirmed_total: string, has_draft_total: bool, has_confirmed_total: bool, is_current_guest: bool, is_ready: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, total_price: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
+     * @var list<array{guest_id: int, guest_name: string, total: string, total_label: string, draft_total: string, draft_total_label: string, confirmed_total: string, confirmed_total_label: string, has_draft_total: bool, has_confirmed_total: bool, is_current_guest: bool, is_ready: bool, items: list<array{id: int, guest_id: int, guest_name: string, item_name: string, quantity: int, unit_price: string, modifier_total: string, unit_total_price: string, unit_total_price_label: string, total_price: string, total_price_label: string, modifiers: list<string>, comment: string|null, is_current_guest: bool, can_edit: bool}>}>
      */
     public array $guestSections = [];
 
@@ -93,6 +96,12 @@ class DraftOrder extends Component
     public string $confirmedOrdersTotalAmount = '0.00';
 
     public string $tableTotalAmount = '0.00';
+
+    public string $totalLabel = '';
+
+    public string $confirmedOrdersTotalLabel = '';
+
+    public string $tableTotalLabel = '';
 
     public bool $hasConfirmedOrders = false;
 
@@ -176,6 +185,7 @@ class DraftOrder extends Component
         DeleteGuestDraftOrderItemAction $deleteGuestDraftOrderItem,
         BuildDraftOrderItemModifierSnapshots $buildModifierSnapshots,
         PublicQrQueryService $publicQrQueries,
+        CanRequestBillForTableSessionAction $canRequestBillForTableSession,
     ): void {
         $this->toggleGuestReady = $toggleGuestReady;
         $this->sendDraftOrderToWaiter = $sendDraftOrderToWaiter;
@@ -183,6 +193,7 @@ class DraftOrder extends Component
         $this->deleteGuestDraftOrderItem = $deleteGuestDraftOrderItem;
         $this->buildModifierSnapshots = $buildModifierSnapshots;
         $this->publicQrQueries = $publicQrQueries;
+        $this->canRequestBillForTableSession = $canRequestBillForTableSession;
     }
 
     public function mount(
@@ -196,13 +207,13 @@ class DraftOrder extends Component
         bool $showControls = true,
         bool $showTotals = true,
         bool $showStatuses = true,
-        string $language = 'ru',
+        ?string $language = null,
     ): void {
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->currency = $currency;
         $this->publicToken = $publicToken;
-        $this->language = SupportedLocale::normalize($language, 'ru');
+        $this->language = SupportedLocale::normalize($language, App::currentLocale());
         $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->branchCanAcceptOrders = $branchCanAcceptOrders;
         $this->branchOpeningStatusMessage = $branchOpeningStatusMessage;
@@ -247,7 +258,7 @@ class DraftOrder extends Component
         $this->serviceStatusLabel = $serviceStatus['label'];
         $this->serviceStatusTone = $serviceStatus['tone'];
         $this->rejectionReason = $this->showStatuses ? $draftOrder?->rejection_reason : null;
-        $this->canEditDraft = $draftOrder === null || $draftOrder->status === DraftOrderStatus::Draft;
+        $this->canEditDraft = $draftOrder === null || $draftOrder->status->isGuestEditable();
         $this->activeGuestCount = $guests->count();
         $this->readyGuestCount = $guests->filter(fn (TableSessionGuest $guest): bool => $guest->ready_at !== null)->count();
         $this->allGuestsReady = $this->activeGuestCount > 0 && $this->readyGuestCount === $this->activeGuestCount;
@@ -268,11 +279,8 @@ class DraftOrder extends Component
                     && $this->publicToken !== ''
                     && $tableSession instanceof TableSession
                     && ! $this->billRequested
-                    && ! in_array($tableSession->status, [
-                        TableSessionStatus::Paid,
-                        TableSessionStatus::Closed,
-                        TableSessionStatus::Cancelled,
-                    ], true);
+                    && ! $tableSession->status->locksOrderChanges()
+                    && $this->canRequestBillForTableSession->handle($tableSession);
             }
 
             $guestSections[$guest->id] = [
@@ -345,7 +353,9 @@ class DraftOrder extends Component
                     'unit_price' => MoneyFormatter::centsToDecimal($item->unit_price_cents),
                     'modifier_total' => MoneyFormatter::centsToDecimal($item->modifier_total_cents),
                     'unit_total_price' => MoneyFormatter::centsToDecimal($unitTotalCents),
+                    'unit_total_price_label' => MoneyFormatter::formatCents($unitTotalCents, $this->currency),
                     'total_price' => MoneyFormatter::centsToDecimal($item->total_price_cents),
+                    'total_price_label' => MoneyFormatter::formatCents($item->total_price_cents, $this->currency),
                     'modifiers' => $this->modifierSummary($item->selected_modifiers),
                     'comment' => $item->comment,
                     'is_current_guest' => $isCurrentGuest,
@@ -364,8 +374,11 @@ class DraftOrder extends Component
                 'guest_id' => $guestSection['guest_id'],
                 'guest_name' => $guestSection['guest_name'],
                 'total' => MoneyFormatter::centsToDecimal($guestSection['total_cents']),
+                'total_label' => MoneyFormatter::formatCents($guestSection['total_cents'], $this->currency),
                 'draft_total' => MoneyFormatter::centsToDecimal($guestSection['draft_total_cents']),
+                'draft_total_label' => MoneyFormatter::formatCents($guestSection['draft_total_cents'], $this->currency),
                 'confirmed_total' => MoneyFormatter::centsToDecimal($guestSection['confirmed_total_cents']),
+                'confirmed_total_label' => MoneyFormatter::formatCents($guestSection['confirmed_total_cents'], $this->currency),
                 'has_draft_total' => $guestSection['draft_total_cents'] > 0,
                 'has_confirmed_total' => $guestSection['confirmed_total_cents'] > 0,
                 'is_current_guest' => $guestSection['is_current_guest'],
@@ -386,6 +399,9 @@ class DraftOrder extends Component
         $this->totalAmount = MoneyFormatter::centsToDecimal($totalCents);
         $this->confirmedOrdersTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents);
         $this->tableTotalAmount = MoneyFormatter::centsToDecimal($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents));
+        $this->totalLabel = MoneyFormatter::formatCents($totalCents, $this->currency);
+        $this->confirmedOrdersTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents, $this->currency);
+        $this->tableTotalLabel = MoneyFormatter::formatCents($confirmedOrdersTotalCents + $this->openDraftTotalCents($draftOrder, $totalCents), $this->currency);
         $this->hasConfirmedOrders = $confirmedOrdersTotalCents > 0;
         $this->itemCount = count($this->items);
         $this->canSendDraftToWaiter = $this->canSendDraftToWaiter && $this->itemCount > 0;
@@ -518,7 +534,7 @@ class DraftOrder extends Component
             return;
         }
 
-        if ($draftOrderItem->draftOrder->status !== DraftOrderStatus::Draft) {
+        if (! $draftOrderItem->draftOrder->status->isGuestEditable()) {
             $this->addError('draft_order', __('guest.cart.draft_locked'));
 
             return;
@@ -691,7 +707,9 @@ class DraftOrder extends Component
     {
         $this->applyLocale();
 
-        return view('livewire.public-qr.draft-order');
+        return view('livewire.public-qr.draft-order', [
+            'editingItemTotalLabel' => MoneyFormatter::format($this->editingItemTotal, $this->currency),
+        ]);
     }
 
     /**

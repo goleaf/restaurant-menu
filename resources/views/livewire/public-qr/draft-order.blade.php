@@ -158,14 +158,14 @@
                         </div>
 
                         <div class="shrink-0 text-right">
-                            <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestSection['total'] }} {{ $currency }}</p>
+                            <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestSection['total_label'] }}</p>
                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('guest.cart.guest_total') }}</p>
 
                             @if ($guestSection['has_confirmed_total'])
                                 <p class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                                    {{ __('guest.cart.confirmed_total') }}: {{ $guestSection['confirmed_total'] }} {{ $currency }}
+                                    {{ __('guest.cart.confirmed_total') }}: {{ $guestSection['confirmed_total_label'] }}
                                     @if ($guestSection['has_draft_total'])
-                                        <span class="block">{{ __('guest.cart.current_draft') }}: {{ $guestSection['draft_total'] }} {{ $currency }}</span>
+                                        <span class="block">{{ __('guest.cart.current_draft') }}: {{ $guestSection['draft_total_label'] }}</span>
                                     @endif
                                 </p>
                             @endif
@@ -184,10 +184,10 @@
                                         @endif
 
                                         <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                            {{ __('guest.cart.price') }}: {{ $item['total_price'] }} {{ $currency }}
+                                            {{ __('guest.cart.price') }}: {{ $item['total_price_label'] }}
 
                                             @if ($item['quantity'] > 1)
-                                                <span>{{ __('guest.cart.separator') }} ×{{ $item['quantity'] }} {{ __('guest.cart.each') }} {{ $item['unit_total_price'] }} {{ $currency }}</span>
+                                                <span>{{ __('guest.cart.separator') }} ×{{ $item['quantity'] }} {{ __('guest.cart.each') }} {{ $item['unit_total_price_label'] }}</span>
                                             @else
                                                 <span>{{ __('guest.cart.separator') }} ×{{ $item['quantity'] }}</span>
                                             @endif
@@ -195,7 +195,7 @@
                                     </div>
 
                                     <span class="shrink-0 text-sm font-semibold text-zinc-950 dark:text-white">
-                                        {{ $item['total_price'] }} {{ $currency }}
+                                        {{ $item['total_price_label'] }}
                                     </span>
                                 </div>
 
@@ -256,7 +256,7 @@
                     {{ $hasConfirmedOrders ? __('guest.cart.current_draft') : __('guest.cart.table_total') }}
                 </span>
                 <span class="text-xl font-semibold text-zinc-950 dark:text-white">
-                    {{ $totalAmount }} {{ $currency }}
+                    {{ $totalLabel }}
                 </span>
             </div>
 
@@ -264,12 +264,12 @@
                 <div class="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-sm dark:bg-emerald-950/30">
                     <div class="flex items-center justify-between gap-3">
                         <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.confirmed_total') }}</span>
-                        <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalAmount }} {{ $currency }}</span>
+                        <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalLabel }}</span>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 border-t border-emerald-100 pt-2 dark:border-emerald-900/60">
                         <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.table_total') }}</span>
-                        <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalAmount }} {{ $currency }}</span>
+                        <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalLabel }}</span>
                     </div>
                 </div>
             @endif
@@ -280,7 +280,7 @@
                 @if ($billRequested)
                     <div class="rounded-lg bg-sky-50 px-3 py-3 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
                         {{ __('guest.table.bill_requested') }}
-                        <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
+                        <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalLabel }}</span>
                     </div>
                 @elseif ($canRequestBill)
                     <button
@@ -290,7 +290,7 @@
                         wire:target="requestBill"
                         class="flex min-h-12 w-full items-center justify-center rounded-lg bg-sky-700 px-4 text-base font-semibold text-white transition hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
                     >
-                        <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
+                        <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalLabel }}</span>
                         <span wire:loading wire:target="requestBill">{{ __('guest.table.sending') }}</span>
                     </button>
                 @endif
@@ -353,7 +353,7 @@
                     <div class="min-w-0">
                         <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.my_items') }}</p>
                         <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotal }} {{ $currency }}</p>
+                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotalLabel }}</p>
                     </div>
 
                     <button
@@ -464,7 +464,7 @@
                     </label>
                 </div>
 
-                <x-ui.mobile-bottom-actions class="mt-5" :summary="$editingItemTotal.' '.$currency">
+                <x-ui.mobile-bottom-actions class="mt-5" :summary="$editingItemTotalLabel">
                     <x-ui.button
                         type="button"
                         wire:click="updateItem"
@@ -474,7 +474,7 @@
                         size="lg"
                         full-width
                     >
-                        <span wire:loading.remove wire:target="updateItem">{{ __('guest.cart.save_item') }} · {{ $editingItemTotal }} {{ $currency }}</span>
+                        <span wire:loading.remove wire:target="updateItem">{{ __('guest.cart.save_item') }} · {{ $editingItemTotalLabel }}</span>
                         <span wire:loading wire:target="updateItem">{{ __('guest.table.saving') }}</span>
                     </x-ui.button>
 

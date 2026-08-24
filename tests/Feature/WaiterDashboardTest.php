@@ -121,7 +121,7 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
         ->assertSee('Has new order')
         ->assertSee('Waiting review')
         ->assertSee('Anna')
-        ->assertSee('19.50 EUR');
+        ->assertSee('€19.50');
 
     $this->actingAs($waiter)
         ->get(route('restaurant.waiter.dashboard'))
@@ -155,6 +155,8 @@ test('waiter dashboard exposes a query free desktop table preview with a mobile 
         ->assertSee('data-priority-row', false)
         ->assertSee('data-waiter-mobile-detail', false)
         ->assertSee('data-waiter-desktop-select', false)
+        ->assertSee('data-waiter-mobile-detail-wrapper', false)
+        ->assertSee('data-waiter-desktop-select-wrapper', false)
         ->assertSee('data-waiter-table-preview', false)
         ->assertSee('aria-current="true"', false)
         ->assertSee(route('restaurant.waiter.tables.show', $tableSession), false);
@@ -244,7 +246,7 @@ test('waiter dashboard refresh shows newly sent draft without websockets', funct
         ->assertSet('newDraftCount', 1)
         ->assertDispatched('waiter-new-draft')
         ->assertSee('Marta')
-        ->assertSee('7.00 EUR');
+        ->assertSee('€7.00');
 
     $component
         ->call('refreshDashboard')

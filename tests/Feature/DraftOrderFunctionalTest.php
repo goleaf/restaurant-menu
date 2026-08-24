@@ -83,6 +83,52 @@ test('active guest adds a menu item to the table draft and totals recalculate', 
         ->and(Order::query()->count())->toBe(0);
 });
 
+test('replaying the same guest add command returns one draft item', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $idempotencyKey = '018fdc1b-7a43-7d8e-a8b5-49ef5cc91668';
+
+    $first = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+        idempotencyKey: $idempotencyKey,
+    );
+    $replayed = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+        idempotencyKey: $idempotencyKey,
+    );
+
+    expect($replayed->id)->toBe($first->id)
+        ->and($first->toArray())->not->toHaveKey('idempotency_key')
+        ->and(DraftOrderItem::query()->where('draft_order_id', $first->draft_order_id)->count())->toBe(1);
+});
+
+test('a guest cannot reuse another guest idempotency key', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $idempotencyKey = '018fdc1b-7a43-7d8e-a8b5-49ef5cc91670';
+
+    $first = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+        idempotencyKey: $idempotencyKey,
+    );
+
+    expect(fn (): DraftOrderItem => app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['boris'],
+        menuItem: $context['waterItem'],
+        selectedModifierOptions: [],
+        idempotencyKey: $idempotencyKey,
+    ))->toThrow(ValidationException::class)
+        ->and(DraftOrderItem::query()->where('draft_order_id', $first->draft_order_id)->count())->toBe(1);
+});
+
 test('guest can update quantity comment and delete only own draft items', function (): void {
     $context = createPrompt354DraftOrderContext();
 
@@ -395,9 +441,43 @@ test('server-side guard forbids editing or deleting another guest draft item', f
         ->and($borisDraftItem->total_price_cents)->toBe(1250);
 });
 
-test('shared item allocations split one item between selected guests and keep table totals correct', function (): void {
-    //
-})->todo(issue: 10);
+test('each guest keeps separate draft positions and table totals remain exact', function (): void {
+    $context = createPrompt354DraftOrderContext();
+
+    $anaItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+    $borisItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['boris'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+
+    $draftOrder = DraftOrder::query()
+        ->with('items.guest')
+        ->findOrFail($anaItem->draft_order_id);
+
+    expect($anaItem->table_session_guest_id)->toBe($context['ana']->getKey())
+        ->and($borisItem->table_session_guest_id)->toBe($context['boris']->getKey())
+        ->and($draftOrder->items)->toHaveCount(2)
+        ->and($draftOrder->totalAmount())->toBe('25.00')
+        ->and($draftOrder->guestTotals())->toBe([
+            [
+                'guest_id' => $context['ana']->getKey(),
+                'guest_name' => 'Ana',
+                'total' => '12.50',
+            ],
+            [
+                'guest_id' => $context['boris']->getKey(),
+                'guest_name' => 'Boris',
+                'total' => '12.50',
+            ],
+        ]);
+});
 
 test('any active guest can send the draft to waiter and guests cannot edit it anymore', function (): void {
     $context = createPrompt354DraftOrderContext();
@@ -481,7 +561,7 @@ test('rejected draft is not billable and a fresh draft can be started', function
 
     expect($rejectedDraftOrder->status)->toBe(DraftOrderStatus::Rejected)
         ->and($rejectedDraftOrder->rejection_reason)->toBe('Pizza is sold out')
-        ->and($paymentSummary['confirmed_total'])->toBe('0.00 EUR')
+        ->and($paymentSummary['confirmed_total'])->toBe('€0.00')
         ->and($paymentSummary['has_payable_total'])->toBeFalse()
         ->and($paymentSummary['has_open_draft'])->toBeFalse()
         ->and(Order::query()->count())->toBe(0);

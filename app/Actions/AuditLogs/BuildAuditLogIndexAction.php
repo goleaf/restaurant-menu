@@ -12,6 +12,7 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
 
@@ -179,7 +180,7 @@ class BuildAuditLogIndexAction
 
         return [
             'id' => $auditLog->id,
-            'created_at' => $auditLog->created_at->format('Y-m-d H:i:s'),
+            'created_at' => LocalizedDateFormatter::dateTime($auditLog->created_at),
             'action' => $auditLog->action->value,
             'action_label' => $auditLog->action->label(),
             'entity_type' => $auditLog->entity_type,

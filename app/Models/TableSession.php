@@ -10,6 +10,7 @@ use App\Enums\TableSessionStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\TableSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonInterface|null $started_at
  * @property CarbonInterface|null $ended_at
  * @property CarbonInterface|null $guest_invite_created_at
+ * @property CarbonInterface|null $guest_invite_expires_at
  * @property array<string, mixed>|null $metadata
  * @property-read Branch $branch
  * @property-read ServicePoint $servicePoint
@@ -34,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read TableSessionGuest|null $openedByGuest
  * @property-read DraftOrder|null $draftOrder
  */
-#[Fillable(['service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_token', 'guest_invite_created_at', 'guest_invite_created_by_guest_id', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
+#[Fillable(['service_point_id', 'opened_by_user_id', 'opened_by_guest_id', 'guest_invite_created_at', 'guest_invite_expires_at', 'guest_invite_created_by_guest_id', 'source', 'started_at', 'ended_at', 'closed_by_user_id', 'metadata'])]
 class TableSession extends Model
 {
     /** @use HasFactory<TableSessionFactory> */
@@ -48,15 +50,17 @@ class TableSession extends Model
         'source' => 'guest_created',
     ];
 
+    /** @var list<string> */
+    protected $hidden = [
+        'guest_invite_token_hash',
+    ];
+
     protected static function booted(): void
     {
         static::saving(function (TableSession $tableSession): void {
             $status = $tableSession->status;
 
-            $tableSession->active_service_point_id = in_array($status, [
-                TableSessionStatus::Active,
-                TableSessionStatus::PaymentRequested,
-            ], true)
+            $tableSession->active_service_point_id = $status->occupiesServicePoint()
                 ? $tableSession->service_point_id
                 : null;
 
@@ -77,8 +81,49 @@ class TableSession extends Model
             'started_at' => 'datetime',
             'ended_at' => 'datetime',
             'guest_invite_created_at' => 'datetime',
+            'guest_invite_expires_at' => 'datetime',
             'metadata' => 'array',
         ];
+    }
+
+    public function scopeGuestViewable(Builder $query): Builder
+    {
+        return $query->whereIn('status', TableSessionStatus::guestViewableValues());
+    }
+
+    public function scopeForQrServicePoint(Builder $query, ServicePoint $servicePoint): Builder
+    {
+        return $query
+            ->where('branch_id', $servicePoint->branch_id)
+            ->where(function (Builder $servicePointQuery) use ($servicePoint): void {
+                $servicePointQuery
+                    ->where('service_point_id', $servicePoint->id)
+                    ->orWhereHas('activeServicePointLinks', function (Builder $linkQuery) use ($servicePoint): void {
+                        $linkQuery->where('service_point_id', $servicePoint->id);
+                    });
+            });
+    }
+
+    public function wasTransferredFrom(ServicePoint $servicePoint): bool
+    {
+        if ((int) $this->branch_id !== (int) $servicePoint->branch_id) {
+            return false;
+        }
+
+        $transfers = data_get($this->metadata, 'transfers', []);
+
+        if (! is_array($transfers)) {
+            return false;
+        }
+
+        foreach ($transfers as $transfer) {
+            if (is_array($transfer)
+                && (int) ($transfer['from_service_point_id'] ?? 0) === (int) $servicePoint->id) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

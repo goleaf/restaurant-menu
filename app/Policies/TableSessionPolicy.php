@@ -50,6 +50,11 @@ final class TableSessionPolicy
         return $this->hasPermission($user, $tableSession, SystemPermission::ManageTableSessions);
     }
 
+    public function manageGuests(User $user, TableSession $tableSession): bool
+    {
+        return $this->update($user, $tableSession);
+    }
+
     public function transfer(User $user, TableSession $tableSession): bool
     {
         return $this->hasPermission($user, $tableSession, SystemPermission::ViewOrders)

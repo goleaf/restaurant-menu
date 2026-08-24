@@ -14,6 +14,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\BrandQueryService;
+use App\Support\LocalizedDateFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
@@ -265,7 +266,7 @@ class Index extends Component
                     'id' => $brand->id,
                     'name' => $brand->name,
                     'logo_url' => $brand->logoUrl(),
-                    'created_at' => $brand->created_at->format('d.m.Y'),
+                    'created_at' => LocalizedDateFormatter::date($brand->created_at),
                     'is_archived' => $brand->trashed(),
                     'branches_url' => route('organizations.brands.branches.index', [
                         'organization' => $this->organization->id,

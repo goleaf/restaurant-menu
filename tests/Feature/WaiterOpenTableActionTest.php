@@ -18,9 +18,12 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
+use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -66,6 +69,68 @@ test('waiter open table action reuses existing active session', function () {
         ->where('service_point_id', $servicePoint->id)
         ->where('status', TableSessionStatus::Active->value)
         ->count())->toBe(1);
+});
+
+test('waiter opening a guest-created pending table activates the same session', function () {
+    [, , $branch, $manager] = createWaiterOpenTableBranch();
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create(['status' => ServicePointStatus::Free]);
+    $pendingTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->pending()
+        ->guestCreated()
+        ->create();
+    $firstGuest = TableSessionGuest::factory()
+        ->for($pendingTableSession)
+        ->active()
+        ->create();
+    $pendingTableSession->forceFill(['opened_by_guest_id' => $firstGuest->id])->save();
+
+    $openedTableSession = app(OpenTableSessionForServicePointAction::class)
+        ->handle($servicePoint, $manager);
+
+    expect($openedTableSession->id)->toBe($pendingTableSession->id)
+        ->and($openedTableSession->status)->toBe(TableSessionStatus::Active)
+        ->and($openedTableSession->source)->toBe(TableSessionSource::GuestCreated)
+        ->and($openedTableSession->opened_by_guest_id)->toBe($firstGuest->id)
+        ->and($openedTableSession->opened_by_user_id)->toBe($manager->id)
+        ->and($openedTableSession->active_service_point_id)->toBe($servicePoint->id)
+        ->and($openedTableSession->pending_service_point_id)->toBeNull()
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied)
+        ->and(TableSession::query()->where('service_point_id', $servicePoint->id)->count())->toBe(1);
+});
+
+test('waiter cannot open a paid table before its session is explicitly closed', function (): void {
+    [, , $branch, $manager] = createWaiterOpenTableBranch();
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->paid()
+        ->create();
+    $paidSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->paid()
+        ->create();
+
+    expect(fn () => app(OpenTableSessionForServicePointAction::class)
+        ->handle($servicePoint, $manager))
+        ->toThrow(ValidationException::class)
+        ->and(TableSession::query()->where('service_point_id', $servicePoint->id)->count())->toBe(1)
+        ->and($paidSession->fresh()->status)->toBe(TableSessionStatus::Paid)
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid);
+});
+
+test('waiter cannot open a table in another tenant by calling the action directly', function (): void {
+    [, , $foreignBranch] = createWaiterOpenTableBranch('Foreign Group', 'Foreign Brand');
+    [, , , $manager] = createWaiterOpenTableBranch('Own Group', 'Own Brand');
+    $foreignServicePoint = ServicePoint::factory()
+        ->for($foreignBranch)
+        ->create(['status' => ServicePointStatus::Free]);
+
+    expect(fn () => app(OpenTableSessionForServicePointAction::class)
+        ->handle($foreignServicePoint, $manager))
+        ->toThrow(AuthorizationException::class)
+        ->and(TableSession::query()->where('service_point_id', $foreignServicePoint->id)->exists())->toBeFalse();
 });
 
 test('database prevents two active table sessions for one service point', function () {

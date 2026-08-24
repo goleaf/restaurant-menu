@@ -5,6 +5,7 @@ namespace App\Actions\Waiter;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\TableSessions\TransitionTableSessionStatusAction;
 use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
@@ -28,6 +29,7 @@ class RejectDraftOrderByWaiterAction
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
     ) {}
 
     public function handle(DraftOrder $draftOrder, User $rejectedBy, string $reason): DraftOrder
@@ -50,6 +52,8 @@ class RejectDraftOrderByWaiterAction
                     'converted_by_user_id' => null,
                 ])
                 ->save();
+
+            $this->transitionTableSessionStatus->handle($draftOrder->tableSession, TableSessionStatus::Active);
 
             if ($draftOrder->tableSession?->servicePoint !== null) {
                 $this->updateServicePointStatus->handle($draftOrder->tableSession->servicePoint, ServicePointStatus::Occupied);
@@ -182,13 +186,14 @@ class RejectDraftOrderByWaiterAction
             ]);
         }
 
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if ($tableSession->status->locksOrderChanges()) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.nelzia_otklonit_zakaz_dlia'),
             ]);
         }
 
-        if (! in_array($draftOrder->status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true)) {
+        if (! $draftOrder->status->isWaiterEditable()
+            || ! $draftOrder->status->canTransitionTo(DraftOrderStatus::Rejected)) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.rejectdraftorderbywaiteraction.otklonit_mozno_tolko_cerno'),
             ]);

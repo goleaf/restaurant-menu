@@ -7,7 +7,6 @@ namespace App\Support\PublicQr;
 use App\Enums\GuestTableEntryState;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
@@ -125,6 +124,7 @@ final class GuestEntryPresenter
     {
         return match ($state) {
             GuestTableEntryState::PendingSessionCreated => __('guest.table.pending_session_created'),
+            GuestTableEntryState::ActiveSessionJoined => __('guest.table.active_session_joined'),
             GuestTableEntryState::ActiveSessionExists => __('guest.table.active_session_exists'),
             GuestTableEntryState::PendingSessionExists => __('guest.table.pending_session_exists'),
             GuestTableEntryState::JoinRequestCreated => __('guest.table.join_request_sent'),
@@ -207,7 +207,7 @@ final class GuestEntryPresenter
 
     private function tableSessionIsClosed(TableSession $tableSession): bool
     {
-        return in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true);
+        return $tableSession->status->isTerminal();
     }
 
     /**

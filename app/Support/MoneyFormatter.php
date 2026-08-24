@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Enums\SupportedCurrency;
+use Illuminate\Support\Facades\App;
+use Illuminate\Support\Number;
 use InvalidArgumentException;
 use OverflowException;
 
@@ -25,18 +27,19 @@ final class MoneyFormatter
 
     public static function formatCents(int $cents, ?string $currency = null): string
     {
-        $currency = SupportedCurrency::from(SupportedCurrency::normalize($currency));
-        $decimal = self::centsToDecimal(self::absolute($cents));
-        [$whole, $fraction] = explode('.', $decimal, 2);
-        $groupedWhole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ' ', $whole) ?? $whole;
-        $amount = $groupedWhole.'.'.$fraction;
-        $sign = $cents < 0 ? '-' : '';
+        $currency = SupportedCurrency::normalize($currency);
+        $formatted = Number::currency(
+            $cents / 100,
+            in: $currency,
+            locale: App::currentLocale(),
+            precision: 2,
+        );
 
-        if ($currency->usesPrefixSymbol()) {
-            return $sign.$currency->symbol().$amount;
+        if (! is_string($formatted)) {
+            throw new InvalidArgumentException('The money value could not be formatted for the selected locale.');
         }
 
-        return $sign.$amount.' '.$currency->value;
+        return $formatted;
     }
 
     public static function formatSignedCents(int $cents, ?string $currency = null): string

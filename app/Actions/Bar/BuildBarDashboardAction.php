@@ -32,7 +32,7 @@ class BuildBarDashboardAction
         return $this->buildDepartmentDashboard->handle(
             user: $user,
             selectedDepartmentId: $selectedDepartmentId,
-            departmentTypes: [KitchenDepartmentType::Bar],
+            departmentTypes: KitchenDepartmentType::barProductionTypes(),
             roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
             permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );
@@ -42,7 +42,7 @@ class BuildBarDashboardAction
     {
         return $this->buildDepartmentDashboard->userHasAccess(
             user: $user,
-            departmentTypes: [KitchenDepartmentType::Bar],
+            departmentTypes: KitchenDepartmentType::barProductionTypes(),
             roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
             permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );

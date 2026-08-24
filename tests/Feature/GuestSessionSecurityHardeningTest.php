@@ -4,6 +4,7 @@ use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\DeleteGuestDraftOrderItemAction;
 use App\Actions\DraftOrders\SendDraftOrderToWaiterAction;
 use App\Actions\DraftOrders\UpdateGuestDraftOrderItemAction;
+use App\Actions\PublicQr\EnsureGuestEntryRateLimitAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\GuestTableEntryState;
@@ -137,6 +138,19 @@ test('disabled qr shows a safe error and cannot open guest ordering', function (
 
     expect(TableSession::query()->exists())->toBeFalse()
         ->and(TableSessionGuest::query()->exists())->toBeFalse();
+});
+
+test('guest entry attempts are rate limited without storing the raw qr token in the limiter key', function () {
+    $qrToken = str_repeat('R', 64);
+    $clientAddress = '203.0.113.25';
+    $action = app(EnsureGuestEntryRateLimitAction::class);
+
+    foreach (range(1, 10) as $attempt) {
+        $action->handle($qrToken, $clientAddress);
+    }
+
+    expect(fn () => $action->handle($qrToken, $clientAddress))
+        ->toThrow(ValidationException::class);
 });
 
 function createPrompt85SecurityContext(bool $withTableSession = true): array

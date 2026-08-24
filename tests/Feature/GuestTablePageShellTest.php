@@ -45,7 +45,7 @@ test('active guest sees the guest table page shell', function () {
         ->assertSeeText('Order status')
         ->assertSeeText('Cart')
         ->assertSeeText('Table total')
-        ->assertSeeText('0.00 EUR')
+        ->assertSeeText('€0.00')
         ->assertDontSee('id="guest-name"', false);
 });
 
@@ -90,10 +90,13 @@ test('guest table polling blocks use branch settings interval', function () {
         'language' => 'en',
     ])->assertSee('wire:poll.visible.3s="refreshTotals"', false);
 
-    Livewire::test(OrderStatuses::class, [
-        'tableSessionId' => $tableSession->id,
-        'pollingIntervalSeconds' => 3,
-    ])->assertSee('wire:poll.visible.3s="refreshOrderStatuses"', false);
+    Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'pollingIntervalSeconds' => 3,
+        ])->assertSee('wire:poll.visible.3s="refreshOrderStatuses"', false);
 
     Livewire::test(Notifications::class, [
         'tableSessionId' => $tableSession->id,
@@ -104,7 +107,7 @@ test('guest table polling blocks use branch settings interval', function () {
 });
 
 test('guest list is an isolated polling block with readable statuses', function () {
-    [, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
+    [$qrCode, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
 
     $activeGuest->update(['ready_at' => now()]);
 
@@ -121,11 +124,13 @@ test('guest list is an isolated polling block with readable statuses', function 
             'status' => TableSessionGuestStatus::Removed,
         ]);
 
-    $component = Livewire::test(TableGuests::class, [
-        'tableSessionId' => $tableSession->id,
-        'currentGuestId' => $activeGuest->id,
-        'language' => 'en',
-    ])
+    $component = Livewire::withCookie(guestTablePageShellCookieName($qrCode), $activeGuest->guest_token)
+        ->test(TableGuests::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+        ])
         ->assertSee('data-component="guest-table-guests"', false)
         ->assertSee('wire:poll.visible.1s="refreshGuests"', false)
         ->assertSeeText('At the table')
@@ -151,6 +156,111 @@ test('guest list is an isolated polling block with readable statuses', function 
 
     expect(collect($component->get('guests'))->pluck('guest_name')->all())
         ->toBe(['Ana', 'Boris', 'Mila', 'Zane']);
+});
+
+test('isolated guest polling revokes table data when the current guest loses access', function (): void {
+    [$qrCode, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
+    $cookieName = guestTablePageShellCookieName($qrCode);
+
+    $guestList = Livewire::withCookie($cookieName, $activeGuest->guest_token)
+        ->test(TableGuests::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+        ])
+        ->assertSet('canRead', true)
+        ->assertSet('guests.0.guest_name', 'Ana');
+
+    $orderStatuses = Livewire::withCookie($cookieName, $activeGuest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'language' => 'en',
+        ])
+        ->assertSet('canRead', true)
+        ->assertSet('tableSessionStatusValue', $tableSession->status->value);
+
+    $activeGuest->forceFill([
+        'status' => TableSessionGuestStatus::Removed,
+        'left_at' => now(),
+    ])->save();
+
+    $guestList
+        ->call('refreshGuests')
+        ->assertSet('canRead', false)
+        ->assertSet('guests', []);
+
+    $orderStatuses
+        ->call('refreshOrderStatuses')
+        ->assertSet('canRead', false)
+        ->assertSet('tableSessionStatusValue', null)
+        ->assertSet('itemStatuses', []);
+});
+
+test('isolated guest polling rejects a qr from another table in the same restaurant', function (): void {
+    [$qrCode, $servicePoint, $tableSession, $activeGuest] = createGuestTablePageShellContext();
+    $foreignServicePoint = ServicePoint::factory()
+        ->for($servicePoint->branch)
+        ->create(['is_active' => true]);
+    $foreignQrCode = QrCode::factory()
+        ->for($foreignServicePoint)
+        ->active()
+        ->create();
+    $foreignCookieName = guestTablePageShellCookieName($foreignQrCode);
+
+    Livewire::withCookie($foreignCookieName, $activeGuest->guest_token)
+        ->test(TableGuests::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $foreignQrCode->public_token,
+            'language' => 'en',
+        ])
+        ->assertSet('canRead', false)
+        ->assertSet('guests', [])
+        ->assertDontSeeText('Ana');
+
+    Livewire::withCookie($foreignCookieName, $activeGuest->guest_token)
+        ->test(OrderStatuses::class, [
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $foreignQrCode->public_token,
+            'language' => 'en',
+        ])
+        ->assertSet('canRead', false)
+        ->assertSet('tableSessionStatusValue', null)
+        ->assertSet('itemStatuses', []);
+
+    expect($qrCode->service_point_id)->toBe($servicePoint->id);
+});
+
+test('guest list polling query count stays constant as the table grows', function (): void {
+    [$qrCode, , $tableSession, $activeGuest] = createGuestTablePageShellContext();
+    $component = Livewire::withCookie(
+        guestTablePageShellCookieName($qrCode),
+        $activeGuest->guest_token,
+    )->test(TableGuests::class, [
+        'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $activeGuest->id,
+        'publicToken' => $qrCode->public_token,
+        'language' => 'en',
+    ]);
+    $initialQueryCount = countDatabaseQueries(
+        fn () => $component->call('refreshGuests'),
+    );
+
+    TableSessionGuest::factory()
+        ->count(20)
+        ->for($tableSession)
+        ->create(['status' => TableSessionGuestStatus::Active]);
+
+    $grownQueryCount = countDatabaseQueries(
+        fn () => $component->call('refreshGuests'),
+    );
+
+    expect($initialQueryCount)->toBeLessThanOrEqual(6)
+        ->and($grownQueryCount)->toBe($initialQueryCount);
 });
 
 test('join request block can use current guest session before browser cookie returns', function () {

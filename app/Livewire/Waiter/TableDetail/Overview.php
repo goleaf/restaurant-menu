@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Livewire\Waiter\TableDetail;
 
 use App\Actions\TableSessions\MergeTableSessionServicePointAction;
+use App\Actions\TableSessions\RemoveTableSessionGuestAction;
 use App\Actions\TableSessions\TransferTableSessionAction;
 use App\Models\ServicePoint;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\On;
@@ -26,6 +28,8 @@ final class Overview extends TableDetailSection
 
     public string $mergeFeedbackMessage = '';
 
+    public string $guestRemovalFeedbackMessage = '';
+
     public ?int $mergeTargetServicePointId = null;
 
     /**
@@ -40,7 +44,7 @@ final class Overview extends TableDetailSection
             : $initialOverview;
         $this->syncTransferTargetServicePoint();
         $this->syncMergeTargetServicePoint();
-        $this->refreshedAt = now()->format('H:i:s');
+        $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
     }
 
     #[On('waiter-table-updated')]
@@ -49,7 +53,7 @@ final class Overview extends TableDetailSection
         $this->overview = $this->overviewPayload($this->freshViewableTablePayload());
         $this->syncTransferTargetServicePoint();
         $this->syncMergeTargetServicePoint();
-        $this->refreshedAt = now()->format('H:i:s');
+        $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
     }
 
     public function transferTableSession(TransferTableSessionAction $transferTableSession): void
@@ -116,6 +120,32 @@ final class Overview extends TableDetailSection
         $this->dispatch('waiter-table-updated');
     }
 
+    public function removeGuest(int $guestId, RemoveTableSessionGuestAction $removeTableSessionGuest): void
+    {
+        $this->resetValidation();
+        $this->guestRemovalFeedbackMessage = '';
+        $tableSession = $this->authorizeWaiterTableSession();
+        $guest = $this->waiterQueries->guestForTable($guestId, $tableSession->id, includeName: true);
+
+        if ($guest === null) {
+            $this->addError('guest', __('payments.errors.guest_not_found'));
+
+            return;
+        }
+
+        try {
+            $removeTableSessionGuest->handle($tableSession, $guest, $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
+        $this->guestRemovalFeedbackMessage = __('ui.waiter.table_detail.guest_removed');
+        $this->refreshOverview();
+        $this->dispatch('waiter-table-updated');
+    }
+
     public function render(): View
     {
         return view('livewire.waiter.table-detail.overview');
@@ -168,6 +198,7 @@ final class Overview extends TableDetailSection
                 'draft',
                 'transfer',
                 'merge',
+                'participants',
                 'current_draft_total',
                 'confirmed_orders_total',
                 'confirmed_order_count',

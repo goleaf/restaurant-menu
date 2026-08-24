@@ -8,7 +8,9 @@ use App\Actions\Onboarding\SaveOnboardingOrganizationAction;
 use App\Actions\Onboarding\SaveOnboardingServicePointsAction;
 use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
+use App\Actions\ServicePoints\EnsureAreaNodeBelongsToBranchAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationSubscriptionStatus;
@@ -46,6 +48,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Locked;
 use Livewire\Exceptions\PublicPropertyNotFoundException;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
@@ -395,7 +398,7 @@ test('bulk onboarding service point creation rolls back the whole set on failure
     $user = User::factory()->create();
     restaurantOnboardingComponentAtStep($user, 5, 'Rollback');
     $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->firstOrFail();
-    $failingCreator = new class extends CreateServicePointAction
+    $failingCreator = new class(app(EnsureAreaNodeBelongsToBranchAction::class)) extends CreateServicePointAction
     {
         private int $calls = 0;
 
@@ -503,33 +506,40 @@ test('bulk onboarding QR generation rolls back a partial batch and the same acti
     $user = User::factory()->create();
     restaurantOnboardingComponentAtStep($user, 6, 'QR Rollback');
     $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->firstOrFail();
-    $failingGenerator = new class extends GenerateQrCodeForServicePointAction
+    Storage::fake('public');
+    $storeQrCodeImage = app(StoreQrCodeImageAction::class);
+    $failingGenerator = new class($storeQrCodeImage) extends GenerateQrCodeForServicePointAction
     {
         private int $calls = 0;
 
-        public function handle(ServicePoint $servicePoint, ?User $createdBy = null): QrCode
-        {
+        public function handle(
+            ServicePoint $servicePoint,
+            ?User $createdBy = null,
+            bool $storeImage = true,
+        ): QrCode {
             $this->calls++;
 
             if ($this->calls === 2) {
                 throw new RuntimeException('Simulated second QR failure.');
             }
 
-            return parent::handle($servicePoint, $createdBy);
+            return parent::handle($servicePoint, $createdBy, $storeImage);
         }
     };
-    $action = new GenerateOnboardingQrCodesAction($failingGenerator);
+    $action = new GenerateOnboardingQrCodesAction($failingGenerator, $storeQrCodeImage);
 
     expect(fn () => $action->handle($user, $onboarding->id))
         ->toThrow(RuntimeException::class, 'Simulated second QR failure.');
 
-    expect(QrCode::query()->count())->toBe(0);
+    expect(QrCode::query()->count())->toBe(0)
+        ->and(Storage::disk('public')->allFiles('qr'))->toBe([]);
 
     $action->handle($user, $onboarding->id);
 
     expect(QrCode::query()->count())->toBe(3)
         ->and(QrCode::query()->where('status', QrCodeStatus::Active->value)->count())->toBe(3)
-        ->and(QrCode::query()->distinct()->count('active_service_point_id'))->toBe(3);
+        ->and(QrCode::query()->distinct()->count('active_service_point_id'))->toBe(3)
+        ->and(Storage::disk('public')->allFiles('qr'))->toHaveCount(3);
 });
 
 test('starter menu graph and completion roll back together and retry reuses one graph', function () {

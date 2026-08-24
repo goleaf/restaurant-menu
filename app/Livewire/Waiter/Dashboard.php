@@ -12,6 +12,7 @@ use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\SystemPermission;
 use App\Models\User;
 use App\Services\Waiter\WaiterTableQueryService;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -92,7 +93,7 @@ class Dashboard extends Component
         $this->waiterCallCount = $payload['waiter_call_count'];
         $this->billRequestCount = $payload['bill_request_count'];
         $this->readyItemCount = $payload['ready_item_count'];
-        $this->refreshedAt = now()->format('H:i:s');
+        $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
         $this->normalizeSelectedTable();
 
         $currentWorkIds = $this->currentWorkIds($this->branches);

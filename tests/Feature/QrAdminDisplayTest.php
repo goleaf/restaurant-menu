@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Enums\AuditLogAction;
 use App\Enums\DangerousAction;
@@ -22,11 +23,14 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\QrCodeSvgRenderer;
+use App\Support\LocalizedDateFormatter;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+    Storage::fake('public');
 });
 
 test('qr admin page requires generate qr permission and shows qr details', function () {
@@ -58,7 +62,7 @@ test('qr admin page requires generate qr permission and shows qr details', funct
         ->assertSeeText(DangerousAction::ReissueQr->consequence())
         ->assertSee($publicUrl)
         ->assertSee('data:image/svg+xml;base64', false)
-        ->assertSeeText($qrCode->created_at->format('Y-m-d H:i'));
+        ->assertSeeText(LocalizedDateFormatter::dateTime($qrCode->created_at));
 
     $publicPathSegments = explode('/', trim((string) parse_url($publicUrl, PHP_URL_PATH), '/'));
 
@@ -206,6 +210,8 @@ test('manager can manually reissue qr after warning', function () {
     grantPrompt25Permission($manager, $organization, SystemPermission::GenerateQr);
     $oldToken = $qrCode->public_token;
     $oldShortCode = $qrCode->short_code;
+    $storeQrCodeImage = app(StoreQrCodeImageAction::class);
+    $oldImagePath = $storeQrCodeImage->handle($qrCode);
 
     Livewire::actingAs($manager)
         ->test(QrAdminShow::class, [
@@ -238,6 +244,9 @@ test('manager can manually reissue qr after warning', function () {
         ->where('service_point_id', $servicePoint->id)
         ->where('status', QrCodeStatus::Active->value)
         ->count())->toBe(1);
+    Storage::disk('public')->assertMissing($oldImagePath);
+    Storage::disk('public')->assertExists($storeQrCodeImage->pathFor($newQrCode));
+    expect(Storage::disk('public')->allFiles('qr'))->toHaveCount(1);
 });
 
 test('ordinary service point editing does not reissue qr', function () {

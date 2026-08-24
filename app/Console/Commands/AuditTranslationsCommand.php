@@ -20,6 +20,8 @@ class AuditTranslationsCommand extends Command
 
     private const LOCALES = ['en', 'lt', 'ru'];
 
+    private const RUNTIME_DYNAMIC_PREFIXES = ['validation.attributes.'];
+
     /**
      * Execute the console command.
      */
@@ -47,7 +49,10 @@ class AuditTranslationsCommand extends Command
      *     bad_keys: list<string>,
      *     missing_keys: list<string>,
      *     empty_values: list<string>,
-     *     phrase_calls: list<string>
+     *     phrase_calls: list<string>,
+     *     unused_keys: list<string>,
+     *     placeholder_mismatches: list<string>,
+     *     plural_mismatches: list<string>
      * }
      */
     private function buildReport(): array
@@ -119,9 +124,15 @@ class AuditTranslationsCommand extends Command
         }
 
         $missingKeys = $this->missingKeys($validLocaleKeys);
+        $placeholderMismatches = $this->placeholderMismatches($translations);
+        $pluralMismatches = $this->pluralMismatches($translations);
+        $catalogKeys = $this->catalogKeys($validLocaleKeys);
         $codeScan = $this->option('no-code-scan')
-            ? ['files' => 0, 'findings' => []]
-            : $this->scanTranslationCalls($this->scanPaths());
+            ? ['files' => 0, 'findings' => [], 'used_keys' => []]
+            : $this->scanTranslationCalls($this->scanPaths(), $catalogKeys);
+        $unusedKeys = $this->option('no-code-scan')
+            ? []
+            : array_values(array_diff($catalogKeys, $codeScan['used_keys']));
 
         $criticalIssues = count($missingFiles)
             + count($invalidJsonFiles)
@@ -130,7 +141,10 @@ class AuditTranslationsCommand extends Command
             + count($badKeys)
             + count($missingKeys)
             + count($emptyValues)
-            + count($codeScan['findings']);
+            + count($codeScan['findings'])
+            + count($unusedKeys)
+            + count($placeholderMismatches)
+            + count($pluralMismatches);
 
         return [
             'lang_dir' => $langDir,
@@ -147,7 +161,97 @@ class AuditTranslationsCommand extends Command
             'missing_keys' => $missingKeys,
             'empty_values' => $emptyValues,
             'phrase_calls' => $codeScan['findings'],
+            'unused_keys' => $unusedKeys,
+            'placeholder_mismatches' => $placeholderMismatches,
+            'plural_mismatches' => $pluralMismatches,
         ];
+    }
+
+    /**
+     * @param  array<string, list<string>>  $validLocaleKeys
+     * @return list<string>
+     */
+    private function catalogKeys(array $validLocaleKeys): array
+    {
+        $keys = array_values(array_unique(array_merge(...array_values($validLocaleKeys))));
+        sort($keys);
+
+        return $keys;
+    }
+
+    /**
+     * @param  array<string, array<mixed>>  $translations
+     * @return list<string>
+     */
+    private function placeholderMismatches(array $translations): array
+    {
+        if (! isset($translations['en'])) {
+            return [];
+        }
+
+        $mismatches = [];
+
+        foreach ($translations['en'] as $key => $englishValue) {
+            if (! is_string($englishValue)) {
+                continue;
+            }
+
+            $expected = $this->placeholders($englishValue);
+
+            foreach (self::LOCALES as $locale) {
+                $value = $translations[$locale][$key] ?? null;
+
+                if (is_string($value) && $this->placeholders($value) !== $expected) {
+                    $mismatches[] = sprintf('%s: %s placeholders differ from en', $locale, $key);
+                }
+            }
+        }
+
+        return $mismatches;
+    }
+
+    /**
+     * @param  array<string, array<mixed>>  $translations
+     * @return list<string>
+     */
+    private function pluralMismatches(array $translations): array
+    {
+        if (! isset($translations['en'])) {
+            return [];
+        }
+
+        $mismatches = [];
+
+        foreach ($translations['en'] as $key => $englishValue) {
+            if (! is_string($englishValue)) {
+                continue;
+            }
+
+            $expected = str_contains($englishValue, '|');
+
+            foreach (self::LOCALES as $locale) {
+                $value = $translations[$locale][$key] ?? null;
+
+                if (is_string($value) && str_contains($value, '|') !== $expected) {
+                    $mismatches[] = sprintf('%s: %s plural structure differs from en', $locale, $key);
+                }
+            }
+        }
+
+        return $mismatches;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function placeholders(string $value): array
+    {
+        preg_match_all('/:[A-Za-z_][A-Za-z0-9_]*/', $value, $matches);
+
+        $placeholders = array_values(array_unique($matches[0]));
+        sort($placeholders);
+
+        return $placeholders;
     }
 
     /**
@@ -269,12 +373,15 @@ class AuditTranslationsCommand extends Command
 
     /**
      * @param  list<string>  $paths
-     * @return array{files: int, findings: list<string>}
+     * @param  list<string>  $catalogKeys
+     * @return array{files: int, findings: list<string>, used_keys: list<string>}
      */
-    private function scanTranslationCalls(array $paths): array
+    private function scanTranslationCalls(array $paths, array $catalogKeys): array
     {
         $findings = [];
         $scannedFiles = 0;
+        $usedKeys = [];
+        $catalogLookup = array_fill_keys($catalogKeys, true);
 
         foreach ($this->scanFiles($paths) as $file) {
             $scannedFiles++;
@@ -288,6 +395,8 @@ class AuditTranslationsCommand extends Command
             );
 
             foreach ($matches[2] as [$key, $offset]) {
+                $usedKeys[] = $key;
+
                 if ($this->badKeyReasons($key) === []) {
                     continue;
                 }
@@ -299,9 +408,55 @@ class AuditTranslationsCommand extends Command
                     $key,
                 );
             }
+
+            preg_match_all(
+                '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+)\1/u',
+                $contents,
+                $literalMatches,
+            );
+
+            foreach ($literalMatches[2] as $key) {
+                if (isset($catalogLookup[$key])) {
+                    $usedKeys[] = $key;
+                }
+            }
+
+            foreach ($this->dynamicPrefixes($contents) as $prefix) {
+                foreach ($catalogKeys as $key) {
+                    if (str_starts_with($key, $prefix)) {
+                        $usedKeys[] = $key;
+                    }
+                }
+            }
         }
 
-        return ['files' => $scannedFiles, 'findings' => $findings];
+        $usedKeys = array_values(array_unique($usedKeys));
+        sort($usedKeys);
+
+        return ['files' => $scannedFiles, 'findings' => $findings, 'used_keys' => $usedKeys];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dynamicPrefixes(string $contents): array
+    {
+        preg_match_all(
+            '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.)\1\s*(?:\.|,)/u',
+            $contents,
+            $concatenatedMatches,
+        );
+        preg_match_all(
+            '/([\'"])([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*\.)%s(?:[^\'"]*)\1/u',
+            $contents,
+            $formattedMatches,
+        );
+
+        return array_values(array_unique(array_merge(
+            self::RUNTIME_DYNAMIC_PREFIXES,
+            $concatenatedMatches[2],
+            $formattedMatches[2],
+        )));
     }
 
     /**
@@ -341,7 +496,10 @@ class AuditTranslationsCommand extends Command
     {
         $path = $file->getPathname();
 
-        return str_ends_with($path, '.php') || str_ends_with($path, '.blade.php');
+        return str_ends_with($path, '.php')
+            || str_ends_with($path, '.blade.php')
+            || str_ends_with($path, '.js')
+            || str_ends_with($path, '.mjs');
     }
 
     /**
@@ -358,6 +516,7 @@ class AuditTranslationsCommand extends Command
         return [
             app_path(),
             resource_path('views'),
+            resource_path('js'),
             base_path('routes'),
         ];
     }
@@ -384,7 +543,10 @@ class AuditTranslationsCommand extends Command
      *     bad_keys: list<string>,
      *     missing_keys: list<string>,
      *     empty_values: list<string>,
-     *     phrase_calls: list<string>
+     *     phrase_calls: list<string>,
+     *     unused_keys: list<string>,
+     *     placeholder_mismatches: list<string>,
+     *     plural_mismatches: list<string>
      * }  $report
      */
     private function renderReport(array $report): void
@@ -411,9 +573,10 @@ class AuditTranslationsCommand extends Command
             count($report['empty_values']),
         ));
         $this->line(sprintf(
-            'Code scan: files %d, phrase-style calls %d',
+            'Code scan: files %d, phrase-style calls %d, unused keys %d',
             $report['scanned_files'],
             count($report['phrase_calls']),
+            count($report['unused_keys']),
         ));
         $this->line('Critical issues: '.$report['critical_issues']);
 
@@ -424,6 +587,9 @@ class AuditTranslationsCommand extends Command
         $this->renderSection('Bad keys', $report['bad_keys']);
         $this->renderSection('Missing keys', $report['missing_keys']);
         $this->renderSection('Empty or placeholder values', $report['empty_values']);
+        $this->renderSection('Placeholder mismatches', $report['placeholder_mismatches']);
+        $this->renderSection('Plural structure mismatches', $report['plural_mismatches']);
+        $this->renderSection('Unused keys', $report['unused_keys']);
         $this->renderSection('Potential phrase-style translation calls', $report['phrase_calls']);
     }
 

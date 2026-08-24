@@ -3,6 +3,7 @@
 namespace App\Actions\TableSessions;
 
 use App\Enums\GuestTableEntryState;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
@@ -16,6 +17,7 @@ use App\Models\TableSessionServicePoint;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class CreateGuestPendingTableSessionAction
 {
@@ -26,11 +28,17 @@ class CreateGuestPendingTableSessionAction
     /**
      * @return array{state: GuestTableEntryState, table_session: TableSession|null, guest: TableSessionGuest|null, join_request: TableSessionJoinRequest|null}
      */
-    public function handle(ServicePoint $servicePoint, string $guestName): array
-    {
+    public function handle(
+        ServicePoint $servicePoint,
+        string $guestName,
+        ?string $guestToken = null,
+        ?string $locale = null,
+    ): array {
         $normalizedGuestName = PlainText::required($guestName, 80, squish: true);
+        $guestToken = $this->guestToken($guestToken);
+        $locale = SupportedLocale::normalize($locale);
 
-        return DB::transaction(function () use ($servicePoint, $normalizedGuestName): array {
+        return DB::transaction(function () use ($servicePoint, $normalizedGuestName, $guestToken, $locale): array {
             $servicePoint = $this->reloadServicePoint($servicePoint);
 
             if (! $servicePoint->is_active) {
@@ -40,7 +48,40 @@ class CreateGuestPendingTableSessionAction
             $activeTableSession = $this->findTableSession($servicePoint, TableSessionStatus::Active);
 
             if ($activeTableSession instanceof TableSession) {
-                $joinRequest = $this->createTableSessionJoinRequest->handle($activeTableSession, $normalizedGuestName);
+                $existingGuest = $this->guestForCredential($activeTableSession, $guestToken);
+
+                if ($existingGuest instanceof TableSessionGuest) {
+                    return $this->result(
+                        GuestTableEntryState::ActiveSessionJoined,
+                        $activeTableSession,
+                        $existingGuest,
+                    );
+                }
+
+                if (! $activeTableSession->activeGuests()->exists()) {
+                    if ($activeTableSession->guests()->exists()) {
+                        return $this->result(
+                            GuestTableEntryState::ActiveSessionExists,
+                            $activeTableSession,
+                        );
+                    }
+
+                    $guest = $this->createActiveGuest($activeTableSession, $normalizedGuestName, $guestToken, $locale);
+                    $activeTableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
+
+                    return $this->result(
+                        GuestTableEntryState::ActiveSessionJoined,
+                        $activeTableSession->refresh(),
+                        $guest->refresh(),
+                    );
+                }
+
+                $joinRequest = $this->createTableSessionJoinRequest->handle(
+                    $activeTableSession,
+                    $normalizedGuestName,
+                    $guestToken,
+                    locale: $locale,
+                );
 
                 return $this->result(
                     $joinRequest instanceof TableSessionJoinRequest
@@ -54,7 +95,40 @@ class CreateGuestPendingTableSessionAction
             $pendingTableSession = $this->findTableSession($servicePoint, TableSessionStatus::Pending);
 
             if ($pendingTableSession instanceof TableSession) {
-                $joinRequest = $this->createTableSessionJoinRequest->handle($pendingTableSession, $normalizedGuestName);
+                $existingGuest = $this->guestForCredential($pendingTableSession, $guestToken);
+
+                if ($existingGuest instanceof TableSessionGuest) {
+                    return $this->result(
+                        GuestTableEntryState::PendingSessionCreated,
+                        $pendingTableSession,
+                        $existingGuest,
+                    );
+                }
+
+                if (! $pendingTableSession->activeGuests()->exists()) {
+                    if ($pendingTableSession->guests()->exists()) {
+                        return $this->result(
+                            GuestTableEntryState::PendingSessionExists,
+                            $pendingTableSession,
+                        );
+                    }
+
+                    $guest = $this->createActiveGuest($pendingTableSession, $normalizedGuestName, $guestToken, $locale);
+                    $pendingTableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
+
+                    return $this->result(
+                        GuestTableEntryState::PendingSessionCreated,
+                        $pendingTableSession->refresh(),
+                        $guest->refresh(),
+                    );
+                }
+
+                $joinRequest = $this->createTableSessionJoinRequest->handle(
+                    $pendingTableSession,
+                    $normalizedGuestName,
+                    $guestToken,
+                    locale: $locale,
+                );
 
                 return $this->result(
                     $joinRequest instanceof TableSessionJoinRequest
@@ -62,6 +136,15 @@ class CreateGuestPendingTableSessionAction
                         : GuestTableEntryState::PendingSessionExists,
                     $pendingTableSession,
                     joinRequest: $joinRequest,
+                );
+            }
+
+            $blockedTableSession = $this->findGuestEntryBlockedTableSession($servicePoint);
+
+            if ($blockedTableSession instanceof TableSession) {
+                return $this->result(
+                    GuestTableEntryState::ActiveSessionExists,
+                    $blockedTableSession,
                 );
             }
 
@@ -81,15 +164,7 @@ class CreateGuestPendingTableSessionAction
                 'status' => TableSessionStatus::Pending,
             ])->save();
 
-            $guest = $tableSession->guests()->make([
-                'guest_name' => $normalizedGuestName,
-                'joined_at' => now(),
-                'metadata' => [],
-            ]);
-            $guest->forceFill([
-                'guest_token' => Str::random(64),
-                'status' => TableSessionGuestStatus::Active,
-            ])->save();
+            $guest = $this->createActiveGuest($tableSession, $normalizedGuestName, $guestToken, $locale);
 
             $tableSession
                 ->forceFill(['opened_by_guest_id' => $guest->id])
@@ -100,7 +175,7 @@ class CreateGuestPendingTableSessionAction
                 $tableSession->refresh(),
                 $guest->refresh(),
             );
-        });
+        }, 5);
     }
 
     private function reloadServicePoint(ServicePoint $servicePoint): ServicePoint
@@ -136,6 +211,7 @@ class CreateGuestPendingTableSessionAction
                     ]),
             ])
             ->whereKey($servicePoint->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -163,6 +239,7 @@ class CreateGuestPendingTableSessionAction
             ->where('status', $status->value)
             ->orderBy('started_at')
             ->orderBy('id')
+            ->lockForUpdate()
             ->first();
 
         if ($tableSession instanceof TableSession || $status !== TableSessionStatus::Active) {
@@ -204,6 +281,34 @@ class CreateGuestPendingTableSessionAction
         return $link?->tableSession;
     }
 
+    private function findGuestEntryBlockedTableSession(ServicePoint $servicePoint): ?TableSession
+    {
+        return TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'active_service_point_id',
+                'pending_service_point_id',
+                'opened_by_user_id',
+                'opened_by_guest_id',
+                'status',
+                'source',
+                'started_at',
+                'ended_at',
+                'closed_by_user_id',
+                'metadata',
+                'created_at',
+                'updated_at',
+            ])
+            ->forQrServicePoint($servicePoint)
+            ->whereIn('status', TableSessionStatus::guestEntryBlockedValues())
+            ->orderBy('started_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
     private function settingsFor(Branch $branch): BranchSetting
     {
         if ($branch->settings instanceof BranchSetting) {
@@ -211,6 +316,54 @@ class CreateGuestPendingTableSessionAction
         }
 
         return $branch->settings()->create(BranchSetting::defaults($branch));
+    }
+
+    private function createActiveGuest(
+        TableSession $tableSession,
+        string $guestName,
+        string $guestToken,
+        string $locale,
+    ): TableSessionGuest {
+        $guest = $tableSession->guests()->make([
+            'guest_name' => $guestName,
+            'locale' => $locale,
+            'joined_at' => now(),
+            'metadata' => [],
+        ]);
+        $guest->forceFill([
+            'guest_token' => $guestToken,
+            'status' => TableSessionGuestStatus::Active,
+        ])->save();
+
+        return $guest;
+    }
+
+    private function guestForCredential(TableSession $tableSession, string $guestToken): ?TableSessionGuest
+    {
+        return $tableSession->guests()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'locale',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->where('guest_token', $guestToken)
+            ->first();
+    }
+
+    private function guestToken(?string $guestToken): string
+    {
+        $guestToken ??= Str::random(64);
+
+        if (strlen($guestToken) !== 64 || ! ctype_alnum($guestToken)) {
+            throw new InvalidArgumentException('Guest credentials must contain 64 alphanumeric characters.');
+        }
+
+        return $guestToken;
     }
 
     /**

@@ -12,6 +12,7 @@ use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\SystemPermission;
 use App\Models\User;
+use App\Services\Onboarding\RestaurantSetupQueryService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 
@@ -24,6 +25,7 @@ final class BuildApplicationNavigationAction
         private readonly BuildAuditLogIndexAction $buildAuditLogIndex,
         private readonly BuildDataExportsIndexAction $buildDataExportsIndex,
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveWaiterBranches,
+        private readonly RestaurantSetupQueryService $restaurantSetupQueries,
     ) {}
 
     /**
@@ -35,6 +37,7 @@ final class BuildApplicationNavigationAction
      *     canAccessAuditLog: bool,
      *     canAccessDataExports: bool,
      *     canAccessQrLookup: bool,
+     *     canAccessOnboarding: bool,
      *     authenticatedUser: array{name: string, email: string, initials: string}|null,
      *     currentNavigation: array<string, bool>
      * }
@@ -53,6 +56,7 @@ final class BuildApplicationNavigationAction
             'canAccessQrLookup' => $user instanceof User && $this->resolveWaiterBranches
                 ->handle($user, SystemPermission::GenerateQr)
                 ->isNotEmpty(),
+            'canAccessOnboarding' => $user instanceof User && $this->restaurantSetupQueries->userHasAccess($user),
             'authenticatedUser' => $user instanceof User ? [
                 'name' => $user->name,
                 'email' => $user->email,

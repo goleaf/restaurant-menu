@@ -7,6 +7,7 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -18,30 +19,59 @@ class GenerateQrCodeForServicePointAction
 
     private const SHORT_CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-    public function handle(ServicePoint $servicePoint, ?User $createdBy = null): QrCode
-    {
+    public function __construct(
+        private readonly StoreQrCodeImageAction $storeQrCodeImage,
+    ) {}
+
+    public function handle(
+        ServicePoint $servicePoint,
+        ?User $createdBy = null,
+        bool $storeImage = true,
+    ): QrCode {
         $activeQrCode = $this->activeQrCodeFor($servicePoint);
 
         if ($activeQrCode instanceof QrCode) {
+            if ($storeImage) {
+                $this->storeQrCodeImage->handle($activeQrCode);
+            }
+
             return $activeQrCode;
         }
 
         for ($attempt = 1; $attempt <= 10; $attempt++) {
             try {
-                $qrCode = $servicePoint->qrCodes()->make([
-                    'short_code' => $this->generateShortCode(),
-                ]);
-                $qrCode->forceFill([
-                    'public_token' => Str::random(self::PUBLIC_TOKEN_LENGTH),
-                    'status' => QrCodeStatus::Active,
-                    'created_by_user_id' => $createdBy?->id,
-                ])->save();
+                $qrCode = DB::transaction(function () use ($servicePoint, $createdBy): QrCode {
+                    $activeQrCode = $this->activeQrCodeFor($servicePoint);
+
+                    if ($activeQrCode instanceof QrCode) {
+                        return $activeQrCode;
+                    }
+
+                    $qrCode = $servicePoint->qrCodes()->make([
+                        'short_code' => $this->generateShortCode(),
+                    ]);
+                    $qrCode->forceFill([
+                        'public_token' => Str::random(self::PUBLIC_TOKEN_LENGTH),
+                        'status' => QrCodeStatus::Active,
+                        'created_by_user_id' => $createdBy?->id,
+                    ])->save();
+
+                    return $qrCode;
+                }, 5);
+
+                if ($storeImage) {
+                    $this->storeQrCodeImage->handle($qrCode);
+                }
 
                 return $qrCode;
             } catch (QueryException $exception) {
                 $activeQrCode = $this->activeQrCodeFor($servicePoint);
 
                 if ($activeQrCode instanceof QrCode) {
+                    if ($storeImage) {
+                        $this->storeQrCodeImage->handle($activeQrCode);
+                    }
+
                     return $activeQrCode;
                 }
 

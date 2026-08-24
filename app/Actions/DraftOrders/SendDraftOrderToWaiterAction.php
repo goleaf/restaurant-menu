@@ -7,6 +7,7 @@ namespace App\Actions\DraftOrders;
 use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\TableSessions\TransitionTableSessionStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
@@ -32,6 +33,7 @@ class SendDraftOrderToWaiterAction
         private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
         private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
         private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
     ) {}
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
@@ -50,6 +52,11 @@ class SendDraftOrderToWaiterAction
                     'sent_by_guest_id' => $sentByGuest->id,
                 ])
                 ->save();
+
+            $this->transitionTableSessionStatus->handle(
+                $draftOrder->tableSession,
+                TableSessionStatus::WaitingWaiterConfirmation,
+            );
 
             $draftOrder->tableSession?->activeGuests()->update([
                 'ready_at' => null,
@@ -182,13 +189,14 @@ class SendDraftOrderToWaiterAction
             || ! $servicePoint->is_active
             || $guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            || ! $tableSession->status->allowsGuestParticipation()) {
             throw ValidationException::withMessages([
                 'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.tolko_aktivnyi_gost_za'),
             ]);
         }
 
-        if ($draftOrder->status !== DraftOrderStatus::Draft) {
+        if (! $draftOrder->status->isGuestEditable()
+            || ! $draftOrder->status->canTransitionTo(DraftOrderStatus::SentToWaiter)) {
             throw ValidationException::withMessages([
                 'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.etot_cernovik_uze_otpra'),
             ]);

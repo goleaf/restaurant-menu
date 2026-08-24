@@ -41,8 +41,8 @@
                     wire:click="setZoneScope('mine')"
                     @class([
                         'min-h-touch px-3 py-2 transition-colors duration-state ease-product motion-reduce:transition-none',
-                        'bg-action text-text-inverse' => $zoneScope === 'mine',
-                        'text-text-secondary hover:bg-surface-muted' => $zoneScope !== 'mine',
+                        'bg-accent text-accent-foreground' => $zoneScope === 'mine',
+                        'text-text-primary hover:bg-surface-muted' => $zoneScope !== 'mine',
                     ])
                 >
                     {{ __('ui.waiter.dashboard.my_zones') }}
@@ -53,15 +53,15 @@
                     wire:click="setZoneScope('all')"
                     @class([
                         'min-h-touch border-s border-border-subtle px-3 py-2 transition-colors duration-state ease-product motion-reduce:transition-none',
-                        'bg-action text-text-inverse' => $zoneScope === 'all',
-                        'text-text-secondary hover:bg-surface-muted' => $zoneScope !== 'all',
+                        'bg-accent text-accent-foreground' => $zoneScope === 'all',
+                        'text-text-primary hover:bg-surface-muted' => $zoneScope !== 'all',
                     ])
                 >
                     {{ __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones') }}
                 </button>
             </div>
 
-            <p class="rounded-control bg-surface-muted px-3 py-2 text-sm font-medium text-text-secondary">
+            <p class="rounded-control bg-surface-muted px-3 py-2 text-sm font-medium text-text-primary">
                 {{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}
             </p>
         </x-slot:actions>
@@ -164,7 +164,7 @@
                         @forelse ($branch['service_point_zones'] as $zone)
                             <div wire:key="waiter-queue-zone-{{ $branch['id'] }}-{{ $zone['area_id'] ?? 'none' }}" class="space-y-2">
                                 <div class="flex items-center justify-between gap-3">
-                                    <h3 class="text-sm font-semibold text-text-secondary">{{ $zone['name'] ?? __('qr.filters.no_zone') }}</h3>
+                                    <h3 class="text-sm font-semibold text-text-primary">{{ $zone['name'] ?? __('qr.filters.no_zone') }}</h3>
                                     <div class="flex flex-wrap gap-1.5">
                                         @if ($zone['is_assigned'])
                                             <x-ui.status-badge tone="info">{{ __('ui.waiter.dashboard.assigned') }}</x-ui.status-badge>
@@ -228,27 +228,31 @@
                                                     </flux:button>
                                                 @endforeach
 
-                                                <flux:button
-                                                    data-waiter-desktop-select
-                                                    class="hidden min-h-operational-touch lg:inline-flex"
-                                                    size="sm"
-                                                    icon="eye"
-                                                    type="button"
-                                                    wire:click="selectTable({{ $session['id'] }})"
-                                                >
-                                                    {{ __('menu.guest.details') }}
-                                                </flux:button>
+                                                <span data-waiter-desktop-select-wrapper class="hidden lg:inline-flex">
+                                                    <flux:button
+                                                        data-waiter-desktop-select
+                                                        class="min-h-operational-touch"
+                                                        size="sm"
+                                                        icon="eye"
+                                                        type="button"
+                                                        wire:click="selectTable({{ $session['id'] }})"
+                                                    >
+                                                        {{ __('menu.guest.details') }}
+                                                    </flux:button>
+                                                </span>
 
-                                                <flux:button
-                                                    data-waiter-mobile-detail
-                                                    class="min-h-operational-touch lg:hidden"
-                                                    size="sm"
-                                                    icon="arrow-right"
-                                                    :href="$session['detail_url']"
-                                                    wire:navigate
-                                                >
-                                                    {{ __('menu.guest.details') }}
-                                                </flux:button>
+                                                <span data-waiter-mobile-detail-wrapper class="lg:hidden">
+                                                    <flux:button
+                                                        data-waiter-mobile-detail
+                                                        class="min-h-operational-touch"
+                                                        size="sm"
+                                                        icon="arrow-right"
+                                                        :href="$session['detail_url']"
+                                                        wire:navigate
+                                                    >
+                                                        {{ __('menu.guest.details') }}
+                                                    </flux:button>
+                                                </span>
 
                                                 @if ($session['can_close'])
                                                     <flux:button
@@ -390,4 +394,6 @@
             <x-ui.state-panel kind="empty" title="waiter.dashboard.no_active_tables" description="menu.guest.details" />
         </x-slot:emptyDetail>
     </x-ui.workspace-split>
+
+    <livewire:waiter.table-session-history wire:key="waiter-table-session-history" />
 </section>

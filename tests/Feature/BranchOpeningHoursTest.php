@@ -120,13 +120,13 @@ test('opening status respects branch timezone and next interval', function () {
         ->and($openStatus['is_open'])->toBeTrue()
         ->and($openStatus['can_accept_orders'])->toBeTrue()
         ->and($openStatus['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.seicas_otkryto'))
-        ->and($openStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => '14:00']));
+        ->and($openStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkryto_do', ['time' => '2:00 PM']));
 
     expect($closedStatus['is_configured'])->toBeTrue()
         ->and($closedStatus['is_open'])->toBeFalse()
         ->and($closedStatus['can_accept_orders'])->toBeFalse()
         ->and($closedStatus['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
-        ->and($closedStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']));
+        ->and($closedStatus['detail'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '6:00 PM']));
 });
 
 test('opening status labels a next opening on another weekday', function () {
@@ -139,7 +139,7 @@ test('opening status labels a next opening on another weekday', function () {
         $branch,
         Carbon::parse('2026-06-01 18:00:00', 'Europe/Vilnius'),
     );
-    $nextOpeningLabel = __('ui.actions.branches.getbranchopeningstatusaction.vt').' 09:00';
+    $nextOpeningLabel = __('ui.actions.branches.getbranchopeningstatusaction.vt').' 9:00 AM';
 
     expect($status['is_open'])->toBeFalse()
         ->and($status['next_opens_at'])->toBe('2026-06-02T09:00:00+03:00')
@@ -155,7 +155,7 @@ test('public qr opens when branch is closed and lets guest view the table withou
 
     Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->assertSet('landing.opening_status_label', __('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
-        ->assertSet('landing.opening_status_detail', __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '18:00']))
+        ->assertSet('landing.opening_status_detail', __('ui.actions.branches.getbranchopeningstatusaction.otkroetsia_v', ['time' => '6:00 PM']))
         ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.seicas_zakryto'))
         ->set('guestName', 'Ana')
         ->call('enterTable')

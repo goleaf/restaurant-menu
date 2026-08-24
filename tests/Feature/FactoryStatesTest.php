@@ -102,6 +102,8 @@ test('session guest and draft factories expose lifecycle states', function () {
     $waiterReview = DraftOrder::factory()->waiterReview()->create();
     $rejected = DraftOrder::factory()->rejected()->create();
     $converted = DraftOrder::factory()->convertedToOrder()->create();
+    $draftsForEveryStatus = collect(DraftOrderStatus::cases())
+        ->map(fn (DraftOrderStatus $status): DraftOrder => DraftOrder::factory()->forStatus($status)->create());
 
     expect($activeSession->status)->toBe(TableSessionStatus::Active)
         ->and($activeSession->started_at)->not->toBeNull()
@@ -125,7 +127,8 @@ test('session guest and draft factories expose lifecycle states', function () {
         ->and($rejected->status)->toBe(DraftOrderStatus::Rejected)
         ->and($rejected->rejected_at)->not->toBeNull()
         ->and($converted->status)->toBe(DraftOrderStatus::ConvertedToOrder)
-        ->and($converted->converted_to_order_at)->not->toBeNull();
+        ->and($converted->converted_to_order_at)->not->toBeNull()
+        ->and($draftsForEveryStatus->pluck('status')->all())->toEqualCanonicalizing(DraftOrderStatus::cases());
 });
 
 test('order readiness payment and menu item factories expose core states', function () {
@@ -135,6 +138,8 @@ test('order readiness payment and menu item factories expose core states', funct
     $ready = Order::factory()->ready()->create();
     $served = Order::factory()->served()->create();
     $cancelled = Order::factory()->cancelled()->create();
+    $ordersForEveryStatus = collect(OrderStatus::cases())
+        ->map(fn (OrderStatus $status): Order => Order::factory()->forStatus($status)->create());
     $cancellingUser = User::factory()->create();
     $cancelledOrderItem = OrderItem::factory()
         ->cancelledBy($cancellingUser, 'Guest changed their mind.')
@@ -164,6 +169,7 @@ test('order readiness payment and menu item factories expose core states', funct
         ->and($ready->status)->toBe(OrderStatus::Ready)
         ->and($served->status)->toBe(OrderStatus::Served)
         ->and($cancelled->status)->toBe(OrderStatus::Cancelled)
+        ->and($ordersForEveryStatus->pluck('status')->all())->toEqualCanonicalizing(OrderStatus::cases())
         ->and($cancelledOrderItem->cancelled_at)->not->toBeNull()
         ->and($cancelledOrderItem->cancelled_by_user_id)->toBe($cancellingUser->id)
         ->and($cancelledOrderItem->cancellation_reason)->toBe('Guest changed their mind.')

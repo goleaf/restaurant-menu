@@ -38,7 +38,7 @@ class UpdateAreaNodeAction
         }
 
         if ($parentId === $areaNode->id) {
-            throw new InvalidArgumentException('An area cannot be placed inside itself.');
+            throw new InvalidArgumentException('errors.domain.area_cannot_parent_itself');
         }
 
         $availableNodes = AreaNode::query()
@@ -48,11 +48,11 @@ class UpdateAreaNodeAction
             ->get();
 
         if (! $availableNodes->contains('id', $parentId)) {
-            throw new InvalidArgumentException('The selected parent area is not available.');
+            throw new InvalidArgumentException('errors.domain.selected_parent_area_unavailable');
         }
 
         if ($this->descendantIds($availableNodes, $areaNode->id)->contains($parentId)) {
-            throw new InvalidArgumentException('An area cannot be placed inside its own child area.');
+            throw new InvalidArgumentException('errors.domain.area_cannot_move_into_child');
         }
     }
 

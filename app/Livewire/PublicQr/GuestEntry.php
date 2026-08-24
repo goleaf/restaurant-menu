@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Localization\UpdateGuestLocaleAction;
 use App\Actions\PublicQr\BuildGuestEntryContextAction;
+use App\Actions\PublicQr\EnsureGuestEntryRateLimitAction;
 use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Actions\TableSessions\CreateTableSessionJoinRequestAction;
 use App\Actions\TableSessions\ExpireTableSessionJoinRequestAction;
@@ -12,7 +14,6 @@ use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionJoinRequestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
@@ -23,6 +24,7 @@ use App\Support\PublicQr\GuestEntryPresenter;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -37,8 +39,13 @@ class GuestEntry extends Component
 
     private PublicQrQueryService $publicQrQueries;
 
+    private UpdateGuestLocaleAction $updateGuestLocale;
+
     #[Locked]
     public string $token = '';
+
+    #[Locked]
+    public string $entryAttemptId = '';
 
     public string $state = 'not_found';
 
@@ -94,16 +101,19 @@ class GuestEntry extends Component
         ExpireTableSessionJoinRequestAction $expireJoinRequest,
         GuestEntryPresenter $presenter,
         PublicQrQueryService $publicQrQueries,
+        UpdateGuestLocaleAction $updateGuestLocale,
     ): void {
         $this->buildGuestEntryContext = $buildGuestEntryContext;
         $this->expireJoinRequest = $expireJoinRequest;
         $this->presenter = $presenter;
         $this->publicQrQueries = $publicQrQueries;
+        $this->updateGuestLocale = $updateGuestLocale;
     }
 
     public function mount(string $token, string $language = ''): void
     {
         $this->token = $token;
+        $this->entryAttemptId = Str::random(32);
         $this->setCurrentInviteToken($this->inviteTokenFromRequest());
         $requestedLanguage = request()->query('lang');
         $hasQueryLanguage = is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage);
@@ -133,7 +143,7 @@ class GuestEntry extends Component
         $this->applyGuestLocale();
 
         if ($context['qr_code'] instanceof QrCode) {
-            $this->restoreGuestFromCookie($context['qr_code']);
+            $this->restoreGuestIdentity($context['qr_code']);
         }
     }
 
@@ -158,6 +168,7 @@ class GuestEntry extends Component
     public function continueWithDuplicateGuestName(
         CreateGuestPendingTableSessionAction $createGuestPendingTableSession,
         CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+        EnsureGuestEntryRateLimitAction $ensureGuestEntryRateLimit,
     ): void {
         if (! $this->hasGuestNameConflict) {
             return;
@@ -165,12 +176,17 @@ class GuestEntry extends Component
 
         $this->allowDuplicateGuestName = true;
 
-        $this->enterTable($createGuestPendingTableSession, $createTableSessionJoinRequest);
+        $this->enterTable(
+            $createGuestPendingTableSession,
+            $createTableSessionJoinRequest,
+            $ensureGuestEntryRateLimit,
+        );
     }
 
     public function enterTable(
         CreateGuestPendingTableSessionAction $createGuestPendingTableSession,
         CreateTableSessionJoinRequestAction $createTableSessionJoinRequest,
+        EnsureGuestEntryRateLimitAction $ensureGuestEntryRateLimit,
     ): void {
         if ($this->state !== 'ready') {
             return;
@@ -179,6 +195,8 @@ class GuestEntry extends Component
         if ($this->currentGuestId !== null || $this->currentJoinRequestId !== null) {
             return;
         }
+
+        $ensureGuestEntryRateLimit->handle($this->token, request()->ip());
 
         $validated = $this->validate(RestaurantValidationRules::guestName('guestName'), [
             'guestName.required' => __('guest.table.enter_name_validation'),
@@ -230,7 +248,12 @@ class GuestEntry extends Component
             return;
         }
 
-        $result = $createGuestPendingTableSession->handle($servicePoint, $this->preparedGuestName);
+        $result = $createGuestPendingTableSession->handle(
+            $servicePoint,
+            $this->preparedGuestName,
+            $this->entryCredential(),
+            $this->language,
+        );
         $this->clearGuestNameConflict();
         $entryState = $result['state'];
         $tableSession = $result['table_session'];
@@ -358,9 +381,9 @@ class GuestEntry extends Component
         ]);
     }
 
-    private function restoreGuestFromCookie(QrCode $qrCode): void
+    private function restoreGuestIdentity(QrCode $qrCode): void
     {
-        $guestToken = request()->cookie($this->guestTokenCookieName($qrCode->public_token));
+        $guestToken = $this->guestTokenFromCurrentCookie();
 
         if (! is_string($guestToken) || strlen($guestToken) !== 64) {
             return;
@@ -375,12 +398,22 @@ class GuestEntry extends Component
         $guest = $this->findGuestByToken($servicePoint, $guestToken);
 
         if (! $guest instanceof TableSessionGuest || ! $guest->tableSession instanceof TableSession) {
-            $this->restoreJoinRequestFromToken($servicePoint, $guestToken);
+            if (! $this->restoreJoinRequestFromToken($servicePoint, $guestToken)) {
+                $this->forgetStaleGuestIdentity($qrCode->public_token);
+            }
 
             return;
         }
 
         $tableSession = $guest->tableSession;
+        $requestedLanguage = request()->query('lang');
+
+        if (is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage)) {
+            $this->updateGuestLocale->handle($guest, $this->language);
+        } elseif (SupportedLocale::isSupported($guest->locale)) {
+            $this->language = SupportedLocale::normalize($guest->locale);
+            $this->applyGuestLocale();
+        }
 
         $this->guestName = $guest->guest_name;
         $this->preparedGuestName = $guest->guest_name;
@@ -400,16 +433,23 @@ class GuestEntry extends Component
         ]);
     }
 
-    private function restoreJoinRequestFromToken(ServicePoint $servicePoint, string $guestToken): void
+    private function restoreJoinRequestFromToken(ServicePoint $servicePoint, string $guestToken): bool
     {
         $joinRequest = $this->findJoinRequestByToken($servicePoint, $guestToken);
 
         if (! $joinRequest instanceof TableSessionJoinRequest || ! $joinRequest->tableSession instanceof TableSession) {
-            return;
+            return false;
         }
 
         $tableSession = $joinRequest->tableSession;
         $joinRequest = $this->expireJoinRequestIfNeeded($joinRequest);
+        $requestedLanguage = request()->query('lang');
+
+        if ((! is_string($requestedLanguage) || ! SupportedLocale::isSupported($requestedLanguage))
+            && SupportedLocale::isSupported($joinRequest->locale)) {
+            $this->language = SupportedLocale::normalize($joinRequest->locale);
+            $this->applyGuestLocale();
+        }
 
         $this->guestName = $joinRequest->guest_name;
         $this->preparedGuestName = $joinRequest->guest_name;
@@ -429,6 +469,14 @@ class GuestEntry extends Component
             'join_request_id' => $joinRequest->id,
             'guest_token' => $joinRequest->guest_token,
         ]);
+
+        return true;
+    }
+
+    private function forgetStaleGuestIdentity(string $publicToken): void
+    {
+        session()->forget('guest_entries.'.$publicToken);
+        Cookie::queue(Cookie::forget($this->guestTokenCookieName($publicToken)));
     }
 
     private function enterTableFromInvite(
@@ -463,7 +511,7 @@ class GuestEntry extends Component
         $this->guestCanViewTable = false;
         $this->syncLandingServicePointFromTableSession($tableSession);
 
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if ($tableSession->status->isTerminal()) {
             $this->entryState = 'guest_invite_closed';
             $this->entryIssueCode = 'invite_closed';
             $this->entryMessage = __('guest.table.session_closed');
@@ -476,7 +524,13 @@ class GuestEntry extends Component
             return;
         }
 
-        $joinRequest = $createTableSessionJoinRequest->handle($tableSession, $this->preparedGuestName);
+        $joinRequest = $createTableSessionJoinRequest->handle(
+            $tableSession,
+            $this->preparedGuestName,
+            $this->entryCredential(),
+            $inviteToken,
+            $this->language,
+        );
         $this->clearGuestNameConflict();
 
         if (! $joinRequest instanceof TableSessionJoinRequest) {
@@ -605,6 +659,23 @@ class GuestEntry extends Component
     private function inviteTokenSessionKey(): string
     {
         return 'guest_invites.'.substr(hash('sha256', $this->token), 0, 24).'.invite_token';
+    }
+
+    private function entryCredential(): string
+    {
+        $key = 'guest_entry_credentials.'.substr(
+            hash('sha256', $this->token.'|'.$this->entryAttemptId),
+            0,
+            32,
+        );
+        $credential = session($key);
+
+        if (! is_string($credential) || strlen($credential) !== 64 || ! ctype_alnum($credential)) {
+            $credential = Str::random(64);
+            session()->put($key, $credential);
+        }
+
+        return $credential;
     }
 
     private function guestTokenFromCurrentCookie(): ?string

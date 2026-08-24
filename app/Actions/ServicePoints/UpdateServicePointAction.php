@@ -5,16 +5,15 @@ namespace App\Actions\ServicePoints;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\ServicePointType;
-use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\ServicePoint;
 use App\Models\User;
-use InvalidArgumentException;
 
 class UpdateServicePointAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly EnsureAreaNodeBelongsToBranchAction $ensureAreaNodeBelongsToBranch,
     ) {}
 
     /**
@@ -22,7 +21,7 @@ class UpdateServicePointAction
      */
     public function handle(ServicePoint $servicePoint, array $data, ?User $updatedBy = null): ServicePoint
     {
-        $this->ensureAreaNodeBelongsToBranch($servicePoint, $data['area_node_id']);
+        $this->ensureAreaNodeBelongsToBranch->handle($servicePoint->branch_id, $data['area_node_id']);
 
         $oldAreaNodeId = $servicePoint->area_node_id;
 
@@ -43,23 +42,6 @@ class UpdateServicePointAction
         }
 
         return $servicePoint;
-    }
-
-    private function ensureAreaNodeBelongsToBranch(ServicePoint $servicePoint, ?int $areaNodeId): void
-    {
-        if ($areaNodeId === null) {
-            return;
-        }
-
-        $areaNodeExists = AreaNode::query()
-            ->whereKey($areaNodeId)
-            ->where('branch_id', $servicePoint->branch_id)
-            ->whereNull('deleted_at')
-            ->exists();
-
-        if (! $areaNodeExists) {
-            throw new InvalidArgumentException('The selected area is not available.');
-        }
     }
 
     private function recordMove(ServicePoint $servicePoint, ?User $updatedBy, ?int $oldAreaNodeId): void

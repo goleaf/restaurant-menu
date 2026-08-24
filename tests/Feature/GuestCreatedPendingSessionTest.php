@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\TableSessions\CreateGuestPendingTableSessionAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
@@ -60,7 +61,7 @@ test('first guest creates pending table session and active session guest from qr
     expect($queuedGuestCookie->getValue())->toBe($guest->guest_token);
 });
 
-test('guest token cookie restores table session after page refresh', function () {
+test('guest token cookie restores table session after php session loss', function () {
     [$qrCode] = createGuestPendingQrContext();
 
     Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
@@ -90,7 +91,27 @@ test('guest token cookie restores table session after page refresh', function ()
         ->assertSeeText('Entry saved');
 });
 
-test('guest token restore shows message when table session is closed', function () {
+test('server session restores table access after the guest cookie is lost', function () {
+    [$qrCode] = createGuestPendingQrContext();
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
+        ->set('guestName', 'Lina')
+        ->call('enterTable')
+        ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value);
+
+    $tableSession = TableSession::query()->firstOrFail();
+    $guest = TableSessionGuest::query()->firstOrFail();
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
+        ->assertSet('preparedGuestName', 'Lina')
+        ->assertSet('currentTableSessionId', $tableSession->id)
+        ->assertSet('currentGuestId', $guest->id)
+        ->assertSet('guestCanViewTable', true)
+        ->assertSet('guestCanAddItems', true)
+        ->assertSet('entryState', 'guest_restored');
+});
+
+test('guest token cannot restore a closed table session', function () {
     [$qrCode, $servicePoint] = createGuestPendingQrContext();
     $tableSession = TableSession::factory()
         ->forServicePoint($servicePoint)
@@ -107,14 +128,23 @@ test('guest token restore shows message when table session is closed', function 
         ]);
 
     $tableSession->forceFill(['opened_by_guest_id' => $guest->id])->save();
+    $cookieName = guestTokenCookieName($qrCode);
+    session()->put('guest_entries.'.$qrCode->public_token, [
+        'table_session_id' => $tableSession->id,
+        'guest_id' => $guest->id,
+        'guest_token' => $guest->guest_token,
+    ]);
 
-    Livewire::withCookie(guestTokenCookieName($qrCode), $guest->guest_token)
+    Livewire::withCookie($cookieName, $guest->guest_token)
         ->test(GuestEntry::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentTableSessionId', $tableSession->id)
-        ->assertSet('currentGuestId', $guest->id)
+        ->assertSet('currentTableSessionId', null)
+        ->assertSet('currentGuestId', null)
+        ->assertSet('guestCanViewTable', false)
         ->assertSet('guestCanAddItems', false)
-        ->assertSet('entryState', 'guest_blocked')
-        ->assertSeeText('This table session is closed.');
+        ->assertSet('entryState', '');
+
+    expect(session('guest_entries.'.$qrCode->public_token))->toBeNull()
+        ->and(Cookie::hasQueued($cookieName))->toBeTrue();
 });
 
 test('blocked guest statuses cannot add items after token restore', function (TableSessionGuestStatus $status, string $message) {
@@ -158,7 +188,7 @@ test('guest-created sessions setting can block first guest session creation', fu
     expect(TableSessionGuest::query()->exists())->toBeFalse();
 });
 
-test('guest entering table does not create pending session when active session already exists', function () {
+test('first guest joins an active waiter opened session without waiting for a non-existent approver', function () {
     [$qrCode, $servicePoint] = createGuestPendingQrContext();
     $activeTableSession = TableSession::factory()
         ->forServicePoint($servicePoint)
@@ -170,14 +200,63 @@ test('guest entering table does not create pending session when active session a
         ->set('guestName', 'Jonas')
         ->call('enterTable')
         ->assertHasNoErrors()
-        ->assertSet('entryState', GuestTableEntryState::ActiveSessionExists->value)
+        ->assertSet('entryState', GuestTableEntryState::ActiveSessionJoined->value)
         ->assertSet('currentTableSessionId', $activeTableSession->id)
-        ->assertSet('currentGuestId', null)
-        ->assertSeeText('There is already an active table session.');
+        ->assertSet('guestCanViewTable', true)
+        ->assertSet('guestCanAddItems', true)
+        ->assertSeeText('Welcome, Jonas.');
 
     expect(TableSession::query()->count())->toBe(1);
-    expect(TableSessionGuest::query()->exists())->toBeFalse();
+    $guest = TableSessionGuest::query()->firstOrFail();
+
+    expect($guest->guest_name)->toBe('Jonas');
+    expect($guest->table_session_id)->toBe($activeTableSession->id);
+    expect($activeTableSession->fresh()->opened_by_guest_id)->toBe($guest->id);
     expect(TableSessionJoinRequest::query()->exists())->toBeFalse();
+});
+
+test('repeated first guest submission with the same credential is idempotent', function () {
+    [, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    $credential = str_repeat('G', 64);
+    $action = app(CreateGuestPendingTableSessionAction::class);
+
+    $first = $action->handle($servicePoint, 'Jonas', $credential);
+    $second = $action->handle($servicePoint, 'Jonas', $credential);
+
+    expect($first['state'])->toBe(GuestTableEntryState::ActiveSessionJoined)
+        ->and($second['state'])->toBe(GuestTableEntryState::ActiveSessionJoined)
+        ->and($second['guest']?->id)->toBe($first['guest']?->id)
+        ->and($activeTableSession->guests()->count())->toBe(1)
+        ->and(TableSessionJoinRequest::query()->count())->toBe(0);
+});
+
+test('a new guest cannot claim a waiter-opened session after every previous participant has left', function () {
+    [, $servicePoint] = createGuestPendingQrContext();
+    $activeTableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->waiterOpened()
+        ->create();
+    TableSessionGuest::factory()
+        ->for($activeTableSession)
+        ->create([
+            'guest_name' => 'Former guest',
+            'status' => TableSessionGuestStatus::Removed,
+            'left_at' => now(),
+        ]);
+
+    $result = app(CreateGuestPendingTableSessionAction::class)
+        ->handle($servicePoint, 'New guest', str_repeat('N', 64));
+
+    expect($result['state'])->toBe(GuestTableEntryState::ActiveSessionExists)
+        ->and($result['guest'])->toBeNull()
+        ->and($result['join_request'])->toBeNull()
+        ->and($activeTableSession->guests()->count())->toBe(1);
 });
 
 test('guest entering active session with active guests creates pending join request', function () {
@@ -334,6 +413,8 @@ test('fresh guest landing sees existing pending session without creating another
         ->set('guestName', 'First')
         ->call('enterTable')
         ->assertSet('entryState', GuestTableEntryState::PendingSessionCreated->value);
+
+    session()->forget('guest_entries.'.$qrCode->public_token);
 
     Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token])
         ->set('guestName', 'Second')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Database\Factories\MenuItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $weight
  * @property string|null $volume
  * @property int|null $kitchen_department_id
+ * @property CarbonImmutable|null $hidden_until
  * @property-read MenuCategory $category
  * @property-read KitchenDepartment|null $kitchenDepartment
  */

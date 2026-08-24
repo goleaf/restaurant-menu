@@ -14,6 +14,7 @@ use App\Models\Order;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\SecurePdfRenderer;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonInterface;
 
@@ -48,7 +49,7 @@ final class BuildBranchPdfReportAction
         $html = view('pdf.reports.branch-report', [
             ...$report,
             'branchName' => $branch->name,
-            'generatedAt' => now()->format('Y-m-d H:i:s'),
+            'generatedAt' => LocalizedDateFormatter::dateTime(now()),
             'reportTitle' => $type->label(),
         ])->render();
 
@@ -316,12 +317,12 @@ final class BuildBranchPdfReportAction
 
     private function period(CarbonInterface $startedAt, CarbonInterface $endedAt): string
     {
-        return $startedAt->format('Y-m-d').' — '.$endedAt->format('Y-m-d');
+        return LocalizedDateFormatter::date($startedAt).' — '.LocalizedDateFormatter::date($endedAt);
     }
 
     private function dateValue(mixed $value): string
     {
-        return $value instanceof \DateTimeInterface ? $value->format('Y-m-d H:i:s') : '';
+        return $value instanceof \DateTimeInterface ? (LocalizedDateFormatter::dateTime($value) ?? '') : '';
     }
 
     private function servicePointLabel(?ServicePoint $servicePoint): string

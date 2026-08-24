@@ -42,8 +42,8 @@ test('reports viewer sees cached basic analytics for demo data', function () {
 
     expect($payload['has_access'])->toBeTrue()
         ->and($analytics['orders_today_count'])->toBe(2)
-        ->and($analytics['orders_today_total'])->toBe('30.00 EUR')
-        ->and($analytics['average_check'])->toBe('15.00 EUR')
+        ->and($analytics['orders_today_total'])->toBe('€30.00')
+        ->and($analytics['average_check'])->toBe('€15.00')
         ->and($analytics['active_tables_count'])->toBe(1)
         ->and($analytics['closed_sessions_count'])->toBe(1)
         ->and($analytics['cancelled_orders_count'])->toBe(1)
@@ -57,7 +57,7 @@ test('reports viewer sees cached basic analytics for demo data', function () {
         ->assertSee('data-layout="restaurant-dashboard"', false)
         ->assertSeeText(__('reports.title'))
         ->assertSeeText(__('reports.revenue.net_total'))
-        ->assertSeeText('30.00 EUR')
+        ->assertSeeText('€30.00')
         ->assertSeeText('Pizza');
 });
 
@@ -89,8 +89,8 @@ test('empty analytics day uses branch currency for zero amounts', function () {
     $analytics = app(BuildBasicAnalyticsDashboardAction::class)->handle($user)['analytics'];
 
     expect($analytics['orders_today_count'])->toBe(0)
-        ->and($analytics['orders_today_total'])->toBe('0.00 EUR')
-        ->and($analytics['average_check'])->toBe('0.00 EUR')
+        ->and($analytics['orders_today_total'])->toBe('€0.00')
+        ->and($analytics['average_check'])->toBe('€0.00')
         ->and($analytics['popular_items'])->toBe([]);
 });
 
@@ -117,8 +117,8 @@ test('order changes invalidate the cached analytics snapshot', function () {
     $updatedAnalytics = $action->handle($user)['analytics'];
 
     expect($updatedAnalytics['orders_today_count'])->toBe(3)
-        ->and($updatedAnalytics['orders_today_total'])->toBe('37.00 EUR')
-        ->and($updatedAnalytics['average_check'])->toBe('12.33 EUR');
+        ->and($updatedAnalytics['orders_today_total'])->toBe('€37.00')
+        ->and($updatedAnalytics['average_check'])->toBe('€12.33');
 });
 
 test('analytics cache can be invalidated for several branches at once', function () {

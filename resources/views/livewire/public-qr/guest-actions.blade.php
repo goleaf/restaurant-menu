@@ -36,6 +36,7 @@
     <livewire:public-qr.table-guests
         :table-session-id="$tableSessionId"
         :current-guest-id="$currentGuestId"
+        :public-token="$publicToken"
         :polling-interval-seconds="$pollingIntervalSeconds"
         :language="$language"
         wire:key="guest-table-guests-{{ $tableSessionId }}-{{ $currentGuestId }}"
@@ -123,5 +124,36 @@
                 </x-ui.alert>
             </div>
         @endif
+    </x-ui.card>
+
+    <x-ui.card data-component="guest-leave-table" tone="danger">
+        <div class="space-y-3">
+            <div>
+                <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('guest.table.session_controls') }}</p>
+                <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.leave_title') }}</h2>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">{{ __('guest.table.leave_description') }}</p>
+            </div>
+
+            @if ($leaveTableMessage)
+                <x-ui.alert tone="danger">
+                    {{ $leaveTableMessage }}
+                </x-ui.alert>
+            @endif
+
+            <x-dangerous-action-confirmation
+                name="leave-table"
+                title="guest.table.leave_title"
+                consequence="guest.table.leave_consequence"
+                confirm-action="leaveTable"
+                confirm-label="guest.table.leave_action"
+                loading-label="guest.table.leaving"
+            >
+                <x-slot:trigger>
+                    <x-ui.button type="button" variant="danger" full-width icon="arrow-right-start-on-rectangle">
+                        {{ __('guest.table.leave_action') }}
+                    </x-ui.button>
+                </x-slot:trigger>
+            </x-dangerous-action-confirmation>
+        </div>
     </x-ui.card>
 </div>

@@ -10,7 +10,7 @@ use App\Enums\InvitationAccessState;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
-use Illuminate\Contracts\Translation\Translator;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -23,7 +23,6 @@ class ShowInvitationController extends Controller
      */
     public function __invoke(
         Request $request,
-        Translator $translator,
         ResolveInvitationAccessAction $resolveInvitation,
         ?string $token = null,
     ): RedirectResponse|Response {
@@ -71,7 +70,7 @@ class ShowInvitationController extends Controller
             'organizationName' => (string) $invitation->organization?->name,
             'branchName' => $invitation->branch?->name,
             'roleName' => $role?->localizedLabel() ?? (string) $invitation->role?->name,
-            'expiresAt' => $invitation->expires_at->locale($translator->getLocale())->isoFormat('LLL'),
+            'expiresAt' => LocalizedDateFormatter::dateTime($invitation->expires_at),
             'isAuthenticated' => $recipient instanceof User,
             'invitationEmail' => $invitation->email,
             'passwordRules' => Password::defaults()->toPasswordRulesString(),

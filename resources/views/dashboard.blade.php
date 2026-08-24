@@ -22,11 +22,13 @@
                 </div>
             </a>
 
-            <a href="{{ route('onboarding.restaurant') }}" class="rounded-card border border-border-subtle bg-surface p-5 shadow-card transition hover:border-brand-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" wire:navigate>
-                <p class="text-sm font-medium text-text-muted">{{ __('ui.headers.dashboard.quick_start') }}</p>
-                <h2 class="mt-2 text-lg font-semibold text-text-primary">{{ __('navigation.onboarding') }}</h2>
-                <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.headers.dashboard.setup_description') }}</p>
-            </a>
+            @if ($canAccessOnboarding ?? false)
+                <a href="{{ route('onboarding.restaurant') }}" class="rounded-card border border-border-subtle bg-surface p-5 shadow-card transition hover:border-brand-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" wire:navigate>
+                    <p class="text-sm font-medium text-text-muted">{{ __('ui.headers.dashboard.quick_start') }}</p>
+                    <h2 class="mt-2 text-lg font-semibold text-text-primary">{{ __('navigation.onboarding') }}</h2>
+                    <p class="mt-2 text-sm leading-6 text-text-muted">{{ __('ui.headers.dashboard.setup_description') }}</p>
+                </a>
+            @endif
 
             @if ($canAccessPlatformDashboard ?? false)
                 <a href="{{ route('superadmin.dashboard') }}" class="rounded-card border border-border-subtle bg-surface p-5 shadow-card transition hover:border-brand-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 xl:col-start-2" wire:navigate>

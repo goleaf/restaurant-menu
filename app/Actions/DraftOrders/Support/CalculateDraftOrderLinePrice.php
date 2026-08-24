@@ -7,6 +7,7 @@ namespace App\Actions\DraftOrders\Support;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
+use App\Support\Orders\OrderItemQuantity;
 use Illuminate\Validation\ValidationException;
 
 class CalculateDraftOrderLinePrice
@@ -110,6 +111,8 @@ class CalculateDraftOrderLinePrice
         int $quantity,
         array $selectedModifiers,
     ): array {
+        $quantity = OrderItemQuantity::from($quantity)->value;
+
         if ($unitPriceCents < 0) {
             throw ValidationException::withMessages([
                 'menu_item' => __('ui.actions.draftorders.support.calculatedraftorderlineprice.cena_pozicii_ne'),

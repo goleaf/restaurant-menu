@@ -12,6 +12,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
+use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\Waiter\TableDetail\Payment;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -75,6 +76,7 @@ test('staff with close table sessions permission can close an active session and
         ->and($qrCode->fresh()->status)->toBe(QrCodeStatus::Active)
         ->and($qrCode->fresh()->service_point_id)->toBe($servicePoint->id)
         ->and(Order::query()->where('table_session_id', $tableSession->id)->count())->toBe($orderCountBefore)
+        ->and(Order::query()->where('table_session_id', $tableSession->id)->firstOrFail()->status)->toBe(OrderStatus::Closed)
         ->and(OrderItem::query()->whereHas('order', fn ($query) => $query->where('table_session_id', $tableSession->id))->count())->toBe($orderItemCountBefore);
 
     expect(fn () => app(AddGuestDraftOrderItemAction::class)->handle(
@@ -93,6 +95,14 @@ test('staff with close table sessions permission can close an active session and
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied)
         ->and($qrCode->fresh()->public_token)->toBe($qrCode->public_token)
         ->and($qrCode->fresh()->status)->toBe(QrCodeStatus::Active);
+
+    Livewire::withCookie(prompt68GuestCookieName($qrCode), $guest->guest_token)
+        ->test(GuestEntry::class, ['token' => $qrCode->public_token])
+        ->assertSet('currentTableSessionId', null)
+        ->assertSet('currentGuestId', null)
+        ->assertSet('entryState', '')
+        ->assertSet('guestCanViewTable', false)
+        ->assertSet('guestCanAddItems', false);
 });
 
 test('staff without close table sessions permission cannot manually close an unpaid active session', function () {
@@ -240,4 +250,9 @@ function attachPrompt68Staff(
     ]);
 
     return $role;
+}
+
+function prompt68GuestCookieName(QrCode $qrCode): string
+{
+    return 'guest_token_'.substr(hash('sha256', $qrCode->public_token), 0, 24);
 }

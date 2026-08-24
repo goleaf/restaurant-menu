@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\OrganizationSubscription;
 use App\Models\User;
 use App\Services\Superadmin\SuperadminDashboardQueryService;
+use App\Support\LocalizedDateFormatter;
 use App\Support\PlainText;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
@@ -330,8 +331,8 @@ class Dashboard extends Component
                 ? __('ui.superadmin.dashboard.subscription_not_initialized')
                 : __($subscription->status->label()),
             'is_active' => $subscription?->status === OrganizationSubscriptionStatus::Active,
-            'started_at' => $subscription?->started_at?->format('Y-m-d') ?? __('qr.labels.not_set'),
-            'next_payment_at' => $subscription?->next_payment_at?->format('Y-m-d') ?? __('qr.labels.not_set'),
+            'started_at' => LocalizedDateFormatter::date($subscription?->started_at) ?? __('qr.labels.not_set'),
+            'next_payment_at' => LocalizedDateFormatter::date($subscription?->next_payment_at) ?? __('qr.labels.not_set'),
             'payment_label' => $subscription === null
                 ? __('staff.invitation_statuses.pending')
                 : __($subscription->payment_status->label()),

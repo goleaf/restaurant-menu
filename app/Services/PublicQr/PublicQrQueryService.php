@@ -73,7 +73,7 @@ final class PublicQrQueryService
             return null;
         }
 
-        return TableSession::query()
+        $tableSession = TableSession::query()
             ->select([
                 'id',
                 'branch_id',
@@ -83,13 +83,45 @@ final class PublicQrQueryService
                 'source',
                 'started_at',
                 'ended_at',
-                'guest_invite_token',
+                'guest_invite_token_hash',
                 'guest_invite_created_at',
+                'guest_invite_expires_at',
                 'guest_invite_created_by_guest_id',
+                'metadata',
+            ])
+            ->whereKey($tableSessionId)
+            ->guestViewable()
+            ->forQrServicePoint($servicePoint)
+            ->first();
+
+        if ($tableSession instanceof TableSession) {
+            return $tableSession;
+        }
+
+        $tableSession = TableSession::query()
+            ->select([
+                'id',
+                'branch_id',
+                'service_point_id',
+                'opened_by_guest_id',
+                'status',
+                'source',
+                'started_at',
+                'ended_at',
+                'guest_invite_token_hash',
+                'guest_invite_created_at',
+                'guest_invite_expires_at',
+                'guest_invite_created_by_guest_id',
+                'metadata',
             ])
             ->whereKey($tableSessionId)
             ->where('branch_id', $servicePoint->branch_id)
+            ->guestViewable()
             ->first();
+
+        return $tableSession?->wasTransferredFrom($servicePoint) === true
+            ? $tableSession
+            : null;
     }
 
     public function activeGuest(
@@ -107,6 +139,7 @@ final class PublicQrQueryService
                 'table_session_id',
                 'guest_name',
                 'guest_token',
+                'locale',
                 'status',
                 'ready_at',
                 'joined_at',

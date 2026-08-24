@@ -18,9 +18,22 @@ use App\Models\User;
 use App\Support\MoneyFormatter;
 use App\Support\RestaurantSetupOptions;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 
 final class RestaurantSetupQueryService
 {
+    public function userHasAccess(User $user): bool
+    {
+        $onboarding = RestaurantOnboarding::query()
+            ->select(['id', 'user_id', 'organization_id', 'branch_id'])
+            ->where('user_id', $user->id)
+            ->first();
+
+        return $onboarding instanceof RestaurantOnboarding
+            ? Gate::forUser($user)->allows('view', $onboarding)
+            : Gate::forUser($user)->allows('create', RestaurantOnboarding::class);
+    }
+
     /**
      * @return array{onboarding: RestaurantOnboarding|null, step: int, highest_step: int, completed: bool, done: array<int, bool>, summary: array<string, string|int|null>, form: array<string, string|int>}
      */

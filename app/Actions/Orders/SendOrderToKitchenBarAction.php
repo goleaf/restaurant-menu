@@ -37,52 +37,70 @@ class SendOrderToKitchenBarAction
             $order = $this->reloadOrder($order);
             $this->ensureCanSend($order, $sentBy);
 
-            if ($order->status === OrderStatus::SentToKitchenBar && $order->kitchenTickets->isNotEmpty()) {
-                $this->markServicePointCooking($order);
+            return $this->dispatch($order, $sentBy);
+        });
+    }
 
-                return $order;
-            }
+    /**
+     * Complete the mandatory dispatch inside an already-authorized waiter confirmation.
+     */
+    public function handleAfterWaiterConfirmation(Order $order, User $sentBy): Order
+    {
+        return DB::transaction(function () use ($order, $sentBy): Order {
+            $order = $this->reloadOrder($order);
+            $this->ensureDispatchable($order);
 
-            $previousStatus = $order->status;
-            $tickets = $order->kitchenTickets->isNotEmpty()
-                ? $order->kitchenTickets
-                : $this->createTickets($order, $sentBy);
+            return $this->dispatch($order, $sentBy);
+        });
+    }
 
-            if ($previousStatus === OrderStatus::SentToKitchenBar) {
-                $this->markServicePointCooking($order);
-
-                return $this->reloadOrder($order);
-            }
-
-            $order
-                ->forceFill([
-                    'status' => OrderStatus::SentToKitchenBar,
-                    'metadata' => $this->updatedOrderMetadata($order, $tickets, $sentBy),
-                ])
-                ->save();
-
+    private function dispatch(Order $order, User $sentBy): Order
+    {
+        if ($order->status === OrderStatus::SentToKitchenBar && $order->kitchenTickets->isNotEmpty()) {
             $this->markServicePointCooking($order);
 
-            $this->createOrderStatusLog->handle(
-                event: OrderStatusLogEvent::OrderSentToKitchenBar,
-                order: $order,
-                actorUser: $sentBy,
-                previousStatus: $previousStatus,
-                newStatus: OrderStatus::SentToKitchenBar,
-                statusType: 'order',
-                metadata: [
-                    'source' => 'waiter_dispatch',
-                    'tickets_count' => $tickets->count(),
-                    'items_count' => $order->items->count(),
-                    'departments' => $tickets
-                        ->map(fn (KitchenTicket $ticket): string => $ticket->department_name)
-                        ->values()
-                        ->all(),
-                ],
-            );
+            return $order;
+        }
+
+        $previousStatus = $order->status;
+        $tickets = $order->kitchenTickets->isNotEmpty()
+            ? $order->kitchenTickets
+            : $this->createTickets($order, $sentBy);
+
+        if ($previousStatus === OrderStatus::SentToKitchenBar) {
+            $this->markServicePointCooking($order);
 
             return $this->reloadOrder($order);
-        });
+        }
+
+        $order
+            ->forceFill([
+                'status' => OrderStatus::SentToKitchenBar,
+                'metadata' => $this->updatedOrderMetadata($order, $tickets, $sentBy),
+            ])
+            ->save();
+
+        $this->markServicePointCooking($order);
+
+        $this->createOrderStatusLog->handle(
+            event: OrderStatusLogEvent::OrderSentToKitchenBar,
+            order: $order,
+            actorUser: $sentBy,
+            previousStatus: $previousStatus,
+            newStatus: OrderStatus::SentToKitchenBar,
+            statusType: 'order',
+            metadata: [
+                'source' => 'waiter_dispatch',
+                'tickets_count' => $tickets->count(),
+                'items_count' => $order->items->count(),
+                'departments' => $tickets
+                    ->map(fn (KitchenTicket $ticket): string => $ticket->department_name)
+                    ->values()
+                    ->all(),
+            ],
+        );
+
+        return $this->reloadOrder($order);
     }
 
     private function reloadOrder(Order $order): Order
@@ -152,6 +170,7 @@ class SendOrderToKitchenBarAction
                     ]),
             ])
             ->whereKey($order->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -163,7 +182,12 @@ class SendOrderToKitchenBarAction
             ]);
         }
 
-        if (! in_array($order->status, [OrderStatus::ConfirmedByWaiter, OrderStatus::SentToKitchenBar], true)) {
+        $this->ensureDispatchable($order);
+    }
+
+    private function ensureDispatchable(Order $order): void
+    {
+        if (! $order->status->canTransitionTo(OrderStatus::SentToKitchenBar)) {
             throw ValidationException::withMessages([
                 'order_dispatch' => __('ui.actions.orders.sendordertokitchenbaraction.na_kuxniu_ili_bar_mozno_otpra'),
             ]);

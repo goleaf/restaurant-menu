@@ -28,28 +28,28 @@ test('simple design system components render shared ui primitives', function () 
             <x-ui.money cents="1450" currency="EUR" />
             <x-ui.alert tone="danger" heading="Careful">Danger copy</x-ui.alert>
             <x-ui.empty-state heading="ui.empty.no_results" description="ui.empty.no_service_points" icon="inbox" />
-            <x-ui.page-header title="ui.headers.orders.title" description="ui.headers.orders.description">
+            <x-ui.page-header title="reports.orders.title" description="reports.exports.description">
                 <x-slot:actions>
-                    <x-ui.primary-button label="ui.actions.new_order" />
+                    <x-ui.primary-button label="ui.actions.continue" />
                 </x-slot:actions>
             </x-ui.page-header>
-            <x-ui.form-input name="guest_name" label="ui.forms.guest_name" placeholder="ui.forms.guest_name_placeholder" wire:model="guestName" />
-            <x-ui.select name="payment_method" label="ui.forms.payment_method" :options="['cash' => 'ui.payment_methods.cash', 'card_terminal' => 'ui.payment_methods.card_terminal', 'other' => 'ui.payment_methods.other']" selected="cash" />
-            <x-ui.textarea name="note" label="ui.forms.note" placeholder="ui.forms.note_placeholder">Kitchen note</x-ui.textarea>
+            <x-ui.form-input name="guest_name" label="guest.table.your_name" placeholder="guest.table.enter_name" wire:model="guestName" />
+            <x-ui.select name="payment_method" label="payments.forms.method" :options="['cash' => 'ui.payment_methods.cash', 'card_terminal' => 'ui.payment_methods.card_terminal', 'other' => 'ui.payment_methods.other']" selected="cash" />
+            <x-ui.textarea name="note" label="payments.forms.note" placeholder="guest.table.guest_name_placeholder">Kitchen note</x-ui.textarea>
             <x-ui.validation-error error="Translated validation error." />
-            <x-ui.table-row title="ui.rows.table_one.title" subtitle="ui.rows.table_one.subtitle" meta="ui.rows.table_one.meta">
+            <x-ui.table-row title="reports.csv.name" subtitle="reports.csv.area" meta="guest.table.status">
                 <x-slot:actions>
-                    <x-ui.secondary-button label="ui.actions.open" />
+                    <x-ui.secondary-button label="ui.actions.continue" />
                 </x-slot:actions>
             </x-ui.table-row>
             <x-ui.confirmation-modal
                 trigger-label="ui.actions.delete"
-                title="ui.confirmations.delete.title"
-                description="ui.confirmations.delete.description"
+                title="ui.confirmations.danger.title"
+                description="ui.confirmations.danger.description"
                 confirm-label="ui.actions.delete"
                 confirm-action="deleteRecord"
             />
-            <x-ui.mobile-bottom-actions summary="Total 0.00 EUR">
+            <x-ui.mobile-bottom-actions summary="Total €0.00">
                 <x-ui.button variant="primary" full-width>Send</x-ui.button>
             </x-ui.mobile-bottom-actions>
             <x-ui.metric-strip :items="[
@@ -78,10 +78,10 @@ test('simple design system components render shared ui primitives', function () 
         ->toContain('Danger copy')
         ->toContain('No results yet.')
         ->toContain('Orders')
-        ->toContain(__('ui.headers.orders.description'))
-        ->toContain('New order')
-        ->toContain('Guest name')
-        ->toContain('Name shown to staff')
+        ->toContain(__('reports.exports.description'))
+        ->toContain('Continue')
+        ->toContain('Your name')
+        ->toContain('Enter your name to continue.')
         ->toContain('Payment method')
         ->toContain('Cash')
         ->toContain('Card terminal')
@@ -89,18 +89,18 @@ test('simple design system components render shared ui primitives', function () 
         ->toContain('Note')
         ->toContain('Kitchen note')
         ->toContain('Translated validation error.')
-        ->toContain('Table 1')
-        ->toContain('Window side')
-        ->toContain('Open')
-        ->toContain('Delete record?')
-        ->toContain('This action cannot be undone.')
+        ->toContain('Name')
+        ->toContain('Area')
+        ->toContain('Status')
+        ->toContain('Confirm dangerous action')
+        ->toContain('Please confirm before continuing.')
         ->toContain('data-flux-modal-trigger')
         ->toContain('data-flux-modal')
         ->toContain('focusable="focusable"')
         ->toContain('autofocus="autofocus"')
         ->toContain('<button')
         ->not->toContain('<x-ui.danger-button')
-        ->toContain('Total 0.00 EUR')
+        ->toContain('Total €0.00')
         ->toContain('sticky bottom-0')
         ->toContain('Needs attention')
         ->toContain('title="Terrace"')
@@ -200,6 +200,41 @@ test('runtime stylesheet exposes semantic workspace roles and avoids decorative 
         ->not->toContain('0 8px 24px');
 });
 
+test('semantic utility names resolve to declared design tokens', function () {
+    $sources = collect(File::allFiles(resource_path('views')))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
+        ->map(fn (SplFileInfo $file): string => $file->getContents())
+        ->implode("\n");
+
+    expect($sources)
+        ->not->toContain('bg-action')
+        ->not->toContain('text-text-secondary')
+        ->not->toMatch('/(?<![a-z-])border-strong/')
+        ->not->toContain('focus:border-strong');
+});
+
+test('coarse pointer and livewire request states preserve practical controls', function () {
+    $css = File::get(resource_path('css/app.css'));
+
+    expect($css)
+        ->toContain('@media (pointer: coarse)')
+        ->toContain('[data-flux-control]')
+        ->toContain('[data-flux-button]:not(.min-h-operational-touch)')
+        ->toContain('[data-flux-sidebar-item]')
+        ->toContain('[data-loading]');
+});
+
+test('application shell keeps sidebar headings and account menu names accessible', function () {
+    $sidebar = File::get(resource_path('views/layouts/app/sidebar.blade.php'));
+    $desktopUserMenu = File::get(resource_path('views/components/desktop-user-menu.blade.php'));
+
+    expect($sidebar)
+        ->toContain('[&>div:first-child>div]:!text-text-muted')
+        ->toContain("'initials' => \$authenticatedUser['initials']")
+        ->and($desktopUserMenu)
+        ->toContain("'initials' => \$initials");
+});
+
 test('product mark is purpose-built and exposes decorative and standalone semantics', function () {
     $decorative = Blade::render('<x-app-logo-icon />');
     $standalone = Blade::render('<x-app-logo-icon :decorative="false" label="Restaurant menu" />');
@@ -213,6 +248,14 @@ test('product mark is purpose-built and exposes decorative and standalone semant
         ->toContain('role="img"')
         ->toContain('aria-label="Restaurant menu"')
         ->not->toContain('aria-hidden="true"');
+});
+
+test('auth layout home links keep a minimum touch target', function () {
+    foreach (['simple', 'card', 'split'] as $layout) {
+        $source = File::get(resource_path("views/layouts/auth/{$layout}.blade.php"));
+
+        expect($source)->toMatch('/<a[^>]+href="\{\{ route\(\'home\'\) \}\}"[^>]+class="[^"]*min-h-11[^"]*"/');
+    }
 });
 
 test('context workspace components render prepared presentation data accessibly', function () {

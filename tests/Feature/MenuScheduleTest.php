@@ -72,12 +72,12 @@ test('menu availability respects branch timezone current interval and next inter
     expect($breakfast['is_configured'])->toBeTrue()
         ->and($breakfast['is_available'])->toBeTrue()
         ->and($breakfast['label'])->toBe(__('menu.guest.available_now'))
-        ->and($breakfast['detail'])->toBe(__('menu.guest.available_until', ['time' => '12:00']));
+        ->and($breakfast['detail'])->toBe(__('menu.guest.available_until', ['time' => '12:00 PM']));
 
     expect($betweenDays['is_configured'])->toBeTrue()
         ->and($betweenDays['is_available'])->toBeFalse()
         ->and($betweenDays['label'])->toBe(__('menu.guest.unavailable'))
-        ->and($betweenDays['detail'])->toBe(__('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 08:00']));
+        ->and($betweenDays['detail'])->toBe(__('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
 });
 
 test('guest menu only returns menus available now and clears database cache on schedule change', function () {
@@ -118,14 +118,14 @@ test('guest menu only returns menus available now and clears database cache on s
 
     expect($freshPayload['menu'])->toBeNull()
         ->and($freshPayload['availability']['is_available'])->toBeFalse()
-        ->and($freshPayload['availability']['detail'])->toBe(__('menu.guest.available_from', ['time' => '12:00']));
+        ->and($freshPayload['availability']['detail'])->toBe(__('menu.guest.available_from', ['time' => '12:00 PM']));
 
     Livewire::test(GuestMenu::class, [
         'branchId' => $branch->id,
         'currency' => 'EUR',
     ])
         ->assertSeeText(__('menu.guest.unavailable'))
-        ->assertSeeText(__('menu.guest.available_from', ['time' => '12:00']))
+        ->assertSeeText(__('menu.guest.available_from', ['time' => '12:00 PM']))
         ->assertDontSeeText('Omelette')
         ->assertDontSeeText('Burger');
 });
@@ -185,7 +185,7 @@ test('guest menu returns multiple active available menus grouped and sorted', fu
             $mainItem->id,
         ])
         ->and(collect($payload['unavailable_menus'])->pluck('name')->all())->toBe(['Business lunch'])
-        ->and(collect($payload['unavailable_menus'])->pluck('availability.detail')->all())->toBe([__('menu.guest.available_from', ['time' => '12:00'])])
+        ->and(collect($payload['unavailable_menus'])->pluck('availability.detail')->all())->toBe([__('menu.guest.available_from', ['time' => '12:00 PM'])])
         ->and(collect($payload['menus'])->pluck('name')->contains('Wine card'))->toBeFalse()
         ->and(collect($payload['menus'])->flatMap(fn (array $menu): array => collect($menu['categories'])->flatMap(fn (array $category): array => $category['items'])->all())->pluck('id')->contains($lunchItem->id))->toBeFalse();
 
@@ -195,7 +195,7 @@ test('guest menu returns multiple active available menus grouped and sorted', fu
     ])
         ->assertSeeTextInOrder(['Breakfast menu', 'Omelette', 'Main menu', 'Margherita'])
         ->assertSeeText('Business lunch')
-        ->assertSeeText(__('menu.guest.available_from', ['time' => '12:00']))
+        ->assertSeeText(__('menu.guest.available_from', ['time' => '12:00 PM']))
         ->assertDontSeeText('Soup')
         ->assertDontSeeText('Wine card')
         ->assertDontSeeText('Draft wine');
@@ -313,7 +313,7 @@ test('unavailable scheduled menu blocks adding and sending draft items', functio
         guest: $guest,
         menuItem: $menuItem,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 08:00']));
+    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
 
     $draftOrder = DraftOrder::factory()
         ->for($tableSession)
@@ -325,7 +325,7 @@ test('unavailable scheduled menu blocks adding and sending draft items', functio
         ->create(['item_name' => 'Breakfast toast']);
 
     expect(fn () => app(SendDraftOrderToWaiterAction::class)->handle($draftOrder, $guest))
-        ->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 08:00']));
+        ->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
 
     expect($draftOrder->fresh()->status)->toBe(DraftOrderStatus::Draft);
 });

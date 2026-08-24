@@ -16,6 +16,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -81,22 +82,22 @@ class BuildManualPaymentSummaryAction
             'service_charge_total_cents' => $serviceChargeTotalCents,
             'service_charge_paid_cents' => $serviceChargePaidCents,
             'remaining_service_charge_cents' => $remainingServiceChargeCents,
-            'service_charge_total' => $this->formatCents($serviceChargeTotalCents).' '.$currency,
-            'service_charge_paid' => $this->formatCents($serviceChargePaidCents).' '.$currency,
-            'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents).' '.$currency,
+            'service_charge_total' => $this->formatCents($serviceChargeTotalCents, $currency),
+            'service_charge_paid' => $this->formatCents($serviceChargePaidCents, $currency),
+            'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents, $currency),
             'tips_enabled' => $settings['tips_enabled'],
             'tips_paid_total_cents' => $tipsPaidTotalCents,
-            'tips_paid_total' => $this->formatCents($tipsPaidTotalCents).' '.$currency,
+            'tips_paid_total' => $this->formatCents($tipsPaidTotalCents, $currency),
             'confirmed_total_cents' => $confirmedTotalCents,
             'covered_subtotal_cents' => $coveredSubtotalCents,
             'remaining_subtotal_cents' => $remainingSubtotalCents,
             'paid_total_cents' => $paidTotalCents,
             'remaining_total_cents' => $remainingTotalCents,
-            'confirmed_total' => $this->formatCents($confirmedTotalCents).' '.$currency,
-            'covered_subtotal' => $this->formatCents($coveredSubtotalCents).' '.$currency,
-            'remaining_subtotal' => $this->formatCents($remainingSubtotalCents).' '.$currency,
-            'paid_total' => $this->formatCents($paidTotalCents).' '.$currency,
-            'remaining_total' => $this->formatCents($remainingTotalCents).' '.$currency,
+            'confirmed_total' => $this->formatCents($confirmedTotalCents, $currency),
+            'covered_subtotal' => $this->formatCents($coveredSubtotalCents, $currency),
+            'remaining_subtotal' => $this->formatCents($remainingSubtotalCents, $currency),
+            'paid_total' => $this->formatCents($paidTotalCents, $currency),
+            'remaining_total' => $this->formatCents($remainingTotalCents, $currency),
             'has_payable_total' => $confirmedTotalCents > 0,
             'has_open_draft' => $this->hasOpenDraft($tableSession->draftOrder),
             'is_fully_paid' => $isFullyPaid,
@@ -273,15 +274,15 @@ class BuildManualPaymentSummaryAction
                     'due_cents' => $dueCents,
                     'paid_cents' => $paidCents,
                     'remaining_cents' => $guestRemainingCents,
-                    'subtotal_due' => $this->formatCents($subtotalDueCents).' '.$currency,
-                    'service_charge' => $this->formatCents($serviceChargeDueCents).' '.$currency,
-                    'covered_subtotal' => $this->formatCents($coveredSubtotalCents).' '.$currency,
-                    'service_charge_paid' => $this->formatCents($serviceChargePaidCents).' '.$currency,
-                    'remaining_subtotal' => $this->formatCents($remainingSubtotalCents).' '.$currency,
-                    'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents).' '.$currency,
-                    'due' => $this->formatCents($dueCents).' '.$currency,
-                    'paid' => $this->formatCents($paidCents).' '.$currency,
-                    'remaining' => $this->formatCents($guestRemainingCents).' '.$currency,
+                    'subtotal_due' => $this->formatCents($subtotalDueCents, $currency),
+                    'service_charge' => $this->formatCents($serviceChargeDueCents, $currency),
+                    'covered_subtotal' => $this->formatCents($coveredSubtotalCents, $currency),
+                    'service_charge_paid' => $this->formatCents($serviceChargePaidCents, $currency),
+                    'remaining_subtotal' => $this->formatCents($remainingSubtotalCents, $currency),
+                    'remaining_service_charge' => $this->formatCents($remainingServiceChargeCents, $currency),
+                    'due' => $this->formatCents($dueCents, $currency),
+                    'paid' => $this->formatCents($paidCents, $currency),
+                    'remaining' => $this->formatCents($guestRemainingCents, $currency),
                     'is_paid' => $dueCents > 0 && $guestRemainingCents === 0,
                     'covered_by_table_payment' => $isCoveredByTablePayment,
                 ];
@@ -327,14 +328,14 @@ class BuildManualPaymentSummaryAction
                     'scope_label' => $scope->label(),
                     'method' => $method->value,
                     'method_label' => $method->translationKey(),
-                    'covered_subtotal' => $this->formatCents($this->coveredSubtotalCents($payment)).' '.($payment->currency ?: $currency),
+                    'covered_subtotal' => $this->formatCents($this->coveredSubtotalCents($payment), $payment->currency ?: $currency),
                     'service_charge_percent' => MoneyFormatter::centsToDecimal($payment->service_charge_basis_points),
-                    'service_charge_amount' => $this->formatCents($payment->service_charge_cents).' '.($payment->currency ?: $currency),
-                    'tips_amount' => $this->formatCents($payment->tips_cents).' '.($payment->currency ?: $currency),
-                    'amount' => $this->formatCents($payment->amount_cents).' '.($payment->currency ?: $currency),
+                    'service_charge_amount' => $this->formatCents($payment->service_charge_cents, $payment->currency ?: $currency),
+                    'tips_amount' => $this->formatCents($payment->tips_cents, $payment->currency ?: $currency),
+                    'amount' => $this->formatCents($payment->amount_cents, $payment->currency ?: $currency),
                     'guest_name' => $payment->table_session_guest_id === null ? $payment->guest_name : $payment->guest->guest_name,
                     'recorded_by_name' => $payment->recorded_by_user_id === null ? null : $payment->recordedBy->name,
-                    'paid_at' => $payment->paid_at?->format('Y-m-d H:i'),
+                    'paid_at' => LocalizedDateFormatter::dateTime($payment->paid_at),
                     'note' => $payment->note,
                 ];
             })
@@ -487,8 +488,8 @@ class BuildManualPaymentSummaryAction
             ->all();
     }
 
-    private function formatCents(int $cents): string
+    private function formatCents(int $cents, string $currency): string
     {
-        return MoneyFormatter::centsToDecimal($cents);
+        return MoneyFormatter::formatCents($cents, $currency);
     }
 }

@@ -222,14 +222,14 @@ test('closed session blocks old guest actions and fresh qr scan can start a new 
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $activeGuest->guest_token)
         ->test(GuestEntry::class, ['token' => $qrCode->public_token])
-        ->assertSet('currentTableSessionId', $tableSession->id)
-        ->assertSet('currentGuestId', $activeGuest->id)
-        ->assertSet('entryState', 'guest_blocked')
-        ->assertSet('entryIssueCode', 'session_closed')
+        ->assertSet('currentTableSessionId', null)
+        ->assertSet('currentGuestId', null)
+        ->assertSet('entryState', '')
+        ->assertSet('entryIssueCode', '')
         ->assertSet('guestCanViewTable', false)
         ->assertSet('guestCanAddItems', false)
         ->assertDontSee('data-page="guest-table-shell"', false)
-        ->assertSeeText('This table session is closed');
+        ->assertSeeText('Join table');
 
     Livewire::withCookie(prompt353GuestCookieName($qrCode), $activeGuest->guest_token)
         ->test(GuestMenu::class, [

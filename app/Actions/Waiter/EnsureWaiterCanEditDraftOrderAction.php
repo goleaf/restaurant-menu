@@ -3,9 +3,7 @@
 namespace App\Actions\Waiter;
 
 use App\Enums\BusinessRuleCode;
-use App\Enums\DraftOrderStatus;
 use App\Enums\SystemPermission;
-use App\Enums\TableSessionStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\DraftOrder;
 use App\Models\User;
@@ -34,7 +32,7 @@ class EnsureWaiterCanEditDraftOrderAction
             );
         }
 
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if ($tableSession->status->locksOrderChanges()) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::SessionClosed,
                 'draft_edit',
@@ -42,7 +40,7 @@ class EnsureWaiterCanEditDraftOrderAction
             );
         }
 
-        if (! in_array($draftOrder->status, [DraftOrderStatus::SentToWaiter, DraftOrderStatus::WaiterReview], true)) {
+        if (! $draftOrder->status->isWaiterEditable()) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::DraftLocked,
                 'draft_edit',

@@ -22,7 +22,7 @@ class UpdateBarTicketItemStatusAction
             itemId: $itemId,
             status: $status,
             user: $user,
-            departmentTypes: [KitchenDepartmentType::Bar],
+            departmentTypes: KitchenDepartmentType::barProductionTypes(),
             roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
             permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );

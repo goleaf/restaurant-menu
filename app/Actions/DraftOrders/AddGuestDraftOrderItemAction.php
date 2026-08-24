@@ -11,7 +11,6 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -19,6 +18,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Support\Orders\IdempotencyKey;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +30,7 @@ class AddGuestDraftOrderItemAction
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
         private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
+        private readonly CreateDraftOrderItemIdempotentlyAction $createDraftOrderItemIdempotently,
     ) {}
 
     /**
@@ -44,21 +45,37 @@ class AddGuestDraftOrderItemAction
         ?string $comment = null,
         ?string $itemName = null,
         ?string $languageCode = null,
+        ?string $idempotencyKey = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $menuItemVariantId, $comment, $languageCode): DraftOrderItem {
+        $idempotencyKey = IdempotencyKey::from($idempotencyKey);
+
+        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $menuItemVariantId, $comment, $languageCode, $idempotencyKey): DraftOrderItem {
             $languageCode = SupportedLocale::normalize($languageCode);
             $tableSession = $this->reloadTableSession($tableSession);
             $guest = $this->reloadGuest($guest);
             $menuItem = $this->reloadMenuItem($menuItem, $languageCode);
 
             $this->ensureGuestCanAddItems($tableSession, $guest);
+            $draftOrder = $this->draftOrderFor($tableSession);
+
+            if ($idempotencyKey instanceof IdempotencyKey) {
+                $existingItem = $this->createDraftOrderItemIdempotently->existing(
+                    $draftOrder,
+                    $idempotencyKey,
+                    $guest->id,
+                );
+
+                if ($existingItem instanceof DraftOrderItem) {
+                    return $existingItem;
+                }
+            }
+
             $this->ensureMenuItemCanBeAdded($tableSession, $menuItem);
 
             $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1, $menuItemVariantId, $languageCode);
-            $draftOrder = $this->draftOrderFor($tableSession);
             $draftWasCreated = $draftOrder->wasRecentlyCreated;
 
-            $draftOrderItem = $draftOrder->items()->create([
+            $draftOrderItem = $this->createDraftOrderItemIdempotently->handle($draftOrder, [
                 'table_session_guest_id' => $guest->id,
                 'menu_item_id' => $menuItem->id,
                 'menu_item_variant_id' => $linePrice['menu_item_variant_id'],
@@ -71,7 +88,11 @@ class AddGuestDraftOrderItemAction
                 'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
                 'comment' => $this->normalizeComment($comment),
-            ])->refresh();
+            ], $idempotencyKey);
+
+            if (! $draftOrderItem->wasRecentlyCreated) {
+                return $draftOrderItem;
+            }
 
             if ($draftWasCreated) {
                 $this->createOrderStatusLog->handle(
@@ -196,7 +217,7 @@ class AddGuestDraftOrderItemAction
 
         if ($guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            || $tableSession->status->isTerminal()) {
             throw ValidationException::withMessages([
                 'guest' => __('ui.actions.draftorders.addguestdraftorderitemaction.tolko_aktivnyi_gost_za'),
             ]);
@@ -224,6 +245,12 @@ class AddGuestDraftOrderItemAction
             ->first();
 
         if (! $draftOrder instanceof DraftOrder) {
+            if (! $tableSession->status->allowsGuestParticipation()) {
+                throw ValidationException::withMessages([
+                    'draft_order' => __('ui.actions.draftorders.addguestdraftorderitemaction.etot_cernovik_uze_otpra'),
+                ]);
+            }
+
             $draftOrder = new DraftOrder;
             $draftOrder->forceFill([
                 'table_session_id' => $tableSession->id,
@@ -233,7 +260,7 @@ class AddGuestDraftOrderItemAction
             return $draftOrder;
         }
 
-        if ($draftOrder->status !== DraftOrderStatus::Draft) {
+        if (! $draftOrder->status->isGuestEditable()) {
             throw ValidationException::withMessages([
                 'draft_order' => __('ui.actions.draftorders.addguestdraftorderitemaction.etot_cernovik_uze_otpra'),
             ]);

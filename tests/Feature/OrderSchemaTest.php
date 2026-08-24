@@ -110,8 +110,8 @@ test('order status enum contains the prepared order lifecycle', function () {
         'paid',
         'closed',
         'cancelled',
-    ])->and(OrderStatus::options())->toHaveKey('confirmed_by_waiter', 'Confirmed by waiter')
-        ->and(OrderStatus::SentToKitchenBar->label())->toBe('Sent to kitchen/bar');
+    ])->and(OrderStatus::options())->toHaveKey('confirmed_by_waiter', __('reports.statuses.orders.confirmed_by_waiter'))
+        ->and(OrderStatus::SentToKitchenBar->label())->toBe(__('reports.statuses.orders.sent_to_kitchen_bar'));
 });
 
 test('confirming draft creates immutable order item snapshots', function () {
@@ -126,7 +126,7 @@ test('confirming draft creates immutable order item snapshots', function () {
         ->with(['guest:id,guest_name', 'menuItem:id,name,price'])
         ->firstOrFail();
 
-    expect($order->status)->toBe(OrderStatus::ConfirmedByWaiter)
+    expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
         ->and($order->branch_id)->toBe($servicePoint->branch_id)
         ->and($order->service_point_id)->toBe($servicePoint->id)
         ->and($order->table_session_id)->toBe($draftOrder->table_session_id)

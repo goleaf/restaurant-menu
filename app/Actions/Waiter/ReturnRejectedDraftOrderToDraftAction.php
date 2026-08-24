@@ -8,7 +8,6 @@ use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
-use App\Enums\TableSessionStatus;
 use App\Models\DraftOrder;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -99,13 +98,14 @@ class ReturnRejectedDraftOrderToDraftAction
             ]);
         }
 
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if ($tableSession->status->locksOrderChanges()) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.returnrejecteddraftordertodraftaction.nelzia_vernut_zakaz'),
             ]);
         }
 
-        if ($draftOrder->status !== DraftOrderStatus::Rejected) {
+        if ($draftOrder->status !== DraftOrderStatus::Rejected
+            || ! $draftOrder->status->canTransitionTo(DraftOrderStatus::Draft)) {
             throw ValidationException::withMessages([
                 'draft_review' => __('ui.actions.waiter.returnrejecteddraftordertodraftaction.vernut_v_cernovik_m'),
             ]);

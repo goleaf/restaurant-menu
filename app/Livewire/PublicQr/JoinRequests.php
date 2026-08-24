@@ -9,6 +9,7 @@ use App\Enums\SupportedLocale;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
 use App\Services\PublicQr\PublicQrQueryService;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -79,8 +80,8 @@ class JoinRequests extends Component
             ->map(fn (TableSessionJoinRequest $joinRequest): array => [
                 'id' => $joinRequest->id,
                 'guest_name' => $joinRequest->guest_name,
-                'created_label' => $joinRequest->created_at?->diffForHumans() ?? '',
-                'expires_label' => $joinRequest->expires_at?->format('H:i'),
+                'created_label' => LocalizedDateFormatter::relative($joinRequest->created_at) ?? '',
+                'expires_label' => LocalizedDateFormatter::time($joinRequest->expires_at),
             ])
             ->all();
     }

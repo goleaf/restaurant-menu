@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Onboarding;
 
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
+use App\Actions\QrCodes\StoreQrCodeImageAction;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\QrCode;
@@ -16,11 +17,14 @@ use Illuminate\Validation\ValidationException;
 
 final readonly class GenerateOnboardingQrCodesAction
 {
-    public function __construct(private GenerateQrCodeForServicePointAction $generateQrCode) {}
+    public function __construct(
+        private GenerateQrCodeForServicePointAction $generateQrCode,
+        private StoreQrCodeImageAction $storeQrCodeImage,
+    ) {}
 
     public function handle(User $user, int $onboardingId): RestaurantOnboarding
     {
-        return DB::transaction(function () use ($user, $onboardingId): RestaurantOnboarding {
+        $result = DB::transaction(function () use ($user, $onboardingId): array {
             $onboarding = RestaurantOnboarding::query()->where('user_id', $user->id)->whereKey($onboardingId)->lockForUpdate()->firstOrFail();
             $branch = Branch::query()
                 ->select(['id', 'organization_id', 'brand_id', 'name'])
@@ -55,13 +59,24 @@ final readonly class GenerateOnboardingQrCodesAction
                 $points->count(),
             ), 409);
 
+            $qrCodes = [];
+
             foreach ($points as $point) {
                 $point->setRelation('branch', $branch);
                 Gate::forUser($user)->authorize('create', [QrCode::class, $point]);
-                $this->generateQrCode->handle($point, $user);
+                $qrCodes[] = $this->generateQrCode->handle($point, $user, storeImage: false);
             }
 
-            return $onboarding->refresh();
+            return [
+                'onboarding' => $onboarding->refresh(),
+                'qr_codes' => $qrCodes,
+            ];
         }, attempts: 3);
+
+        foreach ($result['qr_codes'] as $qrCode) {
+            $this->storeQrCodeImage->handle($qrCode);
+        }
+
+        return $result['onboarding'];
     }
 }

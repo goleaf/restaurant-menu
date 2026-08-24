@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum DraftOrderStatus: string
@@ -9,6 +11,31 @@ enum DraftOrderStatus: string
     case WaiterReview = 'waiter_review';
     case Rejected = 'rejected';
     case ConvertedToOrder = 'converted_to_order';
+
+    public function canTransitionTo(self $next): bool
+    {
+        if ($this === $next) {
+            return true;
+        }
+
+        return in_array($next, match ($this) {
+            self::Draft => [self::SentToWaiter, self::WaiterReview],
+            self::SentToWaiter => [self::WaiterReview, self::Rejected, self::ConvertedToOrder],
+            self::WaiterReview => [self::Rejected, self::ConvertedToOrder],
+            self::Rejected => [self::Draft],
+            self::ConvertedToOrder => [],
+        }, true);
+    }
+
+    public function isGuestEditable(): bool
+    {
+        return $this === self::Draft;
+    }
+
+    public function isWaiterEditable(): bool
+    {
+        return in_array($this, [self::SentToWaiter, self::WaiterReview], true);
+    }
 
     public function label(): string
     {

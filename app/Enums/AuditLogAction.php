@@ -34,6 +34,8 @@ enum AuditLogAction: string
     case TableSessionTransferred = 'table_session_transferred';
     case TableSessionServicePointLinked = 'table_session_service_point_linked';
     case TableSessionClosed = 'table_session_closed';
+    case TableSessionGuestLeft = 'table_session_guest_left';
+    case TableSessionGuestRemoved = 'table_session_guest_removed';
     case PaymentRecorded = 'payment_recorded';
     case PaymentCorrected = 'payment_corrected';
 
@@ -68,6 +70,8 @@ enum AuditLogAction: string
             self::TableSessionTransferred => 'Table session transferred',
             self::TableSessionServicePointLinked => 'Table session service point linked',
             self::TableSessionClosed => 'Table session closed',
+            self::TableSessionGuestLeft => __('audit.actions.table_session_guest_left'),
+            self::TableSessionGuestRemoved => __('audit.actions.table_session_guest_removed'),
             self::PaymentRecorded => 'Payment recorded',
             self::PaymentCorrected => 'Payment corrected',
         };

@@ -110,7 +110,7 @@ test('temporary closed mode has priority over opening hours and can expire', fun
         ->and($status['can_accept_orders'])->toBeFalse()
         ->and($status['label'])->toBe(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
         ->and($status['detail'])->toContain('Кухня закрыта')
-        ->and($status['detail'])->toContain(__('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => '18:00']));
+        ->and($status['detail'])->toContain(__('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', ['time' => '6:00 PM']));
 
     $expiredStatus = app(GetBranchOpeningStatusAction::class)->handle($branch->fresh(), Carbon::parse('2026-06-04 18:01:00', 'Europe/Vilnius'));
 

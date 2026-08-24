@@ -163,7 +163,7 @@ test('first vertical slice works from authenticated owner setup to closed table 
         ->and($firstGuest->guest_token)->toHaveLength(64)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
 
-    Livewire::withCookie($cookieName, $firstGuest->guest_token)
+    $guestActions = Livewire::withCookie($cookieName, $firstGuest->guest_token)
         ->test(GuestActions::class, [
             'tableSessionId' => $tableSession->id,
             'currentGuestId' => $firstGuest->id,
@@ -175,10 +175,12 @@ test('first vertical slice works from authenticated owner setup to closed table 
         ->assertHasNoErrors()
         ->assertSeeText('Invite link is ready.');
 
-    $inviteToken = $tableSession->fresh()->guest_invite_token;
+    parse_str((string) parse_url($guestActions->get('guestInviteUrl'), PHP_URL_QUERY), $inviteQuery);
+    $inviteToken = $inviteQuery['invite'] ?? null;
 
     expect($inviteToken)->toBeString()
-        ->and($inviteToken)->toHaveLength(64);
+        ->and($inviteToken)->toHaveLength(64)
+        ->and($tableSession->fresh()->guest_invite_token_hash)->toBe(hash('sha256', $inviteToken));
 
     session()->forget('guest_entries.'.$qrCode->public_token);
 
@@ -260,12 +262,6 @@ test('first vertical slice works from authenticated owner setup to closed table 
         ->assertHasNoErrors()
         ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po'));
 
-    Livewire::actingAs($waiter)
-        ->test(WaiterOrderFulfilment::class, ['tableSessionId' => $tableSession->id])
-        ->call('sendOrderToKitchenBar')
-        ->assertHasNoErrors()
-        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_otpravlen_na_kuxniu_bar_gosti_uvidiat'));
-
     $order = Order::query()
         ->select(['id', 'draft_order_id', 'status', 'total_price_cents'])
         ->where('draft_order_id', $draftOrder->id)
@@ -321,11 +317,12 @@ test('first vertical slice works from authenticated owner setup to closed table 
         ->assertSee('The waiter has been asked to bring the bill.');
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::PaymentRequested)
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::PaymentRequested);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::PaymentRequested)
+        ->and($order->fresh()->status)->toBe(OrderStatus::PaymentRequested);
 
     Livewire::actingAs($waiter)
         ->test(WaiterPayment::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('payment.remaining_total', '16.50 EUR')
+        ->assertSet('payment.remaining_total', '€16.50')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
         ->assertHasNoErrors()
@@ -336,6 +333,7 @@ test('first vertical slice works from authenticated owner setup to closed table 
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Closed)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
+        ->and($order->fresh()->status)->toBe(OrderStatus::Closed)
         ->and($qrCode->fresh()->public_token)->toBe($qrCode->public_token)
         ->and($qrCode->fresh()->status)->toBe(QrCodeStatus::Active);
 });

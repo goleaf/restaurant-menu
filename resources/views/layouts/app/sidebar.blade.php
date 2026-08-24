@@ -9,12 +9,12 @@
         </a>
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="lg:hidden" />
+                <x-app-logo :sidebar="true" class="min-h-touch" href="{{ route('dashboard') }}" wire:navigate />
+                <flux:sidebar.collapse class="min-h-touch min-w-touch lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('navigation.workspaces')" class="grid">
+                <flux:sidebar.group :heading="__('navigation.workspaces')" class="grid [&>div:first-child>div]:!text-text-muted">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="$currentNavigation['dashboard']" wire:navigate>
                         {{ __('navigation.dashboard') }}
                     </flux:sidebar.item>
@@ -23,9 +23,11 @@
                         {{ __('navigation.organizations') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
-                        {{ __('navigation.onboarding') }}
-                    </flux:sidebar.item>
+                    @if ($canAccessOnboarding ?? false)
+                        <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
+                            {{ __('navigation.onboarding') }}
+                        </flux:sidebar.item>
+                    @endif
 
                     <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="$currentNavigation['restaurant_dashboard']" wire:navigate>
                         {{ __('navigation.restaurant') }}
@@ -103,7 +105,7 @@
 
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
-            <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
+            <flux:sidebar.toggle class="min-h-touch min-w-touch lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
 
@@ -113,7 +115,8 @@
             <flux:dropdown position="top" align="end">
                 <flux:profile
                     :initials="$authenticatedUser['initials']"
-                    :aria-label="__('navigation.account_menu', ['name' => $authenticatedUser['name']])"
+                    :aria-label="__('navigation.account_menu', ['initials' => $authenticatedUser['initials'], 'name' => $authenticatedUser['name']])"
+                    class="min-h-touch"
                     icon-trailing="chevron-down"
                 />
 

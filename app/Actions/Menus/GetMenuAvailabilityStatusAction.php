@@ -8,6 +8,7 @@ use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
+use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -97,7 +98,7 @@ class GetMenuAvailabilityStatusAction
                 }
 
                 if ($now->greaterThanOrEqualTo($start) && $now->lessThan($end)) {
-                    return ['ends_at' => $end->format('H:i')];
+                    return ['ends_at' => LocalizedDateFormatter::time($end)];
                 }
             }
         }
@@ -122,8 +123,8 @@ class GetMenuAvailabilityStatusAction
                     return [
                         'time' => $start->toIso8601String(),
                         'label' => $offset === 0
-                            ? $start->format('H:i')
-                            : $this->shortDayLabel($dayOfWeek).' '.$start->format('H:i'),
+                            ? LocalizedDateFormatter::time($start)
+                            : $this->shortDayLabel($dayOfWeek).' '.LocalizedDateFormatter::time($start),
                     ];
                 }
             }

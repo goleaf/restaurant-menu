@@ -10,49 +10,72 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ReissueQrCodeForServicePointAction
 {
     public function __construct(
         private readonly GenerateQrCodeForServicePointAction $generateQrCode,
+        private readonly StoreQrCodeImageAction $storeQrCodeImage,
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
     public function handle(QrCode $qrCode, User $revokedBy): QrCode
     {
-        return DB::transaction(function () use ($qrCode, $revokedBy): QrCode {
-            $servicePoint = $this->findServicePoint($qrCode);
+        $replacementQrCode = null;
 
-            $activeQrCodes = $servicePoint
-                ->qrCodes()
-                ->select([
-                    'id',
-                    'service_point_id',
-                    'public_token',
-                    'short_code',
-                    'status',
-                    'created_by_user_id',
-                    'revoked_at',
-                    'revoked_by_user_id',
-                    'created_at',
-                    'updated_at',
-                ])
-                ->where('status', QrCodeStatus::Active->value)
-                ->get();
+        try {
+            $result = DB::transaction(function () use ($qrCode, $revokedBy, &$replacementQrCode): array {
+                $servicePoint = $this->findServicePoint($qrCode);
 
-            foreach ($activeQrCodes as $activeQrCode) {
-                $activeQrCode->status = QrCodeStatus::Revoked;
-                $activeQrCode->revoked_at = now();
-                $activeQrCode->revoked_by_user_id = $revokedBy->id;
-                $activeQrCode->save();
+                $activeQrCodes = $servicePoint
+                    ->qrCodes()
+                    ->select([
+                        'id',
+                        'service_point_id',
+                        'public_token',
+                        'short_code',
+                        'status',
+                        'created_by_user_id',
+                        'revoked_at',
+                        'revoked_by_user_id',
+                        'created_at',
+                        'updated_at',
+                    ])
+                    ->where('status', QrCodeStatus::Active->value)
+                    ->get();
+
+                foreach ($activeQrCodes as $activeQrCode) {
+                    $activeQrCode->status = QrCodeStatus::Revoked;
+                    $activeQrCode->revoked_at = now();
+                    $activeQrCode->revoked_by_user_id = $revokedBy->id;
+                    $activeQrCode->save();
+                }
+
+                $replacementQrCode = $this->generateQrCode->handle($servicePoint, $revokedBy);
+
+                $this->recordReissue($servicePoint, $activeQrCodes, $replacementQrCode, $revokedBy);
+
+                return [
+                    'new_qr_code' => $replacementQrCode,
+                    'revoked_qr_codes' => $activeQrCodes,
+                ];
+            }, 5);
+        } catch (Throwable $exception) {
+            if ($replacementQrCode instanceof QrCode) {
+                $this->storeQrCodeImage->delete($replacementQrCode);
             }
 
-            $newQrCode = $this->generateQrCode->handle($servicePoint, $revokedBy);
+            throw $exception;
+        }
 
-            $this->recordReissue($servicePoint, $activeQrCodes, $newQrCode, $revokedBy);
+        foreach ($result['revoked_qr_codes'] as $revokedQrCode) {
+            if ($revokedQrCode->id !== $result['new_qr_code']->id) {
+                $this->storeQrCodeImage->delete($revokedQrCode);
+            }
+        }
 
-            return $newQrCode;
-        });
+        return $result['new_qr_code'];
     }
 
     private function findServicePoint(QrCode $qrCode): ServicePoint

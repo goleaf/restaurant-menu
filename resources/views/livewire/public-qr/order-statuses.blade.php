@@ -3,6 +3,11 @@
     wire:poll.visible.{{ $pollingIntervalSeconds }}s="refreshOrderStatuses"
     class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
 >
+    @if (! $canRead)
+        <x-ui.alert tone="danger">
+            {{ __('guest.table.guest_access_unavailable_title') }}
+        </x-ui.alert>
+    @else
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.status') }}</p>
@@ -121,4 +126,5 @@
             </p>
         @endforelse
     </div>
+    @endif
 </section>

@@ -8,6 +8,7 @@ use App\Actions\Menus\SetMenuItemAvailabilityAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Services\Menus\CatalogData;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -71,7 +72,7 @@ class Availability extends BranchMenuComponent
                         ? __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen')
                         : $item->kitchenDepartment->name,
                     'price' => MoneyFormatter::formatCents($item->price_cents, $this->branch->currency),
-                    'updated_at' => $item->updated_at?->format('Y-m-d H:i'),
+                    'updated_at' => LocalizedDateFormatter::dateTime($item->updated_at),
                     'is_available' => $item->is_available,
                 ])->values()->all();
             })

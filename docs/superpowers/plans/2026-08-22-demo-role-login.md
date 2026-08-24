@@ -1081,7 +1081,7 @@ After all gates are observed, change the headline from 48/47/1 to **49 requireme
 - every click sends a CSRF-protected POST, revalidates the role, regenerates the session, and redirects to `dashboard`;
 - the feature always returns 404 in production even when the flag is accidentally true;
 - set the flag false and rebuild config cache to disable it;
-- the shared seed password remains an operator/testing detail and is never rendered on the demo-login page.
+- no reusable seed password is exposed; the demo-login page authenticates only the server-side canonical identity selected through the guarded role action.
 
 Include exact enable/disable commands:
 

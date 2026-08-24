@@ -99,6 +99,14 @@ test('onboarding retry invariants have database uniqueness guards', function ():
         ->and(databaseAuditIndex('qr_codes', ['active_service_point_id'], unique: true))->not->toBeNull();
 });
 
+test('draft item retries have a database uniqueness guard', function (): void {
+    expect(databaseAuditIndex(
+        'draft_order_items',
+        ['draft_order_id', 'idempotency_key'],
+        unique: true,
+    ))->not->toBeNull();
+});
+
 test('restaurant hierarchy relationships preserve their tenant chain', function (): void {
     $organization = Organization::factory()->create();
     $brand = Brand::factory()->for($organization)->create();
@@ -218,7 +226,7 @@ test('area node creation rejects a parent from another branch', function (): voi
         'icon' => null,
         'sort_order' => 10,
         'is_active' => true,
-    ]))->toThrow(InvalidArgumentException::class, 'The selected parent area is not available.');
+    ]))->toThrow(InvalidArgumentException::class, 'errors.domain.selected_parent_area_unavailable');
 });
 
 test('guest opener relation is constrained and nulls safely when the guest is deleted', function (): void {
@@ -233,7 +241,8 @@ test('guest opener relation is constrained and nulls safely when the guest is de
 
 test('legacy plaintext invitation credential columns are absent', function (): void {
     expect(Schema::hasColumn('invitations', 'invite_token'))->toBeFalse()
-        ->and(Schema::hasColumn('invitations', 'invite_code'))->toBeFalse();
+        ->and(Schema::hasColumn('invitations', 'invite_code'))->toBeFalse()
+        ->and(Schema::hasColumn('table_sessions', 'guest_invite_token'))->toBeFalse();
 });
 
 /**

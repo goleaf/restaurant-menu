@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -24,6 +25,7 @@ class TableSessionGuestFactory extends Factory
             'table_session_id' => TableSession::factory(),
             'guest_name' => fake()->firstName(),
             'guest_token' => Str::random(64),
+            'locale' => SupportedLocale::English->value,
             'status' => TableSessionGuestStatus::Active,
             'ready_at' => null,
             'joined_at' => now(),

@@ -9,6 +9,7 @@ use App\Concerns\ProfileValidationRules;
 use App\Enums\SupportedLocale;
 use Flux\Flux;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
@@ -50,6 +51,9 @@ class Profile extends Component
         $validated = $this->validate($this->profileRules($user->id, includeLocale: true));
 
         $updateProfile->handle($user, $validated);
+        $this->locale = SupportedLocale::normalize($user->locale);
+        App::setLocale($this->locale);
+        session()->put('interface_locale', $this->locale);
 
         Flux::toast(variant: 'success', text: __('ui.livewire.settings.profile.profile_updated'));
     }

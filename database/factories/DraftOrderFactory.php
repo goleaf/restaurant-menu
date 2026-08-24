@@ -6,6 +6,7 @@ use App\Enums\DraftOrderStatus;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\TableSession;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -85,6 +86,22 @@ class DraftOrderFactory extends Factory
             'rejected_at' => null,
             'rejection_reason' => null,
             'converted_to_order_at' => now(),
+        ]);
+    }
+
+    public function forStatus(DraftOrderStatus $status, ?User $actor = null): static
+    {
+        $factory = match ($status) {
+            DraftOrderStatus::Draft => $this->draft(),
+            DraftOrderStatus::SentToWaiter => $this->sentToWaiter(),
+            DraftOrderStatus::WaiterReview => $this->waiterReview(),
+            DraftOrderStatus::Rejected => $this->rejected(),
+            DraftOrderStatus::ConvertedToOrder => $this->convertedToOrder(),
+        };
+
+        return $factory->state(fn (): array => [
+            'rejected_by_user_id' => $status === DraftOrderStatus::Rejected ? $actor?->id : null,
+            'converted_by_user_id' => $status === DraftOrderStatus::ConvertedToOrder ? $actor?->id : null,
         ]);
     }
 

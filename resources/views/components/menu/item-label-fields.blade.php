@@ -17,7 +17,7 @@
 
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
             @foreach ($allergenOptions as $option)
-                <label wire:key="{{ $idPrefix }}-allergen-{{ $option['value'] }}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
+                <label wire:key="{{ $idPrefix }}-allergen-{{ $option['value'] }}" class="flex min-h-touch cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
                     <input
                         type="checkbox"
                         wire:model="{{ $allergensModel }}"
@@ -48,7 +48,7 @@
 
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
             @foreach ($dietaryLabelOptions as $option)
-                <label wire:key="{{ $idPrefix }}-dietary-{{ $option['value'] }}" class="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
+                <label wire:key="{{ $idPrefix }}-dietary-{{ $option['value'] }}" class="flex min-h-touch cursor-pointer items-center gap-2 rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-950">
                     <input
                         type="checkbox"
                         wire:model="{{ $dietaryLabelsModel }}"

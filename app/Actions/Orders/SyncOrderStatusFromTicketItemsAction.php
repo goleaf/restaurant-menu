@@ -13,6 +13,7 @@ use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class SyncOrderStatusFromTicketItemsAction
 {
@@ -23,59 +24,65 @@ class SyncOrderStatusFromTicketItemsAction
 
     public function handle(Order $order, User $changedBy): Order
     {
-        $order = $this->reloadOrder($order);
+        return DB::transaction(function () use ($order, $changedBy): Order {
+            $order = $this->reloadOrder($order);
 
-        if (! $this->canSync($order)) {
-            return $order;
-        }
+            if (! $this->canSync($order)) {
+                return $order;
+            }
 
-        $items = $this->ticketItemsFor($order);
+            $items = $this->ticketItemsFor($order);
 
-        if ($items->isEmpty()) {
-            return $order;
-        }
+            if ($items->isEmpty()) {
+                return $order;
+            }
 
-        $newStatus = $this->statusForItems($items);
+            $newStatus = $this->statusForItems($items);
 
-        $this->syncServicePointStatus($order, $newStatus);
+            if (! $order->status->canTransitionTo($newStatus)) {
+                return $order;
+            }
 
-        if ($order->status === $newStatus) {
+            $this->syncServicePointStatus($order, $newStatus);
+
+            if ($order->status === $newStatus) {
+                return $this->reloadOrder($order);
+            }
+
+            $previousStatus = $order->status;
+            $metadata = $order->metadata ?? [];
+
+            $order
+                ->forceFill([
+                    'status' => $newStatus,
+                    'metadata' => array_merge($metadata, [
+                        'ticket_items_status_synced_at' => now()->toISOString(),
+                        'ticket_items_status_synced_by_user_id' => $changedBy->id,
+                    ]),
+                ])
+                ->save();
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::OrderStatusChanged,
+                order: $order,
+                actorUser: $changedBy,
+                previousStatus: $previousStatus,
+                newStatus: $newStatus,
+                statusType: 'order',
+                metadata: [
+                    'source' => 'ticket_item_status_sync',
+                    'ticket_items_count' => $items->count(),
+                    'ready_ticket_items_count' => $items->filter(
+                        fn (KitchenTicketItem $item): bool => $this->itemStatus($item) === KitchenTicketItemStatus::Ready,
+                    )->count(),
+                    'served_ticket_items_count' => $items->filter(
+                        fn (KitchenTicketItem $item): bool => $item->served_at !== null,
+                    )->count(),
+                ],
+            );
+
             return $this->reloadOrder($order);
-        }
-
-        $previousStatus = $order->status;
-        $metadata = $order->metadata ?? [];
-
-        $order
-            ->forceFill([
-                'status' => $newStatus,
-                'metadata' => array_merge($metadata, [
-                    'ticket_items_status_synced_at' => now()->toISOString(),
-                    'ticket_items_status_synced_by_user_id' => $changedBy->id,
-                ]),
-            ])
-            ->save();
-
-        $this->createOrderStatusLog->handle(
-            event: OrderStatusLogEvent::OrderStatusChanged,
-            order: $order,
-            actorUser: $changedBy,
-            previousStatus: $previousStatus,
-            newStatus: $newStatus,
-            statusType: 'order',
-            metadata: [
-                'source' => 'ticket_item_status_sync',
-                'ticket_items_count' => $items->count(),
-                'ready_ticket_items_count' => $items->filter(
-                    fn (KitchenTicketItem $item): bool => $this->itemStatus($item) === KitchenTicketItemStatus::Ready,
-                )->count(),
-                'served_ticket_items_count' => $items->filter(
-                    fn (KitchenTicketItem $item): bool => $item->served_at !== null,
-                )->count(),
-            ],
-        );
-
-        return $this->reloadOrder($order);
+        }, attempts: 3);
     }
 
     private function reloadOrder(Order $order): Order
@@ -94,6 +101,7 @@ class SyncOrderStatusFromTicketItemsAction
                 'servicePoint' => fn ($query) => $query->select(['id', 'status']),
             ])
             ->whereKey($order->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 

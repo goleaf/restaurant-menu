@@ -19,6 +19,7 @@ test('demo owner can complete the organization administration browser journey', 
     $this->withVite();
     Storage::fake('public');
     config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['ruflo.test', 'restaurant-menu.test', '127.0.0.1', 'localhost']);
     $this->seed(DemoRestaurantSeeder::class);
 
     $ownerIdentity = DemoAccountCatalog::forRole(SystemRole::Owner);
@@ -240,10 +241,27 @@ function assertOrganizationsBrowserPage(PendingAwaitablePage $page, string $page
                 .filter((entry) => entry.name.startsWith(window.location.origin) && Number(entry.responseStatus) >= 400)
                 .slice(0, 10)
                 .map((entry) => ({ name: entry.name, status: entry.responseStatus }));
+            const overflowElements = [...document.querySelectorAll('body *')]
+                .map((element) => ({
+                    element,
+                    rectangle: element.getBoundingClientRect(),
+                }))
+                .filter(({ element, rectangle }) => isVisible(element)
+                    && (rectangle.right > root.clientWidth + 0.5 || rectangle.left < -0.5))
+                .slice(0, 10)
+                .map(({ element, rectangle }) => ({
+                    tag: element.tagName.toLowerCase(),
+                    className: typeof element.className === 'string' ? element.className.slice(0, 160) : '',
+                    left: rectangle.left,
+                    right: rectangle.right,
+                    width: rectangle.width,
+                }));
 
             return {
+                path: window.location.pathname,
                 clientWidth: root.clientWidth,
                 scrollWidth: root.scrollWidth,
+                overflowElements,
                 unnamedControls,
                 failedRequests,
             };

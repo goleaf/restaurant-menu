@@ -58,7 +58,7 @@ test('manager sees restaurant dashboard metrics and quick actions', function () 
         ->and($dashboard['metrics']['new_orders_to_waiter_count'])->toBe(1)
         ->and($dashboard['metrics']['cooking_orders_count'])->toBe(1)
         ->and($dashboard['metrics']['ready_positions_count'])->toBe(1)
-        ->and($dashboard['metrics']['orders_today_total'])->toBe('32.00 EUR')
+        ->and($dashboard['metrics']['orders_today_total'])->toBe('€32.00')
         ->and($dashboard['popular_items'][0]['item_name'])->toBe('Pasta')
         ->and(collect($dashboard['popular_items'])->pluck('item_name')->all())->not->toContain('Cancelled Burger')
         ->and(collect($dashboard['quick_actions'])->where('is_available', true)->pluck('label')->all())
@@ -74,7 +74,7 @@ test('manager sees restaurant dashboard metrics and quick actions', function () 
         ->assertSeeText(__('reports.cooking_orders'))
         ->assertSeeText(__('reports.ready_positions'))
         ->assertSeeText(__('reports.revenue.net_total'))
-        ->assertSeeText('32.00 EUR')
+        ->assertSeeText('€32.00')
         ->assertSeeText('Pasta')
         ->assertSeeText(__('reports.quick_actions.title'))
         ->assertSee('data-quick-action-link', false)
@@ -111,7 +111,7 @@ test('waiter sees operational dashboard without report totals', function () {
         ->assertSeeText(__('reports.title'))
         ->assertSeeText(__('reports.access_required'))
         ->assertSeeText(__('reports.access_required_popular_items'))
-        ->assertDontSeeText('32.00 EUR');
+        ->assertDontSeeText('€32.00');
 });
 
 test('restaurant dashboard reports direct access for authorized and unauthorized users', function () {

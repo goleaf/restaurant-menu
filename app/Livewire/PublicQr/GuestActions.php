@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\TableSessions\CreatedGuestInviteLink;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
+use App\Actions\TableSessions\LeaveTableSessionAction;
 use App\Actions\TableSessions\RequestWaiterForTableSessionAction;
 use App\Enums\SupportedLocale;
 use App\Enums\WaiterCallStatus;
@@ -12,6 +14,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -49,6 +52,8 @@ class GuestActions extends Component
 
     public bool $waiterCallPending = false;
 
+    public string $leaveTableMessage = '';
+
     public function boot(PublicQrQueryService $publicQrQueries): void
     {
         $this->publicQrQueries = $publicQrQueries;
@@ -85,14 +90,14 @@ class GuestActions extends Component
         }
 
         try {
-            $tableSession = $createGuestInviteLink->handle($tableSession, $guest);
+            $createdInvite = $createGuestInviteLink->handle($tableSession, $guest);
         } catch (ValidationException $exception) {
             $this->guestInviteMessage = $this->firstValidationMessage($exception);
 
             return;
         }
 
-        $this->fillGuestInviteShareState($tableSession);
+        $this->fillGuestInviteShareState($createdInvite);
     }
 
     public function requestWaiter(RequestWaiterForTableSessionAction $requestWaiter): void
@@ -122,6 +127,33 @@ class GuestActions extends Component
         $this->waiterCallMessage = __('guest.table.waiter_called');
     }
 
+    public function leaveTable(LeaveTableSessionAction $leaveTableSession): void
+    {
+        $this->applyGuestLocale();
+        $this->leaveTableMessage = '';
+        $guest = $this->findCurrentActiveGuest();
+        $guestToken = $this->guestTokenFromCurrentCookie();
+
+        if (! $guest instanceof TableSessionGuest || $guestToken === null) {
+            $this->leaveTableMessage = __('guest.table.leave_requires_active_guest');
+
+            return;
+        }
+
+        try {
+            $leaveTableSession->handle($guest, $guestToken);
+        } catch (ValidationException $exception) {
+            $this->leaveTableMessage = $this->firstValidationMessage($exception);
+
+            return;
+        }
+
+        session()->forget('guest_entries.'.$this->publicToken);
+        Cookie::queue(Cookie::forget($this->guestTokenCookieName()));
+        $this->guestInviteUrl = '';
+        $this->redirectRoute('public.qr.show', ['token' => $this->publicToken], navigate: true);
+    }
+
     public function render(): View
     {
         $this->applyGuestLocale();
@@ -145,9 +177,9 @@ class GuestActions extends Component
         return $this->publicQrQueries->activeGuest($this->currentGuestId, $this->tableSessionId, $guestToken);
     }
 
-    private function fillGuestInviteShareState(TableSession $tableSession): void
+    private function fillGuestInviteShareState(CreatedGuestInviteLink $createdInvite): void
     {
-        if (! is_string($tableSession->guest_invite_token) || strlen($tableSession->guest_invite_token) !== 64) {
+        if (strlen($createdInvite->token) !== 64) {
             $this->guestInviteMessage = __('guest.table.invite_failed');
 
             return;
@@ -155,7 +187,7 @@ class GuestActions extends Component
 
         $this->guestInviteUrl = route('public.qr.show', [
             'token' => $this->publicToken,
-            'invite' => $tableSession->guest_invite_token,
+            'invite' => $createdInvite->token,
             'lang' => $this->language,
         ]);
         $this->guestInviteTitle = __('guest.table.invite_title');

@@ -9,13 +9,19 @@ use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\DemoLogin\DemoAccountCatalog;
-use Database\Factories\UserFactory;
 use Database\Seeders\SystemRolesSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 beforeEach(function (): void {
+    config()->set('demo-login.allowed_hosts', [
+        'localhost',
+        'www.example.com',
+        'restaurant-menu.test',
+        'ruflo.test',
+    ]);
+
     Route::middleware(['web', EnsureDemoLoginIsEnabled::class])
         ->get('/__demo-login-probe', fn () => response('demo-enabled'));
 });
@@ -39,6 +45,17 @@ test('demo login is available when it is enabled outside production', function (
     $this->get('/__demo-login-probe')
         ->assertOk()
         ->assertSeeText('demo-enabled');
+});
+
+test('demo login is available only on an explicitly allowed host', function (): void {
+    config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['ruflo.test']);
+
+    $this->get('https://restaurant-menu.test/__demo-login-probe')
+        ->assertNotFound();
+
+    $this->get('https://ruflo.test/__demo-login-probe')
+        ->assertOk();
 });
 
 test('page data lists every role in canonical order with two bounded queries', function (): void {
@@ -155,7 +172,8 @@ test('enabled demo login page lists all roles without exposing the password', fu
         ->assertSeeText('waiter@demo.test')
         ->assertSeeText('cook@demo.test')
         ->assertSee('disabled', escape: false)
-        ->assertDontSee(UserFactory::DEMO_PASSWORD);
+        ->assertDontSee('type="password"', escape: false)
+        ->assertDontSee('name="password"', escape: false);
 });
 
 test('every seeded demo role may log in through the demo route', function (SystemRole $role): void {

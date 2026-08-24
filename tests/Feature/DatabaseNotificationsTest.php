@@ -62,13 +62,21 @@ test('new join request creates unread database notifications for active guests',
             'status' => TableSessionGuestStatus::Active,
         ]);
 
-    $joinRequest = app(CreateTableSessionJoinRequestAction::class)->handle($tableSession, '  Mira  ');
+    $guestCredential = str_repeat('M', 64);
+    $joinRequest = app(CreateTableSessionJoinRequestAction::class)->handle($tableSession, '  Mira  ', $guestCredential);
 
     expect($joinRequest)->not->toBeNull()
         ->and($ana->unreadNotifications()->where('type', 'join_request_created')->count())->toBe(1)
         ->and($boris->unreadNotifications()->where('type', 'join_request_created')->count())->toBe(1)
         ->and(data_get($ana->unreadNotifications()->firstOrFail()->data, 'guest_name'))->toBe('Mira')
         ->and((int) data_get($ana->unreadNotifications()->firstOrFail()->data, 'join_request_id'))->toBe($joinRequest->id);
+
+    $replayedJoinRequest = app(CreateTableSessionJoinRequestAction::class)
+        ->handle($tableSession, 'Mira', $guestCredential);
+
+    expect($replayedJoinRequest?->id)->toBe($joinRequest->id)
+        ->and($ana->unreadNotifications()->where('type', 'join_request_created')->count())->toBe(1)
+        ->and($boris->unreadNotifications()->where('type', 'join_request_created')->count())->toBe(1);
 
     Livewire::withCookie(prompt82GuestCookieName('prompt82token'), $ana->guest_token)
         ->test(GuestNotifications::class, [

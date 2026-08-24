@@ -89,7 +89,7 @@
                         <li wire:key="guest-menu-category-link-{{ $menu['id'] }}-{{ $category['id'] }}">
                             <a
                                 href="#guest-menu-category-{{ $menu['id'] }}-{{ $category['id'] }}"
-                                class="inline-flex min-h-touch items-center rounded-control border border-border-subtle bg-surface-muted px-3 text-sm font-semibold text-text-secondary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                                class="inline-flex min-h-touch items-center rounded-control border border-border-subtle bg-surface-muted px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                             >
                                 {{ $category['name'] }}
                             </a>

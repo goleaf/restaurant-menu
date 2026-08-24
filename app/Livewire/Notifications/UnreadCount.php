@@ -5,6 +5,7 @@ namespace App\Livewire\Notifications;
 use App\Actions\Notifications\MarkUserNotificationsReadAction;
 use App\Models\User;
 use App\Services\Notifications\UserNotificationQueryService;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -111,7 +112,7 @@ class UnreadCount extends Component
             },
             'meta' => $this->staffMetaForData($data, $itemsCount),
             'tone' => $this->toneForType($notification->type),
-            'created_label' => $notification->created_at?->diffForHumans() ?? '',
+            'created_label' => LocalizedDateFormatter::relative($notification->created_at) ?? '',
         ];
     }
 

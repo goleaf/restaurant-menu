@@ -65,6 +65,7 @@ class DraftOrderItemFactory extends Factory
             'total_price_cents' => 1000,
             'selected_modifiers' => [],
             'comment' => null,
+            'idempotency_key' => null,
         ];
     }
 

@@ -24,6 +24,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Staff\StaffQueryService;
+use App\Support\LocalizedDateFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -391,9 +392,9 @@ class Index extends Component
                     'phone' => $invitation->phone,
                     'created_by' => $invitation->invitedBy?->name,
                     'accepted_by' => $invitation->acceptedBy?->name,
-                    'created_at' => $invitation->created_at?->isoFormat('LLL'),
-                    'expires_at' => $invitation->expires_at->isoFormat('LLL'),
-                    'accepted_at' => $invitation->accepted_at?->isoFormat('LLL'),
+                    'created_at' => LocalizedDateFormatter::dateTime($invitation->created_at),
+                    'expires_at' => LocalizedDateFormatter::dateTime($invitation->expires_at),
+                    'accepted_at' => LocalizedDateFormatter::dateTime($invitation->accepted_at),
                     'can_cancel' => $invitation->effectiveStatus() === InvitationStatus::Pending,
                     'can_reissue' => in_array($invitation->effectiveStatus(), [InvitationStatus::Pending, InvitationStatus::Expired], true),
                 ])

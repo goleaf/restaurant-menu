@@ -19,11 +19,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read DraftOrder $draftOrder
  * @property-read TableSessionGuest $guest
  */
-#[Fillable(['draft_order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'item_name', 'variant_name', 'variant_type', 'quantity', 'unit_price_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'comment'])]
+#[Fillable(['draft_order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'item_name', 'variant_name', 'variant_type', 'quantity', 'unit_price_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'comment', 'idempotency_key'])]
 class DraftOrderItem extends Model
 {
     /** @use HasFactory<DraftOrderItemFactory> */
     use HasFactory;
+
+    /** @var list<string> */
+    protected $hidden = ['idempotency_key'];
 
     /**
      * @var array<string, mixed>

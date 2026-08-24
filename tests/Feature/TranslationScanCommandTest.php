@@ -104,6 +104,43 @@ test('translation scanner can return json output', function () {
         ->and($payload['legacy_phrase_keys'])->toContain('Missing phrase');
 });
 
+test('translation scanner finds indirect javascript and bounded dynamic key usage', function () {
+    $langDir = translationScanFixturePath('extended/lang');
+    $scanDir = translationScanFixturePath('extended/resources');
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        translationScanWriteJson($langDir, $locale, [
+            'errors.types.not_found.title' => 'Not found',
+            'menu.status.active' => 'Active',
+            'ui.actions.save' => 'Save',
+            'ui.actions.unused' => 'Unused',
+        ]);
+    }
+
+    File::ensureDirectoryExists($scanDir.'/js');
+    File::put($scanDir.'/Keys.php', <<<'PHP'
+<?php
+
+$key = 'menu.status.active';
+$prefix = 'errors.types.'.$type.'.title';
+PHP);
+    File::put($scanDir.'/js/app.js', "const saveLabelKey = 'ui.actions.save';\n");
+
+    Artisan::call('translations:scan', [
+        '--lang-dir' => $langDir,
+        '--scan-dir' => [$scanDir],
+        '--json' => true,
+    ]);
+
+    $payload = json_decode(Artisan::output(), true, 512, JSON_THROW_ON_ERROR);
+
+    expect($payload['used_keys'])
+        ->toContain('errors.types.not_found.title')
+        ->toContain('menu.status.active')
+        ->toContain('ui.actions.save')
+        ->and($payload['unused_json_keys'])->toBe(['ui.actions.unused']);
+});
+
 function translationScanFixturePath(?string $path = null): string
 {
     $basePath = storage_path('framework/testing/translation-scan');

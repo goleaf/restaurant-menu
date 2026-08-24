@@ -14,19 +14,48 @@ enum OrderStatus: string
     case Closed = 'closed';
     case Cancelled = 'cancelled';
 
+    public function canTransitionTo(self $next): bool
+    {
+        if ($this === $next) {
+            return true;
+        }
+
+        return in_array($next, match ($this) {
+            self::ConfirmedByWaiter => [self::SentToKitchenBar, self::Cancelled],
+            self::SentToKitchenBar => [self::InProgress, self::Ready, self::Cancelled],
+            self::InProgress => [self::Ready, self::Cancelled],
+            self::Ready => [self::Served, self::Cancelled],
+            self::Served => [self::PaymentRequested, self::Paid, self::Closed, self::Cancelled],
+            self::PaymentRequested => [self::Paid, self::Closed, self::Cancelled],
+            self::Paid => [self::Closed],
+            self::Closed, self::Cancelled => [],
+        }, true);
+    }
+
+    public function allowsTableClosure(): bool
+    {
+        return in_array($this, [
+            self::Served,
+            self::PaymentRequested,
+            self::Paid,
+            self::Closed,
+            self::Cancelled,
+        ], true);
+    }
+
     public function label(): string
     {
-        return match ($this) {
-            self::ConfirmedByWaiter => 'Confirmed by waiter',
-            self::SentToKitchenBar => 'Sent to kitchen/bar',
-            self::InProgress => 'In progress',
-            self::Ready => 'Ready',
-            self::Served => 'Served',
-            self::PaymentRequested => 'Payment requested',
-            self::Paid => 'Paid',
-            self::Closed => 'Closed',
-            self::Cancelled => 'Cancelled',
-        };
+        return __(match ($this) {
+            self::ConfirmedByWaiter => 'reports.statuses.orders.confirmed_by_waiter',
+            self::SentToKitchenBar => 'reports.statuses.orders.sent_to_kitchen_bar',
+            self::InProgress => 'reports.statuses.orders.in_progress',
+            self::Ready => 'reports.statuses.orders.ready',
+            self::Served => 'reports.statuses.orders.served',
+            self::PaymentRequested => 'reports.statuses.orders.payment_requested',
+            self::Paid => 'reports.statuses.orders.paid',
+            self::Closed => 'reports.statuses.orders.closed',
+            self::Cancelled => 'reports.statuses.orders.cancelled',
+        });
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Enums\SystemRole;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -159,13 +160,13 @@ class BuildDepartmentTicketPrintAction
     {
         $kitchenIds = $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
-            departmentTypes: [],
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
             roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
             permissionCodes: [SystemPermission::ViewKitchen],
         );
         $barIds = $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
-            departmentTypes: [KitchenDepartmentType::Bar],
+            departmentTypes: KitchenDepartmentType::barProductionTypes(),
             roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
             permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );
@@ -238,7 +239,7 @@ class BuildDepartmentTicketPrintAction
 
     private function formatTime(?CarbonInterface $time, string $timezone): ?string
     {
-        return $time?->copy()->timezone($timezone)->format('Y-m-d H:i');
+        return LocalizedDateFormatter::dateTime($time?->copy()->timezone($timezone));
     }
 
     private function itemStatus(mixed $status): KitchenTicketItemStatus

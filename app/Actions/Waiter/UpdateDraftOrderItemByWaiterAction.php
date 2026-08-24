@@ -8,14 +8,12 @@ use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
-use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
+use App\Support\Orders\OrderItemQuantity;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class UpdateDraftOrderItemByWaiterAction
 {
@@ -24,6 +22,7 @@ class UpdateDraftOrderItemByWaiterAction
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly MoveDraftOrderToWaiterReviewAction $moveDraftOrderToWaiterReview,
     ) {}
 
     /**
@@ -43,7 +42,7 @@ class UpdateDraftOrderItemByWaiterAction
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
 
-            $quantity = $this->normalizeQuantity($quantity);
+            $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
             $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
 
             $previousStatus = $draftOrder->status;
@@ -54,7 +53,7 @@ class UpdateDraftOrderItemByWaiterAction
                 'total_price_cents' => $draftOrderItem->total_price_cents,
                 'comment' => $draftOrderItem->comment,
             ];
-            $this->markAsWaiterReview($draftOrder);
+            $this->moveDraftOrderToWaiterReview->handle($draftOrder);
 
             $draftOrderItem->update([
                 'quantity' => $quantity,
@@ -144,17 +143,6 @@ class UpdateDraftOrderItemByWaiterAction
             ->firstOrFail();
     }
 
-    private function normalizeQuantity(int $quantity): int
-    {
-        if ($quantity < 1 || $quantity > 99) {
-            throw ValidationException::withMessages([
-                'editingQuantity' => __('ui.actions.draftorders.updateguestdraftorderitemaction.kolicestvo_dolzno_by'),
-            ]);
-        }
-
-        return $quantity;
-    }
-
     private function normalizeComment(?string $comment): ?string
     {
         $normalizedComment = PlainText::optional($comment, 500);
@@ -164,14 +152,5 @@ class UpdateDraftOrderItemByWaiterAction
         }
 
         return $normalizedComment;
-    }
-
-    private function markAsWaiterReview(DraftOrder $draftOrder): void
-    {
-        if ($draftOrder->status === DraftOrderStatus::SentToWaiter) {
-            $draftOrder
-                ->forceFill(['status' => DraftOrderStatus::WaiterReview])
-                ->save();
-        }
     }
 }

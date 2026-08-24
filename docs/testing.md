@@ -22,26 +22,38 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 
 | Command | Observed result |
 |---|---|
-| focused onboarding suite | 192 passed; 2,410 assertions |
-| focused onboarding browser journey | 1 passed; 178 assertions |
-| onboarding-related integrity, QR and vertical-slice batch | 31 passed; 256 assertions |
-| complete `/organizations` focused slice | 179 passed; 1,746 assertions |
-| `tests/Browser/OrganizationsCrudJourneyTest.php` | 1 passed; 187 assertions |
-| `composer test:browser` | 5 passed; 396 assertions |
-| `composer ci:check` | Pint passed; Larastan 0 errors; 1,392 tests, 1,383 passed, 9 feature-gated/skipped, 28,973 assertions; 194.952 seconds |
-| `php artisan test --compact tests/Unit tests/Feature` | 1,387 tests; 1,378 passed; 9 feature-gated/skipped; 28,577 assertions; 165.713 seconds |
-| `php vendor/bin/pest --parallel --testsuite=Unit,Feature --compact` | 1,387 tests; 1,378 passed; 9 feature-gated/skipped; 28,577 assertions; 83.235 seconds |
-| `composer test:coverage` | 1,387 Unit/Feature tests; 1,378 passed; 9 feature-gated/skipped; 28,577 assertions; 93.5% application coverage; 576.628 seconds |
-| authorized SQLite backup/restore and rollback suite | 12 passed; 86 assertions; 3.03 seconds |
-| isolated WAL/concurrent-reader demo recovery drill | 1 organization, 4 branches, 19 QR records/files, 6 orders and 5 payments restored; cache/session/token cleanup and safety snapshot passed; core restore 0.066 seconds |
-| `vendor/bin/pint --dirty --format agent` | passed |
-| `vendor/bin/phpstan analyse --memory-limit=1G` | passed; 0 errors |
-| `php artisan translations:scan --json` | 609 files; 1,729 semantic keys used; 2,339 JSON keys per locale; 0 missing/legacy/phrase keys |
-| `php artisan translations:audit` | 7,017 semantic entries; 0 critical issues |
+| business-invariant targeted regression | 68 passed; 608 assertions; final opener/state rerun 14 passed/87 assertions |
+| focused stale-session/IDOR/query-budget regression | 11 passed; 103 assertions |
+| focused polling/order/merge/transfer/security regression | 97 passed; 347 assertions |
+| `composer ci:check` | Pint clean; Larastan 0 errors; 1,458 tests, 1,450 passed, 8 skipped, 44,532 assertions |
+| `php artisan test --compact --parallel` | identical 1,458/1,450/8 counts and 44,532 assertions |
+| `composer test:coverage` | 1,453 Unit/Feature tests, 1,445 passed, 8 skipped, 44,120 assertions; 93.5% application coverage; 208/208 Actions executed, 94.8% Action statements |
+| `composer test:browser` | 5 passed; 412 assertions |
+| `vendor/bin/pint --dirty --format agent` | passed; one import order corrected |
+| `composer analyse` | passed; 0 errors |
+| `php artisan translations:scan` | 635 files; 2,157 semantic keys used and present per locale; 0 missing/unused/phrase keys |
+| `php artisan translations:audit` | 6,471 aligned EN/LT/RU entries; 0 critical issues |
 | `composer validate --strict` / `composer audit --locked --no-interaction` | valid package; zero advisories |
-| `npm audit --audit-level=moderate` / `npm run build` | zero vulnerabilities; Vite 8.2.2 passed; CSS 302.63 kB / 39.97 kB gzip; JS 4.56 kB / 1.73 kB gzip |
-| isolated migration plus repeated default seeds | all 81 migrations passed; seeds were idempotent; the five current forward migrations rolled back/reapplied in their verified scopes; existing local data was upgraded additively |
-| config, route, event and view cache builds | passed; 71 total routes, 21 first-party and all named; followed by `optimize:clear` |
+| `npm audit --audit-level=moderate` / `npm run build` | zero vulnerabilities; Vite 8.2.2 passed; CSS 303.28 kB / 40.11 kB gzip; JS 4.56 kB / 1.73 kB gzip |
+| isolated migration plus repeated default seeds | all 86 migrations passed; seed rerun idempotent; final contraction rolled back and reapplied safely |
+| config, route, event and view cache builds | passed and cleared afterward |
+| Chrome DevTools | `/up`, demo, public guest and role workspaces at mobile/tablet/desktop: clean current application consoles and zero overflow; mobile waiter and desktop administration Lighthouse 100 in all four reported categories |
+
+The later business-invariant pass retains this table's earlier release evidence and adds a newer exact-tree result: `composer ci:check` and the eight-process run each report 1,469 total / 1,461 passed / 8 skipped with 44,588 assertions; coverage reports 1,464 total / 1,456 passed / 8 skipped, 44,176 assertions and 93.6%; Pest Browser reports 5/412. `OrderLifecycleStateMachineTest`, `OrderItemQuantityTest`, `WaiterOpenTableActionTest`, `KitchenScreenTest`, `KitchenTicketPrintTest`, `DraftOrderFunctionalTest` and `WaiterDraftEditingTest` are the focused invariant evidence.
+
+## Complete localization audit evidence (2026-08-24)
+
+- `en.json`, `lt.json` and `ru.json` contain the same 2,157 flat semantic dot keys. The latest recorded scanner covers 635 PHP, Blade, JavaScript and MJS files, including direct, indirect and bounded dynamic calls; it reports no missing, extra, unused or phrase-style key. The stricter audit also reports no invalid/nested/empty value, placeholder mismatch, plural-structure mismatch or unapproved English-equivalent fallback.
+- Locale precedence and persistence are covered for authenticated profiles, web sessions, active guests and pending join requests. The additive SQLite migration defaults existing guest records to `en`; isolated fresh/seed, rollback and reapply runs succeeded. Locale changes add no read query and write only when the persisted preference actually changes.
+- Locale-aware date/time, relative time, integer-minor-unit currency, plural boundaries, validation/domain errors, notifications, status/role labels, accessibility names and first-party Livewire pagination are covered. The complete relational guest menu graph retains required EN/LT/RU translations and `SeededLanguageSwitcherTest` proves names/descriptions change with locale.
+- The focused localization batch passes 33 tests with 28,921 assertions. A disposable isolated Chrome context rendered the English landing page, persisted Lithuanian from `/?lang=lt` into a query-free `/login` navigation, and rendered Russian via `/login?lang=ru`; accessibility snapshots were localized and the current console had no warning or error.
+
+## Permanent QR and guest table flow evidence (2026-08-24)
+
+- RED/GREEN regressions cover the waiter-opened first guest only when the session has no previous guest record, abandoned-session rejection, retry-safe credential reuse, the 20-live-request bound, notification deduplication, repeat approve/reject, digest-only rotating guest invites, lock-time invite revalidation, explicit expiry, cross-restaurant rejection, closed-session rescan, dedicated GET/Livewire rate limits, deterministic SVG creation, missing-file repair, rename/move stability, onboarding rollback and explicit reissue cleanup/compensation.
+- `GuestSessionConcurrencyTest` creates a separate migrated SQLite file and uses Laravel's process concurrency driver. Two simultaneous entry transactions produce exactly one active opener plus one pending join request; two simultaneous approvals return the same guest ID and leave one accepted membership. The connection uses the deployable `IMMEDIATE`, WAL and busy-timeout settings rather than a mocked lock.
+- `DemoRestaurantSeederTest` proves exactly 19 hash-path SVGs and stable repeated-run hashes; plaintext invite bearers are absent from `table_sessions`, serialized models, HTML, logs and exports. A fresh isolated install and an existing-database copy both applied all 84 migrations; the verified forward migration was then applied to the local non-production database without refresh or record deletion.
+- Pest Browser passes 5 scenarios/396 assertions. A separate disposable Chrome DevTools context loaded the seeded public QR at 390×844 in dark mode with 200 responses only, no console messages and no overflow. A definition-list grouping defect found by the first audit was corrected; the repeat snapshot passed 28/28 audits and scored 100 for accessibility, best practices, SEO and agentic browsing.
 
 ## Invite-only authorization evidence (2026-08-24)
 
@@ -71,7 +83,22 @@ An isolated empty SQLite database completed all 76 migrations and two identical 
 
 The focused schema, menu Action, CRUD, gallery, local-media and component-size suites passed 72 tests with 524 assertions. They cover multi-file append, the combined eight-image limit, dangerous and oversized files, branch tampering, persistence compensation, primary promotion, individual and parent cleanup, modal closure, edit-only Livewire controls, stable accessible markup and a single eager-load query for every rendered gallery. `ModelFactoryAuditTest` plus `FactoryStatesTest` passed 12 tests with 304 assertions; the gallery migration also completed migrate, rollback and migrate on an isolated SQLite file. Translation audit reported 6,882 aligned EN/LT/RU entries with zero critical issues, the 590-file translation scan reported zero missing/legacy/phrase keys, and Vite 8.2.2 built the production assets successfully. An isolated real browser selected two files in one upload, promoted and removed images, restored the seeded primary, produced zero console errors/warnings after HTTPS URL correction, showed no horizontal overflow at 390 px, and measured LCP 1,297 ms with CLS 0.00.
 
+## Complete menu module evidence (2026-08-24)
+
+The final menu/draft/schema/seeder slice passes 119 tests, 118 passed, one feature-gated/skipped and 1,800 assertions. It covers six translated entity families, owner+locale constraints and cascades, tenant-scoped duplicate rejection, variants, prices, images, modifiers, allergens/dietary labels, stable ordering, indexed temporary hiding, schedule/stock availability, server-trusted localized snapshots and stale unavailable cart rows that remain removable but cannot be changed or sent. The guest payload stays within 15 cold and two warm queries.
+
+After the QR/session changes, the complete sequential and eight-process parallel repository runs each report 1 todo, 8 feature-gated/skipped, 1,408 passed and 29,224 assertions. Canonical coverage passes at 93.6% with 1 todo, 8 feature-gated/skipped, 1,403 passed and 28,828 assertions. The complete browser suite passes 5 scenarios/396 assertions; a separate disposable DevTools context verified the real seeded QR at 390×844 in dark mode, observed a complete accessibility tree, no console warnings/errors, 200 responses only and zero overflow. The final Lighthouse snapshot passes 28/28 audits at 100 in all four reported categories, and the smoke performs no guest/session mutation.
+
+The long CLI gates set `PAO_DISABLE=1` because the optional `laravel/pao` agent-output stream filter raises `stream_filter_remove(): Unable to flush filter` after otherwise completed large runs. This disables only PAO's output formatting; Pest discovery, assertions, failures, skips, parallel execution and the coverage threshold remain unchanged.
+
 The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/bin/php85`, PHP 8.5.8 and Xdebug 3.5.0. `php -m` and `php --ri xdebug` confirmed the extension in that binary, and `XDEBUG_MODE=coverage php --ri xdebug` confirmed coverage mode for the canonical command. The 90% threshold and first-party source set were unchanged. The coverage Composer script disables only Composer's process timeout because the verified run exceeds 300 seconds; Pest still owns failures and its coverage threshold. SQLite backup/restore tests use per-process unique database and local-filesystem roots so simultaneous full and coverage processes cannot corrupt each other's databases, candidates or safety snapshots.
+
+## Canonical order lifecycle evidence (2026-08-24)
+
+- `OrderLifecycleStateMachineTest` proves the centralized forward transition graph, atomic confirm-and-dispatch replay, forbidden order/ticket regressions, actor-bearing ready/served history, closure blocking and cross-tenant confirmation denial. The broader lifecycle selection passes 106 tests, 105 passed, one existing skip and 1,110 assertions.
+- `OrderLifecycleConcurrencyTest` uses Laravel's real process concurrency driver against a separately migrated SQLite file using the deployable `IMMEDIATE` transaction mode. Two simultaneous waiter confirmations return one order ID and leave exactly one order, one department ticket, one confirmation log and one dispatch log.
+- Waiter editing/ownership, kitchen/bar isolation, ready/service, cancellation, bill request, manual payment, repeat orders and the vertical guest-to-closed-table scenario remain in the focused selection. Policy/tenant/architecture regressions add 123 passing tests and 760 assertions; translation audit reports zero critical issues and Larastan reports zero errors.
+- Final repository verification passes sequentially and on eight processes with 1,414 passing tests, one todo, eight feature-gated skips and 29,361 assertions. Coverage is 93.5% over the Unit/Feature set; the five-scenario browser suite passes with 410 assertions. The paid-table browser journey now crosses waiter confirmation, kitchen processing, service, bill request, manual payment and table close. A separate disposable Chrome DevTools context loaded the Boost-resolved login URL with a complete accessibility tree, only 200 responses and an empty warning/error console.
 
 ## Preserved browser evidence
 
@@ -82,3 +109,9 @@ On 2026-08-23, an additional disposable Chrome pass covered the waiter dashboard
 ## Automated architecture boundaries
 
 `ProjectCleanupConsistencyTest` and related repository tests prohibit route SFC/Volt, Blade PHP blocks, Blade model/Action/Service/Illuminate/facade/container/auth/config/session access, application service locators, hardcoded Livewire page titles/action errors, debug stubs, forbidden runtime packages and legacy translation keys. XSS, token, route, tenant, file, money, cache and query tests enforce the corresponding requirement families. Invitation tests also prove bearer tokens never appear in rendered Livewire snapshots.
+
+## Factory-first demo portfolio evidence (2026-08-24)
+
+The focused factory, seeder and demo-login selection passes 75 tests with 1,804 assertions. It covers every factory status dispatcher, three isolated tenants, all 12 canonical demo roles, all draft/order/invitation status cases, preserved password hashes, production and host denial, legacy invitation-digest rotation, repeated-run IDs/hashes/file paths and successful access to each prepared role workspace. The dedicated organization Chromium journey passes 187 assertions and the full five-scenario browser suite passes 410 assertions.
+
+Final-code isolated SQLite verification completed all 86 migrations with `migrate:fresh --seed`, repeated the default seed and retained exactly 24 QR records/files. Sequential and eight-process parallel Pest each pass 1,458 total/1,450 passed/8 skipped with 44,532 assertions. The canonical Unit/Feature coverage run passes 1,453 total/1,445 passed/8 skipped with 44,120 assertions at 93.5%; its Clover diagnostic executes all 208 Actions and covers 94.8% of their statements. Composer validation/audit, npm audit, Pint, Larastan, production build, translation audit/scan and cache compilation pass.

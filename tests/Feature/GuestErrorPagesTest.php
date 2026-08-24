@@ -67,7 +67,7 @@ test('guest error page is shown when restaurant is temporarily unavailable', fun
         ->assertSeeText('Restaurant is temporarily unavailable');
 });
 
-test('guest error page is shown when restored table session is closed', function () {
+test('closed guest identity is forgotten without revealing the previous session', function () {
     [$qrCode, , $servicePoint] = createPrompt86GuestErrorContext();
     $tableSession = TableSession::factory()
         ->forServicePoint($servicePoint)
@@ -84,13 +84,14 @@ test('guest error page is shown when restored table session is closed', function
 
     Livewire::withCookie(prompt86GuestTokenCookieName($qrCode), $guest->guest_token)
         ->test(GuestEntry::class, ['token' => $qrCode->public_token])
-        ->assertSet('entryState', 'guest_blocked')
-        ->assertSet('entryIssueCode', 'session_closed')
+        ->assertSet('state', 'ready')
+        ->assertSet('entryState', '')
+        ->assertSet('entryIssueCode', '')
+        ->assertSet('currentTableSessionId', null)
+        ->assertSet('currentGuestId', null)
         ->assertSet('guestCanAddItems', false)
-        ->assertSee('data-component="guest-error-page"', false)
-        ->assertSee('data-error-state="session_closed"', false)
-        ->assertSeeText('This table session is closed')
-        ->assertSeeText('Return to QR page');
+        ->assertSeeText('Enter your name')
+        ->assertDontSeeText('This table session is closed');
 });
 
 test('guest error page is shown when guest was rejected', function () {

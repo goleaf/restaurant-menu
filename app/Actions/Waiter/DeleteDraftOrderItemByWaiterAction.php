@@ -7,9 +7,7 @@ namespace App\Actions\Waiter;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
-use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +18,7 @@ class DeleteDraftOrderItemByWaiterAction
         private readonly EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly MoveDraftOrderToWaiterReviewAction $moveDraftOrderToWaiterReview,
     ) {}
 
     public function handle(DraftOrderItem $draftOrderItem, User $editedBy): void
@@ -30,7 +29,7 @@ class DeleteDraftOrderItemByWaiterAction
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
             $previousStatus = $draftOrder->status;
-            $this->markAsWaiterReview($draftOrder);
+            $this->moveDraftOrderToWaiterReview->handle($draftOrder);
             $oldValues = [
                 'operation' => 'waiter_item_deleted',
                 'draft_order_id' => $draftOrder->id,
@@ -100,14 +99,5 @@ class DeleteDraftOrderItemByWaiterAction
             ])
             ->whereKey($draftOrderItem->id)
             ->firstOrFail();
-    }
-
-    private function markAsWaiterReview(DraftOrder $draftOrder): void
-    {
-        if ($draftOrder->status === DraftOrderStatus::SentToWaiter) {
-            $draftOrder
-                ->forceFill(['status' => DraftOrderStatus::WaiterReview])
-                ->save();
-        }
     }
 }

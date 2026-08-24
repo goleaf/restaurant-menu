@@ -16,6 +16,7 @@ use App\Enums\ServicePointType;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\Branch;
+use App\Support\Orders\OrderItemQuantity;
 use App\Support\RestaurantSetupOptions;
 use Illuminate\Validation\Rule;
 
@@ -511,7 +512,7 @@ class RestaurantValidationRules
     public static function quantity(string $field): array
     {
         return [
-            $field => ['required', 'integer', 'min:1', 'max:99'],
+            $field => ['required', 'integer', 'min:'.OrderItemQuantity::MIN, 'max:'.OrderItemQuantity::MAX],
         ];
     }
 

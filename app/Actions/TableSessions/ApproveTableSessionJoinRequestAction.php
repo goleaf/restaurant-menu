@@ -21,13 +21,19 @@ class ApproveTableSessionJoinRequestAction
             $joinRequest = $this->reloadJoinRequest($joinRequest);
             $approvedByGuest = $this->reloadGuest($approvedByGuest);
 
-            $this->ensurePendingAndFresh($joinRequest);
             $this->ensureActiveGuestCanModerate($joinRequest, $approvedByGuest);
+
+            if ($joinRequest->status === TableSessionJoinRequestStatus::Approved) {
+                return $this->approvedGuest($joinRequest);
+            }
+
+            $this->ensurePendingAndFresh($joinRequest);
 
             $tableSession = $joinRequest->tableSession;
 
             $guest = $tableSession->guests()->make([
                 'guest_name' => $joinRequest->guest_name,
+                'locale' => $joinRequest->locale,
                 'joined_at' => now(),
                 'metadata' => [],
             ]);
@@ -44,7 +50,7 @@ class ApproveTableSessionJoinRequestAction
                 ->save();
 
             return $guest->refresh();
-        });
+        }, 5);
     }
 
     private function reloadJoinRequest(TableSessionJoinRequest $joinRequest): TableSessionJoinRequest
@@ -55,6 +61,7 @@ class ApproveTableSessionJoinRequestAction
                 'table_session_id',
                 'guest_name',
                 'guest_token',
+                'locale',
                 'status',
                 'approved_by_guest_id',
                 'rejected_by_guest_id',
@@ -71,6 +78,7 @@ class ApproveTableSessionJoinRequestAction
                 ]),
             ])
             ->whereKey($joinRequest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -82,11 +90,13 @@ class ApproveTableSessionJoinRequestAction
                 'table_session_id',
                 'guest_name',
                 'guest_token',
+                'locale',
                 'status',
                 'joined_at',
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -129,10 +139,37 @@ class ApproveTableSessionJoinRequestAction
         $tableSession = $joinRequest->tableSession;
 
         if ($guest->table_session_id !== $tableSession->id
+            || ! $tableSession->status->allowsGuestParticipation()
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
                 'guest' => __('ui.actions.tablesessions.approvetablesessionjoinrequestaction.only_an_activ'),
             ]);
         }
+    }
+
+    private function approvedGuest(TableSessionJoinRequest $joinRequest): TableSessionGuest
+    {
+        $guest = TableSessionGuest::query()
+            ->select([
+                'id',
+                'table_session_id',
+                'guest_name',
+                'guest_token',
+                'locale',
+                'status',
+                'joined_at',
+                'left_at',
+            ])
+            ->where('table_session_id', $joinRequest->table_session_id)
+            ->where('guest_token', $joinRequest->guest_token)
+            ->first();
+
+        if ($guest instanceof TableSessionGuest) {
+            return $guest;
+        }
+
+        throw ValidationException::withMessages([
+            'join_request' => __('ui.actions.tablesessions.approvetablesessionjoinrequestaction.this_join_req'),
+        ]);
     }
 }

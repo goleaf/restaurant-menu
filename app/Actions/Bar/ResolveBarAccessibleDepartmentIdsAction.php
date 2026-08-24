@@ -22,7 +22,7 @@ class ResolveBarAccessibleDepartmentIdsAction
     {
         return $this->resolveAccessibleDepartmentIds->handle(
             user: $user,
-            departmentTypes: [KitchenDepartmentType::Bar],
+            departmentTypes: KitchenDepartmentType::barProductionTypes(),
             roleCodes: [SystemRole::Bartender, SystemRole::HeadChef],
             permissionCodes: [SystemPermission::ViewOrders, SystemPermission::SendToKitchen],
         );

@@ -1,12 +1,12 @@
 # Final code review
 
-The complete modernization diff was reviewed against the 49 canonical requirements after final implementation and verification. No known in-scope implementation defect remains open.
+The complete working tree was reviewed against all 51 canonical requirements after final implementation and verification. No known in-scope implementation defect remains open; detailed route/UI/authorization/table/test evidence is in [`REQUIREMENTS_TRACEABILITY.md`](REQUIREMENTS_TRACEABILITY.md).
 
 ## Review outcome
 
 - **Security:** invitation credentials are digest-only, atomic and throttled; scoped policies reject cross-tenant/direct-action access; backup/payment/file boundaries are transactional or compensating. A final browser/security review caught and fixed bearer invitation URLs entering a global Livewire offline snapshot; the guest/auth connectivity indicator is now client-only and a regression test prevents recurrence.
-- **Correctness:** PHP 8.5 syntax, configured Larastan with 0 errors, 1,071 sequential and parallel Pest tests with 1,062 passing and 9 intentional skips, 73 fresh migrations, complete repeated demo seeding and EN/LT/RU parity pass on the final tree.
-- **Architecture:** routes/controllers/Livewire remain thin, Actions own use cases, Blade is presentation-only, all 49 concrete Livewire components use separate class/view pairs, 3 shared abstract component bases remove duplication, and all 43 models have factories.
+- **Correctness:** PHP 8.5 syntax, configured Larastan with 0 errors, the exact-tree sequential and parallel Pest gates, all 86 fresh migrations, complete repeated demo seeding and EN/LT/RU parity pass on the current tree. Exact counts are recorded after each run in [`PROGRESS.md`](PROGRESS.md).
+- **Architecture:** routes/controllers/Livewire remain thin, Actions own use cases, Blade is presentation-only, the 59 Livewire PHP files use the class/separate-view architecture with two Form objects, and all 48 Eloquent models have factories.
 - **Performance:** growing reads are bounded/eager-loaded, SQLite race-sensitive writes are serialized, numeric audit/menu/waiter query budgets pass, and isolated polling avoids unrelated blocking.
 - **Interface:** CSS-first Tailwind tokens, semantic HTML, skip links, Flux modal focus restoration, native disclosure, touch/reduced-motion/forced-colors behavior, safe persisted icon fallbacks and responsive overflow were checked in isolated Chromium; sampled Lighthouse reports are 100/100/100/100.
 - **Operations:** no new worker, cron, Redis, WebSocket, S3, Docker or SSH runtime dependency was introduced; caches/routes/views build and local Herd HTTP smoke passes.

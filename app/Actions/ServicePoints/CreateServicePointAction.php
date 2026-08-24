@@ -4,20 +4,22 @@ namespace App\Actions\ServicePoints;
 
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
-use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\ServicePoint;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 
 class CreateServicePointAction
 {
+    public function __construct(
+        private readonly EnsureAreaNodeBelongsToBranchAction $ensureAreaNodeBelongsToBranch,
+    ) {}
+
     /**
      * @param  array{area_node_id: int|null, type: string, name: string, display_number: string|null, capacity: int, icon: string|null, is_active: bool}  $data
      */
     public function handle(Branch $branch, array $data): ServicePoint
     {
-        $this->ensureAreaNodeBelongsToBranch($branch, $data['area_node_id']);
+        $this->ensureAreaNodeBelongsToBranch->handle($branch->id, $data['area_node_id']);
 
         $servicePoint = $branch->servicePoints()->make([
             'area_node_id' => $data['area_node_id'],
@@ -35,22 +37,5 @@ class CreateServicePointAction
         ])->save();
 
         return $servicePoint;
-    }
-
-    private function ensureAreaNodeBelongsToBranch(Branch $branch, ?int $areaNodeId): void
-    {
-        if ($areaNodeId === null) {
-            return;
-        }
-
-        $areaNodeExists = AreaNode::query()
-            ->whereKey($areaNodeId)
-            ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->exists();
-
-        if (! $areaNodeExists) {
-            throw new InvalidArgumentException('The selected area is not available.');
-        }
     }
 }

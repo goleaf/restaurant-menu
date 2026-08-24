@@ -21,22 +21,22 @@ enum SupportedCurrency: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Euro => 'EUR - Euro',
-            self::UnitedStatesDollar => 'USD - US dollar',
-            self::PoundSterling => 'GBP - Pound sterling',
-            self::PolishZloty => 'PLN - Polish zloty',
-            self::CzechKoruna => 'CZK - Czech koruna',
-            self::DanishKrone => 'DKK - Danish krone',
-            self::NorwegianKrone => 'NOK - Norwegian krone',
-            self::SwedishKrona => 'SEK - Swedish krona',
-            self::SwissFranc => 'CHF - Swiss franc',
-            self::UkrainianHryvnia => 'UAH - Ukrainian hryvnia',
-            self::GeorgianLari => 'GEL - Georgian lari',
-            self::TurkishLira => 'TRY - Turkish lira',
-            self::CanadianDollar => 'CAD - Canadian dollar',
-            self::AustralianDollar => 'AUD - Australian dollar',
-        };
+        return __(match ($this) {
+            self::Euro => 'ui.onboarding.restaurant_setup.currencies.eur',
+            self::UnitedStatesDollar => 'ui.onboarding.restaurant_setup.currencies.usd',
+            self::PoundSterling => 'ui.onboarding.restaurant_setup.currencies.gbp',
+            self::PolishZloty => 'ui.onboarding.restaurant_setup.currencies.pln',
+            self::CzechKoruna => 'ui.onboarding.restaurant_setup.currencies.czk',
+            self::DanishKrone => 'ui.onboarding.restaurant_setup.currencies.dkk',
+            self::NorwegianKrone => 'ui.onboarding.restaurant_setup.currencies.nok',
+            self::SwedishKrona => 'ui.onboarding.restaurant_setup.currencies.sek',
+            self::SwissFranc => 'ui.onboarding.restaurant_setup.currencies.chf',
+            self::UkrainianHryvnia => 'ui.onboarding.restaurant_setup.currencies.uah',
+            self::GeorgianLari => 'ui.onboarding.restaurant_setup.currencies.gel',
+            self::TurkishLira => 'ui.onboarding.restaurant_setup.currencies.try',
+            self::CanadianDollar => 'ui.onboarding.restaurant_setup.currencies.cad',
+            self::AustralianDollar => 'ui.onboarding.restaurant_setup.currencies.aud',
+        });
     }
 
     public function symbol(): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -28,6 +29,7 @@ class TableSessionJoinRequestFactory extends Factory
             'table_session_id' => TableSession::factory()->active(),
             'guest_name' => fake()->firstName(),
             'guest_token' => Str::random(64),
+            'locale' => SupportedLocale::English->value,
             'status' => TableSessionJoinRequestStatus::Pending,
             'approved_by_guest_id' => null,
             'rejected_by_guest_id' => null,

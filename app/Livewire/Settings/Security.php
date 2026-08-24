@@ -8,6 +8,7 @@ use App\Actions\Users\UpdateUserPasswordAction;
 use App\Concerns\PasswordValidationRules;
 use App\Models\User;
 use App\Services\Users\PasskeyQueryService;
+use App\Support\LocalizedDateFormatter;
 use Exception;
 use Flux\Flux;
 use Illuminate\Http\Request;
@@ -143,8 +144,8 @@ class Security extends Component
                 'id' => $passkey->id,
                 'name' => $passkey->name,
                 'authenticator' => $passkey->authenticator,
-                'created_at_diff' => $passkey->created_at->diffForHumans(),
-                'last_used_at_diff' => $passkey->last_used_at?->diffForHumans(),
+                'created_at_diff' => LocalizedDateFormatter::relative($passkey->created_at),
+                'last_used_at_diff' => LocalizedDateFormatter::relative($passkey->last_used_at),
             ])
             ->toArray();
     }

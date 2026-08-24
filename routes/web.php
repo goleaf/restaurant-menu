@@ -53,7 +53,7 @@ Route::middleware(['web'])
         Route::livewire('/', GuestHome::class)->name('home');
     });
 
-Route::middleware(['web'])
+Route::middleware(['web', 'throttle:public-qr'])
     ->prefix('q')
     ->name('public.qr.')
     ->group(function () {

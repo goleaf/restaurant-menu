@@ -16,6 +16,7 @@ enum BusinessRuleCode: string
     case PaymentAlreadyRecorded = 'payment_already_recorded';
     case DepartmentAlreadyReady = 'department_already_ready';
     case PaymentExceedsRemaining = 'payment_exceeds_remaining';
+    case PaymentNotAllowed = 'payment_not_allowed';
     case QrDisabled = 'qr_disabled';
     case BranchInaccessible = 'branch_inaccessible';
     case ItemUnavailable = 'item_unavailable';
@@ -47,6 +48,7 @@ enum BusinessRuleCode: string
             self::PaymentAlreadyRecorded => __('orders.items.errors.payment_recorded'),
             self::DepartmentAlreadyReady => __('ui.actions.departments.updatedepartmentticketitemstatusaction.poziciia_uze'),
             self::PaymentExceedsRemaining => __('payments.errors.amount_exceeds_remaining'),
+            self::PaymentNotAllowed => __('payments.errors.session_not_payable'),
             self::QrDisabled => __('qr.errors.disabled.title'),
             self::BranchInaccessible => __('ui.enums.businessrulecode.u_vas_net_dostupa_k_etomu_filialu'),
             self::ItemUnavailable => __('ui.enums.businessrulecode.eta_poziciia_seicas_nedostupna'),
@@ -69,6 +71,7 @@ enum BusinessRuleCode: string
             self::PaymentAlreadyRecorded,
             self::DepartmentAlreadyReady => ApplicationErrorType::OrderInvalidTransition,
             self::PaymentExceedsRemaining => ApplicationErrorType::PaymentInvalidAmount,
+            self::PaymentNotAllowed => ApplicationErrorType::OrderInvalidTransition,
             self::QrDisabled => ApplicationErrorType::QrDisabled,
             self::BranchInaccessible => ApplicationErrorType::BranchAccessDenied,
             self::ItemUnavailable,

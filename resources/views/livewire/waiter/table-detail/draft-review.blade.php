@@ -103,7 +103,7 @@
                         <flux:select.option value="">{{ __('ui.waiter.table_detail.choose_dish') }}</flux:select.option>
                         @foreach ($addableMenuItems as $menuItemOption)
                             <flux:select.option wire:key="waiter-add-menu-item-{{ $menuItemOption['value'] }}" value="{{ $menuItemOption['value'] }}">
-                                {{ $menuItemOption['label'] }} · {{ $menuItemOption['price'] }} {{ data_get($draftReview, 'branch.currency', 'EUR') }}
+                                {{ $menuItemOption['label'] }} · {{ $menuItemOption['formatted_price'] }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
@@ -163,7 +163,7 @@
 
                     <flux:button icon="plus" variant="primary" type="button" class="w-full" wire:click="addDraftItem" wire:loading.attr="disabled" wire:target="addDraftItem">
                         <span wire:loading.remove wire:target="addDraftItem">
-                            {{ __('ui.waiter.table_detail.add_position') }}@if ($addingItemTotal !== '0.00') · {{ $addingItemTotal }} {{ data_get($draftReview, 'branch.currency', 'EUR') }} @endif
+                            {{ __('ui.waiter.table_detail.add_position') }}@if ($addingItemTotal !== '0.00') · {{ $addingItemTotalLabel }} @endif
                         </span>
                         <span wire:loading wire:target="addDraftItem">{{ __('menu.guest.adding') }}</span>
                     </flux:button>
@@ -174,10 +174,10 @@
         @if (data_get($draftReview, 'draft.can_confirm'))
             <div class="mt-4 space-y-3">
                 <flux:button icon="check" variant="primary" type="button" class="w-full" wire:click="confirmDraft" wire:loading.attr="disabled" wire:target="confirmDraft">
-                    <span wire:loading.remove wire:target="confirmDraft">{{ __('ui.waiter.table_detail.confirm_order') }}</span>
+                    <span wire:loading.remove wire:target="confirmDraft">{{ __('ui.waiter.table_detail.confirm_and_send_order') }}</span>
                     <span wire:loading wire:target="confirmDraft">{{ __('ui.waiter.table_detail.confirming') }}</span>
                 </flux:button>
-                <p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.confirmation_creates_a_real_order_but_does_not_send') }}</p>
+                <p class="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{{ __('ui.waiter.table_detail.confirmation_dispatches_atomically') }}</p>
             </div>
         @endif
 
@@ -225,9 +225,16 @@
                     <div class="min-w-0">
                         <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('ui.waiter.table_detail.waiter_edit') }}</p>
                         <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotal }} {{ data_get($draftReview, 'branch.currency', 'EUR') }}</p>
+                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotalLabel }}</p>
                     </div>
-                    <button type="button" wire:click="closeEditDraftItem" class="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-xl leading-none text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900" aria-label="{{ __('guest.table.close') }}">x</button>
+                    <flux:button
+                        type="button"
+                        wire:click="closeEditDraftItem"
+                        class="min-h-touch min-w-touch shrink-0"
+                        variant="ghost"
+                        icon="x-mark"
+                        :aria-label="__('guest.table.close')"
+                    />
                 </div>
 
                 <div class="mt-4 space-y-4">
@@ -276,7 +283,7 @@
 
                 <div class="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-zinc-200 bg-white px-4 pt-3 dark:border-zinc-800 dark:bg-zinc-950">
                     <flux:button icon="check" variant="primary" type="button" class="w-full" wire:click="updateDraftItem" wire:loading.attr="disabled" wire:target="updateDraftItem">
-                        <span wire:loading.remove wire:target="updateDraftItem">{{ __('ui.actions.save') }} · {{ $editingItemTotal }} {{ data_get($draftReview, 'branch.currency', 'EUR') }}</span>
+                        <span wire:loading.remove wire:target="updateDraftItem">{{ __('ui.actions.save') }} · {{ $editingItemTotalLabel }}</span>
                         <span wire:loading wire:target="updateDraftItem">{{ __('guest.table.saving') }}</span>
                     </flux:button>
                     <flux:button icon="trash" variant="danger" type="button" class="w-full" wire:click="deleteDraftItem({{ $editingItemId }})" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $editingItemId }})">{{ __('ui.waiter.table_detail.delete_position') }}</flux:button>

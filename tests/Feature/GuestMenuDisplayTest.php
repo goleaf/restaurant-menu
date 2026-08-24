@@ -586,8 +586,8 @@ test('draft order component shows shared items and guest totals through polling 
         ->assertSet('guestSections.1.is_ready', false)
         ->assertSet('guestSections.1.items.0.item_name', 'Margherita')
         ->assertSet('guestSections.1.items.0.can_edit', false)
-        ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
-        ->assertSeeText('22.50 EUR');
+        ->assertSeeTextInOrder(['Ana', 'Water', '€10.00', 'Zara', 'Margherita', '€12.50'])
+        ->assertSeeText('€22.50');
 
     Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $zara->guest_token)
         ->test(DraftOrderComponent::class, [
@@ -603,8 +603,8 @@ test('draft order component shows shared items and guest totals through polling 
         ->assertSet('guestSections.1.guest_name', 'Zara')
         ->assertSet('guestSections.1.items.0.item_name', 'Margherita')
         ->assertSet('guestSections.1.items.0.can_edit', true)
-        ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
-        ->assertSeeText('22.50 EUR');
+        ->assertSeeTextInOrder(['Ana', 'Water', '€10.00', 'Zara', 'Margherita', '€12.50'])
+        ->assertSeeText('€22.50');
 });
 
 test('draft order component lets active guests toggle ready status', function () {
@@ -778,8 +778,8 @@ test('isolated draft totals handles ready confirmation sending and bill validati
 
     $component
         ->call('requestBill')
-        ->assertHasNoErrors()
-        ->assertSet('billRequested', true);
+        ->assertHasErrors(['bill_request'])
+        ->assertSet('billRequested', false);
 });
 
 test('any active guest can send the shared draft to waiter when everyone is ready', function () {
@@ -879,7 +879,7 @@ test('draft order component lets active guest edit own draft item modifiers quan
         ->assertHasNoErrors()
         ->assertSet('editingItemId', null)
         ->assertSeeText('Item updated.')
-        ->assertSeeText('38.50 EUR');
+        ->assertSeeText('€38.50');
 
     $draftOrderItem = $draftOrderItem->fresh();
 

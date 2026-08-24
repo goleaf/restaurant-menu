@@ -67,6 +67,7 @@ test('business rule codes cover expected domain denials', function () {
             'payment_already_recorded',
             'department_already_ready',
             'payment_exceeds_remaining',
+            'payment_not_allowed',
             'qr_disabled',
             'branch_inaccessible',
             'item_unavailable',

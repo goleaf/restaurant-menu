@@ -112,9 +112,11 @@
 
                     <livewire:public-qr.order-statuses
                         :table-session-id="$currentTableSessionId"
+                        :current-guest-id="$currentGuestId"
+                        :public-token="$token"
                         :polling-interval-seconds="$landing['polling_interval_seconds']"
                         :language="$language"
-                        wire:key="guest-order-statuses-{{ $currentTableSessionId }}"
+                        wire:key="guest-order-statuses-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
                     <livewire:public-qr.guest-menu
@@ -195,15 +197,15 @@
                                 <p class="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">{{ $message }}</p>
                             </div>
 
-                            <dl class="grid gap-2 px-5 pb-5 text-left">
-                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                            <dl class="grid gap-2 px-5 pb-5 text-left sm:grid-cols-3">
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60 sm:col-span-3">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.restaurant') }}</dt>
                                     <dd class="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-100">
                                         {{ $landing['branch_address'] ? $landing['branch_address'].', ' : '' }}{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}
                                     </dd>
                                 </div>
 
-                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60 sm:col-span-3">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.contact') }}</dt>
 
                                     @if ($landing['has_contact_details'])
@@ -232,38 +234,36 @@
                                     @endif
                                 </div>
 
-                                <div class="grid gap-2 sm:grid-cols-3">
-                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.opening_hours') }}</dt>
-                                        <dd class="mt-1">
-                                            <x-ui.status-badge :tone="$landing['opening_status_tone']">
-                                                {{ $landing['opening_status_label'] }}
-                                            </x-ui.status-badge>
-                                        </dd>
-                                        <dd class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                                            <x-ui.plain-text :text="$landing['opening_status_detail']" class="inline" />
-                                        </dd>
-                                    </div>
-
-                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.language') }}</dt>
-                                        <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_language_label'] }} ({{ $landing['default_language'] }})</dd>
-                                    </div>
-
-                                    <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.currency') }}</dt>
-                                        <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_currency'] }}</dd>
-                                    </div>
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.opening_hours') }}</dt>
+                                    <dd class="mt-1">
+                                        <x-ui.status-badge :tone="$landing['opening_status_tone']">
+                                            {{ $landing['opening_status_label'] }}
+                                        </x-ui.status-badge>
+                                    </dd>
+                                    <dd class="mt-2 text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                                        <x-ui.plain-text :text="$landing['opening_status_detail']" class="inline" />
+                                    </dd>
                                 </div>
 
                                 <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.language') }}</dt>
+                                    <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_language_label'] }} ({{ $landing['default_language'] }})</dd>
+                                </div>
+
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.currency') }}</dt>
+                                    <dd class="mt-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['default_currency'] }}</dd>
+                                </div>
+
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60 sm:col-span-3">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.zone') }}</dt>
                                     <dd class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">
                                         {{ $landing['area_name'] ?? __('guest.table.zone_unassigned') }}
                                     </dd>
                                 </div>
 
-                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60 sm:col-span-3">
                                     <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.place') }}</dt>
                                     <dd class="mt-1 text-lg font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</dd>
                                     <dd class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
@@ -275,15 +275,15 @@
                                     </dd>
                                 </div>
 
-                                <div class="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                    <div>
-                                        <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.branch') }}</dt>
-                                        <dd class="mt-1 text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</dd>
-                                    </div>
+                                <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60 sm:col-span-3">
+                                    <dt class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.branch') }}</dt>
+                                    <dd class="mt-1 flex items-center justify-between gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                                        <span>{{ $landing['branch_city'] }}, {{ $landing['branch_country'] }}</span>
 
-                                    <x-ui.status-badge tone="success">
-                                        {{ $landing['short_code'] }}
-                                    </x-ui.status-badge>
+                                        <x-ui.status-badge tone="success">
+                                            {{ $landing['short_code'] }}
+                                        </x-ui.status-badge>
+                                    </dd>
                                 </div>
                             </dl>
                         </div>
@@ -406,4 +406,3 @@
         @endif
     </main>
 </div>
-

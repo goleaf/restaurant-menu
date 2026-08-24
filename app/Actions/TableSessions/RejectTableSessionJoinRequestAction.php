@@ -21,8 +21,13 @@ class RejectTableSessionJoinRequestAction
             $joinRequest = $this->reloadJoinRequest($joinRequest);
             $rejectedByGuest = $this->reloadGuest($rejectedByGuest);
 
-            $this->ensurePendingAndFresh($joinRequest);
             $this->ensureActiveGuestCanModerate($joinRequest, $rejectedByGuest);
+
+            if ($joinRequest->status === TableSessionJoinRequestStatus::Rejected) {
+                return $joinRequest;
+            }
+
+            $this->ensurePendingAndFresh($joinRequest);
 
             $joinRequest
                 ->forceFill([
@@ -32,7 +37,7 @@ class RejectTableSessionJoinRequestAction
                 ->save();
 
             return $joinRequest->refresh();
-        });
+        }, 5);
     }
 
     private function reloadJoinRequest(TableSessionJoinRequest $joinRequest): TableSessionJoinRequest
@@ -59,6 +64,7 @@ class RejectTableSessionJoinRequestAction
                 ]),
             ])
             ->whereKey($joinRequest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -75,6 +81,7 @@ class RejectTableSessionJoinRequestAction
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -117,6 +124,7 @@ class RejectTableSessionJoinRequestAction
         $tableSession = $joinRequest->tableSession;
 
         if ($guest->table_session_id !== $tableSession->id
+            || ! $tableSession->status->allowsGuestParticipation()
             || $guest->status !== TableSessionGuestStatus::Active) {
             throw ValidationException::withMessages([
                 'guest' => __('ui.actions.tablesessions.rejecttablesessionjoinrequestaction.only_an_active'),

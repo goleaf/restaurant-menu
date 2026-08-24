@@ -14,6 +14,8 @@ class CleanupInactiveTableSessionsAction
 {
     public function __construct(
         private readonly BuildTableSessionInactivityStateAction $buildInactivityState,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
+        private readonly FinalizeTableSessionTemporaryStateAction $finalizeTemporaryState,
     ) {}
 
     /**
@@ -178,11 +180,12 @@ class CleanupInactiveTableSessionsAction
                 'last_activity_at' => $state['last_activity_at'],
             ];
 
+            $this->transitionTableSessionStatus->handle($tableSession, TableSessionStatus::Cancelled);
             $tableSession->forceFill([
-                'status' => TableSessionStatus::Cancelled,
                 'ended_at' => now(),
                 'metadata' => $metadata,
             ])->save();
+            $this->finalizeTemporaryState->handle($tableSession);
 
             return true;
         });

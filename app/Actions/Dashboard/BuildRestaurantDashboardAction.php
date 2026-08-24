@@ -21,6 +21,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
@@ -202,7 +203,7 @@ class BuildRestaurantDashboardAction
 
         return [
             'cache_key' => $cacheKey,
-            'cached_at' => $now->format('Y-m-d H:i:s'),
+            'cached_at' => LocalizedDateFormatter::dateTime($now),
             'period_label' => $periodStart->toDateString(),
             'branch_count' => $branches->count(),
             'branch_names' => $branches->pluck('name')->values()->all(),
@@ -213,7 +214,7 @@ class BuildRestaurantDashboardAction
                 'cooking_orders_count' => $this->cookingOrdersCount($access['operations']),
                 'ready_positions_count' => $this->readyPositionsCount($access['operations']),
                 'orders_today_total' => $canViewReports && $singleCurrency !== null
-                    ? $this->formatCents($totalOrderCents).' '.$singleCurrency
+                    ? $this->formatCents($totalOrderCents, $singleCurrency)
                     : null,
                 'orders_today_count' => $canViewReports ? $reportOrders->count() : null,
             ],
@@ -382,7 +383,7 @@ class BuildRestaurantDashboardAction
                 return [
                     'currency' => $currency,
                     'total_cents' => $totalCents,
-                    'total' => $this->formatCents($totalCents).' '.$currency,
+                    'total' => $this->formatCents($totalCents, $currency),
                 ];
             })
             ->sortKeys()
@@ -423,7 +424,7 @@ class BuildRestaurantDashboardAction
                 'item_name' => $item['item_name'],
                 'quantity' => (int) $item['quantity'],
                 'total' => $singleCurrency !== null
-                    ? $this->formatCents((int) $item['total_cents']).' '.$singleCurrency
+                    ? $this->formatCents((int) $item['total_cents'], $singleCurrency)
                     : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
             ])
             ->values()
@@ -596,8 +597,8 @@ class BuildRestaurantDashboardAction
         });
     }
 
-    private function formatCents(int $cents): string
+    private function formatCents(int $cents, string $currency): string
     {
-        return MoneyFormatter::centsToDecimal($cents);
+        return MoneyFormatter::formatCents($cents, $currency);
     }
 }

@@ -20,6 +20,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use App\Models\WaiterCall;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -545,7 +546,7 @@ class BuildWaiterDashboardAction
             'can_open_table' => $canOpenTable
                 && (bool) $servicePoint->is_active
                 && $sessionPayloads->isEmpty()
-                && ! in_array($status, [ServicePointStatus::Blocked, ServicePointStatus::Closed], true),
+                && $status->allowsTableOpening(),
             'sessions' => $sessionPayloads->all(),
             'waiter_calls' => $waiterCalls
                 ->map(fn (WaiterCall $waiterCall): array => $this->waiterCallPayload($waiterCall))
@@ -647,7 +648,7 @@ class BuildWaiterDashboardAction
             'service_point_name' => $servicePoint?->name,
             'service_point_display_number' => $servicePoint?->display_number,
             'area_name' => $servicePoint?->areaNode?->name,
-            'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
+            'started_at' => LocalizedDateFormatter::dateTime($tableSession->started_at ?? $tableSession->created_at),
             'opened_by' => $this->openedByName($tableSession),
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
         ];
@@ -671,7 +672,7 @@ class BuildWaiterDashboardAction
             'status' => $status->value,
             'status_label' => $status->label(),
             'source_label' => $tableSession->source->label(),
-            'started_at' => $tableSession->started_at?->format('Y-m-d H:i') ?? $tableSession->created_at?->format('Y-m-d H:i'),
+            'started_at' => LocalizedDateFormatter::dateTime($tableSession->started_at ?? $tableSession->created_at),
             'opened_by' => $this->openedByName($tableSession),
             'active_guest_count' => (int) ($tableSession->active_guests_count ?? 0),
             'can_close' => $canCloseTable,
@@ -691,10 +692,10 @@ class BuildWaiterDashboardAction
             'id' => $draftOrder->id,
             'table_session_id' => $draftOrder->table_session_id,
             'status_label' => $draftOrder->status->label(),
-            'sent_at' => $draftOrder->sent_to_waiter_at?->format('Y-m-d H:i'),
+            'sent_at' => LocalizedDateFormatter::dateTime($draftOrder->sent_to_waiter_at),
             'sent_by_guest_name' => $draftOrder->sentByGuest?->guest_name,
             'items_count' => (int) ($draftOrder->items_count ?? 0),
-            'total' => $this->formatCents($totalCents).' '.$currency,
+            'total' => $this->formatCents($totalCents, $currency),
         ];
     }
 
@@ -715,7 +716,7 @@ class BuildWaiterDashboardAction
             'guest_name' => $waiterCall->requested_by_guest_id === null ? null : $waiterCall->requestedByGuest->guest_name,
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
-            'requested_at' => $waiterCall->requested_at->format('Y-m-d H:i'),
+            'requested_at' => LocalizedDateFormatter::dateTime($waiterCall->requested_at),
         ];
     }
 
@@ -739,7 +740,7 @@ class BuildWaiterDashboardAction
             'department_name' => $item->kitchenTicket->department_name,
             'status_label' => $status->label(),
             'status_color' => $status->badgeColor(),
-            'ready_at' => $item->updated_at?->format('Y-m-d H:i') ?? $item->created_at?->format('Y-m-d H:i'),
+            'ready_at' => LocalizedDateFormatter::dateTime($item->updated_at ?? $item->created_at),
         ];
     }
 
@@ -806,11 +807,11 @@ class BuildWaiterDashboardAction
             return null;
         }
 
-        return $closedUntil->format('d.m H:i');
+        return LocalizedDateFormatter::dateTime($closedUntil);
     }
 
-    private function formatCents(int $cents): string
+    private function formatCents(int $cents, string $currency): string
     {
-        return MoneyFormatter::centsToDecimal($cents);
+        return MoneyFormatter::formatCents($cents, $currency);
     }
 }

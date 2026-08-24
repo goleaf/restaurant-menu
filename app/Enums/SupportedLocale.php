@@ -10,11 +10,11 @@ enum SupportedLocale: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Russian => 'Русский',
-            self::English => 'English',
-            self::Lithuanian => 'Lietuvių',
-        };
+        return __(match ($this) {
+            self::Russian => 'ui.languages.ru',
+            self::English => 'ui.languages.en',
+            self::Lithuanian => 'ui.languages.lt',
+        });
     }
 
     /**

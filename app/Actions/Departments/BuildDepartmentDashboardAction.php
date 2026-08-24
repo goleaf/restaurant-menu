@@ -14,6 +14,7 @@ use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -253,8 +254,8 @@ class BuildDepartmentDashboardAction
             'status_value' => $status->value,
             'status_label' => $status->label(),
             'work_status' => $this->workStatusPayload($ticket->items),
-            'sent_at' => $startedAt?->format('Y-m-d H:i'),
-            'created_time' => $ticket->created_at?->format('H:i'),
+            'sent_at' => LocalizedDateFormatter::dateTime($startedAt),
+            'created_time' => LocalizedDateFormatter::time($ticket->created_at),
             ...$this->buildDepartmentTicketDelayTimer->handle($startedAt),
             'items' => $items,
             'item_count' => count($items),

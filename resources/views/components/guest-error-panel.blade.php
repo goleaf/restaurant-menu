@@ -40,7 +40,7 @@
                         {{ $card['title'] ?? __('guest.table.guest_access_unavailable_title') }}
                     </h1>
 
-                    <p class="mt-3 text-base leading-6 text-text-secondary">
+                    <p class="mt-3 text-base leading-6 text-text-muted">
                         {{ $card['message'] ?? '' }}
                     </p>
                 </div>

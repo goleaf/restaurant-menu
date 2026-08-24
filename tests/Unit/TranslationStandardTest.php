@@ -41,6 +41,90 @@ test('translation key namespace map defines required namespaces', function () {
     expect($mappedNamespaces)->toBe(translationStandardRequiredNamespaces());
 });
 
+test('translation values are non-empty and preserve placeholders and plural contracts', function () {
+    $translations = collect(translationStandardFiles())
+        ->mapWithKeys(fn (string $path, string $locale): array => [$locale => translationStandardDecode($path)]);
+
+    foreach ($translations['en'] as $key => $englishValue) {
+        $placeholderSets = $translations
+            ->map(fn (array $lines): array => translationStandardPlaceholders($lines[$key]));
+        $pluralUsage = $translations
+            ->map(fn (array $lines): bool => str_contains($lines[$key], '|'));
+
+        expect(trim($englishValue))->not->toBe('')
+            ->and(trim($translations['lt'][$key]))->not->toBe('')
+            ->and(trim($translations['ru'][$key]))->not->toBe('')
+            ->and($placeholderSets['lt'])->toBe($placeholderSets['en'], "Lithuanian placeholders differ for [$key].")
+            ->and($placeholderSets['ru'])->toBe($placeholderSets['en'], "Russian placeholders differ for [$key].")
+            ->and($pluralUsage['lt'])->toBe($pluralUsage['en'], "Lithuanian plural structure differs for [$key].")
+            ->and($pluralUsage['ru'])->toBe($pluralUsage['en'], "Russian plural structure differs for [$key].");
+    }
+});
+
+test('localized catalogs do not silently retain english prose or foreign-script copy', function () {
+    $translations = collect(translationStandardFiles())
+        ->mapWithKeys(fn (string $path, string $locale): array => [$locale => translationStandardDecode($path)]);
+
+    foreach (translationStandardEnglishIdentityAllowlist() as $locale => $allowedKeys) {
+        $identicalKeys = collect($translations['en'])
+            ->filter(fn (string $value, string $key): bool => $translations[$locale][$key] === $value)
+            ->keys()
+            ->sort()
+            ->values()
+            ->all();
+
+        sort($allowedKeys);
+
+        expect($identicalKeys)->toBe($allowedKeys, "Unexpected English fallback values found in [$locale].");
+    }
+
+    expect(implode("\n", $translations['en']))->not->toMatch('/[А-Яа-яЁё]/u')
+        ->and(implode("\n", $translations['lt']))->not->toMatch('/[А-Яа-яЁё]/u');
+});
+
+/**
+ * Values that are language-neutral examples, symbols, units, product names, or interpolation-only templates.
+ *
+ * @return array<string, list<string>>
+ */
+function translationStandardEnglishIdentityAllowlist(): array
+{
+    $shared = [
+        'fields.placeholders.branch_email_example',
+        'fields.placeholders.email_example',
+        'fields.placeholders.phone_example',
+        'fields.placeholders.service_point_prefix_example',
+        'fields.placeholders.website_url_example',
+        'guest.cart.separator',
+        'menu.guest.unit_grams',
+        'menu.guest.unit_liters',
+        'menu.modifiers.price_delta',
+        'permissions.groups.qr',
+        'qr.labels.qr',
+        'qr.placeholders.short_code_example',
+        'ui.actions.draftorders.addguestdraftorderitemaction.message',
+        'ui.actions.waiter.buildwaitertabledetailaction.message',
+        'ui.livewire.organizations.brands.branches.areas.vip',
+        'ui.onboarding.restaurant_setup.brand_name_placeholder',
+        'ui.onboarding.restaurant_setup.organization_name_placeholder',
+    ];
+
+    return [
+        'lt' => [
+            ...$shared,
+            'menu.dietary_labels.options.halal',
+            'menu.guest.unit_kcal',
+            'qr.print.presets.premium.label',
+        ],
+        'ru' => [
+            ...$shared,
+            'fields.placeholders.facebook_url_example',
+            'fields.placeholders.instagram_url_example',
+            'fields.placeholders.tiktok_url_example',
+        ],
+    ];
+}
+
 /**
  * @return array<string, string>
  */
@@ -110,6 +194,19 @@ function translationStandardSemanticKeyPattern(): string
 function translationStandardProjectPath(string $path): string
 {
     return dirname(__DIR__, 2).DIRECTORY_SEPARATOR.$path;
+}
+
+/**
+ * @return list<string>
+ */
+function translationStandardPlaceholders(string $value): array
+{
+    preg_match_all('/:[A-Za-z_][A-Za-z0-9_]*/', $value, $matches);
+
+    $placeholders = array_values(array_unique($matches[0]));
+    sort($placeholders);
+
+    return $placeholders;
 }
 
 /**

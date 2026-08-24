@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\TableSessions;
 
 use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\TableSession;
@@ -14,29 +15,31 @@ use Illuminate\Validation\ValidationException;
 
 class CreateGuestInviteLinkAction
 {
-    public function handle(TableSession $tableSession, TableSessionGuest $createdByGuest): TableSession
+    private const EXPIRY_MINUTES = 30;
+
+    public function handle(TableSession $tableSession, TableSessionGuest $createdByGuest): CreatedGuestInviteLink
     {
-        return DB::transaction(function () use ($tableSession, $createdByGuest): TableSession {
+        return DB::transaction(function () use ($tableSession, $createdByGuest): CreatedGuestInviteLink {
             $tableSession = $this->reloadTableSession($tableSession);
             $createdByGuest = $this->reloadGuest($createdByGuest);
 
             $this->ensureSessionCanInvite($tableSession);
             $this->ensureActiveGuestOwnsSession($tableSession, $createdByGuest);
 
-            if (is_string($tableSession->guest_invite_token) && strlen($tableSession->guest_invite_token) === 64) {
-                return $tableSession;
-            }
+            $token = $this->newUniqueInviteToken();
+            $expiresAt = now()->addMinutes(self::EXPIRY_MINUTES);
 
             $tableSession
                 ->forceFill([
-                    'guest_invite_token' => $this->newUniqueInviteToken(),
+                    'guest_invite_token_hash' => hash('sha256', $token),
                     'guest_invite_created_at' => now(),
+                    'guest_invite_expires_at' => $expiresAt,
                     'guest_invite_created_by_guest_id' => $createdByGuest->id,
                 ])
                 ->save();
 
-            return $tableSession->refresh();
-        });
+            return new CreatedGuestInviteLink($tableSession->refresh(), $token, $expiresAt);
+        }, 3);
     }
 
     private function reloadTableSession(TableSession $tableSession): TableSession
@@ -50,8 +53,9 @@ class CreateGuestInviteLinkAction
                 'status',
                 'started_at',
                 'ended_at',
-                'guest_invite_token',
+                'guest_invite_token_hash',
                 'guest_invite_created_at',
+                'guest_invite_expires_at',
                 'guest_invite_created_by_guest_id',
             ])
             ->with([
@@ -70,6 +74,7 @@ class CreateGuestInviteLinkAction
                 ]),
             ])
             ->whereKey($tableSession->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -86,12 +91,13 @@ class CreateGuestInviteLinkAction
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
     private function ensureSessionCanInvite(TableSession $tableSession): void
     {
-        if (in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+        if (! $tableSession->status->allowsGuestParticipation()) {
             throw ValidationException::withMessages([
                 'guest_invite' => __('ui.actions.tablesessions.createguestinvitelinkaction.eta_sessiia_stola_uze'),
             ]);
@@ -140,7 +146,7 @@ class CreateGuestInviteLinkAction
     {
         do {
             $token = Str::random(64);
-        } while (TableSession::query()->where('guest_invite_token', $token)->exists());
+        } while (TableSession::query()->where('guest_invite_token_hash', hash('sha256', $token))->exists());
 
         return $token;
     }

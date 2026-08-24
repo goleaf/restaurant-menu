@@ -6,6 +6,7 @@ use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\KitchenTicketStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
@@ -17,7 +18,7 @@ use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
-use App\Livewire\Waiter\TableDetail\OrderFulfilment;
+use App\Livewire\Waiter\TableDetail\DraftReview;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -89,14 +90,14 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
         SystemPermission::SendToKitchen,
     ]);
 
-    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
-
-    OrderItem::query()
-        ->where('order_id', $order->id)
-        ->where('item_name_snapshot', 'Prompt 60 Pizza')
+    DraftOrderItem::query()
+        ->where('draft_order_id', $draftOrder->id)
+        ->where('item_name', 'Prompt 60 Pizza')
         ->firstOrFail()
         ->forceFill(['variant_name' => 'Large portion'])
         ->save();
+
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
 
     $kitchen->update(['name' => 'Renamed kitchen after confirmation']);
     $bar->update(['name' => 'Renamed bar after confirmation']);
@@ -156,7 +157,7 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
     ])
         ->assertSet('draftStatusValue', DraftOrderStatus::ConvertedToOrder->value)
         ->assertSet('orderStatusValue', OrderStatus::SentToKitchenBar->value)
-        ->assertSee('Заказ принят. Кухня и бар получили позиции.');
+        ->assertSee(__('guest.statuses.service.accepted_description'));
 });
 
 test('dispatch routes items without department snapshots to the default kitchen', function () {
@@ -166,14 +167,13 @@ test('dispatch routes items without department snapshots to the default kitchen'
         SystemPermission::ConfirmOrders,
         SystemPermission::SendToKitchen,
     ]);
-    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
-    $order->items()->update([
-        'kitchen_department_id' => null,
-        'kitchen_department_type' => null,
-        'kitchen_department_name' => null,
-    ]);
+    $menuItemIds = DraftOrderItem::query()
+        ->where('draft_order_id', $draftOrder->id)
+        ->whereNotNull('menu_item_id')
+        ->pluck('menu_item_id');
+    MenuItem::query()->whereIn('id', $menuItemIds)->update(['kitchen_department_id' => null]);
 
-    app(SendOrderToKitchenBarAction::class)->handle($order, $waiter);
+    $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $waiter);
 
     $tickets = KitchenTicket::query()->where('order_id', $order->id)->get();
 
@@ -182,7 +182,7 @@ test('dispatch routes items without department snapshots to the default kitchen'
         ->and($tickets->first()->department_type)->toBe(KitchenDepartmentType::Kitchen->value);
 });
 
-test('waiter table detail dispatch action requires send to kitchen permission', function () {
+test('confirm permission includes mandatory dispatch while send-only staff cannot confirm', function () {
     [$organization, , $tableSession, $draftOrder] = createPrompt60SentDraftScenario();
     $reviewer = User::factory()->create(['name' => 'Prompt 60 Reviewer']);
     $dispatcher = User::factory()->create(['name' => 'Prompt 60 Dispatcher']);
@@ -198,25 +198,29 @@ test('waiter table detail dispatch action requires send to kitchen permission', 
     $sendToKitchenPermission = Permission::query()
         ->where('code', SystemPermission::SendToKitchen->value)
         ->firstOrFail();
+    $confirmOrdersPermission = Permission::query()
+        ->where('code', SystemPermission::ConfirmOrders->value)
+        ->firstOrFail();
 
     $reviewer->permissionOverrides()->syncWithoutDetaching([
         $sendToKitchenPermission->id => ['enabled' => false],
     ]);
-
-    app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $reviewer);
-
-    Livewire::actingAs($reviewer)
-        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
-        ->assertDontSee('Send to kitchen/bar')
-        ->call('sendOrderToKitchenBar')
-        ->assertHasErrors('order_dispatch');
+    $dispatcher->permissionOverrides()->syncWithoutDetaching([
+        $confirmOrdersPermission->id => ['enabled' => false],
+    ]);
 
     Livewire::actingAs($dispatcher)
-        ->test(OrderFulfilment::class, ['tableSessionId' => $tableSession->id])
-        ->assertSee('Send to kitchen/bar')
-        ->call('sendOrderToKitchenBar')
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('draftReview.draft.can_confirm', false)
+        ->call('confirmDraft')
+        ->assertHasErrors('draft_review');
+
+    Livewire::actingAs($reviewer)
+        ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
+        ->assertSet('draftReview.draft.can_confirm', true)
+        ->call('confirmDraft')
         ->assertHasNoErrors()
-        ->assertSee('Kitchen/bar received this order.');
+        ->assertSee(__('ui.livewire.waiter.tabledetail.zakaz_podtverzden_oficiantom_kuxnia_i_bar_po'));
 
     $servicePoint = $tableSession->servicePoint()->firstOrFail();
 
@@ -224,7 +228,7 @@ test('waiter table detail dispatch action requires send to kitchen permission', 
         ->and($servicePoint->status)->toBe(ServicePointStatus::Cooking);
 });
 
-test('cancelled order item is kept in history and excluded from a later kitchen dispatch', function () {
+test('cancelled dispatched item is kept in history and becomes non actionable', function () {
     [$organization, , , $draftOrder, , $kitchen, $bar] = createPrompt60SentDraftScenario();
     $waiter = User::factory()->create(['name' => 'Prompt 60 Pre-dispatch Canceller']);
 
@@ -245,15 +249,14 @@ test('cancelled order item is kept in history and excluded from a later kitchen 
         cancelledBy: $waiter,
         reason: 'Guest cancelled before preparation started.',
     );
-    app(SendOrderToKitchenBarAction::class)->handle($order, $waiter);
-
     expect($pizza->fresh()->cancelled_at)->not->toBeNull()
         ->and(OrderItem::query()->where('order_id', $order->id)->count())->toBe(2)
         ->and($order->fresh()->total_price_cents)->toBe(600)
         ->and(KitchenTicket::query()
             ->where('order_id', $order->id)
             ->where('kitchen_department_id', $kitchen->id)
-            ->exists())->toBeFalse()
+            ->exists())->toBeTrue()
+        ->and($pizza->kitchenTicketItem()->firstOrFail()->status)->toBe(KitchenTicketItemStatus::Cancelled)
         ->and(KitchenTicket::query()
             ->where('order_id', $order->id)
             ->where('kitchen_department_id', $bar->id)

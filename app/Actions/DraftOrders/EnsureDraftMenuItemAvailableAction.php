@@ -7,7 +7,6 @@ namespace App\Actions\DraftOrders;
 use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Enums\MenuStatus;
 use App\Models\Menu;
-use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use Illuminate\Validation\ValidationException;
 
@@ -23,7 +22,6 @@ class EnsureDraftMenuItemAvailableAction
         $category = $menuItem->category;
 
         if (! $menu instanceof Menu
-            || ! $category instanceof MenuCategory
             || $menu->branch_id !== $branchId
             || $menu->status !== MenuStatus::Active
             || ! $category->is_active

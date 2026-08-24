@@ -4,7 +4,7 @@
             type="button"
             wire:click="markAllRead"
             @class([
-                'relative inline-flex size-10 items-center justify-center rounded-lg border text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-amber-500/30',
+                'relative inline-flex size-10 min-h-touch min-w-touch items-center justify-center rounded-lg border text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-amber-500/30',
                 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100' => $unreadCount > 0,
                 'border-zinc-200 bg-white text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300' => $unreadCount === 0,
             ])
@@ -77,7 +77,7 @@
                                     wire:click="markNotificationRead('{{ $notification['id'] }}')"
                                     wire:loading.attr="disabled"
                                     wire:target="markNotificationRead('{{ $notification['id'] }}')"
-                                    class="shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                                    class="min-h-touch min-w-touch shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                                 >
                                     {{ __('ui.notifications.unread_count.read') }}
                                 </button>
@@ -95,7 +95,7 @@
                     wire:click="markAllRead"
                     wire:loading.attr="disabled"
                     wire:target="markAllRead"
-                    class="mt-3 flex h-9 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                    class="mt-3 flex min-h-touch w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                     {{ __('ui.notifications.unread_count.mark_all_as_read') }}
                 </button>

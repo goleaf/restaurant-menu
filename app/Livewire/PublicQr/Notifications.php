@@ -6,6 +6,7 @@ use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\Notifications\MarkGuestNotificationsReadAction;
 use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
+use App\Support\LocalizedDateFormatter;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
@@ -189,7 +190,7 @@ class Notifications extends Component
             },
             'meta' => $this->metaForData($data),
             'tone' => $this->toneForType($notification->type),
-            'created_label' => $notification->created_at?->diffForHumans() ?? '',
+            'created_label' => LocalizedDateFormatter::relative($notification->created_at) ?? '',
         ];
     }
 

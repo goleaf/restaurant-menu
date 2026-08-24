@@ -52,14 +52,14 @@ test('kitchen dashboard action delegates the exact kitchen access contract', fun
         ->once()
         ->withArgs(fn (User $actualUser, ?int $departmentId, array $types, array $roles, array $permissions): bool => $actualUser === $user
             && $departmentId === null
-            && $types === []
+            && $types === KitchenDepartmentType::kitchenProductionTypes()
             && $roles === [SystemRole::HeadChef, SystemRole::Cook]
             && $permissions === [SystemPermission::ViewKitchen])
         ->andReturn($expected);
     $delegate->shouldReceive('userHasAccess')
         ->once()
         ->withArgs(fn (User $actualUser, array $types, array $roles, array $permissions): bool => $actualUser === $user
-            && $types === []
+            && $types === KitchenDepartmentType::kitchenProductionTypes()
             && $roles === [SystemRole::HeadChef, SystemRole::Cook]
             && $permissions === [SystemPermission::ViewKitchen])
         ->andReturnFalse();
@@ -100,7 +100,7 @@ test('kitchen ticket update action delegates the exact kitchen transition contra
         ->withArgs(fn (int $actualItemId, KitchenTicketItemStatus $status, User $actualUser, array $types, array $roles, array $permissions): bool => $actualItemId === $item->id
             && $status === KitchenTicketItemStatus::InProgress
             && $actualUser === $user
-            && $types === []
+            && $types === KitchenDepartmentType::kitchenProductionTypes()
             && $roles === [SystemRole::HeadChef, SystemRole::Cook]
             && $permissions === [SystemPermission::ViewKitchen])
         ->andReturn($item);

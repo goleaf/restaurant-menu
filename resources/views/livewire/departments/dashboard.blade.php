@@ -47,7 +47,7 @@
                         :tone="$ticket['delay_state'] === 'delayed' ? 'danger' : ($ticket['delay_state'] === 'attention' ? 'warning' : 'neutral')"
                     >
                         <x-slot:leading>
-                            <span class="flex min-h-operational-touch min-w-operational-touch items-center justify-center rounded-control bg-action px-3 text-base font-semibold text-text-inverse">
+                            <span class="flex min-h-operational-touch min-w-operational-touch items-center justify-center rounded-control bg-accent px-3 text-base font-semibold text-accent-foreground">
                                 {{ $ticket['service_point_display_number'] !== '' ? $ticket['service_point_display_number'] : __('guest.table.place') }}
                             </span>
                         </x-slot:leading>
@@ -98,7 +98,7 @@
 
                 <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
                     @foreach ($ticket['items'] as $item)
-                        <section wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}" class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                        <section wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}" data-ticket-item-status="{{ $item['status_value'] }}" class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
                             <div class="min-w-0">
                                 <div class="flex gap-4">
                                     <div class="flex h-14 min-w-14 items-center justify-center rounded-lg bg-zinc-100 px-3 text-xl font-semibold text-zinc-950 dark:bg-zinc-800 dark:text-white">

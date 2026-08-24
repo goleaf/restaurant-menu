@@ -13,20 +13,33 @@ The demo-login surface is an opt-in operator tool for a dedicated public demo en
    ```
 
    Do not continue until the output confirms a non-production environment, `sqlite` as the default connection, and an explicit database path dedicated to this demo. Never seed a production, customer, or otherwise shared database.
-2. Seed the complete demo restaurant and its role accounts only after those checks pass:
+2. Configure the dedicated host and enable the surface only in that non-production environment:
+
+   ```dotenv
+   APP_URL=https://ruflo.test
+   DEMO_LOGIN_ENABLED=true
+   DEMO_LOGIN_HOSTS=ruflo.test
+   ```
+
+3. For a new, empty and disposable demo database, seed the complete graph through the normal orchestrator:
+
+   ```bash
+   php artisan migrate:fresh --seed --no-interaction --force
+   ```
+
+   Never run `migrate:fresh` against an existing database. To add or reconcile the demo graph without deleting existing records, run:
 
    ```bash
    php artisan db:seed --class=DemoRestaurantSeeder --no-interaction
    ```
 
-3. Set `DEMO_LOGIN_ENABLED=true` only in the dedicated demo environment. The default in `.env.example` is `false`.
-4. Rebuild the cached configuration so the flag takes effect:
+4. Rebuild the cached configuration so the values take effect:
 
    ```bash
    php artisan config:cache
    ```
 
-5. Confirm the resolved flag, then inspect the two named routes and their complete middleware order:
+5. Confirm the resolved flag and host allowlist, then inspect the two named routes and their complete middleware order:
 
    ```bash
    php artisan config:show demo-login
@@ -43,12 +56,13 @@ The preparation order matters: the account catalogue describes expected identiti
 
 Each enabled choice submits a normal CSRF-protected `POST /demo-login/{role}`. The server applies the enum allowlist, reloads the canonical email, verifies the exact email-role assignment, authenticates through the `web` guard, regenerates the session, and redirects to the prepared dashboard. Both routes are guest-only and share a limit of 20 requests per minute per IP address.
 
-The page response is private and non-cacheable, sends a no-referrer policy, and opts out of search indexing. The shared seed password remains an operator/testing implementation detail: it must never appear in demo-login HTML, application logs, documentation intended for visitors, or support screenshots. Credentials, complete tokens, and session identifiers must not be logged.
+The page response is private and non-cacheable, sends a no-referrer policy, and opts out of search indexing. No reusable demo password exists: a high-entropy unknown value is generated only for initial persistence and its hash is preserved on repeated seed runs. Credentials, complete tokens and session identifiers must not be rendered or logged.
 
 ## Safety boundary and shutdown
 
 - Production returns 404 for both routes even if `DEMO_LOGIN_ENABLED=true` was set accidentally.
 - Any environment with the flag disabled returns 404 for both routes.
+- Requests whose normalized host is absent from `DEMO_LOGIN_HOSTS` return 404. The default allowlist contains only `ruflo.test`.
 - The environment guard runs before CSRF and the shared demo throttle, so disabled and production probes do not consume the rate-limit budget.
 - The normal web middleware priority still keeps CSRF validation before authentication on protected routes.
 

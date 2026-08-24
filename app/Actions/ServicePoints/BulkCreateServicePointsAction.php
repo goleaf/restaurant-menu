@@ -4,15 +4,17 @@ namespace App\Actions\ServicePoints;
 
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
-use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\ServicePoint;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 class BulkCreateServicePointsAction
 {
     public const MAX_RANGE_SIZE = 200;
+
+    public function __construct(
+        private readonly EnsureAreaNodeBelongsToBranchAction $ensureAreaNodeBelongsToBranch,
+    ) {}
 
     /**
      * @param  array{area_node_id: int|null, type: string, prefix: string, from: int, to: int, capacity: int, icon: string|null, is_active: bool}  $data
@@ -20,7 +22,7 @@ class BulkCreateServicePointsAction
      */
     public function preview(Branch $branch, array $data): array
     {
-        $this->ensureAreaNodeBelongsToBranch($branch, $data['area_node_id']);
+        $this->ensureAreaNodeBelongsToBranch->handle($branch->id, $data['area_node_id']);
 
         $codes = $this->codes($data['prefix'], $data['from'], $data['to']);
         $existingCodes = $this->existingCodes($branch, $codes);
@@ -88,23 +90,6 @@ class BulkCreateServicePointsAction
                 'preview' => $this->preview($branch, $data),
             ];
         });
-    }
-
-    private function ensureAreaNodeBelongsToBranch(Branch $branch, ?int $areaNodeId): void
-    {
-        if ($areaNodeId === null) {
-            return;
-        }
-
-        $areaNodeExists = AreaNode::query()
-            ->whereKey($areaNodeId)
-            ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->exists();
-
-        if (! $areaNodeExists) {
-            throw new InvalidArgumentException('The selected area is not available.');
-        }
     }
 
     /**

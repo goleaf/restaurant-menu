@@ -13,6 +13,7 @@ use App\Actions\Organizations\UpdateOrganizationLogoAction;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Organizations\OrganizationQueryService;
+use App\Support\LocalizedDateFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
@@ -258,7 +259,7 @@ class Index extends Component
                     'logo_url' => $organization->logoUrl(),
                     'is_owner' => $organization->owner_user_id === $this->currentUserId,
                     'can_manage_staff' => in_array($organization->id, $manageableOrganizationIds, true),
-                    'created_at' => $organization->created_at->format('d.m.Y'),
+                    'created_at' => LocalizedDateFormatter::date($organization->created_at),
                     'is_archived' => $organization->trashed(),
                     'brands_url' => route('organizations.brands.index', ['organization' => $organization->id]),
                     'staff_url' => route('organizations.staff.index', ['organization' => $organization->id]),

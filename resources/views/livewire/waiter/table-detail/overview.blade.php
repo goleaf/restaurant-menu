@@ -168,4 +168,54 @@
             @endif
         </div>
     </section>
+
+    <section class="rounded-card border border-border-subtle bg-surface p-4" aria-labelledby="table-participants-heading">
+        <div>
+            <h2 id="table-participants-heading" class="text-base font-semibold text-text-primary">{{ __('ui.waiter.table_detail.participants') }}</h2>
+            <p class="mt-1 text-sm text-text-muted">{{ __('ui.waiter.table_detail.participants_description') }}</p>
+        </div>
+
+        @if ($guestRemovalFeedbackMessage)
+            <x-ui.alert tone="success" class="mt-4">
+                {{ $guestRemovalFeedbackMessage }}
+            </x-ui.alert>
+        @endif
+
+        @error('guest')
+            <x-ui.alert tone="danger" class="mt-4">
+                {{ $message }}
+            </x-ui.alert>
+        @enderror
+
+        <div class="mt-4 divide-y divide-border-subtle rounded-lg border border-border-subtle">
+            @forelse (data_get($overview, 'participants.guests', []) as $participant)
+                <div wire:key="table-participant-{{ $participant['id'] }}" class="flex min-h-touch flex-wrap items-center justify-between gap-3 p-3">
+                    <div class="min-w-0">
+                        <x-ui.plain-text :text="$participant['name']" class="font-medium text-text-primary" :preserve-lines="false" />
+                        <p class="mt-1 text-sm text-text-muted">{{ __($participant['status_key']) }}</p>
+                    </div>
+
+                    @if ($participant['can_remove'])
+                        <x-dangerous-action-confirmation
+                            name="remove-table-guest-{{ $participant['id'] }}"
+                            title="ui.waiter.table_detail.remove_guest_title"
+                            consequence="ui.waiter.table_detail.remove_guest_consequence"
+                            confirm-action="removeGuest({{ $participant['id'] }})"
+                            confirm-label="ui.waiter.table_detail.remove_guest"
+                            loading-label="ui.waiter.table_detail.removing_guest"
+                            submit-target="removeGuest({{ $participant['id'] }})"
+                        >
+                            <x-slot:trigger>
+                                <flux:button type="button" size="sm" variant="danger" icon="user-minus">
+                                    {{ __('ui.waiter.table_detail.remove_guest') }}
+                                </flux:button>
+                            </x-slot:trigger>
+                        </x-dangerous-action-confirmation>
+                    @endif
+                </div>
+            @empty
+                <p class="p-4 text-sm text-text-muted">{{ __('ui.empty.no_guests') }}</p>
+            @endforelse
+        </div>
+    </section>
 </div>

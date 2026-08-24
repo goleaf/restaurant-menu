@@ -10,7 +10,6 @@ use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
-use App\Enums\TableSessionStatus;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
@@ -204,11 +203,7 @@ final class CancelOrderItemAction
             );
         }
 
-        if (in_array($tableSession->status, [
-            TableSessionStatus::Paid,
-            TableSessionStatus::Closed,
-            TableSessionStatus::Cancelled,
-        ], true)) {
+        if ($tableSession->status->locksOrderChanges()) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::SessionClosed,
                 'order_item_cancellation',

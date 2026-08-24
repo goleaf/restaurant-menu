@@ -96,6 +96,16 @@ class AppServiceProvider extends ServiceProvider
             fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->ip()),
         );
 
+        RateLimiter::for('public-qr', function (Request $request): array {
+            $token = (string) $request->route('token');
+            $clientAddress = (string) $request->ip();
+
+            return [
+                Limit::perMinute(120)->by('ip|'.$clientAddress),
+                Limit::perMinute(30)->by('qr|'.hash('sha256', $token).'|'.$clientAddress),
+            ];
+        });
+
         RateLimiter::for('staff-invitations', function (Request $request): array {
             $token = (string) $request->route('token');
             $invitationId = $request->session()->get('staff_invitation_id');

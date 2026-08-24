@@ -16,7 +16,6 @@ use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\DraftOrder;
-use App\Models\DraftOrderItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Organization;
@@ -45,11 +44,11 @@ test('active guest can request bill and waiter sees the request', function () {
             'publicToken' => $qrCode->public_token,
             'language' => 'en',
         ])
-        ->assertSet('tableTotalAmount', '37.50')
+        ->assertSet('tableTotalAmount', '32.00')
         ->assertSet('guestSections.0.guest_name', 'Ana')
         ->assertSet('guestSections.0.confirmed_total', '20.00')
-        ->assertSet('guestSections.0.draft_total', '5.50')
-        ->assertSet('guestSections.0.total', '25.50')
+        ->assertSet('guestSections.0.draft_total', '0.00')
+        ->assertSet('guestSections.0.total', '20.00')
         ->assertSet('guestSections.1.guest_name', 'Boris')
         ->assertSet('guestSections.1.confirmed_total', '12.00')
         ->assertSet('guestSections.1.total', '12.00')
@@ -59,11 +58,12 @@ test('active guest can request bill and waiter sees the request', function () {
         ->assertSet('billRequested', true)
         ->assertSet('canRequestBill', false)
         ->assertSee('The waiter has been asked to bring the bill.')
-        ->assertSee('37.50 EUR');
+        ->assertSee('€32.00');
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::PaymentRequested)
         ->and($tableSession->fresh()->active_service_point_id)->toBe($servicePoint->id)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::PaymentRequested)
+        ->and($tableSession->orders()->firstOrFail()->status)->toBe(OrderStatus::PaymentRequested)
         ->and($waiter->notifications()->count())->toBe(1)
         ->and((int) data_get($waiter->notifications()->firstOrFail()->data, 'table_session_id'))->toBe($tableSession->id)
         ->and(data_get($waiter->notifications()->firstOrFail()->data, 'guest_name'))->toBe('Ana');
@@ -191,18 +191,6 @@ function createPrompt66BillRequestContext(): array
             'item_name' => 'Dessert',
             'unit_price_cents' => 1200,
             'total_price_cents' => 1200,
-        ]);
-
-    $openDraft = DraftOrder::factory()
-        ->for($tableSession)
-        ->create(['status' => DraftOrderStatus::Draft]);
-    DraftOrderItem::factory()
-        ->for($openDraft)
-        ->create([
-            'table_session_guest_id' => $ana->id,
-            'item_name' => 'Tea',
-            'unit_price_cents' => 550,
-            'total_price_cents' => 550,
         ]);
 
     $waiter = User::factory()->create([

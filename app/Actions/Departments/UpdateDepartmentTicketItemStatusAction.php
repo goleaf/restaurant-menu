@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Departments;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\Orders\SyncOrderStatusFromTicketItemsAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\AuditLogAction;
@@ -12,6 +13,7 @@ use App\Enums\BusinessRuleCode;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
@@ -21,6 +23,8 @@ use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Notifications\KitchenItemCookingNotification;
 use App\Notifications\KitchenItemReadyNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
@@ -31,6 +35,7 @@ class UpdateDepartmentTicketItemStatusAction
         private readonly SyncOrderStatusFromTicketItemsAction $syncOrderStatus,
         private readonly ResolveWaiterNotificationRecipientsAction $resolveWaiterRecipients,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly CreateOrderStatusLogAction $createOrderStatusLog,
     ) {}
 
     /**
@@ -46,102 +51,145 @@ class UpdateDepartmentTicketItemStatusAction
         array $roleCodes,
         array $permissionCodes,
     ): KitchenTicketItem {
-        $item = KitchenTicketItem::query()
-            ->select(['id', 'kitchen_ticket_id', 'order_item_id', 'item_name', 'quantity', 'status', 'served_at', 'updated_at'])
-            ->with([
-                'kitchenTicket' => fn ($query) => $query
-                    ->select(['id', 'branch_id', 'kitchen_department_id', 'department_name', 'order_id'])
-                    ->with([
-                        'branch:id,organization_id',
-                        'order' => fn ($orderQuery) => $orderQuery->select([
-                            'id',
-                            'branch_id',
-                            'service_point_id',
-                            'table_session_id',
-                            'draft_order_id',
-                            'status',
-                            'metadata',
+        $previousStatus = null;
+
+        $item = DB::transaction(function () use (
+            $itemId,
+            $status,
+            $user,
+            $departmentTypes,
+            $roleCodes,
+            $permissionCodes,
+            &$previousStatus,
+        ): KitchenTicketItem {
+            $item = KitchenTicketItem::query()
+                ->select(['id', 'kitchen_ticket_id', 'order_item_id', 'item_name', 'quantity', 'status', 'served_at', 'updated_at'])
+                ->with([
+                    'kitchenTicket' => fn ($query) => $query
+                        ->select(['id', 'branch_id', 'kitchen_department_id', 'department_name', 'order_id'])
+                        ->with([
+                            'branch:id,organization_id',
+                            'order' => fn ($orderQuery) => $orderQuery->select([
+                                'id',
+                                'branch_id',
+                                'service_point_id',
+                                'table_session_id',
+                                'draft_order_id',
+                                'status',
+                                'metadata',
+                            ]),
                         ]),
-                    ]),
-            ])
-            ->whereKey($itemId)
-            ->firstOrFail();
+                ])
+                ->whereKey($itemId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $departmentId = $item->kitchenTicket->kitchen_department_id;
-        $accessibleDepartmentIds = $this->resolveAccessibleDepartmentIds->handle(
-            user: $user,
-            departmentTypes: $departmentTypes,
-            roleCodes: $roleCodes,
-            permissionCodes: $permissionCodes,
-        );
-
-        if ($departmentId === null || ! $accessibleDepartmentIds->contains((int) $departmentId)) {
-            throw ValidationException::withMessages([
-                'ticket_item_status' => __('ui.actions.departments.updatedepartmentticketitemstatusaction.u_vas_net_dos'),
-            ]);
-        }
-
-        if ($item->served_at !== null) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::DepartmentAlreadyReady,
-                'ticket_item_status',
-                __('ui.actions.departments.updatedepartmentticketitemstatusaction.eta_poziciia'),
+            $departmentId = $item->kitchenTicket->kitchen_department_id;
+            $accessibleDepartmentIds = $this->resolveAccessibleDepartmentIds->handle(
+                user: $user,
+                departmentTypes: $departmentTypes,
+                roleCodes: $roleCodes,
+                permissionCodes: $permissionCodes,
             );
-        }
 
-        if ($item->status === KitchenTicketItemStatus::Cancelled || $status === KitchenTicketItemStatus::Cancelled) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::OrderItemAlreadyCancelled,
-                'ticket_item_status',
-                __('orders.items.errors.kitchen_cancelled'),
-            );
-        }
+            if ($departmentId === null || ! $accessibleDepartmentIds->contains((int) $departmentId)) {
+                throw ValidationException::withMessages([
+                    'ticket_item_status' => __('ui.actions.departments.updatedepartmentticketitemstatusaction.u_vas_net_dos'),
+                ]);
+            }
 
-        $order = $item->kitchenTicket->order;
+            if (Gate::forUser($user)->denies('updateStatus', $item->kitchenTicket)) {
+                throw ValidationException::withMessages([
+                    'ticket_item_status' => __('ui.actions.departments.updatedepartmentticketitemstatusaction.u_vas_net_dos'),
+                ]);
+            }
 
-        if ($order->status === OrderStatus::Cancelled) {
-            throw BusinessRuleViolation::for(
-                BusinessRuleCode::OrderAlreadyCancelled,
-                'ticket_item_status',
-                __('ui.actions.departments.updatedepartmentticketitemstatusaction.zakaz_otmenen'),
-            );
-        }
+            if ($item->served_at !== null) {
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::DepartmentAlreadyReady,
+                    'ticket_item_status',
+                    __('ui.actions.departments.updatedepartmentticketitemstatusaction.eta_poziciia'),
+                );
+            }
 
-        $previousStatus = $item->status;
+            if ($item->status === KitchenTicketItemStatus::Cancelled || $status === KitchenTicketItemStatus::Cancelled) {
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::OrderItemAlreadyCancelled,
+                    'ticket_item_status',
+                    __('orders.items.errors.kitchen_cancelled'),
+                );
+            }
 
-        if ($previousStatus === $status) {
-            return $item;
-        }
+            $order = $item->kitchenTicket->order;
 
-        $item->forceFill(['status' => $status])->save();
+            if ($order->status === OrderStatus::Cancelled) {
+                throw BusinessRuleViolation::for(
+                    BusinessRuleCode::OrderAlreadyCancelled,
+                    'ticket_item_status',
+                    __('ui.actions.departments.updatedepartmentticketitemstatusaction.zakaz_otmenen'),
+                );
+            }
 
-        $this->syncOrderStatus->handle($order, $user);
+            $previousStatus = $item->status;
 
-        if ($status === KitchenTicketItemStatus::Ready && $previousStatus !== KitchenTicketItemStatus::Ready) {
-            $this->recordAuditLog->handle(
-                action: AuditLogAction::DepartmentItemReady,
-                entityType: 'kitchen_ticket_item',
-                entityId: $item->id,
+            if ($previousStatus === $status) {
+                return $item;
+            }
+
+            if (! $previousStatus->canTransitionTo($status)) {
+                throw ValidationException::withMessages([
+                    'ticket_item_status' => __('errors.types.order_invalid_transition.message'),
+                ]);
+            }
+
+            $item->forceFill(['status' => $status])->save();
+
+            $this->createOrderStatusLog->handle(
+                event: OrderStatusLogEvent::TicketItemStatusChanged,
+                order: $order,
                 actorUser: $user,
-                organizationId: $item->kitchenTicket->branch->organization_id,
-                branchId: $item->kitchenTicket->branch_id,
-                oldValues: [
-                    'status' => $previousStatus,
-                ],
-                newValues: [
-                    'status' => KitchenTicketItemStatus::Ready,
-                    'order_id' => $item->kitchenTicket->order_id,
+                previousStatus: $previousStatus,
+                newStatus: $status,
+                statusType: 'kitchen_ticket_item',
+                metadata: [
+                    'kitchen_ticket_id' => $item->kitchen_ticket_id,
+                    'kitchen_ticket_item_id' => $item->id,
                     'order_item_id' => $item->order_item_id,
                     'department_name' => $item->kitchenTicket->department_name,
-                    'item_name' => $item->item_name,
-                    'quantity' => $item->quantity,
                 ],
             );
-        }
 
-        $item = $item->refresh();
-        $this->notifyWaiterRecipientsForReadyItem($item, $previousStatus, $status);
-        $this->notifyGuestRecipientForTicketItem($item, $previousStatus, $status);
+            $this->syncOrderStatus->handle($order, $user);
+
+            if ($status === KitchenTicketItemStatus::Ready) {
+                $this->recordAuditLog->handle(
+                    action: AuditLogAction::DepartmentItemReady,
+                    entityType: 'kitchen_ticket_item',
+                    entityId: $item->id,
+                    actorUser: $user,
+                    organizationId: $item->kitchenTicket->branch->organization_id,
+                    branchId: $item->kitchenTicket->branch_id,
+                    oldValues: [
+                        'status' => $previousStatus,
+                    ],
+                    newValues: [
+                        'status' => KitchenTicketItemStatus::Ready,
+                        'order_id' => $item->kitchenTicket->order_id,
+                        'order_item_id' => $item->order_item_id,
+                        'department_name' => $item->kitchenTicket->department_name,
+                        'item_name' => $item->item_name,
+                        'quantity' => $item->quantity,
+                    ],
+                );
+            }
+
+            return $item->refresh();
+        }, attempts: 3);
+
+        if ($previousStatus instanceof KitchenTicketItemStatus && $previousStatus !== $status) {
+            $this->notifyWaiterRecipientsForReadyItem($item, $previousStatus, $status);
+            $this->notifyGuestRecipientForTicketItem($item, $previousStatus, $status);
+        }
 
         return $item->refresh();
     }

@@ -11,6 +11,7 @@ use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\Staff\SetUserPermissionOverrideAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
+use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
 use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
 use App\Enums\AuditLogAction;
@@ -36,12 +37,10 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
-use App\Models\KitchenDepartment;
-use App\Models\KitchenTicket;
-use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -240,6 +239,7 @@ test('order payment and table session actions create audit events', function () 
         SystemPermission::CancelOrders,
         SystemPermission::ManagePayments,
         SystemPermission::CloseTableSessions,
+        SystemPermission::MarkOrderServed,
         SystemPermission::ViewKitchen,
     ]);
 
@@ -280,33 +280,7 @@ test('order payment and table session actions create audit events', function () 
 
     $order = app(ConfirmDraftOrderByWaiterAction::class)->handle($draftOrder, $manager);
     $orderItem = $order->items()->firstOrFail();
-    $department = KitchenDepartment::factory()
-        ->for($servicePoint->branch)
-        ->create([
-            'type' => KitchenDepartmentType::Kitchen,
-            'name' => 'Audit Kitchen',
-            'is_active' => true,
-        ]);
-    $ticket = KitchenTicket::factory()
-        ->for($order)
-        ->create([
-            'branch_id' => $order->branch_id,
-            'service_point_id' => $order->service_point_id,
-            'table_session_id' => $order->table_session_id,
-            'kitchen_department_id' => $department->id,
-            'department_type' => KitchenDepartmentType::Kitchen->value,
-            'department_name' => $department->name,
-        ]);
-    $ticketItem = KitchenTicketItem::factory()
-        ->for($ticket)
-        ->for($orderItem)
-        ->create([
-            'table_session_guest_id' => $orderItem->table_session_guest_id,
-            'menu_item_id' => $orderItem->menu_item_id,
-            'item_name' => $orderItem->item_name,
-            'quantity' => $orderItem->quantity,
-            'status' => KitchenTicketItemStatus::New,
-        ]);
+    $ticketItem = $orderItem->kitchenTicketItem()->firstOrFail();
 
     app(UpdateDepartmentTicketItemStatusAction::class)->handle(
         itemId: $ticketItem->id,
@@ -317,14 +291,21 @@ test('order payment and table session actions create audit events', function () 
         permissionCodes: [SystemPermission::ViewKitchen],
     );
 
+    app(MarkKitchenTicketItemServedAction::class)->handle($ticketItem->fresh(), $manager);
+
     app(RecordManualPaymentAction::class)->recordTable(
         tableSession: $tableSession,
         recordedBy: $manager,
         paymentMethod: ManualPaymentMethod::Cash,
     );
 
+    $cancellableOrder = Order::factory()
+        ->forTableSession($tableSession)
+        ->sentToDepartments()
+        ->create(['confirmed_by_user_id' => $manager->id]);
+
     app(ChangeOrderStatusAction::class)->handle(
-        order: $order,
+        order: $cancellableOrder,
         newStatus: OrderStatus::Cancelled,
         changedBy: $manager,
         reason: 'Audit test cancellation',
@@ -333,10 +314,10 @@ test('order payment and table session actions create audit events', function () 
     app(CloseTableSessionAction::class)->handle($tableSession, $manager);
 
     expect(expectPrompt71Audit(AuditLogAction::DraftOrderEditedByWaiter, 'draft_order_item', $draftOrderItem->id)->new_values['operation'])->toBe('waiter_item_updated')
-        ->and(expectPrompt71Audit(AuditLogAction::OrderConfirmed, 'order', $order->id)->new_values['order_status'])->toBe(OrderStatus::ConfirmedByWaiter->value)
+        ->and(expectPrompt71Audit(AuditLogAction::OrderConfirmed, 'order', $order->id)->new_values['order_status'])->toBe(OrderStatus::SentToKitchenBar->value)
         ->and(expectPrompt71Audit(AuditLogAction::DepartmentItemReady, 'kitchen_ticket_item', $ticketItem->id)->new_values['status'])->toBe(KitchenTicketItemStatus::Ready->value)
         ->and(expectPrompt71Audit(AuditLogAction::PaymentRecorded, 'manual_payment')->new_values['amount_cents'])->toBe(1800)
-        ->and(expectPrompt71Audit(AuditLogAction::OrderCancelled, 'order', $order->id)->new_values['reason'])->toBe('Audit test cancellation')
+        ->and(expectPrompt71Audit(AuditLogAction::OrderCancelled, 'order', $cancellableOrder->id)->new_values['reason'])->toBe('Audit test cancellation')
         ->and(expectPrompt71Audit(AuditLogAction::TableSessionClosed, 'table_session', $tableSession->id)->new_values['status'])->toBe(TableSessionStatus::Closed->value);
 });
 

@@ -64,7 +64,8 @@ final class ServicePointPolicy
 
     public function openTable(User $user, ServicePoint $servicePoint): bool
     {
-        return $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->openTable($user, $branch));
+        return ! $servicePoint->trashed()
+            && $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->openTable($user, $branch));
     }
 
     /**

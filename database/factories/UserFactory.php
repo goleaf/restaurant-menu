@@ -15,8 +15,6 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    public const DEMO_PASSWORD = 'DemoPassword2026!';
-
     /**
      * The current password being used by the factory.
      */
@@ -66,7 +64,7 @@ class UserFactory extends Factory
             'email' => $email,
             'locale' => SupportedLocale::English->value,
             'email_verified_at' => now(),
-            'password' => self::DEMO_PASSWORD,
+            'password' => Str::password(64),
             'remember_token' => null,
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,

@@ -147,6 +147,24 @@ select:focus-visible[data-flux-control] {
     @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
 }
 
+:is(button, a, [role='button'])[data-loading] {
+    cursor: wait;
+    pointer-events: none;
+}
+
+@media (pointer: coarse) {
+    [data-flux-control],
+    [data-flux-button]:not(.min-h-operational-touch),
+    [data-flux-sidebar-item] {
+        min-block-size: var(--spacing-touch);
+    }
+
+    [data-flux-button]:not(.min-h-operational-touch),
+    [data-flux-sidebar-item] {
+        min-inline-size: var(--spacing-touch);
+    }
+}
+
 @utility touch-target {
     min-block-size: var(--spacing-touch);
     min-inline-size: var(--spacing-touch);

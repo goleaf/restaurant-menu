@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum KitchenDepartmentType: string
@@ -9,6 +11,22 @@ enum KitchenDepartmentType: string
     case Dessert = 'dessert';
     case Hookah = 'hookah';
     case Custom = 'custom';
+
+    /**
+     * @return list<self>
+     */
+    public static function kitchenProductionTypes(): array
+    {
+        return [self::Kitchen, self::Dessert, self::Hookah, self::Custom];
+    }
+
+    /**
+     * @return list<self>
+     */
+    public static function barProductionTypes(): array
+    {
+        return [self::Bar];
+    }
 
     public function label(): string
     {

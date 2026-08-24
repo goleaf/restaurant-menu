@@ -77,9 +77,11 @@ test('department dashboard links visible tickets to the print page', function ()
 test('department ticket print page keeps kitchen and bar access scoped', function () {
     [$organization, $kitchenTicket, $barTicket] = createPrompt127TicketScenario();
     $bartender = User::factory()->create(['name' => 'Prompt 127 Bartender']);
+    $cook = User::factory()->create(['name' => 'Prompt 127 Cook']);
     $outsider = User::factory()->create(['name' => 'Prompt 127 Outsider']);
 
     attachPrompt127Staff($bartender, $organization, SystemRole::Bartender);
+    attachPrompt127Staff($cook, $organization, SystemRole::Cook);
     attachPrompt127Staff($outsider, $organization, SystemRole::Marketer);
 
     $this->get(prompt127TicketPrintUrl($barTicket))
@@ -95,6 +97,10 @@ test('department ticket print page keeps kitchen and bar access scoped', functio
 
     $this->actingAs($bartender)
         ->get(prompt127TicketPrintUrl($kitchenTicket))
+        ->assertForbidden();
+
+    $this->actingAs($cook)
+        ->get(prompt127TicketPrintUrl($barTicket))
         ->assertForbidden();
 
     $this->actingAs($outsider)

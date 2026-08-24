@@ -22,6 +22,7 @@ use App\Models\Organization;
 use App\Models\ServicePoint;
 use App\Models\User;
 use App\Services\Branches\ServicePointQueryService;
+use App\Support\LocalizedDateFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -789,6 +790,7 @@ class Index extends Component
      *     status_tone: string,
      *     localized_status: string,
      *     is_active: bool,
+     *     can_open_table: bool,
      *     is_archived: bool,
      *     has_direct_session: bool,
      *     has_linked_session: bool,
@@ -816,10 +818,11 @@ class Index extends Component
             'status_tone' => $servicePoint->status->badgeColor(),
             'localized_status' => __($servicePoint->status->label()),
             'is_active' => $servicePoint->is_active,
+            'can_open_table' => $servicePoint->is_active && $servicePoint->status->allowsTableOpening(),
             'is_archived' => $servicePoint->trashed(),
             'has_direct_session' => $servicePoint->activeTableSession !== null,
             'has_linked_session' => $servicePoint->activeTableSessionServicePointLinks->isNotEmpty(),
-            'session_started_at' => $servicePoint->activeTableSession?->started_at?->format('Y-m-d H:i'),
+            'session_started_at' => LocalizedDateFormatter::dateTime($servicePoint->activeTableSession?->started_at),
             'area_name' => $servicePoint->area_node_id === null
                 ? __('ui.livewire.organizations.brands.branches.servicepoints.index.bez_zony')
                 : $servicePoint->areaNode->name,

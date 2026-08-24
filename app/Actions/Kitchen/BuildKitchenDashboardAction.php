@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Kitchen;
 
 use App\Actions\Departments\BuildDepartmentDashboardAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\User;
@@ -31,7 +34,7 @@ class BuildKitchenDashboardAction
         return $this->buildDepartmentDashboard->handle(
             user: $user,
             selectedDepartmentId: $selectedDepartmentId,
-            departmentTypes: [],
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
             roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
             permissionCodes: [SystemPermission::ViewKitchen],
         );
@@ -41,7 +44,7 @@ class BuildKitchenDashboardAction
     {
         return $this->buildDepartmentDashboard->userHasAccess(
             user: $user,
-            departmentTypes: [],
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
             roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
             permissionCodes: [SystemPermission::ViewKitchen],
         );

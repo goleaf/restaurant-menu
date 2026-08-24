@@ -165,11 +165,11 @@ function fieldTranslationAuditManifest(): array
             'item_weight' => ['label' => 'reports.csv.weight', 'attribute' => 'validation.attributes.item_weight'],
             'item_volume' => ['label' => 'reports.csv.volume', 'attribute' => 'validation.attributes.item_volume'],
             'item_calories' => ['label' => 'reports.csv.calories', 'attribute' => 'validation.attributes.item_calories'],
-            'variant' => ['label' => 'menu.forms.variant', 'help' => 'menu.forms.variant_help', 'attribute' => 'validation.attributes.variant'],
+            'variant' => ['label' => 'menu.variants.admin.title', 'help' => 'menu.variants.admin.description', 'attribute' => 'validation.attributes.variant'],
             'modifier_group' => ['label' => 'ui.organizations.brands.branches.menu.index.modifier_group', 'attribute' => 'validation.attributes.modifier_group_id'],
             'modifier_option_price_delta' => ['label' => 'ui.organizations.brands.branches.menu.index.price_change', 'attribute' => 'validation.attributes.price_delta'],
-            'allergen' => ['label' => 'menu.forms.allergen', 'help' => 'menu.forms.allergen_help', 'attribute' => 'validation.attributes.allergen'],
-            'tag' => ['label' => 'menu.forms.tag', 'help' => 'menu.forms.tag_help', 'attribute' => 'validation.attributes.tag'],
+            'allergen' => ['label' => 'menu.allergens.title', 'help' => 'menu.allergens.help', 'attribute' => 'validation.attributes.allergen'],
+            'tag' => ['label' => 'menu.dietary_labels.title', 'help' => 'menu.dietary_labels.help', 'attribute' => 'validation.attributes.tag'],
         ],
         'staff and invitation forms' => [
             'name' => ['label' => 'reports.csv.name', 'attribute' => 'validation.attributes.name'],
@@ -179,7 +179,7 @@ function fieldTranslationAuditManifest(): array
         ],
         'permission override form' => [
             'critical_reason' => ['label' => 'guest.table.reason', 'placeholder' => 'permissions.forms.critical_reason_placeholder', 'attribute' => 'validation.attributes.critical_reason'],
-            'override_state' => ['label' => 'permissions.forms.override_state', 'attribute' => 'validation.attributes.override_state'],
+            'override_state' => ['label' => 'permissions.forms.change_reason', 'attribute' => 'validation.attributes.override_state'],
         ],
         'guest name form' => [
             'guest_name' => ['label' => 'guest.table.your_name', 'placeholder' => 'guest.table.enter_name', 'attribute' => 'validation.attributes.guest_name'],
@@ -193,12 +193,6 @@ function fieldTranslationAuditManifest(): array
             'method' => ['label' => 'payments.forms.method', 'attribute' => 'validation.attributes.payment_method'],
             'amount' => ['label' => 'payments.forms.amount', 'attribute' => 'validation.attributes.amount'],
             'note' => ['label' => 'payments.forms.note', 'attribute' => 'validation.attributes.note'],
-            'tips_amount' => ['label' => 'payments.forms.tips_amount', 'attribute' => 'validation.attributes.tips_amount'],
-        ],
-        'report filters' => [
-            'date_from' => ['label' => 'reports.filters.date_from', 'attribute' => 'validation.attributes.date_from'],
-            'date_to' => ['label' => 'reports.filters.date_to', 'attribute' => 'validation.attributes.date_to'],
-            'type' => ['label' => 'reports.filters.type', 'attribute' => 'validation.attributes.type'],
         ],
         'superadmin backup/system forms' => [
             'backup_reason' => ['label' => 'guest.table.reason', 'placeholder' => 'ui.confirmations.reason.placeholder', 'attribute' => 'validation.attributes.backup_reason'],

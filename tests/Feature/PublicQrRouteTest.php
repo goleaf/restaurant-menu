@@ -9,6 +9,7 @@ use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -60,6 +61,13 @@ test('public qr route opens guest landing for active qr code', function () {
         ->assertSeeText('Your name')
         ->assertSeeText('Join table')
         ->assertDontSeeText('Guest session and menu will appear here in the next steps.');
+});
+
+test('public qr route has a dedicated brute force rate limiter', function () {
+    $route = Route::getRoutes()->getByName('public.qr.show');
+
+    expect($route)->not->toBeNull()
+        ->and($route->gatherMiddleware())->toContain('throttle:public-qr');
 });
 
 test('public qr route uses current service point data after move and rename', function () {

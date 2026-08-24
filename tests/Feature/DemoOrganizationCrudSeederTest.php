@@ -26,6 +26,7 @@ use App\Models\ServicePoint;
 use Database\Factories\MenuAvailabilityScheduleFactory;
 use Database\Seeders\DemoOrganizationCrudSeeder;
 use Database\Seeders\DemoRestaurantSeeder;
+use Database\Seeders\DemoTenantPortfolioSeeder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Storage;
@@ -34,11 +35,13 @@ beforeEach(function (): void {
     Storage::fake('public');
 });
 
-test('both demo seeders refuse production before writing any data', function (): void {
+test('all demo seeders refuse production before writing any data', function (): void {
     config()->set('app.env', 'production');
 
     expect(fn () => $this->seed(DemoOrganizationCrudSeeder::class))
         ->toThrow(LogicException::class, 'Demo organization CRUD data cannot be seeded in production.')
+        ->and(fn () => $this->seed(DemoTenantPortfolioSeeder::class))
+        ->toThrow(LogicException::class, 'Demo tenant portfolio cannot be seeded in production.')
         ->and(fn () => $this->seed(DemoRestaurantSeeder::class))
         ->toThrow(RuntimeException::class, 'DemoRestaurantSeeder is development-only and cannot run while APP_ENV=production.');
 
@@ -92,13 +95,9 @@ test('the parent seeder creates every missing organization administration fixtur
         ->and($coffeeBar)->toBeInstanceOf(Branch::class)
         ->and($coffeeBar->is_active)->toBeFalse();
 
-    expect(Invitation::query()->where('organization_id', $organization->id)->count())->toBe(3)
+    expect(Invitation::query()->where('organization_id', $organization->id)->count())->toBe(5)
         ->and(Invitation::query()->where('organization_id', $organization->id)->pluck('status')->all())
-        ->toEqualCanonicalizing([
-            InvitationStatus::Pending,
-            InvitationStatus::Expired,
-            InvitationStatus::Cancelled,
-        ])
+        ->toEqualCanonicalizing(InvitationStatus::cases())
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->count())->toBe(2)
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', true)->count())->toBe(1)
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', false)->count())->toBe(1)
@@ -205,7 +204,7 @@ test('demo invitations expose no raw token code or digest in presentation data',
         ->get();
     $presentationJson = $invitations->toJson();
 
-    expect($invitations)->toHaveCount(3)
+    expect($invitations)->toHaveCount(5)
         ->and($presentationJson)->not->toContain('invite_token')
         ->and($presentationJson)->not->toContain('invite_code')
         ->and($presentationJson)->not->toContain('demo-crud-token')
@@ -215,6 +214,43 @@ test('demo invitations expose no raw token code or digest in presentation data',
         expect(strlen((string) $invitation->getRawOriginal('invite_token_hash')))->toBe(64)
             ->and(strlen((string) $invitation->getRawOriginal('invite_code_hash')))->toBe(64);
     }
+});
+
+test('the CRUD seeder upgrades retired deterministic invitation digests once and then preserves replacements', function (): void {
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $invitation = Invitation::query()
+        ->where('organization_id', demoCrudOrganization()->id)
+        ->where('email', 'revoked.invitation@demo.test')
+        ->firstOrFail();
+    $legacyTokenHash = 'aca12dccb81f3b64ec33d95d1053a8719c6f570f9f5462c79ab1c54fb52ffc6f';
+    $legacyCodeHash = '9975448eb682333ea4deb656e96b3a50bbe246125d9085346674b1508e156cec';
+
+    $invitation->forceFill([
+        'email' => 'cancelled.invitation@demo.test',
+        'invite_token_hash' => $legacyTokenHash,
+        'invite_code_hash' => $legacyCodeHash,
+    ])->save();
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    $upgraded = Invitation::query()->findOrFail($invitation->id);
+    $replacementHashes = [
+        $upgraded->getRawOriginal('invite_token_hash'),
+        $upgraded->getRawOriginal('invite_code_hash'),
+    ];
+
+    expect($upgraded->email)->toBe('revoked.invitation@demo.test')
+        ->and($replacementHashes)->not->toContain($legacyTokenHash)
+        ->and($replacementHashes)->not->toContain($legacyCodeHash);
+
+    $this->seed(DemoRestaurantSeeder::class);
+
+    expect(Invitation::query()->findOrFail($invitation->id)->only(['invite_token_hash', 'invite_code_hash']))
+        ->toBe([
+            'invite_token_hash' => $replacementHashes[0],
+            'invite_code_hash' => $replacementHashes[1],
+        ]);
 });
 
 function demoCrudOrganization(): Organization

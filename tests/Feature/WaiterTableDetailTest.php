@@ -3,6 +3,7 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\BuildWaiterTableDetailAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
@@ -18,6 +19,7 @@ use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -69,14 +71,14 @@ test('waiter sees table detail with guests positions modifiers comments and tota
         ->assertSee('No garlic')
         ->assertSee('Pizza size: Large')
         ->assertSee('Water')
-        ->assertSee('22.50 EUR');
+        ->assertSee('€22.50');
 
     $draftReviewComponent = Livewire::actingAs($waiter)
         ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSet('draftReview.guest_sections.0.guest_name', 'Ana')
-        ->assertSet('draftReview.guest_sections.0.total', '10.00 EUR')
+        ->assertSet('draftReview.guest_sections.0.total', '€10.00')
         ->assertSet('draftReview.guest_sections.1.guest_name', 'Zara')
-        ->assertSet('draftReview.guest_sections.1.total', '12.50 EUR')
+        ->assertSet('draftReview.guest_sections.1.total', '€12.50')
         ->assertSet('draftReview.draft.id', $draftOrder->id)
         ->assertSet('draftReview.draft.sent_by_guest_name', $ana->guest_name)
         ->assertSee('id="waiter-draft-adding-comment"', false)
@@ -94,8 +96,60 @@ test('waiter sees table detail with guests positions modifiers comments and tota
         ->assertOk()
         ->assertSee('wire:poll.visible.1s="refreshDraftReview"', false)
         ->assertSee('wire:poll.visible.1s="refreshOrderFulfilment"', false)
-        ->assertSeeTextInOrder(['Ana', 'Water', '10.00 EUR', 'Zara', 'Margherita', '12.50 EUR'])
-        ->assertSeeText('22.50 EUR');
+        ->assertSeeTextInOrder(['Ana', 'Water', '€10.00', 'Zara', 'Margherita', '€12.50'])
+        ->assertSeeText('€22.50');
+});
+
+test('waiter table detail shows participants on the first Livewire render', function () {
+    [$organization, , , $tableSession] = createPrompt53TableDetailScenario();
+    $waiter = User::factory()->create();
+    attachPrompt53Waiter($waiter, $organization);
+    $guest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->active()
+        ->create(['guest_name' => 'Observer Guest']);
+
+    Livewire::actingAs($waiter)
+        ->test(TableDetail::class, ['tableSession' => $tableSession])
+        ->assertSee('Observer Guest')
+        ->assertSee('data-modal="remove-table-guest-'.$guest->id.'"', false);
+});
+
+test('historical closed session is viewable without exposing impossible mutations', function () {
+    [$organization, , , $tableSession] = createPrompt53TableDetailScenario();
+    $waiter = User::factory()->create();
+    attachPrompt53Waiter($waiter, $organization);
+    $guest = TableSessionGuest::factory()->for($tableSession)->active()->create();
+    $draftOrder = DraftOrder::factory()->for($tableSession)->create([
+        'status' => DraftOrderStatus::ConvertedToOrder,
+    ]);
+    DraftOrderItem::factory()->for($draftOrder)->for($guest, 'guest')->create();
+    Order::factory()
+        ->for($tableSession)
+        ->for($draftOrder, 'draftOrder')
+        ->create(['status' => OrderStatus::Closed]);
+    $tableSession->forceFill([
+        'status' => TableSessionStatus::Closed,
+        'ended_at' => now(),
+    ])->save();
+
+    $payload = app(BuildWaiterTableDetailAction::class)->handle($waiter, $tableSession->fresh());
+
+    expect($payload['has_access'])->toBeTrue()
+        ->and(data_get($payload, 'table.session.can_close'))->toBeFalse()
+        ->and(data_get($payload, 'table.participants.can_manage'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_confirm'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_reject'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_return_to_draft'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_edit'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_send_to_kitchen'))->toBeFalse()
+        ->and(data_get($payload, 'table.draft.can_cancel'))->toBeFalse();
+
+    $this->actingAs($waiter)
+        ->get(route('restaurant.waiter.tables.show', $tableSession))
+        ->assertOk()
+        ->assertSee(__('ui.waiter.table_detail.order_service_complete'))
+        ->assertDontSee(__('ui.waiter.table_detail.prepared_for_kitchen_bar_dispatch_but_not_sent_yet'));
 });
 
 test('waiter table detail respects active branch assignments', function () {
@@ -141,7 +195,7 @@ test('waiter table detail refresh shows newly added draft item without websocket
 
     $component = Livewire::actingAs($waiter)
         ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('draftReview.total', '22.50 EUR');
+        ->assertSet('draftReview.total', '€22.50');
 
     DraftOrderItem::factory()
         ->for($draftOrder, 'draftOrder')
@@ -161,8 +215,8 @@ test('waiter table detail refresh shows newly added draft item without websocket
         ->call('refreshDraftReview')
         ->assertSee('Tea')
         ->assertSee('Warm')
-        ->assertSet('draftReview.guest_sections.0.total', '13.00 EUR')
-        ->assertSet('draftReview.total', '25.50 EUR');
+        ->assertSet('draftReview.guest_sections.0.total', '€13.00')
+        ->assertSet('draftReview.total', '€25.50');
 });
 
 test('unchanged polling sections do not rebuild the complete waiter table graph', function () {

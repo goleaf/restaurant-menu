@@ -35,6 +35,8 @@
                         </span>
                     @endif
                 </p>
+            @elseif (in_array(data_get($orderFulfilment, 'draft.order_status_value'), ['payment_requested', 'paid', 'closed'], true))
+                <p class="mt-1 text-emerald-700 dark:text-emerald-300">{{ __('ui.waiter.table_detail.order_service_complete') }}</p>
             @elseif (in_array(data_get($orderFulfilment, 'draft.order_status_value'), ['sent_to_kitchen_bar', 'in_progress', 'ready', 'served'], true))
                 <p class="mt-1 text-emerald-700 dark:text-emerald-300">{{ __('ui.waiter.table_detail.kitchen_bar_received_this_order') }}</p>
                 <p class="mt-1 text-zinc-500 dark:text-zinc-400">

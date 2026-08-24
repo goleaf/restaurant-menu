@@ -83,9 +83,9 @@
 
                         @if ($guestTotal['has_confirmed_total'])
                             <p class="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-                                {{ __('guest.cart.confirmed_total') }}: {{ $guestTotal['confirmed_total'] }} {{ $currency }}
+                                {{ __('guest.cart.confirmed_total') }}: {{ $guestTotal['confirmed_total_label'] }}
                                 @if ($guestTotal['has_draft_total'])
-                                    <span>{{ __('guest.cart.separator') }} {{ __('guest.cart.current_draft') }}: {{ $guestTotal['draft_total'] }} {{ $currency }}</span>
+                                    <span>{{ __('guest.cart.separator') }} {{ __('guest.cart.current_draft') }}: {{ $guestTotal['draft_total_label'] }}</span>
                                 @endif
                             </p>
                         @endif
@@ -93,7 +93,7 @@
                     </div>
 
                     <div class="shrink-0 text-right">
-                        <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestTotal['total'] }} {{ $currency }}</p>
+                        <p class="text-sm font-semibold text-zinc-950 dark:text-white">{{ $guestTotal['total_label'] }}</p>
                         <x-ui.status-badge :tone="$guestTotal['is_ready'] ? 'success' : 'muted'" class="mt-1">
                             {{ $guestTotal['is_ready'] ? __('guest.table.ready') : __('guest.table.not_ready') }}
                         </x-ui.status-badge>
@@ -112,7 +112,7 @@
                 {{ $hasConfirmedOrders ? __('guest.cart.current_draft') : __('guest.cart.table_total') }}
             </span>
             <span class="text-xl font-semibold text-zinc-950 dark:text-white">
-                {{ $currentDraftTotalAmount }} {{ $currency }}
+                {{ $currentDraftTotalLabel }}
             </span>
         </div>
 
@@ -120,18 +120,18 @@
             <div class="space-y-2 rounded-lg bg-emerald-50 px-3 py-3 text-sm dark:bg-emerald-950/30">
                 <div class="flex items-center justify-between gap-3">
                     <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.confirmed_total') }}</span>
-                    <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalAmount }} {{ $currency }}</span>
+                    <span class="font-semibold text-emerald-950 dark:text-emerald-50">{{ $confirmedOrdersTotalLabel }}</span>
                 </div>
 
                 <div class="flex items-center justify-between gap-3 border-t border-emerald-100 pt-2 dark:border-emerald-900/60">
                     <span class="font-medium text-emerald-900 dark:text-emerald-100">{{ __('guest.cart.table_total') }}</span>
-                    <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalAmount }} {{ $currency }}</span>
+                    <span class="text-lg font-semibold text-emerald-950 dark:text-emerald-50">{{ $tableTotalLabel }}</span>
                 </div>
             </div>
         @endif
 
         @if ($canToggleReadyStatus || $billRequested || $canRequestBill || $canSendDraftToWaiter)
-        <x-ui.mobile-bottom-actions data-guest-cart-actions :summary="__('guest.cart.table_total').': '.$tableTotalAmount.' '.$currency">
+        <x-ui.mobile-bottom-actions data-guest-cart-actions :summary="__('guest.cart.table_total').': '.$tableTotalLabel">
             @if ($canToggleReadyStatus)
                 <x-ui.button
                     type="button"
@@ -152,7 +152,7 @@
             @if ($billRequested)
                 <x-ui.alert tone="info">
                     {{ __('guest.table.bill_requested') }}
-                    <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalAmount }} {{ $currency }}</span>
+                    <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalLabel }}</span>
                 </x-ui.alert>
             @elseif ($canRequestBill)
                 <x-ui.button
@@ -164,7 +164,7 @@
                     size="lg"
                     full-width
                 >
-                    <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalAmount }} {{ $currency }}</span>
+                    <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalLabel }}</span>
                     <span wire:loading wire:target="requestBill">{{ __('guest.table.sending') }}</span>
                 </x-ui.button>
             @endif

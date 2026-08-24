@@ -245,7 +245,7 @@ test('waiter confirmation stores kitchen department snapshots on order items', f
         ->and($orderItem->kitchen_department_type)->toBe(KitchenDepartmentType::Bar->value)
         ->and($orderItem->kitchen_department_name)->toBe('Main bar')
         ->and($orderItem->kitchenDepartment?->name)->toBe('Main bar')
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Cooking);
 
     $department->update([
         'name' => 'Renamed bar',

@@ -2,6 +2,7 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\AddManualWaiterOrderItemAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
@@ -70,7 +71,7 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->call('updateDraftItem')
         ->assertHasNoErrors()
         ->assertSee('Waiter review')
-        ->assertSee('25.00 EUR');
+        ->assertSee('€25.00');
 
     $pizzaDraftItem = $pizzaDraftItem->fresh();
 
@@ -94,7 +95,7 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
     Livewire::actingAs($waiter)
         ->test(WaiterDashboard::class)
         ->assertSee(__('ui.waiter.dashboard.waiting_review'))
-        ->assertSee('25.00 EUR');
+        ->assertSee('€25.00');
 
     $pizzaDraftItem->forceFill(['total_price_cents' => 1])->save();
 
@@ -137,10 +138,10 @@ test('waiter can add and delete draft positions before confirmation', function (
         ->set('addingComment', 'Still water')
         ->call('addDraftItem')
         ->assertHasNoErrors()
-        ->assertSet('draftReview.total', '22.00 EUR')
+        ->assertSet('draftReview.total', '€22.00')
         ->call('deleteDraftItem', $pizzaDraftItem->id)
         ->assertHasNoErrors()
-        ->assertSee('12.00 EUR');
+        ->assertSee('€12.00');
 
     expect(DraftOrderItem::query()->whereKey($pizzaDraftItem->id)->exists())->toBeFalse()
         ->and($draftOrder->fresh()->status)->toBe(DraftOrderStatus::WaiterReview);
@@ -192,8 +193,8 @@ test('waiter can manually create guest draft item and confirm it from active tab
         ->assertSee('Mrs Ona')
         ->assertSee('Waiter review')
         ->assertSee('Less salt')
-        ->assertSee('41.00 EUR')
-        ->assertSee('Confirm order')
+        ->assertSee('€41.00')
+        ->assertSee(__('ui.waiter.table_detail.confirm_and_send_order'))
         ->call('confirmDraft')
         ->assertHasNoErrors()
         ->assertSee(__('guest.table.order').' #');
@@ -224,6 +225,35 @@ test('waiter can manually create guest draft item and confirm it from active tab
         ->and($order->items->first()->unit_price_snapshot_cents)->toBe(1800)
         ->and($order->items->first()->modifiers_snapshot[0]['option_name'])->toBe('Large')
         ->and($order->items->first()->comment)->toBe('Less salt');
+});
+
+test('replaying the same manual waiter add command does not duplicate guest or item', function (): void {
+    $context = createPrompt113ManualOrderScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 113 Replay Waiter']);
+    attachPrompt55Staff($waiter, $context['organization'], [SystemPermission::ConfirmOrders]);
+    $idempotencyKey = '018fdc1b-7a43-7d8e-a8b5-49ef5cc91669';
+
+    $add = fn (): DraftOrderItem => app(AddManualWaiterOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        waiter: $waiter,
+        guest: null,
+        guestName: 'Replay guest',
+        menuItem: $context['pizzaItem'],
+        quantity: 1,
+        selectedModifierOptions: [(string) $context['sizeGroup']->id => [$context['largeOption']->id]],
+        menuItemVariantId: $context['largeVariant']->id,
+        idempotencyKey: $idempotencyKey,
+    );
+
+    $first = $add();
+    $replayed = $add();
+
+    expect($replayed->id)->toBe($first->id)
+        ->and(DraftOrderItem::query()->where('draft_order_id', $first->draft_order_id)->count())->toBe(1)
+        ->and(TableSessionGuest::query()
+            ->where('table_session_id', $context['tableSession']->id)
+            ->where('guest_name', 'Replay guest')
+            ->count())->toBe(1);
 });
 
 test('waiter cannot add draft item from menu outside current schedule', function () {
@@ -258,7 +288,7 @@ test('waiter cannot add draft item from menu outside current schedule', function
         editedBy: $waiter,
         quantity: 1,
         selectedModifierOptions: [],
-    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 08:00']));
+    ))->toThrow(ValidationException::class, __('menu.guest.available_from', ['time' => __('menu.guest.days.mon').' 8:00 AM']));
 
     expect(DraftOrderItem::query()
         ->where('draft_order_id', $draftOrder->id)
@@ -279,12 +309,12 @@ test('edit pending orders permission can edit sent draft without confirming it',
     Livewire::actingAs($staff)
         ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->assertSee('Edit draft')
-        ->assertDontSee('Confirm order')
+        ->assertDontSee(__('ui.waiter.table_detail.confirm_and_send_order'))
         ->call('editDraftItem', $pizzaDraftItem->id)
         ->set('editingQuantity', 2)
         ->call('updateDraftItem')
         ->assertHasNoErrors()
-        ->assertSee('20.00 EUR')
+        ->assertSee('€20.00')
         ->call('confirmDraft')
         ->assertHasErrors('draft_review');
 

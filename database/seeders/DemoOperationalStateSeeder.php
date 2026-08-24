@@ -12,6 +12,7 @@ use App\Enums\KitchenTicketStatus;
 use App\Enums\ManualPaymentScope;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
+use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
@@ -145,7 +146,206 @@ class DemoOperationalStateSeeder extends Seeder
 
                 $this->seedPaidBranchWorkflow($secondaryBranch, $servicePoint, $menuItem, $manager);
             }
+
+            $this->seedLifecycleShowcases($organization, $waiter);
         });
+    }
+
+    private function seedLifecycleShowcases(Organization $organization, User $waiter): void
+    {
+        $demoKeys = array_map(
+            fn (OrderStatus $status): string => 'order-status-'.$status->value,
+            OrderStatus::cases(),
+        );
+        $existingServicePointIds = TableSession::query()
+            ->select(['id', 'branch_id', 'service_point_id', 'metadata'])
+            ->whereHas('branch', fn ($query) => $query->where('organization_id', $organization->id))
+            ->whereIn('metadata->demo_key', $demoKeys)
+            ->orderBy('id')
+            ->get()
+            ->mapWithKeys(fn (TableSession $session): array => [
+                (string) data_get($session->metadata, 'demo_key') => $session->service_point_id,
+            ]);
+        $missingCount = count($demoKeys) - $existingServicePointIds->count();
+        $availableServicePointIds = ServicePoint::query()
+            ->select(['id', 'branch_id'])
+            ->whereHas('branch', fn ($query) => $query->where('organization_id', $organization->id))
+            ->whereDoesntHave('activeTableSession')
+            ->orderBy('id')
+            ->limit($missingCount)
+            ->pluck('id')
+            ->values();
+
+        if ($availableServicePointIds->count() !== $missingCount) {
+            throw new RuntimeException('The demo graph requires one free service point per order lifecycle status.');
+        }
+
+        foreach (OrderStatus::cases() as $index => $status) {
+            $demoKey = 'order-status-'.$status->value;
+            $servicePointId = $existingServicePointIds->get($demoKey)
+                ?? $availableServicePointIds->shift();
+            $servicePoint = $this->lifecycleServicePoint((int) $servicePointId);
+            $branch = $servicePoint->branch;
+            $menuItem = $branch->menus
+                ->flatMap(fn ($menu) => $menu->items)
+                ->first();
+
+            if (! $menuItem instanceof MenuItem) {
+                throw new RuntimeException("Demo branch [{$branch->id}] requires a menu item for lifecycle states.");
+            }
+
+            $session = $this->session(
+                $branch,
+                $servicePoint,
+                $demoKey,
+                $this->tableSessionStatusFor($status),
+                now()->subMinutes(90 - $index),
+                $this->tableSessionEndedAtFor($status),
+            );
+            $guest = $this->guest($session, 'Order '.$status->value.' Guest', true);
+            $amountCents = max(1, $menuItem->price_cents);
+            $order = $this->order(
+                $session,
+                $guest,
+                $waiter,
+                $demoKey,
+                $status,
+                $amountCents,
+            );
+            $orderItem = $this->orderItem(
+                $order,
+                $guest,
+                $menuItem,
+                'Order status '.$status->value,
+                $amountCents,
+            );
+            $ticketItemStatus = $this->ticketItemStatusFor($status);
+
+            if ($ticketItemStatus instanceof KitchenTicketItemStatus) {
+                $this->ticketItem(
+                    $branch,
+                    $session,
+                    $order,
+                    $orderItem,
+                    $menuItem,
+                    $ticketItemStatus,
+                    $waiter,
+                );
+            }
+
+            $previousStatus = $this->previousOrderStatusFor($status);
+
+            if ($previousStatus instanceof OrderStatus) {
+                $this->orderStatusLog(
+                    $order,
+                    $waiter,
+                    'order-status-log-'.$status->value,
+                    $previousStatus,
+                    $status,
+                );
+            }
+
+            if ($index === 0) {
+                $this->seedDraftLifecycleShowcase($session, $guest, $menuItem, $waiter);
+            }
+        }
+    }
+
+    private function lifecycleServicePoint(int $servicePointId): ServicePoint
+    {
+        return ServicePoint::query()
+            ->select(['id', 'branch_id', 'area_node_id', 'name', 'is_active'])
+            ->with([
+                'branch:id,organization_id,currency',
+                'branch.menus:id,branch_id,name',
+                'branch.menus.items' => fn ($query) => $query
+                    ->select([
+                        'id',
+                        'menu_id',
+                        'kitchen_department_id',
+                        'name',
+                        'price_cents',
+                        'sort_order',
+                    ])
+                    ->with([
+                        'kitchenDepartment:id,branch_id,type,name',
+                        'variants:id,menu_item_id,type,name,price_cents,is_default,sort_order',
+                    ])
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
+            ])
+            ->whereKey($servicePointId)
+            ->firstOrFail();
+    }
+
+    private function seedDraftLifecycleShowcase(
+        TableSession $session,
+        TableSessionGuest $guest,
+        MenuItem $menuItem,
+        User $waiter,
+    ): void {
+        foreach (DraftOrderStatus::cases() as $index => $status) {
+            $draft = $this->draft($session, $status, $guest, $waiter);
+            $amountCents = max(1, $menuItem->price_cents);
+
+            $this->draftItem(
+                $draft,
+                $guest,
+                $menuItem,
+                1,
+                $amountCents,
+                $amountCents,
+                $index === 0 ? 'Open demo cart' : null,
+            );
+        }
+    }
+
+    private function tableSessionStatusFor(OrderStatus $status): TableSessionStatus
+    {
+        return match ($status) {
+            OrderStatus::ConfirmedByWaiter,
+            OrderStatus::SentToKitchenBar,
+            OrderStatus::InProgress,
+            OrderStatus::Ready,
+            OrderStatus::Served => TableSessionStatus::Active,
+            OrderStatus::PaymentRequested => TableSessionStatus::PaymentRequested,
+            OrderStatus::Paid => TableSessionStatus::Paid,
+            OrderStatus::Closed => TableSessionStatus::Closed,
+            OrderStatus::Cancelled => TableSessionStatus::Cancelled,
+        };
+    }
+
+    private function tableSessionEndedAtFor(OrderStatus $status): ?\DateTimeInterface
+    {
+        return in_array($status, [OrderStatus::Closed, OrderStatus::Cancelled], true)
+            ? now()->subMinutes(30)
+            : null;
+    }
+
+    private function ticketItemStatusFor(OrderStatus $status): ?KitchenTicketItemStatus
+    {
+        return match ($status) {
+            OrderStatus::ConfirmedByWaiter => null,
+            OrderStatus::SentToKitchenBar => KitchenTicketItemStatus::New,
+            OrderStatus::InProgress => KitchenTicketItemStatus::InProgress,
+            OrderStatus::Cancelled => KitchenTicketItemStatus::Cancelled,
+            default => KitchenTicketItemStatus::Ready,
+        };
+    }
+
+    private function previousOrderStatusFor(OrderStatus $status): ?OrderStatus
+    {
+        return match ($status) {
+            OrderStatus::ConfirmedByWaiter => null,
+            OrderStatus::SentToKitchenBar => OrderStatus::ConfirmedByWaiter,
+            OrderStatus::InProgress => OrderStatus::SentToKitchenBar,
+            OrderStatus::Ready => OrderStatus::InProgress,
+            OrderStatus::Served => OrderStatus::Ready,
+            OrderStatus::PaymentRequested => OrderStatus::Served,
+            OrderStatus::Paid => OrderStatus::PaymentRequested,
+            OrderStatus::Closed => OrderStatus::Paid,
+            OrderStatus::Cancelled => OrderStatus::ConfirmedByWaiter,
+        };
     }
 
     private function seedSubscription(Organization $organization): void
@@ -377,9 +577,26 @@ class DemoOperationalStateSeeder extends Seeder
             $session->forceFill($factory->make()->attributesToArray())->save();
         }
 
+        $servicePoint->forceFill([
+            'status' => $this->servicePointStatusFor($status),
+        ])->save();
+
         $session->setRelation('branch', $branch);
 
         return $session;
+    }
+
+    private function servicePointStatusFor(TableSessionStatus $status): ServicePointStatus
+    {
+        return match ($status) {
+            TableSessionStatus::Pending => ServicePointStatus::WaitingWaiter,
+            TableSessionStatus::Active => ServicePointStatus::Occupied,
+            TableSessionStatus::WaitingWaiterConfirmation => ServicePointStatus::HasNewOrder,
+            TableSessionStatus::PaymentRequested => ServicePointStatus::PaymentRequested,
+            TableSessionStatus::Paid => ServicePointStatus::Paid,
+            TableSessionStatus::Closed,
+            TableSessionStatus::Cancelled => ServicePointStatus::Free,
+        };
     }
 
     private function guest(
@@ -425,15 +642,9 @@ class DemoOperationalStateSeeder extends Seeder
             ->first();
         $factory = DraftOrder::factory()
             ->forTableSession($session)
+            ->forStatus($status, $waiter)
             ->state([
-                'status' => $status,
-                'sent_to_waiter_at' => now()->subMinutes(15),
-                'sent_by_guest_id' => $guest->id,
-                'rejected_at' => null,
-                'rejected_by_user_id' => null,
-                'rejection_reason' => null,
-                'converted_to_order_at' => $status === DraftOrderStatus::ConvertedToOrder ? now()->subMinutes(12) : null,
-                'converted_by_user_id' => $status === DraftOrderStatus::ConvertedToOrder ? $waiter?->id : null,
+                'sent_by_guest_id' => $status === DraftOrderStatus::Draft ? null : $guest->id,
             ]);
 
         if (! $draft instanceof DraftOrder) {
@@ -498,12 +709,18 @@ class DemoOperationalStateSeeder extends Seeder
             ->where('branch_id', $session->branch_id)
             ->where('metadata->demo_key', $demoKey)
             ->first();
-        $draft = $this->draft($session, DraftOrderStatus::ConvertedToOrder, $guest, $waiter);
+        $draft = $order instanceof Order
+            ? DraftOrder::query()->findOrFail($order->draft_order_id)
+            : DraftOrder::factory()
+                ->forTableSession($session)
+                ->forStatus(DraftOrderStatus::ConvertedToOrder, $waiter)
+                ->state(['sent_by_guest_id' => $guest->id])
+                ->create();
         $factory = Order::factory()
             ->forTableSession($session)
+            ->forStatus($status)
             ->state([
                 'draft_order_id' => $draft->id,
-                'status' => $status,
                 'confirmed_by_user_id' => $waiter->id,
                 'confirmed_at' => now()->subMinutes(12),
                 'total_price_cents' => $totalPriceCents,

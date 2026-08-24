@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Kitchen;
 
 use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
+use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -21,7 +24,7 @@ class UpdateKitchenTicketItemStatusAction
             itemId: $itemId,
             status: $status,
             user: $user,
-            departmentTypes: [],
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
             roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
             permissionCodes: [SystemPermission::ViewKitchen],
         );

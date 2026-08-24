@@ -72,7 +72,7 @@ final class TableDetail extends Component
             ->only([
                 'branch', 'zone', 'service_point', 'linked_service_points', 'session', 'draft',
                 'transfer', 'merge', 'current_draft_total', 'confirmed_orders_total',
-                'confirmed_order_count', 'total', 'guest_count',
+                'participants', 'confirmed_order_count', 'total', 'guest_count',
             ])
             ->all();
     }
@@ -88,7 +88,10 @@ final class TableDetail extends Component
     /** @param array<string, mixed> $table @return array<string, mixed> */
     private function orderFulfilmentPayload(array $table): array
     {
-        return ['draft' => data_get($table, 'draft', [])];
+        return [
+            'draft' => data_get($table, 'draft', []),
+            'orders' => data_get($table, 'orders', []),
+        ];
     }
 
     /** @param array<string, mixed> $table @return array<string, mixed> */

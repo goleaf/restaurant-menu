@@ -21,6 +21,7 @@ use App\Services\Waiter\TableDetailChangeDetector;
 use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -32,6 +33,9 @@ final class DraftReview extends TableDetailSection
     #[Locked]
     public string $changeFingerprint = '';
 
+    #[Locked]
+    public string $addDraftItemAttemptId = '';
+
     /** @var array<string, mixed> */
     public array $draftReview = [];
 
@@ -39,7 +43,7 @@ final class DraftReview extends TableDetailSection
 
     public string $reviewFeedbackMessage = '';
 
-    /** @var list<array{value: string, label: string, price: string}> */
+    /** @var list<array{value: string, label: string, price: string, formatted_price: string}> */
     public array $addableMenuItems = [];
 
     public ?int $addableMenuItemsBranchId = null;
@@ -120,6 +124,7 @@ final class DraftReview extends TableDetailSection
             ? $this->draftReviewPayload($this->freshViewableTablePayload())
             : $initialDraftReview;
         $this->changeFingerprint = $this->changeDetector->draftReviewFingerprint($this->tableSessionId);
+        $this->addDraftItemAttemptId = (string) Str::uuid();
         $this->syncAddableMenuItems();
     }
 
@@ -220,6 +225,10 @@ final class DraftReview extends TableDetailSection
         }
 
         try {
+            if ($this->addDraftItemAttemptId === '') {
+                $this->addDraftItemAttemptId = (string) Str::uuid();
+            }
+
             $draftOrderItem = $addManualWaiterOrderItem->handle(
                 tableSession: $tableSession,
                 waiter: $this->currentUser(),
@@ -231,6 +240,7 @@ final class DraftReview extends TableDetailSection
                 menuItemVariantId: $this->nullableId($this->addingItemVariantId),
                 comment: $this->addingComment,
                 itemName: $this->addingItemName,
+                idempotencyKey: $this->addDraftItemAttemptId,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);
@@ -459,7 +469,12 @@ final class DraftReview extends TableDetailSection
 
     public function render(): View
     {
-        return view('livewire.waiter.table-detail.draft-review');
+        $currency = (string) data_get($this->draftReview, 'branch.currency', 'EUR');
+
+        return view('livewire.waiter.table-detail.draft-review', [
+            'addingItemTotalLabel' => MoneyFormatter::format($this->addingItemTotal, $currency),
+            'editingItemTotalLabel' => MoneyFormatter::format($this->editingItemTotal, $currency),
+        ]);
     }
 
     private function refreshAndNotify(): void
@@ -516,12 +531,18 @@ final class DraftReview extends TableDetailSection
         return $this->waiterQueries->draftOrderItemForTable($itemId, $this->tableSessionId);
     }
 
-    /** @return list<array{value: string, label: string, price: string}> */
+    /** @return list<array{value: string, label: string, price: string, formatted_price: string}> */
     private function menuItemOptionsForCurrentBranch(): array
     {
         $branchId = (int) data_get($this->draftReview, 'branch.id');
+        $currency = (string) data_get($this->draftReview, 'branch.currency', 'EUR');
 
-        return $this->waiterQueries->menuItemOptionsForBranch($branchId);
+        return collect($this->waiterQueries->menuItemOptionsForBranch($branchId))
+            ->map(fn (array $option): array => [
+                ...$option,
+                'formatted_price' => MoneyFormatter::format($option['price'], $currency),
+            ])
+            ->all();
     }
 
     private function syncAddableMenuItems(): void
@@ -808,6 +829,7 @@ final class DraftReview extends TableDetailSection
 
     private function resetAddingForm(): void
     {
+        $this->addDraftItemAttemptId = (string) Str::uuid();
         $this->addingMenuItemId = '';
         $this->addingQuantity = 1;
         $this->addingItemName = '';

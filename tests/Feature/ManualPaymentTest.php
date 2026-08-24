@@ -55,14 +55,14 @@ test('payment manager can mark whole table paid and close the session', function
         ->assertSet('payment.can_view', true)
         ->assertSet('payment.can_manage', true)
         ->assertSet('payment.can_record_table_payment', true)
-        ->assertSet('payment.remaining_total', '32.00 EUR')
+        ->assertSet('payment.remaining_total', '€32.00')
         ->assertSee('id="waiter-payment-note"', false)
         ->assertSee('name="paymentNote"', false)
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->call('recordTablePayment')
         ->assertSee(__('payments.messages.payment_recorded'))
         ->assertSet('payment.is_fully_paid', true)
-        ->assertSet('payment.remaining_total', '0.00 EUR');
+        ->assertSet('payment.remaining_total', '€0.00');
 
     $payment = ManualPayment::query()->firstOrFail();
 
@@ -72,7 +72,8 @@ test('payment manager can mark whole table paid and close the session', function
         ->and($tableSession->fresh()->status)->toBe(TableSessionStatus::Paid)
         ->and($tableSession->fresh()->active_service_point_id)->toBeNull()
         ->and((int) data_get($tableSession->fresh()->metadata, 'paid_by_user_id'))->toBe($manager->id)
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Paid)
+        ->and($tableSession->orders()->firstOrFail()->status)->toBe(OrderStatus::Paid);
 
     $component
         ->call('closePaidSession')
@@ -81,7 +82,8 @@ test('payment manager can mark whole table paid and close the session', function
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Closed)
         ->and($tableSession->fresh()->closed_by_user_id)->toBe($manager->id)
         ->and($tableSession->fresh()->ended_at)->not->toBeNull()
-        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free);
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
+        ->and($tableSession->orders()->firstOrFail()->status)->toBe(OrderStatus::Closed);
 });
 
 test('cashier role can mark individual guest payments without manage payments permission', function () {
@@ -93,13 +95,13 @@ test('cashier role can mark individual guest payments without manage payments pe
         ->test(Payment::class, ['tableSessionId' => $tableSession->id])
         ->assertSet('payment.can_manage', true)
         ->assertSet('payment.guest_balances.0.guest_name', 'Ana')
-        ->assertSet('payment.guest_balances.0.remaining', '20.00 EUR')
+        ->assertSet('payment.guest_balances.0.remaining', '€20.00')
         ->assertSet('payment.guest_balances.1.guest_name', 'Boris')
         ->assertSet('payment.unpaid_guests_count', 2)
         ->set('paymentMethod', ManualPaymentMethod::Cash->value)
         ->call('recordGuestPayment', $ana->id)
         ->assertSee(__('payments.messages.payment_recorded'))
-        ->assertSet('payment.remaining_total', '12.00 EUR')
+        ->assertSet('payment.remaining_total', '€12.00')
         ->assertSet('payment.unpaid_guests_count', 1)
         ->assertSet('payment.unpaid_guests.0.guest_name', 'Boris')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
@@ -124,10 +126,10 @@ test('split bill summary is based on confirmed guest order items', function () {
 
     Livewire::actingAs($manager)
         ->test(Payment::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('payment.confirmed_total', '32.00 EUR')
-        ->assertSet('payment.remaining_total', '32.00 EUR')
-        ->assertSet('payment.guest_balances.0.due', '20.00 EUR')
-        ->assertSet('payment.guest_balances.1.due', '12.00 EUR')
+        ->assertSet('payment.confirmed_total', '€32.00')
+        ->assertSet('payment.remaining_total', '€32.00')
+        ->assertSet('payment.guest_balances.0.due', '€20.00')
+        ->assertSet('payment.guest_balances.1.due', '€12.00')
         ->assertSet('payment.unpaid_guests_count', 2);
 });
 
@@ -180,11 +182,11 @@ test('payment summary fails closed and warns once for nullable legacy money snap
             ])
             ->and($summary['payments'][0])
             ->toMatchArray([
-                'covered_subtotal' => '0.00 EUR',
+                'covered_subtotal' => '€0.00',
                 'service_charge_percent' => '0.00',
-                'service_charge_amount' => '0.00 EUR',
-                'tips_amount' => '0.00 EUR',
-                'amount' => '0.00 EUR',
+                'service_charge_amount' => '€0.00',
+                'tips_amount' => '€0.00',
+                'amount' => '€0.00',
             ])
             ->and($settings->fresh()?->getAttribute('service_charge_basis_points'))
             ->toBeNull()
@@ -340,19 +342,19 @@ test('manual service charge and tips are visible and stored as payment snapshot'
 
     Livewire::actingAs($manager)
         ->test(Payment::class, ['tableSessionId' => $tableSession->id])
-        ->assertSet('payment.confirmed_total', '32.00 EUR')
+        ->assertSet('payment.confirmed_total', '€32.00')
         ->assertSet('payment.service_charge_enabled', true)
         ->assertSet('payment.service_charge_percent', '10.00')
-        ->assertSet('payment.service_charge_total', '3.20 EUR')
+        ->assertSet('payment.service_charge_total', '€3.20')
         ->assertSet('payment.tips_enabled', true)
-        ->assertSet('payment.remaining_total', '35.20 EUR')
+        ->assertSet('payment.remaining_total', '€35.20')
         ->set('paymentMethod', ManualPaymentMethod::CardTerminal->value)
         ->set('tipsAmount', '5.00')
         ->call('recordTablePayment')
         ->assertSee(__('payments.messages.payment_recorded'))
         ->assertSet('payment.is_fully_paid', true)
-        ->assertSet('payment.remaining_total', '0.00 EUR')
-        ->assertSet('payment.tips_paid_total', '5.00 EUR');
+        ->assertSet('payment.remaining_total', '€0.00')
+        ->assertSet('payment.tips_paid_total', '€5.00');
 
     $payment = ManualPayment::query()->firstOrFail();
 
@@ -445,7 +447,7 @@ test('view payments permission can see payment summary but cannot record payment
         ->get(route('restaurant.waiter.tables.show', $tableSession))
         ->assertOk()
         ->assertSeeText(__('payments.title'))
-        ->assertSeeText('32.00 EUR');
+        ->assertSeeText('€32.00');
 
     Livewire::actingAs($viewer)
         ->test(Payment::class, ['tableSessionId' => $tableSession->id])

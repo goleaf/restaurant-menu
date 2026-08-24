@@ -23,6 +23,7 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use App\Services\PublicQr\ActiveGuestAccessService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -109,6 +110,14 @@ test('guest restored from original qr sees the current transferred service point
         ->assertSet('landing.service_point_name', $newServicePoint->name)
         ->assertSeeText($newServicePoint->name)
         ->assertDontSeeText($oldServicePoint->name);
+
+    request()->cookies->set(prompt117GuestTokenCookieName($oldQrCode), $guest->guest_token);
+
+    expect(app(ActiveGuestAccessService::class)->findAuthorizedGuest(
+        $oldQrCode->public_token,
+        $tableSession->id,
+        $guest->id,
+    )?->id)->toBe($guest->id);
 });
 
 function createPrompt117TransferContext(): array

@@ -16,17 +16,28 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Support\MoneyFormatter;
+use Illuminate\Support\Facades\App;
 use Livewire\Livewire;
 
 test('currency foundation supports fixed local currencies and readable formatting', function () {
+    App::setLocale('en');
+
     expect(SupportedCurrency::values())->toContain('EUR', 'USD', 'GBP', 'PLN', 'UAH')
         ->and(SupportedCurrency::normalize('usd'))->toBe('USD')
         ->and(SupportedCurrency::isSupported('EURO'))->toBeFalse()
         ->and(MoneyFormatter::format('14.5', 'EUR'))->toBe('€14.50')
         ->and(MoneyFormatter::format('14.5', 'USD'))->toBe('$14.50')
-        ->and(MoneyFormatter::format('14.5', 'PLN'))->toBe('14.50 PLN')
+        ->and(MoneyFormatter::format('14.5', 'PLN'))->toBe("PLN\u{00A0}14.50")
         ->and(MoneyFormatter::formatSigned('-1.25', 'EUR'))->toBe('-€1.25')
         ->and(MoneyFormatter::formatSigned('3.50', 'USD'))->toBe('+$3.50');
+
+    App::setLocale('lt');
+
+    expect(MoneyFormatter::format('14.5', 'EUR'))->toBe("14,50\u{00A0}€");
+
+    App::setLocale('ru');
+
+    expect(MoneyFormatter::format('14.5', 'USD'))->toBe("14,50\u{00A0}$");
 });
 
 test('branch settings default currency syncs to branch currency without exchange rates', function () {

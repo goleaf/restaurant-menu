@@ -59,7 +59,7 @@ test('kitchen ticket items have kitchen work statuses', function () {
         ->and(SystemPermission::ViewKitchen->value)->toBe('view_kitchen');
 });
 
-test('head chef sees only selected department tickets and updates item status', function () {
+test('head chef kitchen screen excludes bar tickets and rejects a forged bar item mutation', function () {
     [$organization, $kitchen, $bar, $kitchenItem, $barItem] = createPrompt61KitchenScenario();
     $headChef = User::factory()->create(['name' => 'Prompt 61 Head Chef']);
 
@@ -84,14 +84,13 @@ test('head chef sees only selected department tickets and updates item status', 
         ->assertHasNoErrors()
         ->assertSee('In progress')
         ->set('selectedDepartmentId', (string) $bar->id)
-        ->assertSee('Prompt 61 Coffee')
-        ->assertDontSee('Prompt 61 Pizza')
+        ->assertSet('selectedDepartmentId', (string) $kitchen->id)
+        ->assertDontSee('Prompt 61 Coffee')
         ->call('setItemStatus', $barItem->id, KitchenTicketItemStatus::Ready->value)
-        ->assertHasNoErrors()
-        ->assertSee('Ready');
+        ->assertHasErrors('ticket_item_status');
 
     expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::InProgress)
-        ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::Ready);
+        ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::New);
 });
 
 test('view kitchen permission can open kitchen screen without chef role', function () {

@@ -6,7 +6,6 @@ use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
-use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -126,7 +125,7 @@ class RequestWaiterForTableSessionAction
 
         if ($guest->table_session_id !== $tableSession->id
             || $guest->status !== TableSessionGuestStatus::Active
-            || in_array($tableSession->status, [TableSessionStatus::Closed, TableSessionStatus::Cancelled], true)) {
+            || $tableSession->status->isTerminal()) {
             throw ValidationException::withMessages([
                 'waiter_call' => __('ui.actions.tablesessions.requestwaiterfortablesessionaction.tolko_aktivnyi'),
             ]);

@@ -4,6 +4,7 @@ namespace App\Actions\Branches;
 
 use App\Models\Branch;
 use App\Models\BranchOpeningHour;
+use App\Support\LocalizedDateFormatter;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -101,8 +102,8 @@ class GetBranchOpeningStatusAction
         if ($closedUntil instanceof CarbonInterface) {
             $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.zakryto_do', [
                 'time' => $closedUntil->isSameDay($now)
-                    ? $closedUntil->format('H:i')
-                    : $closedUntil->format('d.m H:i'),
+                    ? LocalizedDateFormatter::time($closedUntil)
+                    : LocalizedDateFormatter::dateTime($closedUntil),
             ]);
         } else {
             $detailParts[] = __('ui.actions.branches.getbranchopeningstatusaction.otkroemsia_pozze');
@@ -171,7 +172,7 @@ class GetBranchOpeningStatusAction
                 }
 
                 if ($now->greaterThanOrEqualTo($start) && $now->lessThan($end)) {
-                    return ['closes_at' => $end->format('H:i')];
+                    return ['closes_at' => LocalizedDateFormatter::time($end)];
                 }
             }
         }
@@ -196,8 +197,8 @@ class GetBranchOpeningStatusAction
                     return [
                         'time' => $start->toIso8601String(),
                         'label' => $offset === 0
-                            ? $start->format('H:i')
-                            : $this->shortDayLabel($dayOfWeek).' '.$start->format('H:i'),
+                            ? LocalizedDateFormatter::time($start)
+                            : $this->shortDayLabel($dayOfWeek).' '.LocalizedDateFormatter::time($start),
                     ];
                 }
             }

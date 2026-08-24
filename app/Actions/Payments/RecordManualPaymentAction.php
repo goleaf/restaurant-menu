@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Actions\Payments;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\Orders\TransitionTableOrdersAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
+use App\Actions\TableSessions\CanRequestBillForTableSessionAction;
+use App\Actions\TableSessions\TransitionTableSessionStatusAction;
 use App\Enums\AuditLogAction;
 use App\Enums\BusinessRuleCode;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
+use App\Enums\OrderStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionStatus;
 use App\Exceptions\BusinessRuleViolation;
@@ -31,6 +35,9 @@ class RecordManualPaymentAction
         private readonly BuildManualPaymentSummaryAction $buildPaymentSummary,
         private readonly UpdateServicePointStatusAction $updateServicePointStatus,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly TransitionTableOrdersAction $transitionTableOrders,
+        private readonly TransitionTableSessionStatusAction $transitionTableSessionStatus,
+        private readonly CanRequestBillForTableSessionAction $canRequestBill,
     ) {}
 
     public function recordTable(
@@ -202,14 +209,27 @@ class RecordManualPaymentAction
             );
         }
 
-        if (in_array($tableSession->status, [
-            TableSessionStatus::Closed,
-            TableSessionStatus::Cancelled,
-        ], true)) {
+        if ($tableSession->status->isTerminal()) {
             throw BusinessRuleViolation::for(
                 BusinessRuleCode::SessionClosed,
                 'manual_payment',
                 __('payments.errors.session_closed'),
+            );
+        }
+
+        if (! $tableSession->status->allowsPaymentRecording()) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::PaymentNotAllowed,
+                'manual_payment',
+                __('payments.errors.session_not_payable'),
+            );
+        }
+
+        if (! $this->canRequestBill->handle($tableSession)) {
+            throw BusinessRuleViolation::for(
+                BusinessRuleCode::PaymentNotAllowed,
+                'manual_payment',
+                __('payments.errors.session_not_payable'),
             );
         }
     }
@@ -320,10 +340,15 @@ class RecordManualPaymentAction
             $metadata['paid_at'] = now()->toISOString();
             $metadata['paid_by_user_id'] = $recordedBy->id;
 
-            $tableSession->forceFill([
-                'status' => TableSessionStatus::Paid,
-                'metadata' => $metadata,
-            ])->save();
+            $this->transitionTableSessionStatus->handle($tableSession, TableSessionStatus::Paid);
+            $tableSession->forceFill(['metadata' => $metadata])->save();
+
+            $this->transitionTableOrders->handle(
+                tableSession: $tableSession,
+                targetStatus: OrderStatus::Paid,
+                actorUser: $recordedBy,
+                errorField: 'manual_payment',
+            );
 
             $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::Paid);
 
@@ -333,10 +358,15 @@ class RecordManualPaymentAction
         $metadata['last_manual_payment_at'] = now()->toISOString();
         $metadata['last_manual_payment_by_user_id'] = $recordedBy->id;
 
-        $tableSession->forceFill([
-            'status' => TableSessionStatus::PaymentRequested,
-            'metadata' => $metadata,
-        ])->save();
+        $this->transitionTableSessionStatus->handle($tableSession, TableSessionStatus::PaymentRequested);
+        $tableSession->forceFill(['metadata' => $metadata])->save();
+
+        $this->transitionTableOrders->handle(
+            tableSession: $tableSession,
+            targetStatus: OrderStatus::PaymentRequested,
+            actorUser: $recordedBy,
+            errorField: 'manual_payment',
+        );
 
         $this->updateServicePointStatus->handle($tableSession->servicePoint, ServicePointStatus::PaymentRequested);
     }

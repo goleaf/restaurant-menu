@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum ServicePointStatus: string
@@ -15,6 +17,11 @@ enum ServicePointStatus: string
     case Paid = 'paid';
     case Closed = 'closed';
     case Blocked = 'blocked';
+
+    public function allowsTableOpening(): bool
+    {
+        return in_array($this, [self::Free, self::Reserved], true);
+    }
 
     public function label(): string
     {

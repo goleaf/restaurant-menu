@@ -6,11 +6,12 @@ namespace App\Actions\DraftOrders\Support;
 
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use Illuminate\Validation\ValidationException;
 
 class ResolveMenuItemVariantSelectionAction
 {
-    public function handle(MenuItem $menuItem, ?int $variantId): ?MenuItemVariant
+    public function handle(MenuItem $menuItem, ?int $variantId, ?string $languageCode = null): ?MenuItemVariant
     {
         if ($variantId === null) {
             if (! $menuItem->variants()->exists()) {
@@ -35,6 +36,13 @@ class ResolveMenuItemVariantSelectionAction
                 'is_available',
                 'sort_order',
             ])
+            ->when($languageCode !== null, fn ($query) => $query->addSelect([
+                'localized_name' => MenuItemVariantTranslation::query()
+                    ->select('name')
+                    ->whereColumn('menu_item_variant_id', 'menu_item_variants.id')
+                    ->where('language_code', $languageCode)
+                    ->limit(1),
+            ]))
             ->whereKey($variantId)
             ->where('is_available', true)
             ->first();

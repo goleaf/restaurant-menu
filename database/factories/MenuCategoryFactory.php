@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuCategoryTranslation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -52,5 +53,18 @@ class MenuCategoryFactory extends Factory
             'menu_id' => $parent->menu_id,
             'parent_id' => $parent->id,
         ]);
+    }
+
+    public function withTranslations(): static
+    {
+        return $this->afterCreating(function (MenuCategory $category): void {
+            foreach (['en', 'lt', 'ru'] as $languageCode) {
+                MenuCategoryTranslation::factory()->for($category, 'category')->create([
+                    'language_code' => $languageCode,
+                    'name' => $category->name,
+                    'description' => $category->description,
+                ]);
+            }
+        });
     }
 }

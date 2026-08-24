@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
-use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
 use App\Actions\Waiter\ResolveWaiterNotificationRecipientsAction;
@@ -32,7 +31,7 @@ class SendDraftOrderToWaiterAction
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly ResolveWaiterNotificationRecipientsAction $resolveRecipients,
         private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
-        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
     ) {}
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
@@ -219,9 +218,13 @@ class SendDraftOrderToWaiterAction
                     ->select([
                         'id',
                         'menu_id',
+                        'category_id',
                         'name',
+                        'is_available',
+                        'hidden_until',
                     ])
                     ->with([
+                        'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'is_active']),
                         'menu' => fn ($menuQuery) => $menuQuery
                             ->select([
                                 'id',
@@ -257,16 +260,12 @@ class SendDraftOrderToWaiterAction
                 ]);
             }
 
-            $availability = $this->getMenuAvailabilityStatus->handle($menu);
+            $this->ensureMenuItemAvailable->handle(
+                $item->menuItem,
+                (int) $menu->branch_id,
+                'send_draft',
+            );
 
-            if (! $availability['is_available']) {
-                throw ValidationException::withMessages([
-                    'send_draft' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
-                        'label' => $availability['label'],
-                        'detail' => $availability['detail'],
-                    ]),
-                ]);
-            }
         }
     }
 

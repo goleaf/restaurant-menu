@@ -9,6 +9,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\PermissionOverrideState;
 use App\Enums\SystemPermission;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
@@ -27,8 +28,10 @@ class Permissions extends Component
 
     private PermissionQueryService $permissionQueries;
 
+    #[Locked]
     public Organization $organization;
 
+    #[Locked]
     public User $staffMember;
 
     #[Locked]
@@ -69,6 +72,7 @@ class Permissions extends Component
         $this->showTechnicalPermissionKeys = $currentUser->isSuperadmin();
 
         $membership = $this->permissionQueries->membership($organization, $staffMember);
+        $this->authorizeTargetWhenMutable($currentUser, $membership);
 
         $this->membershipRoleId = $membership->role_id;
         $this->membershipRoleName = $this->roleLabel($membership->role);
@@ -213,6 +217,8 @@ class Permissions extends Component
 
     public function render(): View
     {
+        $this->authorizeStaffManagement();
+
         return view('livewire.organizations.staff.permissions', [
             'organizationName' => $this->organization->name,
             'staffMemberName' => $this->staffMember->name,
@@ -238,7 +244,21 @@ class Permissions extends Component
 
     private function authorizeStaffManagement(): void
     {
-        Gate::forUser($this->currentUser())->authorize('managePermissions', $this->organization);
+        $gate = Gate::forUser($this->currentUser());
+        $gate->authorize('managePermissions', $this->organization);
+        $this->authorizeTargetWhenMutable(
+            $this->currentUser(),
+            $this->permissionQueries->membership($this->organization, $this->staffMember),
+        );
+    }
+
+    private function authorizeTargetWhenMutable(User $actor, OrganizationUser $membership): void
+    {
+        if ($actor->id === $this->staffMember->id || $this->staffMember->isSuperadmin()) {
+            return;
+        }
+
+        Gate::forUser($actor)->authorize('managePermissions', $membership);
     }
 
     private function currentUser(): User

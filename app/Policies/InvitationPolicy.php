@@ -28,13 +28,13 @@ class InvitationPolicy
 
     public function accept(User $user, Invitation $invitation): bool
     {
-        if ($invitation->email === null) {
-            return true;
+        if (! is_string($invitation->email) || trim($invitation->email) === '') {
+            return false;
         }
 
         return hash_equals(
-            Str::lower(trim((string) $invitation->email)),
-            Str::lower(trim((string) $user->email)),
+            hash('sha256', Str::lower(trim($invitation->email))),
+            hash('sha256', Str::lower(trim((string) $user->email))),
         );
     }
 

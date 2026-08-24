@@ -1,12 +1,20 @@
 # Restaurant Menu completion implementation plan
 
-## Active follow-up — complete `/organizations` CRUD demo
+## Completed follow-up — `/organizations` CRUD demo
 
-The approved active follow-up is defined by [`superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md`](superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md) and executed by [`superpowers/plans/2026-08-23-organizations-full-crud-demo.md`](superpowers/plans/2026-08-23-organizations-full-crud-demo.md). It extends the canonical factory-backed demo graph, seeds the actual local database only after isolated proof, and supplies an auditable 26-resource CRUD/lifecycle matrix for every management surface below `/organizations`.
+The approved follow-up is defined by [`superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md`](superpowers/specs/2026-08-23-organizations-full-crud-demo-design.md) and executed by [`superpowers/plans/2026-08-23-organizations-full-crud-demo.md`](superpowers/plans/2026-08-23-organizations-full-crud-demo.md). It extends the canonical factory-backed demo graph, seeds the actual local database only after isolated proof, and supplies an auditable 26-resource CRUD/lifecycle matrix for every management surface below `/organizations`.
 
-The previously approved dish-gallery work remains mandatory as the subordinate plan [`superpowers/plans/2026-08-23-menu-item-image-gallery.md`](superpowers/plans/2026-08-23-menu-item-image-gallery.md). It is inventory row 20 of the master plan, not a competing track.
+The previously approved dish-gallery work is the completed subordinate plan [`superpowers/plans/2026-08-23-menu-item-image-gallery.md`](superpowers/plans/2026-08-23-menu-item-image-gallery.md). It is inventory row 20 of the master plan, not a competing track.
 
-Execution status: design approved; complete TDD implementation plan prepared; implementation and verification pending.
+Execution status: the technical foundation, dish gallery and complete `/organizations` 26-resource CRUD acceptance matrix/browser journey are implemented and freshly verified. Only the explicitly bounded P2 operator/platform evidence remains outside this local completion run.
+
+## Completed follow-up — restaurant hierarchy lifecycle
+
+The product hierarchy remains `Organization → Brand → Branch → AreaNode → ServicePoint`; no duplicate company/restaurant/room/table models or migrations were introduced.
+
+- **P0 correctness and isolation — complete.** Focused archive/restore Actions transactionally reload through the exact parent scope and authorize policies. Direct Livewire identifier substitution is fail-closed at all five levels. Organization, brand, branch, area and service-point archive operations reject active-order conflicts; service points retain the stricter active-session guard. A same-branch table move changes its area only and preserves permanent QR identity. Acceptance: positive/negative policy and mutation tests, archived factory states, schema and scoped-route checks pass.
+- **P1 management UX and performance — complete.** Structure pages expose localized search, lifecycle/type/activity/status/QR filters, allowlisted sorting, pagination, archive/restore controls, confirmations, errors and empty states through class-based Livewire/Flux. Query services own selected, eager-loaded Eloquent reads; Actions own writes. Acceptance: the focused structural batch passes 125 tests/908 assertions, the 31-area/31-table budget proves one area-page query and at most six eager-loaded table-page queries, Larastan reports zero errors, and translation plus cache gates pass.
+- **P2 physical deletion and speculative ordering schema — intentionally not added.** Ordinary users receive reversible soft-delete lifecycle controls because hard deletion would risk order, session, QR and audit history. Existing persisted area `sort_order` and service-point placement/display fields remain authoritative; company/brand/restaurant list sort is query-only, so no unused ordering columns or migrations were created.
 
 ## Goal
 
@@ -14,7 +22,7 @@ Bring the present checkout to a locally complete, reproducibly tested, release-r
 
 ## Scope and priority model
 
-`docs/requirements.md` is the only product contract. This plan records executable closure work discovered by comparing all 49 requirements with the current code, schema, routes, tests, configuration, assets, and repository history. A task is complete only when its acceptance criteria and listed checks have fresh observed evidence in [`PROGRESS.md`](PROGRESS.md).
+`docs/requirements.md` is the only product contract. This plan records executable closure work discovered by comparing all 51 requirements with the current code, schema, routes, tests, configuration, assets, and repository history. A task is complete only when its acceptance criteria and listed checks have fresh observed evidence in [`PROGRESS.md`](PROGRESS.md).
 
 ### P0 — correctness and repository invariants
 
@@ -36,7 +44,7 @@ Bring the present checkout to a locally complete, reproducibly tested, release-r
 
 - **Dependencies:** P0.1 and P0.2 evidence.
 - **Work:** update the requested completion documents, architecture inventory, requirement status note, documentation index, changelog/compliance evidence where behaviour changed, and concise permanent repository instructions.
-- **Acceptance:** no document claims an unobserved gate; the 49 requirements retain stable IDs; completion ledgers do not become competing requirements or a second external backlog.
+- **Acceptance:** no document claims an unobserved gate; all 51 requirements retain stable IDs and matching compliance rows; completion ledgers do not become competing requirements or a second external backlog.
 - **Checks:** link/path review, final diff review, requirement/compliance row parity.
 
 ### P1 — reproducible local release gates
@@ -97,4 +105,6 @@ Bring the present checkout to a locally complete, reproducibly tested, release-r
 
 - **P0:** complete with targeted tests, route evidence, isolated migrations/seeding, static analysis, and documentation parity.
 - **P1:** complete with dependency audits, sequential/parallel/coverage suites, translations, production build, caches, disposable Chrome navigation, mobile overflow/keyboard/accessibility checks, Lighthouse 100, and a clean self-contained `/up` response.
+- **Completed product follow-up:** the dish gallery and `/organizations` 26-resource CRUD matrix are complete. The focused organization slice passes 179 tests/1,746 assertions, its browser journey passes 1 scenario/183 assertions, and the full browser suite passes 5 scenarios/376 assertions after the production build/cache cycle.
+- **Completed security follow-up:** public registration is fully disabled and the hash-only, recipient/tenant/role-bound invitation lifecycle now covers creation, token-free review, atomic acceptance, replay, expiry, secure reissue, revoke, audit and exact role/tenant isolation. Fresh verification evidence is recorded in `PROGRESS.md` and `testing.md`.
 - **P2:** external/operator evidence remains explicitly bounded as described above; no production deployment, release publication, physical-device claim, or unapproved shared-allocation feature was performed.

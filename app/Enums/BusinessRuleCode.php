@@ -20,6 +20,8 @@ enum BusinessRuleCode: string
     case BranchInaccessible = 'branch_inaccessible';
     case ItemUnavailable = 'item_unavailable';
     case RequiredModifierMissing = 'required_modifier_missing';
+    case ServicePointHasActiveSession = 'service_point_has_active_session';
+    case StructureHasActiveOrder = 'structure_has_active_order';
 
     /**
      * @return list<string>
@@ -49,6 +51,8 @@ enum BusinessRuleCode: string
             self::BranchInaccessible => __('ui.enums.businessrulecode.u_vas_net_dostupa_k_etomu_filialu'),
             self::ItemUnavailable => __('ui.enums.businessrulecode.eta_poziciia_seicas_nedostupna'),
             self::RequiredModifierMissing => __('ui.enums.businessrulecode.vyberite_obiazatelnyi_variant'),
+            self::ServicePointHasActiveSession => __('service_points.errors.active_session_delete'),
+            self::StructureHasActiveOrder => __('structure.errors.active_order_delete'),
         };
     }
 
@@ -69,6 +73,8 @@ enum BusinessRuleCode: string
             self::BranchInaccessible => ApplicationErrorType::BranchAccessDenied,
             self::ItemUnavailable,
             self::RequiredModifierMissing => ApplicationErrorType::ValidationError,
+            self::ServicePointHasActiveSession,
+            self::StructureHasActiveOrder => ApplicationErrorType::ValidationError,
         };
     }
 }

@@ -25,9 +25,14 @@ use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Models\MenuTranslation;
+use App\Models\ModifierGroupTranslation;
+use App\Models\ModifierOptionTranslation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
@@ -45,12 +50,22 @@ use App\Services\QrCodeSvgRenderer;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Factories\UserFactory;
 use Database\Seeders\DemoRestaurantSeeder;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
-    Storage::fake('public');
+    $this->publicStorageDiskName = 'public-'.getmypid().'-'.Str::uuid()->toString();
+
+    Storage::set('public', Storage::fake($this->publicStorageDiskName));
+});
+
+afterEach(function (): void {
+    (new Filesystem)->deleteDirectory(
+        storage_path('framework/testing/disks/'.$this->publicStorageDiskName),
+    );
 });
 
 test('demo account catalogue matches the seeded identity contract', function (): void {
@@ -521,10 +536,15 @@ test('demo restaurant seeder is idempotent', function () {
         'service_points' => 20,
         'qr_codes' => 19,
         'menus' => 4,
+        'menu_translations' => 12,
         'menu_categories' => 9,
+        'menu_category_translations' => 27,
         'menu_items' => 22,
+        'menu_item_translations' => 66,
         'menu_item_variants' => 33,
-        'menu_item_variant_translations' => 96,
+        'menu_item_variant_translations' => 99,
+        'modifier_group_translations' => 24,
+        'modifier_option_translations' => 72,
         'table_sessions' => 11,
         'draft_orders' => 11,
         'orders' => 10,
@@ -692,10 +712,15 @@ function demoSeedGraphCounts(): array
         'service_points' => ServicePoint::query()->count(),
         'qr_codes' => QrCode::query()->count(),
         'menus' => Menu::query()->count(),
+        'menu_translations' => MenuTranslation::query()->count(),
         'menu_categories' => MenuCategory::query()->count(),
+        'menu_category_translations' => MenuCategoryTranslation::query()->count(),
         'menu_items' => MenuItem::query()->count(),
+        'menu_item_translations' => MenuItemTranslation::query()->count(),
         'menu_item_variants' => MenuItemVariant::query()->count(),
         'menu_item_variant_translations' => MenuItemVariantTranslation::query()->count(),
+        'modifier_group_translations' => ModifierGroupTranslation::query()->count(),
+        'modifier_option_translations' => ModifierOptionTranslation::query()->count(),
         'table_sessions' => TableSession::query()->count(),
         'draft_orders' => DraftOrder::query()->count(),
         'orders' => Order::query()->count(),

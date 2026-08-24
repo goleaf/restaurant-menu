@@ -10,6 +10,7 @@ use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
@@ -43,6 +44,7 @@ class MenuItemFactory extends Factory
             'volume' => fake()->optional()->randomFloat(2, 0.1, 2),
             'calories' => fake()->optional()->numberBetween(50, 1600),
             'is_available' => true,
+            'hidden_until' => null,
             'sort_order' => 0,
         ];
     }
@@ -58,6 +60,14 @@ class MenuItemFactory extends Factory
     {
         return $this->state(fn (): array => [
             'is_available' => false,
+        ]);
+    }
+
+    public function temporarilyHidden(): static
+    {
+        return $this->state(fn (): array => [
+            'is_available' => true,
+            'hidden_until' => now()->addHour(),
         ]);
     }
 
@@ -126,6 +136,19 @@ class MenuItemFactory extends Factory
                         'sort_order' => $position * 10,
                     ])
                     ->create();
+            }
+        });
+    }
+
+    public function withTranslations(): static
+    {
+        return $this->afterCreating(function (MenuItem $menuItem): void {
+            foreach (['en', 'lt', 'ru'] as $languageCode) {
+                MenuItemTranslation::factory()->for($menuItem, 'item')->create([
+                    'language_code' => $languageCode,
+                    'name' => $menuItem->name,
+                    'description' => $menuItem->description,
+                ]);
             }
         });
     }

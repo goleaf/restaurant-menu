@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands;
 
 use App\Actions\Brands\CreateBrandAction;
 use App\Actions\Brands\DeleteBrandAction;
+use App\Actions\Brands\RestoreBrandAction;
 use App\Actions\Brands\UpdateBrandAction;
 use App\Actions\Brands\UpdateBrandLogoAction;
 use App\Actions\Media\StoreLocalImageAction;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -40,6 +42,12 @@ class Index extends Component
     public string $name = '';
 
     public string $search = '';
+
+    #[Url(as: 'lifecycle', except: 'active')]
+    public string $lifecycle = 'active';
+
+    #[Url(as: 'sort', except: 'name_asc')]
+    public string $sort = 'name_asc';
 
     /**
      * @var array<int, mixed>
@@ -150,12 +158,29 @@ class Index extends Component
             return;
         }
 
-        $deleteBrand->handle($this->findOrganizationBrand($this->deletingBrandId));
+        $deleteBrand->handle(
+            $this->currentUser(),
+            $this->organization,
+            $this->findOrganizationBrand($this->deletingBrandId),
+        );
 
         $this->cancelDelete();
         unset($this->brands);
 
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.index.brand_deleted'));
+        Flux::toast(variant: 'success', text: __('structure.messages.archived'));
+    }
+
+    public function restore(int $brandId, RestoreBrandAction $restoreBrand): void
+    {
+        $restoreBrand->handle(
+            $this->currentUser(),
+            $this->organization,
+            $this->brandQueries->findForOrganization($this->organization, $brandId, true),
+        );
+
+        unset($this->brands);
+
+        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
     }
 
     public function saveLogo(int $brandId, UpdateBrandLogoAction $updateLogo): void
@@ -201,6 +226,20 @@ class Index extends Component
         unset($this->brands);
     }
 
+    public function updatedLifecycle(): void
+    {
+        $this->normalizeLifecycle();
+        $this->resetPage(pageName: 'brandsPage');
+        unset($this->brands);
+    }
+
+    public function updatedSort(): void
+    {
+        $this->normalizeSort();
+        $this->resetPage(pageName: 'brandsPage');
+        unset($this->brands);
+    }
+
     /** @return Paginator<int, Brand> */
     #[Computed]
     public function brands(): Paginator
@@ -209,6 +248,8 @@ class Index extends Component
             $this->organization,
             $this->search,
             self::PER_PAGE,
+            $this->lifecycle,
+            $this->sort,
         );
     }
 
@@ -225,6 +266,7 @@ class Index extends Component
                     'name' => $brand->name,
                     'logo_url' => $brand->logoUrl(),
                     'created_at' => $brand->created_at->format('d.m.Y'),
+                    'is_archived' => $brand->trashed(),
                     'branches_url' => route('organizations.brands.branches.index', [
                         'organization' => $this->organization->id,
                         'brand' => $brand->id,
@@ -276,5 +318,19 @@ class Index extends Component
         Gate::forUser($this->currentUser())->authorize('update', $brand);
 
         return $brand;
+    }
+
+    private function normalizeLifecycle(): void
+    {
+        if (! in_array($this->lifecycle, ['active', 'archived'], true)) {
+            $this->lifecycle = 'active';
+        }
+    }
+
+    private function normalizeSort(): void
+    {
+        if (! in_array($this->sort, ['name_asc', 'name_desc', 'newest', 'oldest'], true)) {
+            $this->sort = 'name_asc';
+        }
     }
 }

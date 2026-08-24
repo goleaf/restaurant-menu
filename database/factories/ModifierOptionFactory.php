@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -62,5 +63,17 @@ class ModifierOptionFactory extends Factory
         return $this->state(fn (): array => [
             'price_delta_cents' => -abs($cents),
         ]);
+    }
+
+    public function withTranslations(): static
+    {
+        return $this->afterCreating(function (ModifierOption $option): void {
+            foreach (['en', 'lt', 'ru'] as $languageCode) {
+                ModifierOptionTranslation::factory()->for($option, 'option')->create([
+                    'language_code' => $languageCode,
+                    'name' => $option->name,
+                ]);
+            }
+        });
     }
 }

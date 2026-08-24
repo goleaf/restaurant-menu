@@ -6,16 +6,26 @@ use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\GuestMenu;
 use App\Livewire\PublicQr\Show as PublicQrShow;
 use App\Models\Branch;
+use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\QrCode;
 use Database\Seeders\DemoRestaurantSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
     Storage::fake('public');
+    Carbon::setTestNow(Carbon::parse('2026-08-25 12:00:00', 'Europe/Vilnius'));
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
 });
 
 test('translation audit passes for seeded demo ui', function () {
@@ -36,10 +46,22 @@ test('demo seeder creates database translations for every supported menu locale'
 
     foreach (SupportedLocale::values() as $locale) {
         expect($payloads[$locale]['language'])->toBe($locale)
+            ->and(Menu::query()
+                ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
+                ->exists())->toBeFalse()
             ->and(MenuCategory::query()
                 ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
                 ->exists())->toBeFalse()
             ->and(MenuItem::query()
+                ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
+                ->exists())->toBeFalse()
+            ->and(MenuItemVariant::query()
+                ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
+                ->exists())->toBeFalse()
+            ->and(ModifierGroup::query()
+                ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
+                ->exists())->toBeFalse()
+            ->and(ModifierOption::query()
                 ->whereDoesntHave('translations', fn ($query) => $query->where('language_code', $locale))
                 ->exists())->toBeFalse();
     }

@@ -61,6 +61,14 @@ class AreaNodeFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
+            'deleted_at' => now()->subDay(),
+        ]);
+    }
+
     public function withParent(?AreaNode $parent = null): static
     {
         return $this

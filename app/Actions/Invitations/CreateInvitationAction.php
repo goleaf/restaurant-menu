@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Invitations;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
 use App\Models\Branch;
 use App\Models\Brand;
@@ -12,14 +14,17 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
-class CreateInvitationAction
+final class CreateInvitationAction
 {
-    private const INVITE_TOKEN_LENGTH = 64;
-
-    private const INVITE_CODE_LENGTH = 8;
+    public function __construct(
+        private readonly InvitationCredentialGenerator $credentials,
+        private readonly RecordAuditLogAction $recordAuditLog,
+    ) {}
 
     /**
      * @param  array{brand?: Brand|null, branch?: Branch|null, email?: string|null, phone?: string|null, invite_token?: string|null, invite_code?: string|null, expires_at?: CarbonInterface|null}  $data
@@ -29,10 +34,19 @@ class CreateInvitationAction
         $branch = $data['branch'] ?? null;
         $brand = $data['brand'] ?? null;
 
+        Gate::forUser($invitedBy)->authorize('manageStaff', $organization);
         $this->ensureScopeBelongsToOrganization($organization, $brand, $branch);
 
-        $token = $this->inviteToken($data['invite_token'] ?? null);
-        $code = $this->inviteCode($data['invite_code'] ?? null);
+        if ($branch instanceof Branch) {
+            Gate::forUser($invitedBy)->authorize('manageStaff', $branch);
+        }
+
+        Gate::forUser($invitedBy)->authorize('assign', [$role, $organization]);
+
+        $credentials = $this->credentials->generate(
+            $data['invite_token'] ?? null,
+            $data['invite_code'] ?? null,
+        );
         $email = isset($data['email'])
             ? Str::lower(trim($data['email']))
             : null;
@@ -40,24 +54,44 @@ class CreateInvitationAction
             ? trim($data['phone'])
             : null;
 
-        $invitation = new Invitation;
-        $invitation->forceFill([
-            'organization_id' => $organization->id,
-            'brand_id' => $brand->id ?? $branch?->brand_id,
-            'branch_id' => $branch?->id,
-            'role_id' => $role->id,
-            'email' => $email === '' ? null : $email,
-            'phone' => $phone === '' ? null : $phone,
-            'invite_token' => null,
-            'invite_code' => null,
-            'invite_token_hash' => self::credentialHash($token),
-            'invite_code_hash' => self::credentialHash($code),
-            'expires_at' => $data['expires_at'] ?? now()->addDays(7),
-            'status' => InvitationStatus::Pending,
-            'invited_by_user_id' => $invitedBy->id,
-        ])->save();
+        if (! is_string($email) || $email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw new InvalidArgumentException('Invitation recipient email is required.');
+        }
 
-        return new CreatedInvitation($invitation, $token, $code);
+        return DB::transaction(function () use ($organization, $brand, $branch, $role, $invitedBy, $data, $email, $phone, $credentials): CreatedInvitation {
+            $invitation = new Invitation;
+            $invitation->forceFill([
+                'organization_id' => $organization->id,
+                'brand_id' => $brand->id ?? $branch?->brand_id,
+                'branch_id' => $branch?->id,
+                'role_id' => $role->id,
+                'email' => $email,
+                'phone' => $phone === '' ? null : $phone,
+                'invite_token_hash' => $this->credentials->hash($credentials['token']),
+                'invite_code_hash' => $this->credentials->hash($credentials['code']),
+                'expires_at' => $data['expires_at'] ?? now()->addDays(7),
+                'status' => InvitationStatus::Pending,
+                'invited_by_user_id' => $invitedBy->id,
+            ])->saveOrFail();
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::InvitationCreated,
+                entityType: 'invitation',
+                entityId: $invitation->id,
+                actorUser: $invitedBy,
+                organizationId: $organization->id,
+                branchId: $invitation->branch_id,
+                newValues: [
+                    'status' => InvitationStatus::Pending->value,
+                    'role_id' => $role->id,
+                    'email' => $email,
+                    'phone' => $phone === '' ? null : $phone,
+                    'expires_at' => $invitation->expires_at,
+                ],
+            );
+
+            return new CreatedInvitation($invitation, $credentials['token'], $credentials['code']);
+        }, 3);
     }
 
     private function ensureScopeBelongsToOrganization(Organization $organization, ?Brand $brand, ?Branch $branch): void
@@ -77,42 +111,5 @@ class CreateInvitationAction
         if ($brand instanceof Brand && $branch->brand_id !== $brand->id) {
             throw new InvalidArgumentException('Invitation branch must belong to the selected brand.');
         }
-    }
-
-    private function inviteToken(?string $token): string
-    {
-        if ($token !== null) {
-            $token = trim($token);
-
-            if (strlen($token) !== self::INVITE_TOKEN_LENGTH || ! ctype_alnum($token)) {
-                throw new InvalidArgumentException('Invitation token must be a 64 character random token.');
-            }
-
-            return $token;
-        }
-
-        do {
-            $token = Str::random(self::INVITE_TOKEN_LENGTH);
-        } while (Invitation::query()->where('invite_token_hash', self::credentialHash($token))->exists());
-
-        return $token;
-    }
-
-    private function inviteCode(?string $code): string
-    {
-        if ($code !== null) {
-            return Str::upper(trim($code));
-        }
-
-        do {
-            $code = Str::upper(Str::random(self::INVITE_CODE_LENGTH));
-        } while (Invitation::query()->where('invite_code_hash', self::credentialHash($code))->exists());
-
-        return $code;
-    }
-
-    private static function credentialHash(string $credential): string
-    {
-        return hash('sha256', $credential);
     }
 }

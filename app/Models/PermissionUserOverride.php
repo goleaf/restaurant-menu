@@ -7,6 +7,7 @@ namespace App\Models;
 use Database\Factories\PermissionUserOverrideFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
@@ -38,5 +39,17 @@ class PermissionUserOverride extends Pivot
         return [
             'enabled' => 'boolean',
         ];
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<Permission, $this> */
+    public function permission(): BelongsTo
+    {
+        return $this->belongsTo(Permission::class);
     }
 }

@@ -1,7 +1,7 @@
 <section
     data-component="guest-draft-totals"
     wire:poll.visible.{{ $pollingIntervalSeconds }}s="refreshTotals"
-    class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+    class="overflow-hidden rounded-card border border-border-subtle bg-surface"
 >
     <div class="p-4">
     <div class="flex items-start justify-between gap-3">
@@ -131,7 +131,7 @@
         @endif
 
         @if ($canToggleReadyStatus || $billRequested || $canRequestBill || $canSendDraftToWaiter)
-        <x-ui.mobile-bottom-actions :summary="__('guest.cart.table_total').': '.$tableTotalAmount.' '.$currency">
+        <x-ui.mobile-bottom-actions data-guest-cart-actions :summary="__('guest.cart.table_total').': '.$tableTotalAmount.' '.$currency">
             @if ($canToggleReadyStatus)
                 <x-ui.button
                     type="button"

@@ -19,12 +19,18 @@ use Illuminate\Pagination\Paginator;
 final class ServicePointQueryService
 {
     /**
-     * @param  array{search: string, area_node_id: string, type: string, status: string, active: string, qr: string}  $filters
+     * @param  array{search: string, area_node_id: string, type: string, status: string, active: string, qr: string, lifecycle?: string, sort?: string}  $filters
      * @return Paginator<int, ServicePoint>
      */
     public function paginate(Branch $branch, array $filters, int $perPage): Paginator
     {
-        $servicePoints = $branch->servicePoints()
+        $servicePoints = $branch->servicePoints();
+
+        if (($filters['lifecycle'] ?? 'active') === 'archived') {
+            $servicePoints->onlyTrashed();
+        }
+
+        $servicePoints
             ->select($this->servicePointColumns())
             ->with([
                 'areaNode' => fn ($query) => $query->select([
@@ -75,12 +81,9 @@ final class ServicePointQueryService
 
         $this->applyFilters($servicePoints, $filters);
 
-        return $servicePoints
-            ->orderBy('area_node_id')
-            ->orderBy('display_number')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->simplePaginate($perPage);
+        $this->applySort($servicePoints, $filters['sort'] ?? 'position');
+
+        return $servicePoints->simplePaginate($perPage);
     }
 
     /** @return EloquentCollection<int, AreaNode> */
@@ -103,9 +106,10 @@ final class ServicePointQueryService
             ->get();
     }
 
-    public function findForBranch(Branch $branch, int $servicePointId): ServicePoint
+    public function findForBranch(Branch $branch, int $servicePointId, bool $withTrashed = false): ServicePoint
     {
         return $branch->servicePoints()
+            ->when($withTrashed, fn ($query) => $query->withTrashed())
             ->select($this->servicePointColumns())
             ->whereKey($servicePointId)
             ->firstOrFail();
@@ -113,7 +117,7 @@ final class ServicePointQueryService
 
     /**
      * @param  HasMany<ServicePoint, Branch>  $query
-     * @param  array{search: string, area_node_id: string, type: string, status: string, active: string, qr: string}  $filters
+     * @param  array{search: string, area_node_id: string, type: string, status: string, active: string, qr: string, lifecycle?: string, sort?: string}  $filters
      */
     private function applyFilters(HasMany $query, array $filters): void
     {
@@ -159,6 +163,24 @@ final class ServicePointQueryService
         }
     }
 
+    /**
+     * @param  HasMany<ServicePoint, Branch>  $query
+     */
+    private function applySort(HasMany $query, string $sort): void
+    {
+        match ($sort) {
+            'name_asc' => $query->orderBy('name')->orderBy('id'),
+            'name_desc' => $query->orderByDesc('name')->orderByDesc('id'),
+            'newest' => $query->orderByDesc('created_at')->orderByDesc('id'),
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            default => $query
+                ->orderBy('area_node_id')
+                ->orderBy('display_number')
+                ->orderBy('name')
+                ->orderBy('id'),
+        };
+    }
+
     /** @return list<string> */
     private function servicePointColumns(): array
     {
@@ -176,6 +198,7 @@ final class ServicePointQueryService
             'is_active',
             'created_at',
             'updated_at',
+            'deleted_at',
         ];
     }
 }

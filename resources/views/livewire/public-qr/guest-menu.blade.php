@@ -1,13 +1,13 @@
-<section data-component="guest-menu" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-    <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+<section data-component="guest-menu" class="overflow-hidden rounded-card border border-border-subtle bg-surface">
+    <div class="border-b border-border-subtle bg-surface p-4">
     <div class="flex items-start justify-between gap-3">
         <div>
-            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('menu.guest.title') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">
+            <p class="text-xs font-medium uppercase tracking-wide text-accent">{{ __('menu.guest.title') }}</p>
+            <h2 class="mt-1 text-lg font-semibold leading-tight text-text-primary">
                 {{ $availableMenuCount > 1 ? __('menu.guest.choose_menu') : ($guestMenu['menu']['name'] ?? __('menu.guest.choose_items')) }}
             </h2>
             @if ($availableMenuCount > 1)
-                <p class="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">
+                <p class="mt-1 text-sm leading-5 text-text-muted">
                     {{ __('menu.guest.available_count', ['count' => $availableMenuCount]) }}
                 </p>
             @endif
@@ -18,7 +18,7 @@
             <select
                 id="guest-menu-language-{{ $branchId }}"
                 wire:model.live="language"
-                class="h-9 rounded-lg border border-zinc-300 bg-white px-2 text-sm font-semibold text-zinc-800 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                class="min-h-touch rounded-control border border-border-strong bg-surface px-2 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
                 @foreach ($languageOptions as $languageCode => $languageLabel)
                     <option wire:key="guest-menu-language-option-{{ $languageCode }}" value="{{ $languageCode }}">
@@ -27,6 +27,10 @@
                 @endforeach
             </select>
         </div>
+    </div>
+
+    <div wire:offline class="border-b border-border-subtle p-4">
+        <x-ui.state-panel kind="offline" title="ui.connectivity.offline" />
     </div>
     </div>
 
@@ -78,6 +82,23 @@
             </x-ui.alert>
         @endif
 
+        <nav data-guest-category-nav aria-label="{{ __('menu.guest.categories') }}" class="mt-4 overflow-x-auto overscroll-x-contain pb-1">
+            <ul class="flex w-max min-w-full gap-2">
+                @foreach ($availableMenus as $menu)
+                    @foreach ($menu['categories'] as $category)
+                        <li wire:key="guest-menu-category-link-{{ $menu['id'] }}-{{ $category['id'] }}">
+                            <a
+                                href="#guest-menu-category-{{ $menu['id'] }}-{{ $category['id'] }}"
+                                class="inline-flex min-h-touch items-center rounded-control border border-border-subtle bg-surface-muted px-3 text-sm font-semibold text-text-secondary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                            >
+                                {{ $category['name'] }}
+                            </a>
+                        </li>
+                    @endforeach
+                @endforeach
+            </ul>
+        </nav>
+
         <div class="mt-4 space-y-7">
             @forelse ($availableMenus as $menu)
                 <section wire:key="guest-menu-menu-{{ $menu['id'] }}" class="space-y-4">
@@ -98,44 +119,45 @@
 
                     <div class="space-y-5">
                     @forelse ($menu['categories'] as $category)
-                <section wire:key="guest-menu-menu-{{ $menu['id'] }}-category-{{ $category['id'] }}" class="space-y-3">
-                    <div class="flex items-start gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
+                <section id="guest-menu-category-{{ $menu['id'] }}-{{ $category['id'] }}" wire:key="guest-menu-menu-{{ $menu['id'] }}-category-{{ $category['id'] }}" class="scroll-mt-4 space-y-3">
+                    <div class="flex items-start gap-2 border-b border-border-subtle pb-2">
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $category['name'] }}</h3>
+                            <h3 class="text-lg font-semibold leading-tight text-text-primary">{{ $category['name'] }}</h3>
 
-                            <x-ui.plain-text :text="$category['description']" class="mt-1 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
+                            <x-ui.plain-text :text="$category['description']" class="mt-1 block text-sm leading-5 text-text-muted" />
                         </div>
                     </div>
 
                     <div class="space-y-3">
                         @forelse ($category['items'] as $item)
                             <article
+                                data-guest-menu-item
                                 wire:key="guest-menu-item-{{ $item['id'] }}"
                                 @class([
-                                    'overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950/60',
+                                    'overflow-hidden rounded-control border border-border-subtle bg-surface',
                                     'opacity-65' => ! $item['is_available'],
                                 ])
                             >
                                 <div class="grid grid-cols-[5.5rem_1fr] gap-3 p-3">
-                                    <div class="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
+                                    <div class="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-control border border-border-subtle bg-surface-muted">
                                         @if ($item['image_url'])
                                             <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="176" height="176" loading="lazy" decoding="async" class="size-full object-cover">
                                         @else
-                                            <span class="px-2 text-center text-xs font-semibold text-zinc-600 dark:text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
+                                            <span class="px-2 text-center text-xs font-semibold text-text-muted">{{ __('menu.item_detail.gallery') }}</span>
                                         @endif
                                     </div>
 
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-start justify-between gap-3">
-                                            <h4 class="min-w-0 text-base font-semibold leading-5 text-zinc-950 dark:text-white">{{ $item['name'] }}</h4>
-                                            <span class="shrink-0 rounded-md bg-zinc-100 px-2 py-1 text-sm font-semibold text-zinc-950 dark:bg-zinc-900 dark:text-white">
+                                            <h4 class="min-w-0 text-base font-semibold leading-5 text-text-primary">{{ $item['name'] }}</h4>
+                                            <span class="shrink-0 rounded-control bg-surface-muted px-2 py-1 text-sm font-semibold text-text-primary">
                                                 {{ $item['formatted_price'] }}
                                             </span>
                                         </div>
 
-                                        <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
+                                        <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-text-muted" />
 
-                                        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                                        <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-text-muted">
                                             @if ($item['weight'])
                                                 <span>{{ $item['weight'] }} {{ __('menu.guest.unit_grams') }}</span>
                                             @endif

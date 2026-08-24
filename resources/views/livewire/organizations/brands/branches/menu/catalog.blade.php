@@ -10,6 +10,12 @@
     
                 <div class="mt-4 grid gap-3">
                     <flux:input wire:model="menuName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
+                    <x-menu.name-translations
+                        id-prefix="create-menu"
+                        model="menuTranslations"
+                        :language-options="$languageOptions"
+                    />
     
                     <flux:select wire:model="menuStatus" :label="__('guest.table.status')">
                         @foreach ($menuStatusOptions as $value => $label)
@@ -51,6 +57,14 @@
                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
                         <textarea name="category_description" autocomplete="off" wire:model="categoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                     </label>
+
+                    <x-menu.translation-fields
+                        id-prefix="create-menu-category"
+                        model="categoryTranslations"
+                        :language-options="$languageOptions"
+                        :name-max="160"
+                        :description-max="1000"
+                    />
     
                     <flux:select wire:model="categoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
                         @foreach ($iconOptions as $value => $label)
@@ -105,6 +119,14 @@
                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
                         <textarea name="item_description" autocomplete="off" wire:model="itemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                     </label>
+
+                    <x-menu.translation-fields
+                        id-prefix="create-menu-item"
+                        model="itemTranslations"
+                        :language-options="$languageOptions"
+                        :name-max="180"
+                        :description-max="1200"
+                    />
     
                     <div class="grid gap-3 sm:grid-cols-2">
                         @if ($canChangePrices)
@@ -129,7 +151,10 @@
                     />
     
                     @if ($canChangeAvailability)
-                        <flux:switch wire:model="itemIsAvailable" :label="__('menu.guest.available')" />
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <flux:switch wire:model="itemIsAvailable" :label="__('menu.guest.available')" />
+                            <flux:input wire:model="itemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
+                        </div>
                     @endif
                 </div>
             </form>
@@ -147,6 +172,13 @@
                         @if ($editingMenuId === $menu['id'])
                             <form wire:submit="updateMenu" class="grid gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
                                 <flux:input wire:model="editingMenuName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
+                                <x-menu.name-translations
+                                    class="md:col-span-full"
+                                    id-prefix="edit-menu-{{ $menu['id'] }}"
+                                    model="editingMenuTranslations"
+                                    :language-options="$languageOptions"
+                                />
     
                                 <flux:select wire:model="editingMenuStatus" :label="__('guest.table.status')">
                                     @foreach ($menuStatusOptions as $value => $label)
@@ -211,14 +243,41 @@
                             <div class="mt-3 grid gap-2">
                                 @forelse ($menu['schedules'] as $schedule)
                                     <div wire:key="menu-schedule-{{ $schedule['id'] }}" class="flex flex-col gap-2 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between">
-                                        <div class="flex flex-wrap items-center gap-2 text-sm">
-                                            <flux:badge>{{ $schedule['day_label'] }}</flux:badge>
-                                            <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $schedule['time_range'] }}</span>
-                                        </div>
-    
-                                        <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})">
-                                            {{ __('ui.actions.delete') }}
-                                        </flux:button>
+                                        @if ($editingScheduleId === $schedule['id'])
+                                            <form wire:submit="updateMenuSchedule" class="grid min-w-0 flex-1 gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
+                                                <flux:select wire:model="editingScheduleDayOfWeek" :label="__('ui.organizations.brands.branches.menu.index.day')">
+                                                    @foreach ($scheduleDayOptions as $dayValue => $dayLabel)
+                                                        <flux:select.option wire:key="editing-menu-schedule-{{ $schedule['id'] }}-day-{{ $dayValue }}" value="{{ $dayValue }}">{{ $dayLabel }}</flux:select.option>
+                                                    @endforeach
+                                                </flux:select>
+
+                                                <flux:input wire:model="editingScheduleStartsAt" :label="__('ui.organizations.brands.branches.menu.index.start')" type="time" required />
+                                                <flux:input wire:model="editingScheduleEndsAt" :label="__('ui.organizations.brands.branches.menu.index.end')" type="time" required />
+
+                                                <div class="flex flex-wrap gap-2">
+                                                    <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateMenuSchedule">
+                                                        {{ __('ui.actions.save') }}
+                                                    </flux:button>
+                                                    <flux:button icon="x-mark" type="button" wire:click="cancelMenuScheduleEditing">
+                                                        {{ __('ui.actions.cancel') }}
+                                                    </flux:button>
+                                                </div>
+                                            </form>
+                                        @else
+                                            <div class="flex flex-wrap items-center gap-2 text-sm">
+                                                <flux:badge>{{ $schedule['day_label'] }}</flux:badge>
+                                                <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $schedule['time_range'] }}</span>
+                                            </div>
+
+                                            <div class="flex flex-wrap gap-2">
+                                                <flux:button icon="pencil" type="button" wire:click="startEditingMenuSchedule({{ $schedule['id'] }})">
+                                                    {{ __('menu.schedules.actions.edit') }}
+                                                </flux:button>
+                                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})">
+                                                    {{ __('ui.actions.delete') }}
+                                                </flux:button>
+                                            </div>
+                                        @endif
                                     </div>
                                 @empty
                                     <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
@@ -258,6 +317,14 @@
                                                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
                                                         <textarea name="editing_category_description" autocomplete="off" wire:model="editingCategoryDescription" rows="2" maxlength="1000" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                                                     </label>
+
+                                                    <x-menu.translation-fields
+                                                        id-prefix="edit-menu-category-{{ $category['id'] }}"
+                                                        model="editingCategoryTranslations"
+                                                        :language-options="$languageOptions"
+                                                        :name-max="160"
+                                                        :description-max="1000"
+                                                    />
     
                                                     <div class="grid gap-3 sm:grid-cols-2">
                                                         <flux:select wire:model="editingCategoryIcon" :label="__('ui.organizations.brands.branches.menu.index.icon')">
@@ -301,6 +368,15 @@
                                                         @endif
     
                                                         <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $category['sort_order'] }}</p>
+
+                                                        <dl class="mt-3 grid gap-2 text-sm">
+                                                            @foreach ($languageOptions as $languageCode => $languageLabel)
+                                                                <div wire:key="menu-category-{{ $category['id'] }}-translation-{{ $languageCode }}" class="min-w-0">
+                                                                    <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ $languageLabel }}</dt>
+                                                                    <dd class="break-words text-zinc-900 dark:text-zinc-100">{{ $category['translations'][$languageCode]['name'] ?: __('menu.translations.fallback') }}</dd>
+                                                                </div>
+                                                            @endforeach
+                                                        </dl>
                                                     </div>
     
                                                     <div class="flex flex-wrap gap-2">
@@ -358,6 +434,14 @@
                                                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.item_detail.description') }}</span>
                                                         <textarea name="editing_item_description" autocomplete="off" wire:model="editingItemDescription" rows="2" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
                                                     </label>
+
+                                                    <x-menu.translation-fields
+                                                        id-prefix="edit-menu-item-{{ $item['id'] }}"
+                                                        model="editingItemTranslations"
+                                                        :language-options="$languageOptions"
+                                                        :name-max="180"
+                                                        :description-max="1200"
+                                                    />
     
                                                     <div class="grid gap-3 md:grid-cols-4">
                                                         @if ($canChangePrices)
@@ -377,10 +461,112 @@
                                                         :allergen-options="$allergenOptions"
                                                         :dietary-label-options="$dietaryLabelOptions"
                                                     />
+
+                                                    <section aria-labelledby="menu-item-{{ $item['id'] }}-gallery-heading" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                                                        <div class="flex flex-wrap items-start justify-between gap-2">
+                                                            <div>
+                                                                <h3 id="menu-item-{{ $item['id'] }}-gallery-heading" class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                                                    {{ __('uploads.labels.gallery') }}
+                                                                </h3>
+                                                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                                    {{ __('uploads.labels.image_count', ['count' => $item['image_count'], 'max' => $item['max_image_count']]) }}
+                                                                </p>
+                                                            </div>
+
+                                                            @if ($item['remaining_image_slots'] > 0)
+                                                                <span class="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                                                                    {{ __('uploads.labels.up_to_images', ['count' => $item['remaining_image_slots']]) }}
+                                                                </span>
+                                                            @endif
+                                                        </div>
+
+                                                        @if ($item['remaining_image_slots'] > 0)
+                                                            <div class="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                                                                <div>
+                                                                    <label for="item-images-{{ $item['id'] }}" class="sr-only">{{ __('uploads.labels.multiple_images') }}</label>
+                                                                    <x-ui.image-upload-input
+                                                                        id="item-images-{{ $item['id'] }}"
+                                                                        multiple
+                                                                        wire:model="itemImageUploads.{{ $item['id'] }}"
+                                                                        :aria-label="__('uploads.labels.multiple_images')"
+                                                                    />
+                                                                </div>
+
+                                                                <flux:button
+                                                                    icon="arrow-up-tray"
+                                                                    type="button"
+                                                                    wire:click="saveItemImages({{ $item['id'] }})"
+                                                                    wire:loading.attr="disabled"
+                                                                    wire:target="itemImageUploads.{{ $item['id'] }}, saveItemImages({{ $item['id'] }})"
+                                                                >
+                                                                    {{ __('uploads.actions.upload') }}
+                                                                </flux:button>
+                                                            </div>
+
+                                                            @error('itemImageUploads.'.$item['id'])
+                                                                <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                                            @enderror
+
+                                                            @foreach (($itemImageUploads[$item['id']] ?? []) as $uploadIndex => $pendingUpload)
+                                                                @error('itemImageUploads.'.$item['id'].'.'.$uploadIndex)
+                                                                    <p wire:key="menu-item-{{ $item['id'] }}-upload-error-{{ $uploadIndex }}" class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                                                                @enderror
+                                                            @endforeach
+                                                        @endif
+
+                                                        @if ($item['images'] !== [])
+                                                            <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                                                                @foreach ($item['images'] as $image)
+                                                                    <figure wire:key="menu-item-{{ $item['id'] }}-image-{{ $image['key'] }}" class="min-w-0 overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                                                                        <img src="{{ $image['url'] }}" alt="{{ $image['alt'] }}" width="320" height="240" loading="lazy" decoding="async" class="aspect-4/3 w-full object-cover">
+
+                                                                        <figcaption class="grid gap-2 p-2">
+                                                                            @if ($image['is_primary'])
+                                                                                <flux:badge color="green" class="w-fit">{{ __('uploads.labels.primary_image') }}</flux:badge>
+                                                                            @else
+                                                                                <flux:button
+                                                                                    icon="star"
+                                                                                    size="sm"
+                                                                                    type="button"
+                                                                                    wire:click="promoteItemImage({{ $item['id'] }}, {{ $image['id'] }})"
+                                                                                    wire:loading.attr="disabled"
+                                                                                    wire:target="promoteItemImage({{ $item['id'] }}, {{ $image['id'] }})"
+                                                                                >
+                                                                                    {{ __('uploads.actions.make_primary') }}
+                                                                                </flux:button>
+                                                                            @endif
+
+                                                                            <x-dangerous-action-confirmation
+                                                                                name="remove-menu-item-image-{{ $item['id'] }}-{{ $image['key'] }}"
+                                                                                action="delete_media_file"
+                                                                                :confirm-action="$image['is_primary']
+                                                                                    ? 'removeItemImage('.$item['id'].')'
+                                                                                    : 'removeItemGalleryImage('.$item['id'].', '.$image['id'].')'"
+                                                                                :submit-target="$image['is_primary']
+                                                                                    ? 'removeItemImage('.$item['id'].')'
+                                                                                    : 'removeItemGalleryImage('.$item['id'].', '.$image['id'].')'"
+                                                                                confirm-label="ui.actions.confirm"
+                                                                                loading-label="ui.actions.removing"
+                                                                            >
+                                                                                <x-slot:trigger>
+                                                                                    <flux:button icon="trash" size="sm" type="button" variant="danger">
+                                                                                        {{ __('uploads.actions.remove') }}
+                                                                                    </flux:button>
+                                                                                </x-slot:trigger>
+                                                                            </x-dangerous-action-confirmation>
+                                                                        </figcaption>
+                                                                    </figure>
+                                                                @endforeach
+                                                            </div>
+                                                        @endif
+                                                    </section>
     
                                                     <div class="flex items-center justify-between gap-3">
                                                         @if ($canChangeAvailability)
-                                                            <flux:switch wire:model="editingItemIsAvailable" :label="__('menu.guest.available')" />
+                                                            <div class="grid gap-3 sm:grid-cols-2">
+                                                                <flux:switch wire:model="editingItemIsAvailable" :label="__('menu.guest.available')" />
+                                                                <flux:input wire:model="editingItemHiddenUntil" :label="__('menu.admin.hidden_until')" type="datetime-local" />
+                                                            </div>
                                                         @endif
     
                                                         <div class="flex flex-wrap gap-2">
@@ -419,11 +605,24 @@
                                                             @else
                                                                 <flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>
                                                             @endif
+
+                                                            @if ($item['is_temporarily_hidden'])
+                                                                <flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until']]) }}</flux:badge>
+                                                            @endif
                                                         </div>
     
                                                         @if ($item['description'])
                                                             <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
                                                         @endif
+
+                                                        <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-3">
+                                                            @foreach ($languageOptions as $languageCode => $languageLabel)
+                                                                <div wire:key="menu-item-{{ $item['id'] }}-translation-{{ $languageCode }}" class="min-w-0">
+                                                                    <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ $languageLabel }}</dt>
+                                                                    <dd class="break-words text-zinc-900 dark:text-zinc-100">{{ $item['translations'][$languageCode]['name'] ?: __('menu.translations.fallback') }}</dd>
+                                                                </div>
+                                                            @endforeach
+                                                        </dl>
 
                                                         <x-menu.item-labels
                                                             class="mt-3"
@@ -456,37 +655,6 @@
                                                             </div>
                                                         @endif
     
-                                                        <form wire:submit="saveItemImage({{ $item['id'] }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                                                            <label for="item-photo-{{ $item['id'] }}" class="sr-only">{{ __('uploads.labels.image') }}</label>
-                                                            <x-ui.image-upload-input id="item-photo-{{ $item['id'] }}" wire:model="itemImages.{{ $item['id'] }}" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" class="max-w-xs" />
-    
-                                                            <div class="flex flex-wrap gap-2">
-                                                                <flux:button icon="arrow-up-tray" type="submit" wire:loading.attr="disabled" wire:target="itemImages.{{ $item['id'] }}, saveItemImage({{ $item['id'] }})">
-                                                                    {{ $item['has_image'] ? __('uploads.actions.replace') : __('uploads.actions.upload') }}
-                                                                </flux:button>
-    
-                                                                @if ($item['has_image'])
-                                                                    <x-dangerous-action-confirmation
-                                                                        name="remove-menu-item-photo-{{ $item['id'] }}"
-                                                                        action="delete_media_file"
-                                                                        confirm-action="removeItemImage({{ $item['id'] }})"
-                                                                        submit-target="removeItemImage({{ $item['id'] }})"
-                                                                        confirm-label="ui.actions.confirm"
-                                                                        loading-label="ui.actions.removing"
-                                                                    >
-                                                                        <x-slot:trigger>
-                                                                            <flux:button icon="trash" type="button" variant="danger">
-                                                                                {{ __('uploads.actions.remove') }}
-                                                                            </flux:button>
-                                                                        </x-slot:trigger>
-                                                                    </x-dangerous-action-confirmation>
-                                                                @endif
-                                                            </div>
-    
-                                                            @error('itemImages.'.$item['id'])
-                                                                <p class="text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
-                                                            @enderror
-                                                        </form>
                                                     </div>
     
                                                     <div class="flex flex-wrap gap-2 md:justify-end">

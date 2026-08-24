@@ -34,9 +34,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Role|null $role
  */
 #[Fillable(['email', 'phone'])]
-#[Hidden(['invite_token', 'invite_code', 'invite_token_hash', 'invite_code_hash'])]
+#[Hidden(['invite_token_hash', 'invite_code_hash'])]
 class Invitation extends Model
 {
+    public const MAX_USES = 1;
+
     /** @use HasFactory<InvitationFactory> */
     use HasFactory;
 
@@ -113,6 +115,15 @@ class Invitation extends Model
             && $this->expires_at->isFuture()
             && is_string($this->invite_token_hash)
             && strlen($this->invite_token_hash) === 64;
+    }
+
+    public function effectiveStatus(): InvitationStatus
+    {
+        if ($this->status === InvitationStatus::Pending && $this->expires_at->isPast()) {
+            return InvitationStatus::Expired;
+        }
+
+        return $this->status;
     }
 
     /**

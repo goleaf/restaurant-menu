@@ -43,6 +43,7 @@ final class UpdateOrganizationStaffRoleAction
                 ->lockForUpdate()
                 ->firstOrFail();
             $assignableRole = $this->findAssignableRole($role);
+            Gate::forUser($actor)->authorize('assign', [$assignableRole, $organization]);
 
             if ((int) $scopedMembership->user_id === (int) $actor->id) {
                 throw ValidationException::withMessages([

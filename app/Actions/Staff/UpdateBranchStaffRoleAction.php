@@ -10,6 +10,7 @@ use App\Enums\SystemRole;
 use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\BranchUser;
+use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Validation\RestaurantValidationRules;
@@ -31,6 +32,10 @@ final class UpdateBranchStaffRoleAction
         $reason = $this->validatedReason($reason);
 
         return DB::transaction(function () use ($actor, $branch, $branchUser, $role, $reason): BranchUser {
+            $organization = Organization::query()
+                ->select(['id', 'owner_user_id', 'name', 'slug', 'default_locale', 'timezone', 'currency_code', 'status', 'created_at', 'updated_at', 'deleted_at'])
+                ->whereKey($branch->organization_id)
+                ->firstOrFail();
             $scopedBranchUser = BranchUser::query()
                 ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
                 ->where('organization_id', $branch->organization_id)
@@ -39,6 +44,7 @@ final class UpdateBranchStaffRoleAction
                 ->lockForUpdate()
                 ->firstOrFail();
             $assignableRole = $this->findAssignableRole($role);
+            Gate::forUser($actor)->authorize('assign', [$assignableRole, $organization]);
 
             if ((int) $scopedBranchUser->user_id === (int) $actor->id) {
                 throw ValidationException::withMessages([
@@ -60,6 +66,7 @@ final class UpdateBranchStaffRoleAction
 
             if ($assignableRole->code !== SystemRole::Waiter) {
                 AreaNodeWaiter::query()
+                    ->where('organization_id', $branch->organization_id)
                     ->where('branch_id', $branch->id)
                     ->where('user_id', $scopedBranchUser->user_id)
                     ->delete();

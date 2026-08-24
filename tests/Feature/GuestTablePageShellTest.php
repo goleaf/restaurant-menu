@@ -31,6 +31,8 @@ test('active guest sees the guest table page shell', function () {
         ->assertSet('currentGuestId', $activeGuest->id)
         ->assertSet('guestCanAddItems', true)
         ->assertSee('data-page="guest-table-shell"', false)
+        ->assertSee('data-guest-table-context', false)
+        ->assertSee('data-guest-cart-actions', false)
         ->assertSeeText('Guest Table Branch')
         ->assertSeeText('Стол у окна')
         ->assertSeeText('Entry saved')

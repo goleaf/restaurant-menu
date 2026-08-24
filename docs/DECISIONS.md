@@ -41,3 +41,35 @@ Independent full and coverage processes may run in the shared checkout. SQLite r
 ## D-010 — Keep Livewire as an orchestration boundary
 
 Livewire components authorize, validate and coordinate UI state, but no longer construct Eloquent or relationship queries and never persist models directly. Focused domain read services own bounded selected/eager-loaded query shapes, while Actions retain mutations and transaction boundaries. Substantial multi-field onboarding validation uses a dedicated `Livewire\\Form` and the shared `RestaurantValidationRules`; small single-action inputs remain typed component properties when extracting another object would not create a meaningful boundary.
+
+## D-011 — Persist onboarding identity, derive progress
+
+Restaurant onboarding persists one user-owned checkpoint containing only scoped entity identities and explicit completion. The current/highest step is derived from verified relationships, ordered service points and active QR completeness on every request. Save Actions are retry-safe and update the existing graph, so refreshes, back navigation and repeated submissions do not create parallel restaurants. The presentation graph is memoized only for the current Livewire request and is invalidated immediately after a mutation.
+
+## D-012 — Prefer proven compatibility over major-version churn
+
+The installed stable PHP 8.5/Laravel 13/Livewire 4/Flux 2/Tailwind 4/Vite 8 graph passes platform and security audits. Pest 5 and its plugins are available only as new major versions and are not required for the current Laravel 13 baseline, so the verified Pest 4 graph remains pinned. Filament, Volt, jQuery, Vue, React, Svelte and Axios remain absent rather than being installed for capabilities already provided by Laravel, Livewire, Flux or browser APIs.
+
+## D-013 — Prove migrations before touching local data
+
+New onboarding migrations are additive and reversible. They were first run with the complete migration chain and repeated default seeding against an isolated SQLite file; only after that proof were the two pending migrations applied to the local Herd database. No local record was refreshed, truncated or reseeded.
+
+## D-014 — Seed secondary dish media without replacing legacy primary identity
+
+The existing `menu_items.image` value remains the representative primary image. `DemoOrganizationCrudSeeder` adds exactly two ordered `MenuItemImage` gallery rows, created through the model factory, for one representative dish in each branch. Deterministic paths are reused only when they already belong to the same dish and sort position; a collision fails closed instead of overwriting another record or file. Files are materialized only after the database transaction succeeds.
+
+## D-015 — Keep onboarding eligibility distinct from invitation acceptance
+
+Canonical onboarding is available only to an authenticated owner without an existing tenant membership. The end-to-end onboarding browser scenario therefore logs in a factory-created membership-free owner through Fortify instead of accepting an invitation into an existing organization and then bypassing the onboarding policy. Invitation recipient binding, atomic consumption and replay protection remain independently covered by focused Feature tests.
+
+## D-016 — Enforce tenant hierarchy at the strongest safe SQLite boundary
+
+The requested company/restaurant vocabulary maps to the existing `Organization`/`Branch` domain rather than creating aliases or duplicate tables. `branches` now carries a composite FK proving that its `organization_id` and `brand_id` identify one brand tenant. Cross-branch area parents and service-point placement stay in focused Actions: a composite SQLite `SET NULL` constraint would also null the required `branch_id` and would change established hard-delete semantics. Every FK has a leading supporting index, redundant prefix indexes are removed, and nullable plaintext invitation columns are contracted only after a no-values preflight.
+
+## D-017 — Rotate invitation bearers and enforce downward role administration
+
+Invitation credentials remain hash-only, so an administrator cannot retrieve an old plaintext link from storage. Creation exposes the bearer only in current authorized Livewire state; “reissue” safely rotates it, invalidates the previous link, renews expiry and exposes the replacement for manual delivery. No email is sent until a real mail integration is configured. Tenant role administration follows seeded `sort_order`: superadmin may manage any non-superadmin role, while organization actors must hold the relevant capability and may affect only a strictly lower role. The product term chef maps to the existing canonical `head_chef` role instead of adding a duplicate role code.
+
+## D-018 — Treat restaurant-structure deletion as a reversible archive
+
+Organization, brand, branch, area and service-point identity can already be referenced by orders, sessions, QR records and audit history, so ordinary management does not expose force deletion. The destructive control performs a localized, confirmed soft delete after a transactionally locked tenant reload and active-order check; authorized users restore from an explicit archived filter. Service-point archive also disables its active QR and closes/deactivates the point, while restore deliberately does not reopen either boundary. Moving a service point between areas updates only its same-branch placement, preserving its database identity and permanent QR token. Sorting reuses real query fields and the existing area `sort_order`; no speculative sort columns or schema migration were added for company, brand or restaurant lists.

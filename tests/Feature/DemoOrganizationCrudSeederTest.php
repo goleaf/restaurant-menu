@@ -14,6 +14,7 @@ use App\Models\KitchenDepartment;
 use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
@@ -98,8 +99,6 @@ test('the parent seeder creates every missing organization administration fixtur
             InvitationStatus::Expired,
             InvitationStatus::Cancelled,
         ])
-        ->and(Invitation::query()->where('organization_id', $organization->id)->whereNotNull('invite_token')->exists())->toBeFalse()
-        ->and(Invitation::query()->where('organization_id', $organization->id)->whereNotNull('invite_code')->exists())->toBeFalse()
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->count())->toBe(2)
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', true)->count())->toBe(1)
         ->and(PermissionUserOverride::query()->whereIn('user_id', $memberUserIds)->where('enabled', false)->count())->toBe(1)
@@ -113,6 +112,20 @@ test('the parent seeder creates every missing organization administration fixtur
         ->and(KitchenDepartment::query()->whereIn('branch_id', $branchIds)->where('name', DemoOrganizationCrudSeeder::INACTIVE_DEPARTMENT_NAME)->where('is_active', false)->exists())->toBeTrue()
         ->and(MenuItem::query()->whereIn('menu_id', $menuIds)->where('name', DemoOrganizationCrudSeeder::INACTIVE_ITEM_NAME)->where('is_available', false)->exists())->toBeTrue()
         ->and(MenuItemVariant::query()->whereHas('item', fn ($query) => $query->whereIn('menu_id', $menuIds))->where('name', DemoOrganizationCrudSeeder::INACTIVE_VARIANT_NAME)->where('is_available', false)->exists())->toBeTrue();
+
+    $representativeItems = MenuItem::query()
+        ->select(['id', 'menu_id', 'image'])
+        ->whereIn('menu_id', $menuIds)
+        ->whereNotNull('image')
+        ->orderBy('id')
+        ->get();
+
+    expect($representativeItems)->toHaveCount(4)
+        ->and(MenuItemImage::query()->whereIn('menu_item_id', $representativeItems->pluck('id'))->count())->toBe(8);
+
+    foreach ($representativeItems as $representativeItem) {
+        expect($representativeItem->galleryImages()->pluck('sort_order')->all())->toBe([0, 1]);
+    }
 
     $mediaPaths = demoCrudMediaPaths($organization);
 
@@ -199,9 +212,7 @@ test('demo invitations expose no raw token code or digest in presentation data',
         ->and($presentationJson)->not->toContain('CRUD');
 
     foreach ($invitations as $invitation) {
-        expect($invitation->getRawOriginal('invite_token'))->toBeNull()
-            ->and($invitation->getRawOriginal('invite_code'))->toBeNull()
-            ->and(strlen((string) $invitation->getRawOriginal('invite_token_hash')))->toBe(64)
+        expect(strlen((string) $invitation->getRawOriginal('invite_token_hash')))->toBe(64)
             ->and(strlen((string) $invitation->getRawOriginal('invite_code_hash')))->toBe(64);
     }
 });
@@ -238,6 +249,9 @@ function demoCrudMediaPaths(Organization $organization): array
             ->whereHas('menu.branch', fn ($query) => $query->where('organization_id', $organization->id))
             ->whereNotNull('image')
             ->pluck('image'))
+        ->merge(MenuItemImage::query()
+            ->whereHas('item.menu.branch', fn ($query) => $query->where('organization_id', $organization->id))
+            ->pluck('path'))
         ->filter(fn (mixed $path): bool => is_string($path) && $path !== '')
         ->unique()
         ->values()
@@ -262,6 +276,7 @@ function demoCrudSnapshot(Organization $organization): array
         'schedule_ids' => MenuAvailabilitySchedule::query()->whereIn('menu_id', $menuIds)->orderBy('id')->pluck('id')->all(),
         'modifier_group_ids' => ModifierGroup::query()->whereIn('branch_id', $branchIds)->orderBy('id')->pluck('id')->all(),
         'modifier_option_ids' => ModifierOption::query()->whereHas('group', fn ($query) => $query->whereIn('branch_id', $branchIds))->orderBy('id')->pluck('id')->all(),
+        'menu_item_image_ids' => MenuItemImage::query()->whereHas('item', fn ($query) => $query->whereIn('menu_id', $menuIds))->orderBy('id')->pluck('id')->all(),
         'area_waiter_ids' => AreaNodeWaiter::query()->where('organization_id', $organization->id)->orderBy('id')->pluck('id')->all(),
         'invitation_ids' => Invitation::query()->where('organization_id', $organization->id)->orderBy('id')->pluck('id')->all(),
         'invitation_hashes' => Invitation::query()->where('organization_id', $organization->id)->orderBy('id')->get()->map(fn (Invitation $invitation): array => [

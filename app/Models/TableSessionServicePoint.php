@@ -66,6 +66,12 @@ class TableSessionServicePoint extends Model
         return $this->belongsTo(ServicePoint::class);
     }
 
+    /** @return BelongsTo<ServicePoint, $this> */
+    public function activeServicePoint(): BelongsTo
+    {
+        return $this->belongsTo(ServicePoint::class, 'active_service_point_id');
+    }
+
     /**
      * @return BelongsTo<User, $this>
      */

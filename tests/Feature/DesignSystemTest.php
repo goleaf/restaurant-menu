@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\File;
 
 test('auth header renders the page title as a semantic heading', function () {
     $html = Blade::render(<<<'BLADE'
@@ -164,4 +165,128 @@ test('application layout zones provide a keyboard skip link and main target', fu
         ->assertOk()
         ->assertSee('href="#main-content"', false)
         ->assertSee('id="main-content"', false);
+});
+
+test('design contract and sidecar describe the calm service pass system', function () {
+    $design = File::get(base_path('DESIGN.md'));
+    $sidecar = json_decode(File::get(base_path('.impeccable/design.json')), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($design)
+        ->toContain('The Calm Service Pass')
+        ->toContain('surface-selected:')
+        ->toContain('dark-surface-selected:')
+        ->and(preg_match_all('/^## (?:\d+\. )?(Overview|Colors|Typography|Elevation|Components|Do\'s and Don\'ts)$/m', $design))
+        ->toBe(6)
+        ->and($sidecar['schemaVersion'])->toBe(2)
+        ->and($sidecar['narrative']['northStar'])->toBe('The Calm Service Pass')
+        ->and($sidecar['components'])->toHaveCount(8);
+});
+
+test('runtime stylesheet exposes semantic workspace roles and avoids decorative card treatments', function () {
+    $css = File::get(resource_path('css/app.css'));
+
+    expect($css)
+        ->toContain('--color-surface-raised:')
+        ->toContain('--color-surface-selected:')
+        ->toContain('--color-border-strong:')
+        ->toContain('--color-success-border:')
+        ->toContain('--color-warning-border:')
+        ->toContain('--color-danger-border:')
+        ->toContain('--color-information-border:')
+        ->toContain('--spacing-operational-touch: 3.5rem;')
+        ->toContain('--duration-state: 180ms;')
+        ->toContain('--shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);')
+        ->not->toContain('border-left-width: 10px;')
+        ->not->toContain('0 8px 24px');
+});
+
+test('product mark is purpose-built and exposes decorative and standalone semantics', function () {
+    $decorative = Blade::render('<x-app-logo-icon />');
+    $standalone = Blade::render('<x-app-logo-icon :decorative="false" label="Restaurant menu" />');
+
+    expect($decorative)
+        ->toContain('data-product-mark="service-pass"')
+        ->toContain('viewBox="0 0 24 24"')
+        ->toContain('aria-hidden="true"')
+        ->not->toContain('M17.2 5.633')
+        ->and($standalone)
+        ->toContain('role="img"')
+        ->toContain('aria-label="Restaurant menu"')
+        ->not->toContain('aria-hidden="true"');
+});
+
+test('context workspace components render prepared presentation data accessibly', function () {
+    expect([
+        File::exists(resource_path('views/components/ui/priority-row.blade.php')),
+        File::exists(resource_path('views/components/ui/workspace-split.blade.php')),
+        File::exists(app_path('View/Components/Ui/StatePanel.php')),
+        File::exists(resource_path('views/components/ui/state-panel.blade.php')),
+    ])->each->toBeTrue();
+
+    $html = Blade::render(<<<'BLADE'
+        <x-ui.page-header
+            title="Orders"
+            description="Review current service."
+            context="Old Town · Dinner"
+            breadcrumb-label="Workspaces"
+            :breadcrumbs="$breadcrumbs"
+            :status="$status"
+        >
+            <x-slot:actions><button type="button">Open table</button></x-slot:actions>
+        </x-ui.page-header>
+
+        <x-ui.workspace-split>
+            <x-slot:queue>
+                <x-ui.priority-row title="Table 12" description="Waiting 7 minutes" tone="warning" selected>
+                    <x-slot:meta>Draft ready</x-slot:meta>
+                    <x-slot:actions><button type="button">Review</button></x-slot:actions>
+                </x-ui.priority-row>
+            </x-slot:queue>
+            <x-slot:detail><p>Selected table detail</p></x-slot:detail>
+            <x-slot:empty-detail><p>Select a table</p></x-slot:empty-detail>
+        </x-ui.workspace-split>
+
+        <x-ui.state-panel kind="loading" title="Loading tables" description="Current service data is loading." />
+    BLADE, [
+        'breadcrumbs' => [
+            ['label' => 'Restaurant', 'href' => '/restaurant'],
+            ['label' => 'Waiter', 'current' => true],
+        ],
+        'status' => ['label' => 'Live service', 'tone' => 'success'],
+    ]);
+
+    expect($html)
+        ->toContain('aria-label="Workspaces"')
+        ->toContain('Old Town · Dinner')
+        ->toContain('aria-current="page"')
+        ->toContain('Live service')
+        ->toContain('data-workspace-split')
+        ->toContain('data-priority-row')
+        ->toContain('data-selected="true"')
+        ->toContain('min-h-operational-touch')
+        ->toContain('data-state="loading"')
+        ->toContain('aria-busy="true"')
+        ->toContain('role="status"')
+        ->toContain('Loading tables');
+});
+
+test('shared ui primitives consume semantic color roles instead of palette utilities', function () {
+    $sources = collect([
+        app_path('View/Components/Ui/Alert.php'),
+        app_path('View/Components/Ui/Card.php'),
+        app_path('View/Components/Ui/StatusBadge.php'),
+        app_path('View/Components/Ui/TableRow.php'),
+        resource_path('views/components/ui/card.blade.php'),
+        resource_path('views/components/ui/empty-state.blade.php'),
+        resource_path('views/components/ui/form-field.blade.php'),
+        resource_path('views/components/ui/form-input.blade.php'),
+        resource_path('views/components/ui/mobile-bottom-actions.blade.php'),
+        resource_path('views/components/ui/select.blade.php'),
+        resource_path('views/components/ui/table-row.blade.php'),
+        resource_path('views/components/ui/textarea.blade.php'),
+    ])->map(fn (string $path): string => File::get($path))->implode("\n");
+
+    expect($sources)
+        ->not->toMatch('/(?:bg|border|text|ring|placeholder:text)-(?:zinc|red|amber|emerald|sky|orange|violet|lime)-/')
+        ->not->toContain('shadow-sm');
 });

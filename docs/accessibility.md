@@ -15,6 +15,8 @@ The target is WCAG 2.2 AA for critical user and staff workflows. Native semantic
 - Tables expose headers and retain context on narrow screens; images use meaningful or empty alt text as appropriate.
 - QR SVG/print output has an accessible textual equivalent.
 
+The executable target contract is 44 CSS pixels for ordinary controls and 56 CSS pixels for operational queue/status actions. Queue selection uses `aria-current` plus surface and border changes, never color alone. Desktop queue previews always retain an ordinary mobile detail link; polling may clear a no-longer-visible selection but does not move focus.
+
 ## Final verification evidence
 
 - Localized skip links and native `main` landmarks are present on public, guest, auth and authenticated layouts; semantic `h1` behavior is asserted by layout/design tests.
@@ -24,5 +26,7 @@ The target is WCAG 2.2 AA for critical user and staff workflows. Native semantic
 - Public, waiter, service-point and menu mobile Lighthouse accessibility scored 100; the final checked pages had no console errors/issues or horizontal overflow, and checked critical controls were at least 40 CSS px at the 390 px touch viewport.
 - Automated markup/design/architecture tests cover field labels/errors, dialog semantics, focus rules, touch tokens, reduced motion, forced colors, image dimensions, non-color status text and legacy area/service-point/menu-category icon fallback throughout first-party views.
 - A 2026-08-23 waiter release smoke pass reconfirmed skip-link-first keyboard order, visible focus, semantic `h1`/`h2` hierarchy, 390 CSS-pixel reflow without horizontal overflow, and no checked interactive target below 24 CSS pixels. The complete four-test browser suite also passed in Playwright WebKit 26.5.
+- The completed `/organizations` browser journey covers all nested management pages at 375×812 and 1,440×1,000, QR confirmation-dialog focus, 200% root text scaling, named visible controls and zero horizontal overflow. Both desktop and mobile profile triggers now expose the localized account name (`Open account menu for :name` and EN/LT/RU equivalents). A post-build disposable Chrome pass confirmed those names in the accessibility tree and no new console or network failures.
+- The 177-assertion restaurant onboarding browser journey covers EN/LT/RU, 320–1,440 CSS-pixel widths, 200% root text scaling, keyboard-visible focus, first-invalid-field focus, backward editing, two refresh/resume checkpoints and the complete successful flow. Native progress and non-color current/completed/future labels remain available, all validation errors are explicitly associated with their controls, and the final run reported no JavaScript errors or horizontal overflow.
 
 Chrome tooling cannot emulate a physical screen reader, switch input or actual touch hardware. That environmental evidence gap is recorded in [`known-limitations.md`](known-limitations.md); it does not waive the automated DOM, keyboard, responsive, contrast and reduced-motion checks that were executed.

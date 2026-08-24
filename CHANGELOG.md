@@ -2,6 +2,18 @@
 
 This file records shipped milestones, not active requirements or future work. See [`ROADMAP.md`](ROADMAP.md) for current priorities and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) for verification evidence.
 
+## 2026-08-24 — Calm Service Pass interface refresh
+
+- Completed invite-only authorization: public registration is absent, `/invite/{token}` is recipient/tenant/role-bound and atomically single-use, reissue rotates hash-only credentials, revocation and acceptance are audited, generic localized states prevent disclosure, and role/tenant boundaries are enforced in policies, Actions, Livewire, search and export paths.
+- Completed the SQLite integrity audit with tenant-consistent branch ownership, full FK index coverage, redundant-index removal, guest-opener referential cleanup, complete model relationships/casts and guarded contraction of obsolete plaintext invitation columns.
+- Made restaurant onboarding persistent and resumable through a user-owned checkpoint with derived progress, explicit completion, an expected table-count invariant, contiguous ordered table identity, soft/hard-delete recovery, exact branch-assignment and permission-deny enforcement, stale/corrupt tenant-chain rejection, policy-checked transactional save Actions, retry-safe QR/starter-menu handling, locked Livewire state, EN/LT/RU validation and accessible help/error associations plus mobile-first step focus.
+- Added an ordered dish image gallery inside menu-item editing with bounded multi-file upload, explicit primary selection, transactional cleanup, tenant-safe Actions, EN/LT/RU controls and factory-backed regression coverage.
+- Completed the 26-resource `/organizations` administration matrix and disposable browser journey, including deterministic per-branch secondary dish galleries, accessible account-menu names, domain-safe lifecycle coverage and repeat-safe local demo fixtures.
+- Introduced the product-specific connected service-flow mark, flat semantic surface/status system and shared context, priority-row, queue/detail and state-panel components.
+- Reworked waiter selection and priorities, table context, kitchen/bar queues and guest menu/table/cart hierarchy for faster mobile and desktop operation without changing domain workflows or adding selection queries.
+- Refined landing, public QR, authentication mark, superadmin and error-state presentation; removed the QR print accent stripe while preserving print identity and the audited SVG boundary.
+- Added executable UI contracts, expanded focused Pest coverage and refreshed frontend/accessibility/Tailwind/compliance documentation. The management workspace, onboarding and menu changes now pass the complete local release gate set.
+
 ## 2026-08-23 — operational hardening
 
 - Moved remaining Livewire Eloquent reads into focused domain query services, moved onboarding into a reusable Livewire Form/action boundary, and added executable guards against reintroducing component queries or persistence.

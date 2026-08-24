@@ -25,16 +25,17 @@ class CalculateDraftOrderLinePrice
         array $selectedModifierOptions,
         int $quantity,
         ?int $menuItemVariantId = null,
+        ?string $languageCode = null,
     ): array {
-        $variant = $this->resolveVariant->handle($menuItem, $menuItemVariantId);
-        $modifierGroups = $this->modifierSnapshots->groupsFor($menuItem);
+        $variant = $this->resolveVariant->handle($menuItem, $menuItemVariantId, $languageCode);
+        $modifierGroups = $this->modifierSnapshots->groupsFor($menuItem, $languageCode);
         $selectedModifiers = $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions);
         $unitPriceCents = $variant instanceof MenuItemVariant ? $variant->price_cents : $menuItem->price_cents;
         $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
 
         return $this->payload(
             menuItemVariantId: $variant instanceof MenuItemVariant ? $variant->id : null,
-            variantName: $variant instanceof MenuItemVariant ? $variant->name : null,
+            variantName: $variant instanceof MenuItemVariant ? $this->localizedName($variant) : null,
             variantType: $variant instanceof MenuItemVariant ? $variant->type->value : null,
             unitPriceCents: $unitPriceCents,
             modifierTotalCents: $modifierTotalCents,
@@ -52,6 +53,7 @@ class CalculateDraftOrderLinePrice
         array $selectedModifierOptions,
         int $quantity,
         ?int $menuItemVariantId = null,
+        ?string $languageCode = null,
     ): array {
         $selectedModifiers = $this->existingModifierSnapshots($draftOrderItem->selected_modifiers);
         $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
@@ -61,7 +63,7 @@ class CalculateDraftOrderLinePrice
         $unitPriceCents = $draftOrderItem->unit_price_cents;
 
         if ($draftOrderItem->menuItem instanceof MenuItem) {
-            $modifierGroups = $this->modifierSnapshots->groupsFor($draftOrderItem->menuItem);
+            $modifierGroups = $this->modifierSnapshots->groupsFor($draftOrderItem->menuItem, $languageCode);
             $selectedModifiers = $this->preserveExistingModifierPrices(
                 currentSnapshots: $this->modifierSnapshots->snapshotsFor($modifierGroups, $selectedModifierOptions),
                 existingSnapshots: $selectedModifiers,
@@ -69,7 +71,7 @@ class CalculateDraftOrderLinePrice
             $modifierTotalCents = $this->modifierSnapshots->modifierTotalCents($selectedModifiers);
 
             if ($menuItemVariantId !== null && $menuItemVariantId !== $selectedVariantId) {
-                $variant = $this->resolveVariant->handle($draftOrderItem->menuItem, $menuItemVariantId);
+                $variant = $this->resolveVariant->handle($draftOrderItem->menuItem, $menuItemVariantId, $languageCode);
 
                 if (! $variant instanceof MenuItemVariant) {
                     throw ValidationException::withMessages([
@@ -78,7 +80,7 @@ class CalculateDraftOrderLinePrice
                 }
 
                 $selectedVariantId = $variant->id;
-                $variantName = $variant->name;
+                $variantName = $this->localizedName($variant);
                 $variantType = $variant->type->value;
                 $unitPriceCents = $variant->price_cents;
             }
@@ -185,5 +187,14 @@ class CalculateDraftOrderLinePrice
             })
             ->values()
             ->all();
+    }
+
+    private function localizedName(MenuItemVariant $variant): string
+    {
+        $localizedName = $variant->getAttribute('localized_name');
+
+        return is_string($localizedName) && filled($localizedName)
+            ? $localizedName
+            : $variant->name;
     }
 }

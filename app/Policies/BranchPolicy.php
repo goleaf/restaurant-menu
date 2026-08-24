@@ -19,7 +19,8 @@ final class BranchPolicy
 
     public function view(User $user, Branch $branch): bool
     {
-        return $user->canAccessBranch($branch, (int) $branch->organization_id);
+        return ! $branch->trashed()
+            && $user->canAccessBranch($branch, (int) $branch->organization_id);
     }
 
     public function create(User $user, Organization $organization): bool
@@ -40,7 +41,9 @@ final class BranchPolicy
 
     public function restore(User $user, Branch $branch): bool
     {
-        return $user->isSuperadmin();
+        return $branch->trashed()
+            && $user->canAccessBranch($branch, (int) $branch->organization_id, true)
+            && $user->canManageOrganizationBranches((int) $branch->organization_id);
     }
 
     public function forceDelete(User $user, Branch $branch): bool

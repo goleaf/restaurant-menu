@@ -113,6 +113,7 @@
             <flux:dropdown position="top" align="end">
                 <flux:profile
                     :initials="$authenticatedUser['initials']"
+                    :aria-label="__('navigation.account_menu', ['name' => $authenticatedUser['name']])"
                     icon-trailing="chevron-down"
                 />
 

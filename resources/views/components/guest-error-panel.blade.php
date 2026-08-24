@@ -3,7 +3,7 @@
         data-component="guest-error-page"
         data-error-state="{{ $card['state'] ?? 'unknown' }}"
         {{ $attributes->class([
-            'overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-zinc-950',
+            'overflow-hidden rounded-card border bg-surface',
             $palette['border'],
         ]) }}
     >
@@ -15,10 +15,10 @@
                         alt="{{ $venueName }}"
                         width="56"
                         height="56"
-                        class="size-14 rounded-lg border border-white/80 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+                        class="size-14 rounded-control border border-border-subtle bg-surface object-contain p-2"
                     >
                 @else
-                    <div class="flex size-14 shrink-0 items-center justify-center rounded-lg border border-white/80 bg-white text-xl font-semibold text-zinc-950 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                    <div class="flex size-14 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface text-xl font-semibold text-text-primary">
                         {{ $brandInitial !== '' ? $brandInitial : '?' }}
                     </div>
                 @endif
@@ -33,14 +33,14 @@
                     </div>
 
                     @if ($venueName)
-                        <p class="mt-3 truncate text-sm font-medium text-zinc-600 dark:text-zinc-300">{{ $venueName }}</p>
+                        <p class="mt-3 text-sm font-medium text-text-muted">{{ $venueName }}</p>
                     @endif
 
-                    <h1 class="mt-2 text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">
+                    <h1 class="mt-2 text-balance text-2xl font-semibold leading-tight text-text-primary">
                         {{ $card['title'] ?? __('guest.table.guest_access_unavailable_title') }}
                     </h1>
 
-                    <p class="mt-3 text-base leading-6 text-zinc-700 dark:text-zinc-200">
+                    <p class="mt-3 text-base leading-6 text-text-secondary">
                         {{ $card['message'] ?? '' }}
                     </p>
                 </div>
@@ -49,7 +49,7 @@
 
         <div class="space-y-4 px-5 py-5">
             @if ($card['support_text'] ?? '')
-                <p class="text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                <p class="text-sm leading-6 text-text-muted">
                     {{ $card['support_text'] }}
                 </p>
             @endif
@@ -66,7 +66,7 @@
             @if ($card['secondary_label'] && $card['secondary_url'])
                 <a
                     href="{{ $card['secondary_url'] }}"
-                    class="flex h-11 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900 dark:focus:ring-offset-zinc-950"
+                    class="flex min-h-touch w-full items-center justify-center rounded-control border border-border-strong bg-surface px-4 text-sm font-semibold text-text-primary transition-colors duration-state ease-product hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 motion-reduce:transition-none"
                 >
                     {{ $card['secondary_label'] }}
                 </a>

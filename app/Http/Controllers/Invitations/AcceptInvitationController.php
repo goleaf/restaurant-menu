@@ -28,7 +28,9 @@ class AcceptInvitationController extends Controller
             abort(410);
         }
 
-        Gate::forUser($recipient)->authorize('accept', $invitation);
+        if (Gate::forUser($recipient)->denies('accept', $invitation)) {
+            abort(410);
+        }
 
         try {
             $acceptInvitation->handle($invitation, $recipient);

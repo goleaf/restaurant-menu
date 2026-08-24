@@ -7,7 +7,9 @@ namespace App\Actions\Menus;
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class DeleteMenuCategoryAction
 {
@@ -18,12 +20,27 @@ final class DeleteMenuCategoryAction
     public function handle(MenuCategory $category): void
     {
         $categoryIds = $this->descendantIds($category);
-        $imagePaths = MenuItem::query()
+        $items = MenuItem::query()
             ->select(['id', 'category_id', 'image'])
             ->whereIn('category_id', $categoryIds)
-            ->pluck('image');
+            ->get();
+        $itemIds = $items->pluck('id');
+        $galleryPaths = MenuItemImage::query()
+            ->select(['id', 'menu_item_id', 'path'])
+            ->whereIn('menu_item_id', $itemIds)
+            ->pluck('path');
+        $imagePaths = $items->pluck('image')
+            ->merge($galleryPaths)
+            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+            ->unique()
+            ->values();
 
-        $category->deleteOrFail();
+        DB::transaction(function () use ($category, $itemIds): void {
+            MenuItemImage::query()
+                ->whereIn('menu_item_id', $itemIds)
+                ->delete();
+            $category->deleteOrFail();
+        });
 
         $imagePaths->each($this->deleteLocalMediaFile->handle(...));
     }

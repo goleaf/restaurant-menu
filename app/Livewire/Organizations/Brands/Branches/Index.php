@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Branches\DeleteBranchAction;
+use App\Actions\Branches\RestoreBranchAction;
 use App\Actions\Branches\UpdateBranchAction;
 use App\Actions\Branches\UpdateBranchLogoAction;
 use App\Actions\Media\StoreLocalImageAction;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -53,6 +55,12 @@ class Index extends Component
     public string $name = '';
 
     public string $search = '';
+
+    #[Url(as: 'lifecycle', except: 'active')]
+    public string $lifecycle = 'active';
+
+    #[Url(as: 'sort', except: 'name_asc')]
+    public string $sort = 'name_asc';
 
     public string $address = '';
 
@@ -248,12 +256,31 @@ class Index extends Component
             return;
         }
 
-        $deleteBranch->handle($this->findBrandBranch($this->deletingBranchId));
+        $deleteBranch->handle(
+            $this->currentUser(),
+            $this->organization,
+            $this->brand,
+            $this->findBrandBranch($this->deletingBranchId),
+        );
 
         $this->cancelDelete();
         unset($this->branches);
 
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.index.branch_deleted'));
+        Flux::toast(variant: 'success', text: __('structure.messages.archived'));
+    }
+
+    public function restore(int $branchId, RestoreBranchAction $restoreBranch): void
+    {
+        $restoreBranch->handle(
+            $this->currentUser(),
+            $this->organization,
+            $this->brand,
+            $this->branchQueries->findForBrand($this->brand, $branchId, true),
+        );
+
+        unset($this->branches);
+
+        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
     }
 
     public function saveLogo(int $branchId, UpdateBranchLogoAction $updateLogo): void
@@ -299,6 +326,20 @@ class Index extends Component
         unset($this->branches, $this->branchSetupGuides);
     }
 
+    public function updatedLifecycle(): void
+    {
+        $this->normalizeLifecycle();
+        $this->resetPage(pageName: 'branchesPage');
+        unset($this->branches);
+    }
+
+    public function updatedSort(): void
+    {
+        $this->normalizeSort();
+        $this->resetPage(pageName: 'branchesPage');
+        unset($this->branches);
+    }
+
     /** @return Paginator<int, Branch> */
     #[Computed]
     public function branches(): Paginator
@@ -309,6 +350,8 @@ class Index extends Component
             $this->brand,
             $this->search,
             self::PER_PAGE,
+            $this->lifecycle,
+            $this->sort,
         );
     }
 
@@ -318,6 +361,7 @@ class Index extends Component
      *         id: int,
      *         name: string,
      *         is_active: bool,
+     *         is_archived: bool,
      *         address: string,
      *         city: string,
      *         country: string,
@@ -354,6 +398,7 @@ class Index extends Component
                     'id' => $branch->id,
                     'name' => $branch->name,
                     'is_active' => $branch->is_active,
+                    'is_archived' => $branch->trashed(),
                     'address' => $branch->address,
                     'city' => $branch->city,
                     'country' => $branch->country,
@@ -574,5 +619,19 @@ class Index extends Component
         Gate::forUser($this->currentUser())->authorize('view', $branch);
 
         return $branch;
+    }
+
+    private function normalizeLifecycle(): void
+    {
+        if (! in_array($this->lifecycle, ['active', 'archived'], true)) {
+            $this->lifecycle = 'active';
+        }
+    }
+
+    private function normalizeSort(): void
+    {
+        if (! in_array($this->sort, ['name_asc', 'name_desc', 'newest', 'oldest'], true)) {
+            $this->sort = 'name_asc';
+        }
     }
 }

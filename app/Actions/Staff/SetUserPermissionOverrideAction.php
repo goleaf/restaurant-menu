@@ -1,15 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Staff;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\PermissionOverrideState;
+use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
-class SetUserPermissionOverrideAction
+final class SetUserPermissionOverrideAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
@@ -23,6 +30,28 @@ class SetUserPermissionOverrideAction
         ?int $organizationId = null,
         ?string $reason = null,
     ): void {
+        if (! $changedBy instanceof User || ! is_int($organizationId)) {
+            throw new AuthorizationException;
+        }
+
+        $organization = Organization::query()->whereKey($organizationId)->firstOrFail();
+        Gate::forUser($changedBy)->authorize('managePermissions', $organization);
+        $membership = OrganizationUser::query()
+            ->where('organization_id', $organization->id)
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+        Gate::forUser($changedBy)->authorize('managePermissions', $membership);
+
+        if ($user->isSuperadmin()) {
+            throw new AuthorizationException;
+        }
+
+        $role = Role::query()
+            ->select(['id', 'code', 'name', 'sort_order'])
+            ->whereKey($membership->role_id)
+            ->firstOrFail();
+        Gate::forUser($changedBy)->authorize('managePermissions', [$role, $organization]);
+
         DB::transaction(function () use ($user, $permission, $state, $changedBy, $organizationId, $reason): void {
             $previousState = $this->currentState($user, $permission);
             $enabled = $state->enabledValue();

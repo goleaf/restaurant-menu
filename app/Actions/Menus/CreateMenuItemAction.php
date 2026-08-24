@@ -9,16 +9,18 @@ use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 final class CreateMenuItemAction
 {
     public function __construct(
         private readonly BuildMenuItemAttributesAction $buildAttributes,
+        private readonly SyncMenuItemTranslationsAction $syncTranslations,
     ) {}
 
     /**
-     * @param  array{name: string, description: string|null, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available?: bool, sort_order: int}  $data
+     * @param  array{name: string, description: string|null, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available?: bool, hidden_until?: string|null, sort_order: int, translations?: array<string, array{name?: string|null, description?: string|null}>}  $data
      */
     public function handle(
         User $actor,
@@ -30,13 +32,19 @@ final class CreateMenuItemAction
     ): MenuItem {
         Gate::forUser($actor)->authorize('update', $menu);
 
-        return $menu->items()->create($this->buildAttributes->handle(
-            actor: $actor,
-            branch: $branch,
-            menu: $menu,
-            category: $category,
-            kitchenDepartmentId: $kitchenDepartmentId,
-            data: $data,
-        ));
+        return DB::transaction(function () use ($actor, $branch, $menu, $category, $kitchenDepartmentId, $data): MenuItem {
+            $item = $menu->items()->create($this->buildAttributes->handle(
+                actor: $actor,
+                branch: $branch,
+                menu: $menu,
+                category: $category,
+                kitchenDepartmentId: $kitchenDepartmentId,
+                data: $data,
+            ));
+
+            $this->syncTranslations->handle($item, $data['translations'] ?? []);
+
+            return $item->load('translations');
+        }, attempts: 3);
     }
 }

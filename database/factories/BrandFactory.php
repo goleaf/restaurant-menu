@@ -33,6 +33,13 @@ class BrandFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'deleted_at' => now()->subDay(),
+        ]);
+    }
+
     public function sushiMaster(): static
     {
         return $this->state(fn (): array => [

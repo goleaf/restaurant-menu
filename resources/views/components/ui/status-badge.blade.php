@@ -1,6 +1,6 @@
 <span
     @if ($statusKey) data-status="{{ $statusKey }}" data-status-context="{{ $contextKey }}" @endif
-    {{ $attributes->class(['inline-flex items-center gap-1.5 rounded-md font-semibold', $toneClasses, $sizeClasses]) }}
+    {{ $attributes->class(['inline-flex items-center gap-1.5 rounded-md border font-semibold', $toneClasses, $sizeClasses]) }}
 >
     @if ($resolvedIcon)
         <flux:icon :name="$resolvedIcon" variant="micro" class="size-3.5" />

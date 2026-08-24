@@ -16,6 +16,7 @@ use App\Enums\ServicePointType;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\Branch;
+use App\Support\RestaurantSetupOptions;
 use Illuminate\Validation\Rule;
 
 class RestaurantValidationRules
@@ -53,6 +54,78 @@ class RestaurantValidationRules
             self::field($prefix, 'timezone') => ['required', 'timezone', 'max:64'],
             self::field($prefix, 'currency') => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             self::field($prefix, 'isActive') => ['boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function onboardingBranch(): array
+    {
+        return [
+            'branchName' => ['bail', 'required', 'string', 'max:160'],
+            'branchAddress' => ['bail', 'required', 'string', 'max:255'],
+            'branchCity' => ['bail', 'required', 'string', 'max:120'],
+            'branchCountryCode' => [
+                'bail',
+                'required',
+                'string',
+                'size:2',
+                Rule::in(RestaurantSetupOptions::countryCodes()),
+            ],
+            'branchTimezone' => [
+                'bail',
+                'required',
+                'string',
+                'max:64',
+                'timezone',
+                Rule::in(array_keys(RestaurantSetupOptions::timezoneOptions())),
+            ],
+            'branchCurrency' => [
+                'bail',
+                'required',
+                'string',
+                'size:3',
+                Rule::in(SupportedCurrency::values()),
+            ],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $iconValues
+     * @return array<string, list<mixed>>
+     */
+    public static function onboardingArea(array $iconValues): array
+    {
+        return [
+            'areaName' => ['bail', 'required', 'string', 'max:160'],
+            'areaType' => ['bail', 'required', 'string', Rule::in(AreaNodeType::values())],
+            'areaIcon' => ['bail', 'required', 'string', Rule::in($iconValues)],
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function onboardingServicePoints(): array
+    {
+        return [
+            'tableCount' => ['bail', 'required', 'integer', 'min:1', 'max:20'],
+            'tablePrefix' => ['bail', 'required', 'string', 'max:40'],
+            'tableCapacity' => ['bail', 'required', 'integer', 'min:1', 'max:50'],
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function onboardingStarterMenu(): array
+    {
+        return [
+            'menuName' => ['bail', 'required', 'string', 'max:160'],
+            'categoryName' => ['bail', 'required', 'string', 'max:160'],
+            'itemName' => ['bail', 'required', 'string', 'max:180'],
+            'itemPrice' => ['bail', ...self::moneyRules()],
         ];
     }
 
@@ -219,6 +292,47 @@ class RestaurantValidationRules
     /**
      * @return array<string, list<mixed>>
      */
+    public static function menuTranslations(string $field, int $nameMax, int $descriptionMax): array
+    {
+        $rules = [
+            $field => ['required', 'array:en,lt,ru'],
+        ];
+
+        foreach (SupportedLocale::values() as $languageCode) {
+            $nameField = $field.'.'.$languageCode.'.name';
+            $descriptionField = $field.'.'.$languageCode.'.description';
+
+            $rules[$field.'.'.$languageCode] = ['required', 'array:name,description'];
+            $rules[$nameField] = [
+                'required',
+                'string',
+                'max:'.$nameMax,
+            ];
+            $rules[$descriptionField] = ['nullable', 'string', 'max:'.$descriptionMax];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function translatedNames(string $field, int $nameMax = 160): array
+    {
+        $rules = [
+            $field => ['required', 'array:en,lt,ru'],
+        ];
+
+        foreach (SupportedLocale::values() as $languageCode) {
+            $rules[$field.'.'.$languageCode] = ['required', 'string', 'max:'.$nameMax];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
     public static function menuItem(string $prefix = '', bool $canChangePrices = true, bool $canChangeAvailability = true): array
     {
         $rules = [
@@ -240,6 +354,7 @@ class RestaurantValidationRules
 
         if ($canChangeAvailability) {
             $rules[self::field($prefix, 'itemIsAvailable')] = ['boolean'];
+            $rules[self::field($prefix, 'itemHiddenUntil')] = ['nullable', 'date'];
         }
 
         return $rules;
@@ -260,8 +375,7 @@ class RestaurantValidationRules
             self::field($prefix, 'variantVolume') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'variantIsDefault') => ['boolean'],
             self::field($prefix, 'variantSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
-            self::field($prefix, 'variantTranslations') => ['array:en,lt,ru'],
-            self::field($prefix, 'variantTranslations').'.*' => ['nullable', 'string', 'max:160'],
+            ...self::translatedNames(self::field($prefix, 'variantTranslations')),
         ];
 
         if ($canChangePrices) {
@@ -471,9 +585,9 @@ class RestaurantValidationRules
         }
 
         return [
-            'inviteEmail' => ['nullable', 'email', 'max:255'],
-            'invitePhone' => ['nullable', 'string', 'max:40'],
-            'inviteRoleId' => $roleRules,
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'roleId' => $roleRules,
         ];
     }
 
@@ -494,6 +608,17 @@ class RestaurantValidationRules
     {
         return [
             $field => StoreLocalImageAction::optionalValidationRules(),
+        ];
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    public static function imageUploads(string $field, int $maxFiles): array
+    {
+        return [
+            $field => ['required', 'array', 'min:1', 'max:'.$maxFiles],
+            $field.'.*' => StoreLocalImageAction::validationRules(),
         ];
     }
 

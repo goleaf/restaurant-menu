@@ -15,6 +15,8 @@ use App\Models\MenuItem;
 use App\Models\User;
 use App\Support\MoneyFormatter;
 use App\Support\PlainText;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
@@ -25,8 +27,8 @@ final class BuildMenuItemAttributesAction
     ) {}
 
     /**
-     * @param  array{name: string, description: string|null, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available?: bool, sort_order: int}  $data
-     * @return array{menu_id: int, category_id: int, kitchen_department_id: int|null, name: string, description: string|null, price_cents: int, allergens: list<string>, dietary_labels: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available: bool, sort_order: int}
+     * @param  array{name: string, description: string|null, price?: string|int, allergens?: list<string>, dietary_labels?: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available?: bool, hidden_until?: string|null, sort_order: int}  $data
+     * @return array{menu_id: int, category_id: int, kitchen_department_id: int|null, name: string, description: string|null, price_cents: int, allergens: list<string>, dietary_labels: list<string>, weight: string|null, volume: string|null, calories: int|null, is_available: bool, hidden_until: CarbonInterface|null, sort_order: int}
      */
     public function handle(
         User $actor,
@@ -44,6 +46,7 @@ final class BuildMenuItemAttributesAction
         $canChangeAvailability = Gate::forUser($actor)->allows('changeAvailability', $menu);
         $existingPriceCents = $existingItem instanceof MenuItem ? $existingItem->price_cents : 0;
         $existingAvailability = $existingItem instanceof MenuItem ? $existingItem->is_available : true;
+        $existingHiddenUntil = $existingItem instanceof MenuItem ? $existingItem->hidden_until : null;
 
         return [
             'menu_id' => $menu->id,
@@ -66,6 +69,9 @@ final class BuildMenuItemAttributesAction
             'is_available' => $canChangeAvailability
                 ? (bool) ($data['is_available'] ?? true)
                 : $existingAvailability,
+            'hidden_until' => $canChangeAvailability
+                ? $this->hiddenUntil($data['hidden_until'] ?? null, $branch->timezone)
+                : $existingHiddenUntil,
             'sort_order' => $data['sort_order'],
         ];
     }
@@ -110,6 +116,15 @@ final class BuildMenuItemAttributesAction
     private function optionalString(?string $value): ?string
     {
         return $value === null || $value === '' ? null : $value;
+    }
+
+    private function hiddenUntil(?string $value, string $timezone): ?CarbonInterface
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return Date::parse($value, $timezone)->utc();
     }
 
     /**

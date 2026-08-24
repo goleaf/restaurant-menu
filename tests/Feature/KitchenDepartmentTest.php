@@ -124,6 +124,9 @@ test('manager can manage kitchen departments and assign a dish department', func
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemKitchenDepartmentId', (string) $department->id)
         ->set('itemName', 'Grilled salmon')
+        ->set('itemTranslations.en.name', 'Grilled salmon')
+        ->set('itemTranslations.lt.name', 'Kepta lašiša')
+        ->set('itemTranslations.ru.name', 'Лосось на гриле')
         ->set('itemSortOrder', 20)
         ->call('createItem')
         ->assertHasNoErrors()
@@ -189,6 +192,9 @@ test('blank dish department uses default kitchen and department changes clear me
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemKitchenDepartmentId', '')
         ->set('itemName', 'Prompt 59 Pizza')
+        ->set('itemTranslations.en.name', 'Prompt 59 Pizza')
+        ->set('itemTranslations.lt.name', 'Prompt 59 Pica')
+        ->set('itemTranslations.ru.name', 'Пицца Prompt 59')
         ->call('createItem')
         ->assertHasNoErrors();
 

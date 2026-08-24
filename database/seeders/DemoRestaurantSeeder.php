@@ -31,6 +31,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Models\MenuTranslation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -696,6 +697,13 @@ class DemoRestaurantSeeder extends Seeder
             }
 
             $menu->forceFill($factory->make()->attributesToArray())->save();
+        }
+
+        foreach (DemoMenuTranslations::menu($menuName) as $languageCode => $translatedName) {
+            MenuTranslation::query()->updateOrCreate(
+                ['menu_id' => $menu->id, 'language_code' => $languageCode],
+                ['name' => $translatedName],
+            );
         }
 
         $departments = KitchenDepartment::query()

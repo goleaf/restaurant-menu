@@ -17,7 +17,7 @@ final class TableRow extends Component
         public readonly ?string $meta = null,
         public readonly ?string $href = null,
     ) {
-        $this->rowClasses = 'grid min-h-16 gap-3 border-b border-zinc-200 px-4 py-3 text-sm last:border-b-0 dark:border-zinc-800 md:grid-cols-[minmax(0,1fr)_auto] md:items-center';
+        $this->rowClasses = 'grid min-h-16 gap-3 border-b border-border-subtle px-4 py-3 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center';
     }
 
     public function render(): View

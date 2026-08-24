@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,6 +47,14 @@ class Order extends Model
             'total_price_cents' => 'integer',
             'metadata' => 'array',
         ];
+    }
+
+    /**
+     * @param  Builder<Order>  $query
+     */
+    public function scopeActive(Builder $query): void
+    {
+        $query->whereIn('status', OrderStatus::activeValues());
     }
 
     /**

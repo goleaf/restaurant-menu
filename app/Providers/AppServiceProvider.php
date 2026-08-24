@@ -21,8 +21,11 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Models\MenuTranslation;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Organization;
@@ -43,8 +46,11 @@ use App\Observers\MenuItemTranslationObserver;
 use App\Observers\MenuItemVariantObserver;
 use App\Observers\MenuItemVariantTranslationObserver;
 use App\Observers\MenuObserver;
+use App\Observers\MenuTranslationObserver;
 use App\Observers\ModifierGroupObserver;
+use App\Observers\ModifierGroupTranslationObserver;
 use App\Observers\ModifierOptionObserver;
+use App\Observers\ModifierOptionTranslationObserver;
 use App\Observers\OrderItemObserver;
 use App\Observers\OrderObserver;
 use App\Observers\OrganizationObserver;
@@ -90,14 +96,18 @@ class AppServiceProvider extends ServiceProvider
             fn (Request $request): Limit => Limit::perMinute(20)->by((string) $request->ip()),
         );
 
-        RateLimiter::for('staff-invitations', function (Request $request): Limit {
+        RateLimiter::for('staff-invitations', function (Request $request): array {
             $token = (string) $request->route('token');
             $invitationId = $request->session()->get('staff_invitation_id');
             $credentialScope = $token !== ''
                 ? $token
                 : (is_int($invitationId) ? 'invitation:'.$invitationId : 'missing-invitation');
+            $clientAddress = (string) $request->ip();
 
-            return Limit::perMinute(10)->by(hash('sha256', $credentialScope).'|'.$request->ip());
+            return [
+                Limit::perMinute(30)->by('ip|'.$clientAddress),
+                Limit::perMinute(10)->by('credential|'.hash('sha256', $credentialScope).'|'.$clientAddress),
+            ];
         });
     }
 
@@ -130,6 +140,7 @@ class AppServiceProvider extends ServiceProvider
         Branch::observe(BranchObserver::class);
         BranchSetting::observe(BranchSettingObserver::class);
         Menu::observe(MenuObserver::class);
+        MenuTranslation::observe(MenuTranslationObserver::class);
         MenuAvailabilitySchedule::observe(MenuAvailabilityScheduleObserver::class);
         MenuCategory::observe(MenuCategoryObserver::class);
         MenuCategoryTranslation::observe(MenuCategoryTranslationObserver::class);
@@ -139,7 +150,9 @@ class AppServiceProvider extends ServiceProvider
         MenuItemVariantTranslation::observe(MenuItemVariantTranslationObserver::class);
         KitchenDepartment::observe(KitchenDepartmentObserver::class);
         ModifierGroup::observe(ModifierGroupObserver::class);
+        ModifierGroupTranslation::observe(ModifierGroupTranslationObserver::class);
         ModifierOption::observe(ModifierOptionObserver::class);
+        ModifierOptionTranslation::observe(ModifierOptionTranslationObserver::class);
         Order::observe(OrderObserver::class);
         OrderItem::observe(OrderItemObserver::class);
         ManualPayment::observe(ManualPaymentObserver::class);

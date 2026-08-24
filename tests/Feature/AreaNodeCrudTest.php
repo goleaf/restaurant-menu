@@ -9,12 +9,17 @@ use App\Livewire\Organizations\Brands\Branches\Areas;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\Brand;
+use App\Models\Order;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -171,6 +176,79 @@ test('manager can soft delete area node and keep children visible', function () 
     expect($hall->fresh()->parent_id)->toBeNull();
 });
 
+test('manager can search filter sort and paginate areas inside the current branch', function () {
+    [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+
+    foreach (range(1, 16) as $number) {
+        AreaNode::factory()->for($branch)->create([
+            'type' => AreaNodeType::Hall,
+            'name' => sprintf('Paged Hall %02d', $number),
+            'sort_order' => $number,
+            'is_active' => true,
+        ]);
+    }
+
+    AreaNode::factory()->for($branch)->create([
+        'type' => AreaNodeType::Terrace,
+        'name' => 'Unique Filter Terrace',
+        'sort_order' => 100,
+        'is_active' => false,
+    ]);
+
+    $component = Livewire::actingAs($manager)
+        ->test(Areas::class, compact('organization', 'brand', 'branch'));
+
+    expect(collect($component->get('treeNodes'))->pluck('name')->all())
+        ->toContain('Paged Hall 01')
+        ->not->toContain('Paged Hall 16');
+
+    $component
+        ->call('setPage', 2, 'areasPage')
+        ->assertSet('paginators.areasPage', 2);
+
+    expect($component->get('displayedAreaNodes')->currentPage())->toBe(2);
+    expect(collect($component->get('treeNodes'))->pluck('name')->all())
+        ->toContain('Paged Hall 16')
+        ->not->toContain('Paged Hall 01');
+
+    $component
+        ->set('areaSearch', 'Unique Filter')
+        ->assertSee('Unique Filter Terrace');
+
+    expect(collect($component->get('treeNodes'))->pluck('name')->all())
+        ->toContain('Unique Filter Terrace')
+        ->not->toContain('Paged Hall 16');
+
+    $component
+        ->set('filterType', AreaNodeType::Terrace->value)
+        ->set('filterActive', 'inactive')
+        ->assertSee('Unique Filter Terrace')
+        ->set('areaSearch', '')
+        ->set('filterType', 'all')
+        ->set('filterActive', 'all')
+        ->set('sort', 'name_desc');
+
+    expect($component->get('treeNodes')[0]['name'])->toBe('Unique Filter Terrace');
+});
+
+test('manager cannot archive area node that contains a service point with an active order', function () {
+    [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Busy hall']);
+    $servicePoint = ServicePoint::factory()->for($branch)->for($areaNode)->blocked()->create();
+    $closedSession = TableSession::factory()->forServicePoint($servicePoint)->closed()->create();
+    Order::factory()->forTableSession($closedSession)->preparing()->create();
+
+    Livewire::actingAs($manager)
+        ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
+        ->call('confirmDelete', $areaNode->id)
+        ->call('delete')
+        ->assertHasErrors('structureDeletion');
+
+    expect($areaNode->fresh())->not->toBeNull();
+});
+
 test('area node cannot be moved inside its own child', function () {
     [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
     grantAreaCrudManageZones($manager, $organization);
@@ -202,6 +280,58 @@ test('branch must belong to route brand and organization on area page', function
     Livewire::actingAs($manager)
         ->test(Areas::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $otherBranch])
         ->assertForbidden();
+});
+
+test('zone manager is authorized to restore an archived area node', function () {
+    [$organization, , $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+    $areaNode = AreaNode::factory()->for($branch)->create();
+    $areaNode->deleteOrFail();
+
+    expect(Gate::forUser($manager)->allows('restore', $areaNode))->toBeTrue()
+        ->and(Gate::forUser($manager)->allows('update', $areaNode))->toBeFalse()
+        ->and(Gate::forUser($manager)->allows('delete', $areaNode))->toBeFalse();
+});
+
+test('zone manager can view and restore an archived area without a page reload', function () {
+    [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+    $areaNode = AreaNode::factory()->for($branch)->create(['name' => 'Archived Hall']);
+    $areaNode->deleteOrFail();
+
+    Livewire::actingAs($manager)
+        ->test(Areas::class, compact('organization', 'brand', 'branch'))
+        ->assertDontSee('Archived Hall')
+        ->set('lifecycle', 'archived')
+        ->assertSee('Archived Hall')
+        ->assertSeeHtml('wire:click="restore('.$areaNode->id.')"')
+        ->assertDontSeeHtml('wire:click="startEditing('.$areaNode->id.')"')
+        ->assertDontSeeHtml('wire:click="confirmDelete('.$areaNode->id.')"')
+        ->call('restore', $areaNode->id)
+        ->assertHasNoErrors();
+
+    expect($areaNode->fresh())->not->toBeNull();
+});
+
+test('livewire payload cannot restore an area from another branch', function () {
+    [$organization, $brand, $branch, $manager] = createAreaCrudBranch();
+    grantAreaCrudManageZones($manager, $organization);
+    [, , $foreignBranch] = createAreaCrudBranch('Foreign Group', 'Foreign Brand');
+    $foreignArea = AreaNode::factory()->for($foreignBranch)->create();
+    $foreignArea->deleteOrFail();
+
+    $caughtException = null;
+
+    try {
+        Livewire::actingAs($manager)
+            ->test(Areas::class, compact('organization', 'brand', 'branch'))
+            ->call('restore', $foreignArea->id);
+    } catch (Throwable $exception) {
+        $caughtException = $exception;
+    }
+
+    expect($caughtException)->toBeInstanceOf(ModelNotFoundException::class)
+        ->and(AreaNode::withTrashed()->findOrFail($foreignArea->id)->trashed())->toBeTrue();
 });
 
 function createAreaCrudBranch(string $organizationName = 'Area Group', string $brandName = 'Area Brand'): array

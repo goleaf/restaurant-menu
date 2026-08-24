@@ -88,7 +88,7 @@ Route::middleware(['throttle:staff-invitations'])
             ->middleware('auth')
             ->name('accept');
         Route::get('{token}', ShowInvitationController::class)
-            ->where('token', '[A-Za-z0-9]{64}')
+            ->where('token', '[A-Za-z0-9]{1,128}')
             ->name('show');
     });
 

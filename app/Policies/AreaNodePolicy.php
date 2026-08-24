@@ -21,7 +21,8 @@ final class AreaNodePolicy
 
     public function view(User $user, AreaNode $areaNode): bool
     {
-        return $this->withBranch($areaNode, fn (Branch $branch): bool => $this->branches->view($user, $branch));
+        return ! $areaNode->trashed()
+            && $this->withBranch($areaNode, fn (Branch $branch): bool => $this->branches->view($user, $branch));
     }
 
     public function create(User $user, Branch $branch): bool
@@ -31,7 +32,8 @@ final class AreaNodePolicy
 
     public function update(User $user, AreaNode $areaNode): bool
     {
-        return $this->withBranch($areaNode, fn (Branch $branch): bool => $this->branches->manageZones($user, $branch));
+        return ! $areaNode->trashed()
+            && $this->withBranch($areaNode, fn (Branch $branch): bool => $this->branches->manageZones($user, $branch));
     }
 
     public function delete(User $user, AreaNode $areaNode): bool
@@ -41,7 +43,8 @@ final class AreaNodePolicy
 
     public function restore(User $user, AreaNode $areaNode): bool
     {
-        return false;
+        return $areaNode->trashed()
+            && $this->withBranch($areaNode, fn (Branch $branch): bool => $this->branches->manageZones($user, $branch));
     }
 
     public function forceDelete(User $user, AreaNode $areaNode): bool

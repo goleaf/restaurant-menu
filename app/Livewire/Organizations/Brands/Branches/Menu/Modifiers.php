@@ -12,6 +12,7 @@ use App\Actions\Modifiers\DeleteModifierOptionAction;
 use App\Actions\Modifiers\UnassignModifierGroupFromMenuItemAction;
 use App\Actions\Modifiers\UpdateModifierGroupAction;
 use App\Actions\Modifiers\UpdateModifierOptionAction;
+use App\Enums\SupportedLocale;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
@@ -42,6 +43,9 @@ class Modifiers extends BranchMenuComponent
 
     public int $modifierGroupSortOrder = 0;
 
+    /** @var array<string, string> */
+    public array $modifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+
     public ?int $editingModifierGroupId = null;
 
     public string $editingModifierGroupName = '';
@@ -54,6 +58,9 @@ class Modifiers extends BranchMenuComponent
 
     public int $editingModifierGroupSortOrder = 0;
 
+    /** @var array<string, string> */
+    public array $editingModifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+
     public string $modifierOptionGroupId = '';
 
     public string $modifierOptionName = '';
@@ -64,6 +71,9 @@ class Modifiers extends BranchMenuComponent
 
     public int $modifierOptionSortOrder = 0;
 
+    /** @var array<string, string> */
+    public array $modifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+
     public ?int $editingModifierOptionId = null;
 
     public string $editingModifierOptionName = '';
@@ -73,6 +83,9 @@ class Modifiers extends BranchMenuComponent
     public bool $editingModifierOptionIsAvailable = true;
 
     public int $editingModifierOptionSortOrder = 0;
+
+    /** @var array<string, string> */
+    public array $editingModifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     public string $modifierItemMenuId = '';
 
@@ -114,7 +127,12 @@ class Modifiers extends BranchMenuComponent
     {
         $this->authorizeBranchAbility('manageMenu');
         $this->modifierGroupName = trim($this->modifierGroupName);
-        $validated = $this->validate(RestaurantValidationRules::modifierGroup());
+        $rules = RestaurantValidationRules::modifierGroup();
+        $rules['modifierGroupName'][] = $this->groupNameUniqueRule();
+        $validated = $this->validate([
+            ...$rules,
+            ...RestaurantValidationRules::translatedNames('modifierGroupTranslations'),
+        ]);
 
         $group = $createGroup->handle($this->branch, [
             'name' => $validated['modifierGroupName'],
@@ -122,6 +140,7 @@ class Modifiers extends BranchMenuComponent
             'min_select' => (int) $validated['modifierGroupMinSelect'],
             'max_select' => (int) $validated['modifierGroupMaxSelect'],
             'sort_order' => (int) $validated['modifierGroupSortOrder'],
+            'translations' => $validated['modifierGroupTranslations'],
         ]);
 
         $this->modifierOptionGroupId = (string) $group->id;
@@ -141,6 +160,7 @@ class Modifiers extends BranchMenuComponent
         $this->editingModifierGroupMinSelect = $group->min_select;
         $this->editingModifierGroupMaxSelect = $group->max_select;
         $this->editingModifierGroupSortOrder = $group->sort_order;
+        $this->editingModifierGroupTranslations = $this->menuQueries->nameTranslationValues($group);
         $this->cancelModifierOptionEditing();
     }
 
@@ -151,6 +171,7 @@ class Modifiers extends BranchMenuComponent
         $this->editingModifierGroupMinSelect = 0;
         $this->editingModifierGroupMaxSelect = 1;
         $this->editingModifierGroupSortOrder = 0;
+        $this->editingModifierGroupTranslations = $this->emptyTranslations();
     }
 
     public function updateModifierGroup(UpdateModifierGroupAction $updateGroup): void
@@ -162,13 +183,19 @@ class Modifiers extends BranchMenuComponent
         }
 
         $this->editingModifierGroupName = trim($this->editingModifierGroupName);
-        $validated = $this->validate(RestaurantValidationRules::modifierGroup('editing'));
+        $rules = RestaurantValidationRules::modifierGroup('editing');
+        $rules['editingModifierGroupName'][] = $this->groupNameUniqueRule($this->editingModifierGroupId);
+        $validated = $this->validate([
+            ...$rules,
+            ...RestaurantValidationRules::translatedNames('editingModifierGroupTranslations'),
+        ]);
         $updateGroup->handle($this->findGroup($this->editingModifierGroupId), [
             'name' => $validated['editingModifierGroupName'],
             'is_required' => (bool) $validated['editingModifierGroupIsRequired'],
             'min_select' => (int) $validated['editingModifierGroupMinSelect'],
             'max_select' => (int) $validated['editingModifierGroupMaxSelect'],
             'sort_order' => (int) $validated['editingModifierGroupSortOrder'],
+            'translations' => $validated['editingModifierGroupTranslations'],
         ]);
 
         $this->cancelModifierGroupEditing();
@@ -204,6 +231,11 @@ class Modifiers extends BranchMenuComponent
             canChangeAvailability: $this->canChangeAvailability,
         );
         $rules['modifierOptionGroupId'] = ['required', 'integer', $this->groupRule()];
+        $rules['modifierOptionName'][] = $this->optionNameUniqueRule((int) $this->modifierOptionGroupId);
+        $rules = [
+            ...$rules,
+            ...RestaurantValidationRules::translatedNames('modifierOptionTranslations'),
+        ];
         $validated = $this->validate($rules);
         $group = $this->findGroup((int) $validated['modifierOptionGroupId']);
         $createOption->handle($this->currentUser(), $this->branch, $group, $this->optionData($validated));
@@ -221,6 +253,7 @@ class Modifiers extends BranchMenuComponent
         $this->editingModifierOptionPriceDelta = MoneyFormatter::centsToDecimal($option->price_delta_cents);
         $this->editingModifierOptionIsAvailable = $option->is_available;
         $this->editingModifierOptionSortOrder = $option->sort_order;
+        $this->editingModifierOptionTranslations = $this->menuQueries->nameTranslationValues($option);
         $this->cancelModifierGroupEditing();
     }
 
@@ -230,6 +263,7 @@ class Modifiers extends BranchMenuComponent
         $this->editingModifierOptionPriceDelta = '0.00';
         $this->editingModifierOptionIsAvailable = true;
         $this->editingModifierOptionSortOrder = 0;
+        $this->editingModifierOptionTranslations = $this->emptyTranslations();
     }
 
     public function updateModifierOption(UpdateModifierOptionAction $updateOption): void
@@ -242,12 +276,20 @@ class Modifiers extends BranchMenuComponent
 
         $this->editingModifierOptionName = trim($this->editingModifierOptionName);
         $this->refreshMutationCapabilities();
-        $validated = $this->validate(RestaurantValidationRules::modifierOption(
+        $option = $this->findOption($this->editingModifierOptionId);
+        $rules = RestaurantValidationRules::modifierOption(
             prefix: 'editing',
             canChangePrices: $this->canChangePrices,
             canChangeAvailability: $this->canChangeAvailability,
-        ));
-        $option = $this->findOption($this->editingModifierOptionId);
+        );
+        $rules['editingModifierOptionName'][] = $this->optionNameUniqueRule(
+            $option->modifier_group_id,
+            $option->id,
+        );
+        $validated = $this->validate([
+            ...$rules,
+            ...RestaurantValidationRules::translatedNames('editingModifierOptionTranslations'),
+        ]);
         $updateOption->handle($this->currentUser(), $this->branch, $option, $this->optionData($validated, 'editing'));
         $this->cancelModifierOptionEditing();
         $this->changed();
@@ -314,12 +356,14 @@ class Modifiers extends BranchMenuComponent
                 'max_select' => $group->max_select,
                 'items_count' => $group->items_count,
                 'sort_order' => $group->sort_order,
+                'translations' => $this->menuQueries->nameTranslationValues($group),
                 'options' => $group->options->map(fn (ModifierOption $option): array => [
                     'id' => $option->id,
                     'name' => $option->name,
                     'formatted_price_delta' => MoneyFormatter::formatSignedCents($option->price_delta_cents, $this->branch->currency),
                     'is_available' => $option->is_available,
                     'sort_order' => $option->sort_order,
+                    'translations' => $this->menuQueries->nameTranslationValues($option),
                 ])->all(),
             ])->all(),
             'modifierGroupOptions' => $this->groups->map(fn (ModifierGroup $group): array => [
@@ -328,6 +372,7 @@ class Modifiers extends BranchMenuComponent
             ])->values()->all(),
             'menuOptions' => $this->menuOptions(),
             'modifierItemOptions' => $this->itemOptions(),
+            'languageOptions' => SupportedLocale::labels(),
         ]);
     }
 
@@ -353,6 +398,7 @@ class Modifiers extends BranchMenuComponent
         $data = [
             'name' => (string) $validated[$field('modifierOptionName')],
             'sort_order' => (int) $validated[$field('modifierOptionSortOrder')],
+            'translations' => $validated[$field('modifierOptionTranslations')],
         ];
 
         if ($this->canChangePrices) {
@@ -379,6 +425,22 @@ class Modifiers extends BranchMenuComponent
     private function groupRule(): mixed
     {
         return Rule::exists((new ModifierGroup)->getTable(), 'id')->where(fn ($query) => $query->where('branch_id', $this->branchId));
+    }
+
+    private function groupNameUniqueRule(?int $ignoreGroupId = null): mixed
+    {
+        $rule = Rule::unique((new ModifierGroup)->getTable(), 'name')
+            ->where(fn ($query) => $query->where('branch_id', $this->branchId));
+
+        return $ignoreGroupId === null ? $rule : $rule->ignore($ignoreGroupId);
+    }
+
+    private function optionNameUniqueRule(int $groupId, ?int $ignoreOptionId = null): mixed
+    {
+        $rule = Rule::unique((new ModifierOption)->getTable(), 'name')
+            ->where(fn ($query) => $query->where('modifier_group_id', $groupId));
+
+        return $ignoreOptionId === null ? $rule : $rule->ignore($ignoreOptionId);
     }
 
     private function findGroup(int $id): ModifierGroup
@@ -418,6 +480,7 @@ class Modifiers extends BranchMenuComponent
         $this->modifierGroupMinSelect = 0;
         $this->modifierGroupMaxSelect = 1;
         $this->modifierGroupSortOrder = 0;
+        $this->modifierGroupTranslations = $this->emptyTranslations();
     }
 
     private function resetOptionForm(string $groupId): void
@@ -427,6 +490,13 @@ class Modifiers extends BranchMenuComponent
         $this->modifierOptionPriceDelta = '0.00';
         $this->modifierOptionIsAvailable = true;
         $this->modifierOptionSortOrder = 0;
+        $this->modifierOptionTranslations = $this->emptyTranslations();
+    }
+
+    /** @return array<string, string> */
+    private function emptyTranslations(): array
+    {
+        return array_fill_keys(SupportedLocale::values(), '');
     }
 
     private function changed(): void

@@ -9,6 +9,8 @@ test('dangerous action registry covers prompt 346 actions', function () {
         'suspend_organization',
         'suspend_branch',
         'deactivate_staff',
+        'change_staff_role',
+        'cancel_invitation',
         'change_critical_permission',
         'cancel_order',
         'void_order_item',
@@ -28,6 +30,8 @@ test('dangerous actions declare consequences and required extra confirmation', f
         ->and(DangerousAction::ReissueQr->requiresConfirmationText())->toBeTrue()
         ->and(DangerousAction::DisableQr->requiresReason())->toBeTrue()
         ->and(DangerousAction::CancelOrder->requiresReason())->toBeTrue()
+        ->and(DangerousAction::ChangeStaffRole->requiresReason())->toBeTrue()
+        ->and(DangerousAction::CancelInvitation->requiresReason())->toBeFalse()
         ->and(DangerousAction::PaymentCorrection->requiresReason())->toBeTrue()
         ->and(DangerousAction::DownloadBackup->requiresReason())->toBeTrue()
         ->and(DangerousAction::DownloadMediaBackup->requiresReason())->toBeTrue()
@@ -58,6 +62,10 @@ test('dangerous confirmations use prompt 410 semantic translation keys', functio
         'ui.confirmations.close_unpaid_session.description',
         'ui.confirmations.deactivate_staff.title',
         'ui.confirmations.deactivate_staff.description',
+        'ui.confirmations.change_staff_role.title',
+        'ui.confirmations.change_staff_role.description',
+        'ui.confirmations.cancel_invitation.title',
+        'ui.confirmations.cancel_invitation.description',
         'ui.confirmations.download_media_backup.title',
         'ui.confirmations.download_media_backup.description',
         'ui.confirmations.download_media_backup.confirmation_required',
@@ -86,5 +94,7 @@ test('dangerous confirmations use prompt 410 semantic translation keys', functio
         ->and(DangerousAction::CancelOrder->title())->toBe(__('ui.confirmations.cancel_order.title'))
         ->and(DangerousAction::PaymentCorrection->consequence())->toBe(__('ui.confirmations.payment_correction.description'))
         ->and(DangerousAction::CloseTableWithUnpaidAmount->title())->toBe(__('ui.confirmations.close_unpaid_session.title'))
-        ->and(DangerousAction::DeactivateStaff->title())->toBe(__('ui.confirmations.deactivate_staff.title'));
+        ->and(DangerousAction::DeactivateStaff->title())->toBe(__('ui.confirmations.deactivate_staff.title'))
+        ->and(DangerousAction::ChangeStaffRole->title())->toBe(__('ui.confirmations.change_staff_role.title'))
+        ->and(DangerousAction::CancelInvitation->consequence())->toBe(__('ui.confirmations.cancel_invitation.description'));
 });

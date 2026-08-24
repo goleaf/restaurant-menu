@@ -8,6 +8,11 @@
         </div>
         <div class="mt-4 grid gap-3">
             <flux:input wire:model="modifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+            <x-menu.name-translations
+                id-prefix="create-modifier-group"
+                model="modifierGroupTranslations"
+                :language-options="$languageOptions"
+            />
             <div class="grid gap-3 sm:grid-cols-2">
                 <flux:input wire:model="modifierGroupMinSelect" :label="__('ui.organizations.brands.branches.menu.index.min')" type="number" required min="0" max="50" />
                 <flux:input wire:model="modifierGroupMaxSelect" :label="__('ui.organizations.brands.branches.menu.index.max')" type="number" required min="0" max="50" />
@@ -43,6 +48,11 @@
                     </flux:select>
 
                     <flux:input wire:model="modifierOptionName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+                    <x-menu.name-translations
+                        id-prefix="create-modifier-option"
+                        model="modifierOptionTranslations"
+                        :language-options="$languageOptions"
+                    />
 
                     <div class="grid gap-3 sm:grid-cols-2">
                         @if ($canChangePrices)
@@ -100,6 +110,12 @@
                     @if ($editingModifierGroupId === $modifierGroup['id'])
                         <form wire:submit="updateModifierGroup" class="grid gap-3 md:grid-cols-[1fr_100px_100px_120px_auto] md:items-end">
                             <flux:input wire:model="editingModifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+                            <x-menu.name-translations
+                                class="md:col-span-full"
+                                id-prefix="edit-modifier-group-{{ $modifierGroup['id'] }}"
+                                model="editingModifierGroupTranslations"
+                                :language-options="$languageOptions"
+                            />
                             <flux:input wire:model="editingModifierGroupMinSelect" :label="__('ui.organizations.brands.branches.menu.index.min')" type="number" required min="0" max="50" />
                             <flux:input wire:model="editingModifierGroupMaxSelect" :label="__('ui.organizations.brands.branches.menu.index.max')" type="number" required min="0" max="50" />
                             <flux:input wire:model="editingModifierGroupSortOrder" :label="__('ui.departments.dashboard.sort')" type="number" required min="0" max="9999" />
@@ -128,6 +144,14 @@
                                     <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $modifierGroup['items_count'], ['count' => $modifierGroup['items_count']]) }}</flux:badge>
                                 </div>
                                 <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ __('ui.departments.dashboard.sort') }} {{ $modifierGroup['sort_order'] }}</p>
+                                <dl class="mt-2 grid gap-2 text-sm sm:grid-cols-3">
+                                    @foreach ($languageOptions as $languageCode => $languageLabel)
+                                        <div wire:key="modifier-group-{{ $modifierGroup['id'] }}-translation-{{ $languageCode }}">
+                                            <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ $languageLabel }}</dt>
+                                            <dd class="text-zinc-900 dark:text-zinc-100">{{ $modifierGroup['translations'][$languageCode] }}</dd>
+                                        </div>
+                                    @endforeach
+                                </dl>
                             </div>
 
                             <div class="flex flex-wrap gap-2 md:justify-end">
@@ -147,6 +171,12 @@
                                 @if ($editingModifierOptionId === $modifierOption['id'])
                                     <form wire:submit="updateModifierOption" class="grid gap-3 md:grid-cols-[1fr_140px_120px_auto] md:items-end">
                                         <flux:input wire:model="editingModifierOptionName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+                                        <x-menu.name-translations
+                                            class="md:col-span-full"
+                                            id-prefix="edit-modifier-option-{{ $modifierOption['id'] }}"
+                                            model="editingModifierOptionTranslations"
+                                            :language-options="$languageOptions"
+                                        />
 
                                         @if ($canChangePrices)
                                             <flux:input wire:model="editingModifierOptionPriceDelta" :label="__('ui.organizations.brands.branches.menu.index.price_change')" type="number" required min="-999999.99" max="999999.99" step="0.01" />
@@ -165,6 +195,14 @@
                                                 {{ __('ui.actions.cancel') }}
                                             </flux:button>
                                         </div>
+                                        <dl class="grid gap-2 text-sm sm:grid-cols-3 md:w-full">
+                                            @foreach ($languageOptions as $languageCode => $languageLabel)
+                                                <div wire:key="modifier-option-{{ $modifierOption['id'] }}-translation-{{ $languageCode }}">
+                                                    <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ $languageLabel }}</dt>
+                                                    <dd class="text-zinc-900 dark:text-zinc-100">{{ $modifierOption['translations'][$languageCode] }}</dd>
+                                                </div>
+                                            @endforeach
+                                        </dl>
                                     </form>
                                 @else
                                     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

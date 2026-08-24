@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Invitations;
 
+use App\Actions\Invitations\ResolvedInvitationAccess;
+use App\Actions\Invitations\ResolveInvitationAccessAction;
+use App\Enums\InvitationAccessState;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
 use App\Models\User;
@@ -11,7 +14,6 @@ use Illuminate\Contracts\Translation\Translator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Password;
 
 class ShowInvitationController extends Controller
@@ -19,42 +21,41 @@ class ShowInvitationController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request, Translator $translator, ?string $token = null): RedirectResponse|Response
-    {
+    public function __invoke(
+        Request $request,
+        Translator $translator,
+        ResolveInvitationAccessAction $resolveInvitation,
+        ?string $token = null,
+    ): RedirectResponse|Response {
         if ($token !== null) {
-            $request->session()->forget('staff_invitation_id');
-            $invitation = Invitation::findAcceptableByToken($token);
+            $request->session()->forget(['staff_invitation_id', 'staff_invitation_state']);
+            $access = $resolveInvitation->byToken($token, $this->recipient($request));
 
-            if (! $invitation instanceof Invitation) {
-                abort(410);
+            $request->session()->put('staff_invitation_state', $access->state->sessionValue());
+
+            if ($access->invitation instanceof Invitation) {
+                $request->session()->put('staff_invitation_id', $access->invitation->id);
             }
 
-            $recipient = $request->user();
-
-            if ($recipient instanceof User) {
-                Gate::forUser($recipient)->authorize('view', $invitation);
-            } else {
+            if ($access->state === InvitationAccessState::Pending && ! $this->recipient($request) instanceof User) {
                 $request->session()->put('url.intended', route('invitations.pending'));
             }
-
-            $request->session()->put('staff_invitation_id', $invitation->id);
 
             return redirect()
                 ->route('invitations.pending')
                 ->withHeaders($this->securityHeaders());
         }
 
-        $invitation = $this->pendingInvitation($request);
+        $access = $this->pendingAccess($request, $resolveInvitation);
 
-        if (! $invitation instanceof Invitation) {
-            abort(410);
+        if ($access->state !== InvitationAccessState::Pending || ! $access->invitation instanceof Invitation) {
+            return $this->stateResponse($request, $access->state);
         }
 
-        $recipient = $request->user();
+        $invitation = $access->invitation;
+        $recipient = $this->recipient($request);
 
-        if ($recipient instanceof User) {
-            Gate::forUser($recipient)->authorize('view', $invitation);
-        } else {
+        if (! $recipient instanceof User) {
             $request->session()->put('url.intended', route('invitations.pending'));
         }
 
@@ -80,13 +81,45 @@ class ShowInvitationController extends Controller
         ])->withHeaders($this->securityHeaders());
     }
 
-    private function pendingInvitation(Request $request): ?Invitation
-    {
+    private function pendingAccess(
+        Request $request,
+        ResolveInvitationAccessAction $resolveInvitation,
+    ): ResolvedInvitationAccess {
         $invitationId = $request->session()->get('staff_invitation_id');
 
-        return is_int($invitationId)
-            ? Invitation::findAcceptableById($invitationId)
-            : null;
+        if (is_int($invitationId)) {
+            return $resolveInvitation->byId($invitationId, $this->recipient($request));
+        }
+
+        return new ResolvedInvitationAccess(
+            InvitationAccessState::fromSession($request->session()->get('staff_invitation_state')),
+        );
+    }
+
+    private function stateResponse(Request $request, InvitationAccessState $state): Response
+    {
+        $state = $state === InvitationAccessState::Pending
+            ? InvitationAccessState::Unavailable
+            : $state;
+        $stateName = $state->sessionValue();
+        $recipient = $this->recipient($request);
+
+        return response()->view('invitations.status', [
+            'title' => __(sprintf('invitations.states.%s_title', $stateName)),
+            'message' => __(sprintf('invitations.states.%s_message', $stateName)),
+            'actionUrl' => $recipient instanceof User ? route('dashboard') : route('login'),
+            'actionLabel' => $recipient instanceof User
+                ? __('navigation.dashboard')
+                : __('ui.auth.login.log_in'),
+        ], $state === InvitationAccessState::Accepted ? 200 : 410)
+            ->withHeaders($this->securityHeaders());
+    }
+
+    private function recipient(Request $request): ?User
+    {
+        $recipient = $request->user();
+
+        return $recipient instanceof User ? $recipient : null;
     }
 
     /**

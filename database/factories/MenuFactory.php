@@ -8,6 +8,7 @@ use App\Enums\MenuStatus;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuTranslation;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -65,6 +66,18 @@ class MenuFactory extends Factory
                 ->count($count)
                 ->for($menu)
                 ->create();
+        });
+    }
+
+    public function withTranslations(): static
+    {
+        return $this->afterCreating(function (Menu $menu): void {
+            foreach (['en', 'lt', 'ru'] as $languageCode) {
+                MenuTranslation::factory()->for($menu)->create([
+                    'language_code' => $languageCode,
+                    'name' => $menu->name,
+                ]);
+            }
         });
     }
 }

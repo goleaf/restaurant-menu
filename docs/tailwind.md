@@ -4,7 +4,7 @@ Tailwind 4.3.3 is integrated directly through `@tailwindcss/vite` 4.3.3. [`resou
 
 ## Design tokens
 
-The theme defines brand scale, canvas/surface/border/text, success/warning/danger/information/focus colors, font stack, touch target, content/reading containers, extra-small breakpoint, control/card/dialog radii, elevation shadows and product easing. Critical controls have visible focus rings; status includes text/icon; reduced-motion and forced-colors rules are explicit. Repeated QR print values remain domain-specific semantic CSS because printer labels require exact colors/aspect ratios.
+The theme defines brand scale, canvas/surface/raised/selected/border/text roles, success/warning/danger/information foreground-surface-border roles, focus colors, font stack, 44-pixel touch and 56-pixel operational-touch targets, content/reading containers, extra-small breakpoint, control/card/dialog radii, restrained elevation shadows and product easing. Critical controls have visible focus rings; status includes text/icon; reduced-motion and forced-colors rules are explicit. Repeated QR print values remain domain-specific semantic CSS because printer labels require exact colors/aspect ratios.
 
 ## Feature applicability
 
@@ -14,7 +14,7 @@ The theme defines brand scale, canvas/surface/border/text, success/warning/dange
 | OKLCH semantic colors | used for application tokens | maintainable contrast roles; status never color-only | design tests and Lighthouse |
 | Logical utilities/properties | used in navigation, dialogs and component spacing | direction-independent start/end layout | long-text/locale review |
 | Reduced motion / forced colors | explicit media rules in `app.css` | motion/high-contrast preferences retained | CSS/design tests |
-| Dynamic viewport units | used for mobile/print shells where needed | avoids browser-chrome clipping | responsive browser checks |
+| Dynamic viewport units and safe-area insets | used for mobile sheets, action docks and print shells where needed | avoids browser-chrome clipping and keeps one-hand actions reachable | responsive browser checks |
 | Data/ARIA/group/peer variants | used where component state benefits | state remains semantic with minimal custom JS | markup/browser tests |
 | Container queries | not applicable: current reusable panes respond correctly to viewport/grid and have no independent container-width contract | avoids needless complexity | layout review |
 | Text shadows, masks, zoom, tab-size | not applicable to product workflows | avoids decorative/maintenance cost | design review |

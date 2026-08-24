@@ -22,8 +22,11 @@ use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
@@ -70,6 +73,9 @@ test('guest menu shows stop listed item but blocks adding it', function () {
             'publicToken' => $qrCode->public_token,
             'guestCanAddItems' => true,
         ])
+        ->assertSee('data-guest-category-nav', false)
+        ->assertSee('data-guest-menu-item', false)
+        ->assertSee('id="guest-menu-category-', false)
         ->assertSeeText($unavailableItem->name)
         ->assertSeeText('Out of stock')
         ->call('openItem', $unavailableItem->id)
@@ -80,6 +86,22 @@ test('guest menu shows stop listed item but blocks adding it', function () {
 
     expect(DraftOrderModel::query()->exists())->toBeFalse()
         ->and(DraftOrderItem::query()->exists())->toBeFalse();
+});
+
+test('guest menu hides an item only until its temporary hiding deadline', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $action = app(GetGuestMenuForBranchAction::class);
+
+    $availableItem->updateOrFail(['hidden_until' => now()->addHour()]);
+    $hiddenPayload = $action->handle($branch->id, 'en');
+
+    expect(collect($hiddenPayload['categories'][0]['items'])->pluck('id'))->not->toContain($availableItem->id);
+
+    $availableItem->updateOrFail(['hidden_until' => now()->subMinute()]);
+    $visiblePayload = $action->handle($branch->id, 'en');
+
+    expect(collect($visiblePayload['categories'][0]['items'])->pluck('id'))->toContain($availableItem->id);
 });
 
 test('guest menu component uses cached active menu payload', function () {
@@ -359,6 +381,57 @@ test('guest menu lets active guest add configured item to the shared draft', fun
             'Large',
             'Extra cheese',
         ]);
+});
+
+test('guest draft snapshots use the selected guest language from trusted translations', function () {
+    [$qrCode, $branch, , $tableSession, $activeGuest] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    [$requiredGroup, $largeOption] = createGuestMenuModifierRows($branch, $availableItem);
+    $variant = MenuItemVariant::factory()
+        ->for($availableItem, 'item')
+        ->portion()
+        ->default()
+        ->create(['name' => 'Large base', 'price_cents' => 1890]);
+
+    MenuItemTranslation::factory()->for($availableItem, 'item')->create([
+        'language_code' => 'lt',
+        'name' => 'Margarita lietuviškai',
+    ]);
+    MenuItemVariantTranslation::factory()->for($variant, 'variant')->create([
+        'language_code' => 'lt',
+        'name' => 'Didelė',
+    ]);
+    ModifierGroupTranslation::factory()->for($requiredGroup, 'group')->create([
+        'language_code' => 'lt',
+        'name' => 'Picos dydis',
+    ]);
+    ModifierOptionTranslation::factory()->for($largeOption, 'option')->create([
+        'language_code' => 'lt',
+        'name' => 'Didelė porcija',
+    ]);
+
+    Livewire::withCookie(guestMenuDisplayCookieName($qrCode), $activeGuest->guest_token)
+        ->test(GuestMenu::class, [
+            'branchId' => $branch->id,
+            'currency' => 'EUR',
+            'tableSessionId' => $tableSession->id,
+            'currentGuestId' => $activeGuest->id,
+            'publicToken' => $qrCode->public_token,
+            'guestCanAddItems' => true,
+            'language' => 'lt',
+        ])
+        ->call('openItem', $availableItem->id)
+        ->set('selectedItemVariantId', $variant->id)
+        ->set('selectedModifierOptions.'.(string) $requiredGroup->id, [$largeOption->id])
+        ->call('saveConfiguredItem')
+        ->assertHasNoErrors();
+
+    $draftOrderItem = DraftOrderItem::query()->latest('id')->firstOrFail();
+
+    expect($draftOrderItem->item_name)->toBe('Margarita lietuviškai')
+        ->and($draftOrderItem->variant_name)->toBe('Didelė')
+        ->and(collect($draftOrderItem->selected_modifiers)->pluck('group_name')->all())->toBe(['Picos dydis'])
+        ->and(collect($draftOrderItem->selected_modifiers)->pluck('option_name')->all())->toBe(['Didelė porcija']);
 });
 
 test('guest menu blocks rejected guest from adding draft items', function () {

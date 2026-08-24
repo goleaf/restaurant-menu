@@ -16,8 +16,11 @@ use App\Models\MenuItem;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Models\MenuTranslation;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -66,7 +69,7 @@ class GetGuestMenuForBranchAction
 
     public static function cacheKey(int $branchId, string $languageCode = 'en'): string
     {
-        return 'guest-menu:v4:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v5:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
@@ -139,7 +142,7 @@ class GetGuestMenuForBranchAction
 
     private static function previousCacheKey(int $branchId, string $languageCode): string
     {
-        return 'guest-menu:v3:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v4:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     /**
@@ -166,7 +169,7 @@ class GetGuestMenuForBranchAction
      */
     private function buildMenuPayload(int $branchId, string $languageCode, string $defaultLanguage): array
     {
-        $availabilityResult = $this->availableMenusForBranch($branchId);
+        $availabilityResult = $this->availableMenusForBranch($branchId, $languageCode);
         /** @var EloquentCollection<int, Menu> $availableMenus */
         $availableMenus = $availabilityResult['available_menus'];
         /** @var array<int, array<string, mixed>> $availableMenuStatuses */
@@ -196,6 +199,13 @@ class GetGuestMenuForBranchAction
                 'name',
                 'status',
                 'sort_order',
+            ])
+            ->addSelect([
+                'localized_name' => MenuTranslation::query()
+                    ->select('name')
+                    ->whereColumn('menu_id', 'menus.id')
+                    ->where('language_code', $languageCode)
+                    ->limit(1),
             ])
             ->with([
                 'categories' => fn ($query) => $query
@@ -233,8 +243,12 @@ class GetGuestMenuForBranchAction
                             'volume',
                             'calories',
                             'is_available',
+                            'hidden_until',
                             'sort_order',
                         ])
+                            ->where(fn ($visibilityQuery) => $visibilityQuery
+                                ->whereNull('hidden_until')
+                                ->orWhere('hidden_until', '<=', now()))
                             ->withExists([
                                 'variants as has_variants',
                                 'variants as has_available_variants' => fn ($variantQuery) => $variantQuery
@@ -256,6 +270,12 @@ class GetGuestMenuForBranchAction
                                     'modifier_groups.min_select',
                                     'modifier_groups.max_select',
                                     'modifier_groups.sort_order',
+                                ])->addSelect([
+                                    'localized_name' => ModifierGroupTranslation::query()
+                                        ->select('name')
+                                        ->whereColumn('modifier_group_id', 'modifier_groups.id')
+                                        ->where('language_code', $languageCode)
+                                        ->limit(1),
                                 ])->with([
                                     'options' => fn ($optionQuery) => $optionQuery->select([
                                         'id',
@@ -265,6 +285,13 @@ class GetGuestMenuForBranchAction
                                         'is_available',
                                         'sort_order',
                                     ])
+                                        ->addSelect([
+                                            'localized_name' => ModifierOptionTranslation::query()
+                                                ->select('name')
+                                                ->whereColumn('modifier_option_id', 'modifier_options.id')
+                                                ->where('language_code', $languageCode)
+                                                ->limit(1),
+                                        ])
                                         ->where('is_available', true)
                                         ->orderBy('sort_order')
                                         ->orderBy('name')
@@ -328,7 +355,7 @@ class GetGuestMenuForBranchAction
     /**
      * @return array{available_menus: EloquentCollection<int, Menu>, available_statuses: array<int, array<string, mixed>>, unavailable_menus: list<array<string, mixed>>, availability: array<string, mixed>}
      */
-    private function availableMenusForBranch(int $branchId): array
+    private function availableMenusForBranch(int $branchId, string $languageCode): array
     {
         $availableMenus = new EloquentCollection;
         $availableStatuses = [];
@@ -342,6 +369,13 @@ class GetGuestMenuForBranchAction
                 'name',
                 'status',
                 'sort_order',
+            ])
+            ->addSelect([
+                'localized_name' => MenuTranslation::query()
+                    ->select('name')
+                    ->whereColumn('menu_id', 'menus.id')
+                    ->where('language_code', $languageCode)
+                    ->limit(1),
             ])
             ->with([
                 'branch' => fn ($query) => $query->select(['id', 'timezone']),
@@ -373,7 +407,12 @@ class GetGuestMenuForBranchAction
 
             $unavailableMenus[] = [
                 'id' => $menu->id,
-                'name' => $menu->name,
+                'name' => $this->translatedText(
+                    is_string($menu->getAttribute('localized_name'))
+                        ? $menu->getAttribute('localized_name')
+                        : null,
+                    $menu->name,
+                ),
                 'availability' => $availability,
             ];
 
@@ -483,7 +522,12 @@ class GetGuestMenuForBranchAction
     {
         return [
             'id' => $menu->id,
-            'name' => $menu->name,
+            'name' => $this->translatedText(
+                is_string($menu->getAttribute('localized_name'))
+                    ? $menu->getAttribute('localized_name')
+                    : null,
+                $menu->name,
+            ),
             'availability' => $availability,
             'categories' => $menu->categories
                 ->map(fn (MenuCategory $category): array => $this->categoryPayload($category, $languageCode))
@@ -653,14 +697,24 @@ class GetGuestMenuForBranchAction
     {
         return [
             'id' => $modifierGroup->id,
-            'name' => $modifierGroup->name,
+            'name' => $this->translatedText(
+                is_string($modifierGroup->getAttribute('localized_name'))
+                    ? $modifierGroup->getAttribute('localized_name')
+                    : null,
+                $modifierGroup->name,
+            ),
             'is_required' => $modifierGroup->is_required,
             'min_select' => $modifierGroup->min_select,
             'max_select' => $modifierGroup->max_select,
             'options' => $modifierGroup->options
                 ->map(fn (ModifierOption $modifierOption): array => [
                     'id' => $modifierOption->id,
-                    'name' => $modifierOption->name,
+                    'name' => $this->translatedText(
+                        is_string($modifierOption->getAttribute('localized_name'))
+                            ? $modifierOption->getAttribute('localized_name')
+                            : null,
+                        $modifierOption->name,
+                    ),
                     'price_delta_cents' => $modifierOption->price_delta_cents,
                 ])
                 ->values()

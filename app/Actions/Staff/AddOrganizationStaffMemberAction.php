@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Staff;
 
 use App\Enums\OrganizationUserStatus;
@@ -8,6 +10,7 @@ use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class AddOrganizationStaffMemberAction
@@ -17,6 +20,9 @@ class AddOrganizationStaffMemberAction
      */
     public function handle(Organization $organization, Role $role, User $assignedBy, array $data, bool $replaceExistingMembershipRole = true): User
     {
+        Gate::forUser($assignedBy)->authorize('manageStaff', $organization);
+        Gate::forUser($assignedBy)->authorize('assign', [$role, $organization]);
+
         return DB::transaction(function () use ($organization, $role, $assignedBy, $data, $replaceExistingMembershipRole): User {
             $user = User::query()
                 ->where('email', $data['email'])

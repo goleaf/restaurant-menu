@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Collection;
@@ -39,6 +40,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     {
         return [
             'email_verified_at' => 'datetime',
+            'two_factor_confirmed_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -49,6 +51,12 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     public function ownedOrganizations(): HasMany
     {
         return $this->hasMany(Organization::class, 'owner_user_id');
+    }
+
+    /** @return HasOne<RestaurantOnboarding, $this> */
+    public function restaurantOnboarding(): HasOne
+    {
+        return $this->hasOne(RestaurantOnboarding::class);
     }
 
     /**
@@ -188,21 +196,25 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             ->exists();
     }
 
-    public function canAccessOrganization(Organization|int $organization): bool
+    public function canAccessOrganization(Organization|int $organization, bool $withTrashed = false): bool
     {
         if ($this->isSuperadmin()) {
             return true;
         }
 
-        return $this->organizationHasActiveSubscription($organization)
+        return $this->organizationHasActiveSubscription($organization, $withTrashed)
             && $this->activeOrganizationMembershipQuery($organization)->exists();
     }
 
-    public function canAccessBranch(Branch|int $branch, Organization|int|null $organization = null): bool
-    {
+    public function canAccessBranch(
+        Branch|int $branch,
+        Organization|int|null $organization = null,
+        bool $withTrashed = false,
+    ): bool {
         $branch = $branch instanceof Branch
             ? $branch
             : Branch::query()
+                ->when($withTrashed, fn ($query) => $query->withTrashed())
                 ->select(['id', 'organization_id'])
                 ->whereKey($branch)
                 ->first();
@@ -218,43 +230,49 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         }
 
         return $this
-            ->accessibleBranchIdsForOrganization((int) $branch->organization_id)
+            ->accessibleBranchIdsForOrganization((int) $branch->organization_id, $withTrashed)
             ->contains((int) $branch->id);
     }
 
     /**
      * @return Collection<int, int>
      */
-    public function accessibleBranchIdsForOrganization(Organization|int $organization): Collection
-    {
+    public function accessibleBranchIdsForOrganization(
+        Organization|int $organization,
+        bool $withTrashed = false,
+    ): Collection {
         $organizationId = $organization instanceof Organization ? $organization->id : $organization;
 
-        if (! $this->canAccessOrganization($organizationId)) {
+        if (! $this->canAccessOrganization($organizationId, $withTrashed)) {
             return collect();
         }
 
         if ($this->isSuperadmin()) {
             return Branch::query()
+                ->when($withTrashed, fn ($query) => $query->withTrashed())
                 ->select(['id', 'organization_id'])
                 ->where('organization_id', $organizationId)
                 ->orderBy('id')
                 ->pluck('id');
         }
 
-        $assignedBranchIds = $this->branchAssignments()
+        $branchAssignments = $this->branchAssignments()
             ->select(['id', 'organization_id', 'branch_id', 'user_id', 'status'])
             ->where('organization_id', $organizationId)
-            ->where('status', OrganizationUserStatus::Active->value)
             ->orderBy('branch_id')
-            ->pluck('branch_id')
-            ->unique()
-            ->values();
+            ->get();
 
-        if ($assignedBranchIds->isNotEmpty()) {
-            return $assignedBranchIds;
+        if ($branchAssignments->isNotEmpty()) {
+            return $branchAssignments
+                ->filter(fn (BranchUser $assignment): bool => $assignment->status === OrganizationUserStatus::Active)
+                ->pluck('branch_id')
+                ->map(fn ($branchId): int => (int) $branchId)
+                ->unique()
+                ->values();
         }
 
         return Branch::query()
+            ->when($withTrashed, fn ($query) => $query->withTrashed())
             ->select(['id', 'organization_id'])
             ->where('organization_id', $organizationId)
             ->orderBy('id')
@@ -286,9 +304,12 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         return SupportedLocale::normalize($this->locale);
     }
 
-    public function hasOrganizationRole(Organization|int $organization, SystemRole|string $role): bool
-    {
-        if (! $this->isSuperadmin() && ! $this->organizationHasActiveSubscription($organization)) {
+    public function hasOrganizationRole(
+        Organization|int $organization,
+        SystemRole|string $role,
+        bool $withTrashed = false,
+    ): bool {
+        if (! $this->isSuperadmin() && ! $this->organizationHasActiveSubscription($organization, $withTrashed)) {
             return false;
         }
 
@@ -310,8 +331,7 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
 
     public function canManageOrganizationBranches(Organization|int $organization): bool
     {
-        return $this->canManageOrganizationBrands($organization)
-            || $this->hasPermission(SystemPermission::ManageBranches, $organization);
+        return $this->hasPermission(SystemPermission::ManageBranches, $organization);
     }
 
     private function hasOrganizationPermission(Organization|int $organization, string $permissionCode): bool
@@ -346,11 +366,14 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             ->where('status', OrganizationUserStatus::Active->value);
     }
 
-    private function organizationHasActiveSubscription(Organization|int $organization): bool
-    {
+    private function organizationHasActiveSubscription(
+        Organization|int $organization,
+        bool $withTrashed = false,
+    ): bool {
         $organizationId = $organization instanceof Organization ? $organization->id : $organization;
 
         return Organization::query()
+            ->when($withTrashed, fn ($query) => $query->withTrashed())
             ->whereKey($organizationId)
             ->where(function ($query): void {
                 $query

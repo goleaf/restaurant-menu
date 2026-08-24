@@ -129,6 +129,48 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
         ->assertSee('wire:poll.visible.1s="refreshDashboard"', false);
 });
 
+test('waiter dashboard exposes a query free desktop table preview with a mobile detail fallback', function () {
+    [$organization, , $branch] = createPrompt52Branch();
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+
+    $servicePoint = ServicePoint::factory()
+        ->for($branch)
+        ->create([
+            'name' => 'Preview table',
+            'display_number' => 'P7',
+            'status' => ServicePointStatus::Occupied,
+        ]);
+
+    $tableSession = TableSession::factory()
+        ->forServicePoint($servicePoint)
+        ->active()
+        ->create();
+
+    $component = Livewire::actingAs($waiter)
+        ->withQueryParams(['table' => $tableSession->id])
+        ->test(WaiterDashboard::class)
+        ->assertSet('selectedTableSessionId', $tableSession->id)
+        ->assertSee('data-workspace-split', false)
+        ->assertSee('data-priority-row', false)
+        ->assertSee('data-waiter-mobile-detail', false)
+        ->assertSee('data-waiter-desktop-select', false)
+        ->assertSee('data-waiter-table-preview', false)
+        ->assertSee('aria-current="true"', false)
+        ->assertSee(route('restaurant.waiter.tables.show', $tableSession), false);
+
+    $queryCount = countDatabaseQueries(function () use ($component, $tableSession): void {
+        $component->call('selectTable', $tableSession->id);
+    });
+
+    expect($queryCount)->toBe(0);
+
+    $component
+        ->call('selectTable', PHP_INT_MAX)
+        ->assertSet('selectedTableSessionId', null)
+        ->assertDontSee('data-waiter-table-preview', false);
+});
+
 test('waiter dashboard limits branches to active branch assignments when present', function () {
     [$organization, , $firstBranch] = createPrompt52Branch(branchName: 'Assigned Branch');
     $secondBrand = Brand::factory()->for($organization)->create(['name' => 'Second Brand']);

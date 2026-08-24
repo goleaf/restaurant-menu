@@ -3,19 +3,25 @@
 declare(strict_types=1);
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\AreaNodeType;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
 use App\Livewire\Organizations\Index as OrganizationsIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
+use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\QrCode;
 use App\Models\Role;
+use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Branches\AreaNodeQueryService;
 use App\Services\Branches\BranchQueryService;
+use App\Services\Branches\ServicePointQueryService;
 use App\Services\Organizations\BrandQueryService;
 use App\Services\Organizations\OrganizationQueryService;
 use App\Services\Staff\StaffQueryService;
@@ -232,6 +238,31 @@ test('query counts remain bounded and rendered relationships are eager loaded', 
 
     expect($queryCount)->toBeLessThanOrEqual(3);
 
+    foreach (range(1, 16) as $number) {
+        Invitation::factory()
+            ->forOrganization($organization)
+            ->forRole($role)
+            ->pending()
+            ->create([
+                'invited_by_user_id' => $owner->id,
+                'email' => sprintf('budget-invitation-%02d@example.test', $number),
+            ]);
+    }
+
+    $invitationQueryCount = countDatabaseQueries(function () use ($staffQueries, $organization): void {
+        $invitations = $staffQueries->paginateOrganizationInvitations($organization, '', 15);
+
+        expect($invitations->items())->toHaveCount(15);
+
+        foreach ($invitations as $invitation) {
+            expect($invitation->relationLoaded('role'))->toBeTrue()
+                ->and($invitation->relationLoaded('invitedBy'))->toBeTrue()
+                ->and($invitation->relationLoaded('acceptedBy'))->toBeTrue();
+        }
+    });
+
+    expect($invitationQueryCount)->toBeLessThanOrEqual(4);
+
     $organizationQueries = app(OrganizationQueryService::class);
     $organizationQueryCount = countDatabaseQueries(
         function () use ($organizationQueries, $owner): void {
@@ -241,4 +272,66 @@ test('query counts remain bounded and rendered relationships are eager loaded', 
     );
 
     expect($organizationQueryCount)->toBeLessThanOrEqual(2);
+});
+
+test('area and service point pages stay bounded and eager load every rendered relationship', function (): void {
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Structure Budget Group']);
+    $brand = Brand::factory()->for($organization)->create();
+    $branch = Branch::factory()->for($organization)->for($brand)->create();
+
+    foreach (range(1, 31) as $number) {
+        $areaNode = AreaNode::factory()->for($branch)->create([
+            'type' => AreaNodeType::Hall,
+            'name' => sprintf('Budget Area %02d', $number),
+            'sort_order' => $number,
+        ]);
+        $servicePoint = ServicePoint::factory()->for($branch)->for($areaNode)->create([
+            'name' => sprintf('Budget Table %02d', $number),
+            'display_number' => (string) $number,
+        ]);
+        QrCode::factory()->forServicePoint($servicePoint)->active()->create();
+    }
+
+    $areaNodeQueries = app(AreaNodeQueryService::class);
+    $areaQueryCount = countDatabaseQueries(function () use ($areaNodeQueries, $branch): void {
+        $areaNodes = $areaNodeQueries->paginateForBranch($branch, [
+            'search' => '',
+            'type' => 'all',
+            'active' => 'all',
+            'lifecycle' => 'active',
+            'sort' => 'position',
+        ], 15);
+
+        expect($areaNodes->items())->toHaveCount(15)
+            ->and($areaNodes->hasMorePages())->toBeTrue();
+    });
+
+    expect($areaQueryCount)->toBeLessThanOrEqual(1);
+
+    $servicePointQueries = app(ServicePointQueryService::class);
+    $servicePointQueryCount = countDatabaseQueries(function () use ($servicePointQueries, $branch): void {
+        $servicePoints = $servicePointQueries->paginate($branch, [
+            'search' => '',
+            'area_node_id' => 'all',
+            'type' => 'all',
+            'status' => 'all',
+            'active' => 'all',
+            'qr' => 'all',
+            'lifecycle' => 'active',
+            'sort' => 'position',
+        ], 15);
+
+        expect($servicePoints->items())->toHaveCount(15)
+            ->and($servicePoints->hasMorePages())->toBeTrue();
+
+        foreach ($servicePoints as $servicePoint) {
+            expect($servicePoint->relationLoaded('areaNode'))->toBeTrue()
+                ->and($servicePoint->relationLoaded('activeQrCode'))->toBeTrue()
+                ->and($servicePoint->relationLoaded('activeTableSession'))->toBeTrue()
+                ->and($servicePoint->relationLoaded('activeTableSessionServicePointLinks'))->toBeTrue();
+        }
+    });
+
+    expect($servicePointQueryCount)->toBeLessThanOrEqual(6);
 });

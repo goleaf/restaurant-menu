@@ -8,6 +8,7 @@
     <flux:sidebar.profile
         :name="$name"
         :initials="$initials"
+        :aria-label="__('navigation.account_menu', ['name' => $name])"
         icon:trailing="chevrons-up-down"
         data-test="sidebar-menu-button"
     />

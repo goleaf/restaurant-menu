@@ -6,6 +6,42 @@ namespace Database\Seeders;
 
 final class DemoMenuTranslations
 {
+    /** @return array{en: string, lt: string, ru: string} */
+    public static function menu(string $name): array
+    {
+        return match ($name) {
+            'Bella Pizza Demo Menu' => ['en' => $name, 'lt' => 'Bella Pizza demonstracinis meniu', 'ru' => 'Демо-меню Bella Pizza'],
+            'Bella Pizza Terrace Menu' => ['en' => $name, 'lt' => 'Bella Pizza terasos meniu', 'ru' => 'Меню террасы Bella Pizza'],
+            'Sushi Master Demo Menu' => ['en' => $name, 'lt' => 'Sushi Master demonstracinis meniu', 'ru' => 'Демо-меню Sushi Master'],
+            'Coffee Bar Demo Menu' => ['en' => $name, 'lt' => 'Coffee Bar demonstracinis meniu', 'ru' => 'Демо-меню Coffee Bar'],
+            default => ['en' => $name, 'lt' => $name, 'ru' => $name],
+        };
+    }
+
+    /** @return array{en: string, lt: string, ru: string} */
+    public static function modifierGroup(string $name): array
+    {
+        return match ($name) {
+            'CRUD size choice' => ['en' => 'Size choice', 'lt' => 'Dydžio pasirinkimas', 'ru' => 'Выбор размера'],
+            'CRUD optional extras' => ['en' => 'Optional extras', 'lt' => 'Papildomi priedai', 'ru' => 'Дополнительные добавки'],
+            default => ['en' => $name, 'lt' => $name, 'ru' => $name],
+        };
+    }
+
+    /** @return array{en: string, lt: string, ru: string} */
+    public static function modifierOption(string $name): array
+    {
+        return match ($name) {
+            'Standard' => ['en' => $name, 'lt' => 'Standartinis', 'ru' => 'Стандартный'],
+            'Large' => ['en' => $name, 'lt' => 'Didelis', 'ru' => 'Большой'],
+            'Small' => ['en' => $name, 'lt' => 'Mažas', 'ru' => 'Маленький'],
+            'Extra cheese' => ['en' => $name, 'lt' => 'Papildomas sūris', 'ru' => 'Дополнительный сыр'],
+            'House sauce' => ['en' => $name, 'lt' => 'Firminis padažas', 'ru' => 'Фирменный соус'],
+            'Seasonal topping' => ['en' => $name, 'lt' => 'Sezoninis priedas', 'ru' => 'Сезонная добавка'],
+            default => ['en' => $name, 'lt' => $name, 'ru' => $name],
+        };
+    }
+
     /** @return array<string, array{name: string, description: string}> */
     public static function category(string $name, string $description): array
     {

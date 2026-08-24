@@ -84,7 +84,7 @@ test('active guest can request bill and waiter sees the request', function () {
         ->assertSet('billRequestCount', 1)
         ->assertSee('Bill requests')
         ->assertSee('Счётный стол')
-        ->assertSee('Bill requested');
+        ->assertSee(__('reports.statuses.service_points.payment_requested'));
 });
 
 test('non active guest cannot request bill from an old token', function () {

@@ -6,17 +6,17 @@ namespace App\Actions\DraftOrders;
 
 use App\Actions\Branches\GetBranchOpeningStatusAction;
 use App\Actions\DraftOrders\Support\CalculateDraftOrderLinePrice;
-use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
-use App\Enums\MenuStatus;
 use App\Enums\OrderStatusLogEvent;
+use App\Enums\SupportedLocale;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\MenuItem;
+use App\Models\MenuItemTranslation;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\PlainText;
@@ -29,7 +29,7 @@ class AddGuestDraftOrderItemAction
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
         private readonly GetBranchOpeningStatusAction $getBranchOpeningStatus,
-        private readonly GetMenuAvailabilityStatusAction $getMenuAvailabilityStatus,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
     ) {}
 
     /**
@@ -43,16 +43,18 @@ class AddGuestDraftOrderItemAction
         ?int $menuItemVariantId = null,
         ?string $comment = null,
         ?string $itemName = null,
+        ?string $languageCode = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $menuItemVariantId, $comment): DraftOrderItem {
+        return DB::transaction(function () use ($tableSession, $guest, $menuItem, $selectedModifierOptions, $menuItemVariantId, $comment, $languageCode): DraftOrderItem {
+            $languageCode = SupportedLocale::normalize($languageCode);
             $tableSession = $this->reloadTableSession($tableSession);
             $guest = $this->reloadGuest($guest);
-            $menuItem = $this->reloadMenuItem($menuItem);
+            $menuItem = $this->reloadMenuItem($menuItem, $languageCode);
 
             $this->ensureGuestCanAddItems($tableSession, $guest);
             $this->ensureMenuItemCanBeAdded($tableSession, $menuItem);
 
-            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1, $menuItemVariantId);
+            $linePrice = $this->calculateLinePrice->forMenuItem($menuItem, $selectedModifierOptions, 1, $menuItemVariantId, $languageCode);
             $draftOrder = $this->draftOrderFor($tableSession);
             $draftWasCreated = $draftOrder->wasRecentlyCreated;
 
@@ -138,7 +140,7 @@ class AddGuestDraftOrderItemAction
             ->firstOrFail();
     }
 
-    private function reloadMenuItem(MenuItem $menuItem): MenuItem
+    private function reloadMenuItem(MenuItem $menuItem, string $languageCode): MenuItem
     {
         return MenuItem::query()
             ->select([
@@ -148,6 +150,14 @@ class AddGuestDraftOrderItemAction
                 'name',
                 'price_cents',
                 'is_available',
+                'hidden_until',
+            ])
+            ->addSelect([
+                'localized_name' => MenuItemTranslation::query()
+                    ->select('name')
+                    ->whereColumn('menu_item_id', 'menu_items.id')
+                    ->where('language_code', $languageCode)
+                    ->limit(1),
             ])
             ->with([
                 'menu' => fn ($query) => $query->select([
@@ -197,25 +207,7 @@ class AddGuestDraftOrderItemAction
 
     private function ensureMenuItemCanBeAdded(TableSession $tableSession, MenuItem $menuItem): void
     {
-        if ($menuItem->menu->branch_id !== $tableSession->branch_id
-            || $menuItem->menu->status !== MenuStatus::Active
-            || ! $menuItem->category->is_active
-            || ! $menuItem->is_available) {
-            throw ValidationException::withMessages([
-                'menu_item' => __('ui.actions.draftorders.addguestdraftorderitemaction.eto_bliudo_seicas_nedos'),
-            ]);
-        }
-
-        $availability = $this->getMenuAvailabilityStatus->handle($menuItem->menu);
-
-        if (! $availability['is_available']) {
-            throw ValidationException::withMessages([
-                'menu_item' => __('ui.actions.draftorders.addguestdraftorderitemaction.message', [
-                    'label' => $availability['label'],
-                    'detail' => $availability['detail'],
-                ]),
-            ]);
-        }
+        $this->ensureMenuItemAvailable->handle($menuItem, (int) $tableSession->branch_id);
     }
 
     private function draftOrderFor(TableSession $tableSession): DraftOrder
@@ -283,7 +275,11 @@ class AddGuestDraftOrderItemAction
 
     private function snapshotName(MenuItem $menuItem): string
     {
-        return $menuItem->name;
+        $localizedName = $menuItem->getAttribute('localized_name');
+
+        return is_string($localizedName) && filled($localizedName)
+            ? $localizedName
+            : $menuItem->name;
     }
 
     private function normalizeComment(?string $comment): ?string

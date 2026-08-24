@@ -106,6 +106,15 @@ class ServicePointFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => ServicePointStatus::Closed,
+            'is_active' => false,
+            'deleted_at' => now()->subDay(),
+        ]);
+    }
+
     public function forBranch(Branch $branch): static
     {
         return $this->state(fn (): array => [

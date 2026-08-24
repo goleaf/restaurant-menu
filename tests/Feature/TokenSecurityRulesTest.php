@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Invitations\CreateInvitationAction;
+use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Enums\DataExportType;
 use App\Enums\InvitationStatus;
@@ -24,7 +25,6 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\Role;
 use App\Models\ServicePoint;
@@ -40,8 +40,7 @@ beforeEach(function (): void {
 });
 
 test('generated qr and staff invitation tokens are long random route credentials', function (): void {
-    [$organization, , , $servicePoint] = prompt333BranchContext();
-    $createdBy = User::factory()->create();
+    [$organization, , , $servicePoint, $createdBy] = prompt333BranchContext();
 
     $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $createdBy);
 
@@ -59,7 +58,9 @@ test('generated qr and staff invitation tokens are long random route credentials
     $this->get('/q/'.$qrCode->short_code)->assertNotFound();
 
     $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
-    $createdInvitation = app(CreateInvitationAction::class)->handle($organization, $role, $createdBy, []);
+    $createdInvitation = app(CreateInvitationAction::class)->handle($organization, $role, $createdBy, [
+        'email' => 'token-recipient@example.test',
+    ]);
 
     expect($createdInvitation->token)
         ->toHaveLength(64)
@@ -257,7 +258,8 @@ test('branch csv exports do not include raw security tokens', function (): void 
 
 function prompt333BranchContext(): array
 {
-    $organization = Organization::factory()->create(['name' => 'Prompt 333 Organization']);
+    $owner = User::factory()->create();
+    $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Prompt 333 Organization']);
     $brand = Brand::factory()
         ->for($organization)
         ->create(['name' => 'Prompt 333 Brand']);
@@ -276,7 +278,7 @@ function prompt333BranchContext(): array
             'is_active' => true,
         ]);
 
-    return [$organization, $brand, $branch, $servicePoint];
+    return [$organization, $brand, $branch, $servicePoint, $owner->fresh()];
 }
 
 function prompt333GuestCookieName(QrCode $qrCode): string

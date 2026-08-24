@@ -7,8 +7,10 @@ namespace App\Actions\Invitations;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
+use App\Models\Branch;
 use App\Models\Invitation;
 use App\Models\Organization;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -34,8 +36,6 @@ final class CancelInvitationAction
                     'role_id',
                     'email',
                     'phone',
-                    'invite_token',
-                    'invite_code',
                     'invite_token_hash',
                     'invite_code_hash',
                     'expires_at',
@@ -59,10 +59,23 @@ final class CancelInvitationAction
                 ]);
             }
 
+            $role = Role::query()
+                ->select(['id', 'code', 'name', 'sort_order'])
+                ->whereKey($scopedInvitation->role_id)
+                ->firstOrFail();
+            Gate::forUser($actor)->authorize('assign', [$role, $organization]);
+
+            if ($scopedInvitation->branch_id !== null) {
+                $branch = Branch::query()
+                    ->where('organization_id', $organization->id)
+                    ->where('brand_id', $scopedInvitation->brand_id)
+                    ->whereKey($scopedInvitation->branch_id)
+                    ->firstOrFail();
+                Gate::forUser($actor)->authorize('manageStaff', $branch);
+            }
+
             $scopedInvitation->forceFill([
                 'status' => InvitationStatus::Cancelled,
-                'invite_token' => null,
-                'invite_code' => null,
                 'invite_token_hash' => null,
                 'invite_code_hash' => null,
                 'accepted_by_user_id' => null,

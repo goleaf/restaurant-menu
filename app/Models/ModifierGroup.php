@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Database\Factories\ModifierGroupFactory;
@@ -56,6 +58,14 @@ class ModifierGroup extends Model
             ->orderBy('sort_order')
             ->orderBy('name')
             ->orderBy('id');
+    }
+
+    /**
+     * @return HasMany<ModifierGroupTranslation, $this>
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(ModifierGroupTranslation::class);
     }
 
     /**

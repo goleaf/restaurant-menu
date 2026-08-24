@@ -4,8 +4,8 @@
         name="{{ $name }}"
         @if ($error !== null || (isset($errors) && $errors->has($name))) aria-invalid="true" aria-describedby="{{ $errorId }}" @endif
         {{ $attributes->class([
-            'min-h-12 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950 shadow-xs transition focus:border-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/20 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white dark:focus:border-zinc-400',
-            'border-red-500 focus:border-red-500 focus:ring-red-500/20 dark:border-red-500' => $error !== null || (isset($errors) && $errors->has($name)),
+            'min-h-12 w-full rounded-control border border-border-subtle bg-surface px-3 text-base text-text-primary shadow-xs transition-[background-color,border-color,color,box-shadow] duration-state ease-product focus:border-strong focus:outline-hidden focus:ring-2 focus:ring-focus/20 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-text-muted motion-reduce:transition-none',
+            'border-danger focus:border-danger focus:ring-danger/20' => $error !== null || (isset($errors) && $errors->has($name)),
         ]) }}
     >
         @if ($placeholder)

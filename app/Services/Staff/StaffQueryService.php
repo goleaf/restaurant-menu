@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Staff;
 
+use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
@@ -13,7 +14,9 @@ use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\Paginator;
 
 final class StaffQueryService
@@ -51,6 +54,7 @@ final class StaffQueryService
                 'user' => fn ($query) => $query->select(['id', 'name', 'email']),
                 'role' => fn ($query) => $query->select($this->roleColumns()),
             ])
+            ->where('organization_id', $branch->organization_id)
             ->where('branch_id', $branch->id)
             ->when($search !== '', fn ($query) => $query->whereHas('user', function ($userQuery) use ($search): void {
                 $userQuery
@@ -69,7 +73,11 @@ final class StaffQueryService
 
         return Invitation::query()
             ->select($this->invitationColumns())
-            ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
+            ->with([
+                'role' => fn ($query) => $query->select($this->roleColumns()),
+                'invitedBy:id,name',
+                'acceptedBy:id,name',
+            ])
             ->where('organization_id', $organization->id)
             ->whereNull('brand_id')
             ->whereNull('branch_id')
@@ -93,8 +101,13 @@ final class StaffQueryService
 
         return Invitation::query()
             ->select($this->invitationColumns())
-            ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
+            ->with([
+                'role' => fn ($query) => $query->select($this->roleColumns()),
+                'invitedBy:id,name',
+                'acceptedBy:id,name',
+            ])
             ->where('organization_id', $organization->id)
+            ->where('brand_id', $branch->brand_id)
             ->where('branch_id', $branch->id)
             ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
                 $searchQuery
@@ -106,12 +119,31 @@ final class StaffQueryService
     }
 
     /** @return EloquentCollection<int, Role> */
-    public function assignableRoles(): EloquentCollection
+    public function assignableRoles(User $actor, Organization $organization): EloquentCollection
     {
-        return Role::query()
+        $roles = Role::query()
             ->select($this->roleColumns())
             ->where('code', '!=', SystemRole::Superadmin->value)
-            ->orderBy('sort_order')
+            ->orderBy('sort_order');
+
+        if ($actor->isSuperadmin()) {
+            return $roles->get();
+        }
+
+        $membership = OrganizationUser::query()
+            ->select(['id', 'organization_id', 'user_id', 'role_id', 'status'])
+            ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
+            ->where('organization_id', $organization->id)
+            ->where('user_id', $actor->id)
+            ->where('status', OrganizationUserStatus::Active->value)
+            ->first();
+
+        if (! $membership?->role instanceof Role) {
+            return new EloquentCollection;
+        }
+
+        return $roles
+            ->where('sort_order', '>', $membership->role->sort_order)
             ->get();
     }
 
@@ -137,12 +169,15 @@ final class StaffQueryService
         return is_int($roleId) ? $roleId : null;
     }
 
-    public function findAssignableRole(int $roleId): Role
+    public function findAssignableRole(User $actor, Organization $organization, int $roleId): Role
     {
-        return Role::query()
-            ->where('code', '!=', SystemRole::Superadmin->value)
-            ->whereKey($roleId)
-            ->firstOrFail();
+        $role = $this->assignableRoles($actor, $organization)->firstWhere('id', $roleId);
+
+        if (! $role instanceof Role) {
+            throw (new ModelNotFoundException)->setModel(Role::class, [$roleId]);
+        }
+
+        return $role;
     }
 
     public function findOrganizationMembership(Organization $organization, int $membershipId): OrganizationUser
@@ -167,6 +202,7 @@ final class StaffQueryService
     public function findBranchUser(Branch $branch, int $branchUserId): BranchUser
     {
         return BranchUser::query()
+            ->where('organization_id', $branch->organization_id)
             ->where('branch_id', $branch->id)
             ->whereKey($branchUserId)
             ->firstOrFail();
@@ -177,6 +213,7 @@ final class StaffQueryService
         return Invitation::query()
             ->select($this->invitationColumns())
             ->where('organization_id', $organization->id)
+            ->where('brand_id', $branch->brand_id)
             ->where('branch_id', $branch->id)
             ->whereKey($invitationId)
             ->firstOrFail();
@@ -187,6 +224,7 @@ final class StaffQueryService
         return BranchUser::query()
             ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
             ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
+            ->where('organization_id', $branch->organization_id)
             ->where('branch_id', $branch->id)
             ->where('user_id', $userId)
             ->firstOrFail();
@@ -197,6 +235,7 @@ final class StaffQueryService
     {
         return AreaNodeWaiter::query()
             ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
+            ->where('organization_id', $branch->organization_id)
             ->where('branch_id', $branch->id)
             ->orderBy('user_id')
             ->orderBy('area_node_id')

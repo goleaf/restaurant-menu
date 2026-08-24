@@ -7,6 +7,7 @@ namespace App\Models;
 use Database\Factories\PermissionRoleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
@@ -38,5 +39,17 @@ class PermissionRole extends Pivot
         return [
             'enabled' => 'boolean',
         ];
+    }
+
+    /** @return BelongsTo<Role, $this> */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    /** @return BelongsTo<Permission, $this> */
+    public function permission(): BelongsTo
+    {
+        return $this->belongsTo(Permission::class);
     }
 }

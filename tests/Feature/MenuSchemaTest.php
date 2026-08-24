@@ -7,11 +7,15 @@ use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
+use App\Models\MenuTranslation;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Schema;
 
@@ -26,6 +30,15 @@ test('menu tables expose the required columns', function () {
             'created_at',
             'updated_at',
             'deleted_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_translations', [
+            'id',
+            'menu_id',
+            'language_code',
+            'name',
+            'created_at',
+            'updated_at',
         ]))->toBeTrue()
         ->and(Schema::hasTable('menu_categories'))->toBeTrue()
         ->and(Schema::hasColumns('menu_categories', [
@@ -58,10 +71,38 @@ test('menu tables expose the required columns', function () {
             'volume',
             'calories',
             'is_available',
+            'hidden_until',
             'sort_order',
             'created_at',
             'updated_at',
             'deleted_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('modifier_group_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('modifier_group_translations', [
+            'id',
+            'modifier_group_id',
+            'language_code',
+            'name',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('menu_item_images'))->toBeTrue()
+        ->and(Schema::hasColumns('menu_item_images', [
+            'id',
+            'menu_item_id',
+            'path',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue()
+        ->and(Schema::hasTable('modifier_option_translations'))->toBeTrue()
+        ->and(Schema::hasColumns('modifier_option_translations', [
+            'id',
+            'modifier_option_id',
+            'language_code',
+            'name',
+            'created_at',
+            'updated_at',
         ]))->toBeTrue()
         ->and(Schema::hasTable('kitchen_departments'))->toBeTrue()
         ->and(Schema::hasColumns('kitchen_departments', [
@@ -149,6 +190,97 @@ test('menu tables expose the required columns', function () {
             'created_at',
             'updated_at',
         ]))->toBeTrue();
+});
+
+test('menu and modifier translations are factory backed unique and cascade with their owners', function () {
+    $menu = Menu::factory()->create();
+    $group = ModifierGroup::factory()->for($menu->branch)->create();
+    $option = ModifierOption::factory()->for($group, 'modifierGroup')->create();
+    $menuTranslation = MenuTranslation::factory()->for($menu)->create(['language_code' => 'en']);
+    $groupTranslation = ModifierGroupTranslation::factory()->for($group, 'group')->create(['language_code' => 'lt']);
+    $optionTranslation = ModifierOptionTranslation::factory()->for($option, 'option')->create(['language_code' => 'ru']);
+    $translationOwners = [
+        'menu_translations' => ['menu_id', 'menus'],
+        'modifier_group_translations' => ['modifier_group_id', 'modifier_groups'],
+        'modifier_option_translations' => ['modifier_option_id', 'modifier_options'],
+    ];
+
+    expect($menu->translations()->pluck('menu_translations.id')->all())->toBe([$menuTranslation->id])
+        ->and($group->translations()->pluck('modifier_group_translations.id')->all())->toBe([$groupTranslation->id])
+        ->and($option->translations()->pluck('modifier_option_translations.id')->all())->toBe([$optionTranslation->id])
+        ->and(fn () => MenuTranslation::factory()->for($menu)->create(['language_code' => 'en']))
+        ->toThrow(QueryException::class)
+        ->and(fn () => ModifierGroupTranslation::factory()->for($group, 'group')->create(['language_code' => 'lt']))
+        ->toThrow(QueryException::class)
+        ->and(fn () => ModifierOptionTranslation::factory()->for($option, 'option')->create(['language_code' => 'ru']))
+        ->toThrow(QueryException::class);
+
+    foreach ($translationOwners as $table => [$ownerColumn, $ownerTable]) {
+        $indexes = collect(Schema::getIndexes($table));
+        $foreignKeys = collect(Schema::getForeignKeys($table));
+
+        expect($indexes->contains(
+            fn (array $index): bool => $index['columns'] === [$ownerColumn, 'language_code'] && $index['unique'],
+        ))->toBeTrue()
+            ->and($foreignKeys->contains(
+                fn (array $foreignKey): bool => $foreignKey['columns'] === [$ownerColumn]
+                    && $foreignKey['foreign_table'] === $ownerTable
+                    && mb_strtolower((string) $foreignKey['on_delete']) === 'cascade',
+            ))->toBeTrue();
+    }
+
+    $menu->forceDelete();
+    $group->deleteOrFail();
+
+    expect(MenuTranslation::query()->whereKey($menuTranslation->id)->exists())->toBeFalse()
+        ->and(ModifierGroupTranslation::query()->whereKey($groupTranslation->id)->exists())->toBeFalse()
+        ->and(ModifierOptionTranslation::query()->whereKey($optionTranslation->id)->exists())->toBeFalse();
+});
+
+test('temporary menu hiding is indexed and cast as an immutable deadline', function () {
+    $item = MenuItem::factory()->temporarilyHidden()->create();
+    $indexes = collect(Schema::getIndexes('menu_items'));
+
+    expect($item->isTemporarilyHidden())->toBeTrue()
+        ->and($item->hidden_until)->toBeInstanceOf(\Carbon\CarbonImmutable::class)
+        ->and($indexes->contains(
+            fn (array $index): bool => $index['columns'] === ['hidden_until'],
+        ))->toBeTrue();
+});
+
+test('menu item image records are constrained ordered and factory backed', function () {
+    $item = MenuItem::factory()->create();
+    $laterImage = MenuItemImage::factory()->for($item, 'item')->create([
+        'sort_order' => 20,
+    ]);
+    $earlierImage = MenuItemImage::factory()->for($item, 'item')->create([
+        'sort_order' => 10,
+    ]);
+    $indexes = collect(Schema::getIndexes('menu_item_images'));
+    $foreignKeys = collect(Schema::getForeignKeys('menu_item_images'));
+
+    expect($item->galleryImages()->pluck('sort_order')->all())->toBe([10, 20])
+        ->and($laterImage->item->is($item))->toBeTrue()
+        ->and($earlierImage->imageUrl())->not->toBeEmpty()
+        ->and($indexes->contains(
+            fn (array $index): bool => $index['columns'] === ['path'] && $index['unique'],
+        ))->toBeTrue()
+        ->and($indexes->contains(
+            fn (array $index): bool => $index['columns'] === ['menu_item_id', 'sort_order'] && $index['unique'],
+        ))->toBeTrue()
+        ->and($foreignKeys->contains(
+            fn (array $foreignKey): bool => $foreignKey['columns'] === ['menu_item_id']
+                && $foreignKey['foreign_table'] === 'menu_items'
+                && mb_strtolower((string) $foreignKey['on_delete']) === 'cascade',
+        ))->toBeTrue();
+
+    expect(fn () => MenuItemImage::factory()->for($item, 'item')->create([
+        'path' => $earlierImage->path,
+        'sort_order' => 30,
+    ]))->toThrow(QueryException::class)
+        ->and(fn () => MenuItemImage::factory()->for($item, 'item')->create([
+            'sort_order' => 10,
+        ]))->toThrow(QueryException::class);
 });
 
 test('menu models keep branch category and item relationships', function () {

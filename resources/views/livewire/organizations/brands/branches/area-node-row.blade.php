@@ -46,9 +46,13 @@
 
                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $node['name'] }}</h2>
 
+                @if ($node['is_archived'])
+                    <x-ui.status-badge tone="muted">{{ __('structure.badges.archived') }}</x-ui.status-badge>
+                @endif
+
                 <x-ui.status-badge tone="muted">{{ __($node['type_label']) }}</x-ui.status-badge>
 
-                @if ($node['is_active'])
+                @if (! $node['is_archived'] && $node['is_active'])
                     <x-ui.status-badge tone="success" dot>{{ __('ui.organizations.brands.branches.area_node_row.rabotaet') }}</x-ui.status-badge>
                 @else
                     <x-ui.status-badge tone="muted" dot>{{ __('ui.organizations.brands.branches.area_node_row.vykliucena') }}</x-ui.status-badge>
@@ -57,7 +61,11 @@
         </div>
 
         <div class="flex flex-wrap gap-2 md:justify-end">
-            @if ($node['is_active'])
+            @if ($node['is_archived'])
+                <flux:button icon="arrow-path" variant="primary" type="button" wire:click="restore({{ $node['id'] }})" wire:loading.attr="disabled" wire:target="restore({{ $node['id'] }})">
+                    {{ __('structure.actions.restore') }}
+                </flux:button>
+            @elseif ($node['is_active'])
                 <flux:button icon="eye-slash" type="button" wire:click="disable({{ $node['id'] }})">
                     {{ __('ui.organizations.brands.branches.area_node_row.vykliucit') }}
                 </flux:button>
@@ -65,25 +73,24 @@
                 <flux:button icon="eye" type="button" wire:click="enable({{ $node['id'] }})">
                     {{ __('ui.organizations.brands.branches.area_node_row.vkliucit') }}
                 </flux:button>
+                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $node['id'] }})">
+                    {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
+                </flux:button>
+
+                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $node['id'] }})">
+                    {{ __('structure.actions.archive') }}
+                </flux:button>
             @endif
-
-            <flux:button icon="pencil" type="button" wire:click="startEditing({{ $node['id'] }})">
-                {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
-            </flux:button>
-
-            <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $node['id'] }})">
-                {{ __('ui.actions.delete') }}
-            </flux:button>
         </div>
 
         @if ($deletingAreaNodeId === $node['id'])
             <x-ui.alert tone="danger" class="md:col-span-2">
                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <span>{{ __('ui.confirmations.delete.title') }}</span>
+                    <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                     <div class="flex flex-wrap gap-2">
                         <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                            {{ __('ui.actions.delete') }}
+                            {{ __('structure.actions.archive') }}
                         </flux:button>
 
                         <flux:button icon="x-mark" type="button" wire:click="cancelDelete">

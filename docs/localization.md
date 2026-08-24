@@ -16,8 +16,10 @@ The application supports English (`en`), Lithuanian (`lt`) and Russian (`ru`), w
 
 Blade and PHP may not hardcode new user-facing messages. Enum/store values remain stable canonical data; localized labels are obtained through translation keys. API/business errors intended for users carry a stable error type and localized presentation message rather than a raw exception.
 
+Restaurant onboarding initializes editable area, table, menu, category and sample-dish names through the active JSON locale. Country and currency stay unselected until the user chooses them; the time-zone suggestion uses the configured application time zone only when it is a Laravel-supported identifier and otherwise falls back to `UTC`. The country control validates an ISO 3166-1 alpha-2 code and resolves it to the existing canonical `branches.country` value for backward compatibility. A separate `country_code` column is intentionally not added while no query, integrity rule or downstream integration consumes it; duplicating the same fact would introduce synchronization risk without a demonstrated schema benefit.
+
 ## Verification
 
 The audit enforces valid JSON, complete key parity and placeholder parity. Tests render critical routes in all locales, exercise fallback behavior, localized validation and notifications, and assert that raw keys do not appear in normal paths. Translated text expansion is included in the responsive browser matrix.
 
-Final evidence on 2026-08-23: 2,178 semantic keys in each locale, 6,534 total entries, no missing/invalid/bad/legacy/phrase-style keys and zero critical audit issues. The scanner inspected 550 first-party files, found 1,614 used semantic keys and no missing or phrase-style calls. `docs/TRANSLATION_KEY_MAP.md` remains a namespace reference; this file is the canonical policy.
+Final evidence on 2026-08-24: 2,322 semantic keys in each locale, 6,966 total entries, no missing/invalid/bad/legacy/phrase-style keys and zero critical audit issues. The scanner inspected 604 first-party files, found 1,718 used semantic keys and no missing or phrase-style calls. `docs/TRANSLATION_KEY_MAP.md` remains a namespace reference; this file is the canonical policy.

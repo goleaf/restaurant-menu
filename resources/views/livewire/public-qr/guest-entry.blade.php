@@ -1,9 +1,9 @@
-<main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">
+<main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-lg flex-col gap-4 overflow-x-clip px-4 py-5 pb-8 sm:py-8">
         @if ($state === 'ready')
             @if ($currentGuestId && $guestCanViewTable && $currentTableSessionId)
                 <section data-page="guest-table-shell" class="flex flex-col gap-4">
-                    <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <div class="border-b border-zinc-100 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/60">
+                    <div data-guest-table-context class="overflow-hidden rounded-card border border-border-subtle bg-surface">
+                        <div class="border-b border-border-subtle bg-surface-muted px-4 py-3">
                             <div class="flex items-center justify-between gap-3">
                                 <x-ui.status-badge tone="success" dot>
                                     {{ __('guest.table.entry_saved_badge') }}
@@ -23,24 +23,24 @@
                                     alt="{{ $landing['venue_name'] }}"
                                     width="56"
                                     height="56"
-                                    class="size-14 rounded-lg border border-zinc-200 bg-white object-contain p-2 dark:border-zinc-800 dark:bg-zinc-950"
+                                    class="size-14 rounded-control border border-border-subtle bg-surface object-contain p-2"
                                 >
                             @else
-                                <div class="flex size-14 items-center justify-center rounded-lg border border-zinc-200 bg-white text-xl font-semibold text-zinc-900 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                <div class="flex size-14 items-center justify-center rounded-control border border-border-subtle bg-surface text-xl font-semibold text-text-primary">
                                     {{ $landing['brand_initial'] }}
                                 </div>
                             @endif
 
                             <div class="min-w-0 flex-1">
-                                <p class="truncate text-sm font-medium text-emerald-700 dark:text-emerald-300">{{ $landing['brand_name'] }}</p>
-                                <h1 class="mt-1 text-2xl font-semibold leading-tight text-zinc-950 dark:text-white">{{ $landing['venue_name'] }}</h1>
-                                <x-ui.plain-text :text="$landing['public_description']" class="mt-2 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
-                                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                    {{ __('guest.table.service_point') }}: <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $landing['service_point_name'] }}</span>
+                                <p class="text-sm font-medium text-accent">{{ $landing['brand_name'] }}</p>
+                                <h1 class="mt-1 text-balance text-2xl font-semibold leading-tight text-text-primary">{{ $landing['venue_name'] }}</h1>
+                                <x-ui.plain-text :text="$landing['public_description']" class="mt-2 block text-sm leading-5 text-text-muted" />
+                                <p class="mt-2 text-sm text-text-muted">
+                                    {{ __('guest.table.service_point') }}: <span class="font-semibold text-text-primary">{{ $landing['service_point_name'] }}</span>
                                 </p>
 
                                 @if ($landing['area_name'])
-                                    <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                                    <p class="mt-1 text-sm text-text-muted">
                                         {{ __('guest.table.zone') }}: {{ $landing['area_name'] }}
                                     </p>
                                 @endif
@@ -48,14 +48,14 @@
                         </div>
 
                         <div class="mt-4 grid grid-cols-2 gap-3">
-                            <div class="rounded-lg bg-zinc-50 px-3 py-3 dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.service_point') }}</p>
-                                <p class="mt-1 truncate text-sm font-semibold text-zinc-950 dark:text-white">{{ $landing['service_point_name'] }}</p>
+                            <div class="rounded-control bg-surface-muted px-3 py-3">
+                                <p class="text-xs font-medium uppercase text-text-muted">{{ __('guest.table.service_point') }}</p>
+                                <p class="mt-1 text-sm font-semibold text-text-primary">{{ $landing['service_point_name'] }}</p>
                             </div>
 
-                            <div class="rounded-lg bg-zinc-50 px-3 py-3 text-right dark:bg-zinc-950/60">
-                                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('guest.table.order') }}</p>
-                                <p class="mt-1 text-base font-semibold text-zinc-950 dark:text-white">{{ __('guest.statuses.steps.draft') }}</p>
+                            <div class="rounded-control bg-surface-muted px-3 py-3 text-right">
+                                <p class="text-xs font-medium uppercase text-text-muted">{{ __('guest.table.order') }}</p>
+                                <p class="mt-1 text-base font-semibold text-text-primary">{{ __('guest.statuses.steps.draft') }}</p>
                             </div>
                         </div>
 
@@ -406,5 +406,4 @@
         @endif
     </main>
 </div>
-
 

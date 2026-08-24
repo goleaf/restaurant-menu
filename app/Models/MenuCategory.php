@@ -63,7 +63,8 @@ class MenuCategory extends Model
     {
         return $this->hasMany(self::class, 'parent_id')
             ->orderBy('sort_order')
-            ->orderBy('name');
+            ->orderBy('name')
+            ->orderBy('id');
     }
 
     /**
@@ -73,7 +74,8 @@ class MenuCategory extends Model
     {
         return $this->hasMany(MenuItem::class, 'category_id')
             ->orderBy('sort_order')
-            ->orderBy('name');
+            ->orderBy('name')
+            ->orderBy('id');
     }
 
     /**

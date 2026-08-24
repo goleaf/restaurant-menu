@@ -247,6 +247,7 @@ class GuestMenu extends Component
                 selectedModifierOptions: $this->selectedModifierOptions,
                 comment: $this->itemComment,
                 itemName: $item['name'],
+                languageCode: $this->language,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);

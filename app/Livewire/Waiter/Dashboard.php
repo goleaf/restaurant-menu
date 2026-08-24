@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class Dashboard extends Component
@@ -60,6 +61,9 @@ class Dashboard extends Component
 
     public string $zoneScope = 'mine';
 
+    #[Url(as: 'table', history: true)]
+    public ?int $selectedTableSessionId = null;
+
     public function boot(
         BuildWaiterDashboardAction $buildWaiterDashboard,
         WaiterTableQueryService $waiterQueries,
@@ -89,6 +93,7 @@ class Dashboard extends Component
         $this->billRequestCount = $payload['bill_request_count'];
         $this->readyItemCount = $payload['ready_item_count'];
         $this->refreshedAt = now()->format('H:i:s');
+        $this->normalizeSelectedTable();
 
         $currentWorkIds = $this->currentWorkIds($this->branches);
 
@@ -104,6 +109,13 @@ class Dashboard extends Component
         $this->zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
         $this->knownWorkIds = null;
         $this->refreshDashboard();
+    }
+
+    public function selectTable(int $tableSessionId): void
+    {
+        $this->selectedTableSessionId = $this->visibleTableSummary($tableSessionId) === null
+            ? null
+            : $tableSessionId;
     }
 
     public function openTable(
@@ -177,7 +189,11 @@ class Dashboard extends Component
 
     public function render(): View
     {
-        return view('livewire.waiter.dashboard')
+        return view('livewire.waiter.dashboard', [
+            'selectedTable' => $this->selectedTableSessionId === null
+                ? null
+                : $this->visibleTableSummary($this->selectedTableSessionId),
+        ])
             ->title(__('ui.waiter.dashboard.waiter_dashboard'));
     }
 
@@ -206,6 +222,51 @@ class Dashboard extends Component
         }
 
         return $this->zoneScope;
+    }
+
+    private function normalizeSelectedTable(): void
+    {
+        if ($this->selectedTableSessionId !== null && $this->visibleTableSummary($this->selectedTableSessionId) === null) {
+            $this->selectedTableSessionId = null;
+        }
+    }
+
+    /**
+     * @return array{branch: array<string, mixed>, service_point: array<string, mixed>, session: array<string, mixed>}|null
+     */
+    private function visibleTableSummary(int $tableSessionId): ?array
+    {
+        foreach ($this->branches as $branch) {
+            $servicePoints = $branch['service_points'] ?? [];
+
+            if (! is_array($servicePoints)) {
+                continue;
+            }
+
+            foreach ($servicePoints as $servicePoint) {
+                if (! is_array($servicePoint)) {
+                    continue;
+                }
+
+                $sessions = $servicePoint['sessions'] ?? [];
+
+                if (! is_array($sessions)) {
+                    continue;
+                }
+
+                foreach ($sessions as $session) {
+                    if (is_array($session) && (int) ($session['id'] ?? 0) === $tableSessionId) {
+                        return [
+                            'branch' => $branch,
+                            'service_point' => $servicePoint,
+                            'session' => $session,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

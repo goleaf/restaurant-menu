@@ -26,10 +26,10 @@ final class Card extends Component
             default => 'p-4',
         };
         $this->toneClasses = match ($tone) {
-            'subtle' => 'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/60',
-            'warning' => 'border-amber-200 bg-amber-50 dark:border-amber-900/70 dark:bg-amber-950/30',
-            'success' => 'border-emerald-200 bg-emerald-50 dark:border-emerald-900/70 dark:bg-emerald-950/30',
-            default => 'border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900',
+            'subtle' => 'border-border-subtle bg-surface-muted',
+            'warning' => 'border-warning-border bg-warning-surface',
+            'success' => 'border-success-border bg-success-surface',
+            default => 'border-border-subtle bg-surface',
         };
     }
 

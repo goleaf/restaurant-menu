@@ -644,6 +644,7 @@ class DraftOrder extends Component
                 selectedModifierOptions: $this->editingModifierOptions,
                 menuItemVariantId: $this->editingItemVariantId === '' ? null : (int) $this->editingItemVariantId,
                 comment: $this->editingComment,
+                languageCode: $this->language,
             );
         } catch (ValidationException $exception) {
             $this->showValidationException($exception);

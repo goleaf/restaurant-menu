@@ -6,12 +6,13 @@ namespace App\Livewire\Organizations\Staff;
 
 use App\Actions\Invitations\CancelInvitationAction;
 use App\Actions\Invitations\CreateInvitationAction;
+use App\Actions\Invitations\ReissueInvitationAction;
 use App\Actions\Staff\AddOrganizationStaffMemberAction;
 use App\Actions\Staff\SetOrganizationStaffStatusAction;
 use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
-use App\Enums\SystemRole;
+use App\Livewire\Forms\Staff\InvitationForm;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -38,6 +40,7 @@ class Index extends Component
 
     private StaffQueryService $staffQueries;
 
+    #[Locked]
     public Organization $organization;
 
     public string $manualName = '';
@@ -46,11 +49,7 @@ class Index extends Component
 
     public ?int $manualRoleId = null;
 
-    public string $inviteEmail = '';
-
-    public string $invitePhone = '';
-
-    public ?int $inviteRoleId = null;
+    public InvitationForm $invitationForm;
 
     public ?string $lastInviteLink = null;
 
@@ -89,7 +88,7 @@ class Index extends Component
         }
 
         $this->manualRoleId = $this->defaultRoleId();
-        $this->inviteRoleId = $this->manualRoleId;
+        $this->invitationForm->roleId = $this->manualRoleId;
     }
 
     public function addManualStaffMember(AddOrganizationStaffMemberAction $addStaffMember): void
@@ -120,13 +119,6 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
     }
 
-    public function createInviteCode(CreateInvitationAction $createInvitation): void
-    {
-        $this->createInvitation($createInvitation);
-
-        Flux::toast(variant: 'success', text: __('staff.messages.invitation_created'));
-    }
-
     public function activateMember(int $membershipId, SetOrganizationStaffStatusAction $setStaffStatus): void
     {
         $this->authorizeStaffManagement();
@@ -134,7 +126,7 @@ class Index extends Component
 
         Gate::forUser($this->currentUser())->authorize('update', $membership);
 
-        $setStaffStatus->activate($membership);
+        $setStaffStatus->activate($membership, $this->currentUser());
 
         unset($this->members);
 
@@ -228,6 +220,19 @@ class Index extends Component
         Flux::toast(variant: 'success', text: __('staff.messages.invitation_cancelled'));
     }
 
+    public function reissueInvitation(int $invitationId, ReissueInvitationAction $reissueInvitation): void
+    {
+        $this->authorizeStaffManagement();
+        $invitation = $this->staffQueries->findOrganizationInvitation($this->organization, $invitationId);
+        $reissued = $reissueInvitation->handle($this->currentUser(), $this->organization, $invitation);
+
+        $this->lastInviteLink = $reissued->inviteLink();
+        $this->lastInviteCode = $reissued->code;
+        unset($this->invitations);
+
+        Flux::toast(variant: 'success', text: __('staff.messages.invitation_reissued'));
+    }
+
     public function updatedStaffSearch(): void
     {
         $this->resetPage(pageName: 'organizationStaffPage');
@@ -268,7 +273,7 @@ class Index extends Component
     #[Computed]
     public function roles(): EloquentCollection
     {
-        return $this->staffQueries->assignableRoles();
+        return $this->staffQueries->assignableRoles($this->currentUser(), $this->organization);
     }
 
     public function render(): View
@@ -301,10 +306,16 @@ class Index extends Component
                 ->map(fn (Invitation $invitation): array => [
                     'id' => $invitation->id,
                     'role_label' => $this->roleLabel($invitation->role),
-                    'localized_status' => $this->invitationStatusLabel($invitation->status),
+                    'localized_status' => $this->invitationStatusLabel($invitation->effectiveStatus()),
                     'email' => $invitation->email,
                     'phone' => $invitation->phone,
-                    'can_cancel' => $invitation->status === InvitationStatus::Pending,
+                    'created_by' => $invitation->invitedBy?->name,
+                    'accepted_by' => $invitation->acceptedBy?->name,
+                    'created_at' => $invitation->created_at?->isoFormat('LLL'),
+                    'expires_at' => $invitation->expires_at->isoFormat('LLL'),
+                    'accepted_at' => $invitation->accepted_at?->isoFormat('LLL'),
+                    'can_cancel' => $invitation->effectiveStatus() === InvitationStatus::Pending,
+                    'can_reissue' => in_array($invitation->effectiveStatus(), [InvitationStatus::Pending, InvitationStatus::Expired], true),
                 ])
                 ->all(),
             'invitationsPaginator' => $invitations,
@@ -339,37 +350,26 @@ class Index extends Component
         return RestaurantValidationRules::manualStaff($this->assignableRoleRule());
     }
 
-    /**
-     * @return array<string, list<mixed>>
-     */
-    private function invitationRules(): array
-    {
-        return RestaurantValidationRules::staffInvitation($this->assignableRoleRule());
-    }
-
     private function assignableRoleRule(): mixed
     {
-        return Rule::exists((new Role)->getTable(), 'id')
-            ->where(fn ($query) => $query->where('code', '!=', SystemRole::Superadmin->value));
+        return Rule::in($this->roles()->modelKeys());
     }
 
     private function createInvitation(CreateInvitationAction $createInvitation): Invitation
     {
         $this->authorizeStaffManagement();
 
-        $this->inviteEmail = trim($this->inviteEmail);
-        $this->invitePhone = trim($this->invitePhone);
-
-        $validated = $this->validate($this->invitationRules());
-        $role = $this->findAssignableRole((int) $validated['inviteRoleId']);
+        $validated = $this->invitationForm->validated($this->assignableRoleRule());
+        $role = $this->findAssignableRole($validated['roleId']);
 
         $createdInvitation = $createInvitation->handle($this->organization, $role, $this->currentUser(), [
-            'email' => $validated['inviteEmail'] === '' ? null : $validated['inviteEmail'],
-            'phone' => $validated['invitePhone'] === '' ? null : $validated['invitePhone'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
         ]);
 
         $this->lastInviteLink = $createdInvitation->inviteLink();
         $this->lastInviteCode = $createdInvitation->code;
+        $this->invitationForm->clearRecipient();
         unset($this->invitations);
 
         return $createdInvitation->invitation;
@@ -382,7 +382,7 @@ class Index extends Component
 
     private function findAssignableRole(int $roleId): Role
     {
-        return $this->staffQueries->findAssignableRole($roleId);
+        return $this->staffQueries->findAssignableRole($this->currentUser(), $this->organization, $roleId);
     }
 
     private function findMembership(int $membershipId): OrganizationUser

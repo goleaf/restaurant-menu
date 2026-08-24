@@ -1,39 +1,33 @@
 <section data-page="{{ $dataPage }}" wire:poll.visible.1s="refreshDepartment" class="flex h-full w-full flex-1 flex-col gap-6">
-    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div class="min-w-0">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('layout.restaurant_workspace') }}</p>
-            <h1 class="mt-1 text-3xl font-semibold text-zinc-950 dark:text-white">{{ $pageTitle }}</h1>
-            <p class="mt-2 max-w-3xl text-sm text-zinc-600 dark:text-zinc-300">
-                {{ $pageSubtitle }}
-            </p>
-        </div>
+    <x-ui.page-header
+        :title="$pageTitle"
+        :description="$pageSubtitle"
+        :context="$selectedDepartmentName ?? __('layout.restaurant_workspace')"
+    >
+        <x-slot:actions>
+            <div class="grid gap-3 rounded-control border border-border-subtle bg-surface p-3 sm:grid-cols-[minmax(16rem,24rem)_auto] sm:items-end">
+                <flux:select wire:model.live="selectedDepartmentId" label="{{ __('ui.departments.dashboard.department') }}">
+                    @foreach ($departments as $department)
+                        <flux:select.option wire:key="{{ $dataPage }}-department-option-{{ $department['id'] }}" value="{{ $department['id'] }}">
+                            {{ $department['label'] }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
 
-        <div class="grid gap-3 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm sm:grid-cols-[minmax(16rem,24rem)_auto] sm:items-end dark:border-zinc-800 dark:bg-zinc-900">
-            <flux:select wire:model.live="selectedDepartmentId" label="{{ __('ui.departments.dashboard.department') }}">
-                @foreach ($departments as $department)
-                    <flux:select.option wire:key="{{ $dataPage }}-department-option-{{ $department['id'] }}" value="{{ $department['id'] }}">
-                        {{ $department['label'] }}
-                    </flux:select.option>
-                @endforeach
-            </flux:select>
-
-            <div class="text-sm text-zinc-500 dark:text-zinc-400">
-                <p>{{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}</p>
-                <p>{{ __('ui.departments.dashboard.sort') }}: {{ __('ui.departments.dashboard.oldest_first') }}</p>
+                <div class="text-sm text-text-muted">
+                    <p>{{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}</p>
+                    <p>{{ __('ui.departments.dashboard.sort') }}: {{ __('ui.departments.dashboard.oldest_first') }}</p>
+                </div>
             </div>
-        </div>
-    </header>
+        </x-slot:actions>
+    </x-ui.page-header>
 
     @error('ticket_item_status')
-        <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-200">
-            {{ $message }}
-        </div>
+        <x-ui.alert tone="danger">{{ $message }}</x-ui.alert>
     @enderror
 
     @if ($feedbackMessage)
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-200">
-            {{ $feedbackMessage }}
-        </div>
+        <x-ui.alert tone="success">{{ $feedbackMessage }}</x-ui.alert>
     @endif
 
     <x-ui.metric-strip :items="[
@@ -43,39 +37,36 @@
         ['label' => 'guest.statuses.items.ready', 'value' => $readyItemCount, 'tone' => $readyItemCount > 0 ? 'success' : 'neutral'],
     ]" />
 
-    <div class="grid gap-5 2xl:grid-cols-2">
+    <div data-department-priority-queue class="grid gap-5 2xl:grid-cols-2">
         @forelse ($tickets as $ticket)
-            <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <header class="border-b border-zinc-200 p-5 dark:border-zinc-800">
+            <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-card border border-border-subtle bg-surface">
+                <header class="border-b border-border-subtle p-4">
+                    <x-ui.priority-row
+                        :title="$ticket['service_point_name']"
+                        :description="$ticket['work_status']['label']"
+                        :tone="$ticket['delay_state'] === 'delayed' ? 'danger' : ($ticket['delay_state'] === 'attention' ? 'warning' : 'neutral')"
+                    >
+                        <x-slot:leading>
+                            <span class="flex min-h-operational-touch min-w-operational-touch items-center justify-center rounded-control bg-action px-3 text-base font-semibold text-text-inverse">
+                                {{ $ticket['service_point_display_number'] !== '' ? $ticket['service_point_display_number'] : __('guest.table.place') }}
+                            </span>
+                        </x-slot:leading>
+
+                        <x-slot:meta>
+                            <span>{{ __('guest.table.zone') }}: {{ $ticket['zone_name'] ?? __('qr.filters.no_zone') }}</span>
+                            <span>{{ $itemCountLabel }}: {{ $ticket['item_count'] }}</span>
+                            <span>{{ __('qr.labels.created') }}: {{ $ticket['sent_at'] ?? __('ui.departments.dashboard.time_not_set') }}</span>
+                        </x-slot:meta>
+
+                        <x-slot:actions>
+                            <flux:button class="min-h-operational-touch" icon="printer" size="sm" :href="route('restaurant.departments.tickets.print', $ticket['id'])" wire:navigate>
+                                {{ __('ui.departments.dashboard.print') }}
+                            </flux:button>
+                        </x-slot:actions>
+                    </x-ui.priority-row>
+
                     <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-start">
-                        <div class="flex min-w-0 gap-4">
-                            <div class="flex h-16 min-w-20 max-w-28 items-center justify-center rounded-lg bg-zinc-950 px-3 text-center text-xl font-semibold leading-tight text-white dark:bg-white dark:text-zinc-950">
-                                <span class="truncate">{{ $ticket['service_point_display_number'] !== '' ? $ticket['service_point_display_number'] : __('guest.table.place') }}</span>
-                            </div>
-
-                            <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <x-ui.plain-text :text="$ticket['service_point_name']" class="block text-2xl font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                    <flux:badge :color="$ticket['work_status']['color']">{{ __($ticket['work_status']['label']) }}</flux:badge>
-                                </div>
-
-                                <div class="mt-2 flex flex-wrap gap-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                    <span>{{ __('guest.table.zone') }}: {{ $ticket['zone_name'] ?? __('qr.filters.no_zone') }}</span>
-                                    <span aria-hidden="true">·</span>
-                                    <span>{{ $itemCountLabel }}: {{ $ticket['item_count'] }}</span>
-                                </div>
-
-                                <p class="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                                    {{ __('qr.labels.created') }}: {{ $ticket['sent_at'] ?? __('ui.departments.dashboard.time_not_set') }}
-                                </p>
-
-                                <div class="mt-3 flex flex-wrap gap-2">
-                                    <flux:button icon="printer" size="sm" :href="route('restaurant.departments.tickets.print', $ticket['id'])" wire:navigate>
-                                        {{ __('ui.departments.dashboard.print') }}
-                                    </flux:button>
-                                </div>
-                            </div>
-                        </div>
+                        <div class="hidden lg:block" aria-hidden="true"></div>
 
                         <div
                             data-kitchen-delay-timer
@@ -87,7 +78,7 @@
                             data-label-attention="{{ __('ui.departments.dashboard.delay_status.attention') }}"
                             data-label-delayed="{{ __('ui.departments.dashboard.delay_status.delayed') }}"
                             data-delay-template="{{ __('ui.departments.dashboard.delay_by', ['time' => ':time']) }}"
-                            class="rounded-lg border p-4 text-center data-[delay-state=attention]:border-amber-200 data-[delay-state=attention]:bg-amber-50 data-[delay-state=attention]:text-amber-950 data-[delay-state=delayed]:border-rose-200 data-[delay-state=delayed]:bg-rose-50 data-[delay-state=delayed]:text-rose-950 data-[delay-state=on-track]:border-emerald-200 data-[delay-state=on-track]:bg-emerald-50 data-[delay-state=on-track]:text-emerald-950 dark:data-[delay-state=attention]:border-amber-900/60 dark:data-[delay-state=attention]:bg-amber-950/30 dark:data-[delay-state=attention]:text-amber-100 dark:data-[delay-state=delayed]:border-rose-900/60 dark:data-[delay-state=delayed]:bg-rose-950/30 dark:data-[delay-state=delayed]:text-rose-100 dark:data-[delay-state=on-track]:border-emerald-900/60 dark:data-[delay-state=on-track]:bg-emerald-950/30 dark:data-[delay-state=on-track]:text-emerald-100"
+                            class="mt-3 rounded-control border p-3 text-center data-[delay-state=attention]:border-warning-border data-[delay-state=attention]:bg-warning-surface data-[delay-state=attention]:text-warning data-[delay-state=delayed]:border-danger-border data-[delay-state=delayed]:bg-danger-surface data-[delay-state=delayed]:text-danger data-[delay-state=on-track]:border-success-border data-[delay-state=on-track]:bg-success-surface data-[delay-state=on-track]:text-success lg:mt-3"
                         >
                             <p class="text-sm font-medium">{{ __('ui.departments.dashboard.preparation_time') }}</p>
                             <time

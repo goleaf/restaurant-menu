@@ -21,7 +21,8 @@ final class ServicePointPolicy
 
     public function view(User $user, ServicePoint $servicePoint): bool
     {
-        return $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->view($user, $branch));
+        return ! $servicePoint->trashed()
+            && $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->view($user, $branch));
     }
 
     public function create(User $user, Branch $branch): bool
@@ -31,7 +32,8 @@ final class ServicePointPolicy
 
     public function update(User $user, ServicePoint $servicePoint): bool
     {
-        return $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->manageServicePoints($user, $branch));
+        return ! $servicePoint->trashed()
+            && $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->manageServicePoints($user, $branch));
     }
 
     public function delete(User $user, ServicePoint $servicePoint): bool
@@ -41,7 +43,8 @@ final class ServicePointPolicy
 
     public function restore(User $user, ServicePoint $servicePoint): bool
     {
-        return false;
+        return $servicePoint->trashed()
+            && $this->withBranch($servicePoint, fn (Branch $branch): bool => $this->branches->manageServicePoints($user, $branch));
     }
 
     public function forceDelete(User $user, ServicePoint $servicePoint): bool

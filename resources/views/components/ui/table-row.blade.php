@@ -1,22 +1,22 @@
 @if ($href)
-    <a href="{{ $href }}" {{ $attributes->class([$rowClasses, 'transition hover:bg-zinc-50 dark:hover:bg-zinc-900/70']) }}>
+    <a href="{{ $href }}" {{ $attributes->class([$rowClasses, 'transition-colors duration-state ease-product hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-inset motion-reduce:transition-none']) }}>
         <div class="flex min-w-0 items-center gap-3">
             @isset($leading)
                 <div class="shrink-0">{{ $leading }}</div>
             @endisset
 
             <div class="min-w-0">
-                <p class="truncate font-semibold text-zinc-950 dark:text-white">{{ __($title) }}</p>
+                <p class="truncate font-semibold text-text-primary">{{ __($title) }}</p>
 
                 @if ($subtitle)
-                    <p class="mt-1 truncate text-zinc-500 dark:text-zinc-400">{{ __($subtitle) }}</p>
+                    <p class="mt-1 truncate text-text-muted">{{ __($subtitle) }}</p>
                 @endif
             </div>
         </div>
 
         <div class="flex items-center gap-3 md:justify-end">
             @if ($meta)
-                <span class="text-zinc-500 dark:text-zinc-400">{{ __($meta) }}</span>
+                <span class="text-text-muted">{{ __($meta) }}</span>
             @endif
 
             @isset($actions)
@@ -32,17 +32,17 @@
             @endisset
 
             <div class="min-w-0">
-                <p class="truncate font-semibold text-zinc-950 dark:text-white">{{ __($title) }}</p>
+                <p class="truncate font-semibold text-text-primary">{{ __($title) }}</p>
 
                 @if ($subtitle)
-                    <p class="mt-1 truncate text-zinc-500 dark:text-zinc-400">{{ __($subtitle) }}</p>
+                    <p class="mt-1 truncate text-text-muted">{{ __($subtitle) }}</p>
                 @endif
             </div>
         </div>
 
         <div class="flex items-center gap-3 md:justify-end">
             @if ($meta)
-                <span class="text-zinc-500 dark:text-zinc-400">{{ __($meta) }}</span>
+                <span class="text-text-muted">{{ __($meta) }}</span>
             @endif
 
             @isset($actions)

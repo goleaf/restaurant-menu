@@ -547,6 +547,14 @@ class BuildWaiterDashboardAction
                 && $sessionPayloads->isEmpty()
                 && ! in_array($status, [ServicePointStatus::Blocked, ServicePointStatus::Closed], true),
             'sessions' => $sessionPayloads->all(),
+            'waiter_calls' => $waiterCalls
+                ->map(fn (WaiterCall $waiterCall): array => $this->waiterCallPayload($waiterCall))
+                ->values()
+                ->all(),
+            'ready_items' => $readyItems
+                ->map(fn (KitchenTicketItem $item): array => $this->readyItemPayload($item, $servicePoint))
+                ->values()
+                ->all(),
         ];
     }
 

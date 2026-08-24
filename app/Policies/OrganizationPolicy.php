@@ -28,7 +28,8 @@ final class OrganizationPolicy
 
     public function update(User $user, Organization $organization): bool
     {
-        return $this->view($user, $organization)
+        return ! $organization->trashed()
+            && $this->view($user, $organization)
             && $user->hasOrganizationRole($organization, SystemRole::Owner);
     }
 
@@ -39,7 +40,9 @@ final class OrganizationPolicy
 
     public function restore(User $user, Organization $organization): bool
     {
-        return $user->isSuperadmin();
+        return $organization->trashed()
+            && $user->canAccessOrganization($organization, true)
+            && $user->hasOrganizationRole($organization, SystemRole::Owner, true);
     }
 
     public function forceDelete(User $user, Organization $organization): bool

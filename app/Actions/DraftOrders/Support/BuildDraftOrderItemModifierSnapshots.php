@@ -8,7 +8,9 @@ use App\Enums\BusinessRuleCode;
 use App\Exceptions\BusinessRuleViolation;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +19,7 @@ class BuildDraftOrderItemModifierSnapshots
     /**
      * @return Collection<int, ModifierGroup>
      */
-    public function groupsFor(MenuItem $menuItem): Collection
+    public function groupsFor(MenuItem $menuItem, ?string $languageCode = null): Collection
     {
         return $menuItem->modifierGroups()
             ->select([
@@ -29,6 +31,13 @@ class BuildDraftOrderItemModifierSnapshots
                 'modifier_groups.max_select',
                 'modifier_groups.sort_order',
             ])
+            ->when($languageCode !== null, fn ($query) => $query->addSelect([
+                'localized_name' => ModifierGroupTranslation::query()
+                    ->select('name')
+                    ->whereColumn('modifier_group_id', 'modifier_groups.id')
+                    ->where('language_code', $languageCode)
+                    ->limit(1),
+            ]))
             ->with([
                 'options' => fn ($query) => $query
                     ->select([
@@ -39,6 +48,13 @@ class BuildDraftOrderItemModifierSnapshots
                         'is_available',
                         'sort_order',
                     ])
+                    ->when($languageCode !== null, fn ($optionQuery) => $optionQuery->addSelect([
+                        'localized_name' => ModifierOptionTranslation::query()
+                            ->select('name')
+                            ->whereColumn('modifier_option_id', 'modifier_options.id')
+                            ->where('language_code', $languageCode)
+                            ->limit(1),
+                    ]))
                     ->where('is_available', true)
                     ->orderBy('sort_order')
                     ->orderBy('name')
@@ -174,14 +190,23 @@ class BuildDraftOrderItemModifierSnapshots
 
                 $snapshots[] = [
                     'group_id' => $modifierGroup->id,
-                    'group_name' => $modifierGroup->name,
+                    'group_name' => $this->localizedName($modifierGroup),
                     'option_id' => $modifierOption->id,
-                    'option_name' => $modifierOption->name,
+                    'option_name' => $this->localizedName($modifierOption),
                     'price_delta_cents' => $modifierOption->price_delta_cents,
                 ];
             });
         });
 
         return $snapshots;
+    }
+
+    private function localizedName(ModifierGroup|ModifierOption $model): string
+    {
+        $localizedName = $model->getAttribute('localized_name');
+
+        return is_string($localizedName) && filled($localizedName)
+            ? $localizedName
+            : $model->name;
     }
 }

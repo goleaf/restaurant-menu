@@ -10,7 +10,7 @@
         </div>
     </header>
 
-    @if ($canManageBrands)
+    @if ($canManageBrands && $lifecycle === 'active')
         <form wire:submit="create" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                 <flux:input wire:model="name" :label="__('ui.organizations.brands.index.brand_name')" type="text" required maxlength="120" autocomplete="organization-title" />
@@ -25,10 +25,26 @@
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-800">
             <flux:heading size="lg">{{ __('ui.organizations.brands.index.brands_in_this_organization') }}</flux:heading>
-            <flux:input wire:model.live.debounce.300ms="search" :label="__('layout.search')" type="search" autocomplete="off" class="sm:max-w-xs" />
+            <div class="grid gap-3 sm:grid-cols-3">
+                <flux:input wire:model.live.debounce.300ms="search" :label="__('layout.search')" type="search" autocomplete="off" />
+                <flux:select wire:model.live="lifecycle" :label="__('structure.filters.lifecycle')">
+                    <flux:select.option value="active">{{ __('structure.filters.active') }}</flux:select.option>
+                    <flux:select.option value="archived">{{ __('structure.filters.archived') }}</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="sort" :label="__('structure.filters.sort')">
+                    <flux:select.option value="name_asc">{{ __('structure.sort.name_asc') }}</flux:select.option>
+                    <flux:select.option value="name_desc">{{ __('structure.sort.name_desc') }}</flux:select.option>
+                    <flux:select.option value="newest">{{ __('structure.sort.newest') }}</flux:select.option>
+                    <flux:select.option value="oldest">{{ __('structure.sort.oldest') }}</flux:select.option>
+                </flux:select>
+            </div>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            @error('structureDeletion')
+                <div role="alert" class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{{ $message }}</div>
+            @enderror
+
             @forelse ($brandRows as $brand)
                 <div wire:key="brand-{{ $brand['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingBrandId === $brand['id'])
@@ -56,13 +72,16 @@
 
                                 <div class="min-w-0">
                                     <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $brand['name'] }}</h2>
+                                    @if ($brand['is_archived'])
+                                        <flux:badge color="zinc">{{ __('structure.badges.archived') }}</flux:badge>
+                                    @endif
                                     <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                                         {{ __('qr.labels.created') }} {{ $brand['created_at'] }}
                                     </p>
                                 </div>
                             </div>
 
-                            @if ($canManageBrands)
+                            @if ($canManageBrands && ! $brand['is_archived'])
                                 <form wire:submit="saveLogo({{ $brand['id'] }})" class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
                                     <label for="brand-logo-{{ $brand['id'] }}" class="sr-only">{{ __('uploads.labels.logo') }}</label>
                                     <x-ui.image-upload-input id="brand-logo-{{ $brand['id'] }}" wire:model="brandLogos.{{ $brand['id'] }}" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" class="max-w-xs" />
@@ -86,7 +105,15 @@
                             @endif
                         </div>
 
-                        @if ($canManageBrands)
+                        @if ($brand['is_archived'])
+                            <div class="flex flex-wrap gap-2 md:justify-end">
+                                @if ($canManageBrands)
+                                    <flux:button icon="arrow-path" variant="primary" type="button" wire:click="restore({{ $brand['id'] }})" wire:loading.attr="disabled" wire:target="restore({{ $brand['id'] }})">
+                                        {{ __('structure.actions.restore') }}
+                                    </flux:button>
+                                @endif
+                            </div>
+                        @elseif ($canManageBrands)
                             <div class="flex flex-wrap gap-2 md:justify-end">
                                 <flux:button icon="map-pin" type="button" :href="$brand['branches_url']" wire:navigate>
                                     {{ __('navigation.branches') }}
@@ -97,7 +124,7 @@
                                 </flux:button>
 
                                 <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $brand['id'] }})">
-                                    {{ __('ui.actions.delete') }}
+                                    {{ __('structure.actions.archive') }}
                                 </flux:button>
                             </div>
                         @else
@@ -111,11 +138,11 @@
                         @if ($deletingBrandId === $brand['id'])
                             <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                    <span>{{ __('ui.confirmations.delete.title') }}</span>
+                                    <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
                                         <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                                            {{ __('ui.actions.delete') }}
+                                            {{ __('structure.actions.archive') }}
                                         </flux:button>
 
                                         <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
@@ -129,7 +156,7 @@
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">
-                    {{ $search !== '' ? __('ui.empty.no_results') : __('ui.empty.no_brands') }}
+                    {{ $search !== '' ? __('ui.empty.no_results') : ($lifecycle === 'archived' ? __('structure.empty.archived') : __('ui.empty.no_brands')) }}
                 </div>
             @endforelse
         </div>

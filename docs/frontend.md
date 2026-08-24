@@ -20,4 +20,10 @@ The token system is defined in [`design-system.md`](design-system.md), Livewire 
 
 ## Page hierarchy
 
-Public entry presents staff login as its sole primary action and explains the guest QR path as a secondary journey. Authenticated landing prioritizes the restaurant workspace; restaurant quick actions are descriptive full-row links rather than repeated generic buttons. Operational dashboards consolidate related metrics and progressively disclose idle branches while retaining complete data and existing domain actions.
+Public entry presents staff login as its sole primary action and explains the guest QR path as a secondary journey. Authenticated landing prioritizes the restaurant workspace; restaurant quick actions are descriptive full-row links rather than repeated generic buttons.
+
+Staff dashboards present one ordered operational queue. The waiter dashboard validates the nullable URL-backed `table` selection against the already prepared visible payload, renders `aria-current` on the selected row and performs no query on selection. Desktop keeps the selected table preview beside the queue; mobile preserves the normal table-detail link. Kitchen and bar share the same priority-row hierarchy, visible department scope, oldest-first age signal and 56-pixel status actions. Their isolated polling and existing Action boundaries remain unchanged.
+
+Guest table screens keep venue/table context above the journey, expose category anchors in an internally scrollable labelled navigation, use flat menu-item rows and keep totals/actions in the existing safe-area-aware mobile action dock. Offline state is explicit and content remains browseable where the domain allows it.
+
+Restaurant onboarding keeps the numbered desktop navigation and exposes native progress plus a collapsible created-resource summary on narrow screens. Every mutation has an action-specific busy announcement and disabled loading/offline control, while the server remains responsible for authorization and idempotency. Validation focuses the first invalid field, falling back to the error summary, and successful step changes focus the new heading. Base grid tracks use shrinkable columns and inherited emergency word wrapping so native input sizing and long EN/LT/RU or tenant-provided names cannot create horizontal overflow at 200% text size.

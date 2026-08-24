@@ -39,12 +39,13 @@
         <form wire:submit="createInviteLink" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-4">
                 <flux:heading size="lg">{{ __('staff.invite') }}</flux:heading>
+                <flux:text>{{ __('staff.invitation_manual_delivery') }}</flux:text>
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="inviteEmail" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" />
-                    <flux:input wire:model="invitePhone" :label="__('ui.organizations.brands.branches.settings.phone')" type="text" maxlength="40" />
+                    <flux:input wire:model="invitationForm.email" :label="__('ui.auth.reset_password.email')" type="email" required maxlength="255" />
+                    <flux:input wire:model="invitationForm.phone" :label="__('ui.organizations.brands.branches.settings.phone')" type="text" maxlength="40" />
 
-                    <flux:select wire:model="inviteRoleId" :label="__('staff.role')" required>
+                    <flux:select wire:model="invitationForm.roleId" :label="__('staff.role')" required>
                         @foreach ($roleOptions as $role)
                             <flux:select.option wire:key="branch-invite-role-{{ $role['id'] }}" value="{{ $role['id'] }}">
                                 {{ $role['label'] }}
@@ -53,13 +54,9 @@
                     </flux:select>
                 </div>
 
-                <div class="flex flex-wrap justify-end gap-2">
+                <div class="flex justify-end">
                     <flux:button icon="link" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createInviteLink">
-                        {{ __('staff.invite_link') }}
-                    </flux:button>
-
-                    <flux:button icon="key" type="button" wire:click="createInviteCode" wire:loading.attr="disabled" wire:target="createInviteCode">
-                        {{ __('staff.invite_code') }}
+                        {{ __('staff.actions.create_invitation') }}
                     </flux:button>
                 </div>
 
@@ -254,23 +251,38 @@
                         </div>
 
                         <p class="mt-1 break-words text-sm text-zinc-500 dark:text-zinc-400">{{ $invitation['email'] ?: __('staff.no_email') }} / {{ $invitation['phone'] ?: __('staff.no_phone') }}</p>
+                        <div class="mt-2 space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            <p>{{ __('staff.invitation_meta.created', ['name' => $invitation['created_by'] ?? __('staff.invitation_meta.system'), 'date' => $invitation['created_at']]) }}</p>
+                            <p>{{ __('staff.invitation_meta.expires', ['date' => $invitation['expires_at']]) }}</p>
+                            @if ($invitation['accepted_at'])
+                                <p>{{ __('staff.invitation_meta.accepted', ['name' => $invitation['accepted_by'] ?? __('staff.invitation_meta.unknown'), 'date' => $invitation['accepted_at']]) }}</p>
+                            @endif
+                        </div>
                     </div>
 
-                    @if ($invitation['can_cancel'])
-                        <x-dangerous-action-confirmation
-                            name="cancel-branch-invitation-{{ $invitation['id'] }}"
-                            action="cancel_invitation"
-                            confirm-action="cancelInvitation({{ $invitation['id'] }})"
-                            submit-target="cancelInvitation({{ $invitation['id'] }})"
-                            confirm-label="staff.actions.cancel_invitation"
-                        >
-                            <x-slot:trigger>
-                                <flux:button icon="x-circle" type="button">
-                                    {{ __('staff.actions.cancel_invitation') }}
-                                </flux:button>
-                            </x-slot:trigger>
-                        </x-dangerous-action-confirmation>
-                    @endif
+                    <div class="flex flex-wrap gap-2 sm:justify-end">
+                        @if ($invitation['can_reissue'])
+                            <flux:button icon="arrow-path" type="button" wire:click="reissueInvitation({{ $invitation['id'] }})" wire:loading.attr="disabled" wire:target="reissueInvitation({{ $invitation['id'] }})">
+                                {{ __('staff.actions.reissue_invitation') }}
+                            </flux:button>
+                        @endif
+
+                        @if ($invitation['can_cancel'])
+                            <x-dangerous-action-confirmation
+                                name="cancel-branch-invitation-{{ $invitation['id'] }}"
+                                action="cancel_invitation"
+                                confirm-action="cancelInvitation({{ $invitation['id'] }})"
+                                submit-target="cancelInvitation({{ $invitation['id'] }})"
+                                confirm-label="staff.actions.cancel_invitation"
+                            >
+                                <x-slot:trigger>
+                                    <flux:button icon="x-circle" type="button">
+                                        {{ __('staff.actions.cancel_invitation') }}
+                                    </flux:button>
+                                </x-slot:trigger>
+                            </x-dangerous-action-confirmation>
+                        @endif
+                    </div>
                 </div>
             @empty
                 <div class="px-4 py-8 text-sm text-zinc-500 dark:text-zinc-400">

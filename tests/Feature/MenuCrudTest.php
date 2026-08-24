@@ -21,6 +21,7 @@ use App\Models\Brand;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
@@ -32,10 +33,14 @@ use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
+    ParallelTesting::resolveTokenUsing(fn (): string => 'menu-crud-'.getmypid());
     $this->seed(SystemPermissionsSeeder::class);
 });
 
@@ -165,6 +170,9 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSee('No menus yet.')
         ->set('menuName', 'Dinner Menu')
+        ->set('menuTranslations.en', 'Dinner Menu')
+        ->set('menuTranslations.lt', 'Vakarienės meniu')
+        ->set('menuTranslations.ru', 'Меню ужина')
         ->set('menuStatus', MenuStatus::Active->value)
         ->set('menuSortOrder', 10)
         ->call('createMenu')
@@ -180,6 +188,9 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('categoryMenuId', (string) $menu->id)
         ->set('categoryName', 'Pizza')
+        ->set('categoryTranslations.en.name', 'Pizza')
+        ->set('categoryTranslations.lt.name', 'Pica')
+        ->set('categoryTranslations.ru.name', 'Пицца')
         ->set('categoryDescription', 'Classic pizza selection')
         ->set('categoryIcon', 'cake')
         ->set('categorySortOrder', 20)
@@ -197,6 +208,9 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->set('itemMenuId', (string) $menu->id)
         ->set('itemCategoryId', (string) $category->id)
         ->set('itemName', 'Margherita')
+        ->set('itemTranslations.en.name', 'Margherita')
+        ->set('itemTranslations.lt.name', 'Margarita')
+        ->set('itemTranslations.ru.name', 'Маргарита')
         ->set('itemDescription', 'Tomato, mozzarella, basil')
         ->set('itemPrice', '12.50')
         ->set('itemWeight', '450')
@@ -217,8 +231,12 @@ test('manager can create menu categories dishes and upload local dish photo', fu
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
-        ->set('itemImages.'.$item->id, UploadedFile::fake()->image('margherita.jpg')->size(512))
-        ->call('saveItemImage', $item->id)
+        ->call('startEditingItem', $item->id)
+        ->set('editingItemTranslations.en.name', 'Dish')
+        ->set('editingItemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemTranslations.ru.name', 'Блюдо')
+        ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('margherita.jpg')->size(512)])
+        ->call('saveItemImages', $item->id)
         ->assertHasNoErrors();
 
     $item->refresh();
@@ -273,6 +291,214 @@ test('manager can create menu categories dishes and upload local dish photo', fu
     Storage::disk('public')->assertMissing($imagePath);
 });
 
+test('menu item image gallery uploads several images only inside dish editing', function () {
+    Storage::fake('public');
+    Storage::fake('local');
+    config(['livewire.temporary_file_upload.disk' => 'local']);
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['name' => 'Gallery pasta']);
+    $parameters = [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ];
+
+    Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, $parameters)
+        ->assertDontSee('id="item-images-'.$item->id.'"', false)
+        ->call('startEditingItem', $item->id)
+        ->assertSee('id="item-images-'.$item->id.'"', false)
+        ->assertSee('multiple', false)
+        ->set('itemImageUploads.'.$item->id, [
+            UploadedFile::fake()->image('pasta-front.jpg')->size(100),
+            UploadedFile::fake()->image('pasta-side.png')->size(100),
+            UploadedFile::fake()->image('pasta-detail.webp')->size(100),
+        ])
+        ->call('saveItemImages', $item->id)
+        ->assertHasNoErrors()
+        ->assertSet('itemImageUploads', [])
+        ->assertSee('wire:key="menu-item-'.$item->id.'-image-primary-'.$item->id.'"', false)
+        ->assertSeeText(__('uploads.labels.primary_image'))
+        ->assertSeeText(__('uploads.actions.make_primary'));
+
+    expect($item->refresh()->image)->not->toBeNull()
+        ->and($item->galleryImages()->pluck('sort_order')->all())->toBe([0, 1])
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(3);
+});
+
+test('menu item image gallery enforces the aggregate limit on the exact livewire field', function () {
+    Storage::fake('public');
+    Storage::fake('local');
+    config(['livewire.temporary_file_upload.disk' => 'local']);
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create([
+        'image' => 'media/existing/primary.jpg',
+    ]);
+    Storage::disk('public')->put($item->image, 'primary');
+
+    foreach (range(0, 6) as $sortOrder) {
+        $path = 'media/existing/gallery-'.$sortOrder.'.jpg';
+        MenuItemImage::factory()->for($item, 'item')->create(['path' => $path, 'sort_order' => $sortOrder]);
+        Storage::disk('public')->put($path, 'gallery');
+    }
+
+    Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, [
+            'organizationId' => $organization->id,
+            'brandId' => $brand->id,
+            'branchId' => $branch->id,
+        ])
+        ->call('startEditingItem', $item->id)
+        ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('ninth.jpg')->size(100)])
+        ->call('saveItemImages', $item->id)
+        ->assertHasErrors(['itemImageUploads.'.$item->id]);
+
+    expect($item->galleryImages()->count())->toBe(7)
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(MenuItem::MAX_IMAGES);
+});
+
+test('menu item image gallery livewire actions promote and remove owned images', function () {
+    Storage::fake('public');
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $primaryPath = 'media/existing/primary.jpg';
+    $promotedPath = 'media/existing/promoted.jpg';
+    $removedPath = 'media/existing/removed.jpg';
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => $primaryPath]);
+    $promoted = MenuItemImage::factory()->for($item, 'item')->create(['path' => $promotedPath, 'sort_order' => 0]);
+    $removed = MenuItemImage::factory()->for($item, 'item')->create(['path' => $removedPath, 'sort_order' => 1]);
+
+    foreach ([$primaryPath, $promotedPath, $removedPath] as $path) {
+        Storage::disk('public')->put($path, $path);
+    }
+
+    $component = Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, [
+            'organizationId' => $organization->id,
+            'brandId' => $brand->id,
+            'branchId' => $branch->id,
+        ])
+        ->call('startEditingItem', $item->id)
+        ->call('promoteItemImage', $item->id, $promoted->id)
+        ->assertHasNoErrors();
+
+    expect($item->refresh()->image)->toBe($promotedPath)
+        ->and($promoted->refresh()->path)->toBe($primaryPath);
+
+    $component
+        ->call('removeItemGalleryImage', $item->id, $removed->id)
+        ->assertHasNoErrors()
+        ->assertDispatched('modal-close')
+        ->call('removeItemImage', $item->id)
+        ->assertHasNoErrors()
+        ->assertDispatched('modal-close');
+
+    expect($item->refresh()->image)->toBe($primaryPath)
+        ->and($item->galleryImages()->exists())->toBeFalse();
+    Storage::disk('public')->assertMissing([$promotedPath, $removedPath]);
+    Storage::disk('public')->assertExists($primaryPath);
+});
+
+test('menu item image gallery rejects tampered branch records without storing files', function () {
+    Storage::fake('public');
+    Storage::fake('local');
+    config(['livewire.temporary_file_upload.disk' => 'local']);
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    [, , $foreignBranch] = createMenuCrudBranch('Foreign Restaurant');
+    $foreignMenu = Menu::factory()->for($foreignBranch)->create();
+    $foreignCategory = MenuCategory::factory()->for($foreignMenu)->create();
+    $foreignItem = MenuItem::factory()->for($foreignMenu)->for($foreignCategory, 'category')->create();
+    $component = Livewire::actingAs($manager)->test(MenuCatalog::class, [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ]);
+
+    $rejected = false;
+
+    try {
+        $component
+            ->set('itemImageUploads.'.$foreignItem->id, [UploadedFile::fake()->image('foreign.jpg')->size(100)])
+            ->call('saveItemImages', $foreignItem->id);
+    } catch (Throwable) {
+        $rejected = true;
+    }
+
+    expect($rejected)->toBeTrue()
+        ->and($foreignItem->refresh()->image)->toBeNull()
+        ->and(Storage::disk('public')->allFiles())->toBe([]);
+});
+
+test('menu item image gallery is eager loaded with one bounded query', function () {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $items = MenuItem::factory()->count(3)->for($menu)->for($category, 'category')->create();
+
+    foreach ($items as $item) {
+        MenuItemImage::factory()->count(2)->for($item, 'item')->sequence(
+            ['sort_order' => 0],
+            ['sort_order' => 1],
+        )->create();
+    }
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    Livewire::actingAs($manager)->test(MenuCatalog::class, [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ])->assertOk();
+
+    $galleryQueries = collect(DB::getQueryLog())->filter(
+        fn (array $query): bool => str_contains($query['query'], 'menu_item_images'),
+    );
+    DB::disableQueryLog();
+
+    expect($galleryQueries)->toHaveCount(1);
+});
+
+test('menu item image gallery translations keep en lt and ru placeholders aligned', function () {
+    $keys = [
+        'uploads.actions.make_primary',
+        'uploads.errors.maximum_images',
+        'uploads.labels.image_count',
+        'uploads.labels.image_position',
+        'uploads.labels.multiple_images',
+        'uploads.labels.primary_image',
+        'uploads.labels.up_to_images',
+        'uploads.messages.images_uploaded',
+        'uploads.messages.primary_changed',
+    ];
+    $translations = collect(['en', 'lt', 'ru'])->mapWithKeys(function (string $locale): array {
+        $values = json_decode(File::get(lang_path($locale.'.json')), true, 512, JSON_THROW_ON_ERROR);
+
+        return [$locale => $values];
+    });
+
+    foreach ($keys as $key) {
+        $placeholderSets = $translations->map(function (array $values) use ($key): array {
+            expect($values)->toHaveKey($key);
+            preg_match_all('/:[A-Za-z_][A-Za-z0-9_]*/', (string) $values[$key], $matches);
+
+            return array_values(array_unique($matches[0]));
+        })->values();
+
+        expect($placeholderSets->unique()->count())->toBe(1, $key.' placeholders must match.');
+    }
+});
+
 test('menu item allergen and dietary selections reject unknown values and normalize updates', function () {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
@@ -296,6 +522,9 @@ test('menu item allergen and dietary selections reject unknown values and normal
         ->assertSeeText('Gluten-containing cereals')
         ->assertSeeText('Dietary labels')
         ->call('startEditingItem', $item->id)
+        ->set('editingItemTranslations.en.name', 'Dish')
+        ->set('editingItemTranslations.lt.name', 'Patiekalas')
+        ->set('editingItemTranslations.ru.name', 'Блюдо')
         ->assertSet('editingItemAllergens', ['eggs'])
         ->assertSet('editingItemDietaryLabels', ['vegetarian'])
         ->set('editingItemAllergens', ['unknown-allergen'])
@@ -337,6 +566,9 @@ test('manager can manage modifier groups options and item assignments', function
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('modifierGroupName', 'Pizza size')
+        ->set('modifierGroupTranslations.en', 'Pizza size')
+        ->set('modifierGroupTranslations.lt', 'Picos dydis')
+        ->set('modifierGroupTranslations.ru', 'Размер пиццы')
         ->set('modifierGroupIsRequired', true)
         ->set('modifierGroupMinSelect', 1)
         ->set('modifierGroupMaxSelect', 1)
@@ -352,12 +584,21 @@ test('manager can manage modifier groups options and item assignments', function
 
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 
+    expect($group->translations()->orderBy('language_code')->pluck('name', 'language_code')->all())->toBe([
+        'en' => 'Pizza size',
+        'lt' => 'Picos dydis',
+        'ru' => 'Размер пиццы',
+    ]);
+
     app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
 
     Livewire::actingAs($manager)
         ->test(MenuModifiers::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->set('modifierOptionGroupId', (string) $group->id)
         ->set('modifierOptionName', 'Large')
+        ->set('modifierOptionTranslations.en', 'Large')
+        ->set('modifierOptionTranslations.lt', 'Didelė')
+        ->set('modifierOptionTranslations.ru', 'Большая')
         ->set('modifierOptionPriceDelta', '3.50')
         ->set('modifierOptionIsAvailable', true)
         ->set('modifierOptionSortOrder', 20)
@@ -371,6 +612,11 @@ test('manager can manage modifier groups options and item assignments', function
         ->firstOrFail();
 
     expect($option->price_delta_cents)->toBe(350)
+        ->and($option->translations()->orderBy('language_code')->pluck('name', 'language_code')->all())->toBe([
+            'en' => 'Large',
+            'lt' => 'Didelė',
+            'ru' => 'Большая',
+        ])
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse();
 
     app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
@@ -504,15 +750,20 @@ test('price and availability changes require dedicated permissions', function ()
         ->assertSet('canChangePrices', false)
         ->assertSet('canChangeAvailability', false)
         ->call('startEditingItem', $item->id)
+        ->set('editingItemTranslations.en.name', 'Soup')
+        ->set('editingItemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemTranslations.ru.name', 'Суп')
         ->set('editingItemPrice', '99.99')
         ->set('editingItemIsAvailable', false)
+        ->set('editingItemHiddenUntil', now($branch->timezone)->addHours(2)->format('Y-m-d\TH:i'))
         ->call('updateItem')
         ->assertHasNoErrors();
 
     $item->refresh();
 
     expect($item->price_cents)->toBe(800)
-        ->and($item->is_available)->toBeTrue();
+        ->and($item->is_available)->toBeTrue()
+        ->and($item->hidden_until)->toBeNull();
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
@@ -523,22 +774,29 @@ test('price and availability changes require dedicated permissions', function ()
         SystemPermission::ChangePrices,
         SystemPermission::ChangeAvailability,
     ]);
+    $hiddenUntil = now($branch->timezone)->addHours(2)->seconds(0)->format('Y-m-d\TH:i');
 
     Livewire::actingAs($manager->fresh())
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->assertSet('canChangePrices', true)
         ->assertSet('canChangeAvailability', true)
         ->call('startEditingItem', $item->id)
+        ->set('editingItemTranslations.en.name', 'Soup')
+        ->set('editingItemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemTranslations.ru.name', 'Суп')
         ->set('editingItemPrice', '9.50')
         ->set('editingItemIsAvailable', false)
+        ->set('editingItemHiddenUntil', $hiddenUntil)
         ->call('updateItem')
         ->assertHasNoErrors()
-        ->assertSee('Unavailable');
+        ->assertSee('Unavailable')
+        ->assertSeeText(__('menu.admin.hidden_until_value', ['date' => $hiddenUntil]));
 
     $item->refresh();
 
     expect($item->price_cents)->toBe(950)
-        ->and($item->is_available)->toBeFalse();
+        ->and($item->is_available)->toBeFalse()
+        ->and($item->hidden_until?->setTimezone($branch->timezone)->format('Y-m-d\TH:i'))->toBe($hiddenUntil);
 
     Livewire::actingAs($manager->fresh())
         ->test(MenuAvailability::class, [
@@ -710,6 +968,9 @@ test('manager can delete dishes categories and menus while cleaning local dish p
     Storage::disk('public')->put($firstItem->image, 'first');
     Storage::disk('public')->put($secondItem->image, 'second');
     Storage::disk('public')->put($nestedItem->image, 'nested');
+    $firstGalleryPaths = createStoredMenuItemGallery($firstItem, 'first');
+    $secondGalleryPaths = createStoredMenuItemGallery($secondItem, 'second');
+    $nestedGalleryPaths = createStoredMenuItemGallery($nestedItem, 'nested');
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
@@ -717,8 +978,9 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->assertHasNoErrors();
 
     expect(MenuItem::query()->whereKey($firstItem->id)->exists())->toBeFalse()
-        ->and(MenuItem::withTrashed()->findOrFail($firstItem->id)->trashed())->toBeTrue();
-    Storage::disk('public')->assertMissing($firstItem->image);
+        ->and(MenuItem::withTrashed()->findOrFail($firstItem->id)->trashed())->toBeTrue()
+        ->and(MenuItemImage::query()->where('menu_item_id', $firstItem->id)->exists())->toBeFalse();
+    Storage::disk('public')->assertMissing([$firstItem->image, ...$firstGalleryPaths]);
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
@@ -729,9 +991,14 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->and(MenuItem::query()->whereKey($secondItem->id)->exists())->toBeFalse()
         ->and(MenuItem::query()->whereKey($nestedItem->id)->exists())->toBeFalse()
         ->and(MenuCategory::withTrashed()->findOrFail($category->id)->trashed())->toBeTrue()
-        ->and(MenuItem::withTrashed()->findOrFail($secondItem->id)->trashed())->toBeTrue();
-    Storage::disk('public')->assertMissing($secondItem->image);
-    Storage::disk('public')->assertMissing($nestedItem->image);
+        ->and(MenuItem::withTrashed()->findOrFail($secondItem->id)->trashed())->toBeTrue()
+        ->and(MenuItemImage::query()->whereIn('menu_item_id', [$secondItem->id, $nestedItem->id])->exists())->toBeFalse();
+    Storage::disk('public')->assertMissing([
+        $secondItem->image,
+        $nestedItem->image,
+        ...$secondGalleryPaths,
+        ...$nestedGalleryPaths,
+    ]);
 
     $remainingCategory = MenuCategory::factory()->for($menu)->create(['name' => 'Remaining Category']);
     $remainingItem = MenuItem::factory()
@@ -742,6 +1009,7 @@ test('manager can delete dishes categories and menus while cleaning local dish p
             'image' => 'media/test/remaining-cleanup.jpg',
         ]);
     Storage::disk('public')->put($remainingItem->image, 'remaining');
+    $remainingGalleryPaths = createStoredMenuItemGallery($remainingItem, 'remaining');
 
     Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
@@ -753,8 +1021,9 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->and(MenuItem::query()->whereKey($remainingItem->id)->exists())->toBeFalse()
         ->and(Menu::withTrashed()->findOrFail($menu->id)->trashed())->toBeTrue()
         ->and(MenuCategory::withTrashed()->findOrFail($remainingCategory->id)->trashed())->toBeTrue()
-        ->and(MenuItem::withTrashed()->findOrFail($remainingItem->id)->trashed())->toBeTrue();
-    Storage::disk('public')->assertMissing($remainingItem->image);
+        ->and(MenuItem::withTrashed()->findOrFail($remainingItem->id)->trashed())->toBeTrue()
+        ->and(MenuItemImage::query()->where('menu_item_id', $remainingItem->id)->exists())->toBeFalse();
+    Storage::disk('public')->assertMissing([$remainingItem->image, ...$remainingGalleryPaths]);
 });
 
 test('branch must belong to route brand and organization on menu page', function () {
@@ -811,4 +1080,22 @@ function grantMenuCrudPermissions(User $user, Organization $organization, array 
     foreach ($permissionRows as $permission) {
         $membership->role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);
     }
+}
+
+/** @return list<string> */
+function createStoredMenuItemGallery(MenuItem $item, string $prefix): array
+{
+    $paths = [];
+
+    foreach (range(0, 1) as $sortOrder) {
+        $path = 'media/test/'.$prefix.'-gallery-'.$sortOrder.'.jpg';
+        MenuItemImage::factory()->for($item, 'item')->create([
+            'path' => $path,
+            'sort_order' => $sortOrder,
+        ]);
+        Storage::disk('public')->put($path, $path);
+        $paths[] = $path;
+    }
+
+    return $paths;
 }

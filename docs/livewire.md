@@ -1,6 +1,6 @@
 # Livewire 4
 
-All interactive UI uses 54 class-based components under `app/Livewire` (51 concrete and 3 abstract) with separate templates under `resources/views/livewire`. One dedicated Livewire Form object owns the substantial onboarding form state and rules. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
+All interactive UI uses class-based components under `app/Livewire` with separate templates under `resources/views/livewire`. One dedicated Livewire Form object owns the substantial onboarding form state and rules. The restaurant wizard persists a user-owned checkpoint, keeps only its identifier and selected step as locked public state, reauthorizes the checkpoint on every hydration, and derives all domain IDs, progress, counts and URLs through a read service that scopes each relation before hydration. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
 
 ## Component contract
 
@@ -19,7 +19,7 @@ All interactive UI uses 54 class-based components under `app/Livewire` (51 concr
 | Feature | Used / not applicable | Location / reason | Performance effect | Accessibility effect / tests |
 |---|---|---|---|---|
 | `#[Computed]` | used | menu, area, service-point, settings, audit, superadmin and setup components | derived payload is not duplicated in mutable state | consistent rendered values; component tests |
-| `#[Locked]` | used | permissions, public QR children, settings security, waiter detail | narrows tampering/hydration surface | direct-mutation tests still authorize |
+| `#[Locked]` | used | onboarding checkpoint/step, permissions, public QR children, settings security, waiter detail | narrows tampering/hydration surface | direct-mutation tests still reload scoped resources and authorize |
 | `#[Url]` | used | QR print/service-point filters, guest menu/search and QR state | restores shareable filters without extra persistence | stable back/forward state tests |
 | `#[Layout]` | used | guest and print page classes | server-selected layouts without SFC logic | correct landmarks/print semantics |
 | `#[Isolate]` | used | guest draft totals/orders/join/notification/status/table regions | independent polls do not block one another | precise non-disruptive busy regions |
@@ -31,9 +31,9 @@ All interactive UI uses 54 class-based components under `app/Livewire` (51 concr
 | `#[Transition]` / `wire:stream` | not applicable | no orientation/progressive-output need outweighs motion/long-request cost | avoids decorative/prolonged work | reduced-motion remains simple |
 | `wire:navigate` / `@persist` | used | same-origin navigation and the global toast host | avoids full reload; no auth-sensitive server DOM persisted | titles/landmarks/focus checked repeatedly |
 | `wire:poll` | used | waiter/kitchen/public status/notification regions | bounded isolated updates | non-blocking localized status |
-| `wire:loading`, `wire:target`, `wire:cloak` | used | forms and guest/staff mutations | prevents duplicate requests and broad busy state | precise action feedback and no initial flicker |
+| `wire:loading`, `wire:target`, `wire:cloak` | used | forms, restaurant onboarding and guest/staff mutations | prevents duplicate requests and broad busy state | onboarding scopes `aria-busy`, button disabling and a polite status message to the exact mutation; no initial flicker |
 | `wire:offline` | used in authenticated `OfflineIndicator`; Alpine equivalent on guest/auth layouts | Livewire is restricted to bearer-free authenticated URLs so its snapshot cannot serialize invitation/reset URLs; guest/auth layouts observe browser connectivity without a server snapshot | no server request; connection state is client-observed | equivalent localized polite `role=status`; both paths browser-verified |
-| `wire:dirty` | not applicable | recoverable forms preserve server-confirmed values; no autosave flow needs a second dirty banner | avoids duplicate status | n/a |
+| `wire:dirty` | not applicable | onboarding uses deferred fields and explicit transactional step saves; an unrelated navigation request can synchronize the client snapshot without persisting the current form, so a dirty marker would misrepresent durable save state | avoids duplicate or misleading status | explicit save/loading feedback remains authoritative |
 | `wire:confirm` | not used | destructive operations require richer localized Flux dialogs with reason/typed confirmation | avoids native-dialog limits | modal focus/name tests |
 | `wire:sort` | not used | existing ordering inputs/actions are keyboard-operable; drag/drop offers no required benefit | avoids extra mutation/race contract | keyboard path remains primary |
 | `wire:ignore` | not applicable in first-party views | Flux owns its internal integration; no third-party widget needs a morph exclusion | avoids stale DOM | n/a |

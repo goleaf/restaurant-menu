@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\AreaNodes\DeleteAreaNodeAction;
+use App\Actions\AreaNodes\RestoreAreaNodeAction;
 use App\Actions\AreaNodes\SetAreaNodeActiveAction;
 use App\Actions\AreaNodes\UpdateAreaNodeAction;
 use App\Enums\AreaNodeType;
@@ -18,6 +19,7 @@ use App\Services\Branches\AreaNodeQueryService;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -25,10 +27,16 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Areas extends Component
 {
+    use WithPagination;
+
+    private const PER_PAGE = 15;
+
     private AreaNodeQueryService $areaNodeQueries;
 
     public Organization $organization;
@@ -36,6 +44,21 @@ class Areas extends Component
     public Brand $brand;
 
     public Branch $branch;
+
+    #[Url(as: 'lifecycle', except: 'active')]
+    public string $lifecycle = 'active';
+
+    #[Url(as: 'q', except: '')]
+    public string $areaSearch = '';
+
+    #[Url(as: 'type', except: 'all')]
+    public string $filterType = 'all';
+
+    #[Url(as: 'active', except: 'all')]
+    public string $filterActive = 'all';
+
+    #[Url(as: 'sort', except: 'position')]
+    public string $sort = 'position';
 
     public string $name = '';
 
@@ -124,7 +147,7 @@ class Areas extends Component
         $createAreaNode->handle($this->branch, $this->areaNodePayload($validated));
 
         $this->resetCreateForm();
-        unset($this->areaNodes, $this->treeNodes);
+        $this->forgetAreaDisplays();
 
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_added'));
     }
@@ -183,7 +206,7 @@ class Areas extends Component
         }
 
         $this->cancelEditing();
-        unset($this->areaNodes, $this->treeNodes);
+        $this->forgetAreaDisplays();
 
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_updated'));
     }
@@ -221,12 +244,71 @@ class Areas extends Component
             return;
         }
 
-        $deleteAreaNode->handle($this->findBranchAreaNode($this->deletingAreaNodeId));
+        $deleteAreaNode->handle(
+            $this->currentUser(),
+            $this->branch,
+            $this->findBranchAreaNode($this->deletingAreaNodeId),
+        );
 
         $this->cancelDelete();
-        unset($this->areaNodes, $this->treeNodes);
+        $this->forgetAreaDisplays();
 
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.areas.area_removed'));
+        Flux::toast(variant: 'success', text: __('structure.messages.archived'));
+    }
+
+    public function restore(int $areaNodeId, RestoreAreaNodeAction $restoreAreaNode): void
+    {
+        $restoreAreaNode->handle(
+            $this->currentUser(),
+            $this->branch,
+            $this->areaNodeQueries->findForBranch($this->branch, $areaNodeId, true),
+        );
+
+        $this->forgetAreaDisplays();
+
+        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
+    }
+
+    public function updatedLifecycle(): void
+    {
+        if (! in_array($this->lifecycle, ['active', 'archived'], true)) {
+            $this->lifecycle = 'active';
+        }
+
+        $this->resetPage(pageName: 'areasPage');
+        $this->forgetAreaDisplays();
+    }
+
+    public function updatedAreaSearch(): void
+    {
+        $this->resetAreaPage();
+    }
+
+    public function updatedFilterType(): void
+    {
+        if ($this->filterType !== 'all' && ! in_array($this->filterType, AreaNodeType::values(), true)) {
+            $this->filterType = 'all';
+        }
+
+        $this->resetAreaPage();
+    }
+
+    public function updatedFilterActive(): void
+    {
+        if (! in_array($this->filterActive, ['all', 'active', 'inactive'], true)) {
+            $this->filterActive = 'all';
+        }
+
+        $this->resetAreaPage();
+    }
+
+    public function updatedSort(): void
+    {
+        if (! in_array($this->sort, ['position', 'name_asc', 'name_desc', 'newest', 'oldest'], true)) {
+            $this->sort = 'position';
+        }
+
+        $this->resetAreaPage();
     }
 
     /**
@@ -238,13 +320,30 @@ class Areas extends Component
         return $this->areaNodeQueries->forBranch($this->branch);
     }
 
+    /** @return Paginator<int, AreaNode> */
+    #[Computed]
+    public function displayedAreaNodes(): Paginator
+    {
+        return $this->areaNodeQueries->paginateForBranch(
+            $this->branch,
+            [
+                'search' => $this->areaSearch,
+                'type' => $this->filterType,
+                'active' => $this->filterActive,
+                'lifecycle' => $this->lifecycle,
+                'sort' => $this->sort,
+            ],
+            self::PER_PAGE,
+        );
+    }
+
     /**
-     * @return list<array{id: int, name: string, type: string, type_label: string, icon: string|null, sort_order: int, is_active: bool, depth: int, children: list<array>}>
+     * @return list<array{id: int, name: string, type: string, type_label: string, icon: string|null, sort_order: int, is_active: bool, is_archived: bool, depth: int, children: list<array>}>
      */
     #[Computed]
     public function treeNodes(): array
     {
-        return $this->buildTree($this->areaNodes());
+        return $this->buildTree(new EloquentCollection($this->displayedAreaNodes()->getCollection()->all()));
     }
 
     /**
@@ -292,7 +391,7 @@ class Areas extends Component
 
         return array_merge(
             [['value' => '', 'label' => __('ui.livewire.organizations.brands.branches.areas.top_level')]],
-            $this->flattenParentOptions($this->treeNodes(), $blockedIds),
+            $this->flattenParentOptions($this->buildTree($this->areaNodes()), $blockedIds),
         );
     }
 
@@ -306,6 +405,7 @@ class Areas extends Component
             'parentOptions' => $this->parentOptions(),
             'editingParentOptions' => $this->parentOptions($this->editingAreaNodeId),
             'treeNodes' => $this->treeNodes(),
+            'areaNodesPaginator' => $this->displayedAreaNodes(),
         ])->title(__('ui.organizations.brands.branches.areas.zony_restorana'));
     }
 
@@ -373,13 +473,17 @@ class Areas extends Component
 
     /**
      * @param  EloquentCollection<int, AreaNode>  $nodes
-     * @return list<array{id: int, name: string, type: string, type_label: string, icon: string|null, sort_order: int, is_active: bool, depth: int, children: list<array>}>
+     * @return list<array{id: int, name: string, type: string, type_label: string, icon: string|null, sort_order: int, is_active: bool, is_archived: bool, depth: int, children: list<array>}>
      */
     private function buildTree(EloquentCollection $nodes, ?int $parentId = null, int $depth = 0): array
     {
         $tree = [];
+        $visibleIds = $nodes->pluck('id');
+        $currentNodes = $parentId === null
+            ? $nodes->filter(fn (AreaNode $node): bool => $node->parent_id === null || ! $visibleIds->contains($node->parent_id))
+            : $nodes->where('parent_id', $parentId);
 
-        foreach ($nodes->where('parent_id', $parentId) as $node) {
+        foreach ($currentNodes as $node) {
             $tree[] = [
                 'id' => $node->id,
                 'name' => $node->name,
@@ -388,6 +492,7 @@ class Areas extends Component
                 'icon' => $node->icon ?? $this->defaultIconForType($node->type),
                 'sort_order' => $node->sort_order,
                 'is_active' => $node->is_active,
+                'is_archived' => $node->trashed(),
                 'depth' => $depth,
                 'children' => $this->buildTree($nodes, $node->id, $depth + 1),
             ];
@@ -506,7 +611,7 @@ class Areas extends Component
         $areaNode = $this->findBranchAreaNode($areaNodeId);
         $setActive->handle($areaNode, $isActive);
 
-        unset($this->areaNodes, $this->treeNodes);
+        $this->forgetAreaDisplays();
     }
 
     private function findBranchAreaNode(int $areaNodeId): AreaNode
@@ -517,6 +622,17 @@ class Areas extends Component
     private function authorizeZoneManagement(): void
     {
         Gate::forUser($this->currentUser())->authorize('manageZones', $this->branch);
+    }
+
+    private function resetAreaPage(): void
+    {
+        $this->resetPage(pageName: 'areasPage');
+        $this->forgetAreaDisplays();
+    }
+
+    private function forgetAreaDisplays(): void
+    {
+        unset($this->areaNodes, $this->displayedAreaNodes, $this->treeNodes);
     }
 
     private function currentUser(): User

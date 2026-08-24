@@ -11,6 +11,7 @@ use App\Enums\OrderStatusLogEvent;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Models\DraftOrderItem;
+use App\Models\MenuItem;
 use App\Models\TableSessionGuest;
 use App\Support\PlainText;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class UpdateGuestDraftOrderItemAction
     public function __construct(
         private readonly CalculateDraftOrderLinePrice $calculateLinePrice,
         private readonly CreateOrderStatusLogAction $createOrderStatusLog,
+        private readonly EnsureDraftMenuItemAvailableAction $ensureMenuItemAvailable,
     ) {}
 
     /**
@@ -33,14 +35,27 @@ class UpdateGuestDraftOrderItemAction
         array $selectedModifierOptions,
         ?int $menuItemVariantId = null,
         ?string $comment = null,
+        ?string $languageCode = null,
     ): DraftOrderItem {
-        return DB::transaction(function () use ($draftOrderItem, $guest, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment): DraftOrderItem {
+        return DB::transaction(function () use ($draftOrderItem, $guest, $quantity, $selectedModifierOptions, $menuItemVariantId, $comment, $languageCode): DraftOrderItem {
             $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
             $guest = $this->reloadGuest($guest);
             $this->ensureGuestCanEditItem($draftOrderItem, $guest);
+            $menuItem = $draftOrderItem->menuItem;
+
+            if (! $menuItem instanceof MenuItem) {
+                throw ValidationException::withMessages([
+                    'draft_item' => __('menu.guest.item_no_longer_available'),
+                ]);
+            }
+
+            $this->ensureMenuItemAvailable->handle(
+                $menuItem,
+                (int) $draftOrderItem->draftOrder->tableSession->branch_id,
+            );
 
             $quantity = $this->normalizeQuantity($quantity);
-            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
+            $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId, $languageCode);
 
             $draftOrderItem->update([
                 'quantity' => $quantity,
@@ -101,6 +116,7 @@ class UpdateGuestDraftOrderItemAction
                     ->with([
                         'tableSession' => fn ($tableSessionQuery) => $tableSessionQuery->select([
                             'id',
+                            'branch_id',
                             'service_point_id',
                             'status',
                             'ended_at',
@@ -112,7 +128,23 @@ class UpdateGuestDraftOrderItemAction
                                 ]),
                             ]),
                     ]),
-                'menuItem' => fn ($query) => $query->select(['id']),
+                'menuItem' => fn ($query) => $query
+                    ->select(['id', 'menu_id', 'category_id', 'is_available', 'hidden_until'])
+                    ->with([
+                        'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'is_active']),
+                        'menu' => fn ($menuQuery) => $menuQuery
+                            ->select(['id', 'branch_id', 'status'])
+                            ->with([
+                                'branch' => fn ($branchQuery) => $branchQuery->select(['id', 'timezone']),
+                                'availabilitySchedules' => fn ($scheduleQuery) => $scheduleQuery->select([
+                                    'id',
+                                    'menu_id',
+                                    'day_of_week',
+                                    'starts_at',
+                                    'ends_at',
+                                ]),
+                            ]),
+                    ]),
             ])
             ->whereKey($draftOrderItem->id)
             ->firstOrFail();

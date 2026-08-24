@@ -58,6 +58,8 @@ test('waiter sees table detail with guests positions modifiers comments and tota
     Livewire::actingAs($waiter)
         ->test(TableDetail::class, ['tableSession' => $tableSession])
         ->assertSet('tableSessionId', $tableSession->id)
+        ->assertSee('data-table-context-header', false)
+        ->assertSee('data-table-summary', false)
         ->assertSee($organization->name)
         ->assertSee($branch->name)
         ->assertSee('Main Hall')

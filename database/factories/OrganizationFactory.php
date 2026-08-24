@@ -36,6 +36,13 @@ class OrganizationFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'deleted_at' => now()->subDay(),
+        ]);
+    }
+
     public function withBrands(int $count = 1): static
     {
         return $this->afterCreating(function (Organization $organization) use ($count): void {

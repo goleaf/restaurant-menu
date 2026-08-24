@@ -3,7 +3,7 @@
 use App\Actions\AreaNodes\CreateAreaNodeAction;
 use App\Actions\Branches\CreateBranchAction;
 use App\Actions\Brands\CreateBrandAction;
-use App\Actions\Onboarding\CreateStarterMenuAction;
+use App\Actions\Onboarding\SaveOnboardingStarterMenuAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
@@ -44,6 +44,7 @@ use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\QrCode;
+use App\Models\RestaurantOnboarding;
 use App\Models\Role;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
@@ -97,12 +98,25 @@ test('first vertical slice works from authenticated owner setup to closed table 
     ]);
 
     $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $owner);
-    $starterMenu = app(CreateStarterMenuAction::class)->handle($branch, [
+    $onboarding = RestaurantOnboarding::factory()->for($owner)->create();
+    $onboarding->forceFill([
+        'organization_id' => $organization->id,
+        'brand_id' => $brand->id,
+        'branch_id' => $branch->id,
+        'area_node_id' => $areaNode->id,
+    ])->saveOrFail();
+    $onboarding->servicePoints()->attach($servicePoint->id, ['position' => 1]);
+    $onboarding = app(SaveOnboardingStarterMenuAction::class)->handle($owner, $onboarding->id, [
         'menu_name' => 'Vertical Menu',
         'category_name' => 'Main',
         'item_name' => 'Vertical Pizza',
         'item_price' => '12.00',
     ]);
+    $starterMenu = [
+        'menu' => $onboarding->menu()->firstOrFail(),
+        'category' => $onboarding->menuCategory()->firstOrFail(),
+        'item' => $onboarding->menuItem()->firstOrFail(),
+    ];
     $pizza = $starterMenu['item']->refresh();
     $barItem = createVerticalSliceBarItem($branch->id, $starterMenu['category']->id);
 

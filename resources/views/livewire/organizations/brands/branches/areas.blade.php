@@ -15,6 +15,7 @@
         </div>
     </header>
 
+    @if ($lifecycle === 'active')
     <x-ui.card
         :heading="__('ui.organizations.brands.branches.areas.sag_2_dobavte_zony')"
         :description="__('ui.organizations.brands.branches.areas.nazmite_gotovyi_variant_vpisite_nazv')"
@@ -68,13 +69,43 @@
             </div>
         </form>
     </x-ui.card>
+    @endif
 
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <flux:heading size="lg">{{ __('ui.organizations.brands.branches.areas.spisok_zon') }}</flux:heading>
+            <div class="grid gap-3 lg:grid-cols-5">
+                <flux:heading size="lg">{{ __('ui.organizations.brands.branches.areas.spisok_zon') }}</flux:heading>
+                <flux:input wire:model.live.debounce.300ms="areaSearch" :label="__('layout.search')" type="search" autocomplete="off" />
+                <flux:select wire:model.live="filterType" :label="__('ui.organizations.brands.branches.service_points.index.tip')">
+                    <flux:select.option value="all">{{ __('ui.organizations.brands.branches.service_points.index.all_types') }}</flux:select.option>
+                    @foreach ($areaTypeOptions as $value => $label)
+                        <flux:select.option wire:key="area-filter-type-{{ $value }}" value="{{ $value }}">{{ __($label) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterActive" :label="__('ui.organizations.brands.branches.service_points.index.aktivnost')">
+                    <flux:select.option value="all">{{ __('ui.livewire.organizations.brands.branches.servicepoints.index.all_places') }}</flux:select.option>
+                    <flux:select.option value="active">{{ __('ui.livewire.organizations.brands.branches.servicepoints.index.active_only') }}</flux:select.option>
+                    <flux:select.option value="inactive">{{ __('ui.livewire.organizations.brands.branches.servicepoints.index.inactive_only') }}</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="lifecycle" :label="__('structure.filters.lifecycle')">
+                    <flux:select.option value="active">{{ __('structure.filters.active') }}</flux:select.option>
+                    <flux:select.option value="archived">{{ __('structure.filters.archived') }}</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="sort" :label="__('structure.filters.sort')">
+                    <flux:select.option value="position">{{ __('structure.sort.position') }}</flux:select.option>
+                    <flux:select.option value="name_asc">{{ __('structure.sort.name_asc') }}</flux:select.option>
+                    <flux:select.option value="name_desc">{{ __('structure.sort.name_desc') }}</flux:select.option>
+                    <flux:select.option value="newest">{{ __('structure.sort.newest') }}</flux:select.option>
+                    <flux:select.option value="oldest">{{ __('structure.sort.oldest') }}</flux:select.option>
+                </flux:select>
+            </div>
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            @error('structureDeletion')
+                <div role="alert" class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{{ $message }}</div>
+            @enderror
+
             @forelse ($treeNodes as $node)
                 @include('livewire.organizations.brands.branches.area-node-row', ['node' => $node])
             @empty
@@ -82,11 +113,17 @@
                     <x-ui.empty-state
                         icon="squares-2x2"
                         :heading="__('ui.empty.no_areas')"
-                        :description="__('areas.empty.no_areas_description')"
+                        :description="$lifecycle === 'archived' ? __('structure.empty.archived') : __('areas.empty.no_areas_description')"
                     />
                     <span class="sr-only">{{ __('ui.empty.no_areas') }}</span>
                 </div>
             @endforelse
         </div>
+
+        @if ($areaNodesPaginator->hasPages())
+            <div class="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                {{ $areaNodesPaginator->links() }}
+            </div>
+        @endif
     </x-ui.card>
 </section>

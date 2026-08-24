@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\ModifierOption;
 use App\Models\User;
 use App\Support\MoneyFormatter;
+use App\Support\PlainText;
 use Illuminate\Support\Facades\Gate;
 
 final class BuildModifierOptionAttributesAction
@@ -22,7 +23,7 @@ final class BuildModifierOptionAttributesAction
         $existingAvailability = $existing instanceof ModifierOption ? $existing->is_available : true;
 
         return [
-            'name' => $data['name'],
+            'name' => PlainText::required($data['name'], 160, squish: true),
             'price_delta_cents' => Gate::forUser($actor)->allows('changeMenuPrices', $branch)
                 ? MoneyFormatter::decimalToCents($data['price_delta'] ?? 0)
                 : $existingPriceCents,

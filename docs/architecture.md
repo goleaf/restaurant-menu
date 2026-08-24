@@ -18,15 +18,16 @@ Blade is a terminal presentation boundary: it may render escaped prepared values
 
 ## Verified implementation inventory
 
-The refreshed 2026-08-23 completion audit observed 43 first-party Eloquent models with 43 factories, 177 focused Action classes, 54 class-based Livewire components (51 concrete and 3 abstract), one Livewire Form object, 16 policies, 73 forward migrations, and 123 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
+The refreshed 2026-08-24 inventory observes 45 first-party Eloquent models with 45 factories, 194 classes in the focused Action namespace, 55 class-based Livewire components (52 concrete and 3 abstract), two Livewire Form objects, 18 policies, 80 forward migrations, and 129 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
 
 ## Domain modules
 
 | Module | Responsibilities | Principal code |
 |---|---|---|
-| Identity and access | Fortify login, passkeys, 2FA, organization membership, roles, permissions and overrides | `Actions/Fortify`, `Actions/Invitations`, `Models/User`, role/permission models |
+| Identity and access | invite-only Fortify account entry, digest-only invitation lifecycle, organization membership, strict role hierarchy, permissions and overrides | `Actions/Fortify`, `Actions/Invitations`, `InvitationForm`, `RolePolicy`, `Models/User`, role/permission models |
 | Restaurant structure | organizations, brands, branches, settings, areas, service points and waiter assignment | organization/branch/area Actions and Livewire components |
-| Menu | menus, categories, localized menu items, modifiers, schedules and availability | `Actions/Menus`, menu models, branch menu component |
+| Restaurant onboarding | persistent user-owned setup checkpoint, verified step derivation and transactional creation/update of the initial restaurant graph | `RestaurantOnboarding`, onboarding Actions, `RestaurantSetupQueryService`, `Livewire/Onboarding` |
+| Menu | menus, categories, localized menu items, ordered image galleries, modifiers, schedules and availability | `Actions/Menus`, menu models, `CatalogData`, branch menu components |
 | Guest table flow | QR entry, table sessions, guests, join requests and draft carts | `Actions/TableSessions`, `Actions/DraftOrders`, `Livewire/PublicQr` |
 | Fulfilment | order confirmation, kitchen/bar tickets, item progress, service and waiter calls | order/kitchen/bar/waiter Actions and Livewire components |
 | Settlement | manual cash/terminal/other payments, corrections, table closure | `Actions/Payments`, payment models and waiter screens |
@@ -40,8 +41,12 @@ The refreshed 2026-08-23 completion audit observed 43 first-party Eloquent model
 - Focused domain read services prepare bounded, selected and eager-loaded Eloquent data for a component. They are not repositories and do not hide write operations.
 - Models define typed casts, relationships, scopes and cohesive entity behavior. They do not make external network calls.
 - Policies are the canonical resource-authorization boundary; permission resolution is a supporting capability, not a replacement for resource ownership checks.
+- Invitation routes remove bearer credentials from the URL before rendering. A focused resolver maps credentials to non-disclosing states; create/reissue/cancel/accept Actions own authorization, rotation, revocation, atomic consumption, membership writes and audit. Administrator lists are prepared by an exact tenant-scoped read service.
 - Presentation data that is non-trivial or reused crosses into Blade as typed data or explicit arrays, never raw service objects.
 - Public Livewire state is untrusted, minimal, typed and intentionally serializable. Durable identifiers may be locked, but every mutation still authorizes the resolved resource.
+- Restaurant onboarding stores identity links, the expected initial table count and a write-once `completed_at`, not a mutable current-step flag or redundant ID arrays. The read service derives the first valid incomplete step from tenant-scoped parent links, the expected count, a contiguous ordered table-only service-point set and active permanent QR identities. The small expected-count invariant distinguishes a legitimately complete set from a hard-deleted final pivot and lets retry reconstruct only the missing table. Soft-deleted checkpoint references are loaded only to hydrate a scoped recovery form and never count as completed; same-branch survivors whose area was hard-deleted are reused by the replacement area step. Retries and operational disable/archive flags do not rewrite an already explicit completion. Each save Action reuses the user-owned checkpoint, re-resolves the chain and updates the domain object plus checkpoint in one retryable SQLite transaction.
+- Product terminology `company → brand → restaurant → zone/room → table` maps to `Organization → Brand → Branch → AreaNode → ServicePoint`. The physical schema enforces organization/brand agreement for branches and parent existence with FKs; Actions enforce same-branch area-tree and service-point placement where nullable unlink semantics prevent a safe composite SQLite FK.
+- Structure management is a Livewire read/write split: URL-backed search, lifecycle/type/activity filters, allowlisted sorts and independent paginators feed selected tenant-scoped query services; create/update/archive/restore/status/move mutations invoke focused Actions. Archive Actions lock and re-resolve the resource inside its parent scope, authorize through policies, reject active-order conflicts and soft-delete. Restore Actions repeat the same scope and policy checks; service-point restore deliberately does not re-enable operational or QR access.
 
 ## Runtime model
 
@@ -73,6 +78,6 @@ No worker, cron, Redis, WebSocket, S3, Docker or SSH-only runtime capability is 
 | `Cache::touch` | Not applicable without a cache entry whose lifetime must be extended | none | caching review |
 | Queue attributes/routing | Not applicable to required shared-hosting flows | none | operations review |
 | AI/vector/realtime features | Not applicable to product requirements | none | requirements catalogue |
-| Image manipulation additions | Not needed for current MIME-validated local logo storage | media Actions | upload tests |
+| Image manipulation additions | Not needed: logos and dish galleries retain validated JPG/PNG/WebP source content without server transforms | media/menu Actions | upload, gallery and rollback tests |
 
 Important long-lived architecture choices are recorded in [`decisions/`](decisions/); completion-audit choices are summarized in [`DECISIONS.md`](DECISIONS.md). The requirement-to-code relationship is authoritative in [`compliance-matrix.md`](compliance-matrix.md).

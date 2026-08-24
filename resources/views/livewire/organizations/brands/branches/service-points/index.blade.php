@@ -15,7 +15,7 @@
         </div>
     </header>
 
-    @if ($canManageServicePoints)
+    @if ($canManageServicePoints && $filterLifecycle === 'active')
         <x-ui.card
             :heading="__('ui.organizations.brands.branches.service_points.index.sag_3_dobavte_stoly')"
             :description="__('ui.organizations.brands.branches.service_points.index.vyberite_tip_mesta_za')"
@@ -177,6 +177,7 @@
         </x-ui.card>
     @endif
 
+    @if ($filterLifecycle === 'active')
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -314,6 +315,7 @@
             @endforelse
         </div>
     </x-ui.card>
+    @endif
 
     <x-ui.card padding="none" class="overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
@@ -369,6 +371,19 @@
                         @endforeach
                     </flux:select>
 
+                    <flux:select wire:model.live="filterLifecycle" :label="__('structure.filters.lifecycle')">
+                        <flux:select.option value="active">{{ __('structure.filters.active') }}</flux:select.option>
+                        <flux:select.option value="archived">{{ __('structure.filters.archived') }}</flux:select.option>
+                    </flux:select>
+
+                    <flux:select wire:model.live="sort" :label="__('structure.filters.sort')">
+                        <flux:select.option value="position">{{ __('structure.sort.position') }}</flux:select.option>
+                        <flux:select.option value="name_asc">{{ __('structure.sort.name_asc') }}</flux:select.option>
+                        <flux:select.option value="name_desc">{{ __('structure.sort.name_desc') }}</flux:select.option>
+                        <flux:select.option value="newest">{{ __('structure.sort.newest') }}</flux:select.option>
+                        <flux:select.option value="oldest">{{ __('structure.sort.oldest') }}</flux:select.option>
+                    </flux:select>
+
                     <div class="flex items-end">
                         <flux:button
                             icon="x-mark"
@@ -384,6 +399,12 @@
         </div>
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+            @error('servicePointDeletion')
+                <div role="alert" class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                    {{ $message }}
+                </div>
+            @enderror
+
             @forelse ($servicePointRows as $servicePoint)
                 <div wire:key="service-point-{{ $servicePoint['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingServicePointId === $servicePoint['id'])
@@ -433,6 +454,10 @@
                                 <x-ui.service-point-icon :type="$servicePoint['type']" :icon="$servicePoint['icon']" :label="$servicePoint['type_label']" :active="$servicePoint['is_active']" />
 
                                 <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $servicePoint['name'] }}</h2>
+
+                                @if ($servicePoint['is_archived'])
+                                    <x-ui.status-badge tone="muted">{{ __('structure.badges.archived') }}</x-ui.status-badge>
+                                @endif
 
                                 <x-ui.status-badge tone="muted">{{ $servicePoint['type_label'] }}</x-ui.status-badge>
                                 <x-ui.status-badge :tone="$servicePoint['status_tone']" dot>{{ $servicePoint['localized_status'] }}</x-ui.status-badge>
@@ -497,6 +522,13 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2 md:justify-end">
+                            @if ($servicePoint['is_archived'])
+                                @if ($canManageServicePoints)
+                                    <flux:button icon="arrow-path" variant="primary" type="button" wire:click="restoreServicePoint({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="restoreServicePoint({{ $servicePoint['id'] }})">
+                                        {{ __('structure.actions.restore') }}
+                                    </flux:button>
+                                @endif
+                            @else
                             @if ($canOpenTable)
                                 @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
                                     <flux:button icon="check" type="button" disabled>
@@ -562,6 +594,22 @@
                                 <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint['id'] }})">
                                     {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                 </flux:button>
+
+                                <x-dangerous-action-confirmation
+                                    name="delete-service-point-{{ $servicePoint['id'] }}"
+                                    title="service_points.confirmations.delete.title"
+                                    consequence="service_points.confirmations.delete.description"
+                                    confirm-action="deleteServicePoint({{ $servicePoint['id'] }})"
+                                    submit-target="deleteServicePoint({{ $servicePoint['id'] }})"
+                                    confirm-label="service_points.actions.delete"
+                                >
+                                    <x-slot:trigger>
+                                        <flux:button icon="trash" variant="danger" type="button">
+                                            {{ __('structure.actions.archive') }}
+                                        </flux:button>
+                                    </x-slot:trigger>
+                                </x-dangerous-action-confirmation>
+                            @endif
                             @endif
                         </div>
 

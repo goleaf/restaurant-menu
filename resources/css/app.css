@@ -25,18 +25,26 @@
 
     --color-canvas: oklch(0.985 0.002 85);
     --color-surface: oklch(1 0 0);
+    --color-surface-raised: oklch(0.995 0.001 85);
     --color-surface-muted: oklch(0.97 0.004 85);
+    --color-surface-selected: oklch(0.98 0.016 55);
     --color-border-subtle: oklch(0.9 0.008 75);
+    --color-border-strong: oklch(0.76 0.018 55);
     --color-text-primary: oklch(0.21 0.018 45);
     --color-text-muted: oklch(0.48 0.025 45);
+    --color-text-inverse: oklch(1 0 0);
     --color-success: oklch(0.49 0.13 151);
     --color-success-surface: oklch(0.96 0.035 151);
+    --color-success-border: oklch(0.78 0.075 151);
     --color-warning: oklch(0.55 0.13 72);
     --color-warning-surface: oklch(0.97 0.045 82);
+    --color-warning-border: oklch(0.8 0.095 72);
     --color-danger: oklch(0.51 0.19 27);
     --color-danger-surface: oklch(0.96 0.035 25);
+    --color-danger-border: oklch(0.79 0.1 27);
     --color-information: oklch(0.5 0.12 245);
     --color-information-surface: oklch(0.96 0.025 245);
+    --color-information-border: oklch(0.8 0.07 245);
     --color-focus: oklch(0.55 0.16 37);
 
     --color-zinc-50: #fafafa;
@@ -56,17 +64,19 @@
     --color-accent-foreground: var(--color-white);
 
     --spacing-touch: 2.75rem;
+    --spacing-operational-touch: 3.5rem;
     --container-content: 80rem;
     --container-reading: 46rem;
     --breakpoint-xs: 30rem;
     --radius-control: 0.625rem;
     --radius-card: 0.875rem;
     --radius-dialog: 1rem;
-    --shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.06), 0 8px 24px oklch(0.21 0.018 45 / 0.06);
+    --shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);
     --shadow-elevated: 0 18px 50px oklch(0.21 0.018 45 / 0.16);
     --shadow-docked: 0 -4px 8px oklch(0.21 0.018 45 / 0.1);
     --z-skip-link: 60;
     --ease-product: cubic-bezier(0.2, 0, 0, 1);
+    --duration-state: 180ms;
 }
 
 @layer theme {
@@ -76,18 +86,26 @@
         --color-accent-foreground: var(--color-brand-950);
         --color-canvas: oklch(0.15 0.008 45);
         --color-surface: oklch(0.2 0.01 45);
+        --color-surface-raised: oklch(0.23 0.012 45);
         --color-surface-muted: oklch(0.24 0.012 45);
+        --color-surface-selected: oklch(0.28 0.035 37);
         --color-border-subtle: oklch(0.34 0.015 45);
+        --color-border-strong: oklch(0.48 0.025 45);
         --color-text-primary: oklch(0.96 0.006 75);
         --color-text-muted: oklch(0.72 0.018 55);
+        --color-text-inverse: oklch(0.18 0.01 45);
         --color-success: oklch(0.76 0.13 151);
         --color-success-surface: oklch(0.25 0.045 151);
+        --color-success-border: oklch(0.46 0.08 151);
         --color-warning: oklch(0.79 0.12 78);
         --color-warning-surface: oklch(0.26 0.04 72);
+        --color-warning-border: oklch(0.49 0.075 72);
         --color-danger: oklch(0.75 0.15 25);
         --color-danger-surface: oklch(0.25 0.05 25);
+        --color-danger-border: oklch(0.49 0.09 25);
         --color-information: oklch(0.76 0.1 245);
         --color-information-surface: oklch(0.25 0.04 245);
+        --color-information-border: oklch(0.48 0.065 245);
         --color-focus: oklch(0.78 0.13 45);
     }
 }
@@ -132,6 +150,23 @@ select:focus-visible[data-flux-control] {
 @utility touch-target {
     min-block-size: var(--spacing-touch);
     min-inline-size: var(--spacing-touch);
+}
+
+[data-page='restaurant-onboarding'] [data-flux-control],
+[data-page='restaurant-onboarding'] [data-flux-button] {
+    min-block-size: var(--spacing-touch);
+    max-inline-size: 100%;
+}
+
+[data-page='restaurant-onboarding'] form,
+[data-page='restaurant-onboarding'] [data-flux-field],
+[data-page='restaurant-onboarding'] [data-flux-input] {
+    min-inline-size: 0;
+}
+
+[data-page='restaurant-onboarding'] [data-flux-control]::placeholder {
+    color: var(--color-text-muted);
+    opacity: 1;
 }
 
 @utility skip-link {
@@ -250,7 +285,7 @@ select:focus-visible[data-flux-control] {
     --qr-label-text: #171717;
     --qr-label-border: #b91c1c;
     --qr-label-accent: #b91c1c;
-    border-top-width: 10px;
+    border-width: 3px;
 }
 
 .qr-sticker-preset-restaurant .qr-sticker-title {
@@ -264,7 +299,7 @@ select:focus-visible[data-flux-control] {
     --qr-label-accent: #3f2a56;
     --qr-label-code-bg: #3f2a56;
     --qr-label-code-text: #ffffff;
-    border-left-width: 10px;
+    border-width: 3px;
 }
 
 .qr-sticker-preset-bar .qr-sticker-title {
@@ -277,7 +312,7 @@ select:focus-visible[data-flux-control] {
     --qr-label-text: #0f172a;
     --qr-label-border: #0369a1;
     --qr-label-accent: #0369a1;
-    border-bottom-width: 10px;
+    border-width: 3px;
 }
 
 .qr-sticker-preset-hotel .qr-sticker-logotype {

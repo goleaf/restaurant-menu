@@ -59,6 +59,14 @@ class BranchFactory extends Factory
         ]);
     }
 
+    public function archived(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
+            'deleted_at' => now()->subDay(),
+        ]);
+    }
+
     public function forBrand(Brand $brand): static
     {
         return $this->state(fn (): array => [

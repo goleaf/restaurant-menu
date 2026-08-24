@@ -7,6 +7,7 @@ namespace App\Livewire\Organizations;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Organizations\DeleteOrganizationAction;
+use App\Actions\Organizations\RestoreOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationAction;
 use App\Actions\Organizations\UpdateOrganizationLogoAction;
 use App\Models\Organization;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -37,6 +39,12 @@ class Index extends Component
     public string $name = '';
 
     public string $search = '';
+
+    #[Url(as: 'lifecycle', except: 'active')]
+    public string $lifecycle = 'active';
+
+    #[Url(as: 'sort', except: 'name_asc')]
+    public string $sort = 'name_asc';
 
     /**
      * @var array<int, mixed>
@@ -134,12 +142,27 @@ class Index extends Component
             return;
         }
 
-        $deleteOrganization->handle($this->findOwnedOrganization($this->deletingOrganizationId));
+        $deleteOrganization->handle(
+            $this->currentUser(),
+            $this->findOwnedOrganization($this->deletingOrganizationId),
+        );
 
         $this->cancelDelete();
         unset($this->organizations);
 
-        Flux::toast(variant: 'success', text: __('ui.livewire.organizations.index.organization_deleted'));
+        Flux::toast(variant: 'success', text: __('structure.messages.archived'));
+    }
+
+    public function restore(int $organizationId, RestoreOrganizationAction $restoreOrganization): void
+    {
+        $restoreOrganization->handle(
+            $this->currentUser(),
+            $this->organizationQueries->findAccessibleTo($this->currentUser(), $organizationId, true),
+        );
+
+        unset($this->organizations);
+
+        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
     }
 
     public function saveLogo(int $organizationId, UpdateOrganizationLogoAction $updateLogo): void
@@ -181,6 +204,20 @@ class Index extends Component
         unset($this->organizations);
     }
 
+    public function updatedLifecycle(): void
+    {
+        $this->normalizeLifecycle();
+        $this->resetPage(pageName: 'organizationsPage');
+        unset($this->organizations);
+    }
+
+    public function updatedSort(): void
+    {
+        $this->normalizeSort();
+        $this->resetPage(pageName: 'organizationsPage');
+        unset($this->organizations);
+    }
+
     /** @return Paginator<int, Organization> */
     #[Computed]
     public function organizations(): Paginator
@@ -189,6 +226,8 @@ class Index extends Component
             $this->currentUser(),
             $this->search,
             self::PER_PAGE,
+            $this->lifecycle,
+            $this->sort,
         );
     }
 
@@ -220,6 +259,7 @@ class Index extends Component
                     'is_owner' => $organization->owner_user_id === $this->currentUserId,
                     'can_manage_staff' => in_array($organization->id, $manageableOrganizationIds, true),
                     'created_at' => $organization->created_at->format('d.m.Y'),
+                    'is_archived' => $organization->trashed(),
                     'brands_url' => route('organizations.brands.index', ['organization' => $organization->id]),
                     'staff_url' => route('organizations.staff.index', ['organization' => $organization->id]),
                 ])
@@ -259,10 +299,24 @@ class Index extends Component
 
     private function findOwnedOrganization(int $organizationId): Organization
     {
-        $organization = $this->organizationQueries->find($organizationId);
+        $organization = $this->organizationQueries->findAccessibleTo($this->currentUser(), $organizationId);
 
         Gate::forUser($this->currentUser())->authorize('update', $organization);
 
         return $organization;
+    }
+
+    private function normalizeLifecycle(): void
+    {
+        if (! in_array($this->lifecycle, ['active', 'archived'], true)) {
+            $this->lifecycle = 'active';
+        }
+    }
+
+    private function normalizeSort(): void
+    {
+        if (! in_array($this->sort, ['name_asc', 'name_desc', 'newest', 'oldest'], true)) {
+            $this->sort = 'name_asc';
+        }
     }
 }

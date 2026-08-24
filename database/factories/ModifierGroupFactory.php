@@ -6,6 +6,7 @@ namespace Database\Factories;
 
 use App\Models\Branch;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -52,5 +53,17 @@ class ModifierGroupFactory extends Factory
     public function withOptions(int $count = 2): static
     {
         return $this->has(ModifierOption::factory()->count($count), 'options');
+    }
+
+    public function withTranslations(): static
+    {
+        return $this->afterCreating(function (ModifierGroup $group): void {
+            foreach (['en', 'lt', 'ru'] as $languageCode) {
+                ModifierGroupTranslation::factory()->for($group, 'group')->create([
+                    'language_code' => $languageCode,
+                    'name' => $group->name,
+                ]);
+            }
+        });
     }
 }

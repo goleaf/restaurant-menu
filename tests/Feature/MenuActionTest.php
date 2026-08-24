@@ -68,8 +68,9 @@ test('menu item image action clears the persisted path and deletes the local fil
     $path = 'media/menu-items/dish.jpg';
     Storage::disk('public')->put($path, 'image');
     $item = MenuItem::factory()->create(['image' => $path]);
+    $item->load('menu.branch');
 
-    expect(app(RemoveMenuItemImageAction::class)->handle($item))->toBe($item);
+    expect(app(RemoveMenuItemImageAction::class)->handle($item->menu->branch, $item)->is($item))->toBeTrue();
 
     expect($item->refresh()->image)->toBeNull();
     Storage::disk('public')->assertMissing($path);

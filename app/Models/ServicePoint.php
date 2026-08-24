@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property ServicePointStatus $status
  * @property-read AreaNode|null $areaNode
  * @property-read QrCode|null $activeQrCode
+ * @property-read bool $active_qr_code_exists
  * @property-read TableSession|null $activeTableSession
  * @property-read Collection<int, TableSessionServicePoint> $activeTableSessionServicePointLinks
  */

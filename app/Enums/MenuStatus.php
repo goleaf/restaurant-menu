@@ -11,9 +11,9 @@ enum MenuStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Draft => 'Draft',
-            self::Active => 'Active',
-            self::Archived => 'Archived',
+            self::Draft => 'menu.status.draft',
+            self::Active => 'menu.status.active',
+            self::Archived => 'menu.status.archived',
         };
     }
 

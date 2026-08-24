@@ -17,7 +17,8 @@ final class BrandPolicy
 
     public function view(User $user, Brand $brand): bool
     {
-        return $user->canAccessOrganization((int) $brand->organization_id);
+        return ! $brand->trashed()
+            && $user->canAccessOrganization((int) $brand->organization_id);
     }
 
     public function create(User $user, Organization $organization): bool
@@ -38,7 +39,9 @@ final class BrandPolicy
 
     public function restore(User $user, Brand $brand): bool
     {
-        return $user->isSuperadmin();
+        return $brand->trashed()
+            && $user->canAccessOrganization((int) $brand->organization_id)
+            && $user->canManageOrganizationBrands((int) $brand->organization_id);
     }
 
     public function forceDelete(User $user, Brand $brand): bool

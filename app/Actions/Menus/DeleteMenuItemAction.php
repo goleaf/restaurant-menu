@@ -6,6 +6,8 @@ namespace App\Actions\Menus;
 
 use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
+use Illuminate\Support\Facades\DB;
 
 final class DeleteMenuItemAction
 {
@@ -15,9 +17,21 @@ final class DeleteMenuItemAction
 
     public function handle(MenuItem $item): void
     {
-        $imagePath = $item->image;
+        $imagePaths = $item->galleryImages()
+            ->select(['id', 'menu_item_id', 'path'])
+            ->pluck('path')
+            ->prepend($item->image)
+            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+            ->unique()
+            ->values();
 
-        $item->deleteOrFail();
-        $this->deleteLocalMediaFile->handle($imagePath);
+        DB::transaction(function () use ($item): void {
+            MenuItemImage::query()
+                ->where('menu_item_id', $item->id)
+                ->delete();
+            $item->deleteOrFail();
+        });
+
+        $imagePaths->each($this->deleteLocalMediaFile->handle(...));
     }
 }

@@ -71,6 +71,8 @@ test('business rule codes cover expected domain denials', function () {
             'branch_inaccessible',
             'item_unavailable',
             'required_modifier_missing',
+            'service_point_has_active_session',
+            'structure_has_active_order',
         ]);
 });
 

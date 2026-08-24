@@ -3,10 +3,17 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Index;
+use App\Models\Branch;
+use App\Models\Brand;
+use App\Models\Order;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemRolesSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -114,6 +121,24 @@ test('owner can update and delete organization', function () {
     expect($user->fresh()->organizations()->whereKey($organization->id)->exists())->toBeFalse();
 });
 
+test('owner cannot archive organization that contains an active order', function () {
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Active Order Company']);
+    $brand = Brand::factory()->for($organization)->create();
+    $branch = Branch::factory()->for($organization)->for($brand)->create();
+    $servicePoint = ServicePoint::factory()->for($branch)->blocked()->create();
+    $closedSession = TableSession::factory()->forServicePoint($servicePoint)->closed()->create();
+    Order::factory()->forTableSession($closedSession)->served()->create();
+
+    Livewire::actingAs($owner)
+        ->test(Index::class)
+        ->call('confirmDelete', $organization->id)
+        ->call('delete')
+        ->assertHasErrors('structureDeletion');
+
+    expect($organization->fresh())->not->toBeNull();
+});
+
 test('linked non owner cannot manage organization', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
@@ -131,4 +156,51 @@ test('linked non owner cannot manage organization', function () {
         ->assertSee($organization->name)
         ->call('startEditing', $organization->id)
         ->assertForbidden();
+});
+
+test('owner is authorized to restore an archived organization', function () {
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Restorable Company']);
+    $organization->deleteOrFail();
+
+    expect(Gate::forUser($owner)->allows('restore', $organization))->toBeTrue()
+        ->and(Gate::forUser($owner)->allows('update', $organization))->toBeFalse()
+        ->and(Gate::forUser($owner)->allows('delete', $organization))->toBeFalse();
+});
+
+test('owner can view and restore an archived organization without a page reload', function () {
+    $owner = User::factory()->create();
+    $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Archived Company']);
+    $organization->deleteOrFail();
+
+    Livewire::actingAs($owner)
+        ->test(Index::class)
+        ->assertDontSee('Archived Company')
+        ->set('lifecycle', 'archived')
+        ->assertSee('Archived Company')
+        ->call('restore', $organization->id)
+        ->assertHasNoErrors();
+
+    expect($organization->fresh())->not->toBeNull();
+});
+
+test('livewire payload cannot restore an organization outside the current tenant memberships', function () {
+    $owner = User::factory()->create();
+    $foreignOwner = User::factory()->create();
+    (new CreateOrganizationAction)->handle($owner, ['name' => 'Owned Company']);
+    $foreignOrganization = (new CreateOrganizationAction)->handle($foreignOwner, ['name' => 'Foreign Archived Company']);
+    $foreignOrganization->deleteOrFail();
+
+    $caughtException = null;
+
+    try {
+        Livewire::actingAs($owner)
+            ->test(Index::class)
+            ->call('restore', $foreignOrganization->id);
+    } catch (Throwable $exception) {
+        $caughtException = $exception;
+    }
+
+    expect($caughtException)->toBeInstanceOf(ModelNotFoundException::class)
+        ->and(Organization::withTrashed()->findOrFail($foreignOrganization->id)->trashed())->toBeTrue();
 });

@@ -41,6 +41,21 @@ enum OrderStatus: string
     }
 
     /**
+     * @return list<string>
+     */
+    public static function activeValues(): array
+    {
+        return [
+            self::ConfirmedByWaiter->value,
+            self::SentToKitchenBar->value,
+            self::InProgress->value,
+            self::Ready->value,
+            self::Served->value,
+            self::PaymentRequested->value,
+        ];
+    }
+
+    /**
      * @return array<string, string>
      */
     public static function options(): array

@@ -7,6 +7,8 @@ namespace App\Livewire\Organizations\Brands\Branches\ServicePoints;
 use App\Actions\QrCodes\GenerateQrCodeForServicePointAction;
 use App\Actions\ServicePoints\BulkCreateServicePointsAction;
 use App\Actions\ServicePoints\CreateServicePointAction;
+use App\Actions\ServicePoints\DeleteServicePointAction;
+use App\Actions\ServicePoints\RestoreServicePointAction;
 use App\Actions\ServicePoints\SetServicePointActiveAction;
 use App\Actions\ServicePoints\UpdateServicePointAction;
 use App\Actions\ServicePoints\UpdateServicePointStatusAction;
@@ -67,6 +69,12 @@ class Index extends Component
 
     #[Url(as: 'qr', except: 'all')]
     public string $filterQr = 'all';
+
+    #[Url(as: 'lifecycle', except: 'active')]
+    public string $filterLifecycle = 'active';
+
+    #[Url(as: 'sort', except: 'position')]
+    public string $sort = 'position';
 
     public string $areaNodeId = '';
 
@@ -278,6 +286,14 @@ class Index extends Component
 
     public function updated(string $property): void
     {
+        if ($property === 'filterLifecycle' && ! in_array($this->filterLifecycle, ['active', 'archived'], true)) {
+            $this->filterLifecycle = 'active';
+        }
+
+        if ($property === 'sort' && ! in_array($this->sort, ['position', 'name_asc', 'name_desc', 'newest', 'oldest'], true)) {
+            $this->sort = 'position';
+        }
+
         if ($this->isServicePointFilterProperty($property)) {
             $this->resetPage();
             unset($this->servicePoints);
@@ -311,6 +327,8 @@ class Index extends Component
             'filterStatus',
             'filterActive',
             'filterQr',
+            'filterLifecycle',
+            'sort',
         );
 
         $this->resetPage();
@@ -402,6 +420,43 @@ class Index extends Component
         $this->setActive($servicePointId, true, $setActive);
     }
 
+    public function deleteServicePoint(int $servicePointId, DeleteServicePointAction $deleteServicePoint): void
+    {
+        $this->authorizeServicePointManagement();
+        $servicePoint = $this->findBranchServicePoint($servicePointId);
+
+        $deleteServicePoint->handle($this->currentUser(), $this->branch, $servicePoint);
+
+        unset($this->statusSelections[$servicePointId]);
+
+        if ($this->editingServicePointId === $servicePointId) {
+            $this->cancelEditing();
+        }
+
+        if ($this->shownQrServicePointId === $servicePointId) {
+            $this->shownQrServicePointId = null;
+        }
+
+        $this->forgetServicePointDisplays();
+
+        Flux::modals()->close();
+        Flux::toast(variant: 'success', text: __('service_points.messages.deleted'));
+    }
+
+    public function restoreServicePoint(
+        int $servicePointId,
+        RestoreServicePointAction $restoreServicePoint,
+    ): void {
+        $this->authorizeServicePointManagement();
+        $servicePoint = $this->servicePointQueries->findForBranch($this->branch, $servicePointId, true);
+
+        $restoreServicePoint->handle($this->currentUser(), $this->branch, $servicePoint);
+
+        $this->forgetServicePointDisplays();
+
+        Flux::toast(variant: 'success', text: __('structure.messages.restored'));
+    }
+
     public function changeStatus(int $servicePointId, UpdateServicePointStatusAction $updateServicePointStatus): void
     {
         $this->authorizeServicePointStatusChange();
@@ -482,6 +537,8 @@ class Index extends Component
                 'status' => $this->filterStatus,
                 'active' => $this->filterActive,
                 'qr' => $this->filterQr,
+                'lifecycle' => $this->filterLifecycle,
+                'sort' => $this->sort,
             ],
             self::SERVICE_POINTS_PER_PAGE,
         );
@@ -647,7 +704,9 @@ class Index extends Component
             || $this->filterType !== 'all'
             || $this->filterStatus !== 'all'
             || $this->filterActive !== 'all'
-            || $this->filterQr !== 'all';
+            || $this->filterQr !== 'all'
+            || $this->filterLifecycle !== 'active'
+            || $this->sort !== 'position';
     }
 
     /**
@@ -691,7 +750,7 @@ class Index extends Component
 
     public function render(): View
     {
-        $floorBoardSections = $this->floorBoardSections();
+        $floorBoardSections = $this->filterLifecycle === 'active' ? $this->floorBoardSections() : [];
         $servicePointPaginator = $this->servicePoints();
         $servicePointRows = $servicePointPaginator->getCollection()
             ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
@@ -730,6 +789,7 @@ class Index extends Component
      *     status_tone: string,
      *     localized_status: string,
      *     is_active: bool,
+     *     is_archived: bool,
      *     has_direct_session: bool,
      *     has_linked_session: bool,
      *     session_started_at: string|null,
@@ -756,6 +816,7 @@ class Index extends Component
             'status_tone' => $servicePoint->status->badgeColor(),
             'localized_status' => __($servicePoint->status->label()),
             'is_active' => $servicePoint->is_active,
+            'is_archived' => $servicePoint->trashed(),
             'has_direct_session' => $servicePoint->activeTableSession !== null,
             'has_linked_session' => $servicePoint->activeTableSessionServicePointLinks->isNotEmpty(),
             'session_started_at' => $servicePoint->activeTableSession?->started_at?->format('Y-m-d H:i'),
@@ -906,6 +967,8 @@ class Index extends Component
             'filterStatus',
             'filterActive',
             'filterQr',
+            'filterLifecycle',
+            'sort',
         ], true);
     }
 

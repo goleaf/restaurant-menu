@@ -93,7 +93,7 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
 
     Livewire::actingAs($waiter)
         ->test(WaiterDashboard::class)
-        ->assertSee('Waiter review')
+        ->assertSee(__('ui.waiter.dashboard.waiting_review'))
         ->assertSee('25.00 EUR');
 
     $pizzaDraftItem->forceFill(['total_price_cents' => 1])->save();

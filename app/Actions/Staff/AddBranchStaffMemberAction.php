@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\Staff;
 
 use App\Enums\OrganizationUserStatus;
@@ -9,6 +11,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 
 class AddBranchStaffMemberAction
@@ -25,6 +28,9 @@ class AddBranchStaffMemberAction
         if ($branch->organization_id !== $organization->id) {
             throw new InvalidArgumentException('Branch must belong to the selected organization.');
         }
+
+        Gate::forUser($assignedBy)->authorize('manageStaff', $branch);
+        Gate::forUser($assignedBy)->authorize('assign', [$role, $organization]);
 
         return DB::transaction(function () use ($organization, $branch, $role, $assignedBy, $data): User {
             $user = $this->addOrganizationStaffMember->handle($organization, $role, $assignedBy, $data, replaceExistingMembershipRole: false);

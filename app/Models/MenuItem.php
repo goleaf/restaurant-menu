@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\MenuItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,9 +25,11 @@ use Illuminate\Support\Facades\Storage;
  * @property-read MenuCategory $category
  * @property-read KitchenDepartment|null $kitchenDepartment
  */
-#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order'])]
+#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])]
 class MenuItem extends Model
 {
+    public const MAX_IMAGES = 8;
+
     /** @use HasFactory<MenuItemFactory> */
     use HasFactory, SoftDeletes;
 
@@ -54,6 +57,7 @@ class MenuItem extends Model
             'volume' => 'decimal:2',
             'calories' => 'integer',
             'is_available' => 'boolean',
+            'hidden_until' => 'immutable_datetime',
             'sort_order' => 'integer',
         ];
     }
@@ -88,6 +92,16 @@ class MenuItem extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(MenuItemTranslation::class);
+    }
+
+    /**
+     * @return HasMany<MenuItemImage, $this>
+     */
+    public function galleryImages(): HasMany
+    {
+        return $this->hasMany(MenuItemImage::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     /**
@@ -137,5 +151,14 @@ class MenuItem extends Model
         }
 
         return Storage::disk('public')->url($this->image);
+    }
+
+    public function isTemporarilyHidden(?CarbonInterface $at = null): bool
+    {
+        if ($this->hidden_until === null) {
+            return false;
+        }
+
+        return $this->hidden_until->isAfter($at ?? now());
     }
 }

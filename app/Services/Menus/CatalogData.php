@@ -8,6 +8,7 @@ use App\Actions\Menus\GetMenuAvailabilityStatusAction;
 use App\Enums\MenuAllergen;
 use App\Enums\MenuDietaryLabel;
 use App\Enums\MenuStatus;
+use App\Enums\SupportedLocale;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\KitchenDepartment;
@@ -15,6 +16,7 @@ use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
@@ -50,6 +52,7 @@ final readonly class CatalogData
             'kitchenDepartmentOptions' => $this->departmentOptions($departments),
             'activeKitchenDepartmentOptions' => $this->departmentOptions($departments, false),
             'scheduleDayOptions' => GetMenuAvailabilityStatusAction::dayLabels(),
+            'languageOptions' => SupportedLocale::labels(),
         ];
     }
 
@@ -78,6 +81,9 @@ final readonly class CatalogData
     {
         return $branch->menus()
             ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'menu_id', 'language_code', 'name'])
+                ->orderBy('language_code')])
             ->whereKey($menuId)
             ->firstOrFail();
     }
@@ -86,6 +92,9 @@ final readonly class CatalogData
     {
         return MenuCategory::query()
             ->select(['id', 'menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'menu_category_id', 'language_code', 'name', 'description'])
+                ->orderBy('language_code')])
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
             ->whereKey($categoryId)
             ->firstOrFail();
@@ -111,9 +120,28 @@ final readonly class CatalogData
     public function findBranchItem(int $branchId, int $itemId): MenuItem
     {
         return MenuItem::query()
-            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+            ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order', 'created_at', 'updated_at'])
+            ->with([
+                'translations' => fn ($query) => $query
+                    ->select(['id', 'menu_item_id', 'language_code', 'name', 'description'])
+                    ->orderBy('language_code'),
+                'galleryImages' => fn ($query) => $query
+                    ->select(['id', 'menu_item_id', 'path', 'sort_order', 'created_at', 'updated_at'])
+                    ->orderBy('sort_order')
+                    ->orderBy('id'),
+            ])
             ->whereHas('menu', fn ($query) => $query->where('branch_id', $branchId))
             ->whereKey($itemId)
+            ->firstOrFail();
+    }
+
+    public function findBranchItemImage(int $branchId, int $itemId, int $imageId): MenuItemImage
+    {
+        return MenuItemImage::query()
+            ->select(['id', 'menu_item_id', 'path', 'sort_order', 'created_at', 'updated_at'])
+            ->where('menu_item_id', $itemId)
+            ->whereHas('item.menu', fn ($query) => $query->where('branch_id', $branchId))
+            ->whereKey($imageId)
             ->firstOrFail();
     }
 
@@ -168,6 +196,7 @@ final readonly class CatalogData
                     'name',
                     'price_cents',
                     'is_available',
+                    'hidden_until',
                     'sort_order',
                     'updated_at',
                 ])
@@ -185,10 +214,19 @@ final readonly class CatalogData
     {
         return $branch->modifierGroups()
             ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
-            ->with(['options' => fn ($query) => $query
-                ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
-                ->orderBy('sort_order')->orderBy('name')->orderBy('id')])
+            ->with([
+                'translations' => fn ($query) => $query
+                    ->select(['id', 'modifier_group_id', 'language_code', 'name'])
+                    ->orderBy('language_code'),
+                'options' => fn ($query) => $query
+                    ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+                    ->with(['translations' => fn ($translationQuery) => $translationQuery
+                        ->select(['id', 'modifier_option_id', 'language_code', 'name'])
+                        ->orderBy('language_code')])
+                    ->orderBy('sort_order')->orderBy('name')->orderBy('id'),
+            ])
             ->withCount('items')
+            ->orderBy('sort_order')->orderBy('name')->orderBy('id')
             ->get();
     }
 
@@ -224,6 +262,9 @@ final readonly class CatalogData
     {
         return $branch->modifierGroups()
             ->select(['id', 'branch_id', 'name', 'is_required', 'min_select', 'max_select', 'sort_order', 'created_at', 'updated_at'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'modifier_group_id', 'language_code', 'name'])
+                ->orderBy('language_code')])
             ->whereKey($groupId)
             ->firstOrFail();
     }
@@ -232,6 +273,9 @@ final readonly class CatalogData
     {
         return ModifierOption::query()
             ->select(['id', 'modifier_group_id', 'name', 'price_delta_cents', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+            ->with(['translations' => fn ($query) => $query
+                ->select(['id', 'modifier_option_id', 'language_code', 'name'])
+                ->orderBy('language_code')])
             ->whereHas('group', fn ($query) => $query->where('branch_id', $branchId))
             ->whereKey($optionId)
             ->firstOrFail();
@@ -361,6 +405,38 @@ final readonly class CatalogData
             ->firstOrFail();
     }
 
+    /** @return array<string, array{name: string, description: string}> */
+    public function translationValues(MenuCategory|MenuItem $translatable): array
+    {
+        $translations = $translatable->getRelation('translations');
+        $values = [];
+
+        foreach (SupportedLocale::values() as $languageCode) {
+            $translation = $translations->firstWhere('language_code', $languageCode);
+            $values[$languageCode] = [
+                'name' => is_string($translation?->name) ? $translation->name : '',
+                'description' => is_string($translation?->description) ? $translation->description : '',
+            ];
+        }
+
+        return $values;
+    }
+
+    /** @return array<string, string> */
+    public function nameTranslationValues(Menu|MenuItemVariant|ModifierGroup|ModifierOption $translatable): array
+    {
+        $translations = $translatable->getRelation('translations');
+        $values = array_fill_keys(SupportedLocale::values(), '');
+
+        foreach ($translations as $translation) {
+            if (array_key_exists($translation->language_code, $values)) {
+                $values[$translation->language_code] = $translation->name;
+            }
+        }
+
+        return $values;
+    }
+
     /**
      * @return EloquentCollection<int, Menu>
      */
@@ -369,16 +445,29 @@ final readonly class CatalogData
         return $branch->menus()
             ->select(['id', 'branch_id', 'name', 'status', 'sort_order', 'created_at', 'updated_at'])
             ->with([
+                'translations' => fn ($query) => $query
+                    ->select(['id', 'menu_id', 'language_code', 'name'])
+                    ->orderBy('language_code'),
                 'branch' => fn ($query) => $query->select(['id', 'timezone']),
                 'availabilitySchedules' => fn ($query) => $query
                     ->select(['id', 'menu_id', 'day_of_week', 'starts_at', 'ends_at', 'created_at', 'updated_at']),
                 'categories' => fn ($query) => $query
                     ->select(['id', 'menu_id', 'parent_id', 'name', 'description', 'image', 'icon', 'sort_order', 'is_active', 'created_at', 'updated_at'])
+                    ->with(['translations' => fn ($translationQuery) => $translationQuery
+                        ->select(['id', 'menu_category_id', 'language_code', 'name', 'description'])
+                        ->orderBy('language_code')])
                     ->orderBy('sort_order')->orderBy('name')->orderBy('id'),
                 'items' => fn ($query) => $query
-                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'sort_order', 'created_at', 'updated_at'])
+                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order', 'created_at', 'updated_at'])
                     ->with([
                         'category' => fn ($categoryQuery) => $categoryQuery->select(['id', 'menu_id', 'name', 'is_active']),
+                        'translations' => fn ($translationQuery) => $translationQuery
+                            ->select(['id', 'menu_item_id', 'language_code', 'name', 'description'])
+                            ->orderBy('language_code'),
+                        'galleryImages' => fn ($imageQuery) => $imageQuery
+                            ->select(['id', 'menu_item_id', 'path', 'sort_order', 'created_at', 'updated_at'])
+                            ->orderBy('sort_order')
+                            ->orderBy('id'),
                         'kitchenDepartment' => fn ($departmentQuery) => $departmentQuery->select(['id', 'branch_id', 'type', 'name', 'is_active']),
                         'modifierGroups' => fn ($groupQuery) => $groupQuery->select([
                             'modifier_groups.id',
@@ -453,6 +542,7 @@ final readonly class CatalogData
             'status_color' => $menu->status->badgeColor(),
             'localized_status' => __($menu->status->label()),
             'sort_order' => $menu->sort_order,
+            'translations' => $this->nameTranslationValues($menu),
             'categories_count' => $menu->categories_count,
             'items_count' => $menu->items_count,
             'availability_color' => match ($availability['tone']) {
@@ -465,6 +555,9 @@ final readonly class CatalogData
             'schedules' => $menu->availabilitySchedules->map(
                 fn (MenuAvailabilitySchedule $schedule): array => [
                     'id' => $schedule->id,
+                    'day_of_week' => $schedule->day_of_week,
+                    'starts_at' => substr((string) $schedule->starts_at, 0, 5),
+                    'ends_at' => substr((string) $schedule->ends_at, 0, 5),
                     'day_label' => $dayOptions[$schedule->day_of_week]
                         ?? __('ui.organizations.brands.branches.menu.index.day'),
                     'time_range' => substr((string) $schedule->starts_at, 0, 5).'-'.substr((string) $schedule->ends_at, 0, 5),
@@ -477,6 +570,7 @@ final readonly class CatalogData
                 'is_active' => $category->is_active,
                 'description' => $category->description,
                 'sort_order' => $category->sort_order,
+                'translations' => $this->translationValues($category),
             ])->all(),
             'items' => $menu->items->map(fn (MenuItem $item): array => $this->presentItem($item, $branch))->all(),
         ];
@@ -491,11 +585,38 @@ final readonly class CatalogData
         $departmentRelation = $item->getRelation('kitchenDepartment');
         $department = $departmentRelation instanceof KitchenDepartment ? $departmentRelation : null;
         $imageUrl = $item->imageUrl();
+        $images = [];
+
+        if ($imageUrl !== null) {
+            $images[] = [
+                'key' => 'primary-'.$item->id,
+                'id' => null,
+                'is_primary' => true,
+                'url' => $imageUrl,
+                'alt' => __('uploads.labels.image_position', ['name' => $item->name, 'position' => 1]),
+            ];
+        }
+
+        foreach ($item->galleryImages as $index => $galleryImage) {
+            $images[] = [
+                'key' => 'gallery-'.$galleryImage->id,
+                'id' => $galleryImage->id,
+                'is_primary' => false,
+                'url' => $galleryImage->imageUrl(),
+                'alt' => __('uploads.labels.image_position', ['name' => $item->name, 'position' => $index + 2]),
+            ];
+        }
+
+        $imageCount = count($images);
 
         return [
             'id' => $item->id,
             'image_url' => $imageUrl,
             'has_image' => $imageUrl !== null,
+            'images' => $images,
+            'image_count' => $imageCount,
+            'max_image_count' => MenuItem::MAX_IMAGES,
+            'remaining_image_slots' => MenuItem::MAX_IMAGES - $imageCount,
             'name' => $item->name,
             'category_name' => $category instanceof MenuCategory
                 ? $category->name
@@ -504,7 +625,10 @@ final readonly class CatalogData
             'department_color' => $department?->type->badgeColor() ?? 'zinc',
             'department_name' => $department?->name,
             'is_available' => $item->is_available,
+            'is_temporarily_hidden' => $item->isTemporarilyHidden(),
+            'hidden_until' => $item->hidden_until?->setTimezone($branch->timezone)->format('Y-m-d\TH:i'),
             'description' => $item->description,
+            'translations' => $this->translationValues($item),
             'formatted_price' => MoneyFormatter::formatCents($item->price_cents, $branch->currency),
             'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options()),
             'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options()),

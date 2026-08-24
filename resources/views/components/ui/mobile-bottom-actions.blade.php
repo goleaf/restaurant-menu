@@ -2,9 +2,9 @@
     'summary' => null,
 ])
 
-<div {{ $attributes->class('sticky bottom-0 z-30 -mx-4 border-t border-zinc-200 bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+0.875rem)] pt-3 shadow-docked dark:border-zinc-800 dark:bg-zinc-950 sm:static sm:mx-0 sm:rounded-lg sm:border sm:pb-3 sm:shadow-sm') }}>
+<div {{ $attributes->class('sticky bottom-0 z-30 -mx-4 border-t border-border-subtle bg-surface-raised px-4 pb-[calc(env(safe-area-inset-bottom)+0.875rem)] pt-3 shadow-docked sm:static sm:mx-0 sm:rounded-card sm:border sm:pb-3 sm:shadow-none') }}>
     @if ($summary)
-        <p class="mb-2 rounded-lg bg-zinc-100 px-3 py-2 text-center text-sm font-semibold text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">{{ __($summary) }}</p>
+        <p class="mb-2 rounded-control bg-surface-muted px-3 py-2 text-center text-sm font-semibold text-text-primary">{{ __($summary) }}</p>
     @endif
 
     <div class="grid gap-2">

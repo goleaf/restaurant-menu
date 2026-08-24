@@ -1,14 +1,14 @@
 <div data-layout="guest" class="min-h-svh">
-    <header class="border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950">
+    <header class="border-b border-border-subtle bg-surface-raised px-4 py-3">
         <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3">
             <a href="{{ route('guest.home') }}" class="-m-2 flex min-h-touch items-center gap-2 rounded-control p-2 font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus" wire:navigate>
-                <x-app-logo-icon class="size-8 text-zinc-900 dark:text-white" />
+                <x-app-logo-icon class="size-8 text-text-primary" />
                 <span>{{ __('layout.app_name') }}</span>
             </a>
 
             <a
                 href="{{ route('login') }}"
-                class="inline-flex min-h-touch items-center justify-center rounded-control border border-zinc-300 px-3 text-sm font-medium text-zinc-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus dark:border-zinc-700 dark:text-zinc-100"
+                class="inline-flex min-h-touch items-center justify-center rounded-control border border-border-strong px-3 text-sm font-medium text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
                 wire:navigate
             >
                 {{ __('navigation.staff') }}
@@ -17,7 +17,7 @@
     </header>
 
     <main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-md flex-col gap-5 px-4 py-6 sm:max-w-5xl sm:py-10">
-        <section class="flex flex-col gap-4 rounded-card border border-border-subtle bg-surface p-5 shadow-card sm:p-7">
+        <section class="flex flex-col gap-4 rounded-card border border-border-subtle bg-surface p-5 sm:p-7">
             <div class="flex items-start justify-between gap-4">
                 <div class="flex flex-col gap-2">
                     <p class="text-sm font-medium text-brand-700 dark:text-brand-300">{{ __('ui.pages.guest.home.guest_interface') }}</p>
@@ -35,7 +35,7 @@
             </p>
         </section>
 
-        <section aria-labelledby="guest-journey-title" class="rounded-card border border-border-subtle bg-surface p-5 shadow-card sm:p-7">
+        <section aria-labelledby="guest-journey-title" class="rounded-card border border-border-subtle bg-surface p-5 sm:p-7">
             <h2 id="guest-journey-title" class="text-lg font-semibold text-text-primary">{{ __('ui.pages.guest.home.how_it_works') }}</h2>
 
             <ol class="mt-5 grid gap-5 sm:grid-cols-3">

@@ -128,6 +128,38 @@ test('guest can update quantity comment and delete only own draft items', functi
         ]);
 });
 
+test('dish that becomes unavailable stays removable but cannot be changed or sent', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $draftOrderItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+    $context['pizzaItem']->updateOrFail(['is_available' => false]);
+
+    expectPrompt354ValidationError(
+        fn (): DraftOrderItem => app(UpdateGuestDraftOrderItemAction::class)->handle(
+            draftOrderItem: $draftOrderItem,
+            guest: $context['ana'],
+            quantity: 2,
+            selectedModifierOptions: [],
+        ),
+        'menu_item',
+    );
+    expectPrompt354ValidationError(
+        fn (): DraftOrder => app(SendDraftOrderToWaiterAction::class)->handle(
+            $draftOrderItem->draftOrder()->firstOrFail(),
+            $context['ana'],
+        ),
+        'send_draft',
+    );
+
+    app(DeleteGuestDraftOrderItemAction::class)->handle($draftOrderItem, $context['ana']);
+
+    expect(DraftOrderItem::query()->whereKey($draftOrderItem->id)->exists())->toBeFalse();
+});
+
 test('guest draft item prices are server calculated and keep price at add time', function (): void {
     $context = createPrompt354DraftOrderContext();
     $modifierGroup = ModifierGroup::factory()

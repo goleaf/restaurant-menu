@@ -381,9 +381,17 @@ test('manager can rename move and disable service points without changing identi
             'icon' => 'squares-2x2',
             'capacity' => 2,
         ]);
+    $qrCode = QrCode::factory()
+        ->for($servicePoint)
+        ->create([
+            'short_code' => 'QR-MOVE12',
+            'created_by_user_id' => $manager->id,
+        ]);
 
     $originalId = $servicePoint->id;
     $originalInternalCode = $servicePoint->internal_code;
+    $originalQrId = $qrCode->id;
+    $originalQrToken = $qrCode->public_token;
 
     $component = Livewire::actingAs($manager)
         ->test(ServicePointsIndex::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
@@ -405,6 +413,9 @@ test('manager can rename move and disable service points without changing identi
 
     expect($servicePoint->id)->toBe($originalId);
     expect($servicePoint->internal_code)->toBe($originalInternalCode);
+    expect($qrCode->fresh()->id)->toBe($originalQrId);
+    expect($qrCode->fresh()->public_token)->toBe($originalQrToken);
+    expect($qrCode->fresh()->service_point_id)->toBe($servicePoint->id);
     expect($servicePoint->area_node_id)->toBe($terrace->id);
     expect($servicePoint->name)->toBe('Terrace table 12');
     expect($servicePoint->display_number)->toBe('T-12');

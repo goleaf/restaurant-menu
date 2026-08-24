@@ -37,7 +37,7 @@ test('staff permission page requires manage permissions permission', function ()
 test('staff permission page groups permissions with human labels and descriptions', function () {
     [$manager, $organization] = createPrompt16Organization();
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
-    $staff = createPrompt16StaffMember($organization, SystemRole::Director);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
@@ -117,7 +117,7 @@ test('staff permission overrides can allow deny and return to default', function
 test('critical permission changes show a warning', function () {
     [$manager, $organization] = createPrompt16Organization();
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
-    $staff = createPrompt16StaffMember($organization, SystemRole::Director);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
     Livewire::actingAs($manager)
@@ -130,7 +130,7 @@ test('critical permission changes show a warning', function () {
 test('critical permission changes require a reason', function () {
     [$manager, $organization] = createPrompt16Organization();
     grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
-    $staff = createPrompt16StaffMember($organization, SystemRole::Director);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
     $manageStaff = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
 
     Livewire::actingAs($manager)

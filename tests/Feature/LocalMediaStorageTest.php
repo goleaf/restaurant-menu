@@ -14,12 +14,14 @@ use App\Models\Brand;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 beforeEach(function () {
+    ParallelTesting::resolveTokenUsing(fn (): string => 'local-media-'.getmypid());
     $this->seed(SystemPermissionsSeeder::class);
     Storage::fake('public');
 });

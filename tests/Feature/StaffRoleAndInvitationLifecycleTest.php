@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Invitations\CancelInvitationAction;
+use App\Actions\Invitations\CreateInvitationAction;
+use App\Actions\Invitations\ReissueInvitationAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Staff\UpdateBranchStaffRoleAction;
 use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
@@ -19,6 +21,7 @@ use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -76,6 +79,36 @@ test('branch manager changes a branch role without changing the organization rol
     $this->actingAs($owner)
         ->get(route('organizations.brands.branches.staff.index', [$organization, $brand, $branch]))
         ->assertOk();
+});
+
+test('restaurant administrator cannot promote staff above their own role', function () {
+    [$owner, $organization] = createOrganizationRoleLifecycleContext();
+    $restaurantAdminRole = roleForLifecycle(SystemRole::RestaurantAdmin);
+    $directorRole = roleForLifecycle(SystemRole::Director);
+    $waiterRole = roleForLifecycle(SystemRole::Waiter);
+    $restaurantAdmin = User::factory()->create();
+    OrganizationUser::factory()
+        ->forOrganization($organization)
+        ->forUser($restaurantAdmin)
+        ->forRole($restaurantAdminRole)
+        ->active()
+        ->create();
+    $membership = OrganizationUser::factory()
+        ->forOrganization($organization)
+        ->forRole($waiterRole)
+        ->active()
+        ->create();
+
+    expect(fn () => app(UpdateOrganizationStaffRoleAction::class)->handle(
+        $restaurantAdmin,
+        $organization,
+        $membership,
+        $directorRole,
+        'Attempted privilege escalation.',
+    ))->toThrow(AuthorizationException::class);
+
+    expect($membership->fresh()->role_id)->toBe($waiterRole->id)
+        ->and(AuditLog::query()->count())->toBe(0);
 });
 
 test('superadmin role cannot be assigned through organization or branch staff actions', function () {
@@ -195,6 +228,64 @@ test('only pending invitations can be cancelled and their acceptance credentials
         ->and($auditPayload)->not->toContain('invite_token')
         ->and($auditPayload)->not->toContain('invite_code')
         ->and($auditPayload)->not->toContain('hash');
+});
+
+test('pending invitation credentials can be securely reissued without persisting plaintext', function () {
+    [$owner, $organization] = createOrganizationRoleLifecycleContext();
+    $waiter = roleForLifecycle(SystemRole::Waiter);
+    $created = app(CreateInvitationAction::class)->handle($organization, $waiter, $owner, [
+        'email' => 'reissue@example.test',
+        'invite_token' => str_repeat('O', 64),
+        'invite_code' => 'OLDCODE1',
+        'expires_at' => now()->addMinute(),
+    ]);
+
+    $reissued = app(ReissueInvitationAction::class)->handle(
+        $owner,
+        $organization,
+        $created->invitation,
+    );
+
+    expect($reissued->token)->toHaveLength(64)
+        ->and($reissued->token)->not->toBe($created->token)
+        ->and($reissued->code)->toHaveLength(8)
+        ->and($reissued->invitation->status)->toBe(InvitationStatus::Pending)
+        ->and($reissued->invitation->invite_token_hash)->toBe(hash('sha256', $reissued->token))
+        ->and($reissued->invitation->invite_code_hash)->toBe(hash('sha256', $reissued->code))
+        ->and($reissued->invitation->expires_at->isAfter(now()->addDays(6)))->toBeTrue();
+
+    $this->get(route('invitations.show', ['token' => $created->token]))
+        ->assertRedirect(route('invitations.pending'));
+    $this->get(route('invitations.pending'))
+        ->assertGone()
+        ->assertSee(__('invitations.states.unavailable_title'));
+    $this->get(route('invitations.show', ['token' => $reissued->token]))
+        ->assertRedirect(route('invitations.pending'));
+
+    expect(AuditLog::query()
+        ->where('action', AuditLogAction::InvitationReissued->value)
+        ->where('entity_id', $created->invitation->id)
+        ->count())->toBe(1);
+});
+
+test('reissuing an invitation fails closed for an inconsistent brand scope', function () {
+    [$owner, $organization] = createOrganizationRoleLifecycleContext();
+    [, $otherOrganization] = createOrganizationRoleLifecycleContext();
+    $otherBrand = Brand::factory()->for($otherOrganization)->create();
+    $invitation = Invitation::factory()
+        ->forOrganization($organization)
+        ->pending()
+        ->create(['brand_id' => $otherBrand->id]);
+    $originalHash = $invitation->invite_token_hash;
+
+    expect(fn () => app(ReissueInvitationAction::class)->handle($owner, $organization, $invitation))
+        ->toThrow(ModelNotFoundException::class);
+
+    expect($invitation->fresh()->invite_token_hash)->toBe($originalHash)
+        ->and(AuditLog::query()
+            ->where('action', AuditLogAction::InvitationReissued->value)
+            ->where('entity_id', $invitation->id)
+            ->exists())->toBeFalse();
 });
 
 test('invitation cancellation rejects an identifier from another organization', function () {

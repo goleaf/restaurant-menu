@@ -8,6 +8,7 @@ use App\Actions\Modifiers\AssignModifierGroupToMenuItemAction;
 use App\Enums\AreaNodeType;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\ServicePointType;
+use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
@@ -22,9 +23,14 @@ use App\Models\Menu;
 use App\Models\MenuAvailabilitySchedule;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
+use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
+use App\Models\MenuItemVariantTranslation;
 use App\Models\ModifierGroup;
+use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
+use App\Models\ModifierOptionTranslation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
@@ -501,8 +507,6 @@ final class DemoOrganizationCrudSeeder extends Seeder
                     'branch_id' => $branch->id,
                     'email' => $profile['email'],
                     'phone' => null,
-                    'invite_token' => null,
-                    'invite_code' => null,
                     'invite_token_hash' => hash('sha256', 'demo-crud-token-'.$profile['state']),
                     'invite_code_hash' => hash('sha256', 'demo-crud-code-'.$profile['state']),
                     'expires_at' => $state === 'expired'
@@ -646,10 +650,17 @@ final class DemoOrganizationCrudSeeder extends Seeder
             ]);
 
         if (! $group instanceof ModifierGroup) {
-            return $factory->create();
+            $group = $factory->create();
+        } else {
+            $group->forceFill($factory->make()->getAttributes())->save();
         }
 
-        $group->forceFill($factory->make()->getAttributes())->save();
+        foreach (DemoMenuTranslations::modifierGroup($name) as $languageCode => $translatedName) {
+            ModifierGroupTranslation::query()->updateOrCreate(
+                ['modifier_group_id' => $group->id, 'language_code' => $languageCode],
+                ['name' => $translatedName],
+            );
+        }
 
         return $group->refresh();
     }
@@ -676,12 +687,17 @@ final class DemoOrganizationCrudSeeder extends Seeder
             ]);
 
         if (! $option instanceof ModifierOption) {
-            $factory->create();
-
-            return;
+            $option = $factory->create();
+        } else {
+            $option->forceFill($factory->make()->getAttributes())->save();
         }
 
-        $option->forceFill($factory->make()->getAttributes())->save();
+        foreach (DemoMenuTranslations::modifierOption($name) as $languageCode => $translatedName) {
+            ModifierOptionTranslation::query()->updateOrCreate(
+                ['modifier_option_id' => $option->id, 'language_code' => $languageCode],
+                ['name' => $translatedName],
+            );
+        }
     }
 
     private function seedInactiveDish(Branch $branch): void
@@ -734,6 +750,8 @@ final class DemoOrganizationCrudSeeder extends Seeder
             $item->forceFill($factory->make()->getAttributes())->save();
         }
 
+        $this->seedInactiveItemTranslations($item);
+
         $variant = MenuItemVariant::query()
             ->where('menu_item_id', $item->id)
             ->where('name', self::INACTIVE_VARIANT_NAME)
@@ -751,12 +769,73 @@ final class DemoOrganizationCrudSeeder extends Seeder
             ]);
 
         if (! $variant instanceof MenuItemVariant) {
-            $variantFactory->create();
-
-            return;
+            $variant = $variantFactory->create();
+        } else {
+            $variant->forceFill($variantFactory->make()->getAttributes())->save();
         }
 
-        $variant->forceFill($variantFactory->make()->getAttributes())->save();
+        $this->seedInactiveVariantTranslations($variant);
+    }
+
+    private function seedInactiveItemTranslations(MenuItem $item): void
+    {
+        $translations = [
+            SupportedLocale::English->value => ['CRUD unavailable dish', 'Unavailable demonstration item.'],
+            SupportedLocale::Lithuanian->value => ['CRUD nepasiekiamas patiekalas', 'Nepasiekiama demonstracinė pozicija.'],
+            SupportedLocale::Russian->value => ['Недоступное CRUD-блюдо', 'Недоступная демонстрационная позиция.'],
+        ];
+
+        foreach ($translations as $languageCode => [$name, $description]) {
+            $translation = MenuItemTranslation::query()
+                ->where('menu_item_id', $item->id)
+                ->where('language_code', $languageCode)
+                ->first();
+            $factory = MenuItemTranslation::factory()
+                ->for($item, 'item')
+                ->state(fn (): array => [
+                    'language_code' => $languageCode,
+                    'name' => $name,
+                    'description' => $description,
+                ]);
+
+            if (! $translation instanceof MenuItemTranslation) {
+                $factory->create();
+
+                continue;
+            }
+
+            $translation->forceFill($factory->make()->getAttributes())->save();
+        }
+    }
+
+    private function seedInactiveVariantTranslations(MenuItemVariant $variant): void
+    {
+        $translations = [
+            SupportedLocale::English->value => 'CRUD unavailable portion',
+            SupportedLocale::Lithuanian->value => 'CRUD nepasiekiama porcija',
+            SupportedLocale::Russian->value => 'Недоступная CRUD-порция',
+        ];
+
+        foreach ($translations as $languageCode => $name) {
+            $translation = MenuItemVariantTranslation::query()
+                ->where('menu_item_variant_id', $variant->id)
+                ->where('language_code', $languageCode)
+                ->first();
+            $factory = MenuItemVariantTranslation::factory()
+                ->for($variant, 'variant')
+                ->state(fn (): array => [
+                    'language_code' => $languageCode,
+                    'name' => $name,
+                ]);
+
+            if (! $translation instanceof MenuItemVariantTranslation) {
+                $factory->create();
+
+                continue;
+            }
+
+            $translation->forceFill($factory->make()->getAttributes())->save();
+        }
     }
 
     /**
@@ -839,8 +918,57 @@ final class DemoOrganizationCrudSeeder extends Seeder
                 ->only(['image']);
             $item->forceFill($itemAttributes)->save();
             $paths[] = $itemPath;
+            array_push($paths, ...$this->seedMenuItemGalleryImages($item, $slug));
         }
 
         return array_values(array_unique($paths));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function seedMenuItemGalleryImages(MenuItem $item, string $branchSlug): array
+    {
+        $paths = [];
+
+        foreach (range(0, 1) as $sortOrder) {
+            $path = sprintf(
+                'demo/media/menu-items/%s-%s-gallery-%d.png',
+                $branchSlug,
+                Str::slug($item->name),
+                $sortOrder + 1,
+            );
+            $image = MenuItemImage::query()
+                ->select(['id', 'menu_item_id', 'path', 'sort_order'])
+                ->where('path', $path)
+                ->first();
+
+            if ($image instanceof MenuItemImage) {
+                if ($image->menu_item_id !== $item->id || $image->sort_order !== $sortOrder) {
+                    throw new LogicException('A deterministic demo gallery path is already assigned to another image slot.');
+                }
+
+                $paths[] = $path;
+
+                continue;
+            }
+
+            if (MenuItemImage::query()
+                ->where('menu_item_id', $item->id)
+                ->where('sort_order', $sortOrder)
+                ->exists()) {
+                throw new LogicException('A deterministic demo gallery slot is already occupied by another image.');
+            }
+
+            MenuItemImage::factory()
+                ->for($item, 'item')
+                ->create([
+                    'path' => $path,
+                    'sort_order' => $sortOrder,
+                ]);
+            $paths[] = $path;
+        }
+
+        return $paths;
     }
 }

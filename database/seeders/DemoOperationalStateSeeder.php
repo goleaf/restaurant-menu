@@ -76,6 +76,7 @@ class DemoOperationalStateSeeder extends Seeder
                                     'kitchen_department_id',
                                     'name',
                                     'price_cents',
+                                    'allergens',
                                     'sort_order',
                                 ])
                                 ->with([
@@ -265,6 +266,7 @@ class DemoOperationalStateSeeder extends Seeder
                         'kitchen_department_id',
                         'name',
                         'price_cents',
+                        'allergens',
                         'sort_order',
                     ])
                     ->with([
@@ -397,9 +399,10 @@ class DemoOperationalStateSeeder extends Seeder
     ): void {
         $session = $this->session($branch, $servicePoint, 'kitchen-progress', TableSessionStatus::Active, now()->subMinutes(45));
         $guest = $this->guest($session, 'Milda Demo', true);
-        $order = $this->order($session, $guest, $waiter, 'kitchen-progress-order', OrderStatus::InProgress, 3000);
+        $order = $this->order($session, $guest, $waiter, 'kitchen-progress-order', OrderStatus::InProgress, 4000);
         $statuses = [
             KitchenTicketItemStatus::New,
+            KitchenTicketItemStatus::Accepted,
             KitchenTicketItemStatus::InProgress,
             KitchenTicketItemStatus::Ready,
         ];
@@ -442,6 +445,7 @@ class DemoOperationalStateSeeder extends Seeder
         $branchKey = Str::slug($branch->name);
         $statuses = [
             KitchenTicketItemStatus::New,
+            KitchenTicketItemStatus::Accepted,
             KitchenTicketItemStatus::InProgress,
             KitchenTicketItemStatus::Ready,
         ];
@@ -775,6 +779,7 @@ class DemoOperationalStateSeeder extends Seeder
                 'total_price_cents' => $unitPriceCents,
                 'selected_modifiers' => [],
                 'modifiers_snapshot' => [],
+                'allergens_snapshot' => $menuItem->allergenCodes(),
                 'tax_snapshot' => [],
                 'service_snapshot' => [],
                 'comment' => null,

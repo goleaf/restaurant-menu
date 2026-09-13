@@ -146,6 +146,7 @@ test('order readiness payment and menu item factories expose core states', funct
         ->create();
 
     $pendingReadiness = KitchenTicketItem::factory()->pending()->create();
+    $acceptedReadiness = KitchenTicketItem::factory()->accepted()->create();
     $preparingReadiness = KitchenTicketItem::factory()->preparing()->create();
     $readyReadiness = KitchenTicketItem::factory()->ready()->create();
     $cancelledReadiness = KitchenTicketItem::factory()->cancelled()->create();
@@ -174,6 +175,7 @@ test('order readiness payment and menu item factories expose core states', funct
         ->and($cancelledOrderItem->cancelled_by_user_id)->toBe($cancellingUser->id)
         ->and($cancelledOrderItem->cancellation_reason)->toBe('Guest changed their mind.')
         ->and($pendingReadiness->status)->toBe(KitchenTicketItemStatus::New)
+        ->and($acceptedReadiness->status)->toBe(KitchenTicketItemStatus::Accepted)
         ->and($preparingReadiness->status)->toBe(KitchenTicketItemStatus::InProgress)
         ->and($readyReadiness->status)->toBe(KitchenTicketItemStatus::Ready)
         ->and($cancelledReadiness->status)->toBe(KitchenTicketItemStatus::Cancelled)

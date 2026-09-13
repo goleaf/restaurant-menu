@@ -56,6 +56,11 @@ class UpdateGuestDraftOrderItemAction
 
             $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
             $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId, $languageCode);
+            $normalizedComment = $this->normalizeComment($comment);
+
+            if ($draftOrderItem->alreadyMatchesSelection($linePrice, $quantity, $normalizedComment)) {
+                return $draftOrderItem;
+            }
 
             $draftOrderItem->update([
                 'quantity' => $quantity,
@@ -66,7 +71,7 @@ class UpdateGuestDraftOrderItemAction
                 'modifier_total_cents' => $linePrice['modifier_total_cents'],
                 'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
-                'comment' => $this->normalizeComment($comment),
+                'comment' => $normalizedComment,
             ]);
 
             $this->createOrderStatusLog->handle(
@@ -147,6 +152,7 @@ class UpdateGuestDraftOrderItemAction
                     ]),
             ])
             ->whereKey($draftOrderItem->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 

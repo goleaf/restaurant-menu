@@ -8,6 +8,7 @@ use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\OrderStatusLogEvent;
+use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,18 @@ class DeleteDraftOrderItemByWaiterAction
     public function handle(DraftOrderItem $draftOrderItem, User $editedBy): void
     {
         DB::transaction(function () use ($draftOrderItem, $editedBy): void {
-            $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
+            $currentDraftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
+
+            if (! $currentDraftOrderItem instanceof DraftOrderItem) {
+                $this->ensureWaiterCanEditDraftOrder->handle(
+                    $this->reloadDraftOrder($draftOrderItem),
+                    $editedBy,
+                );
+
+                return;
+            }
+
+            $draftOrderItem = $currentDraftOrderItem;
             $draftOrder = $draftOrderItem->draftOrder;
 
             $this->ensureWaiterCanEditDraftOrder->handle($draftOrder, $editedBy);
@@ -70,7 +82,7 @@ class DeleteDraftOrderItemByWaiterAction
         });
     }
 
-    private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): DraftOrderItem
+    private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): ?DraftOrderItem
     {
         return DraftOrderItem::query()
             ->select([
@@ -98,6 +110,23 @@ class DeleteDraftOrderItemByWaiterAction
                     ]),
             ])
             ->whereKey($draftOrderItem->id)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    private function reloadDraftOrder(DraftOrderItem $draftOrderItem): DraftOrder
+    {
+        return DraftOrder::query()
+            ->select(['id', 'table_session_id', 'status'])
+            ->with([
+                'tableSession' => fn ($query) => $query->select([
+                    'id',
+                    'branch_id',
+                    'status',
+                ]),
+            ])
+            ->whereKey($draftOrderItem->draft_order_id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 }

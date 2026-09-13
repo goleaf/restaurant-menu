@@ -142,7 +142,30 @@ class UpdateDepartmentTicketItemStatusAction
                 ]);
             }
 
-            $item->forceFill(['status' => $status])->save();
+            $updatedRows = KitchenTicketItem::query()
+                ->whereKey($item->id)
+                ->where('status', $previousStatus->value)
+                ->whereNull('served_at')
+                ->update(['status' => $status]);
+
+            if ($updatedRows === 0) {
+                $currentItem = KitchenTicketItem::query()
+                    ->select(['id', 'status', 'served_at', 'updated_at'])
+                    ->whereKey($item->id)
+                    ->firstOrFail();
+
+                if ($currentItem->served_at === null && $currentItem->status === $status) {
+                    $previousStatus = $status;
+
+                    return $currentItem;
+                }
+
+                throw ValidationException::withMessages([
+                    'ticket_item_status' => __('errors.types.order_invalid_transition.message'),
+                ]);
+            }
+
+            $item->forceFill(['status' => $status]);
 
             $this->createOrderStatusLog->handle(
                 event: OrderStatusLogEvent::TicketItemStatusChanged,

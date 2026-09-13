@@ -72,15 +72,11 @@ final class BuildDepartmentTicketDelayTimerAction
      */
     private function state(int $elapsedSeconds): string
     {
-        if ($elapsedSeconds >= self::DELAYED_AFTER_SECONDS) {
-            return 'delayed';
-        }
-
-        if ($elapsedSeconds >= self::ATTENTION_AFTER_SECONDS) {
-            return 'attention';
-        }
-
-        return 'on-track';
+        return match (true) {
+            $elapsedSeconds >= self::DELAYED_AFTER_SECONDS => 'delayed',
+            $elapsedSeconds >= self::ATTENTION_AFTER_SECONDS => 'attention',
+            default => 'on-track',
+        };
     }
 
     /**

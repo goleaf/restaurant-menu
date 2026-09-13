@@ -16,11 +16,13 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
+use App\Models\OrderItem;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -29,6 +31,9 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
@@ -73,6 +78,7 @@ test('order schema stores real order links and item snapshots', function () {
             'total_price_cents',
             'selected_modifiers',
             'modifiers_snapshot',
+            'allergens_snapshot',
             'tax_snapshot',
             'service_snapshot',
             'comment',
@@ -112,6 +118,56 @@ test('order status enum contains the prepared order lifecycle', function () {
         'cancelled',
     ])->and(OrderStatus::options())->toHaveKey('confirmed_by_waiter', __('reports.statuses.orders.confirmed_by_waiter'))
         ->and(OrderStatus::SentToKitchenBar->label())->toBe(__('reports.statuses.orders.sent_to_kitchen_bar'));
+});
+
+test('allergen snapshot migration preserves existing order data through upgrade and rollback', function () {
+    $connectionName = 'order-allergen-snapshot-rollback';
+    $databasePath = tempnam(sys_get_temp_dir(), 'restaurant-order-allergens-');
+    $originalConnection = DB::getDefaultConnection();
+
+    expect($databasePath)->toBeString();
+
+    config()->set("database.connections.{$connectionName}", [
+        ...config('database.connections.sqlite'),
+        'database' => $databasePath,
+    ]);
+
+    try {
+        DB::setDefaultConnection($connectionName);
+
+        expect(Artisan::call('migrate', [
+            '--database' => $connectionName,
+            '--force' => true,
+        ]))->toBe(0);
+
+        $orderItem = OrderItem::factory()->create([
+            'item_name' => 'Existing allergen-safe item',
+            'allergens_snapshot' => ['milk'],
+        ]);
+        $ticketItem = KitchenTicketItem::factory()
+            ->for($orderItem, 'orderItem')
+            ->create(['allergens_snapshot' => ['milk']]);
+        $migration = require database_path('migrations/2026_08_24_173825_add_allergen_snapshots_to_order_items_and_kitchen_ticket_items.php');
+
+        $migration->down();
+
+        expect(Schema::hasColumn('order_items', 'allergens_snapshot'))->toBeFalse()
+            ->and(Schema::hasColumn('kitchen_ticket_items', 'allergens_snapshot'))->toBeFalse()
+            ->and(OrderItem::query()->whereKey($orderItem->id)->exists())->toBeTrue()
+            ->and(KitchenTicketItem::query()->whereKey($ticketItem->id)->exists())->toBeTrue();
+
+        $migration->up();
+
+        expect(Schema::hasColumn('order_items', 'allergens_snapshot'))->toBeTrue()
+            ->and(Schema::hasColumn('kitchen_ticket_items', 'allergens_snapshot'))->toBeTrue()
+            ->and(OrderItem::query()->whereKey($orderItem->id)->firstOrFail()->historicalAllergens())->toBe([])
+            ->and(KitchenTicketItem::query()->whereKey($ticketItem->id)->firstOrFail()->allergens_snapshot)->toBe([]);
+    } finally {
+        DB::setDefaultConnection($originalConnection);
+        DB::purge($connectionName);
+        config()->set("database.connections.{$connectionName}", null);
+        File::delete($databasePath);
+    }
 });
 
 test('confirming draft creates immutable order item snapshots', function () {
@@ -158,6 +214,7 @@ test('confirming draft creates immutable order item snapshots', function () {
                 'price_delta_cents' => 100,
             ],
         ])
+        ->and($orderItem->allergens_snapshot)->toBe(['milk'])
         ->and($orderItem->tax_snapshot)->toBe([])
         ->and($orderItem->service_snapshot)->toBe([])
         ->and($orderItem->comment)->toBe('Medium rare')
@@ -170,6 +227,7 @@ test('confirming draft creates immutable order item snapshots', function () {
         'name' => 'Renamed Steak',
         'description' => 'Renamed menu description',
         'price_cents' => 9900,
+        'allergens' => ['gluten'],
     ]);
     $guest->update(['guest_name' => 'Renamed Ana']);
     $modifierGroup->update(['name' => 'Premium sauce']);
@@ -202,6 +260,7 @@ test('confirming draft creates immutable order item snapshots', function () {
                 'price_delta_cents' => 100,
             ],
         ])
+        ->and($orderItem->historicalAllergens())->toBe(['milk'])
         ->and($orderItem->historicalGuestName())->toBe('Ana')
         ->and($orderItem->historicalItemName())->toBe('Original Steak')
         ->and($orderItem->historicalModifiers())->toBe([
@@ -260,6 +319,7 @@ function createPrompt56SentDraftScenario(): array
             'name' => 'Original Steak',
             'description' => 'Original menu description',
             'price_cents' => 750,
+            'allergens' => ['milk'],
         ]);
     $modifierGroup = ModifierGroup::factory()
         ->for($branch)

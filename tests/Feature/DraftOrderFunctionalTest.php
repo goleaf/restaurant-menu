@@ -10,6 +10,7 @@ use App\Actions\Waiter\RejectDraftOrderByWaiterAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
@@ -29,6 +30,7 @@ use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\Order;
+use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -172,6 +174,61 @@ test('guest can update quantity comment and delete only own draft items', functi
                 'total' => '37.50',
             ],
         ]);
+});
+
+test('replayed guest update and delete requests do not duplicate draft history', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $updatedItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+    $deletedItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['waterItem'],
+        selectedModifierOptions: [],
+    );
+    $action = app(UpdateGuestDraftOrderItemAction::class);
+
+    $action->handle($updatedItem, $context['ana'], 3, [], comment: 'No onions');
+    $action->handle($updatedItem, $context['ana'], 3, [], comment: 'No onions');
+    app(DeleteGuestDraftOrderItemAction::class)->handle($deletedItem, $context['ana']);
+    app(DeleteGuestDraftOrderItemAction::class)->handle($deletedItem, $context['ana']);
+
+    expect($updatedItem->fresh()->quantity)->toBe(3)
+        ->and($updatedItem->fresh()->comment)->toBe('No onions')
+        ->and($deletedItem->fresh())->toBeNull()
+        ->and(OrderStatusLog::query()
+            ->where('draft_order_id', $updatedItem->draft_order_id)
+            ->where('event', OrderStatusLogEvent::DraftEdited->value)
+            ->count())->toBe(4);
+});
+
+test('replayed guest Livewire delete reports the already achieved result', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $draftOrderItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+
+    Livewire::withCookie(prompt354GuestTokenCookieName($context['publicToken']), $context['ana']->guest_token)
+        ->test(GuestDraftOrderComponent::class, [
+            'tableSessionId' => $context['tableSession']->id,
+            'currentGuestId' => $context['ana']->id,
+            'publicToken' => $context['publicToken'],
+            'currency' => 'EUR',
+        ])
+        ->call('deleteItem', $draftOrderItem->id)
+        ->assertHasNoErrors()
+        ->call('deleteItem', $draftOrderItem->id)
+        ->assertHasNoErrors()
+        ->assertSet('feedbackMessage', __('guest.cart.item_removed'));
+
+    expect($draftOrderItem->fresh())->toBeNull();
 });
 
 test('dish that becomes unavailable stays removable but cannot be changed or sent', function (): void {
@@ -536,6 +593,27 @@ test('any active guest can send the draft to waiter and guests cannot edit it an
 
     expect($draftOrderItem->fresh())->toBeInstanceOf(DraftOrderItem::class)
         ->and($sentDraftOrder->fresh()->status)->toBe(DraftOrderStatus::SentToWaiter);
+});
+
+test('replaying send to waiter returns the sent draft without duplicate transition history', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $draftOrderItem = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+    $action = app(SendDraftOrderToWaiterAction::class);
+
+    $sentDraft = $action->handle($draftOrderItem->draftOrder, $context['ana']);
+    $replayedDraft = $action->handle($draftOrderItem->draftOrder, $context['boris']);
+
+    expect($replayedDraft->id)->toBe($sentDraft->id)
+        ->and($replayedDraft->status)->toBe(DraftOrderStatus::SentToWaiter)
+        ->and(OrderStatusLog::query()
+            ->where('draft_order_id', $sentDraft->id)
+            ->where('event', OrderStatusLogEvent::DraftSentToWaiter->value)
+            ->count())->toBe(1);
 });
 
 test('rejected draft is not billable and a fresh draft can be started', function (): void {

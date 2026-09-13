@@ -157,12 +157,14 @@ test('new owner can onboard and close a fully paid table through the browser', f
     $page
         ->navigate(route('restaurant.kitchen.dashboard', absolute: false))
         ->assertSee('Browser E2E Pasta');
+    clickBrowserElement($page, 'button[wire\\:click="setItemStatus('.$ticketItem->id.', \'accepted\')"]');
+    $page->assertPresent('[data-ticket-item-status="accepted"]');
     clickBrowserElement($page, 'button[wire\\:click="setItemStatus('.$ticketItem->id.', \'in_progress\')"]');
     $page->assertPresent('[data-ticket-item-status="in_progress"]');
     clickBrowserElement($page, 'button[wire\\:click="setItemStatus('.$ticketItem->id.', \'ready\')"]');
     $page
         ->assertPresent('[data-ticket-item-status="ready"]')
-        ->assertSee(__('ui.departments.dashboard.gotovo'))
+        ->assertSee(__('statuses.kitchen_ticket_item.ready'))
         ->assertNoJavaScriptErrors();
 
     $page

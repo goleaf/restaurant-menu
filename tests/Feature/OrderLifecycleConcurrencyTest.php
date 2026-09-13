@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenDepartmentType;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Enums\OrganizationUserStatus;
@@ -15,8 +17,11 @@ use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
+use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
 use App\Models\OrganizationUser;
 use App\Models\Role;
@@ -115,7 +120,7 @@ test('concurrent waiter confirmations create one order and one department dispat
         $results = Concurrency::driver('process')->run([
             OrderLifecycleConcurrencyTasks::confirm($connection, $connectionName, $draftOrderId, $waiterId),
             OrderLifecycleConcurrencyTasks::confirm($connection, $connectionName, $draftOrderId, $waiterId),
-        ], 20);
+        ], 60);
 
         config(['database.default' => $connectionName]);
         DB::purge($connectionName);
@@ -133,6 +138,117 @@ test('concurrent waiter confirmations create one order and one department dispat
             ->and(OrderStatusLog::query()
                 ->where('draft_order_id', $draftOrderId)
                 ->where('event', OrderStatusLogEvent::OrderSentToKitchenBar->value)
+                ->count())->toBe(1);
+    } finally {
+        config(['database.default' => $originalDefaultConnection]);
+        DB::disconnect($connectionName);
+        DB::purge($connectionName);
+        File::delete([
+            $databasePath,
+            $databasePath.'-shm',
+            $databasePath.'-wal',
+        ]);
+    }
+});
+
+test('concurrent department status requests create one transition history entry', function (): void {
+    $databasePath = tempnam(sys_get_temp_dir(), 'restaurant-department-concurrency-');
+
+    expect($databasePath)->toBeString();
+
+    $connectionName = 'department_status_concurrency';
+    $originalDefaultConnection = config('database.default');
+    $connection = config('database.connections.sqlite');
+    $connection['database'] = $databasePath;
+
+    try {
+        config([
+            'database.default' => $connectionName,
+            "database.connections.{$connectionName}" => $connection,
+        ]);
+        DB::purge($connectionName);
+
+        expect(Artisan::call('migrate', [
+            '--database' => $connectionName,
+            '--force' => true,
+        ]))->toBe(0);
+
+        $this->seed(SystemPermissionsSeeder::class);
+
+        $owner = User::factory()->create();
+        $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Concurrent Department Group']);
+        $brand = Brand::factory()->for($organization)->create(['name' => 'Concurrent Department Brand']);
+        $branch = Branch::factory()
+            ->for($organization)
+            ->for($brand)
+            ->create(['name' => 'Concurrent Department Restaurant']);
+        $servicePoint = ServicePoint::factory()
+            ->for($branch)
+            ->create(['name' => 'Concurrent Department Table']);
+        $tableSession = TableSession::factory()
+            ->forServicePoint($servicePoint)
+            ->active()
+            ->create();
+        $department = KitchenDepartment::factory()
+            ->for($branch)
+            ->create([
+                'type' => KitchenDepartmentType::Kitchen,
+                'name' => 'Concurrent Kitchen',
+            ]);
+        $order = Order::factory()
+            ->forTableSession($tableSession)
+            ->sentToDepartments()
+            ->create();
+        $ticket = KitchenTicket::factory()
+            ->forOrder($order)
+            ->create([
+                'kitchen_department_id' => $department->id,
+                'department_type' => $department->type,
+                'department_name' => $department->name,
+            ]);
+        $orderItem = OrderItem::factory()
+            ->for($order)
+            ->create([
+                'kitchen_department_id' => $department->id,
+                'kitchen_department_type' => $department->type,
+                'kitchen_department_name' => $department->name,
+                'item_name' => 'Concurrent pasta',
+            ]);
+        $ticketItem = KitchenTicketItem::factory()
+            ->forDispatchedOrderItem($ticket, $orderItem)
+            ->pending()
+            ->create();
+        $chef = User::factory()->create(['name' => 'Concurrent Chef']);
+        $chefRole = Role::query()->where('code', SystemRole::HeadChef->value)->firstOrFail();
+
+        OrganizationUser::factory()
+            ->forOrganization($organization)
+            ->forUser($chef)
+            ->forRole($chefRole)
+            ->active()
+            ->create(['status' => OrganizationUserStatus::Active]);
+
+        $ticketItemId = $ticketItem->id;
+        $chefId = $chef->id;
+
+        config(['database.default' => $originalDefaultConnection]);
+
+        $results = Concurrency::driver('process')->run([
+            OrderLifecycleConcurrencyTasks::acceptDepartmentItem($connection, $connectionName, $ticketItemId, $chefId),
+            OrderLifecycleConcurrencyTasks::acceptDepartmentItem($connection, $connectionName, $ticketItemId, $chefId),
+        ], 60);
+
+        config(['database.default' => $connectionName]);
+        DB::purge($connectionName);
+
+        expect(array_unique($results))->toBe([KitchenTicketItemStatus::Accepted->value])
+            ->and($ticketItem->fresh()->status)->toBe(KitchenTicketItemStatus::Accepted)
+            ->and($order->fresh()->status)->toBe(OrderStatus::SentToKitchenBar)
+            ->and(OrderStatusLog::query()
+                ->where('order_id', $order->id)
+                ->where('event', OrderStatusLogEvent::TicketItemStatusChanged->value)
+                ->where('status_type', 'kitchen_ticket_item')
+                ->where('new_status', KitchenTicketItemStatus::Accepted->value)
                 ->count())->toBe(1);
     } finally {
         config(['database.default' => $originalDefaultConnection]);

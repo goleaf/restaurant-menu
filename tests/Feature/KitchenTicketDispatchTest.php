@@ -74,6 +74,7 @@ test('kitchen ticket schema stores order dispatch split by department', function
             'item_name',
             'quantity',
             'selected_modifiers',
+            'allergens_snapshot',
             'comment',
             'created_at',
             'updated_at',

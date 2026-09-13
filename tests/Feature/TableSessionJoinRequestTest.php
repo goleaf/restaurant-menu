@@ -192,6 +192,29 @@ test('non active guest cannot approve or reject join request', function () {
         ->toThrow(ValidationException::class);
 });
 
+test('non active guest cannot expire a join request through moderation actions', function () {
+    $tableSession = TableSession::factory()->active()->create();
+    $removedGuest = TableSessionGuest::factory()
+        ->for($tableSession)
+        ->removed()
+        ->create();
+    $approvalRequest = TableSessionJoinRequest::factory()
+        ->for($tableSession)
+        ->pending()
+        ->create(['expires_at' => now()->subMinute()]);
+    $rejectionRequest = TableSessionJoinRequest::factory()
+        ->for($tableSession)
+        ->pending()
+        ->create(['expires_at' => now()->subMinute()]);
+
+    expect(fn () => app(ApproveTableSessionJoinRequestAction::class)->handle($approvalRequest, $removedGuest))
+        ->toThrow(ValidationException::class)
+        ->and(fn () => app(RejectTableSessionJoinRequestAction::class)->handle($rejectionRequest, $removedGuest))
+        ->toThrow(ValidationException::class)
+        ->and($approvalRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Pending)
+        ->and($rejectionRequest->fresh()->status)->toBe(TableSessionJoinRequestStatus::Pending);
+});
+
 test('expired join request is marked expired when moderation is attempted', function () {
     $tableSession = TableSession::factory()->create();
     $approver = TableSessionGuest::factory()

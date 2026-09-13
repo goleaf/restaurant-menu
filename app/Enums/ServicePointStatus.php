@@ -25,19 +25,19 @@ enum ServicePointStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Free => 'Free',
-            self::Occupied => 'Occupied',
-            self::Reserved => 'Reserved',
-            self::WaitingWaiter => 'Waiting waiter',
-            self::HasNewOrder => 'Has new order',
-            self::Cooking => 'Cooking',
-            self::ReadyToServe => 'Ready to serve',
-            self::PaymentRequested => 'Payment requested',
-            self::Paid => 'Paid',
-            self::Closed => 'Closed',
-            self::Blocked => 'Blocked',
-        };
+        return __(match ($this) {
+            self::Free => 'reports.statuses.service_points.free',
+            self::Occupied => 'reports.statuses.service_points.occupied',
+            self::Reserved => 'reports.statuses.service_points.reserved',
+            self::WaitingWaiter => 'reports.statuses.service_points.waiting_waiter',
+            self::HasNewOrder => 'reports.statuses.service_points.has_new_order',
+            self::Cooking => 'reports.statuses.service_points.cooking',
+            self::ReadyToServe => 'reports.statuses.service_points.ready_to_serve',
+            self::PaymentRequested => 'reports.statuses.service_points.payment_requested',
+            self::Paid => 'reports.statuses.service_points.paid',
+            self::Closed => 'reports.statuses.service_points.closed',
+            self::Blocked => 'reports.statuses.service_points.blocked',
+        });
     }
 
     public function badgeColor(): string

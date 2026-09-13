@@ -9,10 +9,10 @@ enum WaiterCallStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'Waiting for waiter',
-            self::Handled => 'Handled',
-        };
+        return __(match ($this) {
+            self::Pending => 'statuses.waiter_call.pending',
+            self::Handled => 'statuses.waiter_call.handled',
+        });
     }
 
     public function badgeColor(): string

@@ -1,7 +1,9 @@
 <?php
 
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
+use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Actions\TableSessions\OpenTableSessionForServicePointAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrderStatus;
@@ -14,6 +16,7 @@ use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\Waiter\TableDetail\Payment;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -61,6 +64,9 @@ test('staff with close table sessions permission can close an active session and
         ->assertSee('name="closeTableConfirmation"', false)
         ->set('closeTableConfirmation', 'CLOSE')
         ->call('closeTableSession')
+        ->assertHasNoErrors()
+        ->call('closeTableSession')
+        ->assertHasNoErrors()
         ->assertSee(__('payments.messages.session_closed'));
 
     $closedSession = $tableSession->fresh();
@@ -118,6 +124,28 @@ test('staff without close table sessions permission cannot manually close an unp
 
     expect($tableSession->fresh()->status)->toBe(TableSessionStatus::Active)
         ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Occupied);
+});
+
+test('replaying the same table close request returns the closed session without duplicate history', function () {
+    [$organization, , $servicePoint, $tableSession] = createPrompt68CloseContext();
+    $staff = User::factory()->create(['name' => 'Idempotent Session Closer']);
+    attachPrompt68Staff($staff, $organization, [
+        SystemPermission::ViewOrders,
+        SystemPermission::CloseTableSessions,
+    ]);
+    $action = app(CloseTableSessionAction::class);
+
+    $closedSession = $action->handle($tableSession, $staff);
+    $replayedSession = $action->handle($tableSession, $staff);
+
+    expect($replayedSession->id)->toBe($closedSession->id)
+        ->and($replayedSession->status)->toBe(TableSessionStatus::Closed)
+        ->and($servicePoint->fresh()->status)->toBe(ServicePointStatus::Free)
+        ->and(AuditLog::query()
+            ->where('action', AuditLogAction::TableSessionClosed->value)
+            ->where('entity_type', 'table_session')
+            ->where('entity_id', $tableSession->id)
+            ->count())->toBe(1);
 });
 
 test('browser tampering cannot bypass the unpaid session close confirmation', function () {

@@ -7,6 +7,7 @@ namespace App\Enums;
 enum KitchenTicketItemStatus: string
 {
     case New = 'new';
+    case Accepted = 'accepted';
     case InProgress = 'in_progress';
     case Ready = 'ready';
     case Cancelled = 'cancelled';
@@ -18,7 +19,8 @@ enum KitchenTicketItemStatus: string
         }
 
         return in_array($next, match ($this) {
-            self::New => [self::InProgress, self::Ready, self::Cancelled],
+            self::New => [self::Accepted, self::InProgress, self::Ready, self::Cancelled],
+            self::Accepted => [self::InProgress, self::Ready, self::Cancelled],
             self::InProgress => [self::Ready, self::Cancelled],
             self::Ready, self::Cancelled => [],
         }, true);
@@ -26,18 +28,25 @@ enum KitchenTicketItemStatus: string
 
     public function label(): string
     {
-        return __(match ($this) {
+        return __($this->translationKey());
+    }
+
+    public function translationKey(): string
+    {
+        return match ($this) {
             self::New => 'statuses.kitchen_ticket_item.new',
+            self::Accepted => 'statuses.kitchen_ticket_item.accepted',
             self::InProgress => 'statuses.kitchen_ticket_item.in_progress',
             self::Ready => 'statuses.kitchen_ticket_item.ready',
             self::Cancelled => 'statuses.kitchen_ticket_item.cancelled',
-        });
+        };
     }
 
     public function badgeColor(): string
     {
         return match ($this) {
             self::New => 'rose',
+            self::Accepted => 'blue',
             self::InProgress => 'amber',
             self::Ready => 'emerald',
             self::Cancelled => 'zinc',

@@ -6,6 +6,7 @@ namespace App\Livewire\Departments;
 
 use App\Actions\Departments\BuildDepartmentDashboardAction;
 use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
+use App\Enums\DepartmentTicketFilter;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
@@ -15,10 +16,13 @@ use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 abstract class Dashboard extends Component
 {
+    private const int TICKETS_PER_PAGE = 24;
+
     private BuildDepartmentDashboardAction $buildDepartmentDashboard;
 
     private UpdateDepartmentTicketItemStatusAction $updateDepartmentTicketItemStatus;
@@ -41,13 +45,36 @@ abstract class Dashboard extends Component
 
     public int $newItemCount = 0;
 
+    public int $acceptedItemCount = 0;
+
     public int $inProgressItemCount = 0;
 
     public int $readyItemCount = 0;
 
+    public int $completedItemCount = 0;
+
+    public int $cancelledItemCount = 0;
+
+    public string $ticketFilter = 'active';
+
+    /**
+     * @var array<string, string>
+     */
+    public array $ticketFilterOptions = [];
+
+    public int $ticketPage = 1;
+
+    public bool $hasPreviousTicketPage = false;
+
+    public bool $hasNextTicketPage = false;
+
+    public string $sortLabel = '';
+
     public string $refreshedAt = '';
 
     public ?string $feedbackMessage = null;
+
+    public ?string $updateAnnouncement = null;
 
     public string $pageTitle = '';
 
@@ -59,10 +86,8 @@ abstract class Dashboard extends Component
 
     public string $itemCountLabel = '';
 
-    /**
-     * @var array<string, string>
-     */
-    public array $statusOptions = [];
+    #[Locked]
+    public string $queueFingerprint = '';
 
     public function boot(
         BuildDepartmentDashboardAction $buildDepartmentDashboard,
@@ -74,7 +99,7 @@ abstract class Dashboard extends Component
 
     public function mount(): void
     {
-        $this->statusOptions = KitchenTicketItemStatus::options();
+        $this->ticketFilterOptions = DepartmentTicketFilter::options();
         $this->pageTitle = $this->screenTitle();
         $this->pageSubtitle = $this->screenSubtitle();
         $this->dataPage = $this->screenDataPage();
@@ -85,18 +110,27 @@ abstract class Dashboard extends Component
 
     public function updatedSelectedDepartmentId(): void
     {
+        $this->resetTicketPageAndFingerprint();
+        $this->refreshDepartment();
+    }
+
+    public function updatedTicketFilter(string $filter): void
+    {
+        $this->ticketFilter = (DepartmentTicketFilter::tryFrom($filter) ?? DepartmentTicketFilter::Active)->value;
+        $this->resetTicketPageAndFingerprint();
         $this->refreshDepartment();
     }
 
     public function refreshDepartment(): void
     {
-        $payload = $this->buildDepartmentDashboard->handle(
-            user: $this->currentUser(),
-            selectedDepartmentId: $this->selectedDepartmentId === '' ? null : (int) $this->selectedDepartmentId,
-            departmentTypes: $this->departmentTypes(),
-            roleCodes: $this->roleCodes(),
-            permissionCodes: $this->permissionCodes(),
-        );
+        $filter = DepartmentTicketFilter::tryFrom($this->ticketFilter) ?? DepartmentTicketFilter::Active;
+        $this->ticketFilter = $filter->value;
+        $payload = $this->departmentPayload($filter);
+
+        if ($payload['tickets'] === [] && $this->ticketPage > 1 && $payload['ticket_count'] > 0) {
+            $this->ticketPage = max(1, (int) ceil($payload['ticket_count'] / self::TICKETS_PER_PAGE));
+            $payload = $this->departmentPayload($filter);
+        }
 
         if (! $payload['has_access']) {
             abort(403);
@@ -108,9 +142,56 @@ abstract class Dashboard extends Component
         $this->selectedDepartmentName = $payload['selected_department_name'];
         $this->ticketCount = $payload['ticket_count'];
         $this->newItemCount = $payload['new_item_count'];
+        $this->acceptedItemCount = $payload['accepted_item_count'];
         $this->inProgressItemCount = $payload['in_progress_item_count'];
         $this->readyItemCount = $payload['ready_item_count'];
+        $this->completedItemCount = $payload['completed_item_count'];
+        $this->cancelledItemCount = $payload['cancelled_item_count'];
+        $this->ticketPage = $payload['ticket_page'];
+        $this->hasPreviousTicketPage = $payload['has_previous_ticket_page'];
+        $this->hasNextTicketPage = $payload['has_next_ticket_page'];
+        $this->sortLabel = $payload['sort_label'];
         $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
+        $this->announceQueueChanges();
+    }
+
+    public function previousTicketPage(): void
+    {
+        if ($this->ticketPage <= 1) {
+            return;
+        }
+
+        $this->ticketPage--;
+        $this->queueFingerprint = '';
+        $this->refreshDepartment();
+    }
+
+    public function nextTicketPage(): void
+    {
+        if (! $this->hasNextTicketPage) {
+            return;
+        }
+
+        $this->ticketPage++;
+        $this->queueFingerprint = '';
+        $this->refreshDepartment();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function departmentPayload(DepartmentTicketFilter $filter): array
+    {
+        return $this->buildDepartmentDashboard->handle(
+            user: $this->currentUser(),
+            selectedDepartmentId: $this->selectedDepartmentId === '' ? null : (int) $this->selectedDepartmentId,
+            departmentTypes: $this->departmentTypes(),
+            roleCodes: $this->roleCodes(),
+            permissionCodes: $this->permissionCodes(),
+            filter: $filter,
+            page: $this->ticketPage,
+            perPage: self::TICKETS_PER_PAGE,
+        );
     }
 
     public function setItemStatus(int $itemId, string $status): void
@@ -169,6 +250,39 @@ abstract class Dashboard extends Component
     abstract protected function screenEmptyMessage(): string;
 
     abstract protected function screenItemCountLabel(): string;
+
+    private function resetTicketPageAndFingerprint(): void
+    {
+        $this->ticketPage = 1;
+        $this->queueFingerprint = '';
+        $this->updateAnnouncement = null;
+    }
+
+    private function announceQueueChanges(): void
+    {
+        $queueState = collect($this->tickets)
+            ->map(fn (array $ticket): array => [
+                'id' => $ticket['id'],
+                'items' => collect($ticket['items'])
+                    ->map(fn (array $item): array => [
+                        'id' => $item['id'],
+                        'status' => $item['status_value'],
+                    ])
+                    ->values()
+                    ->all(),
+            ])
+            ->values()
+            ->all();
+        $fingerprint = hash('sha256', json_encode($queueState, JSON_THROW_ON_ERROR));
+
+        if ($this->queueFingerprint !== '' && $this->queueFingerprint !== $fingerprint) {
+            $this->updateAnnouncement = __('ui.departments.dashboard.queue_updated', [
+                'time' => $this->refreshedAt,
+            ]);
+        }
+
+        $this->queueFingerprint = $fingerprint;
+    }
 
     private function currentUser(): User
     {

@@ -6,6 +6,7 @@ namespace App\Actions\Departments;
 
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
+use App\Enums\MenuAllergen;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\KitchenTicket;
@@ -143,7 +144,9 @@ class BuildDepartmentTicketPrintAction
                         'quantity',
                         'status',
                         'selected_modifiers',
+                        'allergens_snapshot',
                         'comment',
+                        'served_at',
                         'created_at',
                     ])
                     ->orderBy('created_at')
@@ -183,6 +186,7 @@ class BuildDepartmentTicketPrintAction
     private function itemPayload(KitchenTicketItem $item): array
     {
         $status = $this->itemStatus($item->status);
+        $allergens = $this->allergenSummary($item->allergens_snapshot ?? []);
 
         return [
             'id' => $item->id,
@@ -191,11 +195,14 @@ class BuildDepartmentTicketPrintAction
             'quantity' => $item->quantity,
             'status_key' => match ($status) {
                 KitchenTicketItemStatus::New => 'statuses.kitchen_ticket_item.new',
+                KitchenTicketItemStatus::Accepted => 'statuses.kitchen_ticket_item.accepted',
                 KitchenTicketItemStatus::InProgress => 'statuses.kitchen_ticket_item.in_progress',
                 KitchenTicketItemStatus::Ready => 'statuses.kitchen_ticket_item.ready',
                 KitchenTicketItemStatus::Cancelled => 'statuses.kitchen_ticket_item.cancelled',
             },
             'selected_modifiers' => $this->modifierSummary($item->selected_modifiers ?? []),
+            'allergens' => $allergens,
+            'allergens_label' => implode(', ', $allergens),
             'comment' => $item->comment,
         ];
     }
@@ -220,6 +227,20 @@ class BuildDepartmentTicketPrintAction
                 ];
             })
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $allergens
+     * @return list<string>
+     */
+    private function allergenSummary(array $allergens): array
+    {
+        return collect($allergens)
+            ->map(fn (string $allergen): ?MenuAllergen => MenuAllergen::tryFrom($allergen))
+            ->filter(fn (?MenuAllergen $allergen): bool => $allergen instanceof MenuAllergen)
+            ->map(fn (MenuAllergen $allergen): string => $allergen->label())
             ->values()
             ->all();
     }

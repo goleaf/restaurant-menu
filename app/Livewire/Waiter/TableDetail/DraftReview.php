@@ -356,15 +356,35 @@ final class DraftReview extends TableDetailSection
         $this->refreshAndNotify();
     }
 
-    public function deleteDraftItem(int $itemId, DeleteDraftOrderItemByWaiterAction $deleteDraftOrderItem): void
-    {
+    public function deleteDraftItem(
+        int $itemId,
+        DeleteDraftOrderItemByWaiterAction $deleteDraftOrderItem,
+        EnsureWaiterCanEditDraftOrderAction $ensureWaiterCanEditDraftOrder,
+    ): void {
         $this->resetValidation();
         $this->reviewFeedbackMessage = '';
         $this->authorizeWaiterTableSession();
+        $draftOrder = $this->currentDraftOrder();
+
+        if (! $draftOrder instanceof DraftOrder) {
+            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
+
+            return;
+        }
+
+        try {
+            $ensureWaiterCanEditDraftOrder->handle($draftOrder, $this->currentUser());
+        } catch (ValidationException $exception) {
+            $this->showValidationException($exception);
+
+            return;
+        }
+
         $draftOrderItem = $this->draftOrderItemForCurrentTable($itemId);
 
         if (! $draftOrderItem instanceof DraftOrderItem) {
-            $this->addError('draft_edit', __('ui.livewire.waiter.tabledetail.poziciia_ne_naidena'));
+            $this->reviewFeedbackMessage = __('ui.livewire.waiter.tabledetail.poziciia_udalena_gosti_uvidiat_obnovlennyi_c');
+            $this->refreshAndNotify();
 
             return;
         }

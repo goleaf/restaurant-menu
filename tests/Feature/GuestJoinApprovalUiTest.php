@@ -39,7 +39,9 @@ test('active guest can approve a pending guest from the polled join requests blo
         ->assertSet('canModerate', true)
         ->assertSeeText('Jonas')
         ->call('approve', $joinRequest->id)
-        ->assertSeeText('Guest approved.');
+        ->assertSeeText('Guest approved.')
+        ->call('approve', $joinRequest->id)
+        ->assertSet('notice', __('guest.table.approved_notice', ['name' => 'Jonas']));
 
     $approvedGuest = TableSessionGuest::query()
         ->where('guest_token', $joinRequest->guest_token)
@@ -106,7 +108,9 @@ test('waiting guest sees rejection after a current guest rejects from the join r
             'language' => 'en',
         ])
         ->call('reject', $joinRequest->id)
-        ->assertSeeText('Guest rejected.');
+        ->assertSeeText('Guest rejected.')
+        ->call('reject', $joinRequest->id)
+        ->assertSet('notice', __('guest.table.rejected_notice', ['name' => 'Nina']));
 
     $waitingGuest
         ->call('refreshJoinRequestStatus')

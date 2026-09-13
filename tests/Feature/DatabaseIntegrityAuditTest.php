@@ -107,6 +107,19 @@ test('draft item retries have a database uniqueness guard', function (): void {
     ))->not->toBeNull();
 });
 
+test('critical concurrent workflows have database uniqueness guards', function (): void {
+    expect(databaseAuditIndex('organization_users', ['organization_id', 'user_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('branch_users', ['branch_id', 'user_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('qr_codes', ['active_service_point_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('table_sessions', ['active_service_point_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('table_sessions', ['pending_service_point_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('table_session_join_requests', ['guest_token'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('table_session_guests', ['guest_token'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('orders', ['draft_order_id'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('kitchen_tickets', ['order_id', 'department_type', 'department_name'], unique: true))->not->toBeNull()
+        ->and(databaseAuditIndex('kitchen_ticket_items', ['order_item_id'], unique: true))->not->toBeNull();
+});
+
 test('restaurant hierarchy relationships preserve their tenant chain', function (): void {
     $organization = Organization::factory()->create();
     $brand = Brand::factory()->for($organization)->create();

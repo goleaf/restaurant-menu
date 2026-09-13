@@ -96,6 +96,25 @@ test('requesting an existing qr regenerates its missing image without changing i
     expect(Storage::disk('public')->allFiles('qr'))->toHaveCount(1);
 });
 
+test('replaying the same qr reissue request returns the original replacement', function () {
+    [, , $branch, $manager] = createPrompt23Branch();
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $qrCode = app(GenerateQrCodeForServicePointAction::class)->handle($servicePoint, $manager);
+    $action = app(ReissueQrCodeForServicePointAction::class);
+
+    $replacement = $action->handle($qrCode, $manager);
+    $replayedReplacement = $action->handle($qrCode, $manager);
+
+    expect($replayedReplacement->id)->toBe($replacement->id)
+        ->and($qrCode->fresh()->status)->toBe(QrCodeStatus::Revoked)
+        ->and($replacement->fresh()->status)->toBe(QrCodeStatus::Active)
+        ->and(QrCode::query()->where('service_point_id', $servicePoint->id)->count())->toBe(2)
+        ->and(QrCode::query()
+            ->where('service_point_id', $servicePoint->id)
+            ->where('status', QrCodeStatus::Active->value)
+            ->count())->toBe(1);
+});
+
 test('generated qr identity remains stable when service point is renamed or moved', function () {
     [, , $branch, $manager] = createPrompt23Branch();
     $firstArea = AreaNode::factory()->for($branch)->create(['name' => 'Main hall']);

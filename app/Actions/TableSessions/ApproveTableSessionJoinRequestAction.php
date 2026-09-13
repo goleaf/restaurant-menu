@@ -15,13 +15,19 @@ class ApproveTableSessionJoinRequestAction
 {
     public function handle(TableSessionJoinRequest $joinRequest, TableSessionGuest $approvedByGuest): TableSessionGuest
     {
-        $this->expireIfNeeded($this->reloadJoinRequest($joinRequest));
+        $expired = false;
 
-        return DB::transaction(function () use ($joinRequest, $approvedByGuest): TableSessionGuest {
+        $guest = DB::transaction(function () use ($joinRequest, $approvedByGuest, &$expired): ?TableSessionGuest {
             $joinRequest = $this->reloadJoinRequest($joinRequest);
             $approvedByGuest = $this->reloadGuest($approvedByGuest);
 
             $this->ensureActiveGuestCanModerate($joinRequest, $approvedByGuest);
+
+            if ($this->expireIfNeeded($joinRequest)) {
+                $expired = true;
+
+                return null;
+            }
 
             if ($joinRequest->status === TableSessionJoinRequestStatus::Approved) {
                 return $this->approvedGuest($joinRequest);
@@ -51,6 +57,14 @@ class ApproveTableSessionJoinRequestAction
 
             return $guest->refresh();
         }, 5);
+
+        if ($expired || ! $guest instanceof TableSessionGuest) {
+            throw ValidationException::withMessages([
+                'join_request' => __('guest.table.join_request_expired'),
+            ]);
+        }
+
+        return $guest;
     }
 
     private function reloadJoinRequest(TableSessionJoinRequest $joinRequest): TableSessionJoinRequest
@@ -115,21 +129,19 @@ class ApproveTableSessionJoinRequestAction
         }
     }
 
-    private function expireIfNeeded(TableSessionJoinRequest $joinRequest): void
+    private function expireIfNeeded(TableSessionJoinRequest $joinRequest): bool
     {
         if ($joinRequest->status !== TableSessionJoinRequestStatus::Pending
             || $joinRequest->expires_at === null
             || ! $joinRequest->expires_at->isPast()) {
-            return;
+            return false;
         }
 
         $joinRequest
             ->forceFill(['status' => TableSessionJoinRequestStatus::Expired])
             ->save();
 
-        throw ValidationException::withMessages([
-            'join_request' => __('guest.table.join_request_expired'),
-        ]);
+        return true;
     }
 
     private function ensureActiveGuestCanModerate(

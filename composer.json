@@ -71,7 +71,11 @@
             "Composer\\Config::disableProcessTimeout",
             "@lint:check",
             "@analyse",
-            "@php artisan test --compact"
+            "@test:browser",
+            "@test:backend"
+        ],
+        "test:backend": [
+            "@php vendor/bin/pest tests/Unit tests/Feature --compact"
         ],
         "test": [
             "@php artisan config:clear --ansi",

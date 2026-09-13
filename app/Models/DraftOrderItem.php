@@ -12,9 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * @property int|null $menu_item_variant_id
+ * @property string|null $variant_name
+ * @property int $quantity
  * @property int $unit_price_cents
  * @property int $modifier_total_cents
  * @property int $total_price_cents
+ * @property list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}> $selected_modifiers
+ * @property string|null $comment
  * @property MenuItemVariantType|null $variant_type
  * @property-read DraftOrder $draftOrder
  * @property-read TableSessionGuest $guest
@@ -84,5 +89,21 @@ class DraftOrderItem extends Model
     public function menuItemVariant(): BelongsTo
     {
         return $this->belongsTo(MenuItemVariant::class);
+    }
+
+    /**
+     * @param  array{menu_item_variant_id: int|null, variant_name: string|null, variant_type: string|null, unit_price_cents: int, modifier_total_cents: int, total_price_cents: int, selected_modifiers: list<array{group_id: int, group_name: string, option_id: int, option_name: string, price_delta_cents: int}>}  $linePrice
+     */
+    public function alreadyMatchesSelection(array $linePrice, int $quantity, ?string $comment): bool
+    {
+        return $this->quantity === $quantity
+            && $this->menu_item_variant_id === $linePrice['menu_item_variant_id']
+            && $this->variant_name === $linePrice['variant_name']
+            && $this->variant_type?->value === $linePrice['variant_type']
+            && $this->unit_price_cents === $linePrice['unit_price_cents']
+            && $this->modifier_total_cents === $linePrice['modifier_total_cents']
+            && $this->total_price_cents === $linePrice['total_price_cents']
+            && $this->selected_modifiers === $linePrice['selected_modifiers']
+            && $this->comment === $comment;
     }
 }

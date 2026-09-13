@@ -16,11 +16,12 @@ test('kitchen delay timers advance locally and expose accessible status changes'
     $timerScript = <<<'JAVASCRIPT'
         (() => {
             const labels = __LABELS__;
-            const timerMarkup = (id, elapsed) => `
+            const timerMarkup = (id, elapsed, stopped = false) => `
                 <div
                     id="${id}"
                     data-kitchen-delay-timer
                     data-elapsed-seconds="${elapsed}"
+                    data-timer-stopped="${stopped}"
                     data-attention-after-seconds="600"
                     data-delayed-after-seconds="900"
                     data-delay-state="on-track"
@@ -37,6 +38,7 @@ test('kitchen delay timers advance locally and expose accessible status changes'
 
             document.body.insertAdjacentHTML('beforeend', timerMarkup('attention-timer', 600));
             document.body.insertAdjacentHTML('beforeend', timerMarkup('delayed-timer', 905));
+            document.body.insertAdjacentHTML('beforeend', timerMarkup('completed-timer', 300, true));
             document.dispatchEvent(new CustomEvent('livewire:navigated'));
         })()
     JAVASCRIPT;
@@ -49,6 +51,7 @@ test('kitchen delay timers advance locally and expose accessible status changes'
         (() => {
             const attention = document.querySelector('#attention-timer');
             const delayed = document.querySelector('#delayed-timer');
+            const completed = document.querySelector('#completed-timer');
             const delayedOverrun = delayed?.querySelector('[data-kitchen-delay-overrun]');
 
             return {
@@ -56,6 +59,7 @@ test('kitchen delay timers advance locally and expose accessible status changes'
                 attentionReady: attention?.dataset.kitchenDelayTimerReady,
                 attentionState: attention?.dataset.delayState,
                 attentionStatus: attention?.querySelector('[data-kitchen-delay-status]')?.textContent,
+                completedValue: completed?.querySelector('[data-kitchen-delay-value]')?.textContent,
                 delayedOverrunHidden: delayedOverrun?.hidden,
                 delayedOverrunText: delayedOverrun?.textContent,
                 delayedReady: delayed?.dataset.kitchenDelayTimerReady,
@@ -69,6 +73,7 @@ test('kitchen delay timers advance locally and expose accessible status changes'
         ->and($state['attentionReady'])->toBe('true')
         ->and($state['attentionState'])->toBe('attention')
         ->and($state['attentionStatus'])->toBe(__('ui.departments.dashboard.delay_status.attention'))
+        ->and($state['completedValue'])->toBe('05:00')
         ->and($state['delayedOverrunHidden'])->toBeFalse()
         ->and($state['delayedOverrunText'])->toStartWith(__('ui.departments.dashboard.delay_by', ['time' => '']))
         ->and($state['delayedReady'])->toBe('true')

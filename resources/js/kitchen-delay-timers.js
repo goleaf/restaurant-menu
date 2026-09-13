@@ -19,15 +19,21 @@ function formatDuration(seconds) {
 
 function elapsedSeconds(timer) {
     const sourceValue = timer.dataset.elapsedSeconds ?? '0';
+    const timerStopped = timer.dataset.timerStopped === 'true';
+    const sourceKey = `${sourceValue}:${timerStopped}`;
     let baseline = timerBaselines.get(timer);
 
-    if (!baseline || baseline.sourceValue !== sourceValue) {
+    if (!baseline || baseline.sourceKey !== sourceKey) {
         baseline = {
             elapsedSeconds: parseSeconds(sourceValue),
             observedAt: Date.now(),
-            sourceValue,
+            sourceKey,
         };
         timerBaselines.set(timer, baseline);
+    }
+
+    if (timerStopped) {
+        return baseline.elapsedSeconds;
     }
 
     return baseline.elapsedSeconds + Math.max(0, Math.floor((Date.now() - baseline.observedAt) / 1000));

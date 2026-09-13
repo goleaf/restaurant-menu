@@ -22,24 +22,34 @@ If `php artisan optimize` was run under the local environment, run `php artisan 
 
 | Command | Observed result |
 |---|---|
-| business-invariant targeted regression | 68 passed; 608 assertions; final opener/state rerun 14 passed/87 assertions |
-| focused stale-session/IDOR/query-budget regression | 11 passed; 103 assertions |
-| focused polling/order/merge/transfer/security regression | 97 passed; 347 assertions |
-| `composer ci:check` | Pint clean; Larastan 0 errors; 1,458 tests, 1,450 passed, 8 skipped, 44,532 assertions |
-| `php artisan test --compact --parallel` | identical 1,458/1,450/8 counts and 44,532 assertions |
-| `composer test:coverage` | 1,453 Unit/Feature tests, 1,445 passed, 8 skipped, 44,120 assertions; 93.5% application coverage; 208/208 Actions executed, 94.8% Action statements |
+| complete table-session/guest/waiter/order/payment regression | 143 passed; 1,109 assertions |
+| final lifecycle/traceability/cleanup regression | 35 passed; 1,209 assertions |
+| final lifecycle/error/transfer/token regression | 68 passed; 573 assertions; additional QR/transfer/security rerun 44 passed/305 assertions |
+| demo lifecycle/seeder/login regression | 63 passed; 1,500 assertions |
+| lifecycle/localization/traceability regression | 65 passed; 1,908 assertions |
+| `composer ci:check` | Pint clean; Larastan 0 errors; 1,492 tests, 1,484 passed, 8 skipped, 45,489 assertions in 227.56 seconds |
+| `composer test:coverage` | 1,487 Unit/Feature tests, 1,479 passed, 8 skipped, 45,077 assertions in 724.66 seconds; 93.5% application coverage |
 | `composer test:browser` | 5 passed; 412 assertions |
-| `vendor/bin/pint --dirty --format agent` | passed; one import order corrected |
+| `vendor/bin/pint --dirty --format agent` | passed |
 | `composer analyse` | passed; 0 errors |
-| `php artisan translations:scan` | 635 files; 2,157 semantic keys used and present per locale; 0 missing/unused/phrase keys |
-| `php artisan translations:audit` | 6,471 aligned EN/LT/RU entries; 0 critical issues |
+| `php artisan translations:scan` | 650 files; 2,204 semantic keys used and present per locale; 0 missing/unused/phrase keys |
+| `php artisan translations:audit` | 6,612 aligned EN/LT/RU entries; 0 critical issues |
 | `composer validate --strict` / `composer audit --locked --no-interaction` | valid package; zero advisories |
-| `npm audit --audit-level=moderate` / `npm run build` | zero vulnerabilities; Vite 8.2.2 passed; CSS 303.28 kB / 40.11 kB gzip; JS 4.56 kB / 1.73 kB gzip |
+| `npm run build` | Vite 8.2.2 passed; CSS 303.36 kB / 40.13 kB gzip; JS 4.56 kB / 1.73 kB gzip |
 | isolated migration plus repeated default seeds | all 86 migrations passed; seed rerun idempotent; final contraction rolled back and reapplied safely |
 | config, route, event and view cache builds | passed and cleared afterward |
-| Chrome DevTools | `/up`, demo, public guest and role workspaces at mobile/tablet/desktop: clean current application consoles and zero overflow; mobile waiter and desktop administration Lighthouse 100 in all four reported categories |
+| Chrome DevTools | isolated waiter history at 390/768/1,440 px: no overflow or mutation controls on a closed session; clean console; mobile Lighthouse 100 in all four categories |
 
 The later business-invariant pass retains this table's earlier release evidence and adds a newer exact-tree result: `composer ci:check` and the eight-process run each report 1,469 total / 1,461 passed / 8 skipped with 44,588 assertions; coverage reports 1,464 total / 1,456 passed / 8 skipped, 44,176 assertions and 93.6%; Pest Browser reports 5/412. `OrderLifecycleStateMachineTest`, `OrderItemQuantityTest`, `WaiterOpenTableActionTest`, `KitchenScreenTest`, `KitchenTicketPrintTest`, `DraftOrderFunctionalTest` and `WaiterDraftEditingTest` are the focused invariant evidence.
+
+## Complete table-session lifecycle evidence (2026-08-24)
+
+- `TableSessionStatus` is the central access/service envelope. `TransitionTableSessionStatusAction` locks and reloads the database row, rejects stale/backward/terminal transitions and refreshes the caller model. The role datasets prove waiter, director and restaurant administrator open, remove a participant, confirm the first order, close and reopen only inside their assigned tenant; payment management remains separately permissioned.
+- First entry, two-process concurrent entry/approval, pending join approval/rejection, leave/removal, no-approver expiry, duplicate request/idempotency, abandoned-session refusal, repeat open, unfinished-close rejection, bill eligibility, temporary-state finalization and a distinct reopen session are covered by Feature and Livewire tests. Closed credentials are cleared without revealing whether an old session existed, while cookie-only and server-session-only recovery independently restore a permitted current identity.
+- Transfer restoration is deliberately credential-specific. A known guest, pending request or active invite from the previous permanent QR may resolve the current table only when the session's bounded transfer history proves that origin; ordinary entry and a same-branch QR/token substitution still use the current/active-linked scope and fail closed. Isolated Livewire polling repeats the same authorization.
+- The waiter dashboard includes a bounded tenant-scoped closed-session history with eager guest/order counts. Historical detail is read-only on first render, shows retained guest/order records and terminal fulfilment copy, and exposes no forms or Livewire mutations.
+- Browser inspection found one real demo inconsistency: open sessions were paired with `service_points.status=free`. `DemoOperationalStateSeeder` now maps every table-session state to its coherent physical status, and the regression checks every open seeded workflow. The local non-production seeder completed safely and a read-only SQLite audit reported zero inconsistent rows.
+- A final user-facing review found English fallback labels in the six enums that describe session, participant, join-request, source, waiter-call and physical table states. The regression was first observed failing on `Pending`, then all cases were moved to semantic JSON keys and verified distinct from English in both LT and RU (1 test/124 assertions); the complete lifecycle file passes 19 tests/231 assertions.
 
 ## Complete localization audit evidence (2026-08-24)
 
@@ -97,6 +107,8 @@ The local coverage run used `/Users/andrejprus/Library/Application Support/Herd/
 
 - `OrderLifecycleStateMachineTest` proves the centralized forward transition graph, atomic confirm-and-dispatch replay, forbidden order/ticket regressions, actor-bearing ready/served history, closure blocking and cross-tenant confirmation denial. The broader lifecycle selection passes 106 tests, 105 passed, one existing skip and 1,110 assertions.
 - `OrderLifecycleConcurrencyTest` uses Laravel's real process concurrency driver against a separately migrated SQLite file using the deployable `IMMEDIATE` transaction mode. Two simultaneous waiter confirmations return one order ID and leave exactly one order, one department ticket, one confirmation log and one dispatch log.
+- The same real-process harness sends two simultaneous kitchen accept commands. Both callers converge on `accepted`, the canonical order remains `sent_to_kitchen_bar`, and exactly one ticket-item transition is appended. `KitchenScreenTest` covers every visible production/history state, cancellation, cross-family tampering, stable sorting and a 31-ticket queue whose query count remains 23 while only 24 tickets are hydrated per page.
+- The allergen-snapshot migration test creates existing order/ticket rows in a separately migrated SQLite file, rolls the new columns back, proves both records survive, reapplies the migration and verifies safe empty defaults. `KitchenDelayTimerTest` proves active timers advance while completed timers freeze; disposable Playwright checks at 390, 1,024 and 1,440 CSS pixels found no horizontal overflow after the tablet breakpoint correction, 64px working actions, named controls, exact bar department options and a 403 for bartender access to kitchen.
 - Waiter editing/ownership, kitchen/bar isolation, ready/service, cancellation, bill request, manual payment, repeat orders and the vertical guest-to-closed-table scenario remain in the focused selection. Policy/tenant/architecture regressions add 123 passing tests and 760 assertions; translation audit reports zero critical issues and Larastan reports zero errors.
 - Final repository verification passes sequentially and on eight processes with 1,414 passing tests, one todo, eight feature-gated skips and 29,361 assertions. Coverage is 93.5% over the Unit/Feature set; the five-scenario browser suite passes with 410 assertions. The paid-table browser journey now crosses waiter confirmation, kitchen processing, service, bill request, manual payment and table close. A separate disposable Chrome DevTools context loaded the Boost-resolved login URL with a complete accessibility tree, only 200 responses and an empty warning/error console.
 
@@ -115,3 +127,11 @@ On 2026-08-23, an additional disposable Chrome pass covered the waiter dashboard
 The focused factory, seeder and demo-login selection passes 75 tests with 1,804 assertions. It covers every factory status dispatcher, three isolated tenants, all 12 canonical demo roles, all draft/order/invitation status cases, preserved password hashes, production and host denial, legacy invitation-digest rotation, repeated-run IDs/hashes/file paths and successful access to each prepared role workspace. The dedicated organization Chromium journey passes 187 assertions and the full five-scenario browser suite passes 410 assertions.
 
 Final-code isolated SQLite verification completed all 86 migrations with `migrate:fresh --seed`, repeated the default seed and retained exactly 24 QR records/files. Sequential and eight-process parallel Pest each pass 1,458 total/1,450 passed/8 skipped with 44,532 assertions. The canonical Unit/Feature coverage run passes 1,453 total/1,445 passed/8 skipped with 44,120 assertions at 93.5%; its Clover diagnostic executes all 208 Actions and covers 94.8% of their statements. Composer validation/audit, npm audit, Pint, Larastan, production build, translation audit/scan and cache compilation pass.
+
+## Concurrency and idempotency audit (2026-08-24)
+
+`CriticalOperationConcurrencyTest` uses Laravel's real process driver against a separately migrated file SQLite database configured with production-equivalent `IMMEDIATE` transactions, WAL and busy timeout. Paired processes exercise existing-user invitation acceptance, new-user invitation registration, guest draft add/update/delete, QR generation/reissue, canonical order status progression and table close. It passes 1 test/35 assertions and proves one membership/audit, one command-owned draft row/history transition, one active/replacement QR, one order status log and one terminal close audit. The existing `GuestSessionConcurrencyTest` and `OrderLifecycleConcurrencyTest` retain real-process first-entry/approval and waiter-confirm/dispatch coverage.
+
+Repeated Livewire requests now cover guest and waiter update/delete, send-to-waiter, approve/reject join, waiter confirmation and table close. Action regressions also cover same-input retries after a simulated lost response, reject ambiguous invitation registration or foreign-owned stale item deletion, and prove that a non-active guest cannot expire a join request before authorization. The affected concurrency/action/Livewire slice passes 113 tests/1,054 assertions; the final waiter-confirm/table-close replay slice passes 12/145. `DatabaseIntegrityAuditTest` asserts the unique persistence identities used by these workflows.
+
+The final exact-tree `composer ci:check` run passes Pint, Larastan with 0 errors, and 1,502 total tests/1,494 passed/8 feature-gated skips/45,581 assertions in 232.21 seconds. Fresh Unit/Feature coverage passes 1,497 total/1,489 passed/8 skips/45,169 assertions at 93.5% in 730.36 seconds. Vite 8.2.2 production build passes with 303.36 kB CSS (40.13 kB gzip) and 4.56 kB application JavaScript (1.73 kB gzip).

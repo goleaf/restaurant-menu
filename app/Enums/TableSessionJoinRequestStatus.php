@@ -11,12 +11,12 @@ enum TableSessionJoinRequestStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'Pending',
-            self::Approved => 'Approved',
-            self::Rejected => 'Rejected',
-            self::Expired => 'Expired',
-        };
+        return __(match ($this) {
+            self::Pending => 'statuses.table_session_join_request.pending',
+            self::Approved => 'statuses.table_session_join_request.approved',
+            self::Rejected => 'statuses.table_session_join_request.rejected',
+            self::Expired => 'statuses.table_session_join_request.expired',
+        });
     }
 
     /**

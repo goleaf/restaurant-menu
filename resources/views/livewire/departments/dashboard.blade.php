@@ -1,11 +1,20 @@
-<section data-page="{{ $dataPage }}" wire:poll.visible.1s="refreshDepartment" class="flex h-full w-full flex-1 flex-col gap-6">
+<section
+    data-page="{{ $dataPage }}"
+    wire:poll.visible.3s="refreshDepartment"
+    wire:loading.attr="aria-busy"
+    wire:target="refreshDepartment,setItemStatus,previousTicketPage,nextTicketPage"
+    aria-busy="false"
+    class="flex h-full w-full flex-1 flex-col gap-6"
+>
+    <p role="status" aria-atomic="true" class="sr-only">{{ $updateAnnouncement }}</p>
+
     <x-ui.page-header
         :title="$pageTitle"
         :description="$pageSubtitle"
         :context="$selectedDepartmentName ?? __('layout.restaurant_workspace')"
     >
         <x-slot:actions>
-            <div class="grid gap-3 rounded-control border border-border-subtle bg-surface p-3 sm:grid-cols-[minmax(16rem,24rem)_auto] sm:items-end">
+            <div class="grid min-w-0 gap-3 rounded-control border border-border-subtle bg-surface p-3 xl:grid-cols-[minmax(15rem,22rem)_minmax(12rem,18rem)_auto] xl:items-end">
                 <flux:select wire:model.live="selectedDepartmentId" label="{{ __('ui.departments.dashboard.department') }}">
                     @foreach ($departments as $department)
                         <flux:select.option wire:key="{{ $dataPage }}-department-option-{{ $department['id'] }}" value="{{ $department['id'] }}">
@@ -14,9 +23,20 @@
                     @endforeach
                 </flux:select>
 
-                <div class="text-sm text-text-muted">
-                    <p>{{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}</p>
-                    <p>{{ __('ui.departments.dashboard.sort') }}: {{ __('ui.departments.dashboard.oldest_first') }}</p>
+                <flux:select wire:model.live="ticketFilter" label="{{ __('ui.departments.dashboard.filter') }}">
+                    @foreach ($ticketFilterOptions as $filterValue => $filterLabel)
+                        <flux:select.option wire:key="{{ $dataPage }}-filter-{{ $filterValue }}" value="{{ $filterValue }}">
+                            {{ $filterLabel }}
+                        </flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <div class="min-h-10 text-sm text-text-muted" aria-live="polite">
+                    <p>
+                        <span wire:loading.remove wire:target="refreshDepartment">{{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}</span>
+                        <span wire:loading wire:target="refreshDepartment">{{ __('ui.departments.dashboard.updating') }}</span>
+                    </p>
+                    <p>{{ __('ui.departments.dashboard.sort') }}: {{ $sortLabel }}</p>
                 </div>
             </div>
         </x-slot:actions>
@@ -32,19 +52,22 @@
 
     <x-ui.metric-strip :items="[
         ['label' => 'ui.departments.dashboard.tickets', 'value' => $ticketCount],
-        ['label' => 'ui.departments.dashboard.new', 'value' => $newItemCount, 'tone' => $newItemCount > 0 ? 'danger' : 'neutral'],
-        ['label' => 'reports.statuses.orders.in_progress', 'value' => $inProgressItemCount, 'tone' => $inProgressItemCount > 0 ? 'warning' : 'neutral'],
-        ['label' => 'guest.statuses.items.ready', 'value' => $readyItemCount, 'tone' => $readyItemCount > 0 ? 'success' : 'neutral'],
+        ['label' => 'statuses.kitchen_ticket_item.new', 'value' => $newItemCount, 'tone' => $newItemCount > 0 ? 'danger' : 'neutral'],
+        ['label' => 'statuses.kitchen_ticket_item.accepted', 'value' => $acceptedItemCount, 'tone' => $acceptedItemCount > 0 ? 'information' : 'neutral'],
+        ['label' => 'statuses.kitchen_ticket_item.in_progress', 'value' => $inProgressItemCount, 'tone' => $inProgressItemCount > 0 ? 'warning' : 'neutral'],
+        ['label' => 'statuses.kitchen_ticket_item.ready', 'value' => $readyItemCount, 'tone' => $readyItemCount > 0 ? 'success' : 'neutral'],
+        ['label' => 'ui.departments.dashboard.completed', 'value' => $completedItemCount],
+        ['label' => 'statuses.kitchen_ticket_item.cancelled', 'value' => $cancelledItemCount],
     ]" />
 
     <div data-department-priority-queue class="grid gap-5 2xl:grid-cols-2">
         @forelse ($tickets as $ticket)
-            <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-card border border-border-subtle bg-surface">
+            <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-card border border-border-subtle bg-surface shadow-card">
                 <header class="border-b border-border-subtle p-4">
                     <x-ui.priority-row
-                        :title="$ticket['service_point_name']"
+                        :title="$ticket['service_point_label']"
                         :description="$ticket['work_status']['label']"
-                        :tone="$ticket['delay_state'] === 'delayed' ? 'danger' : ($ticket['delay_state'] === 'attention' ? 'warning' : 'neutral')"
+                        :tone="$ticket['is_terminal'] ? 'neutral' : ($ticket['delay_state'] === 'delayed' ? 'danger' : ($ticket['delay_state'] === 'attention' ? 'warning' : 'neutral'))"
                     >
                         <x-slot:leading>
                             <span class="flex min-h-operational-touch min-w-operational-touch items-center justify-center rounded-control bg-accent px-3 text-base font-semibold text-accent-foreground">
@@ -55,7 +78,8 @@
                         <x-slot:meta>
                             <span>{{ __('guest.table.zone') }}: {{ $ticket['zone_name'] ?? __('qr.filters.no_zone') }}</span>
                             <span>{{ $itemCountLabel }}: {{ $ticket['item_count'] }}</span>
-                            <span>{{ __('qr.labels.created') }}: {{ $ticket['sent_at'] ?? __('ui.departments.dashboard.time_not_set') }}</span>
+                            <span>{{ __('ui.departments.dashboard.order_status') }}: {{ $ticket['order_status_label'] }}</span>
+                            <span>{{ __('ui.departments.dashboard.sent_at') }}: {{ $ticket['sent_at'] ?? __('ui.departments.dashboard.time_not_set') }}</span>
                         </x-slot:meta>
 
                         <x-slot:actions>
@@ -65,117 +89,189 @@
                         </x-slot:actions>
                     </x-ui.priority-row>
 
-                    <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-start">
-                        <div class="hidden lg:block" aria-hidden="true"></div>
-
-                        <div
-                            data-kitchen-delay-timer
-                            data-elapsed-seconds="{{ $ticket['elapsed_seconds'] }}"
-                            data-attention-after-seconds="{{ $ticket['attention_after_seconds'] }}"
-                            data-delayed-after-seconds="{{ $ticket['delayed_after_seconds'] }}"
-                            data-delay-state="{{ $ticket['delay_state'] }}"
-                            data-label-on-track="{{ __('ui.departments.dashboard.delay_status.on_track') }}"
-                            data-label-attention="{{ __('ui.departments.dashboard.delay_status.attention') }}"
-                            data-label-delayed="{{ __('ui.departments.dashboard.delay_status.delayed') }}"
-                            data-delay-template="{{ __('ui.departments.dashboard.delay_by', ['time' => ':time']) }}"
-                            class="mt-3 rounded-control border p-3 text-center data-[delay-state=attention]:border-warning-border data-[delay-state=attention]:bg-warning-surface data-[delay-state=attention]:text-warning data-[delay-state=delayed]:border-danger-border data-[delay-state=delayed]:bg-danger-surface data-[delay-state=delayed]:text-danger data-[delay-state=on-track]:border-success-border data-[delay-state=on-track]:bg-success-surface data-[delay-state=on-track]:text-success lg:mt-3"
-                        >
-                            <p class="text-sm font-medium">{{ __('ui.departments.dashboard.preparation_time') }}</p>
-                            <time
-                                data-kitchen-delay-value
-                                datetime="PT{{ $ticket['elapsed_seconds'] }}S"
-                                class="mt-1 block text-4xl font-semibold tabular-nums"
-                            >{{ $ticket['elapsed_label'] }}</time>
-                            <p data-kitchen-delay-status role="status" aria-atomic="true" class="mt-2 text-sm font-semibold">
-                                {{ $ticket['delay_status_label'] }}
-                            </p>
-                            <p data-kitchen-delay-overrun class="mt-1 text-xs font-medium" @if ($ticket['delay_description'] === null) hidden @endif>
-                                {{ $ticket['delay_description'] }}
-                            </p>
-                        </div>
+                    <div
+                        data-kitchen-delay-timer
+                        data-elapsed-seconds="{{ $ticket['elapsed_seconds'] }}"
+                        data-attention-after-seconds="{{ $ticket['attention_after_seconds'] }}"
+                        data-delayed-after-seconds="{{ $ticket['delayed_after_seconds'] }}"
+                        data-delay-state="{{ $ticket['delay_state'] }}"
+                        data-timer-stopped="{{ $ticket['is_terminal'] ? 'true' : 'false' }}"
+                        data-label-on-track="{{ __('ui.departments.dashboard.delay_status.on_track') }}"
+                        data-label-attention="{{ __('ui.departments.dashboard.delay_status.attention') }}"
+                        data-label-delayed="{{ __('ui.departments.dashboard.delay_status.delayed') }}"
+                        data-delay-template="{{ __('ui.departments.dashboard.delay_by', ['time' => ':time']) }}"
+                        class="mt-4 rounded-control border p-3 text-center data-[delay-state=attention]:border-warning-border data-[delay-state=attention]:bg-warning-surface data-[delay-state=attention]:text-warning data-[delay-state=delayed]:border-danger-border data-[delay-state=delayed]:bg-danger-surface data-[delay-state=delayed]:text-danger data-[delay-state=on-track]:border-success-border data-[delay-state=on-track]:bg-success-surface data-[delay-state=on-track]:text-success"
+                    >
+                        <p class="text-sm font-medium">{{ __('ui.departments.dashboard.elapsed_since_sent') }}</p>
+                        <time
+                            data-kitchen-delay-value
+                            datetime="PT{{ $ticket['elapsed_seconds'] }}S"
+                            class="mt-1 block text-4xl font-semibold tabular-nums"
+                        >{{ $ticket['elapsed_label'] }}</time>
+                        <p data-kitchen-delay-status aria-live="off" class="mt-2 text-sm font-semibold">
+                            {{ $ticket['delay_status_label'] }}
+                        </p>
+                        <p data-kitchen-delay-overrun class="mt-1 text-xs font-medium" @if ($ticket['delay_description'] === null) hidden @endif>
+                            {{ $ticket['delay_description'] }}
+                        </p>
                     </div>
                 </header>
 
-                <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
+                <div class="divide-y divide-border-subtle">
                     @foreach ($ticket['items'] as $item)
-                        <section wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}" data-ticket-item-status="{{ $item['status_value'] }}" class="grid gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+                        <section
+                            id="{{ $dataPage }}-ticket-item-{{ $item['id'] }}"
+                            wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}"
+                            data-ticket-item-status="{{ $item['status_value'] }}"
+                            class="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_18rem]"
+                        >
                             <div class="min-w-0">
                                 <div class="flex gap-4">
-                                    <div class="flex h-14 min-w-14 items-center justify-center rounded-lg bg-zinc-100 px-3 text-xl font-semibold text-zinc-950 dark:bg-zinc-800 dark:text-white">
+                                    <div class="flex h-14 min-w-14 items-center justify-center rounded-control bg-surface-raised px-3 text-xl font-semibold text-text-primary">
                                         {{ $item['quantity'] }}×
                                     </div>
 
                                     <div class="min-w-0">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <x-ui.plain-text :text="$item['item_name']" class="block text-xl font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                            <flux:badge :color="$item['status_color']">{{ __($item['status_label']) }}</flux:badge>
+                                            <x-ui.plain-text :text="$item['item_name']" class="block text-xl font-semibold text-text-primary" :preserve-lines="false" />
+                                            <flux:badge :color="$item['status_color']">{{ __($item['status_key']) }}</flux:badge>
                                         </div>
 
                                         @if ($item['guest_name'])
-                                            <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                            <p class="mt-1 text-sm text-text-muted">
                                                 {{ __('guest.table.guest') }}:
                                                 <x-ui.plain-text :text="$item['guest_name']" class="inline" :preserve-lines="false" />
                                             </p>
                                         @endif
+
+                                        @if ($item['completed_at'])
+                                            <p class="mt-1 text-sm text-text-muted">{{ __('ui.departments.dashboard.completed_at') }}: {{ $item['completed_at'] }}</p>
+                                        @endif
                                     </div>
                                 </div>
 
+                                @if ($item['allergens'] !== [])
+                                    <div role="note" class="mt-4 rounded-control border border-danger-border bg-danger-surface px-4 py-3 text-danger">
+                                        <p class="text-sm font-semibold">{{ __('ui.departments.dashboard.allergens') }}</p>
+                                        <ul class="mt-2 flex flex-wrap gap-2" aria-label="{{ __('ui.departments.dashboard.allergens') }}">
+                                            @foreach ($item['allergens'] as $allergen)
+                                                <li wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}-allergen-{{ $allergen['value'] }}">
+                                                    <flux:badge color="red">{{ $allergen['label'] }}</flux:badge>
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                @endif
+
                                 @if ($item['modifiers'] !== [])
-                                    <div class="mt-4 flex flex-wrap gap-2">
-                                        @foreach ($item['modifiers'] as $modifier)
-                                            <flux:badge wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}-modifier-{{ $loop->index }}" color="zinc">
-                                                {{ $modifier['label'] }}
-                                            </flux:badge>
-                                        @endforeach
+                                    <div class="mt-4">
+                                        <p class="text-sm font-semibold text-text-muted">{{ __('ui.departments.dashboard.modifiers') }}</p>
+                                        <ul class="mt-2 flex flex-wrap gap-2">
+                                            @foreach ($item['modifiers'] as $modifier)
+                                                <li wire:key="{{ $dataPage }}-ticket-item-{{ $item['id'] }}-modifier-{{ $loop->index }}">
+                                                    <flux:badge color="zinc">{{ $modifier['label'] }}</flux:badge>
+                                                </li>
+                                            @endforeach
+                                        </ul>
                                     </div>
                                 @endif
 
                                 @if ($item['comment'])
-                                    <p class="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-base font-medium text-amber-950 dark:bg-amber-950/40 dark:text-amber-100">
-                                        <x-ui.plain-text :text="$item['comment']" class="inline" />
-                                    </p>
+                                    <div class="mt-4 rounded-control border border-warning-border bg-warning-surface px-4 py-3 text-warning">
+                                        <p class="text-sm font-semibold">{{ __('ui.departments.dashboard.comment') }}</p>
+                                        <x-ui.plain-text :text="$item['comment']" class="mt-1 block text-base font-medium" />
+                                    </div>
+                                @endif
+
+                                @if ($item['cancellation_reason'])
+                                    <div class="mt-4 rounded-control border border-border-subtle bg-surface-raised px-4 py-3 text-text-primary">
+                                        <p class="text-sm font-semibold">{{ __('ui.departments.dashboard.cancellation_reason') }}</p>
+                                        <x-ui.plain-text :text="$item['cancellation_reason']" class="mt-1 block text-sm" />
+                                    </div>
                                 @endif
                             </div>
 
-                            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                                <button
-                                    type="button"
-                                    wire:click="setItemStatus({{ $item['id'] }}, 'in_progress')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="setItemStatus"
-                                    @disabled(! $item['can_start'])
-                                    @class([
-                                        'min-h-16 rounded-lg border px-4 py-3 text-base font-semibold transition',
-                                        'border-amber-300 bg-amber-100 text-amber-950 hover:border-amber-500 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:border-amber-600' => $item['can_start'],
-                                        'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600' => ! $item['can_start'],
-                                    ])
-                                >
-                                    {{ __('ui.departments.dashboard.nacat') }}
-                                </button>
+                            <div class="grid content-start gap-3">
+                                @if ($item['can_accept'])
+                                    <button
+                                        type="button"
+                                        wire:click="setItemStatus({{ $item['id'] }}, 'accepted')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="setItemStatus"
+                                        class="min-h-16 touch-manipulation rounded-control border border-blue-300 bg-blue-100 px-4 py-3 text-base font-semibold text-blue-950 transition-colors hover:border-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 motion-reduce:transition-none"
+                                    >
+                                        {{ __('ui.departments.dashboard.accept') }}
+                                    </button>
+                                @endif
 
-                                <button
-                                    type="button"
-                                    wire:click="setItemStatus({{ $item['id'] }}, 'ready')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="setItemStatus"
-                                    @disabled(! $item['can_mark_ready'])
-                                    @class([
-                                        'min-h-16 rounded-lg border px-4 py-3 text-base font-semibold transition',
-                                        'border-emerald-300 bg-emerald-100 text-emerald-950 hover:border-emerald-500 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:border-emerald-600' => $item['can_mark_ready'],
-                                        'cursor-not-allowed border-zinc-200 bg-zinc-100 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600' => ! $item['can_mark_ready'],
-                                    ])
-                                >
-                                    {{ __('ui.departments.dashboard.gotovo') }}
-                                </button>
+                                @if ($item['can_start'])
+                                    <button
+                                        type="button"
+                                        wire:click="setItemStatus({{ $item['id'] }}, 'in_progress')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="setItemStatus"
+                                        class="min-h-16 touch-manipulation rounded-control border border-amber-300 bg-amber-100 px-4 py-3 text-base font-semibold text-amber-950 transition-colors hover:border-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 motion-reduce:transition-none"
+                                    >
+                                        {{ __('ui.departments.dashboard.start_preparing') }}
+                                    </button>
+                                @endif
+
+                                @if ($item['can_mark_ready'])
+                                    <button
+                                        type="button"
+                                        wire:click="setItemStatus({{ $item['id'] }}, 'ready')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="setItemStatus"
+                                        class="min-h-16 touch-manipulation rounded-control border border-emerald-300 bg-emerald-100 px-4 py-3 text-base font-semibold text-emerald-950 transition-colors hover:border-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 motion-reduce:transition-none"
+                                    >
+                                        {{ __('ui.departments.dashboard.mark_ready') }}
+                                    </button>
+                                @endif
+
+                                @if (! $item['can_accept'] && ! $item['can_start'] && ! $item['can_mark_ready'])
+                                    <p class="min-h-operational-touch rounded-control border border-border-subtle bg-surface-raised px-4 py-3 text-center text-sm font-semibold text-text-muted">
+                                        {{ __($item['status_key']) }}
+                                    </p>
+                                @endif
                             </div>
                         </section>
                     @endforeach
                 </div>
             </article>
         @empty
-            <section class="rounded-lg border border-dashed border-zinc-300 bg-white p-8 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
-                {{ $emptyMessage }}
-            </section>
+            <x-ui.empty-state
+                icon="clipboard-document-list"
+                :heading="$emptyMessage"
+                :description="$ticketFilterOptions[$ticketFilter]"
+            />
         @endforelse
     </div>
+
+    @if ($hasPreviousTicketPage || $hasNextTicketPage)
+        <nav class="flex items-center justify-between gap-3" aria-label="{{ __('ui.departments.dashboard.pagination') }}">
+            <flux:button
+                type="button"
+                wire:click="previousTicketPage"
+                wire:loading.attr="disabled"
+                wire:target="previousTicketPage,nextTicketPage"
+                :disabled="! $hasPreviousTicketPage"
+                class="min-h-operational-touch"
+            >
+                {{ __('pagination.previous') }}
+            </flux:button>
+
+            <p class="text-sm font-medium text-text-muted">{{ __('ui.departments.dashboard.page', ['page' => $ticketPage]) }}</p>
+
+            <flux:button
+                type="button"
+                wire:click="nextTicketPage"
+                wire:loading.attr="disabled"
+                wire:target="previousTicketPage,nextTicketPage"
+                :disabled="! $hasNextTicketPage"
+                class="min-h-operational-touch"
+            >
+                {{ __('pagination.next') }}
+            </flux:button>
+        </nav>
+    @endif
 </section>

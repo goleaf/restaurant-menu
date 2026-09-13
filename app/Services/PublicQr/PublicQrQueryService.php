@@ -196,7 +196,7 @@ final class PublicQrQueryService
             ->get();
     }
 
-    public function pendingJoinRequest(int $joinRequestId, int $tableSessionId): ?TableSessionJoinRequest
+    public function joinRequestForModeration(int $joinRequestId, int $tableSessionId): ?TableSessionJoinRequest
     {
         return TableSessionJoinRequest::query()
             ->select([
@@ -213,7 +213,6 @@ final class PublicQrQueryService
             ])
             ->whereKey($joinRequestId)
             ->where('table_session_id', $tableSessionId)
-            ->where('status', TableSessionJoinRequestStatus::Pending->value)
             ->first();
     }
 
@@ -322,6 +321,11 @@ final class PublicQrQueryService
         int $tableSessionId,
     ): ?DraftOrderItem {
         return $this->orderQueries->editableDraftOrderItem($itemId, $currentGuestId, $tableSessionId);
+    }
+
+    public function draftOrderItemExistsForTable(int $itemId, int $tableSessionId): bool
+    {
+        return $this->orderQueries->draftOrderItemExistsForTable($itemId, $tableSessionId);
     }
 
     /** @return list<array{id: int, name: string, price_cents: int, formatted_price: string, is_default: bool}> */

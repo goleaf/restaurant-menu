@@ -106,6 +106,12 @@
                             </ul>
                         @endif
 
+                        @if ($item['allergens'] !== [])
+                            <p class="mt-3 text-sm font-semibold text-red-800">
+                                {{ __('ui.departments.dashboard.allergens') }}: {{ $item['allergens_label'] }}
+                            </p>
+                        @endif
+
                         @if ($item['comment'])
                             <p class="mt-3 whitespace-pre-line break-words rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-base font-medium text-amber-950">
                                 {{ $item['comment'] }}

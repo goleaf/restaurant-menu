@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Invitations\AcceptInvitationAction;
 use App\Actions\Invitations\CreatedInvitation;
 use App\Actions\Invitations\CreateInvitationAction;
+use App\Actions\Invitations\RegisterInvitationRecipientAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
@@ -194,6 +195,35 @@ test('a new recipient can register and atomically accept a branch invitation', f
         'role_id' => $role->id,
         'status' => OrganizationUserStatus::Active->value,
     ]);
+});
+
+test('invitation registration retry requires the password from the winning request', function (): void {
+    $createdInvitation = createAcceptanceInvitation('registration-retry@example.test');
+    $action = app(RegisterInvitationRecipientAction::class);
+
+    $recipient = $action->handle($createdInvitation->invitation, [
+        'name' => 'Registration Retry',
+        'email' => 'registration-retry@example.test',
+        'password' => 'StrongPassword2026!',
+    ]);
+    $replayedRecipient = $action->handle($createdInvitation->invitation, [
+        'name' => 'Registration Retry',
+        'email' => 'registration-retry@example.test',
+        'password' => 'StrongPassword2026!',
+    ]);
+
+    expect($replayedRecipient->id)->toBe($recipient->id)
+        ->and($replayedRecipient->wasRecentlyCreated)->toBeFalse()
+        ->and(fn () => $action->handle($createdInvitation->invitation, [
+            'name' => 'Registration Retry',
+            'email' => 'registration-retry@example.test',
+            'password' => 'DifferentPassword2026!',
+        ]))->toThrow(DomainException::class)
+        ->and(User::query()->where('email', 'registration-retry@example.test')->count())->toBe(1)
+        ->and(OrganizationUser::query()
+            ->where('organization_id', $createdInvitation->invitation->organization_id)
+            ->where('user_id', $recipient->id)
+            ->count())->toBe(1);
 });
 
 test('invitation registration rejects a different email without creating partial records', function (): void {

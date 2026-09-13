@@ -12,13 +12,13 @@ enum TableSessionGuestStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::PendingApproval => 'Pending approval',
-            self::Active => 'Active',
-            self::Rejected => 'Rejected',
-            self::Left => 'Left',
-            self::Removed => 'Removed',
-        };
+        return __(match ($this) {
+            self::PendingApproval => 'statuses.table_session_guest.pending_approval',
+            self::Active => 'statuses.table_session_guest.active',
+            self::Rejected => 'statuses.table_session_guest.rejected',
+            self::Left => 'statuses.table_session_guest.left',
+            self::Removed => 'statuses.table_session_guest.removed',
+        });
     }
 
     /**

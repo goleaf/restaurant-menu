@@ -27,7 +27,9 @@ class RegisterInvitationController extends Controller
             abort(410);
         }
 
-        event(new Registered($recipient));
+        if ($recipient->wasRecentlyCreated) {
+            event(new Registered($recipient));
+        }
         Auth::login($recipient);
         $request->session()->regenerate();
         $request->session()->forget(['staff_invitation_id', 'url.intended']);

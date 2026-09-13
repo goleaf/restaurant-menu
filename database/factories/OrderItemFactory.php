@@ -56,6 +56,7 @@ class OrderItemFactory extends Factory
             'total_price_cents' => 1000,
             'selected_modifiers' => [],
             'modifiers_snapshot' => fn (array $attributes): array => $attributes['selected_modifiers'] ?? [],
+            'allergens_snapshot' => [],
             'tax_snapshot' => [],
             'service_snapshot' => [],
             'comment' => null,

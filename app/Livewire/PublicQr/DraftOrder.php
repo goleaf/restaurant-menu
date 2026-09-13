@@ -681,8 +681,21 @@ class DraftOrder extends Component
         $guest = $this->currentActiveGuest();
         $draftOrderItem = $this->editableDraftOrderItem($itemId);
 
-        if (! $guest instanceof TableSessionGuest || ! $draftOrderItem instanceof DraftOrderItem) {
+        if (! $guest instanceof TableSessionGuest) {
             $this->addError('draft_item', __('guest.cart.remove_requires_active_guest'));
+
+            return;
+        }
+
+        if (! $draftOrderItem instanceof DraftOrderItem) {
+            if ($this->publicQrQueries->draftOrderItemExistsForTable($itemId, $this->tableSessionId)) {
+                $this->addError('draft_item', __('guest.cart.remove_requires_active_guest'));
+
+                return;
+            }
+
+            $this->feedbackMessage = __('guest.cart.item_removed');
+            $this->refreshDraft();
 
             return;
         }

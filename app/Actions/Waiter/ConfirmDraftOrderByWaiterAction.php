@@ -106,6 +106,7 @@ class ConfirmDraftOrderByWaiterAction
                     'total_price_cents' => $lineTotalCents,
                     'selected_modifiers' => $modifiersSnapshot,
                     'modifiers_snapshot' => $modifiersSnapshot,
+                    'allergens_snapshot' => $item->menu_item_id === null ? [] : $item->menuItem->allergenCodes(),
                     'tax_snapshot' => [],
                     'service_snapshot' => [],
                     'comment' => $item->comment,
@@ -216,7 +217,7 @@ class ConfirmDraftOrderByWaiterAction
                     ->with([
                         'guest:id,guest_name',
                         'menuItem' => fn ($query) => $query
-                            ->select(['id', 'description', 'kitchen_department_id'])
+                            ->select(['id', 'description', 'allergens', 'kitchen_department_id'])
                             ->with([
                                 'kitchenDepartment:id,branch_id,type,name',
                             ]),

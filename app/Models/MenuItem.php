@@ -155,6 +155,23 @@ class MenuItem extends Model
         return Storage::disk('public')->url($this->image);
     }
 
+    /**
+     * @return list<string>
+     */
+    public function allergenCodes(): array
+    {
+        $allergens = $this->getAttribute('allergens');
+
+        if (! is_array($allergens)) {
+            return [];
+        }
+
+        return collect($allergens)
+            ->filter(fn (mixed $allergen): bool => is_string($allergen))
+            ->values()
+            ->all();
+    }
+
     public function isTemporarilyHidden(?CarbonInterface $at = null): bool
     {
         if ($this->hidden_until === null) {

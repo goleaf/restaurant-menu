@@ -3,6 +3,9 @@
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\AddDraftOrderItemByWaiterAction;
 use App\Actions\Waiter\AddManualWaiterOrderItemAction;
+use App\Actions\Waiter\DeleteDraftOrderItemByWaiterAction;
+use App\Actions\Waiter\UpdateDraftOrderItemByWaiterAction;
+use App\Enums\AuditLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuStatus;
 use App\Enums\OrganizationUserStatus;
@@ -15,6 +18,7 @@ use App\Livewire\PublicQr\DraftOrder as GuestDraftOrder;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Waiter\TableDetail\DraftReview;
 use App\Models\AreaNode;
+use App\Models\AuditLog;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -103,6 +107,8 @@ test('waiter with confirm orders can update quantity comment and modifiers befor
         ->test(DraftReview::class, ['tableSessionId' => $tableSession->id])
         ->call('confirmDraft')
         ->assertHasNoErrors()
+        ->call('confirmDraft')
+        ->assertHasNoErrors()
         ->assertSee(__('guest.table.order').' #');
 
     $order = Order::query()
@@ -141,6 +147,8 @@ test('waiter can add and delete draft positions before confirmation', function (
         ->assertSet('draftReview.total', '€22.00')
         ->call('deleteDraftItem', $pizzaDraftItem->id)
         ->assertHasNoErrors()
+        ->call('deleteDraftItem', $pizzaDraftItem->id)
+        ->assertHasNoErrors()
         ->assertSee('€12.00');
 
     expect(DraftOrderItem::query()->whereKey($pizzaDraftItem->id)->exists())->toBeFalse()
@@ -165,6 +173,32 @@ test('waiter can add and delete draft positions before confirmation', function (
         ->assertSet('totalAmount', '12.00')
         ->assertSee('Still Water')
         ->assertDontSee('Pizza Margherita');
+});
+
+test('replayed waiter update and delete requests do not duplicate audit history', function (): void {
+    $context = createPrompt55SentDraftScenario();
+    $waiter = User::factory()->create(['name' => 'Prompt 55 Replay Waiter']);
+    attachPrompt55Staff($waiter, $context['organization'], [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders]);
+    $update = app(UpdateDraftOrderItemByWaiterAction::class);
+    $delete = app(DeleteDraftOrderItemByWaiterAction::class);
+    $deletedItem = DraftOrderItem::factory()
+        ->for($context['draftOrder'], 'draftOrder')
+        ->for($context['ana'], 'guest')
+        ->for($context['waterItem'], 'menuItem')
+        ->create(['item_name' => 'Replay Water']);
+
+    $selectedModifiers = [(string) $context['sizeGroup']->id => [$context['smallOption']->id]];
+    $update->handle($context['pizzaDraftItem'], $waiter, 2, $selectedModifiers, comment: 'Replay safe');
+    $update->handle($context['pizzaDraftItem'], $waiter, 2, $selectedModifiers, comment: 'Replay safe');
+    $delete->handle($deletedItem, $waiter);
+    $delete->handle($deletedItem, $waiter);
+
+    expect($context['pizzaDraftItem']->fresh()->quantity)->toBe(2)
+        ->and($deletedItem->fresh())->toBeNull()
+        ->and(AuditLog::query()
+            ->where('action', AuditLogAction::DraftOrderEditedByWaiter->value)
+            ->where('user_id', $waiter->id)
+            ->count())->toBe(2);
 });
 
 test('waiter can manually create guest draft item and confirm it from active table', function () {

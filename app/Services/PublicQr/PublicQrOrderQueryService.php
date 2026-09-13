@@ -282,7 +282,10 @@ final class PublicQrOrderQueryService
         return DraftOrder::query()
             ->select(['id', 'table_session_id', 'status'])
             ->where('table_session_id', $tableSessionId)
-            ->where('status', DraftOrderStatus::Draft->value)
+            ->whereIn('status', [
+                DraftOrderStatus::Draft->value,
+                DraftOrderStatus::SentToWaiter->value,
+            ])
             ->latest('id')
             ->first();
     }
@@ -323,6 +326,14 @@ final class PublicQrOrderQueryService
         }
 
         return $draftOrderItem;
+    }
+
+    public function draftOrderItemExistsForTable(int $itemId, int $tableSessionId): bool
+    {
+        return DraftOrderItem::query()
+            ->whereKey($itemId)
+            ->whereHas('draftOrder', fn ($query) => $query->where('table_session_id', $tableSessionId))
+            ->exists();
     }
 
     /** @return list<array{id: int, name: string, price_cents: int, formatted_price: string, is_default: bool}> */

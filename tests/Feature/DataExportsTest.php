@@ -9,6 +9,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\ServicePointType;
+use App\Enums\SupportedLocale;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
@@ -218,9 +219,11 @@ test('csv exports validate date ranges', function () {
         ->assertSessionHasErrors('date_to');
 });
 
-test('payments menu and tables csv exports stream branch data', function () {
+test('payments menu and tables csv exports stream branch data', function (string $locale) {
+    app()->setLocale($locale);
+
     [$organization, $branch] = createPrompt76ExportBranches();
-    $user = User::factory()->create(['name' => 'Full Exporter']);
+    $user = User::factory()->forLocale(SupportedLocale::from($locale))->create(['name' => 'Full Exporter']);
     attachPrompt76Exporter($user, $organization);
     $area = AreaNode::factory()
         ->for($branch)
@@ -308,6 +311,7 @@ test('payments menu and tables csv exports stream branch data', function () {
             __('reports.csv.branch'),
         ]))
         ->toContain(__('ui.payment_methods.card_terminal'))
+        ->toContain(__('payments.scopes.table'))
         ->toContain('Cashier Kate')
         ->toContain('Terminal approved')
         ->not->toContain('Old cash payment');
@@ -326,6 +330,7 @@ test('payments menu and tables csv exports stream branch data', function () {
             __('reports.csv.category_id'),
         ]))
         ->toContain('Dinner Menu')
+        ->toContain(__('reports.statuses.menu.active'))
         ->toContain('Pepperoni')
         ->toContain('13.50');
 
@@ -334,6 +339,8 @@ test('payments menu and tables csv exports stream branch data', function () {
         ->assertOk()
         ->assertDownload()
         ->streamedContent();
+
+    expect(app()->getLocale())->toBe($locale);
 
     expect($tablesContent)
         ->toContain(csvColumns([
@@ -344,9 +351,11 @@ test('payments menu and tables csv exports stream branch data', function () {
             __('reports.csv.name'),
         ]))
         ->toContain('Main Hall')
+        ->toContain(__('reports.service_point_types.table'))
+        ->toContain(__('reports.statuses.service_points.payment_requested'))
         ->toContain('Table Nine')
         ->toContain('SP-EXPORT-9');
-});
+})->with(['en', 'lt', 'ru']);
 
 /**
  * @param  list<string>  $columns

@@ -9,10 +9,10 @@ enum TableSessionSource: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::WaiterOpened => 'Waiter opened',
-            self::GuestCreated => 'Guest created',
-        };
+        return __(match ($this) {
+            self::WaiterOpened => 'statuses.table_session_source.waiter_opened',
+            self::GuestCreated => 'statuses.table_session_source.guest_created',
+        });
     }
 
     /**

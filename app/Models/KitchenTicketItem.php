@@ -15,10 +15,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property KitchenTicketItemStatus $status
  * @property CarbonInterface|null $served_at
+ * @property list<string> $allergens_snapshot
  * @property-read KitchenTicket $kitchenTicket
  * @property-read TableSessionGuest|null $guest
  */
-#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'served_at', 'served_by_user_id', 'selected_modifiers', 'comment'])]
+#[Fillable(['kitchen_ticket_id', 'order_item_id', 'table_session_guest_id', 'menu_item_id', 'guest_name', 'item_name', 'quantity', 'served_at', 'served_by_user_id', 'selected_modifiers', 'allergens_snapshot', 'comment'])]
 class KitchenTicketItem extends Model
 {
     /** @use HasFactory<KitchenTicketItemFactory> */
@@ -31,6 +32,7 @@ class KitchenTicketItem extends Model
         'quantity' => 1,
         'status' => 'new',
         'selected_modifiers' => '[]',
+        'allergens_snapshot' => '[]',
     ];
 
     /**
@@ -43,6 +45,7 @@ class KitchenTicketItem extends Model
             'status' => KitchenTicketItemStatus::class,
             'served_at' => 'datetime',
             'selected_modifiers' => 'array',
+            'allergens_snapshot' => 'array',
         ];
     }
 

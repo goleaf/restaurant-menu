@@ -345,31 +345,16 @@ class StreamBranchCsvExportAction
 
     private function enumLabel(mixed $value): string
     {
-        if ($value instanceof OrderStatus) {
-            return __(sprintf('reports.statuses.orders.%s', $value->value));
-        }
-
-        if ($value instanceof MenuStatus) {
-            return __(sprintf('reports.statuses.menu.%s', $value->value));
-        }
-
-        if ($value instanceof ServicePointStatus) {
-            return __(sprintf('reports.statuses.service_points.%s', $value->value));
-        }
-
-        if ($value instanceof ServicePointType) {
-            return __(sprintf('reports.service_point_types.%s', $value->value));
-        }
-
-        if ($value instanceof ManualPaymentMethod || $value instanceof ManualPaymentScope) {
-            return $value->label();
-        }
-
-        if ($value instanceof BackedEnum) {
-            return method_exists($value, 'label') ? __($value->label()) : (string) $value->value;
-        }
-
-        return $value === null ? '' : (string) $value;
+        return match (true) {
+            $value instanceof OrderStatus => __(sprintf('reports.statuses.orders.%s', $value->value)),
+            $value instanceof MenuStatus => __(sprintf('reports.statuses.menu.%s', $value->value)),
+            $value instanceof ServicePointStatus => __(sprintf('reports.statuses.service_points.%s', $value->value)),
+            $value instanceof ServicePointType => __(sprintf('reports.service_point_types.%s', $value->value)),
+            $value instanceof ManualPaymentMethod,
+            $value instanceof ManualPaymentScope => $value->label(),
+            $value instanceof BackedEnum => method_exists($value, 'label') ? __($value->label()) : (string) $value->value,
+            default => $value === null ? '' : (string) $value,
+        };
     }
 
     private function booleanLabel(bool $value): string

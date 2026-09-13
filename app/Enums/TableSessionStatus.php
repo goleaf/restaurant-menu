@@ -72,15 +72,15 @@ enum TableSessionStatus: string
 
     public function label(): string
     {
-        return match ($this) {
-            self::Pending => 'Pending',
-            self::Active => 'Active',
-            self::WaitingWaiterConfirmation => 'Waiting waiter confirmation',
-            self::PaymentRequested => 'Payment requested',
-            self::Paid => 'Paid',
-            self::Closed => 'Closed',
-            self::Cancelled => 'Cancelled',
-        };
+        return __(match ($this) {
+            self::Pending => 'statuses.table_session.pending',
+            self::Active => 'statuses.table_session.active',
+            self::WaitingWaiterConfirmation => 'statuses.table_session.waiting_waiter_confirmation',
+            self::PaymentRequested => 'statuses.table_session.payment_requested',
+            self::Paid => 'statuses.table_session.paid',
+            self::Closed => 'statuses.table_session.closed',
+            self::Cancelled => 'statuses.table_session.cancelled',
+        });
     }
 
     /**

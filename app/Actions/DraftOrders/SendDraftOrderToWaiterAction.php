@@ -38,11 +38,19 @@ class SendDraftOrderToWaiterAction
 
     public function handle(DraftOrder $draftOrder, TableSessionGuest $sentByGuest): DraftOrder
     {
-        $draftOrder = DB::transaction(function () use ($draftOrder, $sentByGuest): DraftOrder {
+        $shouldNotifyWaiters = false;
+
+        $draftOrder = DB::transaction(function () use ($draftOrder, $sentByGuest, &$shouldNotifyWaiters): DraftOrder {
             $draftOrder = $this->reloadDraftOrder($draftOrder);
             $sentByGuest = $this->reloadGuest($sentByGuest);
 
-            $this->ensureDraftCanBeSent($draftOrder, $sentByGuest);
+            $this->ensureGuestBelongsToDraft($draftOrder, $sentByGuest);
+
+            if ($draftOrder->status === DraftOrderStatus::SentToWaiter) {
+                return $draftOrder;
+            }
+
+            $this->ensureDraftCanBeSent($draftOrder);
             $previousStatus = $draftOrder->status;
 
             $draftOrder
@@ -77,11 +85,14 @@ class SendDraftOrderToWaiterAction
                 statusType: 'draft_order',
                 metadata: ['items_count' => (int) $draftOrder->items_count],
             );
+            $shouldNotifyWaiters = true;
 
             return $draftOrder->refresh();
-        });
+        }, attempts: 3);
 
-        $this->notifyWaiterRecipients($draftOrder);
+        if ($shouldNotifyWaiters) {
+            $this->notifyWaiterRecipients($draftOrder);
+        }
 
         return $draftOrder->refresh();
     }
@@ -115,6 +126,7 @@ class SendDraftOrderToWaiterAction
                     ]),
             ])
             ->whereKey($draftOrder->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
@@ -176,10 +188,11 @@ class SendDraftOrderToWaiterAction
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 
-    private function ensureDraftCanBeSent(DraftOrder $draftOrder, TableSessionGuest $guest): void
+    private function ensureGuestBelongsToDraft(DraftOrder $draftOrder, TableSessionGuest $guest): void
     {
         $tableSession = $draftOrder->tableSession;
         $servicePoint = $tableSession?->servicePoint;
@@ -188,7 +201,20 @@ class SendDraftOrderToWaiterAction
             || ! $servicePoint instanceof ServicePoint
             || ! $servicePoint->is_active
             || $guest->table_session_id !== $tableSession->id
-            || $guest->status !== TableSessionGuestStatus::Active
+            || $guest->status !== TableSessionGuestStatus::Active) {
+            throw ValidationException::withMessages([
+                'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.tolko_aktivnyi_gost_za'),
+            ]);
+        }
+    }
+
+    private function ensureDraftCanBeSent(DraftOrder $draftOrder): void
+    {
+        $tableSession = $draftOrder->tableSession;
+        $servicePoint = $tableSession?->servicePoint;
+
+        if ($tableSession === null
+            || ! $servicePoint instanceof ServicePoint
             || ! $tableSession->status->allowsGuestParticipation()) {
             throw ValidationException::withMessages([
                 'send_draft' => __('ui.actions.draftorders.senddraftordertowaiteraction.tolko_aktivnyi_gost_za'),

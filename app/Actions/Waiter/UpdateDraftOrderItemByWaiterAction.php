@@ -44,6 +44,7 @@ class UpdateDraftOrderItemByWaiterAction
 
             $quantity = OrderItemQuantity::from($quantity, 'editingQuantity')->value;
             $linePrice = $this->calculateLinePrice->forDraftOrderItem($draftOrderItem, $selectedModifierOptions, $quantity, $menuItemVariantId);
+            $normalizedComment = $this->normalizeComment($comment);
 
             $previousStatus = $draftOrder->status;
             $oldValues = [
@@ -55,6 +56,11 @@ class UpdateDraftOrderItemByWaiterAction
             ];
             $this->moveDraftOrderToWaiterReview->handle($draftOrder);
 
+            if ($previousStatus === $draftOrder->status
+                && $draftOrderItem->alreadyMatchesSelection($linePrice, $quantity, $normalizedComment)) {
+                return $draftOrderItem;
+            }
+
             $draftOrderItem->update([
                 'quantity' => $quantity,
                 'menu_item_variant_id' => $linePrice['menu_item_variant_id'],
@@ -64,7 +70,7 @@ class UpdateDraftOrderItemByWaiterAction
                 'modifier_total_cents' => $linePrice['modifier_total_cents'],
                 'total_price_cents' => $linePrice['total_price_cents'],
                 'selected_modifiers' => $linePrice['selected_modifiers'],
-                'comment' => $this->normalizeComment($comment),
+                'comment' => $normalizedComment,
             ]);
 
             $this->createOrderStatusLog->handle(
@@ -140,6 +146,7 @@ class UpdateDraftOrderItemByWaiterAction
                 'menuItem' => fn ($query) => $query->select(['id']),
             ])
             ->whereKey($draftOrderItem->id)
+            ->lockForUpdate()
             ->firstOrFail();
     }
 

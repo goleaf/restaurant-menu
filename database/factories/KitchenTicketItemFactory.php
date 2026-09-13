@@ -45,6 +45,7 @@ class KitchenTicketItemFactory extends Factory
             'served_at' => null,
             'served_by_user_id' => null,
             'selected_modifiers' => fn (array $attributes): array => $this->orderItemFor($attributes)->selected_modifiers ?? [],
+            'allergens_snapshot' => fn (array $attributes): array => $this->orderItemFor($attributes)->historicalAllergens(),
             'comment' => fn (array $attributes): ?string => $this->orderItemFor($attributes)->comment,
         ];
     }
@@ -60,6 +61,7 @@ class KitchenTicketItemFactory extends Factory
             'item_name' => $orderItem->item_name,
             'quantity' => $orderItem->quantity,
             'selected_modifiers' => $orderItem->selected_modifiers ?? [],
+            'allergens_snapshot' => $orderItem->historicalAllergens(),
             'comment' => $orderItem->comment,
         ]);
     }
@@ -77,6 +79,15 @@ class KitchenTicketItemFactory extends Factory
     {
         return $this->state(fn (): array => [
             'status' => KitchenTicketItemStatus::InProgress,
+            'served_at' => null,
+            'served_by_user_id' => null,
+        ]);
+    }
+
+    public function accepted(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => KitchenTicketItemStatus::Accepted,
             'served_at' => null,
             'served_by_user_id' => null,
         ]);
@@ -115,6 +126,7 @@ class KitchenTicketItemFactory extends Factory
                 'item_name',
                 'quantity',
                 'selected_modifiers',
+                'allergens_snapshot',
                 'comment',
             ])
             ->whereKey($attributes['order_item_id'])

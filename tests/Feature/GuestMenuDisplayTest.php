@@ -715,6 +715,9 @@ test('draft order component asks confirmation when not all guests are ready befo
         ->assertSeeText('Order sent to the waiter.')
         ->assertSeeText('Draft sent to the waiter. Changes are not available right now.')
         ->assertDontSeeText('Edit')
+        ->call('sendDraftToWaiter', true)
+        ->assertHasNoErrors()
+        ->assertSet('feedbackMessage', __('guest.table.sent_to_waiter'))
         ->call('editItem', $draftOrderItem->id)
         ->assertHasErrors(['draft_order']);
 

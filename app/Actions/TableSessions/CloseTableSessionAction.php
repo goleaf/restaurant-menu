@@ -36,7 +36,12 @@ class CloseTableSessionAction
             $tableSession = $this->reloadTableSession($tableSession);
             $sessionStatus = $this->sessionStatus($tableSession);
 
-            $this->ensureCanClose($tableSession, $closedBy, $sessionStatus);
+            $this->ensureCanClose($tableSession, $closedBy);
+
+            if ($sessionStatus->isTerminal()) {
+                return $tableSession;
+            }
+
             $this->ensureWorkflowIsComplete($tableSession);
             $this->transitionTableOrders->handle(
                 tableSession: $tableSession,
@@ -145,14 +150,7 @@ class CloseTableSessionAction
     private function ensureCanClose(
         TableSession $tableSession,
         User $closedBy,
-        TableSessionStatus $sessionStatus,
     ): void {
-        if ($sessionStatus->isTerminal()) {
-            throw ValidationException::withMessages([
-                'table_session' => __('payments.errors.session_closed'),
-            ]);
-        }
-
         if (Gate::forUser($closedBy)->allows('close', $tableSession)) {
             return;
         }

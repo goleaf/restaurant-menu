@@ -139,6 +139,7 @@ class SendOrderToKitchenBarAction
                         'quantity',
                         'selected_modifiers',
                         'modifiers_snapshot',
+                        'allergens_snapshot',
                         'comment',
                         'created_at',
                     ])
@@ -234,6 +235,7 @@ class SendOrderToKitchenBarAction
                     'item_name' => $this->kitchenItemName($item),
                     'quantity' => $item->quantity,
                     'selected_modifiers' => $item->historicalModifiers(),
+                    'allergens_snapshot' => $item->historicalAllergens(),
                     'comment' => $item->comment,
                 ]);
             });

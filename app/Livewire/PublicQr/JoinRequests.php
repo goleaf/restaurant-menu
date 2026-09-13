@@ -91,7 +91,7 @@ class JoinRequests extends Component
         $this->applyLocale();
 
         $guest = $this->activeGuest();
-        $joinRequest = $this->pendingJoinRequest($joinRequestId);
+        $joinRequest = $this->joinRequestForModeration($joinRequestId);
 
         if (! $guest instanceof TableSessionGuest || ! $joinRequest instanceof TableSessionJoinRequest) {
             $this->showNotice(__('guest.table.approve_requires_active_guest'), 'warning');
@@ -116,7 +116,7 @@ class JoinRequests extends Component
         $this->applyLocale();
 
         $guest = $this->activeGuest();
-        $joinRequest = $this->pendingJoinRequest($joinRequestId);
+        $joinRequest = $this->joinRequestForModeration($joinRequestId);
 
         if (! $guest instanceof TableSessionGuest || ! $joinRequest instanceof TableSessionJoinRequest) {
             $this->showNotice(__('guest.table.reject_requires_active_guest'), 'warning');
@@ -161,9 +161,9 @@ class JoinRequests extends Component
         return $this->publicQrQueries->activeGuest($this->guestId, $this->tableSessionId, $guestToken);
     }
 
-    private function pendingJoinRequest(int $joinRequestId): ?TableSessionJoinRequest
+    private function joinRequestForModeration(int $joinRequestId): ?TableSessionJoinRequest
     {
-        return $this->publicQrQueries->pendingJoinRequest($joinRequestId, $this->tableSessionId);
+        return $this->publicQrQueries->joinRequestForModeration($joinRequestId, $this->tableSessionId);
     }
 
     private function guestTokenFromCookie(): ?string

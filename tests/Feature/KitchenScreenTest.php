@@ -1,12 +1,18 @@
 <?php
 
+use App\Actions\Departments\BuildDepartmentDashboardAction;
+use App\Actions\Orders\CancelOrderItemAction;
 use App\Actions\Orders\SendOrderToKitchenBarAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\ConfirmDraftOrderByWaiterAction;
+use App\Actions\Waiter\MarkKitchenTicketItemServedAction;
+use App\Enums\DepartmentTicketFilter;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\MenuStatus;
+use App\Enums\OrderStatus;
+use App\Enums\OrderStatusLogEvent;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\SystemPermission;
@@ -28,6 +34,7 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderStatusLog;
 use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\Role;
@@ -47,12 +54,14 @@ test('kitchen ticket items have kitchen work statuses', function () {
     expect(Schema::hasColumn('kitchen_ticket_items', 'status'))->toBeTrue()
         ->and(KitchenTicketItemStatus::values())->toBe([
             'new',
+            'accepted',
             'in_progress',
             'ready',
             'cancelled',
         ])
         ->and(array_keys(KitchenTicketItemStatus::options()))->toBe([
             'new',
+            'accepted',
             'in_progress',
             'ready',
         ])
@@ -70,26 +79,28 @@ test('head chef kitchen screen excludes bar tickets and rejects a forged bar ite
         ->assertSet('selectedDepartmentId', (string) $kitchen->id)
         ->assertSee('data-department-priority-queue', false)
         ->assertSee('data-priority-row', false)
+        ->assertSee('xl:grid-cols-[minmax(15rem,22rem)_minmax(12rem,18rem)_auto]', false)
         ->assertSee('min-h-operational-touch', false)
         ->assertSee('Prompt 61 Pizza')
         ->assertSee('Prompt 61 Table')
         ->assertSee('Prompt 61 Hall')
         ->assertSee('Crispy crust')
         ->assertSee('Size: Large')
-        ->assertSee(__('ui.departments.dashboard.nacat'))
-        ->assertSee(__('ui.departments.dashboard.gotovo'))
+        ->assertSee(__('ui.departments.dashboard.accept'))
+        ->assertSee(__('menu.allergens.options.gluten'))
+        ->assertSee(__('menu.allergens.options.milk'))
         ->assertSee('oldest first')
         ->assertDontSee('Prompt 61 Coffee')
-        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::InProgress->value)
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Accepted->value)
         ->assertHasNoErrors()
-        ->assertSee('In progress')
+        ->assertSee(__('statuses.kitchen_ticket_item.accepted'))
         ->set('selectedDepartmentId', (string) $bar->id)
         ->assertSet('selectedDepartmentId', (string) $kitchen->id)
         ->assertDontSee('Prompt 61 Coffee')
         ->call('setItemStatus', $barItem->id, KitchenTicketItemStatus::Ready->value)
         ->assertHasErrors('ticket_item_status');
 
-    expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::InProgress)
+    expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::Accepted)
         ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::New);
 });
 
@@ -260,6 +271,135 @@ test('kitchen delay timer exposes attention and delayed states at their exact th
         ->assertSee(__('ui.departments.dashboard.delay_by', ['time' => '00:05']));
 });
 
+test('department workflow keeps accepted preparing ready and completed states in one history', function () {
+    [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
+    $chef = User::factory()->create(['name' => 'Prompt 61 Workflow Chef']);
+    $waiter = User::factory()->create(['name' => 'Prompt 61 Workflow Waiter']);
+
+    attachPrompt61Staff($chef, $organization, SystemRole::HeadChef);
+    attachPrompt61Staff($waiter, $organization, SystemRole::Waiter, [
+        SystemPermission::MarkOrderServed,
+    ]);
+
+    $component = Livewire::actingAs($chef)
+        ->test(KitchenDashboard::class)
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Accepted->value)
+        ->assertHasNoErrors()
+        ->assertSet('acceptedItemCount', 1)
+        ->assertSee(__('statuses.kitchen_ticket_item.accepted'))
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Accepted->value)
+        ->assertHasNoErrors();
+
+    $order = $kitchenItem->kitchenTicket()->firstOrFail()->order()->firstOrFail();
+
+    expect($order->status)->toBe(OrderStatus::SentToKitchenBar)
+        ->and(OrderStatusLog::query()
+            ->where('order_id', $order->id)
+            ->where('event', OrderStatusLogEvent::TicketItemStatusChanged->value)
+            ->where('new_status', KitchenTicketItemStatus::Accepted->value)
+            ->count())->toBe(1);
+
+    $component
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::InProgress->value)
+        ->assertHasNoErrors()
+        ->assertSet('inProgressItemCount', 1)
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Ready->value)
+        ->assertHasNoErrors()
+        ->assertSet('readyItemCount', 1);
+
+    app(MarkKitchenTicketItemServedAction::class)->handle($kitchenItem->fresh(), $waiter);
+
+    $component
+        ->set('ticketFilter', DepartmentTicketFilter::Completed->value)
+        ->assertSet('completedItemCount', 1)
+        ->assertSet('tickets.0.items.0.status_value', DepartmentTicketFilter::Completed->value)
+        ->assertSee(__('ui.departments.dashboard.completed'))
+        ->assertSee('data-timer-stopped="true"', false);
+
+    expect(OrderStatusLog::query()
+        ->where('order_id', $order->id)
+        ->whereIn('event', [
+            OrderStatusLogEvent::TicketItemStatusChanged->value,
+            OrderStatusLogEvent::TicketItemServed->value,
+        ])
+        ->count())->toBe(4)
+        ->and($kitchenItem->fresh()->served_at)->not->toBeNull()
+        ->and($kitchen->ticketItems()->whereKey($kitchenItem->id)->exists())->toBeTrue();
+});
+
+test('cancelled department items remain visible but non actionable in history', function () {
+    [$organization, , , $kitchenItem] = createPrompt61KitchenScenario();
+    $chef = User::factory()->create(['name' => 'Prompt 61 Cancellation Chef']);
+    $waiter = User::factory()->create(['name' => 'Prompt 61 Cancellation Waiter']);
+
+    attachPrompt61Staff($chef, $organization, SystemRole::HeadChef);
+    attachPrompt61Staff($waiter, $organization, SystemRole::Waiter, [
+        SystemPermission::CancelOrders,
+    ]);
+
+    app(CancelOrderItemAction::class)->handle(
+        orderItem: $kitchenItem->orderItem()->firstOrFail(),
+        cancelledBy: $waiter,
+        reason: 'Guest confirmed a severe allergen conflict.',
+    );
+
+    Livewire::actingAs($chef)
+        ->test(KitchenDashboard::class)
+        ->set('ticketFilter', DepartmentTicketFilter::Cancelled->value)
+        ->assertSet('cancelledItemCount', 1)
+        ->assertSet('tickets.0.items.0.status_value', KitchenTicketItemStatus::Cancelled->value)
+        ->assertSee(__('statuses.kitchen_ticket_item.cancelled'))
+        ->assertSee('Guest confirmed a severe allergen conflict.')
+        ->assertDontSee('wire:click="setItemStatus('.$kitchenItem->id.', \'accepted\')"', false)
+        ->assertDontSee('wire:click="setItemStatus('.$kitchenItem->id.', \'in_progress\')"', false)
+        ->assertDontSee('wire:click="setItemStatus('.$kitchenItem->id.', \'ready\')"', false);
+});
+
+test('department dashboard paginates long queues with a constant query budget', function () {
+    [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
+    $chef = User::factory()->create(['name' => 'Prompt 61 Scale Chef']);
+
+    attachPrompt61Staff($chef, $organization, SystemRole::HeadChef);
+
+    $dashboard = app(BuildDepartmentDashboardAction::class);
+    $baselineQueries = countDatabaseQueries(fn () => $dashboard->handle(
+        user: $chef,
+        selectedDepartmentId: $kitchen->id,
+        departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
+        roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    ));
+
+    foreach (range(1, 30) as $position) {
+        createPrompt61QueuedTicket($kitchenItem, $kitchen, $position);
+    }
+
+    $grownQueries = countDatabaseQueries(fn () => $dashboard->handle(
+        user: $chef,
+        selectedDepartmentId: $kitchen->id,
+        departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
+        roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
+        permissionCodes: [SystemPermission::ViewKitchen],
+    ));
+
+    $component = Livewire::actingAs($chef)
+        ->test(KitchenDashboard::class)
+        ->assertSet('ticketCount', 31)
+        ->assertSet('hasNextTicketPage', true);
+
+    expect($component->get('tickets'))->toHaveCount(24);
+
+    $component
+        ->call('nextTicketPage')
+        ->assertSet('ticketPage', 2)
+        ->assertSet('hasPreviousTicketPage', true)
+        ->assertSet('hasNextTicketPage', false);
+
+    expect($component->get('tickets'))->toHaveCount(7)
+        ->and($baselineQueries)->toBeLessThanOrEqual(24)
+        ->and($grownQueries)->toBe($baselineQueries);
+});
+
 function createPrompt61KitchenScenario(): array
 {
     $owner = User::factory()->create();
@@ -327,6 +467,7 @@ function createPrompt61KitchenScenario(): array
         ->create([
             'name' => 'Prompt 61 Pizza',
             'price_cents' => 1100,
+            'allergens' => ['gluten', 'milk'],
         ]);
     $coffee = MenuItem::factory()
         ->for($menu)
@@ -429,4 +570,46 @@ function attachPrompt61Staff(User $user, Organization $organization, SystemRole 
     ]);
 
     return $role;
+}
+
+function createPrompt61QueuedTicket(
+    KitchenTicketItem $referenceItem,
+    KitchenDepartment $department,
+    int $position,
+): KitchenTicket {
+    $referenceTicket = $referenceItem->kitchenTicket()->firstOrFail();
+    $order = Order::factory()->create([
+        'branch_id' => $referenceTicket->branch_id,
+        'service_point_id' => $referenceTicket->service_point_id,
+        'table_session_id' => $referenceTicket->table_session_id,
+        'status' => OrderStatus::SentToKitchenBar,
+    ]);
+    $ticket = KitchenTicket::factory()
+        ->for($order)
+        ->create([
+            'branch_id' => $referenceTicket->branch_id,
+            'service_point_id' => $referenceTicket->service_point_id,
+            'table_session_id' => $referenceTicket->table_session_id,
+            'kitchen_department_id' => $department->id,
+            'department_type' => $department->type,
+            'department_name' => $department->name,
+            'sent_at' => now()->addSeconds($position),
+        ]);
+    $orderItem = OrderItem::factory()
+        ->for($order)
+        ->create([
+            'table_session_guest_id' => $referenceItem->table_session_guest_id,
+            'menu_item_id' => $referenceItem->menu_item_id,
+            'kitchen_department_id' => $department->id,
+            'kitchen_department_type' => $department->type->value,
+            'kitchen_department_name' => $department->name,
+            'guest_name' => 'Queue guest '.$position,
+            'item_name' => 'Queue item '.$position,
+        ]);
+
+    KitchenTicketItem::factory()
+        ->forDispatchedOrderItem($ticket, $orderItem)
+        ->create();
+
+    return $ticket;
 }

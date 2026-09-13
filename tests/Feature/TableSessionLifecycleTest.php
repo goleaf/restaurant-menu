@@ -17,6 +17,7 @@ use App\Enums\ServicePointStatus;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
+use App\Enums\TableSessionSource;
 use App\Enums\TableSessionStatus;
 use App\Enums\WaiterCallStatus;
 use App\Livewire\PublicQr\GuestActions;
@@ -45,6 +46,35 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
+});
+
+test('table session lifecycle labels are localized without an English fallback', function () {
+    $lifecycleEnums = [
+        TableSessionStatus::cases(),
+        TableSessionGuestStatus::cases(),
+        TableSessionJoinRequestStatus::cases(),
+        TableSessionSource::cases(),
+        WaiterCallStatus::cases(),
+        ServicePointStatus::cases(),
+    ];
+
+    app()->setLocale('en');
+
+    $englishLabels = collect($lifecycleEnums)
+        ->flatten()
+        ->mapWithKeys(fn ($case): array => [$case::class.'.'.$case->value => $case->label()]);
+
+    foreach (['lt', 'ru'] as $locale) {
+        app()->setLocale($locale);
+
+        foreach ($lifecycleEnums as $cases) {
+            foreach ($cases as $case) {
+                expect($case->label())
+                    ->not->toBe('')
+                    ->not->toBe($englishLabels[$case::class.'.'.$case->value]);
+            }
+        }
+    }
 });
 
 test('closed session and another table in the same branch cannot restore a guest identity', function () {

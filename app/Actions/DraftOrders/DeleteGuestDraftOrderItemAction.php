@@ -7,6 +7,7 @@ namespace App\Actions\DraftOrders;
 use App\Actions\Orders\CreateOrderStatusLogAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\OrderStatusLogEvent;
+use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\TableSessionGuest;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +22,16 @@ class DeleteGuestDraftOrderItemAction
     public function handle(DraftOrderItem $draftOrderItem, TableSessionGuest $guest): void
     {
         DB::transaction(function () use ($draftOrderItem, $guest): void {
-            $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
+            $staleDraftOrderItem = $draftOrderItem;
             $guest = $this->reloadGuest($guest);
+            $draftOrderItem = $this->reloadDraftOrderItem($draftOrderItem);
+
+            if (! $draftOrderItem instanceof DraftOrderItem) {
+                $staleDraftOrderItem = $this->staleDraftOrderItemForAuthorization($staleDraftOrderItem);
+                $this->ensureGuestOwnsEditableDraftItem->handle($staleDraftOrderItem, $guest);
+
+                return;
+            }
 
             $this->ensureGuestOwnsEditableDraftItem->handle($draftOrderItem, $guest);
 
@@ -43,7 +52,7 @@ class DeleteGuestDraftOrderItemAction
         });
     }
 
-    private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): DraftOrderItem
+    private function reloadDraftOrderItem(DraftOrderItem $draftOrderItem): ?DraftOrderItem
     {
         return DraftOrderItem::query()
             ->select([
@@ -74,7 +83,8 @@ class DeleteGuestDraftOrderItemAction
                     ]),
             ])
             ->whereKey($draftOrderItem->id)
-            ->firstOrFail();
+            ->lockForUpdate()
+            ->first();
     }
 
     private function reloadGuest(TableSessionGuest $guest): TableSessionGuest
@@ -90,6 +100,30 @@ class DeleteGuestDraftOrderItemAction
                 'left_at',
             ])
             ->whereKey($guest->id)
+            ->lockForUpdate()
             ->firstOrFail();
+    }
+
+    private function staleDraftOrderItemForAuthorization(DraftOrderItem $staleDraftOrderItem): DraftOrderItem
+    {
+        $draftOrder = DraftOrder::query()
+            ->select(['id', 'table_session_id', 'status'])
+            ->with([
+                'tableSession' => fn ($query) => $query
+                    ->select(['id', 'service_point_id', 'status', 'ended_at'])
+                    ->with([
+                        'servicePoint' => fn ($servicePointQuery) => $servicePointQuery->select([
+                            'id',
+                            'is_active',
+                        ]),
+                    ]),
+            ])
+            ->whereKey($staleDraftOrderItem->draft_order_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $staleDraftOrderItem->setRelation('draftOrder', $draftOrder);
+
+        return $staleDraftOrderItem;
     }
 }

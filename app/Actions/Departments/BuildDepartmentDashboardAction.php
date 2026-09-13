@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Departments;
 
+use App\Enums\DepartmentTicketFilter;
 use App\Enums\KitchenDepartmentType;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\KitchenTicketStatus;
+use App\Enums\MenuAllergen;
 use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -16,7 +18,10 @@ use App\Models\KitchenTicketItem;
 use App\Models\User;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 
 class BuildDepartmentDashboardAction
@@ -38,8 +43,15 @@ class BuildDepartmentDashboardAction
      *     tickets: list<array<string, mixed>>,
      *     ticket_count: int,
      *     new_item_count: int,
+     *     accepted_item_count: int,
      *     in_progress_item_count: int,
-     *     ready_item_count: int
+     *     ready_item_count: int,
+     *     completed_item_count: int,
+     *     cancelled_item_count: int,
+     *     ticket_page: int,
+     *     has_previous_ticket_page: bool,
+     *     has_next_ticket_page: bool,
+     *     sort_label: string
      * }
      */
     public function handle(
@@ -48,6 +60,9 @@ class BuildDepartmentDashboardAction
         array $departmentTypes,
         array $roleCodes,
         array $permissionCodes,
+        DepartmentTicketFilter $filter = DepartmentTicketFilter::Active,
+        int $page = 1,
+        int $perPage = 24,
     ): array {
         $departmentIds = $this->resolveAccessibleDepartmentIds->handle($user, $departmentTypes, $roleCodes, $permissionCodes);
 
@@ -62,8 +77,11 @@ class BuildDepartmentDashboardAction
             return $this->emptyPayload(false);
         }
 
-        $tickets = $this->ticketsFor($selectedDepartment);
-        $itemStatuses = $tickets->flatMap(fn (KitchenTicket $ticket): Collection => $ticket->items->pluck('status'));
+        $page = max(1, $page);
+        $perPage = max(1, min(50, $perPage));
+        $ticketPage = $this->ticketsFor($selectedDepartment, $filter, $page, $perPage);
+        $tickets = $ticketPage['tickets'];
+        $itemCounts = $this->itemCountsFor($selectedDepartment);
 
         return [
             'has_access' => true,
@@ -77,10 +95,14 @@ class BuildDepartmentDashboardAction
                 ->map(fn (KitchenTicket $ticket): array => $this->ticketPayload($ticket))
                 ->values()
                 ->all(),
-            'ticket_count' => $tickets->count(),
-            'new_item_count' => $itemStatuses->filter(fn (mixed $status): bool => $this->itemStatus($status) === KitchenTicketItemStatus::New)->count(),
-            'in_progress_item_count' => $itemStatuses->filter(fn (mixed $status): bool => $this->itemStatus($status) === KitchenTicketItemStatus::InProgress)->count(),
-            'ready_item_count' => $itemStatuses->filter(fn (mixed $status): bool => $this->itemStatus($status) === KitchenTicketItemStatus::Ready)->count(),
+            'ticket_count' => $ticketPage['total'],
+            ...$itemCounts,
+            'ticket_page' => $page,
+            'has_previous_ticket_page' => $page > 1,
+            'has_next_ticket_page' => $page * $perPage < $ticketPage['total'],
+            'sort_label' => $filter->isHistory()
+                ? __('ui.departments.dashboard.newest_first')
+                : __('ui.departments.dashboard.oldest_first'),
         ];
     }
 
@@ -107,8 +129,15 @@ class BuildDepartmentDashboardAction
             'tickets' => [],
             'ticket_count' => 0,
             'new_item_count' => 0,
+            'accepted_item_count' => 0,
             'in_progress_item_count' => 0,
             'ready_item_count' => 0,
+            'completed_item_count' => 0,
+            'cancelled_item_count' => 0,
+            'ticket_page' => 1,
+            'has_previous_ticket_page' => false,
+            'has_next_ticket_page' => false,
+            'sort_label' => __('ui.departments.dashboard.oldest_first'),
         ];
     }
 
@@ -160,11 +189,15 @@ class BuildDepartmentDashboardAction
     }
 
     /**
-     * @return EloquentCollection<int, KitchenTicket>
+     * @return array{tickets: EloquentCollection<int, KitchenTicket>, total: int}
      */
-    private function ticketsFor(KitchenDepartment $department): EloquentCollection
-    {
-        return KitchenTicket::query()
+    private function ticketsFor(
+        KitchenDepartment $department,
+        DepartmentTicketFilter $filter,
+        int $page,
+        int $perPage,
+    ): array {
+        $query = KitchenTicket::query()
             ->select([
                 'id',
                 'order_id',
@@ -179,11 +212,12 @@ class BuildDepartmentDashboardAction
                 'created_at',
             ])
             ->with([
+                'order' => fn ($query) => $query->select(['id', 'status']),
                 'servicePoint' => fn ($query) => $query
                     ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status'])
                     ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                'items' => fn ($query) => $query
-                    ->select([
+                'items' => function ($query) use ($filter): void {
+                    $query->select([
                         'id',
                         'kitchen_ticket_id',
                         'order_item_id',
@@ -193,25 +227,126 @@ class BuildDepartmentDashboardAction
                         'item_name',
                         'quantity',
                         'status',
+                        'served_at',
+                        'served_by_user_id',
                         'selected_modifiers',
+                        'allergens_snapshot',
                         'comment',
                         'created_at',
                         'updated_at',
                     ])
-                    ->where('status', '!=', KitchenTicketItemStatus::Cancelled->value)
-                    ->orderBy('created_at')
-                    ->orderBy('id'),
+                        ->with(['orderItem' => fn ($orderItemQuery) => $orderItemQuery->select([
+                            'id',
+                            'cancellation_reason',
+                        ])]);
+                    $this->applyItemFilter($query, $filter);
+                    $query
+                        ->orderBy('created_at')
+                        ->orderBy('id');
+                },
             ])
             ->where('kitchen_department_id', $department->id)
             ->where('status', KitchenTicketStatus::Sent->value)
-            ->whereHas('order', function ($query): void {
-                $query->where('status', '!=', OrderStatus::Cancelled->value);
-            })
-            ->whereHas('items', fn ($query) => $query->where('status', '!=', KitchenTicketItemStatus::Cancelled->value))
-            ->orderBy('sent_at')
-            ->orderBy('id')
-            ->limit(100)
+            ->whereHas('items', function ($query) use ($filter): void {
+                $this->applyItemFilter($query, $filter);
+            });
+
+        if (! $filter->isHistory()) {
+            $query->whereHas('order', function ($orderQuery): void {
+                $orderQuery->where('status', '!=', OrderStatus::Cancelled->value);
+            });
+        }
+
+        $total = (clone $query)->count();
+        $direction = $filter->isHistory() ? 'desc' : 'asc';
+        $tickets = $query
+            ->orderBy('sent_at', $direction)
+            ->orderBy('id', $direction)
+            ->offset(($page - 1) * $perPage)
+            ->limit($perPage)
             ->get();
+
+        return [
+            'tickets' => $tickets,
+            'total' => $total,
+        ];
+    }
+
+    private function applyItemFilter(Builder|Relation $query, DepartmentTicketFilter $filter): void
+    {
+        match ($filter) {
+            DepartmentTicketFilter::Active => $query
+                ->whereIn('status', [
+                    KitchenTicketItemStatus::New->value,
+                    KitchenTicketItemStatus::Accepted->value,
+                    KitchenTicketItemStatus::InProgress->value,
+                    KitchenTicketItemStatus::Ready->value,
+                ])
+                ->whereNull('served_at'),
+            DepartmentTicketFilter::New => $query
+                ->where('status', KitchenTicketItemStatus::New->value)
+                ->whereNull('served_at'),
+            DepartmentTicketFilter::Accepted => $query
+                ->where('status', KitchenTicketItemStatus::Accepted->value)
+                ->whereNull('served_at'),
+            DepartmentTicketFilter::InProgress => $query
+                ->where('status', KitchenTicketItemStatus::InProgress->value)
+                ->whereNull('served_at'),
+            DepartmentTicketFilter::Ready => $query
+                ->where('status', KitchenTicketItemStatus::Ready->value)
+                ->whereNull('served_at'),
+            DepartmentTicketFilter::Completed => $query
+                ->where('status', KitchenTicketItemStatus::Ready->value)
+                ->whereNotNull('served_at'),
+            DepartmentTicketFilter::Cancelled => $query
+                ->where('status', KitchenTicketItemStatus::Cancelled->value),
+        };
+    }
+
+    /**
+     * @return array{
+     *     new_item_count: int,
+     *     accepted_item_count: int,
+     *     in_progress_item_count: int,
+     *     ready_item_count: int,
+     *     completed_item_count: int,
+     *     cancelled_item_count: int
+     * }
+     */
+    private function itemCountsFor(KitchenDepartment $department): array
+    {
+        $department = KitchenDepartment::query()
+            ->select(['id'])
+            ->withCount([
+                'ticketItems as new_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::New->value)
+                    ->whereNull('kitchen_ticket_items.served_at'),
+                'ticketItems as accepted_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::Accepted->value)
+                    ->whereNull('kitchen_ticket_items.served_at'),
+                'ticketItems as in_progress_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::InProgress->value)
+                    ->whereNull('kitchen_ticket_items.served_at'),
+                'ticketItems as ready_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::Ready->value)
+                    ->whereNull('kitchen_ticket_items.served_at'),
+                'ticketItems as completed_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::Ready->value)
+                    ->whereNotNull('kitchen_ticket_items.served_at'),
+                'ticketItems as cancelled_item_count' => fn ($query) => $query
+                    ->where('kitchen_ticket_items.status', KitchenTicketItemStatus::Cancelled->value),
+            ])
+            ->whereKey($department->id)
+            ->firstOrFail();
+
+        return [
+            'new_item_count' => (int) $department->getAttribute('new_item_count'),
+            'accepted_item_count' => (int) $department->getAttribute('accepted_item_count'),
+            'in_progress_item_count' => (int) $department->getAttribute('in_progress_item_count'),
+            'ready_item_count' => (int) $department->getAttribute('ready_item_count'),
+            'completed_item_count' => (int) $department->getAttribute('completed_item_count'),
+            'cancelled_item_count' => (int) $department->getAttribute('cancelled_item_count'),
+        ];
     }
 
     /**
@@ -236,6 +371,7 @@ class BuildDepartmentDashboardAction
     private function ticketPayload(KitchenTicket $ticket): array
     {
         $status = $ticket->status;
+        $orderStatus = $ticket->order->status;
         $items = $ticket->items
             ->map(fn (KitchenTicketItem $item): array => $this->itemPayload($item))
             ->values()
@@ -243,6 +379,7 @@ class BuildDepartmentDashboardAction
         $displayNumber = trim((string) ($ticket->servicePoint->display_number ?? ''));
         $servicePointName = trim((string) $ticket->servicePoint->name);
         $startedAt = $ticket->sent_at ?? $ticket->created_at;
+        $terminalAt = $this->terminalAt($ticket->items);
 
         return [
             'id' => $ticket->id,
@@ -253,12 +390,15 @@ class BuildDepartmentDashboardAction
             'zone_name' => $ticket->servicePoint?->areaNode?->name,
             'status_value' => $status->value,
             'status_label' => $status->label(),
+            'order_status_value' => $orderStatus->value,
+            'order_status_label' => $orderStatus->label(),
             'work_status' => $this->workStatusPayload($ticket->items),
             'sent_at' => LocalizedDateFormatter::dateTime($startedAt),
             'created_time' => LocalizedDateFormatter::time($ticket->created_at),
-            ...$this->buildDepartmentTicketDelayTimer->handle($startedAt),
+            ...$this->buildDepartmentTicketDelayTimer->handle($startedAt, $terminalAt),
             'items' => $items,
             'item_count' => count($items),
+            'is_terminal' => $terminalAt !== null,
         ];
     }
 
@@ -268,19 +408,25 @@ class BuildDepartmentDashboardAction
     private function itemPayload(KitchenTicketItem $item): array
     {
         $status = $this->itemStatus($item->status);
+        $isCompleted = $item->served_at !== null;
 
         return [
             'id' => $item->id,
             'guest_name' => $item->guest_name,
             'item_name' => $item->item_name,
             'quantity' => $item->quantity,
-            'status_value' => $status->value,
-            'status_label' => $status->label(),
-            'status_color' => $status->badgeColor(),
-            'can_start' => $status === KitchenTicketItemStatus::New,
-            'can_mark_ready' => $status !== KitchenTicketItemStatus::Ready,
+            'status_value' => $isCompleted ? DepartmentTicketFilter::Completed->value : $status->value,
+            'status_key' => $isCompleted ? 'ui.departments.dashboard.completed' : $status->translationKey(),
+            'status_label' => $isCompleted ? __('ui.departments.dashboard.completed') : $status->label(),
+            'status_color' => $isCompleted ? 'zinc' : $status->badgeColor(),
+            'can_accept' => ! $isCompleted && $status === KitchenTicketItemStatus::New,
+            'can_start' => ! $isCompleted && $status === KitchenTicketItemStatus::Accepted,
+            'can_mark_ready' => ! $isCompleted && $status === KitchenTicketItemStatus::InProgress,
             'comment' => $item->comment,
             'modifiers' => $this->modifierSummary($item->selected_modifiers ?? []),
+            'allergens' => $this->allergenSummary($item->allergens_snapshot ?? []),
+            'completed_at' => LocalizedDateFormatter::dateTime($item->served_at),
+            'cancellation_reason' => $item->orderItem?->cancellation_reason,
         ];
     }
 
@@ -291,10 +437,26 @@ class BuildDepartmentDashboardAction
     private function workStatusPayload(Collection $items): array
     {
         if ($items->isNotEmpty() && $items->every(fn (KitchenTicketItem $item): bool => $this->itemStatus($item->status) === KitchenTicketItemStatus::Ready)) {
+            if ($items->every(fn (KitchenTicketItem $item): bool => $item->served_at !== null)) {
+                return [
+                    'value' => DepartmentTicketFilter::Completed->value,
+                    'label' => __('ui.departments.dashboard.completed'),
+                    'color' => 'zinc',
+                ];
+            }
+
             return [
                 'value' => KitchenTicketItemStatus::Ready->value,
                 'label' => KitchenTicketItemStatus::Ready->label(),
                 'color' => KitchenTicketItemStatus::Ready->badgeColor(),
+            ];
+        }
+
+        if ($items->isNotEmpty() && $items->every(fn (KitchenTicketItem $item): bool => $this->itemStatus($item->status) === KitchenTicketItemStatus::Cancelled)) {
+            return [
+                'value' => KitchenTicketItemStatus::Cancelled->value,
+                'label' => KitchenTicketItemStatus::Cancelled->label(),
+                'color' => KitchenTicketItemStatus::Cancelled->badgeColor(),
             ];
         }
 
@@ -303,6 +465,14 @@ class BuildDepartmentDashboardAction
                 'value' => KitchenTicketItemStatus::InProgress->value,
                 'label' => KitchenTicketItemStatus::InProgress->label(),
                 'color' => KitchenTicketItemStatus::InProgress->badgeColor(),
+            ];
+        }
+
+        if ($items->contains(fn (KitchenTicketItem $item): bool => $this->itemStatus($item->status) === KitchenTicketItemStatus::Accepted)) {
+            return [
+                'value' => KitchenTicketItemStatus::Accepted->value,
+                'label' => KitchenTicketItemStatus::Accepted->label(),
+                'color' => KitchenTicketItemStatus::Accepted->badgeColor(),
             ];
         }
 
@@ -357,5 +527,43 @@ class BuildDepartmentDashboardAction
             ->filter(fn (array $modifier): bool => trim($modifier['label']) !== '')
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  list<string>  $allergens
+     * @return list<array{value: string, label: string}>
+     */
+    private function allergenSummary(array $allergens): array
+    {
+        return collect($allergens)
+            ->map(fn (string $allergen): ?MenuAllergen => MenuAllergen::tryFrom($allergen))
+            ->filter(fn (?MenuAllergen $allergen): bool => $allergen instanceof MenuAllergen)
+            ->map(fn (MenuAllergen $allergen): array => [
+                'value' => $allergen->value,
+                'label' => $allergen->label(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  Collection<int, KitchenTicketItem>  $items
+     */
+    private function terminalAt(Collection $items): ?CarbonInterface
+    {
+        if ($items->isEmpty() || $items->contains(function (KitchenTicketItem $item): bool {
+            return $item->served_at === null
+                && $this->itemStatus($item->status) !== KitchenTicketItemStatus::Cancelled;
+        })) {
+            return null;
+        }
+
+        $terminalItem = $items
+            ->sortByDesc(fn (KitchenTicketItem $item): int => ($item->served_at ?? $item->updated_at)?->getTimestamp() ?? 0)
+            ->first();
+
+        return $terminalItem instanceof KitchenTicketItem
+            ? $terminalItem->served_at ?? $terminalItem->updated_at
+            : null;
     }
 }

@@ -20,10 +20,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $unit_price_snapshot_cents
  * @property int $modifier_total_cents
  * @property int $total_price_cents
+ * @property list<string> $allergens_snapshot
  * @property MenuItemVariantType|null $variant_type
  * @property-read User|null $cancelledByUser
  */
-#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'original_menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'guest_name_snapshot', 'item_name', 'item_name_snapshot', 'item_description_snapshot', 'variant_name', 'variant_type', 'quantity', 'unit_price_cents', 'unit_price_snapshot_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'modifiers_snapshot', 'tax_snapshot', 'service_snapshot', 'comment', 'cancelled_at', 'cancelled_by_user_id', 'cancellation_reason'])]
+#[Fillable(['order_id', 'table_session_guest_id', 'menu_item_id', 'menu_item_variant_id', 'original_menu_item_id', 'kitchen_department_id', 'kitchen_department_type', 'kitchen_department_name', 'guest_name', 'guest_name_snapshot', 'item_name', 'item_name_snapshot', 'item_description_snapshot', 'variant_name', 'variant_type', 'quantity', 'unit_price_cents', 'unit_price_snapshot_cents', 'modifier_total_cents', 'total_price_cents', 'selected_modifiers', 'modifiers_snapshot', 'allergens_snapshot', 'tax_snapshot', 'service_snapshot', 'comment', 'cancelled_at', 'cancelled_by_user_id', 'cancellation_reason'])]
 class OrderItem extends Model
 {
     /** @use HasFactory<OrderItemFactory> */
@@ -40,6 +41,7 @@ class OrderItem extends Model
         'total_price_cents' => 0,
         'selected_modifiers' => '[]',
         'modifiers_snapshot' => '[]',
+        'allergens_snapshot' => '[]',
         'tax_snapshot' => '[]',
         'service_snapshot' => '[]',
     ];
@@ -57,6 +59,7 @@ class OrderItem extends Model
             'total_price_cents' => 'integer',
             'selected_modifiers' => 'array',
             'modifiers_snapshot' => 'array',
+            'allergens_snapshot' => 'array',
             'tax_snapshot' => 'array',
             'service_snapshot' => 'array',
             'variant_type' => MenuItemVariantType::class,
@@ -169,5 +172,13 @@ class OrderItem extends Model
         $modifiers = $this->modifiers_snapshot ?? $this->selected_modifiers ?? [];
 
         return is_array($modifiers) ? $modifiers : [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function historicalAllergens(): array
+    {
+        return $this->allergens_snapshot;
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Actions\AuditLogs\Support;
 
 use BackedEnum;
@@ -66,25 +68,15 @@ class AuditLogValueSanitizer
 
     private function normalizeValue(mixed $value): mixed
     {
-        if ($value instanceof BackedEnum) {
-            return $value->value;
-        }
-
-        if ($value instanceof CarbonInterface) {
-            return $value->toISOString();
-        }
-
-        if ($value instanceof Model) {
-            return $value->getKey();
-        }
-
-        if (is_array($value)) {
-            return collect($value)
+        return match (true) {
+            $value instanceof BackedEnum => $value->value,
+            $value instanceof CarbonInterface => $value->toISOString(),
+            $value instanceof Model => $value->getKey(),
+            is_array($value) => collect($value)
                 ->map(fn (mixed $nestedValue, string|int $key): mixed => $this->normalizeValueForKey($key, $nestedValue))
-                ->all();
-        }
-
-        return $value;
+                ->all(),
+            default => $value,
+        };
     }
 
     private function displayValueForKey(string $key, mixed $value): string
@@ -98,19 +90,12 @@ class AuditLogValueSanitizer
 
     private function displayValue(mixed $value): string
     {
-        if (is_bool($value)) {
-            return $value ? 'yes' : 'no';
-        }
-
-        if ($value === null) {
-            return 'empty';
-        }
-
-        if (is_array($value)) {
-            return json_encode($this->maskedArray($value), JSON_UNESCAPED_UNICODE) ?: '[]';
-        }
-
-        return (string) $value;
+        return match (true) {
+            is_bool($value) => $value ? 'yes' : 'no',
+            $value === null => 'empty',
+            is_array($value) => json_encode($this->maskedArray($value), JSON_UNESCAPED_UNICODE) ?: '[]',
+            default => (string) $value,
+        };
     }
 
     /**

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-09-14 — export and report-cache hardening
+
+- Neutralize formula-leading CSV text in all four branch exports and use explicit standard CSV escaping; preserve source values, exact money and streaming. Regression tests parse hostile and ordinary fields including Unicode, commas, quotes, backslashes and newlines.
+- Include separate ViewOrders access in the restaurant dashboard cache signature and use that same set for the waiter link. Remove a redundant permission lookup and the user-dependent cached callback; v4 keys cannot reuse previous v3 snapshots.
+- Delete displaced report payloads and flexible timestamps when a branch registry exceeds 50 keys, cancelling their not-yet-started refreshes. Concurrent registration and invalidation during an already-running build remain a separately documented follow-up.
+
+- Make the overflow fixture deterministic after an observed Faker name collision and verify that all 51 traceability statuses agree with the compliance matrix, including the two current lockfile-related release gaps.
+
+## Earlier milestones
+
 - Centralized restaurant workflow invariants: tenant-authorized table opening, same-restaurant table placement, closed/paid session locks, guest-owned draft edits, waiter edit transitions, disjoint kitchen/bar production scopes, bounded quantities and database-backed idempotent draft-item commands; added forward SQLite migration and regression/concurrency evidence.
 - Completed the final quality/security audit: removed the empty legacy guest-invite plaintext column through a guarded forward migration, reauthorized isolated guest polling on every refresh, rejected same-restaurant cross-table QR substitution, added real CSRF and constant-query-count regressions, and revalidated the complete sequential, parallel, coverage, browser, migration/seed, dependency, translation, build, cache and real-Chrome gate set.
 - Rebuilt the demo dataset as a repeat-safe factory-first three-tenant portfolio with every system role, EN/LT/RU menus, all draft/order/invitation states, kitchen/bar work, permanent QR SVGs and guarded passwordless role selection on the dedicated non-production `ruflo.test` host; retired deterministic invitation digests are rotated safely during existing-schema upgrades.
@@ -9,6 +19,77 @@
 - Completed the full tenant-scoped menu graph: relational EN/LT/RU content for menus, categories, dishes, variants, modifier groups and options; scoped duplicate prevention; stable ordering; locale-aware server-trusted draft snapshots; indexed temporary hiding; and safe handling of unavailable cart items.
 
 This file records shipped milestones, not active requirements or future work. See [`ROADMAP.md`](ROADMAP.md) for current priorities and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) for verification evidence.
+
+## 2026-09-14 — reusable monetary validation
+
+- Added `DecimalMoney` to shared price, modifier, payment amount and service-charge rules. Incomplete decimals now produce localized EN/LT/RU field errors before writes; floats and overflow fail validation through the existing exact money parser. Added regression tests for invalid inputs, localization and correcting a rejected menu price without altering the stored price on failure.
+
+## 2026-09-14 — dashboard cache locale separation
+
+- Added versioned locale-specific keys to restaurant dashboard and basic analytics snapshots so cached date and money formatting cannot cross EN/LT/RU contexts. Preserved database stores, TTLs and observer invalidation; regressions cover repeated reads, authenticated HTTP output and clearing all language variants after mutations.
+
+## 2026-09-14 — streamed menu deletion cascades
+
+- Replaced four unbounded category/item loads in menu deletion observers with `reorder()->lazyById(200)`, preserving per-model soft deletion and events. Added multi-batch regressions with reverse display order, already-deleted parents and foreign-menu isolation; retained Action transactions and local image cleanup.
+
+## 2026-09-14 — guest credential serialization
+
+- Hide `guest_token` by default on guest and join-request models, including their Eloquent array/JSON representation inside loaded table-session relationships. Preserve server-side token access and cookie/join workflows; added serialization and zero-query regressions.
+
+## 2026-09-14 — owner existence guard
+
+- Replace the active-owner aggregate in organization role changes with an organization-scoped `exists()` query that excludes the target membership. Skip that query for inactive memberships, preserving last-owner protection, policy checks and audit records; added positive, status, tenant-boundary and query-budget regressions.
+
+## 2026-09-14 — conditional menu audit context
+
+- Check saved price/availability changes before loading menu audit context in `MenuItemObserver`. Other item updates retain cache invalidation while avoiding two unused context queries; regressions preserve cast equivalence, both audit entries for combined changes and duplicate-free clean saves.
+
+## 2026-09-14 — complete cancellation counts
+
+- Replace the cancellation snapshot's 500-item load with constrained `loadCount` aggregates through `Order::kitchenTicketItems`. Ready and served counts now include every matching item without hydrating item models; regressions cover empty, multi-ticket and over-500-item orders, foreign-order isolation and exact audit metadata.
+
+## 2026-09-14 — independent QR session query branches
+
+- Reuse the QR session lookup's selected fields, session identity and guest-viewable state constraints through cloned query builders. Current/merged-table filtering and transfer-history fallback remain independent; regressions preserve branch isolation, terminal-state rejection, returned fields and query counts.
+
+## 2026-09-14 — guest-menu translation projections
+
+- Select localized category/item names and descriptions through correlated `addSelect` subqueries instead of loading translation models. Tighten the cold guest-menu query budget from 15 to 13 while retaining the two-query warm budget, EN/LT/RU isolation, legacy field fallbacks and translation-driven cache invalidation.
+
+## 2026-09-14 — shared department relationship filters
+
+- Use `withWhereHas` in `BuildDepartmentDashboardAction` to attach the same item constraint to ticket selection and item eager loading. Preserve selected columns, nested cancellation details, department isolation, sorting and pagination. Seven mixed-status regressions cover every active/history filter with an unchanged 23-query budget.
+
+## 2026-09-14 — preserve model invariants during demo seeding
+
+- Removed blanket `WithoutModelEvents` suppression from `DatabaseSeeder`. QR, table-session and waiter-call saving hooks now populate the service-point keys required by active-record unique constraints. Added a regression for exact guard identities and stable identities across two orchestrated seed runs; kept environment/production gates and historical backfill behavior intact. Existing application data is not automatically repaired.
+
+## 2026-09-14 — detect unloaded Eloquent relationships
+
+- Enable lazy-loading prevention outside production so unloaded relationships fail during development and testing. Fix the exposed waiter inactivity access by assigning sessions their already loaded, authorized branches and settings. Regressions cover environment selection, eager-loading budgets and custom/default inactivity thresholds with 35 queries for both 4 and 40 sessions. The full sequential Unit/Feature suite passes 1,631 tests with 8 skipped.
+
+## 2026-09-14 — complete partially loaded guest-table relations
+
+- Load `servicePoint.areaNode` through its own `loadMissing` path so an already loaded table still receives its missing area relation. Preserve selected fields and existing table instances; six regressions cover cold, partial and warm graphs, tables without areas, query budgets and query-free presentation/repeated calls.
+
+## 2026-09-14 — explicit operational numeric bounds
+
+- Replace nested `min`/`max` expressions with `Number::clamp` for audit and department page sizes, branch polling intervals and production-error alert cooldowns. Guest actions now reuse the same polling normalizer as other guest components. Preserve integer values, existing bounds, query behavior and strict order-quantity validation; this is a readability and reuse refactor, not a performance change.
+
+## 2026-09-14 — request-local timezone catalogue
+
+- Use Laravel `once()` in `RestaurantSetupOptions::timezoneOptions` so onboarding validation and rendering can reuse the same UTC-offset labels within a request. Preserve option identifiers and formatting, with no SQL or persistent-cache changes; permission and mutable model reads remain uncached by this helper.
+
+## 2026-09-14 — fluent media path normalization
+
+- Replace nested string transformations in image upload and media backup Actions with explicit `Str::of` chains. Preserve slash-only trimming, byte-based root-prefix removal, directory boundary checks and plain string return values. This improves readability without changing storage behavior or queries.
+
+## 2026-09-14 — complete Laravel article review
+
+- Rechecked all 44 supplied articles against Laravel 13.26.1 and the current application. Record each applicable change, existing equivalent or incompatible example in `docs/testing.md`. The final Unit/Feature coverage gate passes 1,651 tests with 8 skipped / 46,755 assertions and 93.6% application coverage; Pint, Larastan, translations, dependency audits and Vite build also pass.
+- Remove per-department ticket-item reloads during dispatch; 2/10-department fixtures now each perform one item SELECT instead of 3/11, with the returned eager-loaded graph intact.
+- Use `Cache::flexible` for dashboard and analytics snapshots within the existing 60/300-second maximum ages. Preserve authorization and locale boundaries, skip invalidated pending refreshes, and use bounded nonblocking database refresh locks. Add 12 fresh/stale/expired/locale/invalidation/contention cases.
+- Complete follow-up verification on the unchanged source: five WebKit browser scenarios / 415 assertions and four-process Unit/Feature execution with 1,651 passed, eight skipped / 46,755 assertions. Isolated Chrome DevTools and Playwright MCP smoke checks confirm successful Herd assets, clean warning/error consoles, responsive login layouts and the unauthenticated onboarding redirect. Restore missing test browser binaries without changing dependency declarations; no further application changes were required.
 
 ## 2026-08-24 — Calm Service Pass interface refresh
 

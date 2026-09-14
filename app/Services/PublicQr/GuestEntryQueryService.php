@@ -261,8 +261,8 @@ final class GuestEntryQueryService
     {
         $tableSession->loadMissing([
             'servicePoint' => fn ($query) => $query
-                ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active'])
-                ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
+                ->select(['id', 'branch_id', 'area_node_id', 'type', 'name', 'display_number', 'is_active']),
+            'servicePoint.areaNode' => fn ($query) => $query->select(['id', 'branch_id', 'name']),
         ]);
 
         return $tableSession->servicePoint;

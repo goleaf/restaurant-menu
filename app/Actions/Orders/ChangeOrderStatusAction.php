@@ -11,10 +11,10 @@ use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderStatusLogEvent;
 use App\Exceptions\BusinessRuleViolation;
-use App\Models\KitchenTicketItem;
 use App\Models\Order;
 use App\Models\User;
 use App\Support\PlainText;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -179,21 +179,16 @@ class ChangeOrderStatusAction
      */
     private function readyAndServedTicketItemCounts(Order $order): array
     {
-        $ticketItems = KitchenTicketItem::query()
-            ->select(['id', 'kitchen_ticket_id', 'status', 'served_at'])
-            ->whereHas('kitchenTicket', function ($query) use ($order): void {
-                $query->where('order_id', $order->id);
-            })
-            ->limit(500)
-            ->get();
+        $order->loadCount([
+            'kitchenTicketItems as ready_ticket_items_count' => fn (Builder $query): Builder => $query
+                ->where($query->qualifyColumn('status'), KitchenTicketItemStatus::Ready->value),
+            'kitchenTicketItems as served_ticket_items_count' => fn (Builder $query): Builder => $query
+                ->whereNotNull($query->qualifyColumn('served_at')),
+        ]);
 
         return [
-            'ready' => $ticketItems
-                ->filter(fn (KitchenTicketItem $item): bool => $item->status === KitchenTicketItemStatus::Ready)
-                ->count(),
-            'served' => $ticketItems
-                ->filter(fn (KitchenTicketItem $item): bool => $item->served_at !== null)
-                ->count(),
+            'ready' => (int) $order->getAttribute('ready_ticket_items_count'),
+            'served' => (int) $order->getAttribute('served_ticket_items_count'),
         ];
     }
 

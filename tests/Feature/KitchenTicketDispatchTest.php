@@ -26,9 +26,11 @@ use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicket;
+use App\Models\KitchenTicketItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderStatusLog;
 use App\Models\Organization;
@@ -39,6 +41,8 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
@@ -160,6 +164,56 @@ test('confirmed order can be sent to kitchen bar with tickets split by departmen
         ->assertSet('orderStatusValue', OrderStatus::SentToKitchenBar->value)
         ->assertSee(__('guest.statuses.service.accepted_description'));
 });
+
+test('dispatch loads ticket items once regardless of department count', function (int $departmentCount) {
+    [$organization, , $tableSession, $draftOrder, $guest] = createPrompt60SentDraftScenario();
+    $waiter = User::factory()->create();
+    attachPrompt60Staff($waiter, $organization, [SystemPermission::SendToKitchen]);
+    $order = Order::factory()->forTableSession($tableSession)->create([
+        'draft_order_id' => $draftOrder->id,
+        'total_price_cents' => $departmentCount * 2000,
+    ]);
+    $departments = KitchenDepartment::factory()->count($departmentCount)->create([
+        'branch_id' => $tableSession->branch_id,
+    ]);
+
+    foreach ($departments as $department) {
+        OrderItem::factory()->count(2)->for($order)->create([
+            'table_session_guest_id' => $guest->id,
+            'kitchen_department_id' => $department->id,
+            'kitchen_department_type' => $department->type->value,
+            'kitchen_department_name' => $department->name,
+        ]);
+    }
+
+    $itemReads = 0;
+    $hydratedItems = 0;
+    DB::listen(function (QueryExecuted $query) use (&$itemReads): void {
+        if (str_starts_with($query->sql, 'select') && str_contains($query->sql, '"kitchen_ticket_items"')) {
+            $itemReads++;
+        }
+    });
+    KitchenTicketItem::retrieved(function () use (&$hydratedItems): void {
+        $hydratedItems++;
+    });
+
+    $dispatched = app(SendOrderToKitchenBarAction::class)->handle($order, $waiter);
+
+    expect($itemReads)->toBe(1)
+        ->and($hydratedItems)->toBe($departmentCount * 2)
+        ->and($dispatched->status)->toBe(OrderStatus::SentToKitchenBar)
+        ->and($dispatched->kitchenTickets)->toHaveCount($departmentCount);
+
+    $presentationQueries = countDatabaseQueries(function () use ($dispatched, $departments): void {
+        foreach ($dispatched->kitchenTickets as $ticket) {
+            expect($ticket->relationLoaded('items'))->toBeTrue()
+                ->and($ticket->items)->toHaveCount(2)
+                ->and($ticket->department_name)->toBe($departments->find($ticket->kitchen_department_id)->name);
+        }
+    });
+
+    expect($presentationQueries)->toBe(0);
+})->with([2, 10]);
 
 test('dispatch routes items without department snapshots to the default kitchen', function () {
     [$organization, , , $draftOrder, , $kitchen] = createPrompt60SentDraftScenario();

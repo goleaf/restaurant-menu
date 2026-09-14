@@ -7,6 +7,8 @@ use App\Enums\ServicePointType;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Organization;
+use App\Support\MoneyFormatter;
+use App\Support\Validation\DecimalMoney;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
@@ -84,6 +86,74 @@ test('central rules allow valid enum and money inputs', function () {
 
     expect($validator->fails())->toBeFalse($validator->errors()->toJson());
 });
+
+test('central monetary rules reject values that cannot be converted exactly', function (mixed $value, string $boundary): void {
+    $rules = match ($boundary) {
+        'price' => RestaurantValidationRules::price()['price'],
+        'payment' => RestaurantValidationRules::manualPaymentAmount()['tipsAmount'],
+        'service charge' => RestaurantValidationRules::branchSettings()['serviceChargePercent'],
+    };
+
+    $validator = Validator::make(['amount' => $value], ['amount' => $rules]);
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('amount');
+})->with([
+    'missing whole digits' => '.50',
+    'missing fraction digits' => '1.',
+    'binary fraction' => 0.29,
+    'whole number float' => 10.0,
+])->with(['price', 'payment', 'service charge']);
+
+test('decimal money rule rejects malformed types precision and overflow', function (mixed $value): void {
+    $validator = Validator::make(['amount' => $value], ['amount' => ['required', new DecimalMoney]]);
+
+    expect($validator->fails())->toBeTrue()
+        ->and($validator->errors()->keys())->toContain('amount');
+})->with([
+    'array' => [['0.29']],
+    'object' => [new stdClass],
+    'boolean' => true,
+    'float' => 0.29,
+    'non-finite' => INF,
+    'null' => null,
+    'empty' => '',
+    'exponent' => '1e2',
+    'excess precision' => '0.299',
+    'decimal overflow' => str_repeat('9', 40),
+    'integer overflow' => PHP_INT_MAX,
+]);
+
+test('decimal money rule accepts exact inputs supported by the money converter', function (string|int $value, int $cents): void {
+    $validator = Validator::make(['amount' => $value], ['amount' => ['required', new DecimalMoney]]);
+
+    expect($validator->passes())->toBeTrue()
+        ->and(MoneyFormatter::decimalToCents($validator->validated()['amount']))->toBe($cents);
+})->with([
+    'integer zero' => [0, 0],
+    'integer amount' => [12, 1200],
+    'decimal string' => ['0.29', 29],
+    'comma decimal' => ['0,29', 29],
+    'signed amount' => ['+1.25', 125],
+    'negative modifier' => ['-1.25', -125],
+    'trimmed string' => [' 12.50 ', 1250],
+    'maximum price' => ['999999.99', 99_999_999],
+]);
+
+test('decimal money validation errors use the selected locale and field label', function (string $locale, string $message): void {
+    app()->setLocale($locale);
+    $validator = Validator::make(
+        ['amount' => '.50'],
+        ['amount' => ['required', new DecimalMoney]],
+        attributes: ['amount' => 'test amount'],
+    );
+
+    expect($validator->errors()->first('amount'))->toBe($message);
+})->with([
+    'en' => ['en', 'The test amount must be an exact decimal amount, such as 0.50.'],
+    'lt' => ['lt', 'Lauke „test amount“ įveskite tikslią dešimtainę sumą, pavyzdžiui, 0.50.'],
+    'ru' => ['ru', 'В поле «test amount» введите точную десятичную сумму, например 0.50.'],
+]);
 
 test('optional guest name accepts null and validates provided names', function (): void {
     $rules = RestaurantValidationRules::optionalGuestName('guestName');

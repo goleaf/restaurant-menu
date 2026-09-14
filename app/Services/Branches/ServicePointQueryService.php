@@ -128,9 +128,7 @@ final class ServicePointQueryService
 
             $query->where(function (Builder $query) use ($like): void {
                 $query
-                    ->where('name', 'like', $like)
-                    ->orWhere('display_number', 'like', $like)
-                    ->orWhere('internal_code', 'like', $like)
+                    ->whereAny(['name', 'display_number', 'internal_code'], 'like', $like)
                     ->orWhereHas('activeQrCode', fn (Builder $qrCodeQuery): Builder => $qrCodeQuery
                         ->where('short_code', 'like', $like));
             });

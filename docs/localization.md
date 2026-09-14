@@ -26,6 +26,8 @@ Guest-visible menu content uses one SQLite-compatible relational strategy. `menu
 
 Internal IDs, enum values, status codes, locale codes and currency codes remain canonical untranslated data. Their visible labels use JSON translation keys. Guest-menu cache keys include locale, translation observers invalidate affected branch caches, and draft item, variant, modifier-group and option snapshots are resolved from persisted translations on the server rather than accepted from browser payloads.
 
+The guest-menu read Action selects localized category/item names and descriptions as scalar subquery attributes, matching the existing menu/variant/modifier name projections. It does not hydrate translation models for these display fields. Missing, null, empty and whitespace-only translated text retains the base field fallback; management forms still load the complete translation records they edit.
+
 ## Presentation formatting
 
 `LocalizedDateFormatter` formats human-facing dates, times and relative values through Laravel's locale-aware number/date facilities. Machine values such as CSV columns, filenames, database-normalized timestamps and `datetime-local` form values remain canonical and are never reused as display labels. `MoneyFormatter::formatCents()` formats integer minor units with the active locale and ISO currency; formatting never feeds storage or arithmetic. Plural messages use complete locale-specific forms and are regression-tested at singular, paucal and plural boundaries. The first-party Livewire pagination overrides use the same semantic catalogue for result ranges, navigation actions and accessibility labels.

@@ -115,7 +115,12 @@ class BuildWaiterDashboardAction
             ->get();
 
         $servicePointIds = $servicePoints->pluck('id')->values();
+        $branchesById = $branches->keyBy('id');
         $sessions = $this->openTableSessions($branchIds, $servicePointIds);
+        $sessions->each(fn (TableSession $session): TableSession => $session->setRelation(
+            'branch',
+            $branchesById->get($session->branch_id),
+        ));
 
         $draftOrders = $this->sentDraftOrders($sessions->pluck('id'));
         $waiterCalls = $this->pendingWaiterCalls($branchIds, $servicePointIds);
@@ -182,7 +187,7 @@ class BuildWaiterDashboardAction
 
     /**
      * @param  Collection<int, int>  $branchIds
-     * @return Collection<int, Collection<int, int>>
+     * @return Collection<int, covariant Collection<int, covariant int>>
      */
     private function assignedAreaNodeIdsByBranch(User $user, Collection $branchIds): Collection
     {
@@ -192,22 +197,21 @@ class BuildWaiterDashboardAction
 
         return AreaNodeWaiter::query()
             ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
-            ->where('user_id', $user->id)
+            ->whereBelongsTo($user, 'user')
             ->whereIn('branch_id', $branchIds)
             ->orderBy('branch_id')
             ->orderBy('area_node_id')
             ->get()
-            ->groupBy('branch_id')
-            ->map(fn (EloquentCollection $assignments): Collection => $assignments
-                ->pluck('area_node_id')
-                ->map(fn (int $areaNodeId): int => $areaNodeId)
-                ->unique()
-                ->values());
+            ->toBase()
+            ->mapToGroups(fn (AreaNodeWaiter $assignment): array => [
+                $assignment->branch_id => (int) $assignment->area_node_id,
+            ])
+            ->map(fn (Collection $areaNodeIds): Collection => $areaNodeIds->unique()->values());
     }
 
     /**
      * @param  Collection<int, int>  $branchIds
-     * @param  Collection<int, Collection<int, int>>  $assignedAreaNodeIdsByBranch
+     * @param  Collection<int, covariant Collection<int, covariant int>>  $assignedAreaNodeIdsByBranch
      */
     private function applyAssignedAreaNodeFilter(mixed $query, Collection $branchIds, Collection $assignedAreaNodeIdsByBranch): void
     {
@@ -277,10 +281,8 @@ class BuildWaiterDashboardAction
         return DraftOrder::query()
             ->select(['id', 'table_session_id', 'status', 'sent_to_waiter_at', 'sent_by_guest_id', 'created_at', 'updated_at'])
             ->withCount(['items'])
-            ->with([
-                'sentByGuest' => fn ($query) => $query->select(['id', 'guest_name']),
-                'items' => fn ($query) => $query->select(['id', 'draft_order_id', 'total_price_cents']),
-            ])
+            ->withSum('items', 'total_price_cents')
+            ->with('sentByGuest:id,guest_name')
             ->whereIn('status', [DraftOrderStatus::SentToWaiter->value, DraftOrderStatus::WaiterReview->value])
             ->whereIn('table_session_id', $tableSessionIds)
             ->orderByDesc('sent_to_waiter_at')
@@ -395,7 +397,7 @@ class BuildWaiterDashboardAction
      * @param  Collection<int, DraftOrder>  $draftsBySessionId
      * @param  Collection<int, Collection<int, WaiterCall>>  $waiterCallsByServicePointId
      * @param  Collection<int, Collection<int, KitchenTicketItem>>  $readyItemsByServicePointId
-     * @param  Collection<int, int>  $assignedAreaNodeIds
+     * @param  Collection<int, covariant int>  $assignedAreaNodeIds
      * @return array<string, mixed>
      */
     private function branchPayload(
@@ -561,7 +563,7 @@ class BuildWaiterDashboardAction
 
     /**
      * @param  Collection<int, array<string, mixed>>  $servicePointPayloads
-     * @param  Collection<int, int>  $assignedAreaNodeIds
+     * @param  Collection<int, covariant int>  $assignedAreaNodeIds
      * @return list<array<string, mixed>>
      */
     private function servicePointZonePayloads(Collection $servicePointPayloads, Collection $assignedAreaNodeIds): array
@@ -686,7 +688,7 @@ class BuildWaiterDashboardAction
      */
     private function draftPayload(DraftOrder $draftOrder, string $currency): array
     {
-        $totalCents = (int) $draftOrder->items->sum('total_price_cents');
+        $totalCents = (int) $draftOrder->getAttribute('items_sum_total_price_cents');
 
         return [
             'id' => $draftOrder->id,

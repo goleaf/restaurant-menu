@@ -2201,6 +2201,7 @@
     "monitoring.production_error.request": "Request ID: :request",
     "monitoring.production_error.route": "Route: :method :route",
     "monitoring.production_error.subject": "[:app] Production error :incident",
+    "validation.decimal_money": "The :attribute must be an exact decimal amount, such as 0.50.",
     "validation.max.numeric": "The :attribute must not be greater than :max.",
     "validation.sqlite_backup_invalid": "The selected file is not a valid SQLite 3 database.",
     "waiter.dashboard.no_active_tables": "No active tables right now.",

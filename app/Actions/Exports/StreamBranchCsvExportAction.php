@@ -340,7 +340,18 @@ class StreamBranchCsvExportAction
      */
     private function putRow(mixed $handle, array $row): void
     {
-        fputcsv($handle, $row);
+        fputcsv($handle, array_map($this->spreadsheetCell(...), $row), escape: '');
+    }
+
+    private function spreadsheetCell(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $unsafePrefix = preg_match('/\A[\p{Z}\p{C}]*[=+\-@＝＋－＠]|\A[\p{Z}]*[\x00-\x1f\x7f]/u', $value) === 1;
+
+        return $unsafePrefix ? "'".$value : $value;
     }
 
     private function enumLabel(mixed $value): string

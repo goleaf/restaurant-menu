@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Number;
 
 class BuildDepartmentDashboardAction
 {
@@ -78,7 +79,7 @@ class BuildDepartmentDashboardAction
         }
 
         $page = max(1, $page);
-        $perPage = max(1, min(50, $perPage));
+        $perPage = (int) Number::clamp($perPage, 1, 50);
         $ticketPage = $this->ticketsFor($selectedDepartment, $filter, $page, $perPage);
         $tickets = $ticketPage['tickets'];
         $itemCounts = $this->itemCountsFor($selectedDepartment);
@@ -216,39 +217,36 @@ class BuildDepartmentDashboardAction
                 'servicePoint' => fn ($query) => $query
                     ->select(['id', 'branch_id', 'area_node_id', 'name', 'display_number', 'status'])
                     ->with(['areaNode' => fn ($areaQuery) => $areaQuery->select(['id', 'branch_id', 'name'])]),
-                'items' => function ($query) use ($filter): void {
-                    $query->select([
-                        'id',
-                        'kitchen_ticket_id',
-                        'order_item_id',
-                        'table_session_guest_id',
-                        'menu_item_id',
-                        'guest_name',
-                        'item_name',
-                        'quantity',
-                        'status',
-                        'served_at',
-                        'served_by_user_id',
-                        'selected_modifiers',
-                        'allergens_snapshot',
-                        'comment',
-                        'created_at',
-                        'updated_at',
-                    ])
-                        ->with(['orderItem' => fn ($orderItemQuery) => $orderItemQuery->select([
-                            'id',
-                            'cancellation_reason',
-                        ])]);
-                    $this->applyItemFilter($query, $filter);
-                    $query
-                        ->orderBy('created_at')
-                        ->orderBy('id');
-                },
             ])
             ->where('kitchen_department_id', $department->id)
             ->where('status', KitchenTicketStatus::Sent->value)
-            ->whereHas('items', function ($query) use ($filter): void {
+            ->withWhereHas('items', function ($query) use ($filter): void {
+                $query->select([
+                    'id',
+                    'kitchen_ticket_id',
+                    'order_item_id',
+                    'table_session_guest_id',
+                    'menu_item_id',
+                    'guest_name',
+                    'item_name',
+                    'quantity',
+                    'status',
+                    'served_at',
+                    'served_by_user_id',
+                    'selected_modifiers',
+                    'allergens_snapshot',
+                    'comment',
+                    'created_at',
+                    'updated_at',
+                ])
+                    ->with(['orderItem' => fn ($orderItemQuery) => $orderItemQuery->select([
+                        'id',
+                        'cancellation_reason',
+                    ])]);
                 $this->applyItemFilter($query, $filter);
+                $query
+                    ->orderBy('created_at')
+                    ->orderBy('id');
             });
 
         if (! $filter->isHistory()) {

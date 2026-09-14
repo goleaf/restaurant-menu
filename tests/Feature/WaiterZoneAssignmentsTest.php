@@ -17,6 +17,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\User;
+use App\Services\Staff\StaffQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Livewire\Livewire;
 
@@ -72,28 +73,74 @@ test('branch staff page can assign waiter to branch zones', function () {
             ->exists())->toBeFalse();
 });
 
+test('staff zone lookup groups ordered string ids by waiter within one branch', function (): void {
+    $branch = Branch::factory()->create();
+    $firstWaiter = User::factory()->create();
+    $secondWaiter = User::factory()->create();
+    $firstArea = AreaNode::factory()->for($branch)->create();
+    $secondArea = AreaNode::factory()->for($branch)->create();
+
+    AreaNodeWaiter::factory()->createMany([
+        ['organization_id' => $branch->organization_id, 'branch_id' => $branch->id, 'area_node_id' => $secondArea->id, 'user_id' => $secondWaiter->id],
+        ['organization_id' => $branch->organization_id, 'branch_id' => $branch->id, 'area_node_id' => $secondArea->id, 'user_id' => $firstWaiter->id],
+        ['organization_id' => $branch->organization_id, 'branch_id' => $branch->id, 'area_node_id' => $firstArea->id, 'user_id' => $firstWaiter->id],
+    ]);
+    AreaNodeWaiter::factory()->create(['user_id' => $firstWaiter->id]);
+
+    $queryCount = countDatabaseQueries(function () use ($branch, $firstWaiter, $secondWaiter, $firstArea, $secondArea): void {
+        expect(app(StaffQueryService::class)->areaAssignments($branch))->toBe([
+            $firstWaiter->id => [(string) $firstArea->id, (string) $secondArea->id],
+            $secondWaiter->id => [(string) $secondArea->id],
+        ]);
+    });
+
+    expect($queryCount)->toBe(1);
+});
+
+test('staff zone lookup returns an empty array when a branch has no assignments', function (): void {
+    $branch = Branch::factory()->create();
+    AreaNodeWaiter::factory()->create();
+
+    expect(app(StaffQueryService::class)->areaAssignments($branch))->toBe([]);
+});
+
 test('waiter dashboard filters to assigned zones and can show all zones', function () {
     [$manager, $organization, , $branch] = createPrompt112Branch(branchName: 'Zone Filter Branch');
     $waiter = User::factory()->create(['name' => 'Assigned Waiter']);
     attachPrompt112Waiter($waiter, $organization, $branch, $manager);
 
     $mainHall = AreaNode::factory()->for($branch)->create(['name' => 'Assigned Hall']);
+    $secondHall = AreaNode::factory()->for($branch)->create(['name' => 'Second Assigned Hall']);
     $terrace = AreaNode::factory()->for($branch)->create(['name' => 'Hidden Terrace']);
-
-    $assignment = new AreaNodeWaiter;
-    $assignment->forceFill([
+    $otherWaiter = User::factory()->create();
+    attachPrompt112Waiter($otherWaiter, $organization, $branch, $manager);
+    AreaNodeWaiter::factory()->create([
         'organization_id' => $organization->id,
         'branch_id' => $branch->id,
-        'area_node_id' => $mainHall->id,
+        'area_node_id' => $terrace->id,
+        'user_id' => $otherWaiter->id,
+        'assigned_by_user_id' => $manager->id,
+    ]);
+
+    AreaNodeWaiter::factory()->state([
+        'organization_id' => $organization->id,
+        'branch_id' => $branch->id,
         'user_id' => $waiter->id,
         'assigned_by_user_id' => $manager->id,
-        'assigned_at' => now(),
-    ])->save();
+    ])->createMany([
+        ['area_node_id' => $secondHall->id],
+        ['area_node_id' => $mainHall->id],
+    ]);
 
     ServicePoint::factory()
         ->for($branch)
         ->for($mainHall, 'areaNode')
         ->create(['name' => 'Assigned Table']);
+
+    ServicePoint::factory()
+        ->for($branch)
+        ->for($secondHall, 'areaNode')
+        ->create(['name' => 'Second Assigned Table']);
 
     ServicePoint::factory()
         ->for($branch)
@@ -106,6 +153,8 @@ test('waiter dashboard filters to assigned zones and can show all zones', functi
         ->assertSee('My zones')
         ->assertSee('Assigned Hall')
         ->assertSee('Assigned Table')
+        ->assertSee('Second Assigned Hall')
+        ->assertSee('Second Assigned Table')
         ->assertDontSee('Hidden Terrace')
         ->assertDontSee('Hidden Table')
         ->set('zoneScope', 'all')

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @property OrderStatus $status
@@ -115,6 +116,14 @@ class Order extends Model
         return $this->hasMany(KitchenTicket::class)
             ->orderBy('department_name')
             ->orderBy('id');
+    }
+
+    /**
+     * @return HasManyThrough<KitchenTicketItem, KitchenTicket, $this>
+     */
+    public function kitchenTicketItems(): HasManyThrough
+    {
+        return $this->hasManyThrough(KitchenTicketItem::class, KitchenTicket::class);
     }
 
     /**

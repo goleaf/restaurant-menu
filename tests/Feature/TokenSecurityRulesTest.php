@@ -101,6 +101,54 @@ test('guest tokens stay hidden and cannot authenticate staff routes', function (
         ->assertRedirect(route('login'));
 });
 
+test('guest credentials are hidden from model arrays and json without changing server access', function (string $modelClass): void {
+    $model = $modelClass::factory()->create();
+    $token = $model->guest_token;
+    $expectedAttributes = [
+        'id' => $model->id,
+        'guest_name' => $model->guest_name,
+        'table_session_id' => $model->table_session_id,
+    ];
+
+    $queries = countDatabaseQueries(function () use ($model, $token, $expectedAttributes): void {
+        expect($model->attributesToArray())->not->toHaveKey('guest_token')
+            ->and($model->toArray())->toMatchArray($expectedAttributes)->not->toHaveKey('guest_token')
+            ->and(json_decode($model->toJson(), true, flags: JSON_THROW_ON_ERROR))
+            ->toMatchArray($expectedAttributes)->not->toHaveKey('guest_token')
+            ->and($model->toJson())->not->toContain($token);
+    });
+
+    expect($queries)->toBe(0)
+        ->and($token)->toHaveLength(64)
+        ->and($model->guest_token)->toBe($token)
+        ->and($model->fresh()->guest_token)->toBe($token);
+})->with([
+    'table guest' => TableSessionGuest::class,
+    'join request' => TableSessionJoinRequest::class,
+]);
+
+test('loaded table session relationships do not serialize guest credentials', function (): void {
+    $tableSession = TableSession::factory()->active()->create();
+    $guest = TableSessionGuest::factory()->for($tableSession)->create();
+    $joinRequest = TableSessionJoinRequest::factory()->for($tableSession)->create();
+    $tableSession->load(['guests', 'joinRequests']);
+
+    $queries = countDatabaseQueries(function () use ($tableSession, $guest, $joinRequest): void {
+        $attributes = $tableSession->toArray();
+
+        expect($attributes['guests'])->toHaveCount(1)
+            ->and($attributes['join_requests'])->toHaveCount(1)
+            ->and($attributes['guests'][0])->toMatchArray(['id' => $guest->id, 'guest_name' => $guest->guest_name])
+            ->not->toHaveKey('guest_token')
+            ->and($attributes['join_requests'][0])->toMatchArray(['id' => $joinRequest->id, 'guest_name' => $joinRequest->guest_name])
+            ->not->toHaveKey('guest_token')
+            ->and(json_encode($tableSession, JSON_THROW_ON_ERROR))
+            ->not->toContain('guest_token', $guest->guest_token, $joinRequest->guest_token);
+    });
+
+    expect($queries)->toBe(0);
+});
+
 test('expired or non pending staff invitation tokens are not acceptable', function (): void {
     $activeToken = str_repeat('A', 64);
     $expiredToken = str_repeat('B', 64);

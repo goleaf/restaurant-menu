@@ -48,6 +48,8 @@ Per-user permission overrides may narrow or extend a baseline staff role, but br
 
 A guest edits a draft containing available menu items/modifiers. Sending locks the submitted state for waiter review. A waiter may edit/reject or atomically convert it into an order with immutable item/price/department snapshots. Confirmation creates department tickets. Ticket items move through `new -> in_progress -> ready`; order progression, serving and cancellation remain authorized and audited.
 
+`Order::kitchenTicketItems` relates an order to its fulfilment items through its kitchen/bar tickets. Cancellation snapshots count all ready items and, independently, all items with a served timestamp through this order-scoped relationship. These counts have no row limit and are recorded in order metadata, status history and the audit log inside the cancellation transaction.
+
 ### Payment and closure
 
 Manual payments belong to a table session and optionally a guest. Amounts, service charge and tips are stored in minor units and cannot make paid value exceed the eligible balance. Corrections and closure are explicit privileged operations. A table may close only after the configured settlement rule is satisfied or a separately authorized override is audited.

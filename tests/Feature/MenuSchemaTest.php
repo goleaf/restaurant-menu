@@ -17,6 +17,7 @@ use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -502,4 +503,87 @@ test('soft deleting a menu hides its categories and items from normal queries', 
         ->and(MenuItem::withTrashed()->findOrFail($item->id)->trashed())->toBeTrue()
         ->and(MenuCategoryTranslation::query()->exists())->toBeTrue()
         ->and(MenuItemTranslation::query()->exists())->toBeTrue();
+});
+
+test('category deletion cascades stream every batch regardless of display order', function (string $scope): void {
+    $menu = Menu::factory()->create();
+    $parent = $scope === 'menu' ? null : MenuCategory::factory()->for($menu)->create();
+
+    if ($scope === 'orphaned') {
+        $parent->deleteOrFail();
+    }
+
+    $categoryIds = MenuCategory::factory()
+        ->for($menu)
+        ->count(405)
+        ->sequence(fn (Sequence $sequence): array => ['sort_order' => 405 - $sequence->index])
+        ->create(['parent_id' => $parent?->id])
+        ->modelKeys();
+    $foreignCategory = MenuCategory::factory()->create();
+    $targetIds = array_fill_keys($categoryIds, true);
+    $hydrated = 0;
+    $hydratedBeforeFirstDelete = null;
+    $deletedIds = [];
+
+    MenuCategory::retrieved(function (MenuCategory $category) use ($targetIds, &$hydrated): void {
+        if (isset($targetIds[$category->id])) {
+            $hydrated++;
+        }
+    });
+    MenuCategory::deleting(function (MenuCategory $category) use ($targetIds, &$hydrated, &$hydratedBeforeFirstDelete, &$deletedIds): void {
+        if (isset($targetIds[$category->id])) {
+            $hydratedBeforeFirstDelete ??= $hydrated;
+            $deletedIds[] = $category->id;
+        }
+    });
+
+    $subject = $scope === 'category' ? $parent : $menu;
+    $subject->deleteOrFail();
+
+    expect($deletedIds)->toEqualCanonicalizing($categoryIds)
+        ->and(MenuCategory::query()->whereKey($categoryIds)->exists())->toBeFalse()
+        ->and(MenuCategory::onlyTrashed()->whereKey($categoryIds)->count())->toBe(405)
+        ->and($foreignCategory->fresh()->trashed())->toBeFalse()
+        ->and($hydratedBeforeFirstDelete)->toBeLessThanOrEqual(200);
+})->with([
+    'menu root categories' => 'menu',
+    'menu categories with an already deleted parent' => 'orphaned',
+    'category children' => 'category',
+]);
+
+test('category item deletion streams every batch and preserves deletion events', function (): void {
+    $menu = Menu::factory()->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $itemIds = MenuItem::factory()
+        ->for($menu)
+        ->for($category, 'category')
+        ->count(405)
+        ->sequence(fn (Sequence $sequence): array => ['sort_order' => 405 - $sequence->index])
+        ->create()
+        ->modelKeys();
+    $foreignItem = MenuItem::factory()->create();
+    $targetIds = array_fill_keys($itemIds, true);
+    $hydrated = 0;
+    $hydratedBeforeFirstDelete = null;
+    $deletedIds = [];
+
+    MenuItem::retrieved(function (MenuItem $item) use ($targetIds, &$hydrated): void {
+        if (isset($targetIds[$item->id])) {
+            $hydrated++;
+        }
+    });
+    MenuItem::deleting(function (MenuItem $item) use ($targetIds, &$hydrated, &$hydratedBeforeFirstDelete, &$deletedIds): void {
+        if (isset($targetIds[$item->id])) {
+            $hydratedBeforeFirstDelete ??= $hydrated;
+            $deletedIds[] = $item->id;
+        }
+    });
+
+    $category->deleteOrFail();
+
+    expect($deletedIds)->toEqualCanonicalizing($itemIds)
+        ->and(MenuItem::query()->whereKey($itemIds)->exists())->toBeFalse()
+        ->and(MenuItem::onlyTrashed()->whereKey($itemIds)->count())->toBe(405)
+        ->and($foreignItem->fresh()->trashed())->toBeFalse()
+        ->and($hydratedBeforeFirstDelete)->toBeLessThanOrEqual(200);
 });

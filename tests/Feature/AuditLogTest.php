@@ -2,7 +2,9 @@
 
 use App\Actions\AuditLogs\BuildAuditLogIndexAction;
 use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\Departments\UpdateDepartmentTicketItemStatusAction;
+use App\Actions\Menus\GetGuestMenuForBranchAction;
 use App\Actions\Orders\ChangeOrderStatusAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Payments\RecordManualPaymentAction;
@@ -51,6 +53,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 
@@ -183,6 +186,72 @@ test('guest audit actors use display name and values mask sensitive tokens', fun
         ->and($row['old_summary'])->not->toContain(str_repeat('a', 64))
         ->and($row['old_summary'])->not->toContain(str_repeat('b', 64))
         ->and($row['new_summary'])->not->toContain('plain-secret');
+});
+
+test('menu presentation updates invalidate cache without loading an unused audit context', function (string $attribute, string|int $value): void {
+    $menuItem = MenuItem::factory()->create([
+        'name' => 'Original dish',
+        'description' => 'Original description',
+        'sort_order' => 0,
+        'price_cents' => 1200,
+        'is_available' => true,
+    ]);
+    $menu = $menuItem->menu()->firstOrFail();
+    $cache = Cache::store(ForgetBranchCacheAction::cacheStore());
+    $cacheKey = GetGuestMenuForBranchAction::cacheKey($menu->branch_id, 'en');
+    $cache->put($cacheKey, ['name' => 'Original dish'], 60);
+
+    $queryCount = countDatabaseQueries(function () use ($menuItem, $attribute, $value): void {
+        expect($menuItem->update([
+            $attribute => $value,
+            'price_cents' => '1200',
+            'is_available' => 1,
+        ]))->toBeTrue();
+    });
+
+    expect($queryCount)->toBeLessThanOrEqual(10)
+        ->and($menuItem->fresh()->getAttribute($attribute))->toBe($value)
+        ->and($cache->has($cacheKey))->toBeFalse()
+        ->and(AuditLog::query()->where('entity_type', 'menu_item')->where('entity_id', $menuItem->id)->exists())->toBeFalse();
+})->with([
+    'name' => ['name', 'Renamed dish'],
+    'description' => ['description', 'Updated ingredients'],
+    'display order' => ['sort_order', 25],
+]);
+
+test('a combined price and availability update records both changes once and a clean save does not repeat them', function (): void {
+    $menuItem = MenuItem::factory()->create([
+        'name' => 'Audited dish',
+        'price_cents' => 1200,
+        'is_available' => true,
+    ]);
+    $menu = $menuItem->menu()->with('branch')->firstOrFail();
+    $actor = User::factory()->create();
+    $this->actingAs($actor);
+
+    $menuItem->update(['price_cents' => 1450, 'is_available' => false]);
+
+    $logs = AuditLog::query()
+        ->where('entity_type', 'menu_item')
+        ->where('entity_id', $menuItem->id)
+        ->orderBy('id')
+        ->get();
+
+    expect($logs->pluck('action')->all())->toBe([AuditLogAction::MenuPriceChanged, AuditLogAction::MenuAvailabilityChanged])
+        ->and($logs->pluck('organization_id')->unique()->all())->toBe([$menu->branch->organization_id])
+        ->and($logs->pluck('branch_id')->unique()->all())->toBe([$menu->branch_id])
+        ->and($logs->pluck('user_id')->unique()->all())->toBe([$actor->id])
+        ->and($logs[0]->old_values)->toBe(['name' => 'Audited dish', 'price_cents' => 1200])
+        ->and($logs[0]->new_values)->toBe(['name' => 'Audited dish', 'price_cents' => 1450])
+        ->and($logs[1]->old_values)->toBe(['name' => 'Audited dish', 'is_available' => true])
+        ->and($logs[1]->new_values)->toBe(['name' => 'Audited dish', 'is_available' => false]);
+
+    $queryCount = countDatabaseQueries(function () use ($menuItem): void {
+        expect($menuItem->save())->toBeTrue();
+    });
+
+    expect($queryCount)->toBe(0)
+        ->and(AuditLog::query()->where('entity_type', 'menu_item')->where('entity_id', $menuItem->id)->count())->toBe(2);
 });
 
 test('menu service point qr and staff changes create audit events', function () {

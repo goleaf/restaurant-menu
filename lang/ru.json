@@ -2201,6 +2201,7 @@
     "monitoring.production_error.request": "ID запроса: :request",
     "monitoring.production_error.route": "Маршрут: :method :route",
     "monitoring.production_error.subject": "[:app] Production-ошибка :incident",
+    "validation.decimal_money": "В поле «:attribute» введите точную десятичную сумму, например 0.50.",
     "validation.max.numeric": "Поле :attribute не должно быть больше :max.",
     "validation.sqlite_backup_invalid": "Выбранный файл не является корректной базой данных SQLite 3.",
     "waiter.dashboard.no_active_tables": "Активных столов сейчас нет.",

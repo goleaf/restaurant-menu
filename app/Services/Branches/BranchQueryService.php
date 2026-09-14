@@ -67,12 +67,7 @@ final class BranchQueryService
                 'id',
                 $user->accessibleBranchIdsForOrganization($organization, $lifecycle === 'archived'),
             )
-            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
-                $searchQuery
-                    ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('address', 'like', '%'.$search.'%')
-                    ->orWhere('city', 'like', '%'.$search.'%');
-            }));
+            ->when($search !== '', fn ($query) => $query->whereAny(['name', 'address', 'city'], 'like', '%'.$search.'%'));
 
         $this->applySort($branches, $sort);
 

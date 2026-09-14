@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\PublicQr;
 
+use App\Actions\Branches\GetBranchPollingIntervalAction;
 use App\Actions\TableSessions\CreatedGuestInviteLink;
 use App\Actions\TableSessions\CreateGuestInviteLinkAction;
 use App\Actions\TableSessions\LeaveTableSessionAction;
@@ -70,7 +71,7 @@ class GuestActions extends Component
         $this->tableSessionId = $tableSessionId;
         $this->currentGuestId = $currentGuestId;
         $this->publicToken = $publicToken;
-        $this->pollingIntervalSeconds = max(1, min($pollingIntervalSeconds, 60));
+        $this->pollingIntervalSeconds = GetBranchPollingIntervalAction::normalize($pollingIntervalSeconds);
         $this->language = SupportedLocale::normalize($language, 'en');
         $this->venueName = $venueName;
         $this->applyGuestLocale();

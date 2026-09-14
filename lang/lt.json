@@ -2201,6 +2201,7 @@
     "monitoring.production_error.request": "Užklausos ID: :request",
     "monitoring.production_error.route": "Maršrutas: :method :route",
     "monitoring.production_error.subject": "[:app] Produkcinė klaida :incident",
+    "validation.decimal_money": "Lauke „:attribute“ įveskite tikslią dešimtainę sumą, pavyzdžiui, 0.50.",
     "validation.max.numeric": ":attribute negali būti didesnis nei :max.",
     "validation.sqlite_backup_invalid": "Pasirinktas failas nėra galiojanti SQLite 3 duomenų bazė.",
     "waiter.dashboard.no_active_tables": "Šiuo metu aktyvių stalų nėra.",

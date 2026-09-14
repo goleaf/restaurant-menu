@@ -1,5 +1,62 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — export and report-cache audit
+
+This is a scoped implementation/evidence plan for the requested analysis and immediate improvements. `requirements.md` remains authoritative; no new product feature, dependency or deployment is introduced. Preserve the existing article-review work on `main`.
+
+| Priority | Finding | Decision |
+|---|---|---|
+| P1 | `StreamBranchCsvExportAction::putRow` passes untrusted text directly to `fputcsv`; formula-leading cells are not neutralized despite `sys-report-001`. | Implement a single CSV cell boundary shared by all four export types. |
+| P1 | CSV relies on PHP's default backslash escape, which can break interoperable round trips for quoted/backslash-containing fields. | Use explicit `escape: ''`; verify parsed rows, not substring-only output. |
+| P1 | Dashboard merges ViewOrders and ConfirmOrders into one key signature but derives its waiter link from ViewOrders alone. | Include the distinct waiter branch set in the cache signature and reuse it for link availability. |
+| P2 | Both report registries retain 50 keys while silently dropping live older entries. | Delete displaced values and their flexible timestamps before discarding registry entries; keep the existing bound. |
+| P2 | Registry get/put and an in-flight cache build can race with registration/invalidation. | Separate concurrency follow-up: compare shared branch locks with generation-scoped cache keys and prove with isolated concurrent/interleaved tests. Eviction alone does not resolve this race. |
+| Release | HEAD intentionally removed root lockfiles while the canonical dependency contract still requires reproducibility. | Record the mismatch; do not silently restore an intentionally removed dependency/deployment workflow in this application-hardening pass. |
+
+### Task 1 — CSV output boundary
+
+Files: `app/Actions/Exports/StreamBranchCsvExportAction.php`, `tests/Feature/DataExportsTest.php`, security/testing/compliance documentation.
+
+- [x] Add HTTP export regressions for formula prefixes (`=`, `+`, `-`, `@`, full-width forms, leading control/whitespace), legitimate Unicode and exact numeric values. Parse with `fgetcsv(..., escape: '')`; include embedded comma, quotes, backslash and newline.
+- [x] Observe RED in the focused export/dashboard regression run before implementation (20 failed / 5 passed / 153 assertions); the export cases exposed unsafe prefixes and a broken quoted/backslash round trip.
+- [x] Centralize text-cell neutralization in `putRow`; prefix dangerous strings with an apostrophe and preserve numeric values. Explicitly disable proprietary CSV escaping. Keep streaming, columns, authorization and tenant filters unchanged. Document spreadsheet save/reopen limitations.
+- [x] Rerun the complete export and dashboard files: 37 passed / 368 assertions; the final four-file regression run passes 63 / 853.
+
+### Task 2 — waiter link cache scope
+
+Files: `app/Actions/Dashboard/BuildRestaurantDashboardAction.php`, `tests/Feature/RestaurantDashboardTest.php`.
+
+- [x] Reproduce both cache-warming orders for otherwise equivalent users with only ViewOrders versus only ConfirmOrders; assert different keys and correct links on cold and warm reads.
+- [x] Add `'waiter' => $viewOrderBranchIds` to the access map, use it in `quickActions`, remove redundant waiter access resolution and invalidate the old key format with a version bump.
+- [x] Run `PAO_DISABLE=1 php artisan test --compact tests/Feature/RestaurantDashboardTest.php tests/Feature/BasicAnalyticsTest.php tests/Feature/BranchCacheInvalidationTest.php`.
+
+### Task 3 — bounded report registry eviction
+
+Files: both report dashboard Actions and `tests/Feature/BasicAnalyticsTest.php`.
+
+- [x] Exercise more than 50 live access variants through both Actions and show that an evicted registry entry retains its cache payload before the fix.
+- [x] Partition normalized unique keys into retained/displaced sets; forget displaced `CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX` metadata before payloads and keep at most 50 registry keys. Do not claim this serializes concurrent registration or an already-running rebuild.
+- [x] Verify overflow, retained snapshot reuse, branch invalidation and the existing deferred refresh/cancellation/locale cases.
+
+### Task 4 — integrated verification and evidence
+
+- [ ] Run Pint, Larastan, the full Unit/Feature suite and canonical coverage; run browser scenarios because dashboard link availability changes.
+- [ ] Record measured query effects and explicitly identify unmeasured changes; update testing/security/cache/compliance documents and this checklist, and review the final diff. Keep implementation, tests and deployment evidence distinct.
+- [x] Reconcile current missing-lockfile gaps in both compliance and traceability; strengthen `RequirementsTraceabilityTest` to verify all 51 statuses agree instead of requiring every applicable row to claim completion.
+- [x] Correct the observed coverage-run Faker collision with deterministic names in the 52-branch fixture; rerun the two overflow cases and the full five-file focused batch.
+
+The next concurrency stage requires an owned temporary SQLite database, bounded process timeouts and a test reproducing invalidation between snapshot construction and cache write. Its acceptance condition is that subsequent authorized reads cannot discover an invalidated snapshot even when registration or refresh overlaps the mutation; registry memory remains bounded and read latency is measured.
+
+The code-level interleavings to reproduce are explicit: (1) two requests read the same branch registry, append different keys and overwrite one another; (2) a cold build reads source data, a mutation invalidates, then the build writes/registers the old snapshot; (3) a deferred callback passes Laravel's creation-timestamp guard, then invalidation occurs before its `putMany`. Installed `Illuminate/Cache/Repository.php::flexible` checks the timestamp before the callback, not after it. These are review findings, not claims that a concurrent executable reproduction has already passed.
+
+| Candidate for that separate stage | Benefit to verify | Cost / risk to measure |
+|---|---|---|
+| Shared branch locks around publication, registration and invalidation | Serialize all participating paths with one ordering contract. | Multiple-branch lock ordering, bounded wait/lease expiry, SQLite writes and request-tail latency; a refresh-only lock is insufficient. |
+| Generation-scoped snapshot keys | Rotate a branch generation after mutation so an older in-flight write cannot be discovered by later reads. | Atomic first-generation creation, multi-branch generation reads, expiry behavior, obsolete-record cleanup and cancellation of pending callbacks. |
+
+Acceptance fixtures must cover cold and stale builds, invalidation before/during publication, simultaneous registrations, two overlapping branch sets, EN/LT/RU, changed permissions, an expired lease, and recovery after an interrupted writer. Compare SQL counts plus cold/fresh/stale response time against the current Actions; retain the existing 60/300-second maximum ages and shared-hosting constraints. Select an implementation only after those reproductions and measurements.
+
+
 ## Completed follow-up — requirements traceability
 
 - **P0 runtime gaps — none confirmed.** Reconciled every canonical requirement against the working route, Livewire/HTTP, policy, Action, Eloquent/SQLite and rendered-response path. The route/policy/tenant/security/schema checks and complete suites found no missing critical path requiring a runtime change.

@@ -26,6 +26,7 @@ use App\Services\Organizations\BrandQueryService;
 use App\Services\Organizations\OrganizationQueryService;
 use App\Services\Staff\StaffQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\Paginator;
 use Livewire\Livewire;
 
@@ -64,7 +65,7 @@ test('organization results are bounded searchable and render only the requested 
         ->assertDontSee('Paged Organization 30');
 });
 
-test('brand and branch searches stay inside the selected tenant boundary', function (): void {
+test('brand and branch searches stay inside the selected tenant boundary', function (string $field): void {
     $owner = User::factory()->create();
     $otherOwner = User::factory()->create();
     $organization = (new CreateOrganizationAction)->handle($owner, ['name' => 'Scoped Group']);
@@ -92,23 +93,115 @@ test('brand and branch searches stay inside the selected tenant boundary', funct
         Branch::factory()
             ->for($organization)
             ->for($brand)
-            ->create(['name' => sprintf('Scoped Branch %02d', $number)]);
+            ->create([
+                'name' => sprintf('Scoped Branch %02d', $number),
+                ...($number === 31 ? [$field => 'Needle'] : []),
+            ]);
     }
 
     Branch::factory()
         ->for($organization)
         ->for($otherBrand)
-        ->create(['name' => 'Scoped Branch 31 Outside']);
+        ->create(['name' => 'Scoped Branch 31 Outside', $field => 'Needle Outside']);
 
     $branchPaginator = app(BranchQueryService::class)
-        ->paginateAccessibleForBrand($owner, $organization, $brand, 'Branch 31', 15);
+        ->paginateAccessibleForBrand($owner, $organization, $brand, ' Needle ', 15);
 
     expect($branchPaginator)->toBeInstanceOf(Paginator::class)
         ->and($branchPaginator->getPageName())->toBe('branchesPage')
         ->and($branchPaginator->items())->toHaveCount(1)
         ->and($branchPaginator->items()[0]->brand_id)->toBe($brand->id)
-        ->and($branchPaginator->items()[0]->name)->toBe('Scoped Branch 31');
-});
+        ->and($branchPaginator->items()[0]->getAttribute($field))->toBe('Needle');
+})->with(['name', 'address', 'city']);
+
+test('staff searches match either user field within the selected organization and branch', function (string $field): void {
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $branch = Branch::factory()->create();
+    $organization = $branch->organization;
+    $otherBranch = Branch::factory()->for($organization)->for($branch->brand)->create();
+    $user = User::factory()->create([
+        'name' => 'Alice',
+        'email' => 'alice@example.test',
+        $field => $field === 'name' ? 'Needle Staff' : 'needle@example.test',
+    ]);
+    $membership = OrganizationUser::factory()->forOrganization($organization)->forUser($user)->forRole($role)->active()->create();
+    OrganizationUser::factory()->forUser($user)->forRole($role)->active()->create();
+    $assignment = BranchUser::factory()->forBranch($branch)->forUser($user)->active()->create();
+    BranchUser::factory()->forBranch($otherBranch)->forUser($user)->active()->create();
+    $queries = app(StaffQueryService::class);
+
+    $organizationCount = countDatabaseQueries(function () use ($queries, $organization, $membership): void {
+        $members = $queries->paginateOrganizationMembers($organization, ' Needle ', 15);
+
+        expect($members->getCollection()->modelKeys())->toBe([$membership->id]);
+    });
+    $branchCount = countDatabaseQueries(function () use ($queries, $branch, $assignment): void {
+        $members = $queries->paginateBranchMembers($branch, ' Needle ', 15);
+
+        expect($members->getCollection()->modelKeys())->toBe([$assignment->id]);
+    });
+
+    expect($organizationCount)->toBe(3)
+        ->and($branchCount)->toBe(3);
+})->with(['name', 'email']);
+
+test('staff membership lookups select the requested branch when a user has several assignments', function (bool $foreignOrganization): void {
+    $branch = Branch::factory()->create();
+    $otherBranch = Branch::factory()->create($foreignOrganization ? [] : [
+        'organization_id' => $branch->organization_id,
+        'brand_id' => $branch->brand_id,
+    ]);
+    $user = User::factory()->create();
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $factory = BranchUser::factory()->forUser($user)->forRole($role)->active();
+    $otherAssignment = $factory->forBranch($otherBranch)->create();
+    $assignment = $factory->forBranch($branch)->create();
+    $queries = app(StaffQueryService::class);
+
+    $queryCount = countDatabaseQueries(function () use ($queries, $branch, $user, $assignment, $role): void {
+        $found = $queries->findBranchUserByUser($branch, $user->id);
+
+        expect($found->id)->toBe($assignment->id)
+            ->and($found->role->id)->toBe($role->id);
+    });
+
+    expect($queryCount)->toBe(2)
+        ->and($queries->findBranchUser($branch, $assignment->id)->id)->toBe($assignment->id);
+
+    expect(fn () => $queries->findBranchUser($branch, $otherAssignment->id))
+        ->toThrow(ModelNotFoundException::class);
+})->with(['sibling branch' => false, 'foreign organization' => true]);
+
+test('invitation searches match either contact field without crossing tenant or branch scope', function (string $field): void {
+    $branch = Branch::factory()->create();
+    $organization = $branch->organization;
+    $otherBranch = Branch::factory()->for($organization)->for($branch->brand)->create();
+    $contact = ['email' => null, 'phone' => null, $field => $field === 'email' ? 'contact@example.test' : '+37061234567'];
+    $search = $field === 'email' ? 'contact' : '61234567';
+    $organizationInvitation = Invitation::factory()->forOrganization($organization)->pending()->create($contact);
+    $branchInvitation = Invitation::factory()->forOrganization($organization)->pending()->create([
+        ...$contact, 'brand_id' => $branch->brand_id, 'branch_id' => $branch->id,
+    ]);
+    Invitation::factory()->forOrganization($organization)->pending()->create([
+        ...$contact, 'brand_id' => $otherBranch->brand_id, 'branch_id' => $otherBranch->id,
+    ]);
+    Invitation::factory()->pending()->create($contact);
+    $queries = app(StaffQueryService::class);
+
+    $organizationCount = countDatabaseQueries(function () use ($queries, $organization, $search, $organizationInvitation): void {
+        $invitations = $queries->paginateOrganizationInvitations($organization, ' '.$search.' ', 15);
+
+        expect($invitations->getCollection()->modelKeys())->toBe([$organizationInvitation->id]);
+    });
+    $branchCount = countDatabaseQueries(function () use ($queries, $organization, $branch, $search, $branchInvitation): void {
+        $invitations = $queries->paginateBranchInvitations($organization, $branch, ' '.$search.' ', 15);
+
+        expect($invitations->getCollection()->modelKeys())->toBe([$branchInvitation->id]);
+    });
+
+    expect($organizationCount)->toBe(3)
+        ->and($branchCount)->toBe(3);
+})->with(['email', 'phone']);
 
 test('branch staff and invitations use their own independent paginator names', function (): void {
     $owner = User::factory()->create();
@@ -273,6 +366,58 @@ test('query counts remain bounded and rendered relationships are eager loaded', 
 
     expect($organizationQueryCount)->toBeLessThanOrEqual(2);
 });
+
+test('service point searches match each field within the active branch scope', function (string $field): void {
+    $branch = Branch::factory()->create();
+    $siblingBranch = Branch::factory()->create([
+        'organization_id' => $branch->organization_id,
+        'brand_id' => $branch->brand_id,
+    ]);
+    $foreignBranch = Branch::factory()->create();
+    $matches = [];
+
+    foreach ([
+        'current' => [$branch, true],
+        'inactive' => [$branch, false],
+        'sibling' => [$siblingBranch, true],
+        'foreign' => [$foreignBranch, true],
+    ] as $label => [$pointBranch, $active]) {
+        $matches[$label] = ServicePoint::factory()->for($pointBranch)->free()->create([
+            'name' => 'Window table',
+            'display_number' => null,
+            'internal_code' => null,
+            ...($field !== 'short_code' ? [$field => 'FINDME-'.$label] : []),
+            'is_active' => $active,
+        ]);
+
+        QrCode::factory()->forServicePoint($matches[$label])->active()->create([
+            'short_code' => ($field === 'short_code' ? 'FINDME-' : 'QR-').$label,
+        ]);
+    }
+
+    ServicePoint::factory()->for($branch)->free()->create([
+        'name' => 'Unmatched table',
+        'display_number' => null,
+        'internal_code' => null,
+    ]);
+
+    $queryCount = countDatabaseQueries(function () use ($branch, $matches): void {
+        $servicePoints = app(ServicePointQueryService::class)->paginate($branch, [
+            'search' => ' findme ',
+            'area_node_id' => 'all',
+            'type' => 'all',
+            'status' => 'all',
+            'active' => 'active',
+            'qr' => 'all',
+        ], 15);
+
+        expect($servicePoints->getCollection()->modelKeys())->toBe([$matches['current']->id])
+            ->and($servicePoints->hasMorePages())->toBeFalse()
+            ->and($servicePoints->items()[0]->relationLoaded('activeQrCode'))->toBeTrue();
+    });
+
+    expect($queryCount)->toBe(4);
+})->with(['name', 'display_number', 'internal_code', 'short_code']);
 
 test('area and service point pages stay bounded and eager load every rendered relationship', function (): void {
     $owner = User::factory()->create();

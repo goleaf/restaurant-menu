@@ -168,10 +168,70 @@ test('guest menu cold and warm cache query counts stay bounded', function () {
         fn () => $action->handle($branch->id, 'en'),
     );
 
-    expect($coldQueryCount)->toBeLessThanOrEqual(15)
+    expect($coldQueryCount)->toBeLessThanOrEqual(13)
         ->and($warmQueryCount)->toBeLessThanOrEqual(2)
         ->and($warmQueryCount)->toBeLessThan($coldQueryCount);
 });
+
+test('guest menu reads translated fields without hydrating translation models', function (
+    string $languageCode,
+    ?string $translatedName,
+    ?string $translatedDescription,
+): void {
+    config()->set('cache.stores.database.lock_lottery', [0, 1]);
+    [, $branch] = createGuestMenuDisplayContext();
+    [, $category, $item] = createGuestMenuRows($branch);
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        if ($locale === $languageCode && $translatedName === null) {
+            continue;
+        }
+
+        $attributes = [
+            'language_code' => $locale,
+            'name' => $locale === $languageCode ? $translatedName : 'Other locale name',
+            'description' => $locale === $languageCode ? $translatedDescription : 'Other locale description',
+        ];
+        MenuCategoryTranslation::factory()->for($category, 'category')->create($attributes);
+        MenuItemTranslation::factory()->for($item, 'item')->create($attributes);
+    }
+
+    $hydratedTranslations = 0;
+    $recordTranslation = function () use (&$hydratedTranslations): void {
+        $hydratedTranslations++;
+    };
+    MenuCategoryTranslation::retrieved($recordTranslation);
+    MenuItemTranslation::retrieved($recordTranslation);
+    $action = app(GetGuestMenuForBranchAction::class);
+    Cache::store(GetGuestMenuForBranchAction::cacheStore())
+        ->forget(GetGuestMenuForBranchAction::cacheKey($branch->id, $languageCode));
+    $payload = [];
+    $coldQueryCount = countDatabaseQueries(function () use ($action, $branch, $languageCode, &$payload): void {
+        $payload = $action->handle($branch->id, $languageCode);
+    });
+    $warmQueryCount = countDatabaseQueries(function () use ($action, $branch, $languageCode, $payload): void {
+        expect($action->handle($branch->id, $languageCode))->toBe($payload);
+    });
+
+    expect($payload['categories'][0])->toMatchArray([
+        'id' => $category->id,
+        'name' => filled($translatedName) ? $translatedName : $category->name,
+        'description' => filled($translatedDescription) ? $translatedDescription : $category->description,
+    ])->and($payload['categories'][0]['items'][0])->toMatchArray([
+        'id' => $item->id,
+        'name' => filled($translatedName) ? $translatedName : $item->name,
+        'description' => filled($translatedDescription) ? $translatedDescription : $item->description,
+        'price_cents' => $item->price_cents,
+    ])->and($hydratedTranslations)->toBe(0)
+        ->and($coldQueryCount)->toBeLessThanOrEqual(13)
+        ->and($warmQueryCount)->toBeLessThanOrEqual(2);
+})->with(['en', 'lt', 'ru'])->with([
+    'translated fields' => ['Selected name', 'Selected description'],
+    'missing translation' => [null, null],
+    'empty name' => ['', 'Selected description'],
+    'null description' => ['Selected name', null],
+    'whitespace fields' => ['  ', '  '],
+]);
 
 test('guest menu uses selected language translations with default fallback', function () {
     [$qrCode, $branch] = createGuestMenuDisplayContext('en');
@@ -218,8 +278,12 @@ test('guest menu uses selected language translations with default fallback', fun
     $categoryTranslation->update(['description' => 'Atnaujintas aprasymas']);
 
     expect(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ltCacheKey))->toBeFalse()
-        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ruCacheKey))->toBeFalse()
-        ->and($action->handle($branch->id, 'lt')['categories'][0]['items'][0]['name'])->toBe('Atnaujinta Margarita');
+        ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($ruCacheKey))->toBeFalse();
+
+    $refreshedPayload = $action->handle($branch->id, 'lt');
+
+    expect($refreshedPayload['categories'][0]['items'][0]['name'])->toBe('Atnaujinta Margarita')
+        ->and($refreshedPayload['categories'][0]['description'])->toBe('Atnaujintas aprasymas');
 
     expect($qrCode->public_token)->not->toBeEmpty()
         ->and($unavailableItem->name)->toBe('Truffle pizza');

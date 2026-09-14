@@ -16,6 +16,10 @@ HTTP route / Livewire action
 
 Blade is a terminal presentation boundary: it may render escaped prepared values and localized text, but it may not query models, resolve services, authorize mutations, calculate money, or construct business/SEO payloads. JavaScript is limited to local DOM behavior that does not make business decisions; Livewire owns persisted mutations.
 
+Shared monetary form rules include `App\Support\Validation\DecimalMoney`, which delegates parsing and overflow checks to `MoneyFormatter` and translates failures into field errors. Existing required, decimal precision and per-field range rules remain in `RestaurantValidationRules`; the custom rule adds no database reads or value coercion.
+
+Restaurant dashboard and basic analytics snapshots contain locale-formatted dates and money. Their versioned cache keys therefore include the active interface locale alongside the existing branch/access signature and day. They use database-backed `Cache::flexible` with fresh/maximum ages of 45/60 and 240/300 seconds respectively. Refreshes run after successful responses under a nonblocking 30-second database lock and the originating locale. Access is resolved before every cache read. Branch invalidation indexes retain at most 50 access/locale variants and delete displaced snapshots and timestamps. Observers remove both the value and its refresh timestamp, cancelling a pending refresh when invalidation occurs before callback execution. Concurrent registry updates and invalidation during an already-running build remain a documented follow-up. Dashboard waiter-link availability is included as a distinct ViewOrders access dimension in its cache key and reused during presentation preparation. Expired or missing snapshots rebuild synchronously.
+
 ## Verified implementation inventory
 
 The refreshed 2026-08-24 inventory observes 48 first-party Eloquent models with 48 factories, 219 classes in the focused Action namespace, 60 Livewire PHP files, two Livewire Form objects, 18 policies, 88 forward migrations, and 133 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.
@@ -94,7 +98,7 @@ No worker, cron, Redis, WebSocket, S3, Docker or SSH-only runtime capability is 
 |---|---|---|---|
 | Modern bootstrap middleware/exceptions | Used; retain project-specific web/auth behavior | `bootstrap/app.php` | boot/cache/HTTP tests |
 | Scoped implicit bindings | Used for nested organization resources | `routes/web.php` | cross-tenant route tests |
-| Strict Eloquent behavior | Used in local and test environments | `AppServiceProvider` | full suite without lazy-loading violations |
+| Eloquent lazy-loading prevention | Enabled outside production, including local, testing and staging; violations throw | `AppServiceProvider::configureDefaults` | `EloquentLazyLoadingTest` checks environment selection, rejected unloaded relations and two-query eager loading |
 | Controller/authorization attributes | Evaluate per endpoint; policies remain primary | controllers/policies | feature tests |
 | API/JSON:API resources | Not applicable; no public API contract | none | route inventory |
 | `Cache::touch` | Not applicable without a cache entry whose lifetime must be extended | none | caching review |

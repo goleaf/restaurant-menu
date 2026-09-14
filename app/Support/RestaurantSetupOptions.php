@@ -89,21 +89,23 @@ final class RestaurantSetupOptions
      */
     public static function timezoneOptions(): array
     {
-        $now = new DateTimeImmutable;
-        $options = [];
+        return once(function (): array {
+            $now = new DateTimeImmutable;
+            $options = [];
 
-        foreach (DateTimeZone::listIdentifiers() as $identifier) {
-            $timezone = new DateTimeZone($identifier);
-            $offsetSeconds = $timezone->getOffset($now);
-            $sign = $offsetSeconds < 0 ? '-' : '+';
-            $absoluteOffset = abs($offsetSeconds);
-            $hours = intdiv($absoluteOffset, 3600);
-            $minutes = intdiv($absoluteOffset % 3600, 60);
+            foreach (DateTimeZone::listIdentifiers() as $identifier) {
+                $timezone = new DateTimeZone($identifier);
+                $offsetSeconds = $timezone->getOffset($now);
+                $sign = $offsetSeconds < 0 ? '-' : '+';
+                $absoluteOffset = abs($offsetSeconds);
+                $hours = intdiv($absoluteOffset, 3600);
+                $minutes = intdiv($absoluteOffset % 3600, 60);
 
-            $options[$identifier] = sprintf('(UTC%s%02d:%02d) %s', $sign, $hours, $minutes, $identifier);
-        }
+                $options[$identifier] = sprintf('(UTC%s%02d:%02d) %s', $sign, $hours, $minutes, $identifier);
+            }
 
-        return $options;
+            return $options;
+        });
     }
 
     /**

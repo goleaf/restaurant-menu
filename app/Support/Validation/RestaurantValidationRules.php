@@ -164,7 +164,7 @@ class RestaurantValidationRules
             'defaultLanguage' => ['required', 'string', Rule::in(SupportedLocale::values())],
             'defaultCurrency' => ['required', 'string', 'size:3', Rule::in(SupportedCurrency::values())],
             'serviceChargeEnabled' => ['boolean'],
-            'serviceChargePercent' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2'],
+            'serviceChargePercent' => ['required', 'numeric', 'min:0', 'max:100', 'decimal:0,2', new DecimalMoney],
             'tipsEnabled' => ['boolean'],
             'orderFlowMode' => ['required', 'string', Rule::in(BranchOrderFlowMode::values())],
             'serviceModes' => ['required', 'array', 'min:1'],
@@ -532,7 +532,7 @@ class RestaurantValidationRules
     public static function manualPaymentAmount(string $field = 'tipsAmount'): array
     {
         return [
-            $field => ['required', 'numeric', 'min:0', 'max:100000', 'decimal:0,2'],
+            $field => ['required', 'numeric', 'min:0', 'max:100000', 'decimal:0,2', new DecimalMoney],
         ];
     }
 
@@ -665,7 +665,7 @@ class RestaurantValidationRules
     }
 
     /**
-     * @return list<string>
+     * @return list<string|DecimalMoney>
      */
     private static function moneyRules(bool $allowNegative = false): array
     {
@@ -675,6 +675,7 @@ class RestaurantValidationRules
             $allowNegative ? 'min:-999999.99' : 'min:0',
             'max:999999.99',
             'decimal:0,2',
+            new DecimalMoney,
         ];
     }
 

@@ -155,12 +155,14 @@ class StoreLocalImageAction
 
     private function safeDirectory(string $directory): string
     {
-        $directory = trim(str_replace('\\', '/', $directory), '/');
+        $normalizedDirectory = Str::of($directory)
+            ->replace('\\', '/')
+            ->trim('/');
 
-        if ($directory === '' || str($directory)->contains(['..', '//'])) {
+        if ($normalizedDirectory->isEmpty() || $normalizedDirectory->contains(['..', '//'])) {
             throw new RuntimeException(__('uploads.errors.not_writable'));
         }
 
-        return $directory;
+        return $normalizedDirectory->toString();
     }
 }

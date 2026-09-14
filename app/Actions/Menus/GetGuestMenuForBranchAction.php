@@ -219,16 +219,21 @@ class GetGuestMenuForBranchAction
                         'sort_order',
                         'is_active',
                     ])
+                    ->addSelect([
+                        'localized_name' => MenuCategoryTranslation::query()
+                            ->select('name')
+                            ->whereColumn('menu_category_id', $query->qualifyColumn('id'))
+                            ->where('language_code', $languageCode)
+                            ->limit(1),
+                        'localized_description' => MenuCategoryTranslation::query()
+                            ->select('description')
+                            ->whereColumn('menu_category_id', $query->qualifyColumn('id'))
+                            ->where('language_code', $languageCode)
+                            ->limit(1),
+                    ])
                     ->whereIn('menu_id', $availableMenus->pluck('id')->all())
                     ->where('is_active', true)
                     ->with([
-                        'translations' => fn ($translationQuery) => $translationQuery->select([
-                            'id',
-                            'menu_category_id',
-                            'language_code',
-                            'name',
-                            'description',
-                        ])->where('language_code', $languageCode),
                         'items' => fn ($itemQuery) => $itemQuery->select([
                             'id',
                             'menu_id',
@@ -246,6 +251,18 @@ class GetGuestMenuForBranchAction
                             'hidden_until',
                             'sort_order',
                         ])
+                            ->addSelect([
+                                'localized_name' => MenuItemTranslation::query()
+                                    ->select('name')
+                                    ->whereColumn('menu_item_id', $itemQuery->qualifyColumn('id'))
+                                    ->where('language_code', $languageCode)
+                                    ->limit(1),
+                                'localized_description' => MenuItemTranslation::query()
+                                    ->select('description')
+                                    ->whereColumn('menu_item_id', $itemQuery->qualifyColumn('id'))
+                                    ->where('language_code', $languageCode)
+                                    ->limit(1),
+                            ])
                             ->where(fn ($visibilityQuery) => $visibilityQuery
                                 ->whereNull('hidden_until')
                                 ->orWhere('hidden_until', '<=', now()))
@@ -255,13 +272,6 @@ class GetGuestMenuForBranchAction
                                     ->where('is_available', true),
                             ])
                             ->with([
-                                'translations' => fn ($translationQuery) => $translationQuery->select([
-                                    'id',
-                                    'menu_item_id',
-                                    'language_code',
-                                    'name',
-                                    'description',
-                                ])->where('language_code', $languageCode),
                                 'modifierGroups' => fn ($modifierGroupQuery) => $modifierGroupQuery->select([
                                     'modifier_groups.id',
                                     'modifier_groups.branch_id',
@@ -541,13 +551,20 @@ class GetGuestMenuForBranchAction
      */
     private function categoryPayload(MenuCategory $category, string $languageCode): array
     {
-        /** @var MenuCategoryTranslation|null $translation */
-        $translation = $category->translations->first();
-
         return [
             'id' => $category->id,
-            'name' => $this->translatedText($translation?->name, $category->name),
-            'description' => $this->translatedText($translation?->description, $category->description),
+            'name' => $this->translatedText(
+                is_string($category->getAttribute('localized_name'))
+                    ? $category->getAttribute('localized_name')
+                    : null,
+                $category->name,
+            ),
+            'description' => $this->translatedText(
+                is_string($category->getAttribute('localized_description'))
+                    ? $category->getAttribute('localized_description')
+                    : null,
+                $category->description,
+            ),
             'icon' => $category->icon,
             'items' => $category->items
                 ->map(fn (MenuItem $item): array => $this->itemPayload($item, $languageCode))
@@ -561,13 +578,20 @@ class GetGuestMenuForBranchAction
      */
     private function itemPayload(MenuItem $item, string $languageCode): array
     {
-        /** @var MenuItemTranslation|null $translation */
-        $translation = $item->translations->first();
-
         return [
             'id' => $item->id,
-            'name' => $this->translatedText($translation?->name, $item->name),
-            'description' => $this->translatedText($translation?->description, $item->description),
+            'name' => $this->translatedText(
+                is_string($item->getAttribute('localized_name'))
+                    ? $item->getAttribute('localized_name')
+                    : null,
+                $item->name,
+            ),
+            'description' => $this->translatedText(
+                is_string($item->getAttribute('localized_description'))
+                    ? $item->getAttribute('localized_description')
+                    : null,
+                $item->description,
+            ),
             'price_cents' => $item->price_cents,
             'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options($languageCode)),
             'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options($languageCode)),

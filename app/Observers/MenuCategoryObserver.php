@@ -91,7 +91,8 @@ class MenuCategoryObserver
 
         $menuCategory->children()
             ->select(['id', 'menu_id', 'parent_id'])
-            ->get()
+            ->reorder()
+            ->lazyById(200)
             ->each
             ->delete();
     }
@@ -104,7 +105,8 @@ class MenuCategoryObserver
 
         $menuCategory->items()
             ->select(['id', 'menu_id', 'category_id'])
-            ->get()
+            ->reorder()
+            ->lazyById(200)
             ->each
             ->delete();
     }

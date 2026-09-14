@@ -5,6 +5,7 @@ namespace App\Actions\Branches;
 use App\Models\BranchSetting;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Number;
 
 class GetBranchPollingIntervalAction
 {
@@ -41,7 +42,7 @@ class GetBranchPollingIntervalAction
 
     public static function normalize(int $intervalSeconds): int
     {
-        return max(1, min(60, $intervalSeconds));
+        return (int) Number::clamp($intervalSeconds, 1, 60);
     }
 
     public static function cacheKey(int $branchId): string

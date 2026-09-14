@@ -2,7 +2,21 @@
 
 Performance changes are evidence-driven. Query-budget and cache-separation tests protect critical guest, waiter, department, dashboard, audit and export flows; lists paginate or stream; relationships are selected/eager-loaded; Livewire polling regions are isolated and public state contains no large model graph.
 
+## Dispatch relationship reads and report refresh (2026-09-14)
+
+`SendOrderToKitchenBarAction` no longer loads each new ticket's items inside the department loop. Its final order reload already eager-loads the complete ticket/item graph with selected columns. The new 2/10-department regressions initially measured 3/11 item SELECTs; both now perform one. Returned graphs hydrate exactly 4/20 ticket items and require zero presentation queries. Ticket creation, snapshots, authorization, status logs and idempotency remain covered by `KitchenTicketDispatchTest` (7 tests / 93 assertions).
+
+Dashboard and analytics now use `Cache::flexible` within their existing maximum lifetimes: fresh/maximum ages are 45/60 and 240/300 seconds. Stale hits issue the same number of foreground queries as fresh hits in each tested fixture; regeneration runs after the response under a database lock. Cold misses and expired keys still rebuild synchronously. Twelve new regressions cover both Actions, EN/LT/RU refresh context, invalidation before termination, expiration and a competing refresh lock; the focused analytics/dashboard/branch-invalidation run passes 29 tests / 244 assertions. Extra refresh timestamp storage and invalidation are intentional cache bookkeeping; these results do not establish production latency or eliminate concurrent cold misses. Details are in `caching.md`.
+
+## Request-local timezone options (2026-09-14)
+
+`RestaurantSetupOptions::timezoneOptions` uses `once` to share its prepared identifier/UTC-offset labels between onboarding validation and rendering within one request. The first call still builds every label from the current instant; subsequent calls reuse that array. No database read, application-cache entry, tenant state or authorization result is memoized. Country, currency and area translations retain their existing locale behavior. See [Laravel's `once` documentation](https://laravel.com/docs/13.x/helpers#method-once).
+
+A local PHP CLI microbenchmark, using `Benchmark::measure` for 1,000 calls after one warm-up call, measured a mean of 0.186026 ms before and 0.001470 ms after for the installed 419 timezone identifiers. This measures repeated helper calls in one process, not first-call cost or whole-request latency. SQL query count remains zero for this helper. The snapshot lasts only for the request in the supported web runtime, so offsets are rebuilt on the next request; it is not persistent caching or a substitute for fresh operational/permission reads.
+
 ## Baseline versus final
+
+This table records the earlier modernization gate; it is not a fresh full-suite or browser measurement for subsequent refactors.
 
 | Measurement | Baseline | Final | Interpretation |
 |---|---:|---:|---|
@@ -19,13 +33,82 @@ Performance changes are evidence-driven. Query-budget and cache-separation tests
 | Critical workflow | Final budget | Regression contract |
 |---|---:|---|
 | Audit history cursor page | 10 queries | remains exactly 10 when history grows from 12 to 52 records |
-| Guest menu, cold database cache | 15 queries | complete localized menu graph, availability and cache write |
-| Guest menu, warm database cache | 2 queries | 13 fewer than cold, an 86.7% reduction |
-| Waiter dashboard | at most 40 queries | complete branch/service-point/session/guest/draft/item graph with eager-loaded relations |
+| Guest menu, cold database cache | at most 13 queries | complete localized menu graph, availability and cache write; category/item translation fields use scalar subqueries |
+| Guest menu, warm database cache | at most 2 queries | cache hit bypasses rebuilding the menu graph |
+| Waiter dashboard | at most 40 queries | branch/service-point/session/guest and ready-item graph with eager-loaded relations; draft counts and totals are database aggregates |
 
 A numeric pre-modernization query baseline was not instrumented, so no unsupported before/after SQL claim is made. The final ceilings are executable regressions in `SqlitePerformanceGuardrailsTest`, `GuestMenuDisplayTest` and `WaiterReviewFunctionalTest`.
 
+## Completing partially loaded guest-table relationships (2026-09-14)
+
+`GuestEntryQueryService::servicePointForTableSession` declares `servicePoint` and `servicePoint.areaNode` as separate `loadMissing` paths. Previously, the area eager load lived inside the table callback, which was skipped when the table was already loaded. The read service now completes the missing nested relation before the guest landing data is prepared, retaining the loaded table instance and explicit column selections. See [Laravel's lazy eager loading documentation](https://laravel.com/docs/13.x/eloquent-relationships#lazy-eager-loading).
+
+Six isolated fixtures cover absent, partially loaded and fully loaded relations, with and without an assigned area. With an area, preparation uses 2/1/0 queries respectively; without an area, it uses 1/0/0. Reading presentation fields and repeating the method then executes zero queries in every case. This fixes an incomplete relationship graph; it does not establish a reduction in total request queries or production latency. `loadMissing` does not refresh stale or incomplete selected attributes, and calling it per model inside a loop still permits N+1 reads.
+
+## Lazy-loading prevention (2026-09-14)
+
+`AppServiceProvider::configureDefaults` enables `Model::preventLazyLoading` outside production. Violations throw instead of being downgraded to logs, while production retains its existing behavior. `EloquentLazyLoadingTest` checks local/testing/staging/production selection, proves that accessing an unloaded relation on a retrieved collection is rejected before an extra query, and verifies a constant two-query budget for explicitly loaded roles across 2 and 15 users. See [Laravel's prevention documentation](https://laravel.com/docs/13.x/eloquent-relationships#preventing-lazy-loading).
+
+Enabling the guard exposed an unloaded `TableSession::branch` access during waiter inactivity calculations. `BuildWaiterDashboardAction` now assigns each session its already authorized and loaded branch, including timezone and settings, before building presentation data. Two-branch fixtures with 4 and 40 active sessions both execute 35 queries and preserve custom and default warning thresholds. The pre-fix guarded request threw a lazy-loading exception; an exact earlier query count was not measured for these fixtures.
+
+This is a development guard, not an automatic eager-loading feature or a complete N+1 detector. Installed Laravel 13.26.1 applies the global flag when hydrating more than one row; single-model retrieval and explicitly issued relation queries still require review and query-budget tests. Missing-attribute and discarded-attribute guards are separate Eloquent settings and are not enabled by this call.
+
+## Demo seeding model events (2026-09-14)
+
+Removing blanket model-event suppression from `DatabaseSeeder` restores required saving hooks and observer work. In the isolated complete demo fixture, the first seed increases from 3,327 to 8,751 queries; a repeated seed with events enabled uses 3,593 queries. These measurements include the entire seed graph, cache invalidation and observer work and are not request-latency budgets. The earlier lower count left the active uniqueness keys empty for 24 QR records, 13 occupied sessions and one pending waiter call. The change prioritizes valid seeded state; it makes no seeding-speed improvement claim.
+
+## Department relationship filtering (2026-09-14)
+
+`BuildDepartmentDashboardAction` uses `withWhereHas('items', ...)` to apply one callback to ticket existence filtering and item eager loading. The callback retains explicit item columns, relationship keys, cancellation-reason loading and stable item ordering. Department scope, parent-order cancellation handling, total-count cloning and oldest-active/newest-history pagination remain intact. See [Laravel's constrained eager loading with relationship existence documentation](https://laravel.com/docs/13.x/eloquent-relationships#constraining-eager-loads-with-relationship-existence).
+
+Seven mixed-status fixtures each execute 23 queries both before and after. The new tests enforce that ceiling and exact matching parent/item identities; existing pagination tests continue to enforce a constant query count when the queue grows to 31 tickets. This removes duplicate constraint attachment, with no query-count or latency improvement claimed. Migration definitions retain department/status ticket indexes and ticket/creation, status/creation and status/served item indexes; no schema change was required.
+
+## Guest-menu translation projections (2026-09-14)
+
+`GetGuestMenuForBranchAction` uses two correlated `addSelect` expressions per category/item query to return `localized_name` and `localized_description` for the requested language. These replace two eager-loading statements for translation models, extending the existing scalar projection convention used by menus, variants and modifiers. Every subquery selects one field, matches its owner and locale, and is limited to one row; the existing owner/locale unique indexes are declared in migrations. Base fields, relationship keys, availability checks, sorting, payload shape and cache invalidation remain intact. See [Laravel's subquery select documentation](https://laravel.com/docs/13.x/eloquent#subquery-selects).
+
+The original cold fixture executed 15 queries and failed the new 13-query ceiling; the refactor passes that ceiling and the existing two-query warm ceiling. Across EN/LT/RU cases, populated category/item translations previously hydrated two translation models and now hydrate zero. Missing, empty and whitespace-only fields retain the original per-field fallback, and cached payloads equal freshly built payloads. These are query-budget and hydration results, not production latency or peak-memory benchmarks. Schema and dependencies are unchanged.
+
+## QR session query reuse (2026-09-14)
+
+`PublicQrQueryService::activeTableSessionForQr` builds its selected session identity and guest-viewable state constraints once. Each lookup clones this base before applying either `forQrServicePoint` or the same-branch transfer-history fallback. Cloning prevents the current/merged-table predicate from leaking into the fallback and removes the duplicated field projection. Existing credential verification remains in the caller; finding a candidate session does not authorize guest access.
+
+Nine isolated SQLite cases preserve exact query counts before and after: current and actively merged tables use three queries; transfer fallback and rejected unrelated/unlinked/foreign/terminal cases use four. No speedup or query reduction is claimed. Migration definitions retain the unique public-token index, session primary key and linked-table indexes; no schema change was needed. Laravel 13.26.1 clones the underlying query when an Eloquent builder is cloned; its aggregate implementation already clones internally, so ordinary repeated `count`/`sum` calls alone do not require blanket changes. See the [official builder API](https://api.laravel.com/docs/13.x/Illuminate/Database/Eloquent/Builder.html#method___clone).
+
+## Cancellation snapshot counts (2026-09-14)
+
+`ChangeOrderStatusAction` loads two aliased, constrained counts through `Order::kitchenTicketItems` only after authorization and cancellation validation. One `loadCount` statement replaces loading up to 500 item models and filtering them in PHP. The ready count filters item status; the served count independently filters non-null `served_at`. Both remain scoped to the order across its department tickets. See [Laravel's deferred count loading documentation](https://laravel.com/docs/13.x/eloquent-relationships#deferred-count-loading).
+
+Isolated fixtures with 1, 4 and 502 total target-order items each executed 19 queries before and after. Hydrated `KitchenTicketItem` models decreased from 1/4/500 to zero. The largest fixture has one pending item and 501 ready/served items: the previous limit recorded 499 matching items; all three cancellation records now correctly record 501. Tests enforce a 19-query ceiling, zero item hydration and exact metadata. Migration definitions contain indexes beginning with `order_id` on tickets and `kitchen_ticket_id` on items; no schema change was required. These are correctness and query/hydration measurements, not production latency, query-plan or whole-process peak-memory measurements.
+
+## Waiter draft totals (2026-09-14)
+
+In isolated SQLite fixtures with 0, 3 and 40 draft lines, `BuildWaiterDashboardAction` changed from 39 to 38 queries per call. Replacing eager-loaded draft lines with `withSum` reduced hydrated `DraftOrderItem` models from 0/3/40 to zero in all three cases. Exact cent totals, empty totals, line counts, sender names and table-preview data are protected by `WaiterDashboardTest`. The sender projection keeps `id` and `guest_name`, while the draft projection keeps `sent_by_guest_id` for relationship matching. Existing indexes lead with `draft_order_id`; no schema change was required. These are query/hydration measurements, not browser or production latency benchmarks.
+
+## Menu deletion cascade batches (2026-09-14)
+
+`MenuObserver` and `MenuCategoryObserver` iterate root categories, remaining categories, child categories and items with `reorder()->lazyById(200)`. Removing display ordering is necessary because the next page advances by `id`; soft-deleted rows disappearing from the result do not shift an offset. Each model still receives its individual deletion events, and existing Action transactions and media cleanup remain in place.
+
+Four isolated 405-record fixtures used reverse display order to exercise three batches. Before the first target deletion, hydrated target models decreased from 405 to 200 in every case, with all 405 records soft-deleted exactly once and foreign-menu records preserved. Total query counts, including existing per-model event/cache/audit work, were:
+
+| Cascade fixture | Before | After |
+|---|---:|---:|
+| Menu root categories | 1,631 | 1,633 |
+| Menu categories with an already deleted parent | 1,631 | 1,633 |
+| Category children | 4,872 | 4,874 |
+| Category items | 5,277 | 5,279 |
+
+The two additional reads fetch the second and third batches. This measures bounded initial hydration in the observer cascade, not total process peak memory or faster deletion. Parent deletion Actions still collect image paths for cleanup after successful persistence; this change does not make the entire media-deletion workflow constant-memory. Existing CSV `chunkById(200)`, organization/brand observer `lazyById(500)` and the oldest-first 1,000-candidate inactivity-cleanup limit remain appropriate for their separate contracts.
+
 ## Controls
+
+The 2026-09-14 menu audit review adds an early `wasChanged(['price_cents', 'is_available'])` guard inside `MenuItemObserver::recordAuditedChanges`, called from `updated`. Name, description and display-order updates no longer load the unused menu/branch audit context, removing two reads while retaining guest-menu cache invalidation. Each of three isolated fixtures previously executed 12 queries and now passes a 10-query ceiling, including the existing database-cache work. Equivalent integer/boolean cast inputs do not create price/availability audit entries. A clean save on the same model after a combined audited update executes zero queries and creates no duplicate audit. These results are query budgets, not production latency measurements. No redundant `isDirty()` wrapper was added around Eloquent saves: the installed Laravel model already checks dirty state before SQL updates. See [Laravel's attribute-change documentation](https://laravel.com/docs/13.x/eloquent#examining-attribute-changes).
+
+The 2026-09-14 staff role review replaces an active-owner `count()` with `exists()` in `UpdateOrganizationStaffRoleAction`. The query excludes the target membership and retains organization, active-status and owner-role constraints. An inactive target returns before the lookup. The active-owner success fixture previously executed 10 queries and now passes a 10-query ceiling; invited, suspended and removed target fixtures each previously executed 10 queries and now pass a 9-query ceiling. Existing membership `(organization_id, status)` and role-code unique indexes are declared in migrations; no schema change was needed. These are isolated SQLite query-budget results, not production latency or query-plan measurements. Exact counts used for audit metadata, displayed badges, thresholds and collection cardinality remain intact. See [Laravel's existence-query documentation](https://laravel.com/docs/13.x/queries#determining-if-records-exist).
+
+The initial 2026-09-14 cache review retained `remember` for dashboard/analytics and the existing guest-menu lock; the completed article review above subsequently adopted the narrower `[45, 60]` / `[240, 300]` report intervals. A blanket switch to `Cache::flexible` is not supported by a measured expiry bottleneck: the dashboard includes operational counters, guest menus include scheduled availability, and the separate basic-analytics Action currently has no production read caller. Laravel's `[60, 300]` flexible interval permits stale reads between ages 60 and 300 seconds, with refresh deferred until after the response; 300 is the total maximum age, not an additional stale duration. The later adoption preserves flexible metadata invalidation before pending refresh execution; already-running rebuild and registry concurrency windows are tracked separately in `IMPLEMENTATION_PLAN.md`. See the [Laravel cache documentation](https://laravel.com/docs/13.x/cache#stale-while-revalidate).
+
+This review instead corrected a demonstrated locale collision in dashboard/analytics cache keys. Query builders and TTLs are unchanged; each EN/LT/RU variant now has its own first cache fill and subsequent reuse. This correctness fix makes no latency or query-reduction claim.
 
 - Growing organization/staff/menu/audit/export/superadmin data is bounded by pagination, cursor streaming or explicit limits.
 - Polling components are isolated and expose stable identifiers; loading indicators target only the active mutation.

@@ -6,7 +6,6 @@ namespace App\Actions\Dashboard;
 
 use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
 use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
-use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
@@ -24,12 +23,19 @@ use App\Models\User;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Traits\Localizable;
+use LogicException;
 
 class BuildRestaurantDashboardAction
 {
+    use Localizable;
+
+    private const CACHE_FRESH_SECONDS = 45;
+
     private const CACHE_SECONDS = 60;
 
     private const CACHE_STORE = 'database';
@@ -40,7 +46,6 @@ class BuildRestaurantDashboardAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly ResolveKitchenAccessibleDepartmentIdsAction $resolveKitchenDepartments,
         private readonly ResolveBarAccessibleDepartmentIdsAction $resolveBarDepartments,
-        private readonly BuildWaiterDashboardAction $buildWaiterDashboard,
     ) {}
 
     /**
@@ -58,10 +63,12 @@ class BuildRestaurantDashboardAction
         }
 
         $cacheKey = self::cacheKeyForAccess($access);
-        $dashboard = self::cache()->remember(
+        $locale = App::currentLocale();
+        $dashboard = self::cache()->flexible(
             $cacheKey,
-            self::CACHE_SECONDS,
-            fn (): array => $this->buildDashboard($user, $access, $cacheKey),
+            [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
+            fn (): array => $this->withLocale($locale, fn (): array => $this->buildDashboard($access, $cacheKey)),
+            lock: ['seconds' => 30],
         );
 
         $this->rememberBranchCacheKeys($access['dashboard'], $cacheKey);
@@ -90,6 +97,7 @@ class BuildRestaurantDashboardAction
         if (is_array($cacheKeys)) {
             foreach ($cacheKeys as $cacheKey) {
                 if (is_string($cacheKey) && $cacheKey !== '') {
+                    $cache->forget(CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX.$cacheKey);
                     $cache->forget($cacheKey);
                 }
             }
@@ -123,12 +131,20 @@ class BuildRestaurantDashboardAction
             ->map(fn (string $branchIds, string $key): string => $key.':'.$branchIds)
             ->implode('|');
 
-        return 'restaurant-dashboard:'.sha1($signature).':today:'.$date->toDateString();
+        return 'restaurant-dashboard:v4:'.sha1($signature)
+            .':today:'.$date->toDateString()
+            .':locale:'.App::currentLocale();
     }
 
     private static function cache(): CacheRepository
     {
-        return Cache::store(self::CACHE_STORE);
+        $cache = Cache::store(self::CACHE_STORE);
+
+        if (! $cache instanceof CacheRepository) {
+            throw new LogicException('Report snapshots require the Laravel cache repository.');
+        }
+
+        return $cache;
     }
 
     private static function branchCacheKeysKey(int $branchId): string
@@ -174,6 +190,7 @@ class BuildRestaurantDashboardAction
             'dashboard' => $dashboardBranchIds,
             'operations' => $operationsBranchIds,
             'orders' => $orderBranchIds,
+            'waiter' => $viewOrderBranchIds,
             'reports' => $reportBranchIds,
             'menu' => $menuBranchIds,
             'service_points' => $servicePointBranchIds,
@@ -187,7 +204,7 @@ class BuildRestaurantDashboardAction
      * @param  array<string, Collection<int, covariant int>>  $access
      * @return array<string, mixed>
      */
-    private function buildDashboard(User $user, array $access, string $cacheKey): array
+    private function buildDashboard(array $access, string $cacheKey): array
     {
         $now = CarbonImmutable::now();
         $periodStart = $now->startOfDay();
@@ -219,7 +236,7 @@ class BuildRestaurantDashboardAction
                 'orders_today_count' => $canViewReports ? $reportOrders->count() : null,
             ],
             'popular_items' => $canViewReports ? $this->popularItems($reportOrderIds, $singleCurrency) : [],
-            'quick_actions' => $this->quickActions($user, $access),
+            'quick_actions' => $this->quickActions($access),
         ];
     }
 
@@ -435,7 +452,7 @@ class BuildRestaurantDashboardAction
      * @param  array<string, Collection<int, covariant int>>  $access
      * @return list<array{label: string, description: string, icon: string, href: string|null, is_available: bool}>
      */
-    private function quickActions(User $user, array $access): array
+    private function quickActions(array $access): array
     {
         return [
             $this->branchQuickAction(
@@ -471,7 +488,7 @@ class BuildRestaurantDashboardAction
                 description: 'Open live waiter workspace',
                 icon: 'clipboard-document-list',
                 routeName: 'restaurant.waiter.dashboard',
-                isAvailable: $this->buildWaiterDashboard->userHasAccess($user),
+                isAvailable: $access['waiter']->isNotEmpty(),
             ),
             $this->screenQuickAction(
                 label: 'Kitchen',
@@ -581,19 +598,19 @@ class BuildRestaurantDashboardAction
         $branchIds->each(function (int $branchId) use ($cache, $cacheKey): void {
             $indexKey = self::branchCacheKeysKey($branchId);
             $cacheKeys = $cache->get($indexKey, []);
-            $cacheKeys = is_array($cacheKeys) ? $cacheKeys : [];
-            $cacheKeys[] = $cacheKey;
+            $cacheKeys = collect(is_array($cacheKeys) ? $cacheKeys : [])
+                ->push($cacheKey)
+                ->filter(fn (mixed $key): bool => is_string($key) && $key !== '')
+                ->unique()
+                ->values();
+            $retainedKeys = $cacheKeys->take(-50);
 
-            $cache->put(
-                $indexKey,
-                collect($cacheKeys)
-                    ->filter(fn (mixed $key): bool => is_string($key) && $key !== '')
-                    ->unique()
-                    ->take(-50)
-                    ->values()
-                    ->all(),
-                self::INDEX_SECONDS,
-            );
+            foreach ($cacheKeys->diff($retainedKeys) as $displacedKey) {
+                $cache->forget(CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX.$displacedKey);
+                $cache->forget($displacedKey);
+            }
+
+            $cache->put($indexKey, $retainedKeys->values()->all(), self::INDEX_SECONDS);
         });
     }
 

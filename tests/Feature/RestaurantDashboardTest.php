@@ -24,6 +24,8 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Cache\Repository;
@@ -114,6 +116,36 @@ test('waiter sees operational dashboard without report totals', function () {
         ->assertDontSeeText('€32.00');
 });
 
+test('waiter quick action cache respects distinct view and confirm permissions', function (bool $viewerFirst) {
+    [$organization] = createPrompt70DashboardContext();
+    $viewer = User::factory()->create();
+    $confirmer = User::factory()->create();
+    attachPrompt70Staff($viewer, $organization, SystemRole::Director, []);
+    attachPrompt70Staff($confirmer, $organization, SystemRole::Director, []);
+    $permissions = Permission::query()->select(['id', 'code'])->get();
+    $viewer->permissionOverrides()->sync($permissions->mapWithKeys(fn (Permission $permission): array => [
+        $permission->id => ['enabled' => $permission->code === SystemPermission::ViewOrders->value],
+    ])->all());
+    $confirmer->permissionOverrides()->sync($permissions->mapWithKeys(fn (Permission $permission): array => [
+        $permission->id => ['enabled' => $permission->code === SystemPermission::ConfirmOrders->value],
+    ])->all());
+    $action = app(BuildRestaurantDashboardAction::class);
+    $first = $action->handle($viewerFirst ? $viewer : $confirmer)['dashboard'];
+    $second = $action->handle($viewerFirst ? $confirmer : $viewer)['dashboard'];
+
+    expect($first['cache_key'])->not->toBe($second['cache_key']);
+
+    foreach ([$viewer, $confirmer] as $user) {
+        $snapshot = $action->handle($user)['dashboard'];
+        $waiterLink = collect($snapshot['quick_actions'])->firstWhere('label', 'Waiter screen');
+        expect($waiterLink['is_available'])->toBe($user->is($viewer))
+            ->and($waiterLink['href'])->toBe($user->is($viewer) ? route('restaurant.waiter.dashboard') : null);
+    }
+
+    $this->actingAs($confirmer)->get(route('restaurant.waiter.dashboard'))->assertForbidden();
+    $this->actingAs($viewer)->get(route('restaurant.waiter.dashboard'))->assertOk();
+})->with(['viewer first' => true, 'confirmer first' => false]);
+
 test('restaurant dashboard reports direct access for authorized and unauthorized users', function () {
     [$organization] = createPrompt70DashboardContext();
     $manager = User::factory()->create(['name' => 'Direct Access Manager']);
@@ -151,6 +183,48 @@ test('restaurant dashboard cache is invalidated by draft and kitchen ticket item
     $ticketItem->update(['served_at' => now()]);
 
     expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeFalse();
+});
+
+test('restaurant dashboard cache keeps localized snapshots separate and invalidates every language', function () {
+    [$organization, , , , $sentDraft] = createPrompt70DashboardContext();
+    $manager = User::factory()->create();
+    attachPrompt70Staff($manager, $organization, SystemRole::Director, [
+        SystemPermission::ViewReports,
+        SystemPermission::ViewOrders,
+    ]);
+    $action = app(BuildRestaurantDashboardAction::class);
+    $snapshots = [];
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        app()->setLocale($locale);
+        $dashboard = $action->handle($manager)['dashboard'];
+
+        expect($dashboard['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()))
+            ->and($dashboard['metrics']['orders_today_total'])->toBe(MoneyFormatter::formatCents(3200, 'EUR'));
+
+        $snapshots[$locale] = $dashboard;
+    }
+
+    expect(array_unique(array_column($snapshots, 'cache_key')))->toHaveCount(3);
+
+    foreach ($snapshots as $locale => $dashboard) {
+        app()->setLocale($locale);
+
+        expect($action->handle($manager)['dashboard'])->toBe($dashboard)
+            ->and(restaurantDashboardCacheStore()->has($dashboard['cache_key']))->toBeTrue();
+
+        $this->actingAs($manager)
+            ->get(route('restaurant.dashboard', ['lang' => $locale]))
+            ->assertOk()
+            ->assertSeeText($dashboard['cached_at'])
+            ->assertSeeText($dashboard['metrics']['orders_today_total']);
+    }
+
+    $sentDraft->forceFill(['status' => DraftOrderStatus::WaiterReview])->save();
+
+    foreach ($snapshots as $dashboard) {
+        expect(restaurantDashboardCacheStore()->has($dashboard['cache_key']))->toBeFalse();
+    }
 });
 
 function createPrompt70DashboardContext(): array

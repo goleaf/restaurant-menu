@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Support\LocalizedDateFormatter;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Number;
 
 class BuildAuditLogIndexAction
 {
@@ -31,7 +32,7 @@ class BuildAuditLogIndexAction
         $organizationIds = $this->accessibleOrganizationIds($user);
         $branchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewAuditLog);
-        $perPage = max(10, min(100, $perPage));
+        $perPage = (int) Number::clamp($perPage, 10, 100);
 
         if (! $user->isSuperadmin() && $organizationIds->isEmpty()) {
             return [

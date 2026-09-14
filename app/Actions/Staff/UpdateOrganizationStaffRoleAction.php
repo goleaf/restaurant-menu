@@ -111,17 +111,21 @@ final class UpdateOrganizationStaffRoleAction
         Role $currentRole,
         Role $newRole,
     ): void {
-        if ($currentRole->code !== SystemRole::Owner || $newRole->code === SystemRole::Owner) {
+        if ($currentRole->code !== SystemRole::Owner
+            || $newRole->code === SystemRole::Owner
+            || $membership->status !== OrganizationUserStatus::Active) {
             return;
         }
 
-        $activeOwnerCount = OrganizationUser::query()
+        $hasAnotherActiveOwner = OrganizationUser::query()
+            ->select(['id'])
             ->where('organization_id', $organization->id)
             ->where('status', OrganizationUserStatus::Active->value)
+            ->whereKeyNot($membership->id)
             ->whereHas('role', fn ($query) => $query->where('code', SystemRole::Owner->value))
-            ->count();
+            ->exists();
 
-        if ($activeOwnerCount <= 1 && $membership->status === OrganizationUserStatus::Active) {
+        if (! $hasAnotherActiveOwner) {
             throw ValidationException::withMessages([
                 'editingRoleId' => __('staff.errors.last_owner_role_change_blocked'),
             ]);

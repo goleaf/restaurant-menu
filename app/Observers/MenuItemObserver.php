@@ -90,6 +90,10 @@ class MenuItemObserver
 
     private function recordAuditedChanges(MenuItem $menuItem): void
     {
+        if (! $menuItem->wasChanged(['price_cents', 'is_available'])) {
+            return;
+        }
+
         $context = $this->contextForMenuId($menuItem->menu_id);
         $actor = $this->currentUser();
 

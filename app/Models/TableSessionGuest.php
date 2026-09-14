@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\TableSessionGuestStatus;
 use Database\Factories\TableSessionGuestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,7 @@ use Illuminate\Notifications\Notifiable;
  * @property TableSessionGuestStatus $status
  */
 #[Fillable(['table_session_id', 'guest_name', 'locale', 'ready_at', 'joined_at', 'left_at', 'metadata'])]
+#[Hidden(['guest_token'])]
 class TableSessionGuest extends Model
 {
     /** @use HasFactory<TableSessionGuestFactory> */

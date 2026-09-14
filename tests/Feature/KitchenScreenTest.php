@@ -355,6 +355,76 @@ test('cancelled department items remain visible but non actionable in history', 
         ->assertDontSee('wire:click="setItemStatus('.$kitchenItem->id.', \'ready\')"', false);
 });
 
+test('department filters return only matching tickets and matching items', function (
+    DepartmentTicketFilter $filter,
+    array $expectedStates,
+    KitchenTicketItemStatus $excludedStatus,
+) {
+    [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
+    $chef = User::factory()->create();
+
+    attachPrompt61Staff($chef, $organization, SystemRole::HeadChef);
+
+    $ticket = $kitchenItem->kitchenTicket()->firstOrFail();
+    $itemIds = ['new' => $kitchenItem->id];
+
+    foreach ([
+        'accepted' => [KitchenTicketItemStatus::Accepted, null],
+        'in_progress' => [KitchenTicketItemStatus::InProgress, null],
+        'ready' => [KitchenTicketItemStatus::Ready, null],
+        'completed' => [KitchenTicketItemStatus::Ready, now()],
+        'cancelled' => [KitchenTicketItemStatus::Cancelled, null],
+    ] as $state => [$status, $servedAt]) {
+        $orderItem = OrderItem::factory()->create([
+            'order_id' => $ticket->order_id,
+            'table_session_guest_id' => $kitchenItem->table_session_guest_id,
+            'menu_item_id' => $kitchenItem->menu_item_id,
+            'kitchen_department_id' => $kitchen->id,
+            'kitchen_department_type' => $kitchen->type->value,
+            'kitchen_department_name' => $kitchen->name,
+        ]);
+        $itemIds[$state] = KitchenTicketItem::factory()
+            ->forDispatchedOrderItem($ticket, $orderItem)
+            ->create([
+                'status' => $status,
+                'served_at' => $servedAt,
+                'served_by_user_id' => $servedAt === null ? null : $chef->id,
+                'created_at' => $kitchenItem->created_at->addSecond(),
+            ])
+            ->id;
+    }
+
+    $excludedTicket = createPrompt61QueuedTicket($kitchenItem, $kitchen, 1);
+    $excludedTicket->items()->sole()->forceFill(['status' => $excludedStatus])->save();
+
+    $payload = [];
+    $queries = countDatabaseQueries(function () use ($chef, $kitchen, $filter, &$payload): void {
+        $payload = app(BuildDepartmentDashboardAction::class)->handle(
+            user: $chef,
+            selectedDepartmentId: $kitchen->id,
+            departmentTypes: KitchenDepartmentType::kitchenProductionTypes(),
+            roleCodes: [SystemRole::HeadChef, SystemRole::Cook],
+            permissionCodes: [SystemPermission::ViewKitchen],
+            filter: $filter,
+        );
+    });
+
+    expect(array_column($payload['tickets'], 'id'))->toBe([$ticket->id])
+        ->and($payload['ticket_count'])->toBe(1)
+        ->and(array_column($payload['tickets'][0]['items'], 'id'))->toBe(
+            array_map(fn (string $state): int => $itemIds[$state], $expectedStates),
+        )
+        ->and($queries)->toBeLessThanOrEqual(23);
+})->with([
+    'active' => [DepartmentTicketFilter::Active, ['new', 'accepted', 'in_progress', 'ready'], KitchenTicketItemStatus::Cancelled],
+    'new' => [DepartmentTicketFilter::New, ['new'], KitchenTicketItemStatus::Accepted],
+    'accepted' => [DepartmentTicketFilter::Accepted, ['accepted'], KitchenTicketItemStatus::New],
+    'in progress' => [DepartmentTicketFilter::InProgress, ['in_progress'], KitchenTicketItemStatus::New],
+    'ready' => [DepartmentTicketFilter::Ready, ['ready'], KitchenTicketItemStatus::New],
+    'completed' => [DepartmentTicketFilter::Completed, ['completed'], KitchenTicketItemStatus::New],
+    'cancelled' => [DepartmentTicketFilter::Cancelled, ['cancelled'], KitchenTicketItemStatus::New],
+]);
+
 test('department dashboard paginates long queues with a constant query budget', function () {
     [$organization, $kitchen, , $kitchenItem] = createPrompt61KitchenScenario();
     $chef = User::factory()->create(['name' => 'Prompt 61 Scale Chef']);

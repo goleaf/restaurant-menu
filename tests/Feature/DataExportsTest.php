@@ -357,6 +357,100 @@ test('payments menu and tables csv exports stream branch data', function (string
         ->toContain('SP-EXPORT-9');
 })->with(['en', 'lt', 'ru']);
 
+test('csv payment cells neutralize formula prefixes and preserve ordinary values', function (string $note, string $expected) {
+    [$organization, $branch] = createPrompt76ExportBranches();
+    $user = User::factory()->create();
+    attachPrompt76Exporter($user, $organization);
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+    $payment = ManualPayment::factory()->forTableSession($tableSession)->create([
+        'note' => $note,
+        'amount_cents' => 1234,
+    ]);
+
+    $content = $this->actingAs($user)
+        ->get(route('restaurant.exports.download', [$branch, DataExportType::Payments->value]))
+        ->assertOk()
+        ->streamedContent();
+    $rows = parseExportCsv($content);
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows[1])->toHaveCount(12)
+        ->and($rows[1][0])->toBe((string) $payment->id)
+        ->and($rows[1][8])->toBe('12.34')
+        ->and($rows[1][11])->toBe($expected)
+        ->and($payment->refresh()->note)->toBe($note);
+})->with([
+    'equals' => ['=1+1', "'=1+1"],
+    'plus' => ['+1+1', "'+1+1"],
+    'minus' => ['-1+1', "'-1+1"],
+    'at' => ['@SUM(1,1)', "'@SUM(1,1)"],
+    'tab' => ["\t=1+1", "'\t=1+1"],
+    'carriage return' => ["\r=1+1", "'\r=1+1"],
+    'line feed' => ["\n=1+1", "'\n=1+1"],
+    'spaces' => ['  =1+1', "'  =1+1"],
+    'unicode whitespace' => ["\u{00A0}=1+1", "'\u{00A0}=1+1"],
+    'fullwidth equals' => ['＝1+1', "'＝1+1"],
+    'fullwidth plus' => ['＋1+1', "'＋1+1"],
+    'fullwidth minus' => ['－1+1', "'－1+1"],
+    'fullwidth at' => ['＠SUM(1,1)', "'＠SUM(1,1)"],
+    'empty' => ['', ''],
+    'unicode' => ['Žuvis — рыба', 'Žuvis — рыба'],
+    'ordinary spacing' => ['  Paid in cash  ', '  Paid in cash  '],
+    'already text' => ["'=1+1", "'=1+1"],
+    'quoted backslash and separator' => ['Sauce \",=1+1', 'Sauce \",=1+1'],
+    'multiline quoted value' => ["First, \"quoted\" line\nSecond line", "First, \"quoted\" line\nSecond line"],
+]);
+
+test('every csv export protects its text cells', function (DataExportType $type, int $textColumn) {
+    [$organization, $branch] = createPrompt76ExportBranches();
+    $branch->update(['name' => '=1+1']);
+    $user = User::factory()->create();
+    attachPrompt76Exporter($user, $organization);
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+    Order::factory()->for($branch)->for($servicePoint)->for($tableSession)->create();
+    ManualPayment::factory()->forTableSession($tableSession)->create();
+    $menu = Menu::factory()->for($branch)->create(['name' => '=1+1']);
+    $category = MenuCategory::factory()->for($menu)->create();
+    MenuItem::factory()->for($menu)->for($category, 'category')->create();
+
+    $rows = parseExportCsv($this->actingAs($user)
+        ->get(route('restaurant.exports.download', [$branch, $type->value]))
+        ->assertOk()
+        ->streamedContent());
+
+    expect($rows)->toHaveCount(2)
+        ->and($rows[1][$textColumn])->toBe("'=1+1");
+})->with([
+    'orders' => [DataExportType::Orders, 2],
+    'payments' => [DataExportType::Payments, 3],
+    'menu' => [DataExportType::Menu, 1],
+    'tables' => [DataExportType::ServicePoints, 1],
+]);
+
+/**
+ * @return list<list<string|null>>
+ */
+function parseExportCsv(string $content): array
+{
+    $stream = fopen('php://temp', 'r+');
+    expect($stream)->not->toBeFalse();
+    fwrite($stream, $content);
+    rewind($stream);
+    $rows = [];
+
+    try {
+        while (($row = fgetcsv($stream, escape: '')) !== false) {
+            $rows[] = $row;
+        }
+    } finally {
+        fclose($stream);
+    }
+
+    return $rows;
+}
+
 /**
  * @param  list<string>  $columns
  */

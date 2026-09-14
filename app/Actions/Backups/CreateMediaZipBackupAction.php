@@ -159,14 +159,22 @@ final class CreateMediaZipBackupAction
             throw new RuntimeException('The media path is outside the configured storage root.');
         }
 
-        return ltrim(str_replace('\\', '/', substr($absolutePath, strlen($mediaRoot))), '/');
+        return Str::of(substr($absolutePath, strlen($mediaRoot)))
+            ->replace('\\', '/')
+            ->ltrim('/')
+            ->toString();
     }
 
     private function isWithinDirectory(string $path, string $directory): bool
     {
-        $normalizedDirectory = rtrim(str_replace('\\', '/', $directory), '/').'/';
-        $normalizedPath = str_replace('\\', '/', $path);
+        $normalizedDirectory = Str::of($directory)
+            ->replace('\\', '/')
+            ->rtrim('/')
+            ->append('/')
+            ->toString();
 
-        return str_starts_with($normalizedPath, $normalizedDirectory);
+        return Str::of($path)
+            ->replace('\\', '/')
+            ->startsWith($normalizedDirectory);
     }
 }

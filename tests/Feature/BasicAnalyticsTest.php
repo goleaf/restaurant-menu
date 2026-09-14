@@ -1,6 +1,8 @@
 <?php
 
 use App\Actions\Analytics\BuildBasicAnalyticsDashboardAction;
+use App\Actions\Dashboard\BuildRestaurantDashboardAction;
+use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\OrderStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\ServicePointStatus;
@@ -19,9 +21,15 @@ use App\Models\Role;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\LocalizedDateFormatter;
+use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Cache\Repository;
+use Illuminate\Database\Eloquent\Factories\Sequence;
+use Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks;
+use Illuminate\Http\Request;
+use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
@@ -33,6 +41,171 @@ beforeEach(function () {
 afterEach(function () {
     CarbonImmutable::setTestNow();
 });
+
+dataset('report cache strategies', [
+    'analytics' => [BuildBasicAnalyticsDashboardAction::class, 'analytics', 240, 300],
+    'restaurant dashboard' => [BuildRestaurantDashboardAction::class, 'dashboard', 45, 60],
+]);
+
+test('report caches refresh after the response in their original locale', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds, string $locale,
+) {
+    $this->travelTo(CarbonImmutable::parse('2026-06-04 12:00:30'));
+    config()->set('cache.stores.database.lock_lottery', [0, 1]);
+    [$user] = createPrompt69AnalyticsContext();
+    app()->setLocale($locale);
+    $action = app($actionClass);
+    $cache = Cache::store($actionClass::cacheStore());
+    $initial = $action->handle($user)[$payloadKey];
+    $pending = app(DeferredCallbackCollection::class);
+
+    $this->travel($freshSeconds - 1)->seconds();
+    $freshQueries = countDatabaseQueries(function () use ($action, $user, $payloadKey, $initial): void {
+        expect($action->handle($user)[$payloadKey])->toBe($initial);
+    });
+    expect($pending)->toHaveCount(0);
+
+    $this->travel(1)->seconds();
+    $staleQueries = countDatabaseQueries(function () use ($action, $user, $payloadKey, $initial): void {
+        expect($action->handle($user)[$payloadKey])->toBe($initial);
+    });
+    expect($pending)->toHaveCount(1)
+        ->and($staleQueries)->toBe($freshQueries)
+        ->and($cache->get($initial['cache_key']))->toBe($initial);
+    $expectedTimestamp = LocalizedDateFormatter::dateTime(CarbonImmutable::now());
+    app()->setLocale($locale === 'ru' ? 'en' : 'ru');
+    $terminationLocale = app()->getLocale();
+
+    app(InvokeDeferredCallbacks::class)->terminate(Request::create('/'), response('ok'));
+
+    $refreshed = $cache->get($initial['cache_key']);
+    expect($refreshed['cached_at'])->toBe($expectedTimestamp)
+        ->and($refreshed['cached_at'])->not->toBe($initial['cached_at'])
+        ->and($refreshed['cache_key'])->toBe($initial['cache_key'])
+        ->and(app()->getLocale())->toBe($terminationLocale)
+        ->and($pending)->toHaveCount(0);
+})->with('report cache strategies')->with(['en', 'lt', 'ru']);
+
+test('report caches rebuild synchronously after their maximum age', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+) {
+    $this->travelTo(CarbonImmutable::parse('2026-06-04 12:00:30'));
+    [$user] = createPrompt69AnalyticsContext();
+    $action = app($actionClass);
+    $initial = $action->handle($user)[$payloadKey];
+
+    $this->travel($maximumSeconds + 1)->seconds();
+    $current = $action->handle($user)[$payloadKey];
+
+    expect($current['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()))
+        ->and($current['cached_at'])->not->toBe($initial['cached_at'])
+        ->and(app(DeferredCallbackCollection::class))->toHaveCount(0);
+})->with('report cache strategies');
+
+test('invalidated report caches are not restored by a pending refresh', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+) {
+    $this->travelTo(CarbonImmutable::parse('2026-06-04 12:00:30'));
+    [$user, , , $activeSession] = createPrompt69AnalyticsContext();
+    $action = app($actionClass);
+    $cache = Cache::store($actionClass::cacheStore());
+    $initial = $action->handle($user)[$payloadKey];
+    $this->travel($freshSeconds)->seconds();
+    $action->handle($user);
+    expect(app(DeferredCallbackCollection::class))->toHaveCount(1);
+
+    $activeSession->forceFill(['ended_at' => now()])->save();
+
+    expect($cache->has($initial['cache_key']))->toBeFalse()
+        ->and($cache->has(Repository::FLEXIBLE_CREATED_KEY_PREFIX.$initial['cache_key']))->toBeFalse();
+
+    app(InvokeDeferredCallbacks::class)->terminate(Request::create('/'), response('ok'));
+
+    expect($cache->has($initial['cache_key']))->toBeFalse();
+    $current = $action->handle($user)[$payloadKey];
+    expect($current['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()));
+})->with('report cache strategies');
+
+test('report cache refresh does not wait for another refresher or extend stale lifetime', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+) {
+    $this->travelTo(CarbonImmutable::parse('2026-06-04 12:00:30'));
+    [$user] = createPrompt69AnalyticsContext();
+    $action = app($actionClass);
+    $cache = Cache::store($actionClass::cacheStore());
+    $initial = $action->handle($user)[$payloadKey];
+    $this->travel($freshSeconds)->seconds();
+    $action->handle($user);
+    expect(app(DeferredCallbackCollection::class))->toHaveCount(1);
+    $lock = $cache->lock('illuminate:cache:flexible:lock:'.$initial['cache_key'], 30);
+    expect($lock->get())->toBeTrue();
+
+    try {
+        app(InvokeDeferredCallbacks::class)->terminate(Request::create('/'), response('ok'));
+        expect($cache->get($initial['cache_key']))->toBe($initial);
+    } finally {
+        $lock->release();
+    }
+
+    $this->travel($maximumSeconds - $freshSeconds + 1)->seconds();
+    expect($cache->has($initial['cache_key']))->toBeFalse();
+})->with('report cache strategies');
+
+test('report cache eviction removes displaced snapshots and cancels their pending refresh', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+) {
+    $this->travelTo(CarbonImmutable::parse('2026-06-04 12:00:30'));
+    $user = User::factory()->create();
+    $organization = Organization::factory()->create();
+    $brand = Brand::factory()->for($organization)->create();
+    $branches = Branch::factory()
+        ->count(52)
+        ->for($organization)
+        ->for($brand)
+        ->sequence(fn (Sequence $sequence): array => ['name' => 'Report cache branch '.$sequence->index])
+        ->create();
+    $commonBranch = $branches->first();
+    $accessibleIds = collect([$commonBranch->id]);
+    $this->mock(ResolveWaiterAccessibleBranchIdsAction::class)
+        ->shouldReceive('handle')
+        ->andReturnUsing(function (User $user, SystemPermission $permission = SystemPermission::ViewOrders) use (&$accessibleIds) {
+            return $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
+        });
+    $action = app($actionClass);
+    $cache = Cache::store($actionClass::cacheStore());
+    $snapshots = [];
+
+    foreach ($branches->skip(1) as $branch) {
+        $accessibleIds = collect([$commonBranch->id, $branch->id]);
+        $snapshot = $action->handle($user)[$payloadKey];
+        $snapshots[] = $snapshot;
+
+        if (count($snapshots) === 1) {
+            $this->travel($freshSeconds)->seconds();
+            expect($action->handle($user)[$payloadKey])->toBe($snapshot)
+                ->and(app(DeferredCallbackCollection::class))->toHaveCount(1);
+        }
+    }
+
+    $evictedKey = $snapshots[0]['cache_key'];
+    expect($snapshots)->toHaveCount(51)
+        ->and($cache->has($evictedKey))->toBeFalse()
+        ->and($cache->has(Repository::FLEXIBLE_CREATED_KEY_PREFIX.$evictedKey))->toBeFalse();
+    app(InvokeDeferredCallbacks::class)->terminate(Request::create('/'), response('ok'));
+    expect($cache->has($evictedKey))->toBeFalse()
+        ->and($action->handle($user)[$payloadKey])->toBe($snapshots[50]);
+
+    foreach (array_slice($snapshots, 1) as $snapshot) {
+        expect($cache->get($snapshot['cache_key']))->toBe($snapshot);
+    }
+
+    $actionClass::forgetForBranch($commonBranch->id);
+
+    foreach ($snapshots as $snapshot) {
+        expect($cache->has($snapshot['cache_key']))->toBeFalse()
+            ->and($cache->has(Repository::FLEXIBLE_CREATED_KEY_PREFIX.$snapshot['cache_key']))->toBeFalse();
+    }
+})->with('report cache strategies');
 
 test('reports viewer sees cached basic analytics for demo data', function () {
     [$user] = createPrompt69AnalyticsContext();
@@ -131,6 +304,41 @@ test('analytics cache can be invalidated for several branches at once', function
     BuildBasicAnalyticsDashboardAction::forgetForBranches([$branch->id, 0]);
 
     expect(analyticsCacheStore()->has($cacheKey))->toBeFalse();
+});
+
+test('analytics cache keeps localized snapshots separate and invalidates every language', function () {
+    [$user, , , $activeSession] = createPrompt69AnalyticsContext();
+    $action = app(BuildBasicAnalyticsDashboardAction::class);
+    $snapshots = [];
+
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        app()->setLocale($locale);
+        $analytics = $action->handle($user)['analytics'];
+
+        expect($analytics['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()))
+            ->and($analytics['orders_today_total'])->toBe(MoneyFormatter::formatCents(3000, 'EUR'))
+            ->and($analytics['average_check'])->toBe(MoneyFormatter::formatCents(1500, 'EUR'));
+
+        $snapshots[$locale] = $analytics;
+    }
+
+    expect(array_unique(array_column($snapshots, 'cache_key')))->toHaveCount(3);
+
+    foreach ($snapshots as $locale => $analytics) {
+        app()->setLocale($locale);
+
+        expect($action->handle($user)['analytics'])->toBe($analytics)
+            ->and(analyticsCacheStore()->has($analytics['cache_key']))->toBeTrue();
+    }
+
+    $activeSession->forceFill([
+        'status' => TableSessionStatus::Closed,
+        'ended_at' => now(),
+    ])->save();
+
+    foreach ($snapshots as $analytics) {
+        expect(analyticsCacheStore()->has($analytics['cache_key']))->toBeFalse();
+    }
 });
 
 test('payment and session changes invalidate analytics cache', function () {

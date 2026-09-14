@@ -808,6 +808,32 @@ test('price and availability changes require dedicated permissions', function ()
         ->assertOk();
 });
 
+test('menu price validation rejects incomplete decimals before saving and permits correction', function (string $price): void {
+    [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
+    grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu, SystemPermission::ChangePrices]);
+    $menu = Menu::factory()->for($branch)->create();
+    $category = MenuCategory::factory()->for($menu)->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['price_cents' => 800]);
+
+    $component = Livewire::actingAs($manager)
+        ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('startEditingItem', $item->id)
+        ->set('editingItemTranslations.en.name', 'Soup')
+        ->set('editingItemTranslations.lt.name', 'Sriuba')
+        ->set('editingItemTranslations.ru.name', 'Суп')
+        ->set('editingItemPrice', $price)
+        ->call('updateItem')
+        ->assertHasErrors('editingItemPrice');
+
+    expect($item->refresh()->price_cents)->toBe(800);
+
+    $component->set('editingItemPrice', '0.29')
+        ->call('updateItem')
+        ->assertHasNoErrors();
+
+    expect($item->refresh()->price_cents)->toBe(29);
+})->with(['.50', '1.']);
+
 test('menu item action independently preserves restricted price and availability fields', function () {
     [$organization, , $branch, $manager] = createMenuCrudBranch();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);

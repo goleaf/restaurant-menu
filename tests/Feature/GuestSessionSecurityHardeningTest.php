@@ -13,8 +13,10 @@ use App\Enums\QrCodeStatus;
 use App\Enums\ServicePointStatus;
 use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
+use App\Enums\TableSessionStatus;
 use App\Livewire\PublicQr\GuestEntry;
 use App\Livewire\PublicQr\Show as PublicQrShow;
+use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -29,8 +31,123 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\TableSessionJoinRequest;
+use App\Models\TableSessionServicePoint;
+use App\Services\PublicQr\PublicQrQueryService;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+
+test('guest table presentation loads only missing service point relations', function (
+    string $loadedRelations,
+    bool $hasArea,
+    int $expectedQueries,
+): void {
+    $area = AreaNode::factory()->create();
+    $servicePoint = ServicePoint::factory()->create([
+        'branch_id' => $area->branch_id,
+        'area_node_id' => $hasArea ? $area->id : null,
+    ]);
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+
+    if ($loadedRelations !== 'none') {
+        $tableSession->load('servicePoint:id,branch_id,area_node_id,type,name,display_number,is_active');
+    }
+
+    if ($loadedRelations === 'all') {
+        $tableSession->servicePoint->load('areaNode:id,branch_id,name');
+    }
+
+    $loadedServicePoint = $tableSession->getRelations()['servicePoint'] ?? null;
+    $queries = app(PublicQrQueryService::class);
+    $result = null;
+    $queryCount = countDatabaseQueries(function () use ($queries, $tableSession, &$result): void {
+        $result = $queries->servicePointForTableSession($tableSession);
+    });
+
+    expect($result)->toBeInstanceOf(ServicePoint::class)
+        ->and($result->relationLoaded('areaNode'))->toBeTrue()
+        ->and($queryCount)->toBe($expectedQueries);
+
+    if ($loadedServicePoint instanceof ServicePoint) {
+        expect($result)->toBe($loadedServicePoint);
+    }
+
+    $presentationQueries = countDatabaseQueries(function () use ($queries, $tableSession, $result, $servicePoint, $area, $hasArea): void {
+        expect($result->id)->toBe($servicePoint->id)
+            ->and($result->name)->toBe($servicePoint->name)
+            ->and($result->display_number)->toBe($servicePoint->display_number)
+            ->and($result->type)->toBe($servicePoint->type)
+            ->and($result->areaNode?->id)->toBe($hasArea ? $area->id : null)
+            ->and($result->areaNode?->name)->toBe($hasArea ? $area->name : null)
+            ->and($queries->servicePointForTableSession($tableSession))->toBe($result);
+    });
+
+    expect($presentationQueries)->toBe(0);
+})->with([
+    'unloaded table and area' => ['none', true, 2],
+    'loaded table with missing area' => ['table', true, 1],
+    'loaded table and area' => ['all', true, 0],
+    'unloaded table without an area' => ['none', false, 1],
+    'loaded table without an area' => ['table', false, 0],
+    'loaded table and null area' => ['all', false, 0],
+]);
+
+test('qr session lookups keep direct and transferred filters independent', function (
+    string $origin,
+    TableSessionStatus $status,
+    bool $isVisible,
+    int $expectedQueries,
+): void {
+    $servicePoint = ServicePoint::factory()->create(['is_active' => true]);
+    $qrServicePoint = match ($origin) {
+        'current' => $servicePoint,
+        'foreign' => ServicePoint::factory()->create(['is_active' => true]),
+        default => ServicePoint::factory()->create(['branch_id' => $servicePoint->branch_id, 'is_active' => true]),
+    };
+    $qrCode = QrCode::factory()->forServicePoint($qrServicePoint)->active()->create();
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create([
+        'status' => $status,
+        'ended_at' => $status->isTerminal() ? now() : null,
+        'metadata' => in_array($origin, ['transferred', 'foreign'], true)
+            ? ['transfers' => [['from_service_point_id' => $qrServicePoint->id]]]
+            : [],
+    ]);
+
+    if (in_array($origin, ['merged', 'unlinked'], true)) {
+        $linkFactory = TableSessionServicePoint::factory()
+            ->forTableSessionAndServicePoint($tableSession, $qrServicePoint);
+
+        if ($origin === 'unlinked') {
+            $linkFactory = $linkFactory->unlinkedBy();
+        }
+
+        $linkFactory->create();
+    }
+
+    $result = null;
+    $queryCount = countDatabaseQueries(function () use ($qrCode, $tableSession, &$result): void {
+        $result = app(PublicQrQueryService::class)->activeTableSessionForQr($qrCode->public_token, $tableSession->id);
+    });
+
+    expect($queryCount)->toBe($expectedQueries)
+        ->and($result?->id)->toBe($isVisible ? $tableSession->id : null);
+
+    if ($isVisible) {
+        expect($result->branch_id)->toBe($tableSession->branch_id)
+            ->and($result->service_point_id)->toBe($servicePoint->id)
+            ->and($result->status)->toBe($status)
+            ->and($result->metadata)->toBe($tableSession->metadata);
+    }
+})->with([
+    'current table' => ['current', TableSessionStatus::Active, true, 3],
+    'actively merged table' => ['merged', TableSessionStatus::Active, true, 3],
+    'transferred table fallback' => ['transferred', TableSessionStatus::Active, true, 4],
+    'unrelated table in same branch' => ['unrelated', TableSessionStatus::Active, false, 4],
+    'unlinked table' => ['unlinked', TableSessionStatus::Active, false, 4],
+    'foreign branch despite transfer metadata' => ['foreign', TableSessionStatus::Active, false, 4],
+    'closed current table' => ['current', TableSessionStatus::Closed, false, 4],
+    'closed transferred table' => ['transferred', TableSessionStatus::Closed, false, 4],
+    'cancelled transferred table' => ['transferred', TableSessionStatus::Cancelled, false, 4],
+]);
 
 test('guest-created session action rejects inactive service points', function () {
     [, , $servicePoint] = createPrompt85SecurityContext(withTableSession: false);

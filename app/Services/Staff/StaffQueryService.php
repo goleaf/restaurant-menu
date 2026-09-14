@@ -32,12 +32,9 @@ final class StaffQueryService
                 'user' => fn ($query) => $query->select(['id', 'name', 'email']),
                 'role' => fn ($query) => $query->select($this->roleColumns()),
             ])
-            ->where('organization_id', $organization->id)
-            ->when($search !== '', fn ($query) => $query->whereHas('user', function ($userQuery) use ($search): void {
-                $userQuery
-                    ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%');
-            }))
+            ->whereBelongsTo($organization, 'organization')
+            ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($userQuery) => $userQuery
+                ->whereAny(['name', 'email'], 'like', '%'.$search.'%')))
             ->orderBy('status')
             ->orderByDesc('id')
             ->simplePaginate($perPage, pageName: 'organizationStaffPage');
@@ -55,12 +52,9 @@ final class StaffQueryService
                 'role' => fn ($query) => $query->select($this->roleColumns()),
             ])
             ->where('organization_id', $branch->organization_id)
-            ->where('branch_id', $branch->id)
-            ->when($search !== '', fn ($query) => $query->whereHas('user', function ($userQuery) use ($search): void {
-                $userQuery
-                    ->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%');
-            }))
+            ->whereBelongsTo($branch, 'branch')
+            ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($userQuery) => $userQuery
+                ->whereAny(['name', 'email'], 'like', '%'.$search.'%')))
             ->orderBy('status')
             ->orderByDesc('id')
             ->simplePaginate($perPage, pageName: 'branchStaffPage');
@@ -78,14 +72,10 @@ final class StaffQueryService
                 'invitedBy:id,name',
                 'acceptedBy:id,name',
             ])
-            ->where('organization_id', $organization->id)
+            ->whereBelongsTo($organization, 'organization')
             ->whereNull('brand_id')
             ->whereNull('branch_id')
-            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
-                $searchQuery
-                    ->where('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            }))
+            ->when($search !== '', fn ($query) => $query->whereAny(['email', 'phone'], 'like', '%'.$search.'%'))
             ->orderByDesc('id')
             ->simplePaginate($perPage, pageName: 'organizationInvitationsPage');
     }
@@ -106,14 +96,10 @@ final class StaffQueryService
                 'invitedBy:id,name',
                 'acceptedBy:id,name',
             ])
-            ->where('organization_id', $organization->id)
+            ->whereBelongsTo($organization, 'organization')
             ->where('brand_id', $branch->brand_id)
-            ->where('branch_id', $branch->id)
-            ->when($search !== '', fn ($query) => $query->where(function ($searchQuery) use ($search): void {
-                $searchQuery
-                    ->where('email', 'like', '%'.$search.'%')
-                    ->orWhere('phone', 'like', '%'.$search.'%');
-            }))
+            ->whereBelongsTo($branch, 'branch')
+            ->when($search !== '', fn ($query) => $query->whereAny(['email', 'phone'], 'like', '%'.$search.'%'))
             ->orderByDesc('id')
             ->simplePaginate($perPage, pageName: 'branchInvitationsPage');
     }
@@ -133,8 +119,8 @@ final class StaffQueryService
         $membership = OrganizationUser::query()
             ->select(['id', 'organization_id', 'user_id', 'role_id', 'status'])
             ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
-            ->where('organization_id', $organization->id)
-            ->where('user_id', $actor->id)
+            ->whereBelongsTo($organization, 'organization')
+            ->whereBelongsTo($actor, 'user')
             ->where('status', OrganizationUserStatus::Active->value)
             ->first();
 
@@ -152,7 +138,7 @@ final class StaffQueryService
     {
         return AreaNode::query()
             ->select(['id', 'branch_id', 'name', 'sort_order', 'is_active'])
-            ->where('branch_id', $branch->id)
+            ->whereBelongsTo($branch, 'branch')
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -183,7 +169,7 @@ final class StaffQueryService
     public function findOrganizationMembership(Organization $organization, int $membershipId): OrganizationUser
     {
         return OrganizationUser::query()
-            ->where('organization_id', $organization->id)
+            ->whereBelongsTo($organization, 'organization')
             ->whereKey($membershipId)
             ->firstOrFail();
     }
@@ -192,7 +178,7 @@ final class StaffQueryService
     {
         return Invitation::query()
             ->select($this->invitationColumns())
-            ->where('organization_id', $organization->id)
+            ->whereBelongsTo($organization, 'organization')
             ->whereNull('brand_id')
             ->whereNull('branch_id')
             ->whereKey($invitationId)
@@ -203,7 +189,7 @@ final class StaffQueryService
     {
         return BranchUser::query()
             ->where('organization_id', $branch->organization_id)
-            ->where('branch_id', $branch->id)
+            ->whereBelongsTo($branch, 'branch')
             ->whereKey($branchUserId)
             ->firstOrFail();
     }
@@ -212,9 +198,9 @@ final class StaffQueryService
     {
         return Invitation::query()
             ->select($this->invitationColumns())
-            ->where('organization_id', $organization->id)
+            ->whereBelongsTo($organization, 'organization')
             ->where('brand_id', $branch->brand_id)
-            ->where('branch_id', $branch->id)
+            ->whereBelongsTo($branch, 'branch')
             ->whereKey($invitationId)
             ->firstOrFail();
     }
@@ -225,7 +211,7 @@ final class StaffQueryService
             ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
             ->with(['role' => fn ($query) => $query->select($this->roleColumns())])
             ->where('organization_id', $branch->organization_id)
-            ->where('branch_id', $branch->id)
+            ->whereBelongsTo($branch, 'branch')
             ->where('user_id', $userId)
             ->firstOrFail();
     }
@@ -236,17 +222,15 @@ final class StaffQueryService
         return AreaNodeWaiter::query()
             ->select(['id', 'branch_id', 'area_node_id', 'user_id'])
             ->where('organization_id', $branch->organization_id)
-            ->where('branch_id', $branch->id)
+            ->whereBelongsTo($branch, 'branch')
             ->orderBy('user_id')
             ->orderBy('area_node_id')
             ->get()
-            ->groupBy('user_id')
-            ->map(fn (EloquentCollection $assignments): array => $assignments
-                ->pluck('area_node_id')
-                ->map(fn (int $areaNodeId): string => (string) $areaNodeId)
-                ->values()
-                ->all())
-            ->all();
+            ->toBase()
+            ->mapToGroups(fn (AreaNodeWaiter $assignment): array => [
+                $assignment->user_id => (string) $assignment->area_node_id,
+            ])
+            ->toArray();
     }
 
     /** @return list<string> */

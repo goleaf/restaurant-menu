@@ -2,9 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\QrCodeStatus;
 use App\Enums\SystemRole;
+use App\Enums\TableSessionStatus;
+use App\Enums\WaiterCallStatus;
 use App\Models\Organization;
+use App\Models\QrCode;
+use App\Models\TableSession;
 use App\Models\User;
+use App\Models\WaiterCall;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +31,46 @@ test('database seeder assembles the complete demo graph for the enabled ruflo en
         ->and(User::query()->whereIn('email', array_column(DemoAccountCatalog::accounts(), 'email'))->count())
         ->toBe(count(DemoAccountCatalog::accounts()))
         ->and(Storage::disk('public')->allFiles('qr'))->not->toBeEmpty();
+});
+
+test('database seeder preserves active record guards across repeated runs', function (): void {
+    config()->set('app.url', 'https://ruflo.test');
+    config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['ruflo.test', 'restaurant-menu.test']);
+
+    $originalIds = null;
+
+    foreach (range(1, 2) as $run) {
+        $this->seed(DatabaseSeeder::class);
+
+        $expectedIds = [
+            'qr' => QrCode::query()->where('status', QrCodeStatus::Active)->orderBy('id')->pluck('id')->all(),
+            'sessions' => TableSession::query()->whereIn('status', [
+                TableSessionStatus::Active,
+                TableSessionStatus::WaitingWaiterConfirmation,
+                TableSessionStatus::PaymentRequested,
+            ])->orderBy('id')->pluck('id')->all(),
+            'calls' => WaiterCall::query()->where('status', WaiterCallStatus::Pending)->orderBy('id')->pluck('id')->all(),
+        ];
+
+        expect($expectedIds['qr'])->not->toBeEmpty()
+            ->and($expectedIds['sessions'])->not->toBeEmpty()
+            ->and($expectedIds['calls'])->not->toBeEmpty();
+
+        $guardedIds = [
+            'qr' => QrCode::query()->whereColumn('active_service_point_id', 'service_point_id')->orderBy('id')->pluck('id')->all(),
+            'sessions' => TableSession::query()->whereColumn('active_service_point_id', 'service_point_id')->orderBy('id')->pluck('id')->all(),
+            'calls' => WaiterCall::query()->whereColumn('active_service_point_id', 'service_point_id')->orderBy('id')->pluck('id')->all(),
+        ];
+
+        expect($guardedIds)->toBe($expectedIds);
+
+        if ($run === 2) {
+            expect($guardedIds)->toBe($originalIds);
+        }
+
+        $originalIds = $guardedIds;
+    }
 });
 
 test('database seeder keeps demo data opt in outside the dedicated host', function (): void {

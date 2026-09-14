@@ -68,13 +68,15 @@ class MenuObserver
         $menu->categories()
             ->select(['id', 'menu_id', 'parent_id'])
             ->whereNull('parent_id')
-            ->get()
+            ->reorder()
+            ->lazyById(200)
             ->each
             ->delete();
 
         $menu->categories()
             ->select(['id', 'menu_id', 'parent_id'])
-            ->get()
+            ->reorder()
+            ->lazyById(200)
             ->each
             ->delete();
     }

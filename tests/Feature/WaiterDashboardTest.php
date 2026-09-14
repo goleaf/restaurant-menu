@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Waiter\BuildWaiterDashboardAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
@@ -12,6 +13,7 @@ use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Models\AreaNode;
 use App\Models\Branch;
+use App\Models\BranchSetting;
 use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -128,6 +130,93 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
         ->assertOk()
         ->assertSee('wire:poll.visible.1s="refreshDashboard"', false);
 });
+
+test('waiter inactivity uses loaded branches with a constant query budget', function (int $sessionsPerBranch): void {
+    $this->freezeTime();
+    [$organization, $brand, $branch] = createPrompt52Branch();
+    $otherBranch = Branch::factory()->for($organization)->for($brand)->create(['timezone' => 'Asia/Tokyo']);
+    BranchSetting::factory()->for($branch)->create(['inactivity_warning_minutes' => 90]);
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+
+    foreach ([$branch, $otherBranch] as $sessionBranch) {
+        ServicePoint::factory()->count($sessionsPerBranch)->for($sessionBranch, 'branch')
+            ->has(TableSession::factory()->active()->state([
+                'branch_id' => $sessionBranch->id,
+                'started_at' => now()->subMinutes(61),
+                'created_at' => now()->subMinutes(61),
+                'updated_at' => now()->subMinutes(61),
+            ]), 'tableSessions')
+            ->create();
+    }
+
+    $queries = countDatabaseQueries(function () use ($waiter, $branch, $sessionsPerBranch): void {
+        $payload = app(BuildWaiterDashboardAction::class)->handle($waiter);
+
+        expect($payload['branches'])->toHaveCount(2)
+            ->and($payload['active_session_count'])->toBe($sessionsPerBranch * 2);
+
+        foreach ($payload['branches'] as $branchPayload) {
+            $warningMinutes = $branchPayload['id'] === $branch->id ? 90 : 45;
+
+            foreach ($branchPayload['service_points'] as $servicePoint) {
+                expect($servicePoint['sessions'])->toHaveCount(1);
+                $inactivity = $servicePoint['sessions'][0]['inactivity'];
+
+                expect($inactivity['minutes_inactive'])->toBe(61)
+                    ->and($inactivity['warning_minutes'])->toBe($warningMinutes)
+                    ->and($inactivity['should_warn'])->toBe($warningMinutes === 45);
+            }
+        }
+    });
+
+    expect($queries)->toBeLessThanOrEqual(35);
+})->with([2, 20]);
+
+test('waiter dashboard summarizes drafts without hydrating their items', function (array $prices, string $expectedTotal): void {
+    [$organization, , $branch] = createPrompt52Branch();
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+    $servicePoint = ServicePoint::factory()->for($branch)->create();
+    $tableSession = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+    $guest = TableSessionGuest::factory()->for($tableSession)->create(['guest_name' => 'Anna']);
+    $draftOrder = DraftOrder::factory()->for($tableSession)->create([
+        'status' => DraftOrderStatus::SentToWaiter,
+        'sent_to_waiter_at' => now(),
+        'sent_by_guest_id' => $guest->id,
+    ]);
+    DraftOrderItem::factory()->for($draftOrder)->for($guest, 'guest')->createMany(
+        array_map(fn (int $price): array => [
+            'menu_item_id' => null,
+            'quantity' => 1,
+            'unit_price_cents' => $price,
+            'total_price_cents' => $price,
+        ], $prices),
+    );
+
+    $hydratedItems = 0;
+    DraftOrderItem::retrieved(function () use (&$hydratedItems): void {
+        $hydratedItems++;
+    });
+
+    $queryCount = countDatabaseQueries(function () use ($waiter, $draftOrder, $prices, $expectedTotal): void {
+        $payload = app(BuildWaiterDashboardAction::class)->handle($waiter);
+        $draft = $payload['branches'][0]['drafts'][0];
+
+        expect($draft['id'])->toBe($draftOrder->id)
+            ->and($draft['items_count'])->toBe(count($prices))
+            ->and($draft['total'])->toBe($expectedTotal)
+            ->and($draft['sent_by_guest_name'])->toBe('Anna')
+            ->and($payload['branches'][0]['service_points'][0]['sessions'][0]['draft'])->toBe($draft);
+    });
+
+    expect($queryCount)->toBeLessThanOrEqual(38)
+        ->and($hydratedItems)->toBe(0);
+})->with([
+    'empty draft' => [[], '€0.00'],
+    'mixed cent amounts' => [[29, 70, 1201], '€13.00'],
+    'larger draft' => [array_fill(0, 40, 29), '€11.60'],
+]);
 
 test('waiter dashboard exposes a query free desktop table preview with a mobile detail fallback', function () {
     [$organization, , $branch] = createPrompt52Branch();

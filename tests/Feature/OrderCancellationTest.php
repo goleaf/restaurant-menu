@@ -31,6 +31,7 @@ use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
 use App\Models\KitchenDepartment;
+use App\Models\KitchenTicket;
 use App\Models\KitchenTicketItem;
 use App\Models\ManualPayment;
 use App\Models\Menu;
@@ -123,6 +124,67 @@ test('waiter cancels order with required reason and guests see cancellation', fu
         ->call('setItemStatus', $ticketItem->id, KitchenTicketItemStatus::InProgress->value)
         ->assertHasErrors('ticket_item_status');
 });
+
+test('order cancellation counts every ready and served ticket item without hydrating the items', function (int $itemCount): void {
+    [$organization, $tableSession, $order, , , $guest] = createPrompt121SentOrderScenario();
+    $manager = User::factory()->create();
+    attachPrompt121Staff($manager, $organization, SystemRole::Director);
+    $ticket = KitchenTicket::factory()->forOrder($order)->create([
+        'department_type' => KitchenDepartmentType::Bar,
+        'department_name' => 'Bar',
+    ]);
+
+    OrderItem::factory()
+        ->for($order)
+        ->count($itemCount)
+        ->has(
+            KitchenTicketItem::factory()
+                ->for($ticket, 'kitchenTicket')
+                ->ready()
+                ->state(['served_at' => now(), 'served_by_user_id' => $manager->id]),
+            'kitchenTicketItem',
+        )
+        ->create(['table_session_guest_id' => $guest->id]);
+    $foreignItem = KitchenTicketItem::factory()->ready()->create(['served_at' => now()]);
+    $hydratedItemCount = 0;
+    KitchenTicketItem::retrieved(function () use (&$hydratedItemCount): void {
+        $hydratedItemCount++;
+    });
+
+    $queryCount = countDatabaseQueries(function () use ($order, $manager): void {
+        app(ChangeOrderStatusAction::class)->handle(
+            order: $order,
+            newStatus: OrderStatus::Cancelled,
+            changedBy: $manager,
+            reason: 'Manager approved cancellation after service.',
+        );
+    });
+
+    $cancelledOrder = $order->fresh();
+    $statusLog = OrderStatusLog::query()
+        ->where('order_id', $order->id)
+        ->where('event', OrderStatusLogEvent::OrderCancelled->value)
+        ->sole();
+    $auditLog = AuditLog::query()
+        ->where('entity_type', 'order')
+        ->where('entity_id', $order->id)
+        ->where('action', AuditLogAction::OrderCancelled->value)
+        ->sole();
+
+    expect($queryCount)->toBeLessThanOrEqual(19)
+        ->and($cancelledOrder->status)->toBe(OrderStatus::Cancelled)
+        ->and($cancelledOrder->metadata['ready_ticket_items_at_cancellation'])->toBe($itemCount)
+        ->and($cancelledOrder->metadata['served_ticket_items_at_cancellation'])->toBe($itemCount)
+        ->and($statusLog->metadata['ready_ticket_items_count'])->toBe($itemCount)
+        ->and($statusLog->metadata['served_ticket_items_count'])->toBe($itemCount)
+        ->and($auditLog->new_values['ready_ticket_items_count'])->toBe($itemCount)
+        ->and($auditLog->new_values['served_ticket_items_count'])->toBe($itemCount)
+        ->and($auditLog->organization_id)->toBe($organization->id)
+        ->and($auditLog->branch_id)->toBe($tableSession->branch_id)
+        ->and($auditLog->user_id)->toBe($manager->id)
+        ->and($hydratedItemCount)->toBe(0)
+        ->and($foreignItem->fresh()->status)->toBe(KitchenTicketItemStatus::Ready);
+})->with([0, 3, 501]);
 
 test('director and shift manager can cancel an order without an explicit cancel permission', function (SystemRole $role) {
     [$organization, , $order] = createPrompt121SentOrderScenario();

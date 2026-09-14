@@ -11,6 +11,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -53,7 +54,7 @@ final class ReportProductionExceptionAction
         }
 
         $store = trim((string) config('monitoring.error_notifications.cache_store', 'file'));
-        $cooldown = min(86_400, max(60, (int) config('monitoring.error_notifications.cooldown_seconds', 300)));
+        $cooldown = (int) Number::clamp((int) config('monitoring.error_notifications.cooldown_seconds', 300), 60, 86_400);
 
         try {
             if (! $this->cache->store($store)->add(

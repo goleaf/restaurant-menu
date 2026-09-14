@@ -16,12 +16,19 @@ use App\Models\User;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Cache\Repository as CacheRepository;
+use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Traits\Localizable;
+use LogicException;
 
 class BuildBasicAnalyticsDashboardAction
 {
+    use Localizable;
+
+    private const CACHE_FRESH_SECONDS = 240;
+
     private const CACHE_SECONDS = 300;
 
     private const CACHE_STORE = 'database';
@@ -47,10 +54,12 @@ class BuildBasicAnalyticsDashboardAction
         }
 
         $cacheKey = self::cacheKeyForBranchIds($branchIds);
-        $analytics = self::cache()->remember(
+        $locale = App::currentLocale();
+        $analytics = self::cache()->flexible(
             $cacheKey,
-            self::CACHE_SECONDS,
-            fn (): array => $this->buildAnalytics($branchIds, $cacheKey),
+            [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
+            fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branchIds, $cacheKey)),
+            lock: ['seconds' => 30],
         );
 
         $this->rememberBranchCacheKeys($branchIds, $cacheKey);
@@ -74,6 +83,7 @@ class BuildBasicAnalyticsDashboardAction
         if (is_array($cacheKeys)) {
             foreach ($cacheKeys as $cacheKey) {
                 if (is_string($cacheKey) && $cacheKey !== '') {
+                    $cache->forget(CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX.$cacheKey);
                     $cache->forget($cacheKey);
                 }
             }
@@ -111,14 +121,21 @@ class BuildBasicAnalyticsDashboardAction
 
         $date ??= CarbonImmutable::now();
 
-        return 'analytics:dashboard:branches:'
+        return 'analytics:dashboard:v3:branches:'
             .sha1($normalizedBranchIds->implode(','))
-            .':today:'.$date->toDateString();
+            .':today:'.$date->toDateString()
+            .':locale:'.App::currentLocale();
     }
 
     private static function cache(): CacheRepository
     {
-        return Cache::store(self::CACHE_STORE);
+        $cache = Cache::store(self::CACHE_STORE);
+
+        if (! $cache instanceof CacheRepository) {
+            throw new LogicException('Report snapshots require the Laravel cache repository.');
+        }
+
+        return $cache;
     }
 
     private static function branchCacheKeysKey(int $branchId): string
@@ -316,19 +333,19 @@ class BuildBasicAnalyticsDashboardAction
         $branchIds->each(function (int $branchId) use ($cache, $cacheKey): void {
             $indexKey = self::branchCacheKeysKey($branchId);
             $cacheKeys = $cache->get($indexKey, []);
-            $cacheKeys = is_array($cacheKeys) ? $cacheKeys : [];
-            $cacheKeys[] = $cacheKey;
+            $cacheKeys = collect(is_array($cacheKeys) ? $cacheKeys : [])
+                ->push($cacheKey)
+                ->filter(fn (mixed $key): bool => is_string($key) && $key !== '')
+                ->unique()
+                ->values();
+            $retainedKeys = $cacheKeys->take(-50);
 
-            $cache->put(
-                $indexKey,
-                collect($cacheKeys)
-                    ->filter(fn (mixed $key): bool => is_string($key) && $key !== '')
-                    ->unique()
-                    ->take(-50)
-                    ->values()
-                    ->all(),
-                self::INDEX_SECONDS,
-            );
+            foreach ($cacheKeys->diff($retainedKeys) as $displacedKey) {
+                $cache->forget(CacheRepository::FLEXIBLE_CREATED_KEY_PREFIX.$displacedKey);
+                $cache->forget($displacedKey);
+            }
+
+            $cache->put($indexKey, $retainedKeys->values()->all(), self::INDEX_SECONDS);
         });
     }
 

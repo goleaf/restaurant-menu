@@ -8,6 +8,7 @@ use App\Actions\Staff\UpdateBranchStaffRoleAction;
 use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
+use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
@@ -168,16 +169,91 @@ test('the last active organization owner cannot lose the owner role', function (
         ->where('user_id', $owner->id)
         ->firstOrFail();
 
+    OrganizationUser::factory()
+        ->forOrganization($organization)
+        ->forRole(roleForLifecycle(SystemRole::Owner))
+        ->count(3)
+        ->sequence(
+            ['status' => OrganizationUserStatus::Invited],
+            ['status' => OrganizationUserStatus::Suspended],
+            ['status' => OrganizationUserStatus::Removed],
+        )
+        ->create();
+    OrganizationUser::factory()->forOrganization($organization)->forRole($director)->active()->create();
+    OrganizationUser::factory()->forRole(roleForLifecycle(SystemRole::Owner))->active()->create();
+
     expect(fn () => app(UpdateOrganizationStaffRoleAction::class)->handle(
         $superadmin,
         $organization,
         $ownerMembership,
         $director,
         'Administrative owner role correction.',
-    ))->toThrow(ValidationException::class);
+    ))->toThrow(ValidationException::class, __('staff.errors.last_owner_role_change_blocked'));
 
-    expect($ownerMembership->fresh()->role_id)->toBe(roleForLifecycle(SystemRole::Owner)->id);
+    expect($ownerMembership->fresh()->role_id)->toBe(roleForLifecycle(SystemRole::Owner)->id)
+        ->and(AuditLog::query()->where('action', AuditLogAction::StaffRoleChanged->value)->exists())->toBeFalse();
 });
+
+test('an active organization owner can change role when another active owner remains', function (): void {
+    [$owner, $organization] = createOrganizationRoleLifecycleContext();
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->sync([roleForLifecycle(SystemRole::Superadmin)->id]);
+    $director = roleForLifecycle(SystemRole::Director);
+    $ownerRole = roleForLifecycle(SystemRole::Owner);
+    $membership = OrganizationUser::factory()->forOrganization($organization)->forRole($ownerRole)->active()->create();
+
+    $queryCount = countDatabaseQueries(function () use ($superadmin, $organization, $membership, $director): void {
+        $updated = app(UpdateOrganizationStaffRoleAction::class)->handle(
+            $superadmin,
+            $organization,
+            $membership,
+            $director,
+            'Administrative owner role correction.',
+        );
+
+        expect($updated->role_id)->toBe($director->id);
+    });
+
+    expect($queryCount)->toBeLessThanOrEqual(10)
+        ->and($membership->fresh()->role_id)->toBe($director->id)
+        ->and($organization->memberships()->where('user_id', $owner->id)->firstOrFail()->role_id)->toBe($ownerRole->id);
+
+    $auditLog = AuditLog::query()->where('action', AuditLogAction::StaffRoleChanged->value)->sole();
+
+    expect($auditLog->organization_id)->toBe($organization->id)
+        ->and($auditLog->old_values['role_id'])->toBe($ownerRole->id)
+        ->and($auditLog->new_values['role_id'])->toBe($director->id)
+        ->and($auditLog->new_values['reason'])->toBe('Administrative owner role correction.');
+});
+
+test('inactive owner role changes do not need an active owner lookup', function (string $state): void {
+    $organization = Organization::factory()->create();
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->sync([roleForLifecycle(SystemRole::Superadmin)->id]);
+    $director = roleForLifecycle(SystemRole::Director);
+    $membership = OrganizationUser::factory()
+        ->forOrganization($organization)
+        ->forRole(roleForLifecycle(SystemRole::Owner))
+        ->{$state}()
+        ->create();
+
+    $queryCount = countDatabaseQueries(function () use ($superadmin, $organization, $membership, $director): void {
+        $updated = app(UpdateOrganizationStaffRoleAction::class)->handle(
+            $superadmin,
+            $organization,
+            $membership,
+            $director,
+            'Correcting an inactive membership role.',
+        );
+
+        expect($updated->role_id)->toBe($director->id)
+            ->and($updated->status)->toBe($membership->status);
+    });
+
+    expect($queryCount)->toBeLessThanOrEqual(9)
+        ->and($membership->fresh()->role_id)->toBe($director->id)
+        ->and(AuditLog::query()->where('action', AuditLogAction::StaffRoleChanged->value)->sole()->entity_id)->toBe($membership->id);
+})->with(['invited', 'suspended', 'removed']);
 
 test('cross organization and cross branch identifiers are rejected without mutation', function () {
     [$owner, $organization] = createOrganizationRoleLifecycleContext();

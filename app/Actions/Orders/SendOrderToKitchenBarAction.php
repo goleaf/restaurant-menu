@@ -240,7 +240,7 @@ class SendOrderToKitchenBarAction
                 ]);
             });
 
-            $tickets->push($ticket->load('items'));
+            $tickets->push($ticket);
         }
 
         return $tickets;

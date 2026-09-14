@@ -73,7 +73,7 @@ final class PublicQrQueryService
             return null;
         }
 
-        $tableSession = TableSession::query()
+        $baseQuery = TableSession::query()
             ->select([
                 'id',
                 'branch_id',
@@ -90,7 +90,9 @@ final class PublicQrQueryService
                 'metadata',
             ])
             ->whereKey($tableSessionId)
-            ->guestViewable()
+            ->guestViewable();
+
+        $tableSession = (clone $baseQuery)
             ->forQrServicePoint($servicePoint)
             ->first();
 
@@ -98,25 +100,8 @@ final class PublicQrQueryService
             return $tableSession;
         }
 
-        $tableSession = TableSession::query()
-            ->select([
-                'id',
-                'branch_id',
-                'service_point_id',
-                'opened_by_guest_id',
-                'status',
-                'source',
-                'started_at',
-                'ended_at',
-                'guest_invite_token_hash',
-                'guest_invite_created_at',
-                'guest_invite_expires_at',
-                'guest_invite_created_by_guest_id',
-                'metadata',
-            ])
-            ->whereKey($tableSessionId)
+        $tableSession = (clone $baseQuery)
             ->where('branch_id', $servicePoint->branch_id)
-            ->guestViewable()
             ->first();
 
         return $tableSession?->wasTransferredFrom($servicePoint) === true

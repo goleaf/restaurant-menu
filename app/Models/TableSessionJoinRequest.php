@@ -8,6 +8,7 @@ use App\Enums\TableSessionJoinRequestStatus;
 use Carbon\CarbonInterface;
 use Database\Factories\TableSessionJoinRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonInterface|null $expires_at
  */
 #[Fillable(['table_session_id', 'guest_name', 'locale', 'approved_by_guest_id', 'rejected_by_guest_id', 'approved_by_user_id', 'rejected_by_user_id', 'expires_at'])]
+#[Hidden(['guest_token'])]
 class TableSessionJoinRequest extends Model
 {
     /** @use HasFactory<TableSessionJoinRequestFactory> */

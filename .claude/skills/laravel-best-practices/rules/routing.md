@@ -25,20 +25,16 @@ public function show(Post $post)
 Enforce parent-child relationships automatically.
 
 ```php
-Route::get('/users/{user}/posts/{post}', function (User $user, Post $post) {
-    // $post is automatically scoped to $user
-})->scopeBindings();
+Route::middleware('auth')->prefix('users')->name('users.')->scopeBindings()->group(function (): void {
+    Route::get('/{user}/posts/{post}', ShowPostController::class)->name('posts.show');
+});
 ```
 
 ## Use Resource Controllers
 
-Use `Route::resource()` or `apiResource()` for RESTful endpoints.
+Use existing named Blade/Livewire endpoints and invokable controllers in this application. Resource routing is appropriate only when it matches an approved HTTP contract; do not add a JSON API or move business logic into route closures.
 
-```php
-Route::resource('posts', PostController::class);
-// In routes/api.php — the /api prefix is applied automatically
-Route::apiResource('posts', Api\PostController::class);
-```
+Use route groups with explicit middleware, prefix and name prefixes, as in the scoped-binding example above.
 
 ## Keep Controllers Thin
 
@@ -63,7 +59,7 @@ Correct:
 ```php
 public function store(StorePostRequest $request, CreatePostAction $create)
 {
-    $post = $create->execute($request->validated());
+    $post = $create->handle($request->validated());
 
     return redirect()->route('posts.show', $post);
 }
@@ -90,9 +86,9 @@ public function store(Request $request): RedirectResponse
 
 Correct:
 ```php
-public function store(StorePostRequest $request): RedirectResponse
+public function store(StorePostRequest $request, CreatePostAction $create): RedirectResponse
 {
-    Post::create($request->validated());
+    $create->handle($request->validated());
 
     return redirect()->route('posts.index');
 }

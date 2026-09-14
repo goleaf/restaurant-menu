@@ -1,5 +1,13 @@
 # Performance
 
+## Repository audit (2026-09-14)
+
+Report-cache versioning prioritizes correct invalidation under overlapping writes. The same single-branch fixture measures analytics cold/fresh/stale query counts of **16/9/9 before** and **22/10/10 after**; restaurant dashboard counts are **74/63/63 before** and **80/64/64 after**. The extra warm query batches all branch generations: both one and twenty branches require one metadata SELECT. Cold builds include first-generation initialization and the bounded cleanup check; no stale-hit foreground rebuild or cleanup is introduced. These are isolated SQLite query counts, not production latency measurements.
+
+`PruneExpiredReportCacheEntriesAction` runs only during actual cold/deferred builds, at most once per 60 seconds per cache store. It selects up to 500 expired report keys and conditionally deletes that batch. It does not hydrate cache values or touch fresh/other-application entries. Rows renewed after selection survive the expiration recheck.
+
+`KitchenTicketItemFactory` shares one source lookup across snapshot attributes within each factory definition. Two generated items previously read `order_items` 18 times and now read it twice. The regression also proves distinct source identity, unchanged ownership and fresh values when the same factory is reused after an edit; no global or cross-model memoization is introduced.
+
 Performance changes are evidence-driven. Query-budget and cache-separation tests protect critical guest, waiter, department, dashboard, audit and export flows; lists paginate or stream; relationships are selected/eager-loaded; Livewire polling regions are isolated and public state contains no large model graph.
 
 ## Dispatch relationship reads and report refresh (2026-09-14)
@@ -79,7 +87,7 @@ Nine isolated SQLite cases preserve exact query counts before and after: current
 
 `ChangeOrderStatusAction` loads two aliased, constrained counts through `Order::kitchenTicketItems` only after authorization and cancellation validation. One `loadCount` statement replaces loading up to 500 item models and filtering them in PHP. The ready count filters item status; the served count independently filters non-null `served_at`. Both remain scoped to the order across its department tickets. See [Laravel's deferred count loading documentation](https://laravel.com/docs/13.x/eloquent-relationships#deferred-count-loading).
 
-Isolated fixtures with 1, 4 and 502 total target-order items each executed 19 queries before and after. Hydrated `KitchenTicketItem` models decreased from 1/4/500 to zero. The largest fixture has one pending item and 501 ready/served items: the previous limit recorded 499 matching items; all three cancellation records now correctly record 501. Tests enforce a 19-query ceiling, zero item hydration and exact metadata. Migration definitions contain indexes beginning with `order_id` on tickets and `kitchen_ticket_id` on items; no schema change was required. These are correctness and query/hydration measurements, not production latency, query-plan or whole-process peak-memory measurements.
+The original aggregate refactor executed 19 queries for fixtures with 1, 4 and 502 total target-order items. The report-generation fence adds one cache-generation deletion per report, making the current verified budget 21 in all three fixtures. Hydrated `KitchenTicketItem` models decreased from 1/4/500 to zero. The largest fixture has one pending item and 501 ready/served items: the previous limit recorded 499 matching items; all three cancellation records now correctly record 501. Tests enforce the exact 21-query budget, zero item hydration and exact metadata. Migration definitions contain indexes beginning with `order_id` on tickets and `kitchen_ticket_id` on items; no schema change was required. These are correctness and query/hydration measurements, not production latency, query-plan or whole-process peak-memory measurements.
 
 ## Waiter draft totals (2026-09-14)
 

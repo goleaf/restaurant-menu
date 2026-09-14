@@ -2,7 +2,7 @@
 
 ## Mass Assignment Protection
 
-Every model must define `$fillable` (whitelist) or `$guarded` (blacklist).
+Every first-party model must define an intentional `$fillable` allow-list.
 
 Incorrect:
 ```php
@@ -24,11 +24,11 @@ class User extends Model
 }
 ```
 
-Never use `$guarded = []` on models that accept user input.
+Never use `$guarded = []` in first-party models.
 
 ## Authorize Every Action
 
-Use policies or gates in controllers. Never skip authorization.
+Use policies or gates in controllers and every protected Livewire mutation. Re-resolve the resource inside its tenant scope, then delegate persistent writes to the focused Action.
 
 Incorrect:
 ```php
@@ -40,11 +40,13 @@ public function update(UpdatePostRequest $request, Post $post)
 
 Correct:
 ```php
-public function update(UpdatePostRequest $request, Post $post)
+public function update(UpdatePostRequest $request, Post $post, UpdatePostAction $update): RedirectResponse
 {
     Gate::authorize('update', $post);
 
-    $post->update($request->validated());
+    $update->handle($post, $request->validated());
+
+    return to_route('posts.show', $post);
 }
 ```
 
@@ -59,19 +61,13 @@ public function authorize(): bool
 
 ## Prevent SQL Injection
 
-Always use parameter binding. Never interpolate user input into queries.
+Use Eloquent value bindings. Never interpolate user input into queries or use raw expression methods; bound raw SQL is still prohibited by this repository.
 
-Incorrect:
-```php
-DB::select("SELECT * FROM users WHERE name = '{$request->name}'");
-```
+Incorrect: interpolating a request value into SQL. Raw expression methods are also prohibited even when their values use valid bindings.
 
 Correct:
 ```php
-User::where('name', $request->name)->get();
-
-// Raw expressions with bindings
-User::whereRaw('LOWER(name) = ?', [strtolower($request->name)])->get();
+User::query()->select(['id', 'name'])->where('name', $validatedName)->paginate(25);
 ```
 
 ## Escape Output to Prevent XSS

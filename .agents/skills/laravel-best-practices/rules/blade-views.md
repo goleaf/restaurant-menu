@@ -1,11 +1,11 @@
 # Blade & Views Best Practices
 
-## Use `$attributes->merge()` in Component Templates
+## Merge Component Attributes with Static Classes
 
-Hardcoding classes prevents consumers from adding their own. `merge()` combines class attributes cleanly.
+Use the component attribute bag so consumers can add classes. `class()` combines complete static utility names and presentation conditions without constructing undiscoverable Tailwind fragments.
 
 ```blade
-<div {{ $attributes->merge(['class' => 'alert alert-'.$type]) }}>
+<div {{ $attributes->class(['rounded-lg border p-4', 'border-red-600' => $type === 'error']) }}>
     {{ $message }}
 </div>
 ```
@@ -22,14 +22,9 @@ If a component renders inside a `@foreach`, `@push` inserts the script N times. 
 
 If every controller rendering a sidebar must pass `$categories`, that's duplicated code. A View Composer centralizes it.
 
-## Use Blade Fragments for Partial Re-Renders (htmx/Turbo)
+## Preserve the Livewire Rendering Boundary
 
-A single view can return either the full page or just a fragment, keeping routing clean.
-
-```php
-return view('dashboard', compact('users'))
-    ->fragmentIf($request->hasHeader('HX-Request'), 'user-list');
-```
+Livewire owns interactive updates here. Do not introduce htmx/Turbo to perform partial re-renders. Static presentation reuse stays in Blade components, with prepared values and statically discoverable Tailwind classes.
 
 ## Use `@aware` for Deeply Nested Component Props
 

@@ -1,6 +1,14 @@
 # Restaurant Menu completion decisions
 
-These decisions scope the 2026-08-23 repository-completion run. Long-lived architecture decisions remain in [`decisions/`](decisions/); [`requirements.md`](requirements.md) remains the sole product contract.
+These decisions record repository-completion work beginning on 2026-08-23 and its dated follow-ups. Long-lived architecture decisions remain in [`decisions/`](decisions/); [`requirements.md`](requirements.md) remains the sole product contract.
+
+## 2026-09-14 — report freshness, credential boundaries and reproducible delivery
+
+Report snapshot keys include atomic random per-branch generations. The registry remains bounded opportunistic cleanup; generation rotation prevents a late publisher from making its obsolete result discoverable by later reads. Separate cache connections also discard interim generations after source commit or rollback. A rate-limited Action prunes at most 500 expired report rows on an actual build; no scheduler or persistent worker is required. This costs one batched metadata read on a warm report and explicit invalidation writes, documented in `performance.md`.
+
+Credential mutations enforce Fortify feature flags on the server. A small password-confirmation middleware adapter preserves Laravel's timeout/redirect behavior and aborts expired JSON requests because Livewire's persistent middleware path otherwise ignores that response. Optional-feature tests enable their feature locally so those cases execute without changing runtime defaults.
+
+The expanded user request authorizes restoring compatible root lockfiles, updating repository-local skills and current documentation, and committing/pushing verified work to `main`. It does not authorize a production deployment. Applied migrations remain unchanged; the audit found no schema defect requiring an additional migration. All tests must pass without skips; measured application coverage remains a separate metric with the existing 90% floor.
 
 ## D-001 — Preserve the shared main worktree
 

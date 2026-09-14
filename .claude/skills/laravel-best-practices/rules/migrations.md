@@ -40,7 +40,7 @@ Correct (new migration to alter):
 ```php
 // 2024_03_15_add_slug_to_posts_table.php
 Schema::table('posts', function (Blueprint $table) {
-    $table->string('slug')->unique()->after('title');
+    $table->string('slug')->unique();
 });
 ```
 
@@ -107,7 +107,7 @@ Incorrect (partial failure creates unrecoverable state):
 public function up(): void
 {
     Schema::create('settings', function (Blueprint $table) { ... });
-    DB::table('settings')->insert(['key' => 'version', 'value' => '1.0']);
+    Setting::query()->create(['key' => 'version', 'value' => '1.0']);
 }
 ```
 
@@ -117,5 +117,7 @@ Correct (separate migrations):
 Schema::create('settings', function (Blueprint $table) { ... });
 
 // Migration 2: seed_default_settings
-DB::table('settings')->insert(['key' => 'version', 'value' => '1.0']);
+Setting::query()->firstOrCreate(['key' => 'version'], ['value' => '1.0']);
 ```
+
+Data migrations follow the repository's Eloquent-only rule. Keep any model dependency minimal and test the full migration chain against an isolated SQLite database; do not edit deployed migrations to follow a later model rename. MySQL-only column-order modifiers are not an SQLite ordering guarantee.

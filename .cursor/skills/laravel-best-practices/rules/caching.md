@@ -24,21 +24,17 @@ On high-traffic keys, one user always gets a slow response when the cache expire
 
 Incorrect: `Cache::remember('users', 300, fn () => User::all());`
 
-Correct: `Cache::flexible('users', [300, 600], fn () => User::all());` — fresh for 5 min, stale-but-served up to 10 min, refreshes via deferred function.
+For a bounded, authorized presentation snapshot, `Cache::flexible($scopedKey, [300, 600], fn () => $this->buildSnapshot())` serves fresh data for five minutes and stale data for up to ten minutes, with deferred refresh. The builder must select bounded tenant-safe data; include access and locale dimensions in the key. Do not cache an unbounded `User::all()` result or apply stale reads to authorization or money decisions.
 
 ## Use `Cache::memo()` to Avoid Redundant Hits Within a Request
 
 If the same cache key is read multiple times per request (e.g., a service called from multiple places), `memo()` stores the resolved value in memory.
 
-`Cache::memo()->get('settings');` — 5 calls = 1 Redis round-trip instead of 5.
+`Cache::memo()->get('settings');` avoids repeated reads of that key from the configured store during the request/job. This project uses database cache; memoized values are not a cross-process lock.
 
-## Use Cache Tags to Invalidate Related Groups
+## Use Database-Compatible Invalidation
 
-Without tags, invalidating a group of entries requires tracking every key. Tags let you flush atomically. Not supported by the `file`, `dynamodb`, `database` or `storage` drivers.
-
-```php
-Cache::tags(['user-1'])->flush();
-```
+The database cache driver does not support tags. Follow the existing scoped key/version invalidation in `docs/caching.md`; do not use `Cache::tags()` or switch drivers to enable it. For flexible entries, account for both snapshot values and refresh metadata, including refresh/invalidation races. [Laravel cache tags](https://laravel.com/docs/13.x/cache#cache-tags).
 
 ## Use `Cache::add()` for Atomic Conditional Writes
 
@@ -61,10 +57,6 @@ public function roles(): Collection
 
 Multiple calls return the cached result without re-executing. Use `once()` for expensive computations called multiple times per request. Use `Cache::memo()` when you also want cross-request caching.
 
-## Configure Failover Cache Stores in Production
+## Preserve the Configured Shared-Hosting Stores
 
-If Redis goes down, the app falls back to a secondary store automatically.
-
-```php
-'failover' => ['driver' => 'failover', 'stores' => ['redis', 'database']],
-```
+Use the database, file, array and null stores already declared in `config/cache.php` for their intended contexts. Redis/failover infrastructure is outside this application's runtime contract; no new store is required for ordinary cache work.

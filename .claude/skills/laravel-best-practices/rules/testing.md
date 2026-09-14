@@ -1,8 +1,8 @@
 # Testing Best Practices
 
-## Use `LazilyRefreshDatabase` Over `RefreshDatabase`
+## Preserve the Existing Database Test Lifecycle
 
-`RefreshDatabase` migrates once per process and wraps each test in a rolled-back transaction. `LazilyRefreshDatabase` behaves the same, except it defers that work until a test actually touches the database, so tests that never query it skip the migration entirely.
+This repository applies `RefreshDatabase` to Feature and Browser tests in `tests/Pest.php`, using SQLite `:memory:` by default. Do not replace that lifecycle with `LazilyRefreshDatabase` during unrelated work. File-backed concurrency and backup tests must own isolated temporary database/filesystem paths and cleanup.
 
 ## Use Model Assertions Over Raw Database Assertions
 

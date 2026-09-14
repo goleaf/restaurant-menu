@@ -37,16 +37,19 @@ public function scopeWithLastLogin($query): void
 }
 ```
 
-## Use Conditional Aggregates Instead of Multiple Count Queries
+## Use Eloquent Relationship Aggregates
 
-Replace N separate `count()` queries with a single query using `CASE WHEN` inside `selectRaw()`. Use `toBase()` to skip model hydration when you only need scalar values.
+Raw conditional SQL is prohibited here. Use constrained `withCount`, `withSum` or `withExists` on an existing relationship, or a small fixed set of scoped scalar queries outside loops. Select the parent keys before adding aggregate columns and measure the actual SQLite query budget.
 
 ```php
-$statuses = Feature::toBase()
-    ->selectRaw("count(case when status = 'Requested' then 1 end) as requested")
-    ->selectRaw("count(case when status = 'Planned' then 1 end) as planned")
-    ->selectRaw("count(case when status = 'Completed' then 1 end) as completed")
-    ->first();
+$posts = Post::query()
+    ->select(['id', 'title'])
+    ->withCount([
+        'comments',
+        'comments as approved_comments_count' => fn ($query) => $query->where('approved', true),
+    ])
+    ->orderByDesc('id')
+    ->paginate(25);
 ```
 
 ## Use `setRelation()` to Prevent Circular N+1
@@ -58,17 +61,17 @@ $feature->load('comments.user');
 $feature->comments->each->setRelation('feature', $feature);
 ```
 
-## Prefer `whereIn` + Subquery Over `whereHas`
+## Compare Relationship Filters Using the SQLite Query Plan
 
-`whereHas()` emits a correlated `EXISTS` subquery that re-executes per row. Using `whereIn()` with a `select('id')` subquery lets the database use an index lookup instead, without loading data into PHP memory.
+Neither `whereHas()` nor `whereIn()` is universally faster. Keep relationship, soft-delete and tenant constraints equivalent, then compare representative query plans and timings before changing the shape.
 
-Incorrect (correlated EXISTS re-executes per row):
+Relationship filter:
 
 ```php
 $query->whereHas('company', fn ($q) => $q->where('name', 'like', $term));
 ```
 
-Correct (index-friendly subquery, no PHP memory overhead):
+Equivalent subquery candidate when the same relationship scopes apply:
 
 ```php
 $query->whereIn('company_id', Company::where('name', 'like', $term)->select('id'));
@@ -80,7 +83,7 @@ Running a small, targeted secondary query and passing its results via `whereIn` 
 
 ## Use Compound Indexes Matching `orderBy` Column Order
 
-When ordering by multiple columns, create a single compound index in the same column order as the `ORDER BY` clause. Individual single-column indexes cannot combine for multi-column sorts — the database will filesort without a compound index.
+Design compound indexes for the actual equality filters and ordering. SQLite can use suitable index prefixes and may otherwise use a temporary B-tree; inspect the plan instead of assuming every sort needs another index. Include a deterministic tie-breaker where values can repeat.
 
 ```php
 // Migration

@@ -16,9 +16,9 @@ Without it, a queued listener may process before the DB transaction commits, rea
 class OrderShipped implements ShouldDispatchAfterCommit {}
 ```
 
-## Always Queue Notifications
+## Match Notification Delivery to the Runtime Contract
 
-Notifications often hit external APIs (email, SMS, Slack). Without `ShouldQueue`, they block the HTTP response.
+Required in-app database notifications must complete without a worker. Add `ShouldQueue` only for an explicitly optional asynchronous channel with a configured delivery/recovery path; it otherwise leaves notifications pending on the database queue.
 
 ```php
 class InvoicePaid extends Notification implements ShouldQueue

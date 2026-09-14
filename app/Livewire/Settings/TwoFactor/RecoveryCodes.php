@@ -8,6 +8,7 @@ use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Laravel\Fortify\Actions\GenerateNewRecoveryCodes;
+use Laravel\Fortify\Features;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -25,6 +26,11 @@ class RecoveryCodes extends Component
         if (! $user instanceof User) {
             abort(401);
         }
+
+        abort_unless(
+            Features::canManageTwoFactorAuthentication() && $user->hasEnabledTwoFactorAuthentication(),
+            403,
+        );
 
         $this->authenticatedUser = $user;
     }

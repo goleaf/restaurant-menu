@@ -139,6 +139,8 @@ class Security extends Component
      */
     public function loadPasskeys(): void
     {
+        abort_unless(Features::canManagePasskeys(), 403);
+
         $this->passkeys = $this->passkeyQueries->forUser($this->authenticatedUser)
             ->map(fn ($passkey) => [
                 'id' => $passkey->id,
@@ -155,6 +157,8 @@ class Security extends Component
      */
     public function confirmDelete(int $passkeyId): void
     {
+        abort_unless(Features::canManagePasskeys(), 403);
+
         $passkey = $this->passkeyQueries->findForUser($this->authenticatedUser, $passkeyId);
 
         $this->deletingPasskeyId = $passkey->id;
@@ -167,6 +171,8 @@ class Security extends Component
      */
     public function deletePasskey(DeletePasskey $deletePasskey): void
     {
+        abort_unless(Features::canManagePasskeys(), 403);
+
         if (! $this->deletingPasskeyId) {
             return;
         }
@@ -194,6 +200,8 @@ class Security extends Component
      */
     public function enable(EnableTwoFactorAuthentication $enableTwoFactorAuthentication): void
     {
+        abort_unless(Features::canManageTwoFactorAuthentication(), 403);
+
         $enableTwoFactorAuthentication($this->authenticatedUser);
 
         if (! $this->requiresConfirmation) {
@@ -241,6 +249,8 @@ class Security extends Component
      */
     public function confirmTwoFactor(ConfirmTwoFactorAuthentication $confirmTwoFactorAuthentication): void
     {
+        abort_unless(Features::canManageTwoFactorAuthentication(), 403);
+
         $this->validate();
 
         $confirmTwoFactorAuthentication($this->authenticatedUser, $this->code);
@@ -265,6 +275,8 @@ class Security extends Component
      */
     public function disable(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
+        abort_unless(Features::canManageTwoFactorAuthentication(), 403);
+
         $disableTwoFactorAuthentication($this->authenticatedUser);
 
         $this->twoFactorEnabled = false;

@@ -264,7 +264,7 @@ test('report cache versioning keeps foreground query costs bounded', function (
     $this->travel($freshSeconds)->seconds();
     $stale = countDatabaseQueries($operation);
 
-    expect($cold)->toBe($payloadKey === 'analytics' ? 19 : 77)
+    expect($cold)->toBe($payloadKey === 'analytics' ? 22 : 80)
         ->and($fresh)->toBe($payloadKey === 'analytics' ? 10 : 64)
         ->and($stale)->toBe($fresh);
 })->with('report cache strategies');

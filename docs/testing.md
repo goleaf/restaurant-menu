@@ -1,5 +1,21 @@
 # Testing and quality gates
 
+## Repository-wide audit — 2026-09-14
+
+The current source includes report-generation fences, separate-cache commit/rollback handling, bounded expired-report cleanup, factory query reuse, server-side optional-auth guards and persistent password confirmation for Livewire JSON/browser requests. All eight formerly feature-skipped auth cases now explicitly enable their feature inside an isolated test application. Runtime Fortify defaults remain disabled; no assertion is skipped or weakened to report success.
+
+Observed focused evidence: cache/factory integration **73 tests / 1,010 assertions**; auth/settings/routes/architecture **121 / 414**, plus backup routes **17 / 145**. The final WebKit Browser run passes **5 / 415** in **26.20 seconds**. Model/schema audit before the cache mapping covered all 48 domain models/factories and 88 migrations with **107 / 1,319**; the new cache model/factory is also covered by the current factory audit. All 88 migrations completed an isolated SQLite `:memory:` migrate/reset/migrate roundtrip. Populated-data rollback restrictions are in `MIGRATION_AUDIT.md`.
+
+Regression evidence includes eight cold/deferred/lost-registry/expired-lease cases that fail against the original report Actions from `0ce85ba`, two separate-connection cases that fail without transaction-end invalidation, a real two-process initialization barrier, cleanup renewal/failure/batch-limit cases, 18→2 factory source reads, and real HTTP Livewire requests that previously mutated credentials after password confirmation expired. Initial test-fixture mistakes were corrected before the final baseline comparison; they are not counted as evidence of an application defect.
+
+Pint, Larastan, strict Composer validation and zero-advisory Composer/npm audits pass. Clean disposable Composer/npm locked installs succeeded with lifecycle scripts disabled; workspace `npm ci --ignore-scripts` and Vite 8.2.2 production build pass. Isolated config/route/event/view compilation exits 0 for all four commands, without clearing shared caches. Translation scan/audit reports 656 files, 2,222 aligned keys per locale, 6,666 entries and zero issues.
+
+The final four-process Unit/Feature run passes **1,738 tests / 47,528 assertions**, **zero failures and zero skips**, in **112.82 seconds**. Browser and parallel runs use unchanged SHA-256 `263cee00e10db1d1f3d96363ffa89b6b9b499732da45b6b1f2acc69becc2aa57` over 1,002 code/config/manifest files. The canonical sequential `PAO_DISABLE=1 composer test:coverage -- --coverage-clover=<owned-temporary-path>` run exits **0** with the same **1,738 passed / 47,528 assertions**, **zero failures or skips**, in **789.68 seconds**, and **93.8% application coverage**. Clover records 26,593/28,330 covered application statements. All **220 Actions** execute, with **12,714/13,404 statements covered (94.85%)** and zero Actions without execution. The source digest remains identical after all three final runs. The combined distinct backend/browser result is **1,743 passed tests / 47,943 assertions**: a 100% pass rate, not 100% code coverage. Older results below remain historical.
+
+The first full parallel attempt found three cancellation-budget expectations and one process-fixture isolation mismatch. Cancellation intentionally adds two generation deletions; the fixture now requires exactly 21 queries for 0, 3 and 501 fulfilled items while retaining exact audit counts and zero item hydration. Laravel's parallel test lifecycle adds a cache prefix to the parent; process children now receive that actual prefix so the concurrency assertion compares the same store. The focused process regression changed from RED to **10 / 33 PASS** before the successful full rerun. No production assertion was weakened to mask a failure.
+
+All eight project-local skills were audited; seven entrypoints and 17 referenced Markdown files required corrections. Canonical `.agents` skills were synchronized into the tracked `.claude` and `.cursor` copies after confirming no provider-specific differences. Frontmatter, local links and applicable PHP/JS examples pass; the final tracked Markdown audit checked 169 files and 289 local link paths with zero unresolved targets; an isolated assertion-reference check passes 3 tests / 6 assertions. Workflow pressure review confirms that shared cache clearing and reuse of stale PASS evidence are forbidden.
+
 Pest 4 is the sole primary PHP test style. Feature tests cover Laravel/Livewire integration and security boundaries; unit tests cover pure rules and translation contracts. Browser automation is reserved for DOM, focus, responsive, navigation and console behavior that PHP tests cannot prove.
 
 ## Development loop
@@ -14,7 +30,7 @@ Pest 4 is the sole primary PHP test style. Feature tests cover Laravel/Livewire 
 
 Tests use isolated SQLite, fake local disks and faked external I/O. Never run `migrate:fresh` against the application database. Factories create valid records; no test or seeder requires public internet or real credentials.
 
-If `php artisan optimize` was run under the local environment, run `php artisan optimize:clear` before the test suite so PHPUnit's isolated environment and in-memory database configuration are loaded instead of the local cached configuration.
+If the shared checkout contains local compiled configuration, point `APP_CONFIG_CACHE`, `APP_ROUTES_CACHE`, `APP_EVENTS_CACHE` and `VIEW_COMPILED_PATH` to owned disposable paths before verification. Confirm the effective testing database is isolated. Do not clear shared application caches merely to prepare a test run.
 
 `composer test:coverage` is the canonical coverage command. It runs the Unit and Feature suites against `app/` and fails below 90%. GitHub Actions provisions Xdebug and executes this gate after the full behavioral suite. The local Herd PHP 8.5 CLI loads Xdebug with `xdebug.mode=off`; the Composer script enables coverage only for this command through `XDEBUG_MODE=coverage`, so normal local and production requests do not pay coverage overhead.
 

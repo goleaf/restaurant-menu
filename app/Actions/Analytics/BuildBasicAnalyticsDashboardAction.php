@@ -167,6 +167,8 @@ class BuildBasicAnalyticsDashboardAction
      */
     private function buildAnalytics(Collection $branchIds, string $cacheKey): array
     {
+        (new PruneExpiredReportCacheEntriesAction)->handle(self::cache());
+
         $now = CarbonImmutable::now();
         $periodStart = $now->startOfDay();
         $periodEnd = $now->endOfDay();

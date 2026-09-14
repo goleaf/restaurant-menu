@@ -16,7 +16,7 @@ Use `search-docs` for detailed Pest 4 patterns and documentation.
 
 ### Creating Tests
 
-All tests must be written using Pest. Use `php artisan make:test --pest {name}`.
+All tests must be written using Pest. Use `php artisan make:test --pest {name} --no-interaction`.
 
 The `{name}` argument should include only the path and test name, but should not include the test suite.
 - Incorrect: `php artisan make:test --pest Feature/SomeFeatureTest` will generate `tests/Feature/Feature/SomeFeatureTest.php`
@@ -47,9 +47,11 @@ it('is true', function () {
 - Run all tests: `php artisan test --compact`.
 - Run file: `php artisan test --compact tests/Feature/ExampleTest.php`.
 
+For repository-wide evidence use the existing `composer test:backend`, `composer test:browser` and `composer test:coverage` commands from `composer.json`/`docs/testing.md`. Preserve `tests/Pest.php`'s `RefreshDatabase` setup and the isolated SQLite configuration in `phpunit.xml`.
+
 ## Assertions
 
-Use specific assertions (`assertSuccessful()`, `assertNotFound()`) instead of `assertStatus()`:
+Use status-specific assertions: `assertOk()` means exactly 200; `assertSuccessful()` accepts any 2xx response. Do not weaken an exact 200 contract by replacing it with the broader assertion.
 
 <!-- Pest Response Assertion -->
 ```php
@@ -60,7 +62,7 @@ it('returns all', function () {
 
 | Use | Instead of |
 |-----|------------|
-| `assertSuccessful()` | `assertStatus(200)` |
+| `assertOk()` | `assertStatus(200)` |
 | `assertNotFound()` | `assertStatus(404)` |
 | `assertForbidden()` | `assertStatus(403)` |
 
@@ -100,28 +102,29 @@ Browser tests run in real browsers for full integration testing:
 - Use Laravel features like `Event::fake()`, `assertAuthenticated()`, and model factories.
 - Use `RefreshDatabase` for clean state per test.
 - Interact with page: click, type, scroll, select, submit, drag-and-drop, touch gestures.
-- Test on multiple browsers (Chrome, Firefox, Safari) if requested.
+- Test the requested installed engines (Chromium, Firefox, WebKit). Playwright WebKit is not an actual Safari or physical iOS-device certification.
 - Test on different devices/viewports (iPhone 14 Pro, tablets) if requested.
 - Switch color schemes (light/dark mode) when appropriate.
 - Take screenshots or pause tests for debugging.
 
 <!-- Pest Browser Test Example -->
 ```php
-it('may reset the password', function () {
+use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Support\Facades\Notification;
+
+test('may request a password reset', function (): void {
     Notification::fake();
 
-    $this->actingAs(User::factory()->create());
+    $user = User::factory()->create();
 
-    $page = visit('/sign-in');
+    $page = visit(route('password.request'));
 
-    $page->assertSee('Sign In')
-        ->assertNoJavaScriptErrors()
-        ->click('Forgot Password?')
-        ->fill('email', 'nuno@laravel.com')
-        ->click('Send Reset Link')
-        ->assertSee('We have emailed your password reset link!');
+    $page->fill('email', $user->email)
+        ->click('@email-password-reset-link-button')
+        ->assertNoJavaScriptErrors();
 
-    Notification::assertSent(ResetPassword::class);
+    Notification::assertSentTo($user, ResetPassword::class);
 });
 ```
 
@@ -152,14 +155,15 @@ Pest 4 includes architecture testing (from Pest 3):
 ```php
 arch('controllers')
     ->expect('App\Http\Controllers')
-    ->toExtendNothing()
-    ->toHaveSuffix('Controller');
+    ->toHaveSuffix('Controller')
+    ->toExtend(App\Http\Controllers\Controller::class)
+    ->ignoring(App\Http\Controllers\Controller::class);
 ```
 
 ## Common Pitfalls
 
 - Not importing `use function Pest\Laravel\mock;` before using mock
-- Using `assertStatus(200)` instead of `assertSuccessful()`
+- Replacing an exact 200 assertion with `assertSuccessful()` and accidentally accepting any 2xx response
 - Forgetting datasets for repetitive validation tests
 - Deleting tests without approval
 - Forgetting `assertNoJavaScriptErrors()` in browser tests

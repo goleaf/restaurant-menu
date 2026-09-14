@@ -1,8 +1,8 @@
 # Mail Best Practices
 
-## Implement `ShouldQueue` on the Mailable Class
+## Choose Delivery Deliberately
 
-Makes queueing the default regardless of how the mailable is dispatched. No need to remember `Mail::queue()` at every call site — `Mail::send()` also queues it.
+Implementing `ShouldQueue` makes `Mail::send()` queue the mailable too. This project has no required long-running worker: retain configured synchronous mail delivery or use an explicitly optional queue with bounded recovery. Invitation administration must continue to provide its authorized manual-delivery path when mail is unconfigured.
 
 ## Use `afterCommit()` on Mailables Inside Transactions
 

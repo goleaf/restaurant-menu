@@ -1,5 +1,15 @@
 # Restaurant Menu completion progress
 
+## Repository-wide audit and publication — 2026-09-14
+
+- Completed model/migration, validation/Action, cache/query and local skill/documentation audits. Added report-generation fences, separate-cache transaction-end invalidation and bounded expiration cleanup; preserved scope, locale and existing report ages.
+- Closed disabled-feature credential mutations and expired-password-confirmation bypasses on real Livewire JSON/browser requests. Eight formerly skipped optional-auth tests now execute in isolated opt-in applications.
+- Reduced two-item factory source reads from 18 to 2; restored root dependency locks and verified clean disposable installs, audits and workspace production build. Applied migrations and application data were preserved.
+- Focused cache/factory tests pass 73 / 1,010; auth/route tests pass 121 / 414 plus backups 17 / 145. Final Browser WebKit passes 5 / 415 in 26.20 seconds. Full parallel/4 passes 1,738 / 47,528 with zero failures or skips in 112.82 seconds. Canonical sequential coverage also passes 1,738 / 47,528 with zero failures/skips in 789.68 seconds: 93.8% application coverage. All 220 Actions execute with 94.85% statement coverage. Final English commit/push evidence will be recorded after publication.
+- Pint, Larastan, Composer validation/audit, npm audit/build, translation scan/audit and isolated config/route/event/view compilation pass. Final browser/parallel source digest is `263cee00e10db1d1f3d96363ffa89b6b9b499732da45b6b1f2acc69becc2aa57` across 1,002 files; the source remained unchanged through completion of browser, parallel and sequential coverage runs.
+
+Earlier entries are historical evidence for their stated source state; they do not override this audit's current inventory or results.
+
 Updated 2026-09-14. This is an observed evidence ledger for [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md), not a source of requirements. Command results are recorded only after their exit status/output has been observed.
 
 ## 2026-09-14 — export and report-cache audit: bounded implementation verified

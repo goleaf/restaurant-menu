@@ -31,14 +31,14 @@ $response = Http::github()->get('/repos/laravel/framework');
 
 ## Use Retry with Backoff for External APIs
 
-External APIs have transient failures. Use `retry()` with increasing delays.
+External APIs have transient failures. Use `retry()` with increasing delays for idempotent requests. Do not automatically retry state-changing POST requests without a documented provider idempotency contract; a connection timeout may occur after the remote mutation committed. Online payment integrations are outside this repository's scope.
 
 Incorrect:
 ```php
-$response = Http::post('https://api.example.com/v1/charges', $data);
+$response = Http::get('https://api.example.com/status');
 
 if ($response->failed()) {
-    throw new PaymentFailedException('Charge failed');
+    throw new RuntimeException('Remote status unavailable');
 }
 ```
 
@@ -46,7 +46,7 @@ Correct:
 ```php
 $response = Http::retry([100, 500, 1000])
     ->timeout(10)
-    ->post('https://api.example.com/v1/charges', $data);
+    ->get('https://api.example.com/status');
 ```
 
 Only retry on specific errors:
@@ -55,7 +55,7 @@ Only retry on specific errors:
 $response = Http::retry(3, 100, function (Throwable $exception, PendingRequest $request) {
     return $exception instanceof ConnectionException
         || ($exception instanceof RequestException && $exception->response->serverError());
-})->post('https://api.example.com/data');
+})->timeout(10)->connectTimeout(3)->get('https://api.example.com/data');
 ```
 
 ## Handle Errors Explicitly

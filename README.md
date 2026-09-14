@@ -22,16 +22,16 @@ Laravel Herd serves this repository at its configured `.test` address. Do not st
 
 ```bash
 composer install
-cp .env.example .env
-php artisan key:generate
+if [ ! -f .env ]; then
+    cp .env.example .env
+    php artisan key:generate
+fi
 touch database/database.sqlite
 npm ci
 npm run build
-php artisan migrate --no-interaction
-php artisan storage:link
 ```
 
-Set at least these values before the first migration:
+The committed Composer/npm lock files define the reproducible dependency baseline. The setup block preserves an existing `.env` and application key; configure the following values before running the first migration:
 
 ```dotenv
 APP_ENV=local
@@ -43,6 +43,13 @@ FILESYSTEM_DISK=public
 SESSION_DRIVER=database
 CACHE_STORE=database
 QUEUE_CONNECTION=database
+```
+
+After configuring the database, apply forward migrations and create the public storage link:
+
+```bash
+php artisan migrate --no-interaction
+php artisan storage:link
 ```
 
 `DB_DATABASE` may be omitted to use `database/database.sqlite`, but an explicit absolute path is safer on shared hosting. The database file, its directory, `storage/`, and `bootstrap/cache/` must be writable by PHP. Environment values are read through configuration files; after changing a cached production environment, rebuild the configuration cache.

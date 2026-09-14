@@ -34,6 +34,8 @@ Incorrect: `User::whereIn('id', $users->pluck('id'))->update([...]);`
 
 Correct: `$users->toQuery()->update([...]);`
 
+Bulk updates/deletes bypass per-model lifecycle events. Use them only when the affected model's observers, cache invalidation, audit and file cleanup are not required or are explicitly preserved by the owning Action. Keep tenant scoping and selected identities intact.
+
 ## Use `#[CollectedBy]` for Custom Collection Classes
 
 More declarative than overriding `newCollection()`.

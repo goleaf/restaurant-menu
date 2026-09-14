@@ -17,9 +17,11 @@ public function store(Request $request)
 
 Correct:
 ```php
-public function store(StorePostRequest $request)
+public function store(StorePostRequest $request, CreatePostAction $create): RedirectResponse
 {
-    Post::create($request->validated());
+    $post = $create->handle($request->validated());
+
+    return to_route('posts.show', $post);
 }
 ```
 
@@ -59,16 +61,18 @@ Post::create($request->validated());
 
 ## Use the `after()` Method for Custom Validation
 
-Use `after()` instead of `withValidator()` for custom validation logic that depends on multiple fields.
+Use `after()` for cross-field Form Request validation. Check prior validation errors before reading dependent values. Database-dependent stock/tenant invariants must be scoped and revalidated inside the Action transaction; an unscoped `Product::find()` in validation cannot authorize or serialize a purchase.
 
 ```php
 public function after(): array
 {
     return [
         function (Validator $validator) {
-            if ($this->quantity > Product::find($this->product_id)?->stock) {
-                $validator->errors()->add('quantity', 'Not enough stock.');
+            if ($validator->errors()->isNotEmpty()) {
+                return;
             }
+
+            // Check already type-validated fields with a localized error key.
         },
     ];
 }

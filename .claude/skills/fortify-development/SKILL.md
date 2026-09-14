@@ -14,9 +14,11 @@ Fortify is a headless authentication backend that provides authentication routes
 
 Use `search-docs` for detailed Laravel Fortify patterns and documentation.
 
+This repository is invite-only: preserve the absence of public `/register` routes. `config/fortify.php` and `sys-auth-001`/`sys-auth-002` in `docs/requirements.md` determine enabled features; setup examples below do not authorize enabling registration, 2FA, passkeys or a new SPA stack during unrelated authentication work.
+
 ## Usage
 
-- **Routes**: Use `list-routes` with `only_vendor: true` and `action: "Fortify"` to see all registered endpoints
+- **Routes**: Run `php artisan route:list --only-vendor --no-interaction` and inspect Fortify actions; do not assume optional endpoints are registered.
 - **Actions**: Check `app/Actions/Fortify/` for customizable business logic (user creation, password validation, etc.)
 - **Config**: See `config/fortify.php` for all options including features, guards, rate limiters, and username field
 - **Contracts**: Look in `Laravel\Fortify\Contracts\` for overridable response classes (`LoginResponse`, `LogoutResponse`, etc.)
@@ -24,7 +26,7 @@ Use `search-docs` for detailed Laravel Fortify patterns and documentation.
 
 ## Available Features
 
-Enable in `config/fortify.php` features array:
+Fortify supports these entries in the `config/fortify.php` features array. Preserve the current enabled set unless the requested feature changes that contract:
 
 - `Features::registration()` - User registration
 - `Features::resetPasswords()` - Password reset via email
@@ -89,6 +91,8 @@ Enable in `config/fortify.php` features array:
 
 ### SPA Authentication Setup
 
+Upstream reference only: the repository uses Blade SSR and does not install Sanctum or create a SPA as part of ordinary authentication work.
+
 ```
 - [ ] Set 'views' => false in config/fortify.php
 - [ ] Install and configure Laravel Sanctum for session-based SPA authentication
@@ -101,9 +105,9 @@ Enable in `config/fortify.php` features array:
 
 #### Two-Factor Authentication in SPA Mode
 
-When `views` is set to `false`, Fortify returns JSON responses instead of redirects.
+Setting `views` to `false` disables Fortify's view routes. Response negotiation is separate: the installed Fortify responses check `$request->wantsJson()`, so API clients must request JSON; the flag alone does not change redirects into JSON.
 
-If a user attempts to log in and two-factor authentication is enabled, the login request will return a JSON response indicating that a two-factor challenge is required:
+When the user requires a two-factor challenge and the login request wants JSON, the response indicates that challenge:
 
 ```json
 {
@@ -126,6 +130,8 @@ Modify `app/Actions/Fortify/CreateNewUser.php` to customize user creation logic,
 Configure via `fortify.limiters.login` in config. Default configuration throttles by username + IP combination.
 
 ## Key Endpoints
+
+These are upstream feature-dependent endpoints, not the current application's route inventory. Verify actual routes and feature gates before using them.
 
 | Feature                | Method   | Endpoint                                    |
 |------------------------|----------|---------------------------------------------|

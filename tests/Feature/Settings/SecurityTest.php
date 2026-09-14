@@ -3,10 +3,12 @@
 use App\Livewire\Settings\Security;
 use App\Livewire\Settings\TwoFactor\RecoveryCodes;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
+use Tests\Support\PasskeyFactory;
 
 test('security settings page can be rendered', function () {
     $user = User::factory()->create();
@@ -30,6 +32,14 @@ test('security settings page requires password confirmation when enabled', funct
         ->get(route('security.edit'));
 
     $response->assertRedirect(route('password.confirm'));
+});
+
+test('security settings preserve JSON password confirmation responses', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->getJson(route('security.edit'))
+        ->assertStatus(423)
+        ->assertExactJson(['message' => 'Password confirmation required.']);
 });
 
 test('security settings page renders without two factor when feature is disabled', function () {
@@ -108,7 +118,7 @@ test('correct password must be provided to update password', function () {
 
 test('disabled two factor actions reject direct calls and preserve dormant credentials', function (string $action) {
     $user = User::factory()->withTwoFactor()->create();
-    $credentials = $user->getRawOriginal();
+    $credentials = $user->refresh()->getRawOriginal();
 
     Livewire::actingAs($user)->test(Security::class)
         ->call($action)
@@ -132,7 +142,7 @@ test('disabled passkey actions reject direct calls', function (string $action, a
 test('two factor mutations recheck the current feature configuration', function () {
     $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
     $user = User::factory()->withTwoFactor()->create();
-    $credentials = $user->getRawOriginal();
+    $credentials = $user->refresh()->getRawOriginal();
     $component = Livewire::actingAs($user)->test(Security::class);
 
     config(['fortify.features' => [Features::resetPasswords()]]);
@@ -170,7 +180,7 @@ test('enabled two factor authentication can be configured confirmed and disabled
 
 test('disabled recovery code component rejects access without changing dormant credentials', function () {
     $user = User::factory()->withTwoFactor()->create();
-    $credentials = $user->getRawOriginal();
+    $credentials = $user->refresh()->getRawOriginal();
 
     Livewire::actingAs($user)->test(RecoveryCodes::class)->assertForbidden();
 
@@ -180,7 +190,7 @@ test('disabled recovery code component rejects access without changing dormant c
 test('recovery code regeneration rejects a feature disabled after mount', function () {
     $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
     $user = User::factory()->withTwoFactor()->create();
-    $credentials = $user->getRawOriginal();
+    $credentials = $user->refresh()->getRawOriginal();
     $component = Livewire::actingAs($user)->test(RecoveryCodes::class);
 
     config(['fortify.features' => [Features::resetPasswords()]]);
@@ -203,3 +213,116 @@ test('enabled recovery codes can be displayed and regenerated', function () {
 
     expect($user->refresh()->two_factor_recovery_codes)->not->toBe($oldCodes);
 });
+
+test('recovery codes require configured two factor authentication', function () {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test(RecoveryCodes::class)->assertForbidden();
+
+    expect($user->refresh()->two_factor_recovery_codes)->toBeNull();
+});
+
+test('enabled passkeys can be listed and deleted by their owner', function () {
+    $this->enableFortifyFeatures([Features::passkeys()]);
+    $user = User::factory()->create();
+    $passkey = PasskeyFactory::new()->for($user)->create();
+
+    Livewire::actingAs($user)->test(Security::class)
+        ->assertSee($passkey->name)
+        ->call('confirmDelete', $passkey->id)
+        ->assertSet('deletingPasskeyId', $passkey->id)
+        ->call('deletePasskey')
+        ->assertHasNoErrors()
+        ->assertSet('passkeys', []);
+
+    $this->assertModelMissing($passkey);
+});
+
+test('enabled passkeys cannot be selected by another user', function () {
+    $this->enableFortifyFeatures([Features::passkeys()]);
+    $passkey = PasskeyFactory::new()->create();
+    $user = User::factory()->create();
+
+    $component = Livewire::actingAs($user)->test(Security::class);
+
+    expect(fn () => $component->call('confirmDelete', $passkey->id))
+        ->toThrow(ModelNotFoundException::class);
+
+    $this->assertModelExists($passkey);
+});
+
+test('passkey deletion rechecks the current feature configuration', function () {
+    $this->enableFortifyFeatures([Features::passkeys()]);
+    $user = User::factory()->create();
+    $passkey = PasskeyFactory::new()->for($user)->create();
+    $component = Livewire::actingAs($user)->test(Security::class)
+        ->call('confirmDelete', $passkey->id);
+
+    config(['fortify.features' => [Features::resetPasswords()]]);
+
+    $component->call('deletePasskey')->assertForbidden();
+
+    $this->assertModelExists($passkey);
+});
+
+test('security mutations reapply password confirmation on real Livewire updates', function (
+    string $componentName,
+    string $action,
+    bool $expired,
+    string $accept,
+) {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->withTwoFactor()->create();
+    $credentials = $user->refresh()->getRawOriginal();
+    $page = $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => now()->timestamp])
+        ->get(route('security.edit'))
+        ->assertOk();
+
+    preg_match_all('/wire:snapshot="([^"]+)"/', $page->getContent(), $matches);
+    $snapshot = collect($matches[1])
+        ->map(fn (string $encoded): string => html_entity_decode($encoded, ENT_QUOTES | ENT_HTML5))
+        ->first(fn (string $candidate): bool => json_decode($candidate, true, flags: JSON_THROW_ON_ERROR)['memo']['name'] === $componentName);
+
+    expect($snapshot)->toBeString()->not->toBeEmpty();
+
+    if ($expired) {
+        $this->withSession([
+            'auth.password_confirmed_at' => now()->subSeconds(config('auth.password_timeout') + 1)->timestamp,
+        ]);
+    }
+
+    $response = $this->postJson(route('default-livewire.update'), [
+        'components' => [[
+            'snapshot' => $snapshot,
+            'updates' => [],
+            'calls' => [['method' => $action, 'params' => []]],
+        ]],
+    ], ['X-Livewire' => '', 'Accept' => $accept]);
+
+    if ($expired) {
+        if ($accept === 'application/json') {
+            $response->assertStatus(423)
+                ->assertExactJson(['message' => 'Password confirmation required.']);
+        } else {
+            $response->assertRedirect(route('password.confirm'));
+        }
+
+        expect($user->refresh()->getRawOriginal())->toBe($credentials);
+
+        return;
+    }
+
+    $response->assertOk();
+    expect($user->refresh()->two_factor_recovery_codes)->not->toBe($credentials['two_factor_recovery_codes']);
+})->with([
+    'security page' => ['settings.security', 'disable'],
+    'recovery codes child' => ['settings.two-factor.recovery-codes', 'regenerateRecoveryCodes'],
+])->with([
+    'recently confirmed' => false,
+    'confirmation expired' => true,
+])->with([
+    'JSON response requested' => 'application/json',
+    'browser Livewire headers' => '*/*',
+]);

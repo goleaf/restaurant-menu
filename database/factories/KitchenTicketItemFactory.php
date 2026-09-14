@@ -22,10 +22,15 @@ class KitchenTicketItemFactory extends Factory
      */
     public function definition(): array
     {
+        $orderItem = null;
+        $resolveOrderItem = function (array $attributes) use (&$orderItem): OrderItem {
+            return $orderItem ??= $this->orderItemFor($attributes);
+        };
+
         return [
             'order_item_id' => OrderItem::factory(),
-            'kitchen_ticket_id' => function (array $attributes): int {
-                $orderItem = $this->orderItemFor($attributes);
+            'kitchen_ticket_id' => function (array $attributes) use ($resolveOrderItem): int {
+                $orderItem = $resolveOrderItem($attributes);
 
                 return KitchenTicket::factory()
                     ->for($orderItem->order)
@@ -36,17 +41,17 @@ class KitchenTicketItemFactory extends Factory
                     ])
                     ->id;
             },
-            'table_session_guest_id' => fn (array $attributes): ?int => $this->orderItemFor($attributes)->table_session_guest_id,
-            'menu_item_id' => fn (array $attributes): ?int => $this->orderItemFor($attributes)->menu_item_id,
-            'guest_name' => fn (array $attributes): ?string => $this->orderItemFor($attributes)->guest_name,
-            'item_name' => fn (array $attributes): string => $this->orderItemFor($attributes)->item_name,
-            'quantity' => fn (array $attributes): int => $this->orderItemFor($attributes)->quantity,
+            'table_session_guest_id' => fn (array $attributes): ?int => $resolveOrderItem($attributes)->table_session_guest_id,
+            'menu_item_id' => fn (array $attributes): ?int => $resolveOrderItem($attributes)->menu_item_id,
+            'guest_name' => fn (array $attributes): ?string => $resolveOrderItem($attributes)->guest_name,
+            'item_name' => fn (array $attributes): string => $resolveOrderItem($attributes)->item_name,
+            'quantity' => fn (array $attributes): int => $resolveOrderItem($attributes)->quantity,
             'status' => KitchenTicketItemStatus::New,
             'served_at' => null,
             'served_by_user_id' => null,
-            'selected_modifiers' => fn (array $attributes): array => $this->orderItemFor($attributes)->selected_modifiers ?? [],
-            'allergens_snapshot' => fn (array $attributes): array => $this->orderItemFor($attributes)->historicalAllergens(),
-            'comment' => fn (array $attributes): ?string => $this->orderItemFor($attributes)->comment,
+            'selected_modifiers' => fn (array $attributes): array => $resolveOrderItem($attributes)->selected_modifiers ?? [],
+            'allergens_snapshot' => fn (array $attributes): array => $resolveOrderItem($attributes)->historicalAllergens(),
+            'comment' => fn (array $attributes): ?string => $resolveOrderItem($attributes)->comment,
         ];
     }
 

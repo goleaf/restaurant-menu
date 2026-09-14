@@ -1,5 +1,7 @@
 # Queue & Job Best Practices
 
+This application's required workflows complete without a continuously running worker. Queue guidance applies to optional jobs with an existing bounded web/Artisan recovery path. Preserve the configured database queue; Redis/Horizon is not part of the runtime contract.
+
 ## Set `retry_after` Greater Than `timeout`
 
 If `retry_after` is shorter than the job's `timeout`, the queue worker re-dispatches the job while it's still running, causing duplicate execution.
@@ -48,14 +50,14 @@ class SyncWithStripe implements ShouldQueue
 
 ## Implement `ShouldBeUnique`
 
-Prevent duplicate job processing.
+Prevent dispatching another job with the same uniqueness key while its cache lock is held. Delivery/retry can still execute work again, so durable domain operations require their own idempotency constraints.
 
 ```php
 class GenerateInvoice implements ShouldQueue, ShouldBeUnique
 {
     public function uniqueId(): string
     {
-        return $this->order->id;
+        return (string) $this->order->id;
     }
 
     public $uniqueFor = 3600;
@@ -70,7 +72,7 @@ Handle errors explicitly — don't rely on silent failure.
 public function failed(?Throwable $exception): void
 {
     $this->podcast->update(['status' => 'failed']);
-    Log::error('Processing failed', ['id' => $this->podcast->id, 'error' => $exception->getMessage()]);
+    Log::error('Processing failed', ['id' => $this->podcast->id, 'exception' => $exception ? $exception::class : null]);
 }
 ```
 
@@ -87,7 +89,7 @@ public function middleware(): array
 
 ## Batch Related Jobs
 
-Use `Bus::batch()` when jobs should succeed or fail together.
+Use `Bus::batch()` to coordinate progress and success/failure callbacks. A failed batch does not roll back effects from jobs that already completed. Keep each job idempotent, observe cancellation, and use an Action transaction or explicit compensation for atomic domain changes.
 
 ```php
 Bus::batch([
@@ -99,13 +101,11 @@ Bus::batch([
 ->dispatch();
 ```
 
-## `retryUntil()` Needs `$tries = 0`
+## `retryUntil()` Defines the Retry Deadline
 
-When using time-based retry limits, set `$tries = 0` to avoid premature failure.
+Laravel 13's worker checks a configured `retryUntil()` before the attempt-count limit; `$tries = 0` is not required. Choose the intended time-based or attempt-based policy and test exhaustion. Separate timeout/exception limits still apply.
 
 ```php
-public $tries = 0;
-
 public function retryUntil(): \DateTimeInterface
 {
     return now()->addHours(4);
@@ -123,22 +123,6 @@ class UpdateSearchIndex implements ShouldQueue, ShouldBeUniqueUntilProcessing
 }
 ```
 
-## Use Horizon for Complex Queue Scenarios
+## Use the Existing Operations Surface
 
-Use Laravel Horizon when you need monitoring, auto-scaling, failure tracking, or multiple queues with different priorities.
-
-```php
-// config/horizon.php
-'environments' => [
-    'production' => [
-        'supervisor-1' => [
-            'connection' => 'redis',
-            'queue' => ['high', 'default', 'low'],
-            'balance' => 'auto',
-            'minProcesses' => 1,
-            'maxProcesses' => 10,
-            'tries' => 3,
-        ],
-    ],
-],
-```
+Use the repository's safe logs, failed-job inspection and bounded optional queue commands. Do not add Horizon, Redis or Supervisor to solve an ordinary queue task. [Laravel queue attempts and batching](https://laravel.com/docs/13.x/queues).

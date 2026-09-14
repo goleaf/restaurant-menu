@@ -1,6 +1,6 @@
 ---
 name: fluxui-development
-description: "Use this skill for Flux UI development in Livewire applications only. Trigger when working with <flux:*> components, building or customizing Livewire component UIs, creating forms, modals, tables, or other interactive elements. Covers: flux: components (buttons, inputs, modals, forms, tables, date-pickers, kanban, badges, tooltips, etc.), component composition, Tailwind CSS styling, Heroicons/Lucide icon integration, validation patterns, responsive design, and theming. Do not use for non-Livewire frameworks or non-component styling."
+description: "Use this skill for Flux UI development in Livewire applications only. Trigger when working with flux:* components, building or customizing Livewire component UIs, creating forms, modals, tables, or other interactive elements. Covers: flux: components (buttons, inputs, modals, forms, tables, date-pickers, kanban, badges, tooltips, etc.), component composition, Tailwind CSS styling, Heroicons/Lucide icon integration, validation patterns, responsive design, and theming. Do not use for non-Livewire frameworks or non-component styling."
 license: MIT
 metadata:
   author: laravel
@@ -27,7 +27,9 @@ Use Flux UI components when available. Fall back to standard Blade components wh
 
 ## Available Components (Free Edition)
 
-Available: avatar, badge, brand, breadcrumbs, button, callout, card, checkbox, dropdown, field, heading, icon, input, modal, navbar, otp-input, pagination, profile, progress, radio, select, separator, skeleton, switch, table, text, textarea, toast, tooltip
+Available component names: avatar, badge, brand, breadcrumbs, button, callout, card, checkbox, dropdown, field, heading, icon, input, modal, navbar, otp, pagination, profile, progress, radio, select, separator, skeleton, switch, table, text, textarea, toast, tooltip.
+
+The [OTP Input documentation](https://fluxui.dev/components/otp-input) uses `<flux:otp>`, not `<flux:otp-input>`. Check the installed `vendor/livewire/flux/stubs/resources/views/flux` templates before assuming that a documentation variant exists in the installed Free edition. Localize labels and accessible names with the existing EN/LT/RU JSON keys.
 
 ## Icons
 

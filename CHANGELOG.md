@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-14 — repository audit, cache concurrency and authentication guards
+
+- Fence report snapshots with atomic per-branch generations, including separate cache-connection commit/rollback handling. Prune expired report records in batches of up to 500 during actual builds, rate-limited to once per minute.
+- Reject direct two-factor/passkey operations when disabled and require active two-factor authentication for recovery codes. Persist password confirmation across Livewire requests and preserve Laravel's JSON 423/browser redirect responses.
+- Execute eight formerly skipped optional-auth tests through isolated test-only feature activation. Add interleaving, process-concurrency, cleanup and factory-query regressions.
+- Reduce two-item factory snapshot reads from 18 to 2. Restore reproducible Composer/npm locks and verify clean isolated installs and the production asset build.
+- Audit all models/factories, 88 migration up/down paths and controller/validation boundaries. Correct current documentation and local Laravel/Livewire/Pest/Flux/Fortify skills; synchronize tracked provider copies. Preserve production data and historical migrations.
+- Verify 1,738 backend tests in both sequential coverage and four-process runs, plus five browser scenarios, with zero failures or skips. Application coverage is 93.8%; all 220 Actions execute. Formatting, static analysis, dependency audits, translations, build and isolated cache compilation pass.
+
 ## 2026-09-14 — export and report-cache hardening
 
 - Neutralize formula-leading CSV text in all four branch exports and use explicit standard CSV escaping; preserve source values, exact money and streaming. Regression tests parse hostile and ordinary fields including Unicode, commas, quotes, backslashes and newlines.

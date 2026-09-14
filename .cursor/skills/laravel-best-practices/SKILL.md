@@ -18,6 +18,8 @@ Check sibling files, related controllers, models, or tests for established patte
 
 ## How to Apply
 
+Repository constraints take precedence throughout these reference files: Laravel 13/PHP 8.5, Eloquent-only SQLite, class-based Livewire with separate presentation-only Blade, Form Requests/Livewire Forms, focused Actions for writes, policies for resource authorization, and EN/LT/RU JSON translations. No first-party raw SQL or query-builder table access is allowed. Keep growing reads bounded and tenant-scoped. Do not introduce Redis, Horizon, a SPA, online payments or a required worker/process service from an upstream example. Follow `AGENTS.md` and the matching `.ai/rules` before adapting any snippet.
+
 1. Check the changed files, nearby code, project configuration, and relevant tests for established patterns. Deviate only for a correctness or security defect, and call the deviation out.
 2. Map every affected concern to the rule index below. Read each mapped rule file before editing. Skip unrelated rule files.
 3. Make the smallest coherent change. Keep the application's architecture and naming instead of introducing a second pattern for the same job.

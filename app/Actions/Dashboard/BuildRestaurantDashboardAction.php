@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Dashboard;
 
+use App\Actions\Analytics\PruneExpiredReportCacheEntriesAction;
 use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
 use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
@@ -210,6 +211,8 @@ class BuildRestaurantDashboardAction
      */
     private function buildDashboard(array $access, string $cacheKey): array
     {
+        (new PruneExpiredReportCacheEntriesAction)->handle(self::cache());
+
         $now = CarbonImmutable::now();
         $periodStart = $now->startOfDay();
         $periodEnd = $now->endOfDay();

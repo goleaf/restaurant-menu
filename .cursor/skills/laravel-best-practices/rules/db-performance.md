@@ -14,7 +14,7 @@ foreach ($posts as $post) {
 
 Correct (2 queries total):
 ```php
-$posts = Post::with('author')->get();
+$posts = Post::query()->select(['id', 'user_id', 'title'])->with('author:id,name')->paginate(25);
 foreach ($posts as $post) {
     echo $post->author->name;
 }
@@ -23,12 +23,12 @@ foreach ($posts as $post) {
 Constrain eager loads to select only needed columns (always include the foreign key):
 
 ```php
-$users = User::with(['posts' => function ($query) {
+$users = User::query()->select(['id', 'name'])->with(['posts' => function ($query) {
     $query->select('id', 'user_id', 'title')
           ->where('published', true)
           ->latest()
           ->limit(10);
-}])->get();
+}])->paginate(25);
 ```
 
 ## Prevent Lazy Loading in Development
@@ -57,7 +57,7 @@ Correct:
 ```php
 $posts = Post::select('id', 'title', 'user_id', 'created_at')
     ->with(['author:id,name,avatar'])
-    ->get();
+    ->paginate(25);
 ```
 
 When selecting columns on eager-loaded relationships, always include the foreign key column or the relationship won't match.
@@ -132,7 +132,7 @@ foreach ($posts as $post) {
 
 Correct:
 ```php
-$posts = Post::withCount('comments')->get();
+$posts = Post::query()->select(['id', 'title'])->withCount('comments')->paginate(25);
 foreach ($posts as $post) {
     echo $post->comments_count;
 }
@@ -141,12 +141,12 @@ foreach ($posts as $post) {
 Conditional counting:
 
 ```php
-$posts = Post::withCount([
+$posts = Post::query()->select(['id', 'title'])->withCount([
     'comments',
     'comments as approved_comments_count' => function ($query) {
         $query->where('approved', true);
     },
-])->get();
+])->paginate(25);
 ```
 
 ## Use `cursor()` for Memory-Efficient Iteration
@@ -180,8 +180,10 @@ Incorrect:
 
 Correct:
 ```php
-// Controller
-$users = User::with('profile')->get();
+// Focused read service prepares a bounded, eager-loaded paginator.
+$users = User::query()->select(['id', 'name'])->with('profile')->paginate(25)->withQueryString();
+
+// Controller receives the prepared paginator.
 return view('users.index', compact('users'));
 ```
 

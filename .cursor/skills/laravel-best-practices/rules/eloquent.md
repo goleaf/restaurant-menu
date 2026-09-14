@@ -71,7 +71,7 @@ Post::paginate(); // Admin sees all
 
 ## Define Attribute Casts
 
-Use the `casts()` method (or `$casts` property following project convention) for automatic type conversion.
+Use the repository's `casts()` method for automatic type conversion.
 
 ```php
 protected function casts(): array
@@ -79,14 +79,14 @@ protected function casts(): array
     return [
         'is_active' => 'boolean',
         'metadata' => 'array',
-        'total' => 'decimal:2',
+        'total_price_cents' => 'integer',
     ];
 }
 ```
 
 ## Cast Date Columns Properly
 
-Always cast date columns. Use Carbon instances in templates instead of formatting strings manually.
+Always cast date columns. Prepare locale/timezone-aware date labels in the existing presentation boundary before rendering; Blade displays the prepared value.
 
 Incorrect:
 ```blade
@@ -104,8 +104,7 @@ protected function casts(): array
 ```
 
 ```blade
-{{ $order->ordered_at->toDateString() }}
-{{ $order->ordered_at->format('m-d') }}
+{{ $orderedAtLabel }}
 ```
 
 ## Use `whereBelongsTo()` for Relationship Queries
@@ -123,28 +122,6 @@ Post::whereBelongsTo($user)->get();
 Post::whereBelongsTo($user, 'author')->get();
 ```
 
-## Avoid Hardcoded Table Names in Queries
+## Keep Persistence in Eloquent
 
-Never use string literals for table names in raw queries, joins, or subqueries. Hardcoded table names make it impossible to find all places a model is used and break refactoring (e.g., renaming a table requires hunting through every raw string).
-
-Incorrect:
-```php
-DB::table('users')->where('active', true)->get();
-
-$query->join('companies', 'companies.id', '=', 'users.company_id');
-
-DB::select('SELECT * FROM orders WHERE status = ?', ['pending']);
-```
-
-Correct — reference the model's table:
-```php
-DB::table((new User)->getTable())->where('active', true)->get();
-
-// Even better — use Eloquent or the query builder instead of raw SQL
-User::where('active', true)->get();
-Order::where('status', 'pending')->get();
-```
-
-Prefer Eloquent queries and relationships over `DB::table()` whenever possible — they already reference the model's table. When `DB::table()` or raw joins are unavoidable, always use `(new Model)->getTable()` to keep the reference traceable.
-
-**Exception — migrations:** In migrations, hardcoded table names via `DB::table('settings')` are acceptable and preferred. Models change over time but migrations are frozen snapshots — referencing a model that is later renamed or deleted would break the migration.
+Use models, relationships and reusable scopes for all first-party reads and writes. `DB::table()`, raw SQL and raw expression methods are not alternative paths in this repository. Schema Builder table names remain appropriate inside migrations; data backfills use the existing Eloquent migration pattern and receive a fresh-install/rollback test. Preserve deployed migrations rather than rewriting historical backfills when models evolve.

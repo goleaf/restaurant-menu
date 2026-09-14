@@ -2,7 +2,7 @@
 
 ## Database contract
 
-SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 86 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer.
+SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 88 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer. `DatabaseCacheEntry` maps the existing framework cache table for bounded expiration cleanup; it adds no application table or migration.
 
 ## Restaurant hierarchy
 
@@ -31,14 +31,14 @@ Structure lifecycle is intentionally reversible. Organization, brand, branch, ar
 | Onboarding | restaurant_onboardings, restaurant_onboarding_service_points | one checkpoint per user; entity FKs are unique; expected table count plus ordered service-point links detect missing/corrupt sets; links are unique by checkpoint+position and by service point; `completed_at` is the explicit terminal state |
 | Menu | menus/translations, categories/translations, items/translations/images, variants/translations, modifier groups/translations, modifier options/translations, schedules | every localized record is unique per owner+locale; `hidden_until` is an indexed optional item deadline; image paths and item+sort order are unique; image rows cascade on hard delete while application Actions clean files for soft-deleted parents |
 | Guest/session | table_sessions, table_session_service_points, guests, join_requests, waiter_calls | guarded active/pending service-point uniqueness; session ownership enforced; guest opener is a nullable FK used as the serialized first-guest claim; guest invite digest is unique and carries an explicit expiry; join credentials are unique and live pending requests are application-bounded; guest and pending-request locale is a supported enum value copied through approval |
-| Ordering | draft_orders/items, orders/items, order_status_logs | money uses fixed-precision decimal snapshots; immutable values preserve guest ownership and historical meaning; `orders.status` is the one canonical aggregate lifecycle; nullable draft-item command keys are unique within one draft |
+| Ordering | draft_orders/items, orders/items, order_status_logs | money uses integer-cent snapshots; immutable values preserve guest ownership and historical meaning; `orders.status` is the one canonical aggregate lifecycle; nullable draft-item command keys are unique within one draft |
 | Fulfilment | kitchen_departments, kitchen_tickets/items | branch/department/order consistency; subordinate item status transitions are centralized closed enums and cannot regress; actor/timestamp history is retained |
 | Settlement/governance | manual_payments, audit_logs, organization_subscriptions, notifications | non-negative money; replay-safe operations; immutable audit facts |
 | Runtime | cache, cache_locks, jobs, job_batches, failed_jobs | infrastructure records contain no cross-tenant business cache leakage |
 
 ## Value conventions
 
-- Money: fixed-precision decimal strings/columns at persistence boundaries and integer minor units for arithmetic where an operation requires it; binary float never crosses a domain boundary. Display formatting is locale/currency aware and never feeds persistence.
+- Money: validated decimal input is converted to integer cents for persistence and arithmetic; percentage rates use integer basis points. Binary float never crosses a domain boundary. Display formatting is locale/currency aware and never feeds persistence.
 - Time: database timestamps represent an unambiguous instant; branch/user locale formats presentation.
 - State: backed enum values persisted as canonical lowercase snake-case strings.
 - Order lifecycle: `confirmed_by_waiter → sent_to_kitchen_bar → in_progress → ready → served → payment_requested → paid → closed` is forward-only, with guarded shortcuts for all-ready, direct offline settlement and eligible manual close; cancellation is terminal. The transient confirmed state exists for atomic construction and legacy repair but normal waiter confirmation commits only after department tickets and the sent state exist. Ticket-item `new → accepted → in_progress → ready` is subordinate, supports terminal cancellation and guarded forward shortcuts, and cannot overwrite or regress the canonical order state. Department `completed` is a read state derived from `ready` plus non-null `served_at`, not another persisted status.
@@ -66,4 +66,4 @@ The automated schema audit verifies that every FK-column sequence has a matching
 
 ## Factory and seed coverage
 
-Every one of the 48 first-party Eloquent models has a factory. The final state/exemption inventory and idempotent seeding contract live in [`seeding.md`](seeding.md). Factory defaults must satisfy every non-null foreign key and must not implicitly create unexpectedly large graphs. `MenuItemImage` is opt-in from its parent graph, stores one generated relative path and an integer order, and never changes the legacy `menu_items.image` primary path during migration. Menu translation factories remain opt-in states so ordinary parent factories stay small while tests and demo seeders can require complete locale graphs explicitly.
+Every one of the 49 first-party Eloquent models has a factory. The final state/exemption inventory and idempotent seeding contract live in [`seeding.md`](seeding.md). Factory defaults must satisfy every non-null foreign key and must not implicitly create unexpectedly large graphs. `MenuItemImage` is opt-in from its parent graph, stores one generated relative path and an integer order, and never changes the legacy `menu_items.image` primary path during migration. Menu translation factories remain opt-in states so ordinary parent factories stay small while tests and demo seeders can require complete locale graphs explicitly.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Http\Middleware\RequireRecentPasswordConfirmation;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
@@ -87,6 +88,7 @@ class AppServiceProvider extends ServiceProvider
 
         Livewire::addPersistentMiddleware([
             EnsureUserIsSuperadmin::class,
+            RequireRecentPasswordConfirmation::class,
         ]);
     }
 

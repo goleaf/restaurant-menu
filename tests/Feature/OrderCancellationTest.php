@@ -171,7 +171,7 @@ test('order cancellation counts every ready and served ticket item without hydra
         ->where('action', AuditLogAction::OrderCancelled->value)
         ->sole();
 
-    expect($queryCount)->toBeLessThanOrEqual(19)
+    expect($queryCount)->toBe(21)
         ->and($cancelledOrder->status)->toBe(OrderStatus::Cancelled)
         ->and($cancelledOrder->metadata['ready_ticket_items_at_cancellation'])->toBe($itemCount)
         ->and($cancelledOrder->metadata['served_ticket_items_at_cancellation'])->toBe($itemCount)

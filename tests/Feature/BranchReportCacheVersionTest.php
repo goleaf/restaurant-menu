@@ -127,14 +127,16 @@ test('concurrent processes initialize one shared report version', function (): v
             '--path' => ['database/migrations/0001_01_01_000001_create_cache_table.php'],
             '--force' => true,
         ]))->toBe(0);
+        $cache = Cache::store('report_version_test');
+        $cachePrefix = $cache->getStore()->getPrefix();
 
         $results = Concurrency::driver('process')->run([
-            reportVersionInitializationTask($connection, $connectionName, $databasePath, 1),
-            reportVersionInitializationTask($connection, $connectionName, $databasePath, 2),
+            reportVersionInitializationTask($connection, $connectionName, $databasePath, $cachePrefix, 1),
+            reportVersionInitializationTask($connection, $connectionName, $databasePath, $cachePrefix, 2),
         ], 30);
 
         expect(array_unique($results))->toHaveCount(1)
-            ->and(BranchReportCacheVersion::fingerprint(Cache::store('report_version_test'), 'analytics', collect([1])))
+            ->and(BranchReportCacheVersion::fingerprint($cache, 'analytics', collect([1])))
             ->toBe($results[0]);
     } finally {
         Cache::forgetDriver('report_version_test');
@@ -146,16 +148,67 @@ test('concurrent processes initialize one shared report version', function (): v
     }
 });
 
+test('separate cache connections invalidate interim versions when a source transaction ends', function (bool $rollBack): void {
+    $originalConnection = config('database.default');
+    $sourceName = 'report_version_source';
+    $cacheName = 'report_version_separate_cache';
+    $connection = config('database.connections.sqlite');
+    $connection['database'] = ':memory:';
+
+    try {
+        config([
+            'database.default' => $sourceName,
+            "database.connections.{$sourceName}" => $connection,
+            "database.connections.{$cacheName}" => $connection,
+        ]);
+        expect(Artisan::call('migrate', [
+            '--database' => $cacheName,
+            '--path' => ['database/migrations/0001_01_01_000001_create_cache_table.php'],
+            '--force' => true,
+        ]))->toBe(0);
+        $cache = Cache::build(['driver' => 'database', 'connection' => $cacheName, 'table' => 'cache']);
+        $initial = BranchReportCacheVersion::fingerprint($cache, 'analytics', collect([1]));
+        $during = null;
+        $mutate = function () use ($cache, $rollBack, &$during): void {
+            DB::transaction(function () use ($cache, $rollBack, &$during): void {
+                BranchReportCacheVersion::invalidate($cache, 'analytics', 1);
+                $during = BranchReportCacheVersion::fingerprint($cache, 'analytics', collect([1]));
+
+                if ($rollBack) {
+                    throw new RuntimeException('Source transaction failed.');
+                }
+            });
+        };
+
+        if ($rollBack) {
+            expect($mutate)->toThrow(RuntimeException::class, 'Source transaction failed.');
+        } else {
+            $mutate();
+        }
+
+        $current = BranchReportCacheVersion::fingerprint($cache, 'analytics', collect([1]));
+        expect($during)->not->toBeNull()
+            ->and($during)->not->toBe($initial)
+            ->and($current)->not->toBe($during)
+            ->and(BranchReportCacheVersion::fingerprint($cache, 'analytics', collect([1])))->toBe($current);
+    } finally {
+        config(['database.default' => $originalConnection]);
+        DB::purge($sourceName);
+        DB::purge($cacheName);
+    }
+})->with(['commit' => false, 'rollback' => true]);
+
 /** @param array<string, mixed> $connection */
-function reportVersionInitializationTask(array $connection, string $connectionName, string $databasePath, int $worker): Closure
+function reportVersionInitializationTask(array $connection, string $connectionName, string $databasePath, string $cachePrefix, int $worker): Closure
 {
-    return static function () use ($connection, $connectionName, $databasePath, $worker): string {
+    return static function () use ($connection, $connectionName, $databasePath, $cachePrefix, $worker): string {
         config([
             "database.connections.{$connectionName}" => $connection,
             'cache.stores.report_version_test' => [
                 'driver' => 'database',
                 'connection' => $connectionName,
                 'table' => 'cache',
+                'prefix' => $cachePrefix,
             ],
         ]);
         DB::purge($connectionName);

@@ -1,5 +1,7 @@
 # Current-state audit
 
+This is the historical 2026-08-22 modernization baseline and its resolution record. Its inventory, branch state and test totals are not current verification. Use [`testing.md`](testing.md), [`PROGRESS.md`](PROGRESS.md) and [`compliance-matrix.md`](compliance-matrix.md) for the latest audit.
+
 Audit and modernization date: 2026-08-22. Initial branch: `main` at `aa2c675`, tracking `origin/main`. The index, worktree and untracked set were clean before this task; therefore every modernization diff is attributable and no pre-existing user change required merging or preservation.
 
 ## Factual baseline

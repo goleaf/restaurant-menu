@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use Illuminate\Cache\DatabaseStore;
 use Illuminate\Cache\Repository;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class BranchReportCacheVersion
@@ -55,8 +57,20 @@ final class BranchReportCacheVersion
 
     public static function invalidate(Repository $cache, string $namespace, int $branchId): void
     {
-        if ($branchId > 0) {
-            $cache->forget(self::key($namespace, $branchId));
+        if ($branchId < 1) {
+            return;
+        }
+
+        $key = self::key($namespace, $branchId);
+        $cache->forget($key);
+        $source = DB::connection();
+        $store = $cache->getStore();
+
+        if ($source->transactionLevel() > 0
+            && (! $store instanceof DatabaseStore || $store->getConnection() !== $source)) {
+            $forgetInterimVersion = fn (): bool => $cache->forget($key);
+            $source->afterCommit($forgetInterimVersion);
+            $source->afterRollBack($forgetInterimVersion);
         }
     }
 

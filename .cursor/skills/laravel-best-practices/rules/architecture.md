@@ -2,7 +2,7 @@
 
 ## Single-Purpose Action Classes
 
-Extract discrete business operations into invokable Action classes.
+Extract discrete business operations into focused Action classes using the repository's `handle()` convention. The Action owns multi-record transaction boundaries.
 
 ```php
 class CreateOrderAction
@@ -11,17 +11,19 @@ class CreateOrderAction
 
     public function handle(array $data): Order
     {
-        $order = Order::create($data);
-        $this->inventory->reserve($order);
+        return DB::transaction(function () use ($data): Order {
+            $order = Order::query()->create($data);
+            $this->inventory->reserve($order);
 
-        return $order;
+            return $order;
+        });
     }
 }
 ```
 
 ## Use Dependency Injection
 
-Always use constructor injection. Avoid `app()` or `resolve()` inside classes.
+Use constructor injection in ordinary classes and `boot()` injection in Livewire components where dependencies must be available after hydration. Avoid `app()` or `resolve()` inside application classes.
 
 Incorrect:
 ```php
@@ -96,7 +98,7 @@ $posts = Post::latest()->paginate();
 
 ## Use Atomic Locks for Race Conditions
 
-Prevent race conditions with `Cache::lock()` or `lockForUpdate()`.
+Use the existing SQLite transaction and idempotency boundaries. SQLite's Laravel grammar emits no row-level `FOR UPDATE` lock: this repository's configured `IMMEDIATE` transactions serialize writes, while uniqueness/compare-and-set constraints prevent duplicate effects. A cache lock coordinates cooperating callers only for its lifetime; it is not durable exactly-once execution. Test simultaneous callers on an isolated file database.
 
 ```php
 Cache::lock('order-processing-'.$order->id, 10)->block(5, function () use ($order) {
@@ -105,9 +107,9 @@ Cache::lock('order-processing-'.$order->id, 10)->block(5, function () use ($orde
 
 // Or at query level, inside a transaction
 DB::transaction(function () use ($id) {
-    $product = Product::where('id', $id)->lockForUpdate()->first();
+    $product = Product::query()->whereKey($id)->firstOrFail();
 
-    // Read and update the product while the lock is held...
+    // Recheck tenant ownership and invariants inside the IMMEDIATE transaction.
 });
 ```
 
@@ -153,13 +155,13 @@ The `Context` facade passes data through the entire request lifecycle — middle
 
 ```php
 // In middleware
-Context::add('tenant_id', $request->header('X-Tenant-ID'));
+Context::add('request_id', $requestId);
 
 // Anywhere later — controllers, jobs, log context
-$tenantId = Context::get('tenant_id');
+$requestId = Context::get('request_id');
 ```
 
-Context data automatically propagates to queued jobs and is included in log entries. Use `Context::addHidden()` for sensitive data that should be available in queued jobs but excluded from log context. If data must not leave the current process, do not store it in `Context`.
+Use the application's already validated/generated request identifier. An arbitrary client tenant header never establishes authorization. Context data propagates to queued jobs and log entries; never put bearer tokens, credentials or unnecessary personal data there. `addHidden()` omits log context but still propagates data to queued jobs.
 
 ## Use `Concurrency::run()` for Parallel Execution
 
@@ -174,7 +176,7 @@ use Illuminate\Support\Facades\Concurrency;
 ]);
 ```
 
-Each closure runs in a separate process with full Laravel access. Use for independent database queries, API calls, or computations that would otherwise run sequentially.
+The default process driver launches child Artisan processes. This is suitable for explicitly isolated concurrency tests, not a required web-runtime dependency on shared hosting. Keep application queries bounded and synchronous unless an approved operation already supports that process boundary.
 
 ## Convention Over Configuration
 

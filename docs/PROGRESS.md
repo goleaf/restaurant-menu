@@ -7,7 +7,7 @@
 - Read-only schema/model/migration inventory, owned migration/seed/cache checks, Composer/npm audits and production build pass. All project Markdown links and eight skills across three providers are audited; corrected Livewire and validation guidance is synchronized.
 - Final Browser WebKit passes 5 / 433; four-process backend passes 2,093 / 49,490; canonical sequential coverage passes 2,093 / 49,493 with a 93.8% console summary (Clover 26,871 / 28,617 statements, 93.8987%). All runs have zero failures/skips. Combined distinct evidence is 2,098 tests / 49,926 assertions, a 100% pass rate; all 222 Action files execute at 94.92% statement coverage. Three new traceability path checks explain the assertion difference.
 - Final code/config/manifest digest `e6dfc831a1206918d1bdfbe0097a3c9eb3aeba31f945d7327f21d9088a4d2d1e` over 1,021 files is unchanged across final gates. Boundary scans and focused final review found no blocker.
-- Final documentation/architecture checks pass 16 tests / 1,052 assertions, zero failures/skips. Implementation publication is pending the normal main push.
+- Final documentation/architecture checks pass 16 tests / 1,052 assertions, zero failures/skips. Implementation `6a66abb675da1222ae56b64b17ee87bf6ac0e7ca` was committed as `fix: validate original menu editor transport values` and pushed normally to `origin/main`; a fresh remote-ref read returned the exact SHA.
 
 ## 2026-09-14 — sixth audit: current state and transport boundaries
 

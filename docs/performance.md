@@ -1,5 +1,9 @@
 # Performance
 
+## Fifth audit: media persistence correctness — 2026-09-14
+
+Required image writes now check their Eloquent boolean result, and bounded gallery creation checks returned model existence in memory. These checks add no SELECT/INSERT/UPDATE/DELETE statements to the existing success paths; shared media Actions now own the transaction and replace redundant per-model `saveOrFail`/`deleteOrFail` wrappers with checked writes. Transaction/savepoint boundaries change, so no end-to-end query-count or latency improvement is claimed. Existing image limits and parent cleanup batching remain unchanged.
+
 ## Fourth audit: parent media memory and factory graph reuse — 2026-09-14
 
 Menu/category deletion streams selected primary and gallery paths in 200-record ID batches into an owned temporary file. Gallery filters use an Eloquent item-ID subquery rather than a hydrated ID array. One cleanup callback per parent replays the file only after outer commit; rollback discards it. Category discovery retains a visited-ID set but limits each query's category/frontier input to 200 IDs. This bounds media hydration and path retention, not total process memory or hierarchy tracking.

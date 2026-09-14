@@ -9,6 +9,7 @@ use App\Models\MenuItem;
 use App\Models\MenuItemImage;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use RuntimeException;
 
 final class PromoteMenuItemImageAction
 {
@@ -38,13 +39,19 @@ final class PromoteMenuItemImageAction
 
             $oldPrimaryPath = $scopedItem->image;
             $scopedItem->image = $scopedImage->path;
-            $scopedItem->saveOrFail();
+
+            if ($scopedItem->save() !== true) {
+                throw new RuntimeException('The primary image reference could not be saved.');
+            }
 
             if (filled($oldPrimaryPath)) {
                 $scopedImage->path = $oldPrimaryPath;
-                $scopedImage->saveOrFail();
-            } else {
-                $scopedImage->deleteOrFail();
+
+                if ($scopedImage->save() !== true) {
+                    throw new RuntimeException('The gallery image reference could not be saved.');
+                }
+            } elseif ($scopedImage->delete() !== true) {
+                throw new RuntimeException('The promoted gallery image could not be removed.');
             }
 
             return $scopedItem->refresh()->load('galleryImages');

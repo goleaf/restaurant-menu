@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-14 — reliable media persistence failure handling
+
+- Verify 1,898 backend tests in parallel and sequential coverage plus five browser scenarios: 1,903 distinct passing tests, zero failures/skips, 93.9% application coverage and execution of all 222 Actions.
+- Reject cancelled logo, cover, primary-image and gallery writes inside their owning transaction; roll back earlier gallery writes and remove uncommitted uploads.
+- Move shared image replacement/removal persistence into an owned transaction. Register rollback compensation before persistence and preserve committed replacements when an observer's after-commit callback fails.
+- Add failure-path regressions and clarify Eloquent false-return and filesystem compensation guidance in all three project skill providers. Preserve model/schema definitions, translations and dependencies.
+
 ## 2026-09-14 — bounded media cleanup and factory graph integrity
 
 - Verify 1,866 backend tests in parallel and sequential coverage, plus five browser scenarios: zero failures/skips, 93.9% application coverage and execution of all 222 Actions.

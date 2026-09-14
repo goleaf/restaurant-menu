@@ -1,5 +1,17 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — fifth audit: media persistence failure contracts
+
+Baseline: clean published `30cc939`. Reuse the completed article/application and full model/migration inventories, then inspect remaining image mutation callers. Installed Laravel 13 source confirms that `saveOrFail()` and `deleteOrFail()` retain model-event false returns; a persistence callback may also commit successfully before an after-commit callback throws.
+
+- [x] Reproduce cancelled image saves/deletes and post-commit exceptions with factory data and isolated public storage.
+- [x] Make the shared media transaction boundary and concrete image Actions distinguish rollback, rejected persistence and committed cleanup errors. Preserve tenant validation, existing events, bounded galleries and outer transactions.
+- [x] Reconcile model/migration, Action/request, Markdown and eight-skill inventories; update affected contracts and provider copies without rewriting valid deployed migrations.
+- [x] Run focused regressions, formatting/static analysis, complete browser/parallel/coverage suites, audits/build/translations and isolated migration/seed/cache gates. Final backend 1,898/48,303 and Browser 5/433 pass with zero failures/skips; canonical coverage is 93.9%, and all 222 Actions execute.
+- [ ] Review exact changes, commit in English, push main normally and verify the remote SHA.
+
+Design: retain the existing shared image Actions and their void persistence callback contract. Register replacement compensation within an owned database transaction before invoking persistence, so only rollback removes a new file. Concrete callers must throw when a model event rejects a required write; gallery operations remain all-or-nothing. Merely testing dirty attributes cannot prove that a save succeeded, and a new queue/table is unnecessary for this synchronous contract. No product feature, dependency or schema change is planned.
+
 ## 2026-09-14 — fourth audit: bounded media cleanup and strict factory graphs
 
 Baseline: clean published `9aaa839`. Recheck the previous audit's explicit limits and the complete model, migration, validation, Markdown and skill inventories. Isolated reproductions confirm unbounded parent-media hydration, cross-menu category cascade leakage with malformed references, non-terminating category discovery with a cycle, and strict-loading failures in two optional factory states.

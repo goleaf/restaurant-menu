@@ -161,6 +161,38 @@ test('failed replacement persistence removes only its new file even if the paren
     expect($branch->fresh()->logo_path)->toBe($oldPath);
 });
 
+test('shared image helpers roll back persistence that throws after saving its reference', function (bool $replace, bool $withinTransaction): void {
+    $branch = createLocalImageTransactionBranch();
+    $oldPath = $branch->logo_path;
+
+    $operation = function () use ($branch, $oldPath, $replace): void {
+        $persist = function (?string $path = null) use ($branch): never {
+            $branch->forceFill(['logo_path' => $path])->saveOrFail();
+
+            throw new RuntimeException('Failure after the reference was saved.');
+        };
+
+        expect(fn () => $replace
+            ? app(ReplaceLocalImageAction::class)->handle(
+                UploadedFile::fake()->image('replacement.png'), 'media/transaction-test', $oldPath, $persist,
+            )
+            : app(RemoveLocalImageAction::class)->handle($oldPath, $persist))
+            ->toThrow(RuntimeException::class, 'Failure after the reference was saved.');
+
+        expect($branch->fresh()->logo_path)->toBe($oldPath)
+            ->and(Storage::disk('public')->allFiles())->toBe([$oldPath]);
+    };
+
+    if ($withinTransaction) {
+        DB::transaction($operation);
+    } else {
+        $operation();
+    }
+
+    expect($branch->fresh()->logo_path)->toBe($oldPath);
+    Storage::disk('public')->assertExists($oldPath);
+})->with(['replace' => true, 'remove' => false])->with(['outer commits' => true, 'standalone' => false]);
+
 test('replacement and removal retain immediate cleanup without an application transaction', function (): void {
     $branch = createLocalImageTransactionBranch();
     $oldPath = $branch->logo_path;

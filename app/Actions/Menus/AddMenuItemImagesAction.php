@@ -8,12 +8,14 @@ use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Models\Branch;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Support\Validation\RestaurantValidationRules;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use RuntimeException;
 
 final class AddMenuItemImagesAction
 {
@@ -74,14 +76,17 @@ final class AddMenuItemImagesAction
 
             if (blank($scopedItem->image)) {
                 $scopedItem->image = array_shift($galleryPaths);
-                $scopedItem->saveOrFail();
+
+                if ($scopedItem->save() !== true) {
+                    throw new RuntimeException('The primary image reference could not be saved.');
+                }
             }
 
             if ($galleryPaths !== []) {
                 $highestSortOrder = $scopedItem->galleryImages()->max('sort_order');
                 $nextSortOrder = is_numeric($highestSortOrder) ? (int) $highestSortOrder + 1 : 0;
 
-                $scopedItem->galleryImages()->createMany(array_map(
+                $createdImages = $scopedItem->galleryImages()->createMany(array_map(
                     fn (string $path, int $index): array => [
                         'path' => $path,
                         'sort_order' => $nextSortOrder + $index,
@@ -89,6 +94,10 @@ final class AddMenuItemImagesAction
                     $galleryPaths,
                     array_keys($galleryPaths),
                 ));
+
+                if ($createdImages->contains(fn (MenuItemImage $image): bool => ! $image->exists)) {
+                    throw new RuntimeException('The gallery images could not be saved.');
+                }
             }
 
             return $scopedItem->refresh()->load('galleryImages');

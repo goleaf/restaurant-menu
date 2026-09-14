@@ -8,6 +8,7 @@ use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Models\Brand;
 use Illuminate\Http\UploadedFile;
+use RuntimeException;
 
 final class UpdateBrandLogoAction
 {
@@ -24,14 +25,18 @@ final class UpdateBrandLogoAction
                 directory: "media/organizations/{$brand->organization_id}/brands/{$brand->id}/logos",
                 oldPath: $brand->logo_path,
                 persist: function (string $path) use ($brand): void {
-                    $brand->forceFill(['logo_path' => $path])->saveOrFail();
+                    if ($brand->forceFill(['logo_path' => $path])->save() !== true) {
+                        throw new RuntimeException('The image reference could not be saved.');
+                    }
                 },
             );
         } else {
             $this->removeLocalImage->handle(
                 oldPath: $brand->logo_path,
                 persist: function () use ($brand): void {
-                    $brand->forceFill(['logo_path' => null])->saveOrFail();
+                    if ($brand->forceFill(['logo_path' => null])->save() !== true) {
+                        throw new RuntimeException('The image reference could not be saved.');
+                    }
                 },
             );
         }

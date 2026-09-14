@@ -1,5 +1,9 @@
 # Restaurant Menu completion decisions
 
+## D-029 — Required media persistence fails atomically on model veto
+
+Model events may cancel `save`, `delete` and relationship creation without throwing. Image Actions treat those outcomes as failed compound operations and throw inside the transaction. The shared local-image helper owns persistence and registers replacement rollback cleanup before invoking its callback; it must never compensate committed files merely because a later after-commit callback throws. Keep the existing void callback contract and focused callers rather than introducing a generic persistence framework. Old-file orphan cleanup remains synchronous and is not guaranteed after an earlier commit callback fails.
+
 ## 2026-09-14 — bounded parent media cleanup and strict factory graphs
 
 Use one shared temporary-file cleanup Action for menu/category deletion. Stream selected ID batches and keep one commit/rollback callback pair per parent operation; do not retain all item IDs or paths, and do not introduce a persistent cleanup table or worker requirement. Preserve existing synchronous after-commit file deletion and individual model events. Scope category discovery and observer mutations to the original menu, with a visited-ID set for malformed cycles. Category-ID tracking remains proportional to the hierarchy, so this does not claim constant memory for the whole workflow. Filesystem cleanup after commit is best effort in the existing operational contract; interruption cannot roll back committed database state.

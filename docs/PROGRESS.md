@@ -1,5 +1,11 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — fifth audit: required media persistence
+
+- Reproduced cancelled logo/cover/gallery writes and deletion of committed replacements after observer callback errors. Shared replacement/removal now owns persistence transactions and registers rollback compensation before persistence; concrete media Actions reject false required writes and unsaved gallery results.
+- Integrated media tests pass 83/412 after 26 observed RED cases; two additional stale-image tests pass 2/12 against the existing correct ownership scope. Architecture/factory/schema/traceability tests pass 34/1,337. The preliminary parallel run passed 1,896/48,291; its deliberately interrupted coverage is superseded by the final run and is not counted as a pass.
+- Fresh model/migration/Action/request/Markdown/skill inventories are reconciled. All 88 migrations match the ledger; the isolated roundtrip and repeated seeds pass. Audits/build, translations and owned runtime cache compilation pass. Final full Browser **5/433**, parallel backend **1,898/48,303** and canonical sequential coverage **1,898/48,303** pass without failures/skips. Combined: **1,903 passed / 48,736 assertions**; application coverage **93.9%**, all **222 Actions** executed at **94.90% statement coverage**. The source digest remains unchanged. Publication follows final documentation verification.
+
 ## 2026-09-14 — fourth audit: bounded media and strict factory graphs
 
 - Replaced menu/category path and item-ID collections with selected 200-record reads and a shared temporary-file cleanup Action. Retained memory before root deletion in the 2,000-item fixture falls from about 5.87 MB to about 10 KB; the 605-item regression limits live hydrated models to 400 and preserves every path/event.

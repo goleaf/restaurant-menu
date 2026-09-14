@@ -1,5 +1,9 @@
 # Application security
 
+## Required media writes and commit failures
+
+Logo, cover and gallery Actions reject cancelled model saves/creates/deletes inside their owning transaction. Shared replacement/removal owns a transaction even for a standalone caller; new-file compensation is registered before persistence. A persistence exception rolls back the reference and removes only uncommitted uploads. An exception from a persistence observer after commit must preserve the committed new file; later old-file cleanup may not execute and can leave an orphan. Do not interpret `saveOrFail()` or `deleteOrFail()` as guaranteed exception-on-veto methods.
+
 ## Menu deletion containment
 
 Parent media cleanup scopes discovery and category observer cascades to the original menu, including malformed cross-menu child/item references. A visited-category set makes cyclic discovery terminate, and fallback candidates recheck active existence before deletion. Remaining menu-owned items are removed without touching their foreign category. A deletion-event veto rolls back root, child and gallery writes and preserves media. Current paths are streamed to an owned temporary file before deletion; database rollback retains the referenced media, while physical deletion runs after the outer commit. This temporary file is not a durable retry queue: an interrupted process or post-commit storage failure can leave orphaned files, and cannot undo the committed database operation.

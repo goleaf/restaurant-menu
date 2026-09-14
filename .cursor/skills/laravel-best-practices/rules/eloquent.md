@@ -1,5 +1,11 @@
 # Eloquent Best Practices
 
+## Check Required Model Writes Inside Their Transaction
+
+Model `saving`, `updating`, `creating` and `deleting` listeners can cancel a write by returning `false`. `saveOrFail()` and `deleteOrFail()` wrap a transaction but do not convert that false result into an exception. Where a compound operation requires persistence, check `save()`/`delete() === true` inside its owning Action transaction and throw on rejection. A relationship `create()`/`createMany()` can return an unsaved model; check `exists` on the bounded results before committing dependent work. Dirty attributes describe local changes, not proof of persistence.
+
+For filesystem compensation, register rollback cleanup before the persistence callback. An exception from an after-commit callback occurs after database success; never delete a newly committed file from a catch around the transaction call. Reuse this repository's shared local-image Actions for that boundary.
+
 ## Use Correct Relationship Types
 
 Use `hasMany`, `belongsTo`, `morphMany`, etc. with proper return type hints.

@@ -66,7 +66,9 @@ final class RemoveMenuItemGalleryImageAction
                         throw new RuntimeException('The gallery image changed before it could be removed.');
                     }
 
-                    $currentImage->deleteOrFail();
+                    if ($currentImage->delete() !== true) {
+                        throw new RuntimeException('The gallery image could not be removed.');
+                    }
                 });
             },
         );

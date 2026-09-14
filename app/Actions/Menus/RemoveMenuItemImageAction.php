@@ -38,8 +38,14 @@ final class RemoveMenuItemImageAction
                         ->first();
 
                     $currentItem->image = $promotedImage?->path;
-                    $currentItem->saveOrFail();
-                    $promotedImage?->deleteOrFail();
+
+                    if ($currentItem->save() !== true) {
+                        throw new RuntimeException('The primary image reference could not be saved.');
+                    }
+
+                    if ($promotedImage !== null && $promotedImage->delete() !== true) {
+                        throw new RuntimeException('The promoted gallery image could not be removed.');
+                    }
                 });
             },
         );

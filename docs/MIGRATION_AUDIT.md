@@ -1,5 +1,9 @@
 # Migration audit
 
+## Fifth audit: persistence contract, unchanged schema — 2026-09-14
+
+Read-only Boost schema inspection again reports 61 tables, 633 columns, 308 indexes and 144 foreign keys, with no missing leading foreign-key index. All 88 migration files and all 49 model/factory definitions remain unchanged from the fourth audit. The new image failures concern unchecked Eloquent event vetoes and transaction callback timing; they require Action corrections, not altered columns or deployed migration history. The fresh 88/88 ledger matches every migration name (latest batch 9). The owned SQLite migrate/reset/migrate roundtrip and two default seed runs pass; no schema migration, seed or domain-data mutation ran against the application database.
+
 ## Fourth audit: unchanged schema and factory graph corrections — 2026-09-14
 
 Read-only Boost inspection again matches all 88 migration files with 88 ledger entries (latest batch 9), no missing or unexpected names, and 61 tables/633 columns/308 indexes/144 foreign keys. Every FK has a leading index; no redundant nonunique index prefix was found. Active QR, active/pending table-session and waiter-call identity guards have zero mismatches in the inspected local database. All 49 Eloquent models retain matching factories; the fiftieth PHP file under `app/Models` is the `HasLocalLogo` trait. Strict relation loading and department-readiness totals require factory corrections, not schema changes. Parent deletion also needs application-level scope and cycle guards because ordinary category foreign keys do not encode same-menu ownership or acyclicity. Existing migration history and application data are preserved.

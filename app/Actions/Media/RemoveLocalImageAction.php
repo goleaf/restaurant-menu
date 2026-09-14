@@ -18,15 +18,10 @@ final class RemoveLocalImageAction
      */
     public function handle(?string $oldPath, Closure $persist): void
     {
-        $persist();
+        DB::transaction(function () use ($oldPath, $persist): void {
+            $persist();
 
-        $deleteOldFile = fn () => $this->deleteLocalMediaFile->handle($oldPath);
-        $connection = DB::connection();
-
-        if ($connection->transactionLevel() > 0) {
-            $connection->afterCommit($deleteOldFile);
-        } else {
-            $deleteOldFile();
-        }
+            DB::afterCommit(fn () => $this->deleteLocalMediaFile->handle($oldPath));
+        });
     }
 }

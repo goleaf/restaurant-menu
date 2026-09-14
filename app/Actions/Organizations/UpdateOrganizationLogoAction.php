@@ -8,6 +8,7 @@ use App\Actions\Media\RemoveLocalImageAction;
 use App\Actions\Media\ReplaceLocalImageAction;
 use App\Models\Organization;
 use Illuminate\Http\UploadedFile;
+use RuntimeException;
 
 final class UpdateOrganizationLogoAction
 {
@@ -24,14 +25,18 @@ final class UpdateOrganizationLogoAction
                 directory: "media/organizations/{$organization->id}/logos",
                 oldPath: $organization->logo_path,
                 persist: function (string $path) use ($organization): void {
-                    $organization->forceFill(['logo_path' => $path])->saveOrFail();
+                    if ($organization->forceFill(['logo_path' => $path])->save() !== true) {
+                        throw new RuntimeException('The image reference could not be saved.');
+                    }
                 },
             );
         } else {
             $this->removeLocalImage->handle(
                 oldPath: $organization->logo_path,
                 persist: function () use ($organization): void {
-                    $organization->forceFill(['logo_path' => null])->saveOrFail();
+                    if ($organization->forceFill(['logo_path' => null])->save() !== true) {
+                        throw new RuntimeException('The image reference could not be saved.');
+                    }
                 },
             );
         }

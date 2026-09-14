@@ -77,3 +77,11 @@ public function after(): array
     ];
 }
 ```
+
+## Preserve original transport types
+
+Validate before casting user-controlled input. Livewire PHP property declarations may coerce a boolean into a string/int or throw on a scalar/array mismatch before validation; editable raw values may need `mixed`, with typed mapping only after successful validation. Trim only strings. Keep immutable server-owned identifiers typed and locked, and still scope/authorize mutations.
+
+Laravel's `integer` rule uses `FILTER_VALIDATE_INT`; combine it with `numeric` to reject booleans while accepting normal numeric strings. `integer:strict` rejects those browser strings and is not a drop-in replacement. Decimal money must retain its original value for `DecimalMoney` to reject native floats and booleans.
+
+Dependent selection reads and uniqueness builders must tolerate malformed input. Use a safe scalar projection for these reads, keep the original property for its own rules, and apply `bail` before database rules when prerequisite types fail. A projection is not validation or authorization. Cover actual Livewire update payloads for both create and edit, asserting no persistence on failure and exact prices, flags and translations on success; `tests/Feature/MenuEditorTransportTest.php` is the menu regression matrix.

@@ -29,49 +29,47 @@ final class Variants extends BranchMenuComponent
 {
     private CatalogData $menuQueries;
 
-    public string $variantMenuId = '';
+    public mixed $variantMenuId = '';
 
-    public string $variantItemId = '';
+    public mixed $variantItemId = '';
 
-    public string $variantType = MenuItemVariantType::Portion->value;
+    public mixed $variantType = MenuItemVariantType::Portion->value;
 
-    public string $variantName = '';
+    public mixed $variantName = '';
 
-    public string $variantPrice = '0.00';
+    public mixed $variantPrice = '0.00';
 
-    public ?string $variantWeight = null;
+    public mixed $variantWeight = null;
 
-    public ?string $variantVolume = null;
+    public mixed $variantVolume = null;
 
-    public bool $variantIsDefault = false;
+    public mixed $variantIsDefault = false;
 
-    public bool $variantIsAvailable = true;
+    public mixed $variantIsAvailable = true;
 
-    public int $variantSortOrder = 0;
+    public mixed $variantSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $variantTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $variantTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     public ?int $editingVariantId = null;
 
-    public string $editingVariantType = MenuItemVariantType::Portion->value;
+    public mixed $editingVariantType = MenuItemVariantType::Portion->value;
 
-    public string $editingVariantName = '';
+    public mixed $editingVariantName = '';
 
-    public string $editingVariantPrice = '0.00';
+    public mixed $editingVariantPrice = '0.00';
 
-    public ?string $editingVariantWeight = null;
+    public mixed $editingVariantWeight = null;
 
-    public ?string $editingVariantVolume = null;
+    public mixed $editingVariantVolume = null;
 
-    public bool $editingVariantIsDefault = false;
+    public mixed $editingVariantIsDefault = false;
 
-    public bool $editingVariantIsAvailable = true;
+    public mixed $editingVariantIsAvailable = true;
 
-    public int $editingVariantSortOrder = 0;
+    public mixed $editingVariantSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $editingVariantTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $editingVariantTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     #[Locked]
     public bool $canChangePrices = false;
@@ -218,7 +216,7 @@ final class Variants extends BranchMenuComponent
     #[Computed]
     public function variants(): EloquentCollection
     {
-        return $this->menuQueries->variants($this->branchId, $this->variantItemId);
+        return $this->menuQueries->variants($this->branchId, $this->selectionValue($this->variantItemId));
     }
 
     public function render(): View
@@ -247,8 +245,8 @@ final class Variants extends BranchMenuComponent
     private function variantRules(): array
     {
         $rules = [
-            'variantMenuId' => ['required', 'integer', $this->menuRule()],
-            'variantItemId' => ['required', 'integer', $this->itemRule($this->variantMenuId)],
+            'variantMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
+            'variantItemId' => ['bail', 'required', 'numeric', 'integer', $this->itemRule($this->variantMenuId)],
             ...RestaurantValidationRules::menuItemVariant(
                 canChangePrices: $this->canChangePrices,
                 canChangeAvailability: $this->canChangeAvailability,
@@ -256,7 +254,7 @@ final class Variants extends BranchMenuComponent
         ];
 
         $rules['variantName'][] = $this->variantNameUniqueRule(
-            itemId: (int) $this->variantItemId,
+            itemId: (int) $this->selectionValue($this->variantItemId),
             type: $this->variantType,
         );
 
@@ -300,7 +298,7 @@ final class Variants extends BranchMenuComponent
     /** @return list<array{value: string, label: string}> */
     private function itemOptions(): array
     {
-        return $this->menuQueries->itemOptions($this->branchId, $this->variantMenuId);
+        return $this->menuQueries->itemOptions($this->branchId, $this->selectionValue($this->variantMenuId));
     }
 
     private function menuRule(): mixed
@@ -309,18 +307,18 @@ final class Variants extends BranchMenuComponent
             ->where(fn ($query) => $query->where('branch_id', $this->branchId));
     }
 
-    private function itemRule(string $menuId): mixed
+    private function itemRule(mixed $menuId): mixed
     {
         return Rule::exists((new MenuItem)->getTable(), 'id')
-            ->where(fn ($query) => $query->where('menu_id', (int) $menuId));
+            ->where(fn ($query) => $query->where('menu_id', (int) $this->selectionValue($menuId)));
     }
 
-    private function variantNameUniqueRule(int $itemId, string $type, ?int $ignoreVariantId = null): mixed
+    private function variantNameUniqueRule(int $itemId, mixed $type, ?int $ignoreVariantId = null): mixed
     {
         $rule = Rule::unique((new MenuItemVariant)->getTable(), 'name')
             ->where(fn ($query) => $query
                 ->where('menu_item_id', $itemId)
-                ->where('type', $type));
+                ->where('type', $this->selectionValue($type)));
 
         return $ignoreVariantId === null ? $rule : $rule->ignore($ignoreVariantId);
     }
@@ -340,19 +338,19 @@ final class Variants extends BranchMenuComponent
         return $this->menuQueries->firstMenuId($this->branch);
     }
 
-    private function firstItemId(string $menuId): string
+    private function firstItemId(mixed $menuId): string
     {
-        return $this->menuQueries->firstItemId($this->branchId, $menuId);
+        return $this->menuQueries->firstItemId($this->branchId, $this->selectionValue($menuId));
     }
 
     private function selectedItemPrice(): string
     {
-        return $this->menuQueries->selectedItemPrice($this->branchId, $this->variantItemId);
+        return $this->menuQueries->selectedItemPrice($this->branchId, $this->selectionValue($this->variantItemId));
     }
 
     private function selectionExists(): bool
     {
-        return $this->menuQueries->selectionExists($this->branchId, $this->variantMenuId, $this->variantItemId);
+        return $this->menuQueries->selectionExists($this->branchId, $this->selectionValue($this->variantMenuId), $this->selectionValue($this->variantItemId));
     }
 
     /**

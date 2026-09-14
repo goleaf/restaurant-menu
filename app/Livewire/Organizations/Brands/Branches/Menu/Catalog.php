@@ -46,58 +46,55 @@ class Catalog extends BranchMenuComponent
 
     private ResolveDefaultKitchenDepartmentAction $resolveDefaultKitchenDepartment;
 
-    public string $menuName = '';
+    public mixed $menuName = '';
 
-    public string $menuStatus = 'draft';
+    public mixed $menuStatus = 'draft';
 
-    public int $menuSortOrder = 0;
+    public mixed $menuSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $menuTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $menuTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     public ?int $editingMenuId = null;
 
-    public string $editingMenuName = '';
+    public mixed $editingMenuName = '';
 
-    public string $editingMenuStatus = 'draft';
+    public mixed $editingMenuStatus = 'draft';
 
-    public int $editingMenuSortOrder = 0;
+    public mixed $editingMenuSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $editingMenuTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $editingMenuTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
-    public string $scheduleMenuId = '';
+    public mixed $scheduleMenuId = '';
 
-    public string $scheduleDayOfWeek = '1';
+    public mixed $scheduleDayOfWeek = '1';
 
-    public string $scheduleStartsAt = '08:00';
+    public mixed $scheduleStartsAt = '08:00';
 
-    public string $scheduleEndsAt = '12:00';
+    public mixed $scheduleEndsAt = '12:00';
 
     public ?int $editingScheduleId = null;
 
-    public string $editingScheduleDayOfWeek = '1';
+    public mixed $editingScheduleDayOfWeek = '1';
 
-    public string $editingScheduleStartsAt = '08:00';
+    public mixed $editingScheduleStartsAt = '08:00';
 
-    public string $editingScheduleEndsAt = '12:00';
+    public mixed $editingScheduleEndsAt = '12:00';
 
-    public string $categoryMenuId = '';
+    public mixed $categoryMenuId = '';
 
-    public string $categoryParentId = '';
+    public mixed $categoryParentId = '';
 
-    public string $categoryName = '';
+    public mixed $categoryName = '';
 
-    public string $categoryDescription = '';
+    public mixed $categoryDescription = '';
 
-    public string $categoryIcon = 'bookmark';
+    public mixed $categoryIcon = 'bookmark';
 
-    public int $categorySortOrder = 0;
+    public mixed $categorySortOrder = 0;
 
-    public bool $categoryIsActive = true;
+    public mixed $categoryIsActive = true;
 
-    /** @var array<string, array{name: string, description: string}> */
-    public array $categoryTranslations = [
+    public mixed $categoryTranslations = [
         'en' => ['name' => '', 'description' => ''],
         'lt' => ['name' => '', 'description' => ''],
         'ru' => ['name' => '', 'description' => ''],
@@ -108,55 +105,51 @@ class Catalog extends BranchMenuComponent
     #[Locked]
     public ?int $editingCategoryMenuId = null;
 
-    public string $editingCategoryName = '';
+    public mixed $editingCategoryName = '';
 
-    public string $editingCategoryDescription = '';
+    public mixed $editingCategoryDescription = '';
 
-    public string $editingCategoryIcon = 'bookmark';
+    public mixed $editingCategoryIcon = 'bookmark';
 
-    public int $editingCategorySortOrder = 0;
+    public mixed $editingCategorySortOrder = 0;
 
-    public bool $editingCategoryIsActive = true;
+    public mixed $editingCategoryIsActive = true;
 
-    /** @var array<string, array{name: string, description: string}> */
-    public array $editingCategoryTranslations = [
+    public mixed $editingCategoryTranslations = [
         'en' => ['name' => '', 'description' => ''],
         'lt' => ['name' => '', 'description' => ''],
         'ru' => ['name' => '', 'description' => ''],
     ];
 
-    public string $itemMenuId = '';
+    public mixed $itemMenuId = '';
 
-    public string $itemCategoryId = '';
+    public mixed $itemCategoryId = '';
 
-    public string $itemKitchenDepartmentId = '';
+    public mixed $itemKitchenDepartmentId = '';
 
-    public string $itemName = '';
+    public mixed $itemName = '';
 
-    public string $itemDescription = '';
+    public mixed $itemDescription = '';
 
-    public string $itemPrice = '0.00';
+    public mixed $itemPrice = '0.00';
 
-    public string $itemWeight = '';
+    public mixed $itemWeight = '';
 
-    public string $itemVolume = '';
+    public mixed $itemVolume = '';
 
-    public string $itemCalories = '';
+    public mixed $itemCalories = '';
 
-    /** @var list<string> */
-    public array $itemAllergens = [];
+    public mixed $itemAllergens = [];
 
-    /** @var list<string> */
-    public array $itemDietaryLabels = [];
+    public mixed $itemDietaryLabels = [];
 
-    public int $itemSortOrder = 0;
+    public mixed $itemSortOrder = 0;
 
-    public bool $itemIsAvailable = true;
+    public mixed $itemIsAvailable = true;
 
-    public string $itemHiddenUntil = '';
+    public mixed $itemHiddenUntil = '';
 
-    /** @var array<string, array{name: string, description: string}> */
-    public array $itemTranslations = [
+    public mixed $itemTranslations = [
         'en' => ['name' => '', 'description' => ''],
         'lt' => ['name' => '', 'description' => ''],
         'ru' => ['name' => '', 'description' => ''],
@@ -164,38 +157,35 @@ class Catalog extends BranchMenuComponent
 
     public ?int $editingItemId = null;
 
-    public string $editingItemMenuId = '';
+    public mixed $editingItemMenuId = '';
 
-    public string $editingItemCategoryId = '';
+    public mixed $editingItemCategoryId = '';
 
-    public string $editingItemKitchenDepartmentId = '';
+    public mixed $editingItemKitchenDepartmentId = '';
 
-    public string $editingItemName = '';
+    public mixed $editingItemName = '';
 
-    public string $editingItemDescription = '';
+    public mixed $editingItemDescription = '';
 
-    public string $editingItemPrice = '0.00';
+    public mixed $editingItemPrice = '0.00';
 
-    public string $editingItemWeight = '';
+    public mixed $editingItemWeight = '';
 
-    public string $editingItemVolume = '';
+    public mixed $editingItemVolume = '';
 
-    public string $editingItemCalories = '';
+    public mixed $editingItemCalories = '';
 
-    /** @var list<string> */
-    public array $editingItemAllergens = [];
+    public mixed $editingItemAllergens = [];
 
-    /** @var list<string> */
-    public array $editingItemDietaryLabels = [];
+    public mixed $editingItemDietaryLabels = [];
 
-    public int $editingItemSortOrder = 0;
+    public mixed $editingItemSortOrder = 0;
 
-    public bool $editingItemIsAvailable = true;
+    public mixed $editingItemIsAvailable = true;
 
-    public string $editingItemHiddenUntil = '';
+    public mixed $editingItemHiddenUntil = '';
 
-    /** @var array<string, array{name: string, description: string}> */
-    public array $editingItemTranslations = [
+    public mixed $editingItemTranslations = [
         'en' => ['name' => '', 'description' => ''],
         'lt' => ['name' => '', 'description' => ''],
         'ru' => ['name' => '', 'description' => ''],
@@ -233,7 +223,7 @@ class Catalog extends BranchMenuComponent
             $this->categoryMenuId = $firstMenuId;
             $this->scheduleMenuId = $firstMenuId;
             $this->itemMenuId = $firstMenuId;
-            $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->itemMenuId);
+            $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemMenuId));
             $this->itemKitchenDepartmentId = $this->defaultKitchenDepartmentIdString();
         }
     }
@@ -245,19 +235,19 @@ class Catalog extends BranchMenuComponent
 
     public function updatedItemMenuId(): void
     {
-        $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->itemMenuId);
+        $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemMenuId));
     }
 
     public function updatedEditingItemMenuId(): void
     {
-        $this->editingItemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->editingItemMenuId);
+        $this->editingItemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->editingItemMenuId));
     }
 
     public function createMenu(CreateMenuAction $createMenu): void
     {
         $this->authorizeMenuManagement();
 
-        $this->menuName = trim($this->menuName);
+        $this->menuName = $this->trimInput($this->menuName);
 
         $validated = $this->validate($this->menuRules());
 
@@ -308,7 +298,7 @@ class Catalog extends BranchMenuComponent
             return;
         }
 
-        $this->editingMenuName = trim($this->editingMenuName);
+        $this->editingMenuName = $this->trimInput($this->editingMenuName);
 
         $validated = $this->validate($this->menuRules('editing'));
 
@@ -452,8 +442,8 @@ class Catalog extends BranchMenuComponent
     {
         $this->authorizeMenuManagement();
 
-        $this->categoryName = trim($this->categoryName);
-        $this->categoryDescription = trim($this->categoryDescription);
+        $this->categoryName = $this->trimInput($this->categoryName);
+        $this->categoryDescription = $this->trimInput($this->categoryDescription);
 
         $validated = $this->validate($this->categoryRules());
         $menu = $this->catalogData->findBranchMenu($this->branch, (int) $validated['categoryMenuId']);
@@ -511,8 +501,8 @@ class Catalog extends BranchMenuComponent
             return;
         }
 
-        $this->editingCategoryName = trim($this->editingCategoryName);
-        $this->editingCategoryDescription = trim($this->editingCategoryDescription);
+        $this->editingCategoryName = $this->trimInput($this->editingCategoryName);
+        $this->editingCategoryDescription = $this->trimInput($this->editingCategoryDescription);
 
         $validated = $this->validate($this->categoryRules('editing'));
 
@@ -539,7 +529,7 @@ class Catalog extends BranchMenuComponent
 
         $this->cancelCategoryEditing();
         $this->cancelItemEditing();
-        $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->itemMenuId);
+        $this->itemCategoryId = $this->catalogData->firstCategoryIdForMenu($this->branch, $this->selectionValue($this->itemMenuId));
         $this->forgetMenuComputed();
 
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.menu.index.category_removed'));
@@ -549,8 +539,8 @@ class Catalog extends BranchMenuComponent
     {
         $this->authorizeMenuManagement();
 
-        $this->itemName = trim($this->itemName);
-        $this->itemDescription = trim($this->itemDescription);
+        $this->itemName = $this->trimInput($this->itemName);
+        $this->itemDescription = $this->trimInput($this->itemDescription);
 
         $this->refreshMutationCapabilities();
         $validated = $this->validate($this->itemRules());
@@ -637,8 +627,8 @@ class Catalog extends BranchMenuComponent
             return;
         }
 
-        $this->editingItemName = trim($this->editingItemName);
-        $this->editingItemDescription = trim($this->editingItemDescription);
+        $this->editingItemName = $this->trimInput($this->editingItemName);
+        $this->editingItemDescription = $this->trimInput($this->editingItemDescription);
 
         $this->refreshMutationCapabilities();
         $validated = $this->validate($this->itemRules('editing'));
@@ -701,9 +691,9 @@ class Catalog extends BranchMenuComponent
     {
         return view('livewire.organizations.brands.branches.menu.catalog', $this->catalogData->for(
             branch: $this->branch,
-            categoryMenuId: $this->categoryMenuId,
-            itemMenuId: $this->itemMenuId,
-            editingItemMenuId: $this->editingItemMenuId,
+            categoryMenuId: $this->selectionValue($this->categoryMenuId),
+            itemMenuId: $this->selectionValue($this->itemMenuId),
+            editingItemMenuId: $this->selectionValue($this->editingItemMenuId),
         ));
     }
 
@@ -754,15 +744,14 @@ class Catalog extends BranchMenuComponent
             return $rules;
         }
 
-        $parentRules = ['nullable'];
+        $parentRules = ['bail', 'nullable', 'numeric', 'integer'];
 
         if ($this->categoryParentId !== '') {
-            $parentRules[] = 'integer';
-            $parentRules[] = $this->categoryRule($this->categoryMenuId);
+            $parentRules[] = $this->categoryRule($this->selectionValue($this->categoryMenuId));
         }
 
         $rules = [
-            'categoryMenuId' => ['required', 'integer', $this->menuRule()],
+            'categoryMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
             'categoryParentId' => $parentRules,
             ...RestaurantValidationRules::category(iconValues: array_keys(CatalogData::iconOptions())),
             ...RestaurantValidationRules::menuTranslations(
@@ -771,7 +760,7 @@ class Catalog extends BranchMenuComponent
                 descriptionMax: 1000,
             ),
         ];
-        $rules['categoryName'][] = $this->categoryNameUniqueRule((int) $this->categoryMenuId);
+        $rules['categoryName'][] = $this->categoryNameUniqueRule((int) $this->selectionValue($this->categoryMenuId));
 
         return $rules;
     }
@@ -783,14 +772,14 @@ class Catalog extends BranchMenuComponent
     {
         if ($editing) {
             return [
-                'editingScheduleDayOfWeek' => ['required', 'integer', 'min:1', 'max:7'],
+                'editingScheduleDayOfWeek' => ['bail', 'required', 'numeric', 'integer', 'min:1', 'max:7'],
                 'editingScheduleStartsAt' => ['required', 'date_format:H:i'],
                 'editingScheduleEndsAt' => ['required', 'date_format:H:i'],
             ];
         }
 
         return [
-            'scheduleMenuId' => ['required', 'integer', $this->menuRule()],
+            'scheduleMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
             ...RestaurantValidationRules::menuSchedule(),
         ];
     }
@@ -804,12 +793,12 @@ class Catalog extends BranchMenuComponent
         $menuField = $fieldPrefix === '' ? 'itemMenuId' : $fieldPrefix.'ItemMenuId';
         $categoryField = $fieldPrefix === '' ? 'itemCategoryId' : $fieldPrefix.'ItemCategoryId';
         $departmentField = $fieldPrefix === '' ? 'itemKitchenDepartmentId' : $fieldPrefix.'ItemKitchenDepartmentId';
-        $menuId = (string) ($fieldPrefix === '' ? $this->itemMenuId : $this->editingItemMenuId);
-        $departmentId = (string) ($fieldPrefix === '' ? $this->itemKitchenDepartmentId : $this->editingItemKitchenDepartmentId);
+        $menuId = $this->selectionValue($fieldPrefix === '' ? $this->itemMenuId : $this->editingItemMenuId);
+        $departmentId = $fieldPrefix === '' ? $this->itemKitchenDepartmentId : $this->editingItemKitchenDepartmentId;
         $rules = [
-            $menuField => ['required', 'integer', $this->menuRule()],
-            $categoryField => ['required', 'integer', $this->categoryRule($menuId)],
-            $departmentField => ['nullable'],
+            $menuField => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
+            $categoryField => ['bail', 'required', 'numeric', 'integer', $this->categoryRule($menuId)],
+            $departmentField => ['bail', 'nullable', 'numeric', 'integer'],
             ...RestaurantValidationRules::menuItem(
                 prefix: $fieldPrefix,
                 canChangePrices: $this->canChangePrices,
@@ -823,12 +812,11 @@ class Catalog extends BranchMenuComponent
         ];
 
         if ($departmentId !== '') {
-            $rules[$departmentField][] = 'integer';
             $rules[$departmentField][] = $this->kitchenDepartmentRule();
         }
 
         $rules[$fieldPrefix === '' ? 'itemName' : 'editingItemName'][] = $this->itemNameUniqueRule(
-            (int) ($fieldPrefix === '' ? $this->itemCategoryId : $this->editingItemCategoryId),
+            (int) $this->selectionValue($fieldPrefix === '' ? $this->itemCategoryId : $this->editingItemCategoryId),
             $fieldPrefix === '' ? null : $this->editingItemId,
         );
 
@@ -896,7 +884,7 @@ class Catalog extends BranchMenuComponent
 
     private function resetItemForm(?string $keepMenuId = null): void
     {
-        $menuId = $keepMenuId ?? $this->itemMenuId;
+        $menuId = $keepMenuId ?? $this->selectionValue($this->itemMenuId);
 
         $this->reset('itemCategoryId', 'itemName', 'itemDescription', 'itemWeight', 'itemVolume', 'itemCalories', 'itemAllergens', 'itemDietaryLabels');
         $this->itemMenuId = $menuId;

@@ -1,5 +1,9 @@
 # Data model
 
+## Seventh audit persistence review — 2026-09-14
+
+Fresh read-only Boost inspection confirms 61 tables / 633 columns / 308 indexes / 144 foreign keys and no missing leading foreign-key index. All 49 model definitions retain matching factories; all 88 migration files provide up/down and are recorded in the application migration ledger through batch 9. The full owned SQLite migrate/reset/migrate roundtrip and two default seed runs pass. Menu transport hardening changes the validation boundary only: decimal strings become exact integer cents after validation, stored flags and limits keep their existing types, and deployed migrations, permanent identities, snapshots and application data are preserved.
+
 ## Sixth audit persistence review — 2026-09-14
 
 The schema remains 61 tables / 633 columns / 308 indexes / 144 foreign keys across 88 migrations. All 49 models have factories. A current selected entity reload supplies authoritative image ownership and paths before persistence; the caller's unrelated dirty attributes do not become part of an image-only save. Boolean branch-access checks require no additional column or index. Transport validation changes do not alter stored kitchen-department types or ranges. Existing migration history, snapshots, constraints and application data are preserved.

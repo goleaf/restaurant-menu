@@ -1,5 +1,9 @@
 # Restaurant Menu completion decisions
 
+## D-031 — Menu input types and safe dependent selections
+
+Extend the original-transport boundary to Catalog, Modifiers and Variants. Use mixed editable values, string-only trimming and numeric plus integer rules; map only validated data into existing Actions. BranchMenuComponent owns the small repeated read projection, which must never overwrite the original public selection. Apply bail before database-dependent validation after a type failure. Retain server-owned locked context and existing permission checks. Preserve established flat bindings and rule builders for this defect correction; a separate Form extraction must establish a concrete boundary rather than create parallel state. Verify malformed transport and exact valid persistence for all seven editors and create/edit paths; no schema or dependency rewrite is justified.
+
 ## D-030 — Current persistence and original transport values
 
 Image mutation Actions reload selected active records inside their owning transaction and retain original organization/brand predicates. Cleanup follows the persisted old reference, so stale callers and outer-rollback retries do not leak the previous file. Saving a separate current record and synchronizing only image/timestamp attributes preserves unrelated dirty caller fields. Keep the existing filesystem compensation Actions; this requires one additional selected lookup per image operation and no schema change.

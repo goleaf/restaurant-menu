@@ -18,7 +18,7 @@
 12. Root [`ROADMAP.md`](../ROADMAP.md) — the external delivery priority index; [`current-state-audit.md`](current-state-audit.md), [`code-review.md`](code-review.md), and [`known-limitations.md`](known-limitations.md) retain modernization evidence.
 13. [`decisions/`](decisions/) — accepted architecture decisions.
 
-The latest repository-wide audit is the 2026-09-14 sixth-audit entry in [`testing.md`](testing.md) and [`PROGRESS.md`](PROGRESS.md). [`MIGRATION_AUDIT.md`](MIGRATION_AUDIT.md) records the 88-migration review and rollback limits; [`CURRENT_VERSION.md`](CURRENT_VERSION.md) records the verified locked dependency baseline. Earlier dated test and browser results are historical evidence.
+The latest repository-wide audit is the 2026-09-14 seventh-audit entry in [`testing.md`](testing.md) and [`PROGRESS.md`](PROGRESS.md). [`MIGRATION_AUDIT.md`](MIGRATION_AUDIT.md) records the 88-migration review and rollback limits; [`CURRENT_VERSION.md`](CURRENT_VERSION.md) records the verified locked dependency baseline. Earlier dated test and browser results are historical evidence.
 
 ## Requirement views
 

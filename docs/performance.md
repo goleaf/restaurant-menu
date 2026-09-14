@@ -1,5 +1,9 @@
 # Performance
 
+## Seventh audit: validation before dependent reads — 2026-09-14
+
+The menu transport correction adds no database access, schema, cache or eager-loading path. Dependent selectors continue through existing scoped read services; bail rules avoid uniqueness/existence checks after prerequisite type failure. Query delta for valid operations is expected to be zero by unchanged query structure; this audit makes no new latency or throughput claim. Existing eager-loading/query-budget regressions run with the full suite. Telescope/Debugbar MCP is not exposed; scoped executable query counters and read-only Boost schema inspection remain the available evidence.
+
 ## Sixth audit: branch access allocation and image consistency — 2026-09-14
 
 The isolated single-branch access fixture at 1 / 40 / 400 assignments previously hydrated 1 / 40 / 400 BranchUser records for either an allowed or denied result. User::canAccessBranch now uses one bounded Branch exists query with assignment exists/not-exists subqueries and hydrates zero assignments at every size. Assigned access remains 5 total queries including identity/membership checks; organization-wide fallback drops from 6 to 5. The existing branch-settings mount budget improves from 14 to 13 queries for both empty and full 28-interval schedules; its exact regression budget is tightened accordingly. The separate accessibleBranchIdsForOrganization list interface is unchanged. Existing indexes cover the predicates. These are query/allocation measurements, not production latency results.

@@ -87,5 +87,16 @@ abstract class BranchMenuComponent extends Component
         return $user;
     }
 
+    protected function trimInput(mixed $value): mixed
+    {
+        return is_string($value) ? trim($value) : $value;
+    }
+
+    /** Read projection only; validation must receive the original public value. */
+    protected function selectionValue(mixed $value): string
+    {
+        return is_string($value) || is_int($value) ? (string) $value : '';
+    }
+
     abstract protected function catalogData(): CatalogData;
 }

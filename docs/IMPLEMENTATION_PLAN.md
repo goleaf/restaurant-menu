@@ -1,5 +1,16 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — seventh audit: menu transport types and dependent selections
+
+Baseline: clean published `47badf0`. Review the remaining catalog, modifier and variant editors after the kitchen-department fix. Typed public form values may be coerced before shared rules run; dependent selections are also consumed by hooks, uniqueness rules and prepared reads. Validate this with real Livewire POSTs before editing implementation.
+
+- [x] Reproduce malformed scalar, money, array and dependent-selector values for catalog/modifier/variant create and edit operations, including valid controls and permission restrictions.
+- [x] Preserve original editable values until shared validation; guard dependent read selections and normalization without weakening tenant scopes, capability checks, money precision or accepted browser encodings. Reuse existing Actions, shared rule builders and the branch-menu component boundary.
+- [x] Reconcile all model/factory/migration, Action/Request/Form, Markdown and skill inventories. Update affected current guidance and preserve correct model definitions, deployed migrations and data.
+- [x] Run targeted regressions, formatting/static analysis, full browser/parallel/sequential coverage suites, dependency audits/build/translations and isolated schema/seed/cache gates against unchanged source. Final backend 2,093 and Browser 5 pass with zero failures/skips; canonical coverage is 93.8%, separately from the 100% pass rate.
+- [ ] Review exact owned changes, commit in English, push main normally and verify the remote SHA.
+
+Design: fix the existing validation boundary without changing Blade bindings or adding parallel field ownership. Editable values must remain untrusted through transport; server-owned identity/capability properties retain their locks/types. Selected read contexts may safely project malformed input to an empty selection, but the original submitted value must remain available for validation. Existing focused Actions continue to own persistence. Any required schema or form extraction must be justified by a reproduced defect rather than inventory counts alone.
 
 ## 2026-09-14 — sixth audit: current image state, transport validation and bounded access checks
 

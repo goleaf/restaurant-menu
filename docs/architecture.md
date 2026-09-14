@@ -1,5 +1,9 @@
 # Architecture
 
+## Seventh audit boundaries — 2026-09-14
+
+Catalog, Modifiers and Variants preserve original editable transport types until shared validation succeeds. BranchMenuComponent trims only strings and projects scalar selections for dependent read-service calls and uniqueness scopes without overwriting the public input. Integer rules include numeric validation; malformed names bail before uniqueness queries. Existing flat Blade bindings, scoped CatalogData reads, capability refresh and focused persistence Actions remain in place. This correction does not introduce a second form state, claim that all existing menu validation has moved into Form objects, or change the schema.
+
 ## Sixth audit boundaries — 2026-09-14
 
 Organization/brand/branch image Actions select current active image state inside the transaction through original parent predicates. They persist on that current record, reuse shared rollback/outer-commit file handling, and synchronize only image/timestamp state to the caller. No unrelated dirty model field is saved or cleared. Stale replacement/removal, same-instance retry after rollback and moved/archived records are covered by EntityImageRetryTest.

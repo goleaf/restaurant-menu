@@ -1,6 +1,6 @@
 # Roadmap
 
-Updated 2026-08-23. This is the external delivery priority index. It schedules work but does not redefine behaviour: [`docs/requirements.md`](docs/requirements.md) remains authoritative and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) records implementation evidence. The bounded repository-completion run requested on 2026-08-23 is tracked separately in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) and [`docs/PROGRESS.md`](docs/PROGRESS.md).
+Reverified against GitHub Issues on 2026-09-14. This is the external delivery priority index. It schedules work but does not redefine behaviour: [`docs/requirements.md`](docs/requirements.md) remains authoritative and [`docs/compliance-matrix.md`](docs/compliance-matrix.md) records implementation evidence. The bounded repository-completion run requested on 2026-08-23 is tracked separately in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) and [`docs/PROGRESS.md`](docs/PROGRESS.md).
 
 ## Current state
 

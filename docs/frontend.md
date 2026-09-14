@@ -1,5 +1,9 @@
 # Frontend architecture
 
+## Menu editor transport contract — 2026-09-14
+
+The catalog, modifiers and variants keep their existing flat wire:model bindings and prepared Blade presentation. Editable values remain mixed until server validation so a malformed update returns a field error instead of a hydration TypeError or silent scalar conversion. Dependent selector reads use safe projections while validation retains the original public value. No template, layout, CSS, translation key or browser dependency changes are required. The regression matrix exercises actual Livewire update payloads for create/edit and dependent selection updates; valid controls verify exact saved values.
+
 The interface is server-rendered Laravel Blade enhanced by class-based Livewire 4 and Flux UI Free 2. It is not a SPA and does not use React, Vue, Inertia, Volt, jQuery, Axios or a second Alpine installation.
 
 ## Rendering contract

@@ -1,5 +1,9 @@
 # Application security
 
+## Seventh audit input boundaries — 2026-09-14
+
+Menu, category, dish, schedule, modifier-group, option and variant create/edit operations now validate raw transport values. Arrays/nulls receive field errors, boolean names and integer limits are rejected, native float/boolean money stays invalid, and the string `false` cannot become a true flag through PHP property coercion. Safe projections protect dependent reads from invalid selectors while original IDs still pass numeric/integer and branch/parent-scoped existence rules. Valid numeric strings and `0`/`1` checkbox encodings retain exact persistence. Existing server-side authorization and independent price/availability capabilities remain required; MenuEditorTransportTest and the existing menu permission tests cover these boundaries.
+
 ## Sixth audit trust boundaries — 2026-09-14
 
 Logo/cover mutation reloads the active record through its original organization/brand scope before storing a replacement or removing the current reference. Stale models after another save or rollback cannot choose the cleanup path; unrelated dirty attributes are not persisted. Moved or archived records fail before file storage. Existing policy checks at entry points and transaction compensation remain required.

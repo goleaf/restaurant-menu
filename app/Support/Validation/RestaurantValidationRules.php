@@ -259,9 +259,9 @@ class RestaurantValidationRules
     public static function menu(string $prefix = ''): array
     {
         return [
-            self::field($prefix, 'menuName') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'menuName') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'menuStatus') => ['required', 'string', Rule::in(MenuStatus::values())],
-            self::field($prefix, 'menuSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'menuSortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
         ];
     }
 
@@ -272,10 +272,10 @@ class RestaurantValidationRules
     public static function category(string $prefix = '', array $iconValues = []): array
     {
         return [
-            self::field($prefix, 'categoryName') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'categoryName') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'categoryDescription') => ['nullable', 'string', 'max:1000'],
             self::field($prefix, 'categoryIcon') => self::enumTextRules($iconValues, required: false),
-            self::field($prefix, 'categorySortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'categorySortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
             self::field($prefix, 'categoryIsActive') => ['boolean'],
         ];
     }
@@ -286,7 +286,7 @@ class RestaurantValidationRules
     public static function menuSchedule(): array
     {
         return [
-            'scheduleDayOfWeek' => ['required', 'integer', 'min:1', 'max:7'],
+            'scheduleDayOfWeek' => ['required', 'numeric', 'integer', 'min:1', 'max:7'],
             'scheduleStartsAt' => ['required', 'date_format:H:i'],
             'scheduleEndsAt' => ['required', 'date_format:H:i'],
         ];
@@ -339,16 +339,16 @@ class RestaurantValidationRules
     public static function menuItem(string $prefix = '', bool $canChangePrices = true, bool $canChangeAvailability = true): array
     {
         $rules = [
-            self::field($prefix, 'itemName') => ['required', 'string', 'max:180'],
+            self::field($prefix, 'itemName') => ['bail', 'required', 'string', 'max:180'],
             self::field($prefix, 'itemDescription') => ['nullable', 'string', 'max:1200'],
             self::field($prefix, 'itemWeight') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'itemVolume') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            self::field($prefix, 'itemCalories') => ['nullable', 'integer', 'min:0', 'max:999999'],
+            self::field($prefix, 'itemCalories') => ['nullable', 'numeric', 'integer', 'min:0', 'max:999999'],
             self::field($prefix, 'itemAllergens') => ['array', 'max:'.count(MenuAllergen::cases())],
             self::field($prefix, 'itemAllergens').'.*' => ['string', 'distinct', Rule::in(MenuAllergen::values())],
             self::field($prefix, 'itemDietaryLabels') => ['array', 'max:'.count(MenuDietaryLabel::cases())],
             self::field($prefix, 'itemDietaryLabels').'.*' => ['string', 'distinct', Rule::in(MenuDietaryLabel::values())],
-            self::field($prefix, 'itemSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'itemSortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
         ];
 
         if ($canChangePrices) {
@@ -373,11 +373,11 @@ class RestaurantValidationRules
     ): array {
         $rules = [
             self::field($prefix, 'variantType') => ['required', 'string', Rule::in(MenuItemVariantType::values())],
-            self::field($prefix, 'variantName') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'variantName') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'variantWeight') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'variantVolume') => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             self::field($prefix, 'variantIsDefault') => ['boolean'],
-            self::field($prefix, 'variantSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'variantSortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
             ...self::translatedNames(self::field($prefix, 'variantTranslations')),
         ];
 
@@ -411,17 +411,18 @@ class RestaurantValidationRules
     public static function modifierGroup(string $prefix = ''): array
     {
         return [
-            self::field($prefix, 'modifierGroupName') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'modifierGroupName') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'modifierGroupIsRequired') => ['boolean'],
-            self::field($prefix, 'modifierGroupMinSelect') => ['required', 'integer', 'min:0', 'max:50'],
+            self::field($prefix, 'modifierGroupMinSelect') => ['required', 'numeric', 'integer', 'min:0', 'max:50'],
             self::field($prefix, 'modifierGroupMaxSelect') => [
                 'required',
+                'numeric',
                 'integer',
                 'min:0',
                 'max:50',
                 'gte:'.self::field($prefix, 'modifierGroupMinSelect'),
             ],
-            self::field($prefix, 'modifierGroupSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'modifierGroupSortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
         ];
     }
 
@@ -431,8 +432,8 @@ class RestaurantValidationRules
     public static function modifierOption(string $prefix = '', bool $canChangePrices = true, bool $canChangeAvailability = true): array
     {
         $rules = [
-            self::field($prefix, 'modifierOptionName') => ['required', 'string', 'max:160'],
-            self::field($prefix, 'modifierOptionSortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'modifierOptionName') => ['bail', 'required', 'string', 'max:160'],
+            self::field($prefix, 'modifierOptionSortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
         ];
 
         if ($canChangePrices) {

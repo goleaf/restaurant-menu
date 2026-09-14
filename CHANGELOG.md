@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-14 — menu transport types and dependent selections
+
+- Preserve raw editable types across catalog, modifier and variant forms; reject malformed names, integer limits, flags, translations and money before persistence.
+- Guard dependent selector reads while retaining original values for scoped validation; preserve valid numeric strings, exact cents and translated names.
+- Add 122 transport regression cases spanning seven create/edit editors and modifier assignment. Update shared rules and synchronized Livewire/validation skill guidance.
+- Audit all models, factories, migrations, Markdown and project skills; retain correct definitions and deployed migration history. Verify 2,098 distinct passing backend/browser tests, zero failures/skips, 93.8% canonical application coverage and execution of all 222 Action files. Publication evidence is tracked in `docs/PROGRESS.md`.
+
 ## 2026-09-14 — current image references and validated transport
 
 - Verify 1,971 backend tests in parallel and sequential coverage plus five browser scenarios: 1,976 distinct passing tests, zero failures/skips, 93.9% application coverage and execution of all 222 Actions.

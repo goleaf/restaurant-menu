@@ -33,65 +33,61 @@ class Modifiers extends BranchMenuComponent
 {
     private CatalogData $menuQueries;
 
-    public string $modifierGroupName = '';
+    public mixed $modifierGroupName = '';
 
-    public bool $modifierGroupIsRequired = false;
+    public mixed $modifierGroupIsRequired = false;
 
-    public int $modifierGroupMinSelect = 0;
+    public mixed $modifierGroupMinSelect = 0;
 
-    public int $modifierGroupMaxSelect = 1;
+    public mixed $modifierGroupMaxSelect = 1;
 
-    public int $modifierGroupSortOrder = 0;
+    public mixed $modifierGroupSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $modifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $modifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     public ?int $editingModifierGroupId = null;
 
-    public string $editingModifierGroupName = '';
+    public mixed $editingModifierGroupName = '';
 
-    public bool $editingModifierGroupIsRequired = false;
+    public mixed $editingModifierGroupIsRequired = false;
 
-    public int $editingModifierGroupMinSelect = 0;
+    public mixed $editingModifierGroupMinSelect = 0;
 
-    public int $editingModifierGroupMaxSelect = 1;
+    public mixed $editingModifierGroupMaxSelect = 1;
 
-    public int $editingModifierGroupSortOrder = 0;
+    public mixed $editingModifierGroupSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $editingModifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $editingModifierGroupTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
-    public string $modifierOptionGroupId = '';
+    public mixed $modifierOptionGroupId = '';
 
-    public string $modifierOptionName = '';
+    public mixed $modifierOptionName = '';
 
-    public string $modifierOptionPriceDelta = '0.00';
+    public mixed $modifierOptionPriceDelta = '0.00';
 
-    public bool $modifierOptionIsAvailable = true;
+    public mixed $modifierOptionIsAvailable = true;
 
-    public int $modifierOptionSortOrder = 0;
+    public mixed $modifierOptionSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $modifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $modifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
     public ?int $editingModifierOptionId = null;
 
-    public string $editingModifierOptionName = '';
+    public mixed $editingModifierOptionName = '';
 
-    public string $editingModifierOptionPriceDelta = '0.00';
+    public mixed $editingModifierOptionPriceDelta = '0.00';
 
-    public bool $editingModifierOptionIsAvailable = true;
+    public mixed $editingModifierOptionIsAvailable = true;
 
-    public int $editingModifierOptionSortOrder = 0;
+    public mixed $editingModifierOptionSortOrder = 0;
 
-    /** @var array<string, string> */
-    public array $editingModifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
+    public mixed $editingModifierOptionTranslations = ['en' => '', 'lt' => '', 'ru' => ''];
 
-    public string $modifierItemMenuId = '';
+    public mixed $modifierItemMenuId = '';
 
-    public string $modifierItemId = '';
+    public mixed $modifierItemId = '';
 
-    public string $modifierItemGroupId = '';
+    public mixed $modifierItemGroupId = '';
 
     #[Locked]
     public bool $canChangePrices = false;
@@ -126,7 +122,7 @@ class Modifiers extends BranchMenuComponent
     public function createModifierGroup(CreateModifierGroupAction $createGroup): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $this->modifierGroupName = trim($this->modifierGroupName);
+        $this->modifierGroupName = $this->trimInput($this->modifierGroupName);
         $rules = RestaurantValidationRules::modifierGroup();
         $rules['modifierGroupName'][] = $this->groupNameUniqueRule();
         $validated = $this->validate([
@@ -182,7 +178,7 @@ class Modifiers extends BranchMenuComponent
             return;
         }
 
-        $this->editingModifierGroupName = trim($this->editingModifierGroupName);
+        $this->editingModifierGroupName = $this->trimInput($this->editingModifierGroupName);
         $rules = RestaurantValidationRules::modifierGroup('editing');
         $rules['editingModifierGroupName'][] = $this->groupNameUniqueRule($this->editingModifierGroupId);
         $validated = $this->validate([
@@ -224,14 +220,14 @@ class Modifiers extends BranchMenuComponent
     public function createModifierOption(CreateModifierOptionAction $createOption): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $this->modifierOptionName = trim($this->modifierOptionName);
+        $this->modifierOptionName = $this->trimInput($this->modifierOptionName);
         $this->refreshMutationCapabilities();
         $rules = RestaurantValidationRules::modifierOption(
             canChangePrices: $this->canChangePrices,
             canChangeAvailability: $this->canChangeAvailability,
         );
-        $rules['modifierOptionGroupId'] = ['required', 'integer', $this->groupRule()];
-        $rules['modifierOptionName'][] = $this->optionNameUniqueRule((int) $this->modifierOptionGroupId);
+        $rules['modifierOptionGroupId'] = ['bail', 'required', 'numeric', 'integer', $this->groupRule()];
+        $rules['modifierOptionName'][] = $this->optionNameUniqueRule((int) $this->selectionValue($this->modifierOptionGroupId));
         $rules = [
             ...$rules,
             ...RestaurantValidationRules::translatedNames('modifierOptionTranslations'),
@@ -274,7 +270,7 @@ class Modifiers extends BranchMenuComponent
             return;
         }
 
-        $this->editingModifierOptionName = trim($this->editingModifierOptionName);
+        $this->editingModifierOptionName = $this->trimInput($this->editingModifierOptionName);
         $this->refreshMutationCapabilities();
         $option = $this->findOption($this->editingModifierOptionId);
         $rules = RestaurantValidationRules::modifierOption(
@@ -309,9 +305,9 @@ class Modifiers extends BranchMenuComponent
     {
         $this->authorizeBranchAbility('manageMenu');
         $validated = $this->validate([
-            'modifierItemMenuId' => ['required', 'integer', $this->menuRule()],
-            'modifierItemId' => ['required', 'integer', $this->itemRule($this->modifierItemMenuId)],
-            'modifierItemGroupId' => ['required', 'integer', $this->groupRule()],
+            'modifierItemMenuId' => ['bail', 'required', 'numeric', 'integer', $this->menuRule()],
+            'modifierItemId' => ['bail', 'required', 'numeric', 'integer', $this->itemRule($this->modifierItemMenuId)],
+            'modifierItemGroupId' => ['bail', 'required', 'numeric', 'integer', $this->groupRule()],
         ]);
         $item = $this->findItem((int) $validated['modifierItemId']);
         $group = $this->findGroup((int) $validated['modifierItemGroupId']);
@@ -385,7 +381,7 @@ class Modifiers extends BranchMenuComponent
     /** @return list<array{value: string, label: string}> */
     private function itemOptions(): array
     {
-        return $this->menuQueries->itemOptions($this->branchId, $this->modifierItemMenuId);
+        return $this->menuQueries->itemOptions($this->branchId, $this->selectionValue($this->modifierItemMenuId));
     }
 
     /**
@@ -417,9 +413,9 @@ class Modifiers extends BranchMenuComponent
         return Rule::exists((new Menu)->getTable(), 'id')->where(fn ($query) => $query->where('branch_id', $this->branchId));
     }
 
-    private function itemRule(string $menuId): mixed
+    private function itemRule(mixed $menuId): mixed
     {
-        return Rule::exists((new MenuItem)->getTable(), 'id')->where(fn ($query) => $query->where('menu_id', (int) $menuId));
+        return Rule::exists((new MenuItem)->getTable(), 'id')->where(fn ($query) => $query->where('menu_id', (int) $this->selectionValue($menuId)));
     }
 
     private function groupRule(): mixed
@@ -463,9 +459,9 @@ class Modifiers extends BranchMenuComponent
         return $this->menuQueries->firstMenuId($this->branch);
     }
 
-    private function firstItemId(string $menuId): string
+    private function firstItemId(mixed $menuId): string
     {
-        return $this->menuQueries->firstItemId($this->branchId, $menuId);
+        return $this->menuQueries->firstItemId($this->branchId, $this->selectionValue($menuId));
     }
 
     private function firstModifierGroupId(): string

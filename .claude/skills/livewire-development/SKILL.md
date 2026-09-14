@@ -103,7 +103,9 @@ These things changed in Livewire 4, but may not have been updated in this applic
 - Always use `wire:key` in loops
 - Use `wire:loading` for loading states
 - Use `wire:model.live` for live updates; `wire:model` is deferred by default
-- Validate and authorize in actions (treat like HTTP requests)
+- Validate and authorize in actions (treat like HTTP requests).
+- Preserve original transport types on editable state until validation. PHP scalar/array declarations can coerce booleans and money or throw during hydration before a rule runs; use `mixed` for these raw inputs and typed explicit maps after validation. Keep server-owned locked context typed.
+- Trim only strings. Combine `numeric` and `integer` for integer inputs that accept browser numeric strings but reject booleans. Dependent selections need safe read projections without replacing the raw value that validation checks; see [validation guidance](../laravel-best-practices/rules/validation.md).
 
 ## Configuration
 
@@ -112,7 +114,7 @@ These things changed in Livewire 4, but may not have been updated in this applic
 ## Alpine & JavaScript
 
 - `wire:transition` uses browser View Transitions API; `$errors` and `$intercept` magic properties available.
-- Non-blocking `wire:poll` and parallel `wire:model.live` updates improve performance.
+- Keep polling bounded and isolate only independently useful regions. Parallel requests can race and increase server work; prove that concurrency preserves authorization, persistence and query budgets before enabling it.
 
 For interceptors and hooks, see [reference/javascript-hooks.md](reference/javascript-hooks.md).
 

@@ -2,6 +2,8 @@
 
 ## Inventory and contract
 
+The seventh audit revalidates all 49 default model factories and the full 88-migration chain. The isolated default seeder runs twice successfully. Permission fixtures that choose an enum must use `Permission::factory()->forSystemPermission($permission)`, which keeps code, label and unique sort order consistent; overriding only `code` can collide with another permission's factory sort order. Menu transport fixtures use the existing opt-in complete-translation states.
+
 There are 49 first-party Eloquent models and 49 model factories. There are no independent-model exemptions. Every default factory must satisfy required foreign keys, enums, ownership, uniqueness, date ordering and money invariants. Optional large graphs are explicit factory states/helpers rather than hidden callbacks. The `MenuItemImageFactory` creates one valid generated test path and parent item; multi-image graphs remain explicit so ordinary item factories stay small. Menu, category, item, variant, modifier-group and modifier-option factories expose explicit complete-translation states; the three newly persisted translation entity types have their own factories. `RestaurantOnboardingFactory` defaults to a valid user-owned empty checkpoint; complete restaurant graphs stay opt-in through the workflow tests.
 
 Meaningful states cover workflow values actually used by each model: active/inactive/pending/approved/rejected/archived/expired/verified/public/private/deleted/failed/completed only where that model owns such a concept. Edge data includes empty optionals, complete optionals, Unicode/long values and historical/future dates where valid.

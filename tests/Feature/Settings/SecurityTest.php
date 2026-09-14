@@ -1,10 +1,12 @@
 <?php
 
 use App\Livewire\Settings\Security;
+use App\Livewire\Settings\TwoFactor\RecoveryCodes;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Fortify\Features;
 use Livewire\Livewire;
+use PragmaRX\Google2FA\Google2FA;
 
 test('security settings page can be rendered', function () {
     $user = User::factory()->create();
@@ -44,12 +46,10 @@ test('security settings page renders without two factor when feature is disabled
 });
 
 test('two factor authentication disabled when confirmation abandoned between requests', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication([
         'confirm' => true,
         'confirmPassword' => true,
-    ]);
+    ])]);
 
     $user = User::factory()->create();
 
@@ -104,4 +104,102 @@ test('correct password must be provided to update password', function () {
         ->call('updatePassword');
 
     $response->assertHasErrors(['current_password']);
+});
+
+test('disabled two factor actions reject direct calls and preserve dormant credentials', function (string $action) {
+    $user = User::factory()->withTwoFactor()->create();
+    $credentials = $user->getRawOriginal();
+
+    Livewire::actingAs($user)->test(Security::class)
+        ->call($action)
+        ->assertForbidden();
+
+    expect($user->refresh()->getRawOriginal())->toBe($credentials);
+})->with(['enable', 'confirmTwoFactor', 'disable']);
+
+test('disabled passkey actions reject direct calls', function (string $action, array $arguments) {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test(Security::class)
+        ->call($action, ...$arguments)
+        ->assertForbidden();
+})->with([
+    'list' => ['loadPasskeys', []],
+    'select for deletion' => ['confirmDelete', [1]],
+    'delete' => ['deletePasskey', []],
+]);
+
+test('two factor mutations recheck the current feature configuration', function () {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->withTwoFactor()->create();
+    $credentials = $user->getRawOriginal();
+    $component = Livewire::actingAs($user)->test(Security::class);
+
+    config(['fortify.features' => [Features::resetPasswords()]]);
+
+    $component->call('disable')->assertForbidden();
+
+    expect($user->refresh()->getRawOriginal())->toBe($credentials);
+});
+
+test('enabled two factor authentication can be configured confirmed and disabled', function () {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->create();
+
+    $component = Livewire::actingAs($user)->test(Security::class)
+        ->call('enable')
+        ->assertHasNoErrors()
+        ->assertSet('showModal', true)
+        ->assertSet('twoFactorEnabled', false);
+
+    $secret = decrypt($user->refresh()->two_factor_secret);
+    $code = app(Google2FA::class)->getCurrentOtp($secret);
+
+    $component->set('code', $code)
+        ->call('confirmTwoFactor')
+        ->assertHasNoErrors()
+        ->assertSet('twoFactorEnabled', true);
+
+    expect($user->refresh()->hasEnabledTwoFactorAuthentication())->toBeTrue();
+
+    $component->call('disable')->assertSet('twoFactorEnabled', false);
+
+    expect($user->refresh()->two_factor_secret)->toBeNull()
+        ->and($user->two_factor_recovery_codes)->toBeNull();
+});
+
+test('disabled recovery code component rejects access without changing dormant credentials', function () {
+    $user = User::factory()->withTwoFactor()->create();
+    $credentials = $user->getRawOriginal();
+
+    Livewire::actingAs($user)->test(RecoveryCodes::class)->assertForbidden();
+
+    expect($user->refresh()->getRawOriginal())->toBe($credentials);
+});
+
+test('recovery code regeneration rejects a feature disabled after mount', function () {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->withTwoFactor()->create();
+    $credentials = $user->getRawOriginal();
+    $component = Livewire::actingAs($user)->test(RecoveryCodes::class);
+
+    config(['fortify.features' => [Features::resetPasswords()]]);
+
+    $component->call('regenerateRecoveryCodes')->assertForbidden();
+
+    expect($user->refresh()->getRawOriginal())->toBe($credentials);
+});
+
+test('enabled recovery codes can be displayed and regenerated', function () {
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication(['confirm' => true])]);
+    $user = User::factory()->withTwoFactor()->create();
+    $oldCodes = $user->two_factor_recovery_codes;
+
+    Livewire::actingAs($user)->test(RecoveryCodes::class)
+        ->assertSet('recoveryCodes', ['recovery-code-1'])
+        ->call('regenerateRecoveryCodes')
+        ->assertHasNoErrors()
+        ->assertSet('recoveryCodes', fn (array $codes): bool => count($codes) === 8 && ! in_array('recovery-code-1', $codes, true));
+
+    expect($user->refresh()->two_factor_recovery_codes)->not->toBe($oldCodes);
 });

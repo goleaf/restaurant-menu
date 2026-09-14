@@ -4,7 +4,7 @@ use App\Models\User;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+    $this->enableFortifyFeatures([Features::twoFactorAuthentication()]);
 });
 
 test('two factor challenge redirects to login when not authenticated', function () {
@@ -25,4 +25,6 @@ test('two factor challenge can be rendered', function () {
         'email' => $user->email,
         'password' => 'password',
     ])->assertRedirect(route('two-factor.login'));
+
+    $this->get(route('two-factor.login'))->assertOk();
 });

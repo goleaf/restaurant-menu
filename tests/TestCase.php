@@ -4,6 +4,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Laravel\Fortify\Features;
+use Laravel\Fortify\FortifyServiceProvider;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -19,5 +20,18 @@ abstract class TestCase extends BaseTestCase
         if (! Features::enabled($feature)) {
             $this->markTestSkipped($message ?? "Fortify feature [{$feature}] is not enabled.");
         }
+    }
+
+    /** @param list<string> $features */
+    protected function enableFortifyFeatures(array $features): void
+    {
+        config(['fortify.features' => array_values(array_unique([
+            ...config('fortify.features', []),
+            ...$features,
+        ]))]);
+
+        $this->app->getProvider(FortifyServiceProvider::class)->boot();
+        $this->app['router']->getRoutes()->refreshNameLookups();
+        $this->app['router']->getRoutes()->refreshActionLookups();
     }
 }

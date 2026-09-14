@@ -54,7 +54,7 @@ test('branch settings mount keeps a fixed read budget for empty and full schedul
         app(EnsureBranchSettingsAction::class),
     ));
 
-    expect($queryCount)->toBe(14)
+    expect($queryCount)->toBe(13)
         ->and($component->settingsId)->toBe($settings->id)
         ->and($component->form->defaultCurrency)->toBe('EUR')
         ->and($component->form->openingHoursConfigured)->toBe($intervalCount > 0)

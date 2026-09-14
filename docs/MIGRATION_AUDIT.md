@@ -1,5 +1,9 @@
 # Migration audit
 
+## Sixth audit: unchanged indexed schema — 2026-09-14
+
+Read-only Boost reconciliation again matches all 88 migration files with 88 ledger records: 61 tables, 633 columns, 308 indexes and 144 foreign keys. There is no missing leading foreign-key index or redundant nonunique index prefix. All 49 models retain valid factories; every migration has up/down. Focused schema/factory/architecture checks pass 94 tests / 1,096 assertions. The remaining access-check allocation issue is in User query behavior, while image retry and transport input defects belong to Actions/Livewire; no schema, factory or historical migration rewrite is required. Populated rollback restrictions below remain unchanged. The fresh owned SQLite migrate/reset/migrate roundtrip, two default seed runs and isolated runtime cache compilation all pass. No migration, seed or domain-data mutation ran against the application database. Detailed results are in testing.md.
+
 ## Fifth audit: persistence contract, unchanged schema — 2026-09-14
 
 Read-only Boost schema inspection again reports 61 tables, 633 columns, 308 indexes and 144 foreign keys, with no missing leading foreign-key index. All 88 migration files and all 49 model/factory definitions remain unchanged from the fourth audit. The new image failures concern unchecked Eloquent event vetoes and transaction callback timing; they require Action corrections, not altered columns or deployed migration history. The fresh 88/88 ledger matches every migration name (latest batch 9). The owned SQLite migrate/reset/migrate roundtrip and two default seed runs pass; no schema migration, seed or domain-data mutation ran against the application database.

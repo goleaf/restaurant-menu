@@ -6,6 +6,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | app/{Actions,Enums,Livewire,Support}/**/*.php | .ai/rules/actions-enums-livewire-support.md |
 | app/{Actions,Livewire}/** | .ai/rules/actions-livewire.md |
+| app/Actions/** | .ai/rules/actions.md |
 | app/** | .ai/rules/app.md |
 | database/factories/** | .ai/rules/factories.md |
 | app/{Actions/Invitations,Http/Controllers/Invitations,Livewire/**,Models/Invitation.php}/** | .ai/rules/invitations-livewire.md |

@@ -1,5 +1,11 @@
 # Architecture
 
+## Sixth audit boundaries — 2026-09-14
+
+Organization/brand/branch image Actions select current active image state inside the transaction through original parent predicates. They persist on that current record, reuse shared rollback/outer-commit file handling, and synchronize only image/timestamp state to the caller. No unrelated dirty model field is saved or cleared. Stale replacement/removal, same-instance retry after rollback and moved/archived records are covered by EntityImageRetryTest.
+
+KitchenDepartments preserves original editable transport values until validation, then passes normalized data to existing Actions. Array/null/boolean tampering produces field errors rather than pre-validation exceptions or coerced persistence. User branch access uses a boolean query boundary separately from the full assignment-list interface. These changes retain the model/Action/Form inventory and introduce no schema, route, Blade or dependency change.
+
 ## System shape
 
 Restaurant Menu is a single Laravel application deployed as server-rendered HTML. Laravel routes and Fortify provide HTTP/authentication boundaries; class-based Livewire components own interactive page state; Blade and Flux UI Free render presentation; Actions coordinate domain writes; Eloquent models own persistence and entity-local behavior. SQLite, local files, and database-backed cache, sessions, and queues are the supported shared-hosting baseline.

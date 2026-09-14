@@ -1,5 +1,11 @@
 # Performance
 
+## Sixth audit: branch access allocation and image consistency — 2026-09-14
+
+The isolated single-branch access fixture at 1 / 40 / 400 assignments previously hydrated 1 / 40 / 400 BranchUser records for either an allowed or denied result. User::canAccessBranch now uses one bounded Branch exists query with assignment exists/not-exists subqueries and hydrates zero assignments at every size. Assigned access remains 5 total queries including identity/membership checks; organization-wide fallback drops from 6 to 5. The existing branch-settings mount budget improves from 14 to 13 queries for both empty and full 28-interval schedules; its exact regression budget is tightened accordingly. The separate accessibleBranchIdsForOrganization list interface is unchanged. Existing indexes cover the predicates. These are query/allocation measurements, not production latency results.
+
+Each organization/brand/branch logo or cover mutation intentionally adds one selected current-record lookup inside the owning transaction. This establishes the actual previous path and original parent scope before storage, fixes stale/removal/rollback-retry leaks, and avoids saving unrelated dirty caller fields. It does not claim a query reduction. Kitchen-department transport validation adds no query or presentation-data read.
+
 ## Fifth audit: media persistence correctness — 2026-09-14
 
 Required image writes now check their Eloquent boolean result, and bounded gallery creation checks returned model existence in memory. These checks add no SELECT/INSERT/UPDATE/DELETE statements to the existing success paths; shared media Actions now own the transaction and replace redundant per-model `saveOrFail`/`deleteOrFail` wrappers with checked writes. Transaction/savepoint boundaries change, so no end-to-end query-count or latency improvement is claimed. Existing image limits and parent cleanup batching remain unchanged.
@@ -20,7 +26,7 @@ Chronological opening status still performs one selected opening-hours query; cy
 
 ## Branch settings reads — 2026-09-14
 
-An identical isolated direct-mount fixture measured **17 SQL queries** for the component at `930059f` and **14** after the Form/query-service refactor. Three repeated branch refreshes were removed. The permanent regression holds the 14-query budget for both no opening intervals and a full 28-interval week, while verifying populated settings and schedule state. The aggregate Save intentionally adds a fresh branch lookup and authorization before writes; this measurement is mount-only and does not claim a full-request latency improvement or reduced save query count.
+An identical isolated direct-mount fixture measured **17 SQL queries** for the component at `930059f` and **14** after the Form/query-service refactor. Three repeated branch refreshes were removed. That second-audit regression held a 14-query budget for both no opening intervals and a full 28-interval week, while verifying populated settings and schedule state; the sixth-audit access change above tightens the current budget to 13. The aggregate Save intentionally adds a fresh branch lookup and authorization before writes; this measurement is mount-only and does not claim a full-request latency improvement or reduced save query count.
 
 ## Repository audit (2026-09-14)
 

@@ -1,5 +1,9 @@
 # Data model
 
+## Sixth audit persistence review — 2026-09-14
+
+The schema remains 61 tables / 633 columns / 308 indexes / 144 foreign keys across 88 migrations. All 49 models have factories. A current selected entity reload supplies authoritative image ownership and paths before persistence; the caller's unrelated dirty attributes do not become part of an image-only save. Boolean branch-access checks require no additional column or index. Transport validation changes do not alter stored kitchen-department types or ranges. Existing migration history, snapshots, constraints and application data are preserved.
+
 ## Database contract
 
 SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 88 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer. `DatabaseCacheEntry` maps the existing framework cache table for bounded expiration cleanup; it adds no application table or migration.

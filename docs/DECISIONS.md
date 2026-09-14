@@ -1,5 +1,13 @@
 # Restaurant Menu completion decisions
 
+## D-030 — Current persistence and original transport values
+
+Image mutation Actions reload selected active records inside their owning transaction and retain original organization/brand predicates. Cleanup follows the persisted old reference, so stale callers and outer-rollback retries do not leak the previous file. Saving a separate current record and synchronizing only image/timestamp attributes preserves unrelated dirty caller fields. Keep the existing filesystem compensation Actions; this requires one additional selected lookup per image operation and no schema change.
+
+Kitchen-department editable state accepts transport-level mixed values until shared Laravel field rules run. Trim only actual strings and combine numeric/integer rules for sort order before converting validated input. Typed hydration must not turn invalid boolean/text values into valid-looking names, sort positions or active flags. Existing focused Actions and prepared Blade data remain the boundaries.
+
+A one-branch authorization decision should not hydrate the full assignment list. Keep the separate list interface and preserve active membership/subscription, assignment restriction and archived-record semantics with focused existence checks. Record query and hydration costs independently of request latency.
+
 ## D-029 — Required media persistence fails atomically on model veto
 
 Model events may cancel `save`, `delete` and relationship creation without throwing. Image Actions treat those outcomes as failed compound operations and throw inside the transaction. The shared local-image helper owns persistence and registers replacement rollback cleanup before invoking its callback; it must never compensate committed files merely because a later after-commit callback throws. Keep the existing void callback contract and focused callers rather than introducing a generic persistence framework. Old-file orphan cleanup remains synchronous and is not guaranteed after an earlier commit callback fails.

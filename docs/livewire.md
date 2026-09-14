@@ -1,5 +1,9 @@
 # Livewire 4
 
+## Kitchen-department transport validation — 2026-09-14
+
+Editable create/edit properties stay mixed until shared field validation. Trim names only when the received value is a string. Sort order combines numeric with integer validation to reject booleans while accepting valid numeric strings; active flags are validated before casting. Normalize only validated Action payloads. MenuInputTransportTest submits property updates and the mutation in the same actual Livewire POST and checks both rejection without persistence and valid controls. No Blade binding or user-visible flow changes are required.
+
 All interactive UI uses class-based components under `app/Livewire` with separate templates under `resources/views/livewire`. Three Livewire Form objects own substantial staff-invitation, onboarding and branch-settings input. `BranchSettingsForm` validates all settings, profile, media, closure and schedule data before one `SaveBranchConfigurationAction` call. Transport fields accept untrusted values before validation; normalized Action payloads remain typed. The branch query service prepares schedule data, and the Form provides a bounded safe presentation projection. Schedule and service-charge switches use `.live` because they reveal or enable dependent fields. The restaurant wizard persists a user-owned checkpoint, keeps only its identifier and selected step as locked public state, reauthorizes the checkpoint on every hydration, and derives all domain IDs, progress, counts and URLs through a read service that scopes each relation before hydration. Volt and route/view single-file components are prohibited by architecture tests. Static presentation reuse stays in Blade/Flux components.
 
 ## Component contract

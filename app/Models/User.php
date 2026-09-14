@@ -12,6 +12,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -229,9 +230,42 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
             return false;
         }
 
-        return $this
-            ->accessibleBranchIdsForOrganization((int) $branch->organization_id, $withTrashed)
-            ->contains((int) $branch->id);
+        $organizationId = (int) $branch->organization_id;
+
+        if (! $this->canAccessOrganization($organizationId, $withTrashed)) {
+            return false;
+        }
+
+        $branches = Branch::query()
+            ->select(['id'])
+            ->whereKey($branch->id)
+            ->where('organization_id', $organizationId);
+
+        if ($this->isSuperadmin()) {
+            return $branches
+                ->when($withTrashed, fn (Builder $query): Builder => $query->withTrashed())
+                ->exists();
+        }
+
+        $assignments = $this->branchAssignments()
+            ->select(['branch_users.id'])
+            ->where('organization_id', $organizationId)
+            ->getQuery();
+
+        return $branches
+            ->withTrashed()
+            ->where(function (Builder $query) use ($assignments, $branch, $withTrashed): void {
+                $query
+                    ->whereExists((clone $assignments)
+                        ->where('branch_id', $branch->id)
+                        ->where('status', OrganizationUserStatus::Active->value))
+                    ->orWhere(function (Builder $fallback) use ($assignments, $withTrashed): void {
+                        $fallback
+                            ->whereNotExists($assignments)
+                            ->when(! $withTrashed, fn (Builder $query): Builder => $query->whereNull('branches.deleted_at'));
+                    });
+            })
+            ->exists();
     }
 
     /**

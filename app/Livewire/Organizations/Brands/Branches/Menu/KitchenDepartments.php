@@ -24,23 +24,23 @@ class KitchenDepartments extends BranchMenuComponent
 {
     private CatalogData $menuQueries;
 
-    public string $departmentName = '';
+    public mixed $departmentName = '';
 
-    public string $departmentType = 'kitchen';
+    public mixed $departmentType = 'kitchen';
 
-    public int $departmentSortOrder = 0;
+    public mixed $departmentSortOrder = 0;
 
-    public bool $departmentIsActive = true;
+    public mixed $departmentIsActive = true;
 
     public ?int $editingDepartmentId = null;
 
-    public string $editingDepartmentName = '';
+    public mixed $editingDepartmentName = '';
 
-    public string $editingDepartmentType = 'kitchen';
+    public mixed $editingDepartmentType = 'kitchen';
 
-    public int $editingDepartmentSortOrder = 0;
+    public mixed $editingDepartmentSortOrder = 0;
 
-    public bool $editingDepartmentIsActive = true;
+    public mixed $editingDepartmentIsActive = true;
 
     public function boot(CatalogData $menuQueries): void
     {
@@ -56,7 +56,11 @@ class KitchenDepartments extends BranchMenuComponent
     public function createKitchenDepartment(CreateKitchenDepartmentAction $createDepartment): void
     {
         $this->authorizeBranchAbility('manageMenu');
-        $this->departmentName = trim($this->departmentName);
+
+        if (is_string($this->departmentName)) {
+            $this->departmentName = trim($this->departmentName);
+        }
+
         $validated = $this->validate($this->rulesForDepartment());
 
         $createDepartment->handle($this->branch, [
@@ -100,7 +104,10 @@ class KitchenDepartments extends BranchMenuComponent
             return;
         }
 
-        $this->editingDepartmentName = trim($this->editingDepartmentName);
+        if (is_string($this->editingDepartmentName)) {
+            $this->editingDepartmentName = trim($this->editingDepartmentName);
+        }
+
         $validated = $this->validate($this->rulesForDepartment('editing'));
 
         $updateDepartment->handle($this->findDepartment($this->editingDepartmentId), [
@@ -173,6 +180,7 @@ class KitchenDepartments extends BranchMenuComponent
     private function rulesForDepartment(string $prefix = ''): array
     {
         $nameField = $prefix === '' ? 'departmentName' : $prefix.'DepartmentName';
+        $sortOrderField = $prefix === '' ? 'departmentSortOrder' : $prefix.'DepartmentSortOrder';
         $uniqueName = Rule::unique((new KitchenDepartment)->getTable(), 'name')
             ->where(fn ($query) => $query->where('branch_id', $this->branchId));
 
@@ -182,6 +190,7 @@ class KitchenDepartments extends BranchMenuComponent
 
         $rules = RestaurantValidationRules::kitchenDepartment($prefix);
         $rules[$nameField] = ['required', 'string', 'max:120', $uniqueName];
+        $rules[$sortOrderField][] = 'numeric';
 
         return $rules;
     }

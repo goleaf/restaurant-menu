@@ -1,5 +1,20 @@
 # Restaurant Menu completion implementation plan
 
+
+## 2026-09-14 — sixth audit: current image state, transport validation and bounded access checks
+
+Baseline: clean published `665dcb4`. Eight image retry regressions fail because callers can hold stale references after another save or outer rollback. Actual Livewire POST tests also reproduce malformed kitchen-department state being coerced or rejected before validation. A measured access check hydrates every branch assignment to answer one boolean question.
+
+- [x] Reproduce all three findings with factory data, isolated storage and actual Livewire transport; reconcile all 49 models/factories and 88 migrations against the unchanged live schema.
+- [x] Reload current image references inside the existing transaction through original parent scopes; persist only image changes, preserve unrelated caller state, and verify stale replacement/removal, rollback retry and rejected/deleted parents.
+- [x] Validate kitchen-department transport values before normalization and preserve valid inputs, authorization and localized field errors.
+- [x] Replace collection hydration in one-branch access decisions with bounded existence checks while retaining membership, subscription and assignment fallback rules.
+- [x] Reconcile current Markdown and all eight skill/provider copies; document measured query costs and preserve valid historical migrations and evidence.
+- [x] Run targeted and full browser/backend/parallel/coverage gates, formatting/static analysis, dependency audits/build/translations and isolated migration/seed/cache checks on stable source. Final backend 1,971/48,546 and Browser 5/433 pass without failures/skips; canonical application coverage is 93.9%, with all 222 Actions executed.
+- [ ] Review exact changes, commit in English, push main normally and verify the remote SHA.
+
+Design: keep the existing image Actions and shared filesystem compensation boundary. Each domain Action reads a selected, current, original-parent-scoped record inside its transaction and synchronizes only persisted image/timestamp attributes to the caller. No generic image framework, new repository, queue or schema is needed. The access optimization retains the existing boolean interface; list queries remain separate. Independent workers own the access model/test and kitchen input implementation, while the primary agent owns image retries, integration and evidence.
+
 ## 2026-09-14 — fifth audit: media persistence failure contracts
 
 Baseline: clean published `30cc939`. Reuse the completed article/application and full model/migration inventories, then inspect remaining image mutation callers. Installed Laravel 13 source confirms that `saveOrFail()` and `deleteOrFail()` retain model-event false returns; a persistence callback may also commit successfully before an after-commit callback throws.

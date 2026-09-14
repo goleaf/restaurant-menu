@@ -1,5 +1,12 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — sixth audit: current state and transport boundaries
+
+- Implemented current original-parent-scoped image reloads and image-only persistence; targeted image/configuration tests pass 97 / 452 after observed stale/retry failures.
+- Corrected kitchen-department transport validation; malformed values produce field errors and valid controls persist. Focused transport/department tests pass 29 / 150 after 16 observed failures.
+- Implemented bounded single-branch existence checks, preserving existing authorization semantics and eliminating assignment hydration. All models/factories/migrations and current skill guidance are reconciled. Final Browser **5 / 433** and parallel backend **1,971 / 48,546** pass without failures/skips. Canonical sequential coverage also passes **1,971 / 48,546** without failures/skips in **834.92s**. Combined distinct result: **1,976 tests / 48,979 assertions**, a **100% pass rate**. Application coverage is **93.9%**, with all **222 Actions** executed at **94.91% statement coverage**. The 1,020-file source digest is unchanged.
+- Pint/Larastan, dependency audits/build, translations, isolated migration roundtrip/repeated seeds and cache compilation pass. All 174 Markdown files / 298 local link occurrences and all eight skill provider copies pass validation. Publication follows the final documentation and diff check.
+
 ## 2026-09-14 — fifth audit: required media persistence
 
 - Reproduced cancelled logo/cover/gallery writes and deletion of committed replacements after observer callback errors. Shared replacement/removal now owns persistence transactions and registers rollback compensation before persistence; concrete media Actions reject false required writes and unsaved gallery results.

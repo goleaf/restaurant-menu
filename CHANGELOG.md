@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-14 — current image references and validated transport
+
+- Verify 1,971 backend tests in parallel and sequential coverage plus five browser scenarios: 1,976 distinct passing tests, zero failures/skips, 93.9% application coverage and execution of all 222 Actions.
+- Resolve logo/cover references inside original-parent-scoped transactions; prevent stale replacement/removal and rollback-retry file leaks, and preserve unrelated unsaved model fields.
+- Validate original kitchen-department transport values before normalization, preserving valid numeric strings and boolean flags while rejecting malformed input.
+- Replace assignment-list hydration for one-branch access with bounded existence checks: zero assignment models at 1/40/400 assignments, unchanged five queries for assigned access and six-to-five for organization-wide fallback.
+- Audit all models, factories, migrations, Markdown and project skills; preserve the verified schema and deployed migration history. Quality-gate evidence is recorded in testing.md.
+
 ## 2026-09-14 — reliable media persistence failure handling
 
 - Verify 1,898 backend tests in parallel and sequential coverage plus five browser scenarios: 1,903 distinct passing tests, zero failures/skips, 93.9% application coverage and execution of all 222 Actions.

@@ -1,5 +1,9 @@
 # Authorization model
 
+## Bounded single-branch decisions — 2026-09-14
+
+User::canAccessBranch evaluates one branch with Eloquent existence subqueries, without materializing all branch assignments. Active organization membership and subscription remain prerequisites outside the explicit superadmin path. The presence of any assignment disables organization-wide fallback; only the matching active assignment grants assigned access. The list-returning helper is unchanged. Existing model-versus-ID and withTrashed behavior remains covered, and ordinary BranchPolicy view continues to deny archived resources. No authorization result is memoized.
+
 ## Roles
 
 The closed role set is: superadmin, owner, director, restaurant administrator, shift manager, waiter, head chef, cook, bartender, cashier, accountant and marketer. The product-level “chef” role is the canonical `head_chef` system role; `cook` remains a separate subordinate kitchen role. Roles supply default permission bundles; `PermissionUserOverride` can allow or deny a specific permission for a user. A deny override wins for that user. Organization membership must be active, and branch assignment must include the target branch where the role is branch-scoped.

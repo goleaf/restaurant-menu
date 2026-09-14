@@ -11,7 +11,7 @@ Baseline: clean published `665dcb4`. Eight image retry regressions fail because 
 - [x] Replace collection hydration in one-branch access decisions with bounded existence checks while retaining membership, subscription and assignment fallback rules.
 - [x] Reconcile current Markdown and all eight skill/provider copies; document measured query costs and preserve valid historical migrations and evidence.
 - [x] Run targeted and full browser/backend/parallel/coverage gates, formatting/static analysis, dependency audits/build/translations and isolated migration/seed/cache checks on stable source. Final backend 1,971/48,546 and Browser 5/433 pass without failures/skips; canonical application coverage is 93.9%, with all 222 Actions executed.
-- [ ] Review exact changes, commit in English, push main normally and verify the remote SHA.
+- [x] Review exact changes, commit in English, push main normally and verify the remote SHA. Implementation `395439a4d4e2db3be2575301b272129b0c4f9b8a` was pushed successfully; the remote ref returned the exact SHA.
 
 Design: keep the existing image Actions and shared filesystem compensation boundary. Each domain Action reads a selected, current, original-parent-scoped record inside its transaction and synchronizes only persisted image/timestamp attributes to the caller. No generic image framework, new repository, queue or schema is needed. The access optimization retains the existing boolean interface; list queries remain separate. Independent workers own the access model/test and kitchen input implementation, while the primary agent owns image retries, integration and evidence.
 

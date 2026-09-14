@@ -8,7 +8,7 @@ Baseline: clean published `30cc939`. Reuse the completed article/application and
 - [x] Make the shared media transaction boundary and concrete image Actions distinguish rollback, rejected persistence and committed cleanup errors. Preserve tenant validation, existing events, bounded galleries and outer transactions.
 - [x] Reconcile model/migration, Action/request, Markdown and eight-skill inventories; update affected contracts and provider copies without rewriting valid deployed migrations.
 - [x] Run focused regressions, formatting/static analysis, complete browser/parallel/coverage suites, audits/build/translations and isolated migration/seed/cache gates. Final backend 1,898/48,303 and Browser 5/433 pass with zero failures/skips; canonical coverage is 93.9%, and all 222 Actions execute.
-- [ ] Review exact changes, commit in English, push main normally and verify the remote SHA.
+- [x] Review exact changes, commit in English, push main normally and verify the remote SHA. Implementation `cc48eb9bddba81f799a90e345d5557dce432b915` was pushed successfully; the remote ref returned the exact SHA.
 
 Design: retain the existing shared image Actions and their void persistence callback contract. Register replacement compensation within an owned database transaction before invoking persistence, so only rollback removes a new file. Concrete callers must throw when a model event rejects a required write; gallery operations remain all-or-nothing. Merely testing dirty attributes cannot prove that a save succeeded, and a new queue/table is unnecessary for this synchronous contract. No product feature, dependency or schema change is planned.
 

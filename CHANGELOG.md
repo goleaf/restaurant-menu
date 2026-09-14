@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-14 — bounded media cleanup and factory graph integrity
+
+- Verify 1,866 backend tests in parallel and sequential coverage, plus five browser scenarios: zero failures/skips, 93.9% application coverage and execution of all 222 Actions.
+- Stream menu/category image paths through temporary storage with outer commit/rollback cleanup; preserve empty-media behavior and fail before persistence if path collection or a spool write fails.
+- Contain category cascades within their original menu, terminate cycles, avoid duplicate deletion events and handle misplaced menu-owned items. Roll back the complete media operation when a root/child/item deletion event vetoes the change.
+- Complete partially loaded variant factory graphs and share active-line integer totals with department-readiness order graphs.
+- Recheck all models/migrations, validation boundaries, Markdown and eight project skills; correct lazy traversal guidance and record reusable factory/media rules without rewriting deployed migrations.
+
 ## 2026-09-14 — menu media and weekly schedule integrity
 
 - Verify 1,831 backend tests in both full runs and five browser scenarios: zero failures/skips, 93.9% application coverage and execution of all 221 Actions.

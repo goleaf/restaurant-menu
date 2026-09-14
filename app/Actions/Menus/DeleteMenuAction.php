@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
-use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\DeleteLocalMediaFilesAfterCommitAction;
 use App\Models\Menu;
 use App\Models\MenuItemImage;
+use Generator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 final class DeleteMenuAction
 {
     public function __construct(
-        private readonly DeleteLocalMediaFileAction $deleteLocalMediaFile,
+        private readonly DeleteLocalMediaFilesAfterCommitAction $deleteLocalMediaFiles,
     ) {}
 
     public function handle(Menu $menu): void
@@ -24,26 +27,33 @@ final class DeleteMenuAction
                 ->where('branch_id', $menu->branch_id)
                 ->lockForUpdate()
                 ->firstOrFail();
-            $items = $menu->items()
-                ->select(['id', 'menu_id', 'image'])
-                ->get();
-            $itemIds = $items->pluck('id');
-            $galleryPaths = MenuItemImage::query()
-                ->select(['id', 'menu_item_id', 'path'])
-                ->whereIn('menu_item_id', $itemIds)
-                ->pluck('path');
-            $imagePaths = $items->pluck('image')
-                ->merge($galleryPaths)
-                ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
-                ->unique()
-                ->values();
 
-            MenuItemImage::query()
-                ->whereIn('menu_item_id', $itemIds)
-                ->delete();
-            $menu->deleteOrFail();
+            $this->deleteLocalMediaFiles->handle($this->imagePaths($menu), function () use ($menu): void {
+                $this->galleryImages($menu)->delete();
 
-            DB::afterCommit(fn () => $imagePaths->each($this->deleteLocalMediaFile->handle(...)));
+                if ($menu->delete() !== true) {
+                    throw new RuntimeException('Menu deletion was cancelled.');
+                }
+            });
         });
+    }
+
+    /**
+     * @return Generator<int, string|null>
+     */
+    private function imagePaths(Menu $menu): Generator
+    {
+        yield from $menu->items()->select(['id', 'menu_id', 'image'])->reorder()->lazyById(200)->pluck('image');
+        yield from $this->galleryImages($menu)->lazyById(200)->pluck('path');
+    }
+
+    /**
+     * @return Builder<MenuItemImage>
+     */
+    private function galleryImages(Menu $menu): Builder
+    {
+        return MenuItemImage::query()
+            ->select(['id', 'path'])
+            ->whereIn('menu_item_id', $menu->items()->select('menu_items.id')->reorder());
     }
 }

@@ -1,5 +1,9 @@
 # Application security
 
+## Menu deletion containment
+
+Parent media cleanup scopes discovery and category observer cascades to the original menu, including malformed cross-menu child/item references. A visited-category set makes cyclic discovery terminate, and fallback candidates recheck active existence before deletion. Remaining menu-owned items are removed without touching their foreign category. A deletion-event veto rolls back root, child and gallery writes and preserves media. Current paths are streamed to an owned temporary file before deletion; database rollback retains the referenced media, while physical deletion runs after the outer commit. This temporary file is not a durable retry queue: an interrupted process or post-commit storage failure can leave orphaned files, and cannot undo the committed database operation.
+
 ## Compound settings and media transactions
 
 Branch settings are validated before any write and the aggregate Action rechecks current branch ownership, membership and the branch-scoped settings identifier inside the transaction. Media replacement/removal retains old files until the outer default SQLite transaction commits and compensates new files on rollback. A cleanup exception after commit preserves the now-referenced replacement. Nested rollback, stale/forged tenant state and late-step failure have explicit regression tests.

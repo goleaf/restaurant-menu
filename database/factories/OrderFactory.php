@@ -148,9 +148,7 @@ class OrderFactory extends Factory
                 ->for($order)
                 ->create();
 
-            $order->update([
-                'total_price_cents' => (int) $order->items()->active()->sum('total_price_cents'),
-            ]);
+            $this->syncTotalPrice($order);
         });
     }
 
@@ -180,7 +178,16 @@ class OrderFactory extends Factory
                     ->pending()
                     ->create();
             });
+
+            $this->syncTotalPrice($order);
         });
+    }
+
+    private function syncTotalPrice(Order $order): void
+    {
+        $order->update([
+            'total_price_cents' => (int) $order->items()->active()->sum('total_price_cents'),
+        ]);
     }
 
     /**

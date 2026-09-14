@@ -8,6 +8,7 @@ use App\Actions\Media\DeleteLocalMediaFileAction;
 use App\Models\MenuItem;
 use App\Models\MenuItemImage;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 final class DeleteMenuItemAction
 {
@@ -35,7 +36,10 @@ final class DeleteMenuItemAction
             MenuItemImage::query()
                 ->where('menu_item_id', $item->id)
                 ->delete();
-            $item->deleteOrFail();
+
+            if ($item->delete() !== true) {
+                throw new RuntimeException('Menu item deletion was cancelled.');
+            }
 
             DB::afterCommit(fn () => $imagePaths->each($this->deleteLocalMediaFile->handle(...)));
         });

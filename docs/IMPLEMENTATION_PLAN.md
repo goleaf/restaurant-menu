@@ -1,5 +1,18 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — fourth audit: bounded media cleanup and strict factory graphs
+
+Baseline: clean published `9aaa839`. Recheck the previous audit's explicit limits and the complete model, migration, validation, Markdown and skill inventories. Isolated reproductions confirm unbounded parent-media hydration, cross-menu category cascade leakage with malformed references, non-terminating category discovery with a cycle, and strict-loading failures in two optional factory states.
+
+- [x] Reproduce the findings using owned temporary SQLite data and files; inspect installed framework behavior and existing transaction/cascade contracts.
+- [x] Stream parent media paths through a temporary file with one transaction cleanup registration instead of retaining every item ID/path. Preserve outer commit/rollback behavior, selected ID batches, model events and original-parent reloads. Bound category traversal to the original menu and terminate cyclic input; document any remaining hierarchy-memory limit. The integrated media/schema slice passes 51 tests/361 assertions, including wide-category filters, event vetoes, whole-menu cycles and malformed inverse references.
+- [x] Complete missing variant/item/menu/branch relations before factory state construction, preserving already loaded objects and zero repeated relationship reads. Correct the additional department-readiness factory total through the existing active-line integer sum; focused factory/schema/dispatch tests pass 67/616 after observed RED cases.
+- [x] Reconcile all 49 models/factories, 88 deployed migrations, Action/validation boundaries, first-party Markdown and eight project skills. Correct the unsafe unconditional lazy-batch mutation guidance in every provider copy; preserve valid schema/history and dependencies. Fresh schema totals remain 61 tables/633 columns/308 indexes/144 foreign keys, with no missing leading FK index or redundant nonunique prefix.
+- [x] Run focused RED/GREEN regressions, formatting/static analysis, browser/parallel/sequential coverage suites, dependency audits, build/translations and isolated migration/seed/cache checks on stable source. Require zero failing/skipped tests; report statement coverage separately against the 90% gate. Final backend 1,866 passed, Browser 5 passed, zero failures/skips; application coverage 93.9%, with all 222 Actions executed. Full command evidence is in `testing.md`.
+- [ ] Review exact owned changes, commit in English, push normally to `main`, verify the remote SHA and record publication evidence.
+
+Design: a shared media cleanup Action encapsulates temporary-file lifetime and transaction callbacks for the two parent-deletion callers. An in-memory array retains the reproduced growth; a persistent cleanup table/worker adds an unnecessary deployment contract. The temporary file option keeps existing synchronous after-commit deletion and needs no schema change. Category ownership and traversal termination are correctness requirements independent of the media-memory optimization. The primary agent owns integration, evidence and canonical documentation; bounded workers own the media implementation, factory regressions and six skill-reference copies.
+
 ## 2026-09-14 — third audit: menu media and weekly schedules
 
 Baseline: clean published `4e7be68`. Fresh Boost inspection confirms the local database now matches all 88 migrations. Review remaining call sites rather than repeating completed refactors. Confirmed defects are gallery/parent-delete filesystem work outside the outer transaction lifecycle, missing branch interval-overlap validation, and chronological availability lookup relying on user sort order.

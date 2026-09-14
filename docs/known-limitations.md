@@ -2,6 +2,8 @@
 
 This document records the limits of local evidence; current implementation and verification status is maintained in [`compliance-matrix.md`](compliance-matrix.md) and [`testing.md`](testing.md). Passing tests do not establish complete code coverage, production performance or physical-device certification.
 
+Menu/category media cleanup bounds selected model batches and streams paths to a temporary file, but category visited/frontier IDs still grow with the hierarchy and temporary disk usage grows with the path count. The measured retained-memory checkpoint is not a whole-process peak or production latency benchmark. Synchronous cleanup after commit is not a durable retry queue: interruption or file-removal failure can leave orphaned media while database deletion remains committed.
+
 | Affected requirement | Evidence gap | User impact | Tracking issue |
 |---|---|---|---|
 | `ui-accessibility-001` | The available isolated Chrome tooling provides accessibility-tree, keyboard, Lighthouse, reduced-motion/forced-color CSS and focus evidence, but not a physical screen reader, switch device or human assistive-technology session. | Automated and keyboard acceptance is verified; physical AT ergonomics are not independently certified. | [#8](https://github.com/goleaf/restaurant-menu/issues/8) |

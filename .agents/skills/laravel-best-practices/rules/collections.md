@@ -24,7 +24,9 @@ Correct: `User::with('roles')->lazy()` for relationship access; `User::cursor()`
 
 ## Use `lazyById()` When Updating Records While Iterating
 
-`lazy()` uses offset pagination — updating records during iteration can skip or double-process. `lazyById()` uses `id > last_id`, safe against mutation.
+`lazy()` uses offset pagination, so deleting rows or changing filtered columns can skip records. Prefer `lazyById()` for these operations, keeping a stable, unique cursor key selected and unchanged throughout traversal.
+
+Remove unrelated display ordering with `reorder()` before ID-based traversal while preserving predicates and tenant scopes; Laravel otherwise retains ordering on other columns ahead of the cursor key. Changes to primary or relationship foreign keys can still omit rows. Verify that every intended record is processed across multiple batches rather than assuming arbitrary mutations are safe.
 
 ## Use `toQuery()` for Bulk Operations on Collections
 

@@ -1,5 +1,11 @@
 # Restaurant Menu completion decisions
 
+## 2026-09-14 — bounded parent media cleanup and strict factory graphs
+
+Use one shared temporary-file cleanup Action for menu/category deletion. Stream selected ID batches and keep one commit/rollback callback pair per parent operation; do not retain all item IDs or paths, and do not introduce a persistent cleanup table or worker requirement. Preserve existing synchronous after-commit file deletion and individual model events. Scope category discovery and observer mutations to the original menu, with a visited-ID set for malformed cycles. Category-ID tracking remains proportional to the hierarchy, so this does not claim constant memory for the whole workflow. Filesystem cleanup after commit is best effort in the existing operational contract; interruption cannot roll back committed database state.
+
+Optional factory states must work with retrieved collections under strict lazy-loading prevention. Complete only missing variant ownership relations before recycling a branch, and share active-line integer total calculation between order graph helpers. Recheck the entire schema/factory inventory, but preserve deployed migrations and valid model definitions when the defect is in factory construction or application traversal. Correct stale current evidence and skill guidance rather than rewriting historical audit records.
+
 ## 2026-09-14 — menu media, weekly schedules and valid factory states
 
 Use database transaction callbacks for menu gallery and parent-deletion file ownership, including enclosing transactions. Reload the originally scoped root before collecting media; the one extra lookup is intentional correctness work. Keep historical migrations and valid model definitions unchanged after a clean schema audit.

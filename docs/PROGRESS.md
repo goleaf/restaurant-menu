@@ -1,5 +1,13 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — fourth audit: bounded media and strict factory graphs
+
+- Replaced menu/category path and item-ID collections with selected 200-record reads and a shared temporary-file cleanup Action. Retained memory before root deletion in the 2,000-item fixture falls from about 5.87 MB to about 10 KB; the 605-item regression limits live hydrated models to 400 and preserves every path/event.
+- Scoped category discovery and observer cascades to the original menu, terminated cyclic discovery, skipped already-deleted fallback candidates and handled misplaced menu-owned items. Root/child/item deletion vetoes now roll back the full database/media operation. Category IDs still use O(categories) memory; file cleanup is not a durable retry queue.
+- Completed missing variant factory ownership graphs without reloading eager relations, and shared active-line integer totals with the department-readiness helper. Fresh audit: 49 models/factories, 88/88 migrations and unchanged indexed SQLite schema. The application database received no migration, seed or domain-data mutation.
+- Targeted media/schema **51/361** and factory/schema/dispatch **67/616** pass after observed RED regressions. Full Browser WebKit **5/433** and four-process backend **1,866/48,164** pass with zero failures/skips. Canonical sequential coverage passes **1,866/48,166** without failures/skips in **826.71s**, at **93.9% application coverage**. All **222 Actions** execute at **94.88% statement coverage**. Combined distinct backend/browser result: **1,871 passed / 48,599 assertions**, zero failures/skips. The code manifest is unchanged; the two additional sequential assertions check newly documented traceability paths.
+- Pint, canonical Larastan, Composer validation/audit, npm audit/build, translations, isolated migration roundtrip/repeated seeds and owned config/route/event/view compilation pass. All 173 Markdown files/295 local targets pass, and all eight skills have identical provider copies. Final independent media review is clear; normal commit/push follows the final documentation check.
+
 ## 2026-09-14 — third audit: menu media and weekly schedules
 
 - Fixed gallery rollback leaks, post-commit compensation errors and premature parent-delete cleanup; deletion reloads the original parent-scoped root and current media path.

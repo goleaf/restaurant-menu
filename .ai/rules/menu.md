@@ -13,3 +13,6 @@ For shared local-image replacement/removal, successful persistence means the out
 
 ## Gallery and parent deletion follow outer commit
 Gallery upload registers rollback cleanup immediately after each stored file and must not catch post-commit callback failures as if persistence rolled back. Menu/item/category deletion reloads the original parent-scoped root inside the transaction, collects current owned paths, and deletes files only after the outer default SQLite commit. Preserve observer events and their lazyById batches.
+
+## Stream parent media cleanup and contain malformed cascades
+Menu/category Actions stream selected 200-record media batches through DeleteLocalMediaFilesAfterCommitAction, which owns a temporary path file and one outer commit/rollback callback pair. Keep item-ID filters as Eloquent subqueries; category discovery uses a visited-ID set and <=200-ID query inputs. Category observer child/item queries stay in the original menu. Menu fallback categories recheck active scoped existence to avoid duplicate stale deletion events; remaining menu-owned items are also deleted even if their category reference is malformed. A false deleting-event result aborts the owning transaction, preserving all rows/files. Category tracking is still O(categories); post-commit cleanup is not a durable retry queue.

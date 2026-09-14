@@ -71,6 +71,8 @@ class DraftOrderItemFactory extends Factory
 
     public function forVariant(MenuItemVariant $variant): static
     {
+        $variant->loadMissing('item.menu.branch');
+
         return $this->recycle($variant->item->menu->branch)->state(fn (): array => [
             'menu_item_id' => $variant->menu_item_id,
             'menu_item_variant_id' => $variant->id,

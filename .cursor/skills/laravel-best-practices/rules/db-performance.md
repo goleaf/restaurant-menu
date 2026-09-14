@@ -83,13 +83,15 @@ User::where('subscribed', true)->chunk(200, function ($users) {
 });
 ```
 
-Use `chunkById()` when modifying records during iteration — standard `chunk()` uses OFFSET which shifts when rows change:
+Use `chunkById()` when deleting rows or changing filtered non-key attributes during iteration — offset-based `chunk()` can skip records as the result set changes:
 
 ```php
 User::where('active', false)->chunkById(200, function ($users) {
     $users->each->delete();
 });
 ```
+
+Keep a stable, unique cursor key selected and unchanged. Use `reorder()` to remove unrelated display ordering before ID-based traversal while preserving predicates and tenant scopes. Changing primary or relationship foreign keys can still omit rows; verify traversal across multiple batches rather than assuming arbitrary mutations are safe.
 
 ## Add Database Indexes
 

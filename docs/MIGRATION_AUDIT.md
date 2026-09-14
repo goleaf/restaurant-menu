@@ -1,5 +1,9 @@
 # Migration audit
 
+## Fourth audit: unchanged schema and factory graph corrections — 2026-09-14
+
+Read-only Boost inspection again matches all 88 migration files with 88 ledger entries (latest batch 9), no missing or unexpected names, and 61 tables/633 columns/308 indexes/144 foreign keys. Every FK has a leading index; no redundant nonunique index prefix was found. Active QR, active/pending table-session and waiter-call identity guards have zero mismatches in the inspected local database. All 49 Eloquent models retain matching factories; the fiftieth PHP file under `app/Models` is the `HasLocalLogo` trait. Strict relation loading and department-readiness totals require factory corrections, not schema changes. Parent deletion also needs application-level scope and cycle guards because ordinary category foreign keys do not encode same-menu ownership or acyclicity. Existing migration history and application data are preserved.
+
 ## Third audit: schema recheck — 2026-09-14
 
 Fresh read-only inspection confirms all 88 migrations applied and exact agreement with the fully migrated isolated schema: 61 tables, 633 columns, 308 indexes and 144 foreign keys. Foreign keys have leading indexes and no redundant index was found. Five scoped consistency checks (item/category menu, draft/guest session, draft/menu branch, order/guest session, ticket/order-item order) found zero violations. The new findings concern optional factory graphs, not schema drift; no migration or application-data rewrite is required.

@@ -2,6 +2,8 @@
 
 ## Required platform
 
+The PHP process needs a writable private system temporary directory for menu/category media cleanup spools. Paths stream to an automatically removed `tmpfile()` before database deletion; empty-media operations need no spool. Temporary-file creation/write failure aborts before persistence. Cleanup runs synchronously after commit and has no worker dependency; interruption or a later storage error can leave orphan files, so it is not a durable retry mechanism.
+
 - PHP `>=8.5.0 <8.6.0` with Laravel-required extensions plus PDO SQLite, intl, mbstring, OpenSSL, fileinfo and GD where image handling requires it.
 - Writable SQLite database directory and database file.
 - Writable `storage` and `bootstrap/cache` paths.

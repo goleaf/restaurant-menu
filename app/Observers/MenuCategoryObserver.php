@@ -7,6 +7,8 @@ namespace App\Observers;
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Models\Menu;
 use App\Models\MenuCategory;
+use App\Models\MenuItem;
+use RuntimeException;
 
 class MenuCategoryObserver
 {
@@ -91,10 +93,14 @@ class MenuCategoryObserver
 
         $menuCategory->children()
             ->select(['id', 'menu_id', 'parent_id'])
+            ->where('menu_id', $menuCategory->menu_id)
             ->reorder()
             ->lazyById(200)
-            ->each
-            ->delete();
+            ->each(function (MenuCategory $child): void {
+                if ($child->delete() !== true) {
+                    throw new RuntimeException('Menu category deletion was cancelled.');
+                }
+            });
     }
 
     private function softDeleteItems(MenuCategory $menuCategory): void
@@ -105,9 +111,13 @@ class MenuCategoryObserver
 
         $menuCategory->items()
             ->select(['id', 'menu_id', 'category_id'])
+            ->where('menu_id', $menuCategory->menu_id)
             ->reorder()
             ->lazyById(200)
-            ->each
-            ->delete();
+            ->each(function (MenuItem $item): void {
+                if ($item->delete() !== true) {
+                    throw new RuntimeException('Menu item deletion was cancelled.');
+                }
+            });
     }
 }

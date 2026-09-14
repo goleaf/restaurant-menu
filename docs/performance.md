@@ -1,8 +1,18 @@
 # Performance
 
+## Fourth audit: parent media memory and factory graph reuse — 2026-09-14
+
+Menu/category deletion streams selected primary and gallery paths in 200-record ID batches into an owned temporary file. Gallery filters use an Eloquent item-ID subquery rather than a hydrated ID array. One cleanup callback per parent replays the file only after outer commit; rollback discards it. Category discovery retains a visited-ID set but limits each query's category/frontier input to 200 IDs. This bounds media hydration and path retention, not total process memory or hierarchy tracking.
+
+Two identical 605-item fixtures, with reverse display order and 1,210 total paths each, previously peaked at 1,005 simultaneously retained item/image models. The new regression limits that peak to 400, covering overlap between consecutive 200-row pages, and verifies every file path and all 605 item deletion events. File replay is idempotent rather than retaining a growing global path-deduplication set. These are hydration/correctness measurements; no production latency improvement is claimed.
+
+An additional isolated checkpoint measurement with 2,000 items and one gallery image each recorded retained bytes immediately before the first parent deletion: menu **5,869,224 → 9,800**, category **5,869,560 → 10,456**. At 500 items, the corresponding results were **1,486,344 → 9,800** and **1,486,688 → 10,448**. These figures exclude whole-process peak usage and do not make the visited-category set constant-memory. Total before/after query counts were not recorded for these fixtures. The implementation trades extra batch reads and temporary-file I/O for bounded retained media; menu deletion adds one remaining-owned-items read, and the fallback category pass adds one scoped `exists()` query per hydrated candidate to avoid duplicate events. The ordinary root-category pass adds no per-category recheck.
+
+`forVariant()` now completes missing `item.menu.branch` relations before constructing a factory state. Unloaded and partly eager-loaded collection graphs no longer throw under strict loading, and an already complete graph retains its objects with zero additional reads. This is graph correctness and reuse; calling the state separately for many unloaded models can still issue per-model relationship reads.
+
 ## Third audit: schedule reads and safe media deletion — 2026-09-14
 
-Chronological opening status still performs one selected opening-hours query; cyclic overlap validation performs none. Clock ordering and earliest normalized occurrence selection fix incorrect next-opening output, including DST reordering, without adding queries. Each menu/item/category deletion adds one intentional fresh, parent-scoped root lookup inside its transaction to prevent stale media paths and moved-parent deletion. File cleanup waits for outer commit. These are correctness changes, not a claimed deletion speedup. Existing bounded observer traversal and the documented parent path-collection memory limit remain in place.
+Chronological opening status still performs one selected opening-hours query; cyclic overlap validation performs none. Clock ordering and earliest normalized occurrence selection fix incorrect next-opening output, including DST reordering, without adding queries. Each menu/item/category deletion adds one intentional fresh, parent-scoped root lookup inside its transaction to prevent stale media paths and moved-parent deletion. File cleanup waits for outer commit. These are correctness changes, not a claimed deletion speedup. At this third-audit snapshot, observer traversal was bounded but parent paths were still collected; the fourth-audit section above supersedes that memory limitation.
 
 ## Branch settings reads — 2026-09-14
 
@@ -114,7 +124,7 @@ Four isolated 405-record fixtures used reverse display order to exercise three b
 | Category children | 4,872 | 4,874 |
 | Category items | 5,277 | 5,279 |
 
-The two additional reads fetch the second and third batches. This measures bounded initial hydration in the observer cascade, not total process peak memory or faster deletion. Parent deletion Actions still collect image paths for cleanup after successful persistence; this change does not make the entire media-deletion workflow constant-memory. Existing CSV `chunkById(200)`, organization/brand observer `lazyById(500)` and the oldest-first 1,000-candidate inactivity-cleanup limit remain appropriate for their separate contracts.
+The two additional reads fetch the second and third batches. This measures bounded initial hydration in the observer cascade, not total process peak memory or faster deletion. At that snapshot, parent deletion Actions still collected image paths. The fourth audit replaces that collection with a temporary stream while retaining the separate category-ID tracking limit. Existing CSV `chunkById(200)`, organization/brand observer `lazyById(500)` and the oldest-first 1,000-candidate inactivity-cleanup limit remain appropriate for their separate contracts.
 
 ## Controls
 

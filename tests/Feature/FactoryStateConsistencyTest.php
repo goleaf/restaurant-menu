@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\DraftOrderStatus;
+use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
 use App\Models\Branch;
 use App\Models\DraftOrder;
@@ -28,6 +29,54 @@ test('variant item factory defaults share the menu branch and parent session', f
         ->and($item->unit_price_cents)->toBe(725)
         ->and($item->total_price_cents)->toBe(725)
         ->and(Branch::query()->count())->toBe(1);
+})->with([
+    'draft item' => DraftOrderItem::class,
+    'order item' => OrderItem::class,
+]);
+
+test('variant item factories accept persisted variant collections with incomplete relationships', function (string $model, ?string $relations) {
+    $createdVariants = MenuItemVariant::factory()->count(2)->create();
+    $query = MenuItemVariant::query()->whereKey($createdVariants->modelKeys());
+
+    if ($relations !== null) {
+        $query->with($relations);
+    }
+
+    $variant = $query->get()->firstOrFail();
+
+    expect($variant->preventsLazyLoading)->toBeTrue();
+
+    $item = $model::factory()->forVariant($variant)->create();
+    $parent = $item instanceof DraftOrderItem ? $item->draftOrder : $item->order;
+
+    expect($item->menu_item_variant_id)->toBe($variant->id)
+        ->and($parent->tableSession->branch_id)->toBe($variant->item->menu->branch_id);
+})->with([
+    'draft item' => DraftOrderItem::class,
+    'order item' => OrderItem::class,
+])->with([
+    'unloaded relationships' => null,
+    'loaded item' => 'item',
+    'loaded item and menu' => 'item.menu',
+]);
+
+test('variant item factories reuse already eager loaded relationships without queries', function (string $model) {
+    $createdVariants = MenuItemVariant::factory()->count(2)->create();
+    $variant = MenuItemVariant::query()
+        ->whereKey($createdVariants->modelKeys())
+        ->with('item.menu.branch')
+        ->get()
+        ->firstOrFail();
+    $originalItem = $variant->item;
+    $originalMenu = $originalItem->menu;
+    $originalBranch = $originalMenu->branch;
+
+    $queries = countDatabaseQueries(fn () => $model::factory()->forVariant($variant));
+
+    expect($queries)->toBe(0)
+        ->and($variant->item)->toBe($originalItem)
+        ->and($variant->item->menu)->toBe($originalMenu)
+        ->and($variant->item->menu->branch)->toBe($originalBranch);
 })->with([
     'draft item' => DraftOrderItem::class,
     'order item' => OrderItem::class,
@@ -82,6 +131,28 @@ test('order factory with items includes other active lines and excludes cancelle
         ->and($order->total_price_cents)->toBe(3375)
         ->and($order->fresh()->total_price_cents)->toBe(3375);
 });
+
+test('order factory department readiness preserves existing lines and synchronizes integer totals', function (int $existingCount, int $expectedCount, int $expectedTotal) {
+    $order = Order::factory()
+        ->has(OrderItem::factory()->count($existingCount)->state([
+            'unit_price_cents' => 1375,
+            'total_price_cents' => 1375,
+        ]), 'items')
+        ->withDepartmentReadiness(2)
+        ->create();
+
+    expect($order->items()->count())->toBe($expectedCount)
+        ->and($order->items()->where('unit_price_cents', 1375)->count())->toBe($existingCount)
+        ->and($order->kitchenTicketItems()->count())->toBe(2)
+        ->and($order->kitchenTicketItems()->where('kitchen_ticket_items.status', KitchenTicketItemStatus::New)->count())->toBe(2)
+        ->and((int) $order->items()->active()->sum('total_price_cents'))->toBe($expectedTotal)
+        ->and($order->total_price_cents)->toBe($expectedTotal)
+        ->and($order->fresh()->total_price_cents)->toBe($expectedTotal);
+})->with([
+    'default lines' => [0, 2, 2000],
+    'one existing line' => [1, 2, 2375],
+    'more existing lines than tickets' => [3, 3, 4125],
+]);
 
 test('order factory creates a converted source draft for its default parent graph', function (bool $explicitSession) {
     $factory = Order::factory();

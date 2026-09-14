@@ -32,7 +32,7 @@ Tests use isolated SQLite, fake local disks and faked external I/O. Never run `m
 
 If the shared checkout contains local compiled configuration, point `APP_CONFIG_CACHE`, `APP_ROUTES_CACHE`, `APP_EVENTS_CACHE` and `VIEW_COMPILED_PATH` to owned disposable paths before verification. Confirm the effective testing database is isolated. Do not clear shared application caches merely to prepare a test run.
 
-`composer test:coverage` is the canonical coverage command. It runs the Unit and Feature suites against `app/` and fails below 90%. GitHub Actions provisions Xdebug and executes this gate after the full behavioral suite. The local Herd PHP 8.5 CLI loads Xdebug with `xdebug.mode=off`; the Composer script enables coverage only for this command through `XDEBUG_MODE=coverage`, so normal local and production requests do not pay coverage overhead.
+`composer test:coverage` is the canonical coverage command. It runs the Unit and Feature suites against `app/` and fails below 90%. The current checkout has no `.github` workflow directory; this audit supplies local command evidence, not a GitHub Actions run. The local Herd PHP 8.5 CLI loads Xdebug with `xdebug.mode=off`; the Composer script enables coverage only for this command through `XDEBUG_MODE=coverage`, so normal local and production requests do not pay coverage overhead.
 
 ## Export and report-cache follow-up (2026-09-14)
 

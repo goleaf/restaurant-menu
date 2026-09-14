@@ -9,7 +9,7 @@ The expanded user request authorizes model/migration, Action/validation, perform
 - [x] Audit controller/Livewire authorization, validation and Action boundaries; inspect query and test gaps. Credential mutations now enforce feature flags and recent password confirmation; the factory snapshot resolver removes repeated source reads.
 - [x] Audit all repository-local skills and first-party Markdown, repair stale current guidance and links, and distinguish historical results from fresh evidence. All eight skills were reviewed and all three tracked provider copies synchronized.
 - [x] Run formatting/static analysis, dependency validation/audits, browser/build/localization, full sequential/parallel tests, canonical coverage and isolated schema/seed checks. Backend: 1,738 passed / 47,528 assertions, zero failures/skips in both full runs. Browser: 5/415. Application coverage: 93.8%; all 220 Actions execute (94.85% Action statement coverage). See `testing.md` for source digest and complete evidence.
-- [ ] Review the final diff, stage only verified authorized files, create English Conventional Commits and push without force; verify the remote commit identity.
+- [x] Review the final diff, stage only verified authorized files, create English Conventional Commits and push without force; verify the remote commit identity. Commit `f2f09fd7fb51466d6783bfc3038b2ecbf656365a` was pushed to `origin/main`, and the remote ref returned that exact SHA. The publication evidence is recorded in `PROGRESS.md`.
 
 Independent read-only audits cover model/schema, validation boundaries and skills/documentation while the primary work completes the cache correction. No production deployment or third-party service change is included.
 

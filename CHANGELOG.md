@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-14 — menu media and weekly schedule integrity
+
+- Verify 1,831 backend tests in both full runs and five browser scenarios: zero failures/skips, 93.9% application coverage and execution of all 221 Actions.
+
+- Preserve menu images through enclosing rollbacks, compensate newly uploaded files on rollback and retain committed files after callback errors. Reload parent-scoped deletion roots and clean current media only after outer commit.
+- Reject overlapping weekly hours, including overnight/week boundaries; cap the editor at four visible intervals. Select the next opening chronologically and skip DST-collapsed occurrences.
+- Keep variant factory graphs within one branch, align automatically created converted drafts and calculate active-line order totals using integer cents.
+- Correct Laravel skill examples for pagination query counts, index prefixes, request/null semantics and queued notification timing; clarify production logging and invitation viewing contracts. Review all models, migrations, Markdown and eight project skills.
+
 ## 2026-09-14 — atomic branch configuration and media lifecycle
 
 - Move branch settings validation into `BranchSettingsForm` and persist the complete submission through an authorized transaction-owning Action. Reject duplicate weekdays and malformed transport values.

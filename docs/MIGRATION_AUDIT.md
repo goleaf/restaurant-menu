@@ -1,5 +1,9 @@
 # Migration audit
 
+## Third audit: schema recheck — 2026-09-14
+
+Fresh read-only inspection confirms all 88 migrations applied and exact agreement with the fully migrated isolated schema: 61 tables, 633 columns, 308 indexes and 144 foreign keys. Foreign keys have leading indexes and no redundant index was found. Five scoped consistency checks (item/category menu, draft/guest session, draft/menu branch, order/guest session, ticket/order-item order) found zero violations. The new findings concern optional factory graphs, not schema drift; no migration or application-data rewrite is required.
+
 ## Local reconciliation — 2026-09-14
 
 Boost schema and migration inspection found 87/88 applied migrations, with only `2026_08_24_173825_add_allergen_snapshots_to_order_items_and_kitchen_ticket_items` pending. The fully migrated isolated schema comparison covered 61 tables, 308 indexes and 144 foreign keys; only the two allergen snapshot columns differed. All foreign keys have leading indexes and no redundant nonunique index was found.

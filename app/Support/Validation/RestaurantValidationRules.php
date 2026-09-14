@@ -192,15 +192,17 @@ class RestaurantValidationRules
     /**
      * @return array<string, list<mixed>>
      */
-    public static function openingHours(): array
+    public static function openingHours(bool $isConfigured = false): array
     {
         return [
             'openingHoursConfigured' => ['boolean'],
-            'openingHours' => ['array', 'size:7'],
+            'openingHours' => ['array', 'size:7', Rule::when($isConfigured, [new NonOverlappingOpeningHours])],
+            'openingHours.*' => ['array'],
             'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7', 'distinct'],
             'openingHours.*.label' => ['required', 'string', 'max:40'],
             'openingHours.*.is_closed' => ['boolean'],
             'openingHours.*.intervals' => ['array', 'max:4'],
+            'openingHours.*.intervals.*' => ['array'],
             'openingHours.*.intervals.*.opens_at' => ['nullable', 'date_format:H:i'],
             'openingHours.*.intervals.*.closes_at' => ['nullable', 'date_format:H:i'],
         ];

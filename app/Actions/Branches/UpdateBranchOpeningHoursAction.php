@@ -4,7 +4,9 @@ namespace App\Actions\Branches;
 
 use App\Models\Branch;
 use App\Models\BranchOpeningHour;
+use App\Support\Validation\NonOverlappingOpeningHours;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class UpdateBranchOpeningHoursAction
 {
@@ -13,6 +15,13 @@ class UpdateBranchOpeningHoursAction
      */
     public function handle(Branch $branch, array $weeklyHours, bool $isConfigured = true): void
     {
+        if ($isConfigured) {
+            Validator::make(['openingHours' => $weeklyHours], [
+                'openingHours' => ['array', 'max:7', new NonOverlappingOpeningHours],
+                'openingHours.*.intervals' => ['array', 'max:4'],
+            ])->validate();
+        }
+
         DB::transaction(function () use ($branch, $weeklyHours, $isConfigured): void {
             $branch->openingHours()->delete();
 

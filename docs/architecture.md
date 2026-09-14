@@ -22,6 +22,10 @@ Restaurant dashboard and basic analytics snapshots contain locale-formatted date
 
 One branch-settings Save is one transaction owned by `SaveBranchConfigurationAction`: reload and authorize the branch, scope its settings row, then persist settings, profile, closure, hours and images together. `BranchSettingsForm` owns validation and normalization; `BranchSettingsQueryService` owns selected reads. Local media replacement preserves the old file until the outer SQLite commit and removes newly stored files on rollback. Post-commit cleanup errors cannot undo the database commit and must not remove its replacement file.
 
+Weekly hours use `NonOverlappingOpeningHours` in the Form rules and persistence Action, with bounded structural validation. The pure rule handles recurring Sunday/Monday overlap and permits touching intervals without database reads. The editor enforces four intervals in both its mutation and prepared Add-control visibility. Opening status orders intervals by wall-clock opening time and chooses the earliest actual normalized start for the next opening. Overnight dates are determined from stored times; when daylight-saving normalization collapses an occurrence, that occurrence is skipped rather than extended by a day.
+
+Gallery uploads register rollback compensation per stored path. Menu, category and item deletion reload the original parent-scoped root, collect current owned paths in the transaction and remove files after the outer commit. Exceptions after commit do not compensate already committed uploads.
+
 ## Verified implementation inventory
 
 The refreshed 2026-09-14 inventory observes 49 first-party Eloquent models with 49 factories, 221 classes in the focused Action namespace, 61 Livewire PHP files, three Livewire Form objects, 18 policies, 88 forward migrations, and 133 Blade templates. The route inventory contains only Blade/Livewire/Fortify/Flux endpoints; no first-party SPA, JSON API, Volt component, or non-SQLite application database is present. Counts are audit evidence rather than architectural limits; executable architecture and model-factory tests remain authoritative when the code changes.

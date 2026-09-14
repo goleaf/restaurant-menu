@@ -1,5 +1,13 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — third audit: menu media and weekly schedules
+
+- Fixed gallery rollback leaks, post-commit compensation errors and premature parent-delete cleanup; deletion reloads the original parent-scoped root and current media path.
+- Added reusable cyclic weekly overlap validation, a four-interval editor guard and localized form errors. Opening status uses chronological actual starts, preserves valid overnight hours and skips DST-collapsed occurrences. Status reads remain one query; media deletion intentionally adds a fresh root lookup.
+- Fixed variant factory branch graphs, converted default source drafts and active-line integer totals. Audited all 49 models/factories and 88 migrations; fresh live schema matches the fully migrated isolated schema, with no data rewrite.
+- Updated source-confirmed Laravel skill guidance and affected canonical Markdown. All 172 Markdown files/295 local links pass and all eight skill mirrors agree.
+- Browser **5/433** and parallel backend **1,831/47,956** pass with zero failures/skips. Formatting, static analysis, audits/build, translations, owned cache compilation, migration roundtrip and repeated default seeds pass. Canonical sequential coverage passes the same **1,831/47,956** in **821.14s**, with **93.9% application coverage**. All **221 Actions** execute at **94.90% statement coverage**. Combined backend/browser: **1,836 passed / 48,389 assertions**, zero failures/skips. The source manifest remains unchanged throughout final gates; publication follows the final documentation check.
+
 ## 2026-09-14 — second audit: atomic settings and local migration
 
 - Reproduced and fixed partial branch configuration saves, premature old-image deletion, duplicate weekdays and the inactive dependent percentage input. Added a validated Form, one authorized aggregate transaction, rollback-aware shared media, corrected Form error bindings and immediate dependent-field switches.

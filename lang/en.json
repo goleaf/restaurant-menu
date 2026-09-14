@@ -2220,5 +2220,6 @@
     "menu.guest.item_no_longer_available": "This dish is no longer available. Remove it from the order or choose another dish.",
     "menu.status.active": "Active",
     "menu.status.archived": "Archived",
-    "menu.status.draft": "Draft"
+    "menu.status.draft": "Draft",
+    "branches.opening_hours.errors.overlap": "Opening intervals must not overlap, including overnight and across the end of the week."
 }

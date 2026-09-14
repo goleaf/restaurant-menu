@@ -12,7 +12,7 @@ foreach ($posts as $post) {
 }
 ```
 
-Correct (2 queries total):
+Correct (a typical non-empty page uses 3 queries: count, posts, authors):
 ```php
 $posts = Post::query()->select(['id', 'user_id', 'title'])->with('author:id,name')->paginate(25);
 foreach ($posts as $post) {
@@ -110,13 +110,13 @@ Correct:
 Schema::create('orders', function (Blueprint $table) {
     $table->id();
     $table->foreignId('user_id')->index()->constrained();
-    $table->string('status')->index();
+    $table->string('status');
     $table->timestamps();
     $table->index(['status', 'created_at']);
 });
 ```
 
-Add composite indexes for common query patterns (e.g., `WHERE status = ? ORDER BY created_at`).
+Add composite indexes for common query patterns (e.g., `WHERE status = ? ORDER BY created_at`). This composite also covers its leading `status` column, so a separate non-unique `status` index is redundant.
 
 ## Use `withCount()` for Counting Relations
 

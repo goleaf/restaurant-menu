@@ -6,6 +6,8 @@ There are 49 first-party Eloquent models and 49 model factories. There are no in
 
 Meaningful states cover workflow values actually used by each model: active/inactive/pending/approved/rejected/archived/expired/verified/public/private/deleted/failed/completed only where that model owns such a concept. Edge data includes empty optionals, complete optionals, Unicode/long values and historical/future dates where valid.
 
+Variant item states recycle the selected item branch into the default draft/order graph and preserve explicitly supplied parents. Automatically created drafts backing orders use `ConvertedToOrder`; explicit draft overrides and opt-in statuses remain available. `OrderFactory::withItems()` computes integer totals from active lines, excluding cancelled items. `FactoryStateConsistencyTest` covers default/explicit parent ordering, variants, lifecycle and cancelled-line totals.
+
 ## Seeder layers
 
 | Seeder | Class | Contract |

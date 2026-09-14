@@ -1,5 +1,13 @@
 # Restaurant Menu completion decisions
 
+## 2026-09-14 — menu media, weekly schedules and valid factory states
+
+Use database transaction callbacks for menu gallery and parent-deletion file ownership, including enclosing transactions. Reload the originally scoped root before collecting media; the one extra lookup is intentional correctness work. Keep historical migrations and valid model definitions unchanged after a clean schema audit.
+
+Weekly opening hours are recurring wall-clock intervals: overnight is valid, touching boundaries are valid, and overlap across the end of the week is invalid. Chronological display status must not depend on input sort order. A DST transition that normalizes an occurrence to an empty/reversed duration skips that occurrence; it must never manufacture a 24-hour opening. The Form and Action share the overlap rule and retain structural bounds. The editor cannot append an invisible fifth interval.
+
+Factory default graphs must respect branch and converted-draft invariants, while explicit fixture overrides remain possible. Fix source-confirmed skill examples and current documentation; retain valid or explicitly historical Markdown rather than rewriting it mechanically.
+
 ## 2026-09-14 — atomic settings and local schema reconciliation
 
 A reproduced late-step failure justifies one aggregate Save Action and a dedicated Form; child Actions remain reusable. Shared media participates in the default SQLite transaction lifecycle. Do not rewrite valid models or deployed migrations to increase adoption of article examples. The local database had one pending existing allergen-snapshot migration; after a private consistent backup and isolated rollback/reapply proof, apply that migration forward only. This is local runtime maintenance, not production deployment. Test pass rate and measured coverage remain separate.

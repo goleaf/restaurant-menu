@@ -2220,5 +2220,6 @@
     "menu.guest.item_no_longer_available": "Это блюдо больше недоступно. Удалите его из заказа или выберите другое блюдо.",
     "menu.status.active": "Активно",
     "menu.status.archived": "В архиве",
-    "menu.status.draft": "Черновик"
+    "menu.status.draft": "Черновик",
+    "branches.opening_hours.errors.overlap": "Интервалы работы не должны пересекаться, в том числе ночью и на границе недели."
 }

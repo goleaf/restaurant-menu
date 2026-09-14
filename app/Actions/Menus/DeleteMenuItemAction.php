@@ -17,21 +17,27 @@ final class DeleteMenuItemAction
 
     public function handle(MenuItem $item): void
     {
-        $imagePaths = $item->galleryImages()
-            ->select(['id', 'menu_item_id', 'path'])
-            ->pluck('path')
-            ->prepend($item->image)
-            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
-            ->unique()
-            ->values();
-
         DB::transaction(function () use ($item): void {
+            $item = MenuItem::query()
+                ->select(['id', 'menu_id', 'category_id', 'name', 'price_cents', 'is_available', 'image', 'deleted_at'])
+                ->whereKey($item->id)
+                ->where('menu_id', $item->menu_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $imagePaths = $item->galleryImages()
+                ->select(['id', 'menu_item_id', 'path'])
+                ->pluck('path')
+                ->prepend($item->image)
+                ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+                ->unique()
+                ->values();
+
             MenuItemImage::query()
                 ->where('menu_item_id', $item->id)
                 ->delete();
             $item->deleteOrFail();
-        });
 
-        $imagePaths->each($this->deleteLocalMediaFile->handle(...));
+            DB::afterCommit(fn () => $imagePaths->each($this->deleteLocalMediaFile->handle(...)));
+        });
     }
 }

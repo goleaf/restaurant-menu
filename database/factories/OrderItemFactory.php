@@ -77,7 +77,7 @@ class OrderItemFactory extends Factory
 
     public function forVariant(MenuItemVariant $variant): static
     {
-        return $this->state(fn (): array => [
+        return $this->recycle($variant->item->menu->branch)->state(fn (): array => [
             'menu_item_id' => $variant->menu_item_id,
             'menu_item_variant_id' => $variant->id,
             'original_menu_item_id' => $variant->menu_item_id,

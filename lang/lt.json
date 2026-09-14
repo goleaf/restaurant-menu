@@ -2220,5 +2220,6 @@
     "menu.guest.item_no_longer_available": "Šio patiekalo nebėra. Pašalinkite jį iš užsakymo arba pasirinkite kitą patiekalą.",
     "menu.status.active": "Aktyvus",
     "menu.status.archived": "Archyvuotas",
-    "menu.status.draft": "Juodraštis"
+    "menu.status.draft": "Juodraštis",
+    "branches.opening_hours.errors.overlap": "Darbo laiko intervalai negali persidengti, įskaitant naktį ir savaitės sandūrą."
 }

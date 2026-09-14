@@ -146,6 +146,19 @@ test('demo owner can complete the organization administration browser journey', 
         ->assertValue('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
         ->assertValue('input[wire\\:model="form.serviceChargePercent"]', '12.50');
 
+    $mondayIntervalCount = $branch->openingHours()->where('day_of_week', 1)->where('is_closed', false)->count();
+    clickOrganizationsBrowserElement($page, 'button[wire\\:click="addOpeningInterval(1)"]');
+    $page->fill('input[wire\\:model="form.publicName"]', 'Overlapping schedule must not persist');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
+    $page->assertSee(__('branches.opening_hours.errors.overlap'))->assertNoJavaScriptErrors();
+    expect($branch->fresh()->public_name)->toBe('Browser verified restaurant');
+
+    clickOrganizationsBrowserElement($page, sprintf('button[wire\\:click="removeOpeningInterval(1, %d)"]', $mondayIntervalCount));
+    $page->fill('input[wire\\:model="form.publicName"]', 'Browser verified restaurant');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
+    $page->assertDontSee(__('branches.opening_hours.errors.overlap'))
+        ->assertSee(__('ui.livewire.organizations.brands.branches.settings.settings_saved'));
+
     $page
         ->resize(1440, 1000)
         ->navigate(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch], false))

@@ -144,7 +144,7 @@ final class BranchSettingsForm extends Form
         ];
     }
 
-    /** @return list<array{day_of_week: int, label: string, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}> */
+    /** @return list<array{day_of_week: int, label: string, is_closed: bool, can_add_interval: bool, intervals: list<array{opens_at: string, closes_at: string}>}> */
     public function displayOpeningHours(): array
     {
         $days = is_array($this->openingHours) ? $this->openingHours : [];
@@ -167,6 +167,7 @@ final class BranchSettingsForm extends Form
                 'day_of_week' => $dayOfWeek,
                 'label' => $label,
                 'is_closed' => in_array($day['is_closed'] ?? false, [true, 1, '1'], true),
+                'can_add_interval' => count($intervals) < 4,
                 'intervals' => $displayIntervals,
             ];
         }
@@ -190,8 +191,13 @@ final class BranchSettingsForm extends Form
                 continue;
             }
 
-            $this->openingHours[$index]['is_closed'] = false;
             $this->openingHours[$index]['intervals'] = is_array($day['intervals'] ?? null) ? $day['intervals'] : [];
+
+            if (count($this->openingHours[$index]['intervals']) >= 4) {
+                return;
+            }
+
+            $this->openingHours[$index]['is_closed'] = false;
             $this->openingHours[$index]['intervals'][] = [
                 'opens_at' => '10:00',
                 'closes_at' => '22:00',
@@ -235,7 +241,7 @@ final class BranchSettingsForm extends Form
             'publicLogo' => $this->optionalImageRules(),
             'coverImage' => $this->optionalImageRules(),
             ...RestaurantValidationRules::temporaryClosure(in_array($this->temporarilyClosed, [true, 1, '1'], true)),
-            ...RestaurantValidationRules::openingHours(),
+            ...RestaurantValidationRules::openingHours(in_array($this->openingHoursConfigured, [true, 1, '1'], true)),
         ];
     }
 

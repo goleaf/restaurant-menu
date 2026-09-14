@@ -31,6 +31,7 @@ class OrderFactory extends Factory
             'service_point_id' => fn (array $attributes): int => $this->tableSessionFor($attributes)->service_point_id,
             'draft_order_id' => fn (array $attributes): int => DraftOrder::factory()
                 ->forTableSession($this->tableSessionFor($attributes))
+                ->convertedToOrder()
                 ->create()
                 ->id,
             'status' => OrderStatus::ConfirmedByWaiter,
@@ -135,7 +136,7 @@ class OrderFactory extends Factory
             'branch_id' => $tableSession->branch_id,
             'service_point_id' => $tableSession->service_point_id,
             'table_session_id' => $tableSession->id,
-            'draft_order_id' => DraftOrder::factory()->forTableSession($tableSession),
+            'draft_order_id' => DraftOrder::factory()->forTableSession($tableSession)->convertedToOrder(),
         ]);
     }
 
@@ -146,6 +147,10 @@ class OrderFactory extends Factory
                 ->count($count)
                 ->for($order)
                 ->create();
+
+            $order->update([
+                'total_price_cents' => (int) $order->items()->active()->sum('total_price_cents'),
+            ]);
         });
     }
 

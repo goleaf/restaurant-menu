@@ -164,15 +164,14 @@ class GetBranchOpeningStatusAction
             $dayOfWeek = (int) $date->isoWeekday();
 
             foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
-                $start = $this->dateAtTime($date, (string) $openingHour->opens_at);
-                $end = $this->dateAtTime($date, (string) $openingHour->closes_at);
+                $interval = $this->intervalOnDate($openingHour, $date);
 
-                if ($end->lessThanOrEqualTo($start)) {
-                    $end = $end->addDay();
+                if ($interval === null) {
+                    continue;
                 }
 
-                if ($now->greaterThanOrEqualTo($start) && $now->lessThan($end)) {
-                    return ['closes_at' => LocalizedDateFormatter::time($end)];
+                if ($now->greaterThanOrEqualTo($interval['start']) && $now->lessThan($interval['end'])) {
+                    return ['closes_at' => LocalizedDateFormatter::time($interval['end'])];
                 }
             }
         }
@@ -189,18 +188,29 @@ class GetBranchOpeningStatusAction
         for ($offset = 0; $offset <= 7; $offset++) {
             $date = $now->copy()->startOfDay()->addDays($offset);
             $dayOfWeek = (int) $date->isoWeekday();
+            $nextStart = null;
 
             foreach ($this->openIntervalsForDay($openingHours, $dayOfWeek) as $openingHour) {
-                $start = $this->dateAtTime($date, (string) $openingHour->opens_at);
+                $interval = $this->intervalOnDate($openingHour, $date);
 
-                if ($start->greaterThan($now)) {
-                    return [
-                        'time' => $start->toIso8601String(),
-                        'label' => $offset === 0
-                            ? LocalizedDateFormatter::time($start)
-                            : $this->shortDayLabel($dayOfWeek).' '.LocalizedDateFormatter::time($start),
-                    ];
+                if ($interval === null) {
+                    continue;
                 }
+
+                $start = $interval['start'];
+
+                if ($start->greaterThan($now) && ($nextStart === null || $start->lessThan($nextStart))) {
+                    $nextStart = $start;
+                }
+            }
+
+            if ($nextStart !== null) {
+                return [
+                    'time' => $nextStart->toIso8601String(),
+                    'label' => $offset === 0
+                        ? LocalizedDateFormatter::time($nextStart)
+                        : $this->shortDayLabel($dayOfWeek).' '.LocalizedDateFormatter::time($nextStart),
+                ];
             }
         }
 
@@ -219,11 +229,34 @@ class GetBranchOpeningStatusAction
                 && is_string($openingHour->opens_at)
                 && is_string($openingHour->closes_at))
             ->sortBy([
-                ['sort_order', 'asc'],
                 ['opens_at', 'asc'],
+                ['sort_order', 'asc'],
                 ['id', 'asc'],
             ])
             ->values();
+    }
+
+    /**
+     * @return array{start: CarbonInterface, end: CarbonInterface}|null
+     */
+    private function intervalOnDate(BranchOpeningHour $openingHour, CarbonInterface $date): ?array
+    {
+        $opensAt = substr((string) $openingHour->opens_at, 0, 5);
+        $closesAt = substr((string) $openingHour->closes_at, 0, 5);
+        $closingDate = $date->copy();
+
+        if ($closesAt <= $opensAt) {
+            $closingDate = $closingDate->addDay();
+        }
+
+        $start = $this->dateAtTime($date, $opensAt);
+        $end = $this->dateAtTime($closingDate, $closesAt);
+
+        if ($end->lessThanOrEqualTo($start)) {
+            return null;
+        }
+
+        return ['start' => $start, 'end' => $end];
     }
 
     private function dateAtTime(CarbonInterface $date, string $time): CarbonInterface

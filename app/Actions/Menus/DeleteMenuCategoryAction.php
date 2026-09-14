@@ -19,30 +19,36 @@ final class DeleteMenuCategoryAction
 
     public function handle(MenuCategory $category): void
     {
-        $categoryIds = $this->descendantIds($category);
-        $items = MenuItem::query()
-            ->select(['id', 'category_id', 'image'])
-            ->whereIn('category_id', $categoryIds)
-            ->get();
-        $itemIds = $items->pluck('id');
-        $galleryPaths = MenuItemImage::query()
-            ->select(['id', 'menu_item_id', 'path'])
-            ->whereIn('menu_item_id', $itemIds)
-            ->pluck('path');
-        $imagePaths = $items->pluck('image')
-            ->merge($galleryPaths)
-            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
-            ->unique()
-            ->values();
+        DB::transaction(function () use ($category): void {
+            $category = MenuCategory::query()
+                ->select(['id', 'menu_id', 'parent_id', 'name', 'deleted_at'])
+                ->whereKey($category->id)
+                ->where('menu_id', $category->menu_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $categoryIds = $this->descendantIds($category);
+            $items = MenuItem::query()
+                ->select(['id', 'category_id', 'image'])
+                ->whereIn('category_id', $categoryIds)
+                ->get();
+            $itemIds = $items->pluck('id');
+            $galleryPaths = MenuItemImage::query()
+                ->select(['id', 'menu_item_id', 'path'])
+                ->whereIn('menu_item_id', $itemIds)
+                ->pluck('path');
+            $imagePaths = $items->pluck('image')
+                ->merge($galleryPaths)
+                ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+                ->unique()
+                ->values();
 
-        DB::transaction(function () use ($category, $itemIds): void {
             MenuItemImage::query()
                 ->whereIn('menu_item_id', $itemIds)
                 ->delete();
             $category->deleteOrFail();
-        });
 
-        $imagePaths->each($this->deleteLocalMediaFile->handle(...));
+            DB::afterCommit(fn () => $imagePaths->each($this->deleteLocalMediaFile->handle(...)));
+        });
     }
 
     /**

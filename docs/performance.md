@@ -1,5 +1,9 @@
 # Performance
 
+## Third audit: schedule reads and safe media deletion — 2026-09-14
+
+Chronological opening status still performs one selected opening-hours query; cyclic overlap validation performs none. Clock ordering and earliest normalized occurrence selection fix incorrect next-opening output, including DST reordering, without adding queries. Each menu/item/category deletion adds one intentional fresh, parent-scoped root lookup inside its transaction to prevent stale media paths and moved-parent deletion. File cleanup waits for outer commit. These are correctness changes, not a claimed deletion speedup. Existing bounded observer traversal and the documented parent path-collection memory limit remain in place.
+
 ## Branch settings reads — 2026-09-14
 
 An identical isolated direct-mount fixture measured **17 SQL queries** for the component at `930059f` and **14** after the Form/query-service refactor. Three repeated branch refreshes were removed. The permanent regression holds the 14-query budget for both no opening intervals and a full 28-interval week, while verifying populated settings and schedule state. The aggregate Save intentionally adds a fresh branch lookup and authorization before writes; this measurement is mount-only and does not claim a full-request latency improvement or reduced save query count.

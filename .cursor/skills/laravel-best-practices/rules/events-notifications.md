@@ -27,13 +27,15 @@ class InvoicePaid extends Notification implements ShouldQueue
 }
 ```
 
-## Use `afterCommit()` on Notifications in Transactions
+## Use `afterCommit()` on Queued Notifications in Transactions
 
-Same race condition as events — call `afterCommit()` to delay dispatch until the transaction commits.
+For a notification implementing `ShouldQueue`, call `afterCommit()` to delay dispatch until the enclosing transaction commits.
 
 ```php
 $user->notify((new InvoicePaid($invoice))->afterCommit());
 ```
+
+Synchronous notifications send immediately even when their `Queueable` trait has `afterCommit()` set. If synchronous delivery must wait for the enclosing transaction, register the send in the owning database connection's `afterCommit()` callback.
 
 ## Route Notification Channels to Dedicated Queues
 

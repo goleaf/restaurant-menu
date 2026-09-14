@@ -26,7 +26,6 @@
 |---------|---------|
 | `Session::get('cart')` | `session('cart')` |
 | `$request->session()->get('cart')` | `session('cart')` |
-| `$request->input('name')` | `$request->name` |
 | `return Redirect::back()` | `return back()` |
 | `Carbon::now()` | `now()` |
 | `App::make('Class')` | `app('Class')` |
@@ -34,6 +33,10 @@
 | `->orderBy('created_at', 'desc')` | `->latest()` |
 | `->orderBy('created_at', 'asc')` | `->oldest()` |
 | `->first()->name` | `->value('name')` |
+
+A scalar `value()` read returns `null` when no model matches. Preserve an explicit fail-on-missing lookup when absence violates the operation's invariant.
+
+Keep `$request->input('name')` when reading request input. `$request->name` also falls back to a route parameter when the input key is absent, so it is not an equivalent shorthand at an input boundary.
 
 ## Use Laravel String & Array Helpers
 
@@ -69,8 +72,10 @@ Arrays — use `Arr` over raw PHP:
 $name = isset($array['user']['name']) ? $array['user']['name'] : 'default';
 
 // Correct
-$name = Arr::get($array, 'user.name', 'default');
+$name = Arr::get($array, 'user.name') ?? 'default';
 ```
+
+The null coalescing fallback preserves the original `isset()` behavior for both missing keys and explicit `null`; `Arr::get()`'s third argument alone only handles missing keys.
 
 Key `Arr` methods: `Arr::get()`, `Arr::has()`, `Arr::only()`, `Arr::except()`, `Arr::first()`, `Arr::flatten()`, `Arr::pluck()`, `Arr::where()`, `Arr::wrap()`.
 

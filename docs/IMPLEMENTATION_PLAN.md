@@ -9,10 +9,9 @@ Baseline: clean published `930059f`. Reuse the completed 49-model/88-migration a
 - [x] Move substantial settings state/validation into a Livewire Form, prepared reads into the existing query service, and the complete authorized Save operation into one focused Action. Preserve localized bindings, tenant rejection, exact money and retry behavior.
 - [x] Check meaningful query changes, all models/migrations and current documentation/skills; update only stale contracts and preserve valid code and historical migration files. Record a reusable rule for compound saves and filesystem compensation.
 - [x] Run focused tests, formatting/static analysis, browser/build/localization, full parallel and sequential coverage gates on stable source. Require zero failing/skipped tests; report measured coverage separately.
-- [ ] Review and commit the verified changes with English Conventional Commit messages, push `main` normally and verify the remote SHA. Record actual results in `PROGRESS.md`.
+- [x] Review and commit the verified changes with English Conventional Commit messages, push `main` normally and verify the remote SHA. `4b6fe0920aacbf403591a440767feed1798dd329` was pushed successfully and the remote returned that exact SHA; `PROGRESS.md` records the evidence.
 
 The generic media lifecycle is an independent implementation task; root owns the settings Form/Action/UI integration and documentation. The schema audit found one pending local migration; it was applied after a checked private SQLite backup, with all row counts and integrity preserved. No production migration, seed, deployment or new dependency is required by the proposed repair.
-
 
 ## 2026-09-14 — repository-wide audit and publication
 

@@ -4,9 +4,9 @@
 
 # Restaurant Menu completion implementation plan
 
-## 2026-09-14 — product delivery (active)
+## 2026-09-14 — product delivery (completed)
 
-Scope: the current user-authorized restaurant product improvement, starting from local `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`. This section is the active execution ledger. Earlier audit sections below are historical records, including incomplete publication instructions; they do not authorize GitHub access. GitHub is used only for the final ordinary push, with no subsequent remote verification request. Local quality gates determine readiness.
+Scope: the current user-authorized restaurant product improvement, starting from local `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`. This section records the completed authorized delivery. Earlier audit sections below are historical records, including incomplete publication instructions; they do not authorize GitHub access. GitHub is used only for the final ordinary push, with no subsequent remote verification request. Local quality gates determine readiness.
 
 | Stage | Status | Owner | Dependencies | Areas and acceptance evidence |
 | --- | --- | --- | --- | --- |
@@ -21,7 +21,7 @@ Scope: the current user-authorized restaurant product improvement, starting from
 | 9. Measured performance | done | Root/safety/media | 4, 6, 7, 8 | Record fixed-fixture query/hydration/payload/image/polling comparisons; bound catalogue/dashboard reads and large delete work without unsupported runtime workers. Distinguish query savings from latency. |
 | 10. Independent review | done | Independent reviewer | 3–9 | Independent final reviews confirmed image identity/replay/cleanup, guest locale state, revoked access, cache batching and escaped Blade data. Reproduced issues were fixed; no unresolved blocker. |
 | 11. Final local validation and docs | done | Root | 10 | Backend 2,351, WebKit 10, parallel 2,351 and canonical coverage 93.8% pass with zero failures/skips. Composer/Pint/Larastan/translations/npm/build, isolated migrations/seeds/caches and final documentation inventories pass; testing.md records current evidence. |
-| 12. Commit and push | in_progress | Root | 11 | Final branch/status/owned-diff review, addressed staging and local Conventional Commits; ordinary main push only after verification. Record its actual command result without any GitHub verification request. |
+| 12. Commit and push | done | Root | 11 | Addressed staging and local Conventional Commit `ef7b67afc231877c7c1abba4a6f8427306c3bc2e` completed. Ordinary `git push origin main` returned exit 0: `3e8178b..ef7b67a main -> main`. This documentation follow-up records the observed result; no extra GitHub request or production deployment occurred. |
 
 Shared ownership: root exclusively edits JSON translations, manifests/lockfiles and Markdown. Media worker exclusively owns the new additive menu-operation migration/models/factories and resumable catalogue Actions. Media owns image-processing Actions/helpers/tests; safety owns waiter closure/change detector/polling and backup restore/tests; design owns CSS and agreed shared presentation components. Workers run scoped tests/Pint only. Global formatting, dependency installs, browser suite and final suites are coordinated by root. No application-database destructive tests, second server, runtime queue/cron dependency or production deployment.
 

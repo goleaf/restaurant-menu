@@ -6,7 +6,7 @@
 
 ## Current product integration evidence — 2026-09-14
 
-Implementation and all full local gates are complete; final addressed staging, local commit and ordinary push are the remaining delivery step. No production deployment or GitHub operation other than the forthcoming ordinary push is authorized. Publication evidence is appended only after the actual command returns.
+Product implementation `ef7b67afc231877c7c1abba4a6f8427306c3bc2e` (`feat: improve restaurant catalogue and guest workflows [skip ci]`) is committed and pushed to `origin/main`. The ordinary `git push origin main` returned exit 0 and reported `3e8178b..ef7b67a  main -> main`. No additional GitHub request was made to verify the push, and no production deployment occurred. This documentation follow-up records that observed delivery.
 
 - Delivered the shared visual system, local Noto Sans, focused multilingual catalogue, independent translation persistence, conflict protection, search, scoped availability/move/duplicate controls, and bounded resumable deletion.
 - Completed image decode limits/orientation/metadata removal, responsive variants, upload previews/progress/removal/order/primary controls, and durable upload/removal/promotion receipts. Failed cleanup resumes safely without deleting the catalogue; actual rendered-button replay tests preserve editor input and files.

@@ -1,5 +1,9 @@
 # Application security
 
+## Eighth audit input and allocation boundaries — 2026-09-14
+
+Area/service-point create, edit and bulk inputs keep their original browser types for shared validation. String-only trimming and numeric plus integer rules prevent silent coercion of names, flags, capacity, sort and parent selectors. Parent/area ownership and current capability checks remain mandatory. The reusable bulk Action also bounds allocation before queries, rejects reversed/nonpositive ranges and aborts the entire transaction if a model event rejects a required save. Archived internal codes stay reserved; no QR credential is generated or exposed by table creation.
+
 ## Seventh audit input boundaries — 2026-09-14
 
 Menu, category, dish, schedule, modifier-group, option and variant create/edit operations now validate raw transport values. Arrays/nulls receive field errors, boolean names and integer limits are rejected, native float/boolean money stays invalid, and the string `false` cannot become a true flag through PHP property coercion. Safe projections protect dependent reads from invalid selectors while original IDs still pass numeric/integer and branch/parent-scoped existence rules. Valid numeric strings and `0`/`1` checkbox encodings retain exact persistence. Existing server-side authorization and independent price/availability capabilities remain required; MenuEditorTransportTest and the existing menu permission tests cover these boundaries.

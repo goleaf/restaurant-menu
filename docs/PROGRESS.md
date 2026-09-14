@@ -1,5 +1,13 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — eighth audit: area/table transport and bulk allocation
+
+- Baseline: clean published `51840d6`. Original-value transport fixes extend to area and service-point create/edit/bulk inputs without changing existing Blade bindings, scoped Actions or server-owned state.
+- Direct bulk range tests reproduce 11 failures / 5 passes before implementation; the Action now checks positive ascending ranges of at most 200 before queries/allocation, rejects required save vetoes atomically and preserves actual event-adjusted codes. The measured single-create fixture improves from 3 to 2 queries without an area and 5 to 3 with an area.
+- Added 78 regression cases: 54 transport / 316 assertions and 24 bulk Action / 95 assertions. Integrated targeted verification passes 127 / 1,890. Independent specification and quality reviews found no blockers.
+- Pint/Larastan, strict Composer validation, Composer/npm audits and production build pass. Owned SQLite migrate/reset/migrate, two default seed runs, translations and config/route/event/view caches pass. No application data was migrated, reset or seeded.
+- Full browser, parallel backend and sequential coverage evidence is being collected before publication. No commit/push or full-suite completion is claimed yet.
+
 ## 2026-09-14 — seventh audit: menu input transport
 
 - Observed 76 failing and 16 passing baseline transport cases after correcting permission-factory setup; the corrected 92-case slice passes. Expanded menu/translation/schedule/variant/rule verification passes 205 tests / 1,432 assertions, zero failures/skips. The new matrix contributes 122 regression cases.

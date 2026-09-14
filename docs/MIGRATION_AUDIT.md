@@ -1,5 +1,9 @@
 # Migration audit
 
+## Eighth audit scope — 2026-09-14
+
+All 88 migration files retain forward and reverse methods; the 49 models/factories and live 61-table / 633-column / 308-index / 144-FK schema remain unchanged. The existing service_points branch/internal-code unique index and area/branch indexes cover this audit’s query paths. The new fixes are Action/validation boundaries; no deployed migration rewrite or application data mutation is required. The owned SQLite migrate/reset/migrate roundtrip and two default seed runs passed; no application database migration or seed ran. Detailed gate evidence is recorded in testing.md.
+
 ## Seventh audit: original input validation, preserved schema — 2026-09-14
 
 All 88 migration files retain up/down methods and match the read-only application ledger through batch 9. Boost reports 61 tables / 633 columns / 308 indexes / 144 foreign keys; every FK has a leading supporting index. The schema/factory/architecture/traceability slice passes 33 tests / 1,264 assertions, including redundant index, relationship/cast and all-model factory checks. Every migration passes an owned SQLite migrate/reset/migrate roundtrip, followed by two default seed runs and isolated config/route/event/view caches. Menu validation defects are corrected at the transport boundary without changing a model or historical migration. Application data remains untouched; the populated rollback restrictions below still apply.

@@ -1,5 +1,9 @@
 # Frontend architecture
 
+## Area and service-point transport contract — 2026-09-14
+
+Existing area/table Blade bindings and prepared presentation data remain unchanged. Malformed editable values receive field validation instead of typed hydration or trimming exceptions. Valid numeric strings and checkbox encodings retain their existing storage semantics. Bulk preview and confirmation use the same bounded Action contract; direct invalid-range messages are present in EN/LT/RU. No new UI framework, component, layout or dependency is introduced.
+
 ## Menu editor transport contract — 2026-09-14
 
 The catalog, modifiers and variants keep their existing flat wire:model bindings and prepared Blade presentation. Editable values remain mixed until server validation so a malformed update returns a field error instead of a hydration TypeError or silent scalar conversion. Dependent selector reads use safe projections while validation retains the original public value. No template, layout, CSS, translation key or browser dependency changes are required. The regression matrix exercises actual Livewire update payloads for create/edit and dependent selection updates; valid controls verify exact saved values.

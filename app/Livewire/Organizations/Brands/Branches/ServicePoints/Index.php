@@ -31,7 +31,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
 use Livewire\Attributes\Computed;
@@ -77,35 +76,35 @@ class Index extends Component
     #[Url(as: 'sort', except: 'position')]
     public string $sort = 'position';
 
-    public string $areaNodeId = '';
+    public mixed $areaNodeId = '';
 
-    public string $type = 'table';
+    public mixed $type = 'table';
 
-    public string $icon = 'squares-2x2';
+    public mixed $icon = 'squares-2x2';
 
-    public string $name = '';
+    public mixed $name = '';
 
-    public string $displayNumber = '';
+    public mixed $displayNumber = '';
 
-    public int $capacity = 2;
+    public mixed $capacity = 2;
 
-    public bool $isActive = true;
+    public mixed $isActive = true;
 
     public ?int $editingServicePointId = null;
 
-    public string $editingAreaNodeId = '';
+    public mixed $editingAreaNodeId = '';
 
-    public string $editingType = 'table';
+    public mixed $editingType = 'table';
 
-    public string $editingIcon = 'squares-2x2';
+    public mixed $editingIcon = 'squares-2x2';
 
-    public string $editingName = '';
+    public mixed $editingName = '';
 
-    public string $editingDisplayNumber = '';
+    public mixed $editingDisplayNumber = '';
 
-    public int $editingCapacity = 2;
+    public mixed $editingCapacity = 2;
 
-    public bool $editingIsActive = true;
+    public mixed $editingIsActive = true;
 
     public bool $canManageServicePoints = false;
 
@@ -117,17 +116,17 @@ class Index extends Component
 
     public ?int $shownQrServicePointId = null;
 
-    public string $bulkAreaNodeId = '';
+    public mixed $bulkAreaNodeId = '';
 
-    public string $bulkType = 'table';
+    public mixed $bulkType = 'table';
 
-    public string $bulkPrefix = 'T';
+    public mixed $bulkPrefix = 'T';
 
-    public int $bulkFrom = 1;
+    public mixed $bulkFrom = 1;
 
-    public int $bulkTo = 20;
+    public mixed $bulkTo = 20;
 
-    public int $bulkCapacity = 4;
+    public mixed $bulkCapacity = 4;
 
     public bool $bulkPreviewReady = false;
 
@@ -204,8 +203,13 @@ class Index extends Component
     {
         $this->authorizeServicePointManagement();
 
-        $this->name = trim($this->name);
-        $this->displayNumber = trim($this->displayNumber);
+        if (is_string($this->name)) {
+            $this->name = trim($this->name);
+        }
+
+        if (is_string($this->displayNumber)) {
+            $this->displayNumber = trim($this->displayNumber);
+        }
 
         $validated = $this->validate($this->servicePointRules());
 
@@ -229,7 +233,6 @@ class Index extends Component
         $this->normalizeBulkFields();
 
         $validated = $this->validate($this->bulkServicePointRules());
-        $this->ensureBulkRangeIsSmallEnough($validated);
 
         try {
             $this->bulkPreviewRows = $bulkCreateServicePoints->preview(
@@ -261,7 +264,6 @@ class Index extends Component
         $this->normalizeBulkFields();
 
         $validated = $this->validate($this->bulkServicePointRules());
-        $this->ensureBulkRangeIsSmallEnough($validated);
 
         try {
             $result = $bulkCreateServicePoints->handle(
@@ -388,8 +390,13 @@ class Index extends Component
             return;
         }
 
-        $this->editingName = trim($this->editingName);
-        $this->editingDisplayNumber = trim($this->editingDisplayNumber);
+        if (is_string($this->editingName)) {
+            $this->editingName = trim($this->editingName);
+        }
+
+        if (is_string($this->editingDisplayNumber)) {
+            $this->editingDisplayNumber = trim($this->editingDisplayNumber);
+        }
 
         $validated = $this->validate($this->servicePointRules('editing'));
 
@@ -845,9 +852,10 @@ class Index extends Component
         $fieldPrefix = $prefix === '' ? '' : $prefix;
         $areaNodeField = $fieldPrefix === '' ? 'areaNodeId' : $fieldPrefix.'AreaNodeId';
         $areaNodeValue = $fieldPrefix === '' ? $this->areaNodeId : $this->editingAreaNodeId;
-        $areaNodeRules = ['nullable'];
+        $areaNodeRules = ['bail', 'nullable'];
 
         if ($areaNodeValue !== '') {
+            $areaNodeRules[] = 'numeric';
             $areaNodeRules[] = 'integer';
             $areaNodeRules[] = $this->areaNodeRule();
         }
@@ -863,9 +871,10 @@ class Index extends Component
      */
     private function bulkServicePointRules(): array
     {
-        $areaNodeRules = ['nullable'];
+        $areaNodeRules = ['bail', 'nullable'];
 
         if ($this->bulkAreaNodeId !== '') {
+            $areaNodeRules[] = 'numeric';
             $areaNodeRules[] = 'integer';
             $areaNodeRules[] = $this->areaNodeRule();
         }
@@ -925,24 +934,6 @@ class Index extends Component
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function ensureBulkRangeIsSmallEnough(array $validated): void
-    {
-        $rangeSize = (int) $validated['bulkTo'] - (int) $validated['bulkFrom'] + 1;
-
-        if ($rangeSize <= BulkCreateServicePointsAction::MAX_RANGE_SIZE) {
-            return;
-        }
-
-        throw ValidationException::withMessages([
-            'bulkTo' => __('ui.livewire.organizations.brands.branches.servicepoints.index.create_up_to', [
-                'count' => BulkCreateServicePointsAction::MAX_RANGE_SIZE,
-            ]),
-        ]);
-    }
-
     private function resetCreateForm(): void
     {
         $this->reset('areaNodeId', 'name', 'displayNumber');
@@ -977,7 +968,9 @@ class Index extends Component
 
     private function normalizeBulkFields(): void
     {
-        $this->bulkPrefix = trim($this->bulkPrefix);
+        if (is_string($this->bulkPrefix)) {
+            $this->bulkPrefix = trim($this->bulkPrefix);
+        }
     }
 
     /**

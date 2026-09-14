@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-14 — validated area/table input and bounded bulk creation
+
+- Preserve original area and service-point input types through shared validation, including bulk requests.
+- Enforce positive ascending ranges of at most 200 in the reusable bulk Action; reject cancelled saves atomically and retain model events and archived-code reservations.
+- Remove repeated post-save ownership/code reads: the measured single-create fixture improves from 3 to 2 queries without an area and 5 to 3 with an area.
+- Add transport and direct Action regressions, localized range errors and synchronized bulk-performance skill guidance. Model/migration inventory and existing data remain unchanged; final verification/publication evidence belongs to docs/PROGRESS.md.
+
 ## 2026-09-14 — menu transport types and dependent selections
 
 - Preserve raw editable types across catalog, modifier and variant forms; reject malformed names, integer limits, flags, translations and money before persistence.

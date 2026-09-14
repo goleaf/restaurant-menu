@@ -7,6 +7,8 @@ use App\Enums\ServicePointType;
 use App\Models\Branch;
 use App\Models\ServicePoint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 class BulkCreateServicePointsAction
 {
@@ -22,6 +24,7 @@ class BulkCreateServicePointsAction
      */
     public function preview(Branch $branch, array $data): array
     {
+        $this->validateRange($data['from'], $data['to']);
         $this->ensureAreaNodeBelongsToBranch->handle($branch->id, $data['area_node_id']);
 
         $codes = $this->codes($data['prefix'], $data['from'], $data['to']);
@@ -73,11 +76,14 @@ class BulkCreateServicePointsAction
                         'is_active' => $data['is_active'],
                         'metadata' => [],
                     ]);
-                    $servicePoint->forceFill(['status' => ServicePointStatus::Free])->save();
+                    if (! $servicePoint->forceFill(['status' => ServicePointStatus::Free])->save()) {
+                        throw new RuntimeException('The service point could not be saved.');
+                    }
 
                     return $servicePoint;
                 });
             $createdCount = $servicePoints->count();
+            $createdCodes = array_fill_keys($servicePoints->pluck('internal_code')->all(), true);
 
             return [
                 'created_count' => $createdCount,
@@ -87,9 +93,36 @@ class BulkCreateServicePointsAction
                     ->map(fn (int $id): int => $id)
                     ->values()
                     ->all(),
-                'preview' => $this->preview($branch, $data),
+                'preview' => array_map(function (array $row) use ($createdCodes): array {
+                    $exists = $row['exists'] || isset($createdCodes[$row['code']]);
+
+                    return [...$row, 'exists' => $exists, 'will_create' => ! $exists];
+                }, $preview),
             ];
         });
+    }
+
+    private function validateRange(int $from, int $to): void
+    {
+        if ($from < 1) {
+            throw ValidationException::withMessages([
+                'bulkFrom' => __('errors.domain.bulk_start_positive'),
+            ]);
+        }
+
+        if ($to < $from) {
+            throw ValidationException::withMessages([
+                'bulkTo' => __('errors.domain.bulk_end_before_start'),
+            ]);
+        }
+
+        if ($to - $from >= self::MAX_RANGE_SIZE) {
+            throw ValidationException::withMessages([
+                'bulkTo' => __('ui.livewire.organizations.brands.branches.servicepoints.index.create_up_to', [
+                    'count' => self::MAX_RANGE_SIZE,
+                ]),
+            ]);
+        }
     }
 
     /**

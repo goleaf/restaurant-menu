@@ -1,5 +1,9 @@
 # Architecture
 
+## Eighth audit boundaries — 2026-09-14
+
+Area and service-point editable values retain original transport types until shared validation; accepted values alone enter the existing focused Actions. The bulk Action owns the positive ascending 200-row allocation invariant independently of the component. Required saves remain eventful and transactional; rejected saves throw. Successful response preparation uses the initial reserved-code set and actual saved model codes without repeating area/code reads. Existing flat Blade bindings, authorization and model/Form/Request boundaries remain in place.
+
 ## Seventh audit boundaries — 2026-09-14
 
 Catalog, Modifiers and Variants preserve original editable transport types until shared validation succeeds. BranchMenuComponent trims only strings and projects scalar selections for dependent read-service calls and uniqueness scopes without overwriting the public input. Integer rules include numeric validation; malformed names bail before uniqueness queries. Existing flat Blade bindings, scoped CatalogData reads, capability refresh and focused persistence Actions remain in place. This correction does not introduce a second form state, claim that all existing menu validation has moved into Form objects, or change the schema.

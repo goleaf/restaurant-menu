@@ -1,5 +1,9 @@
 # Restaurant Menu completion decisions
 
+## D-032 — Bound bulk allocation at the operation boundary
+
+Preserve original area/table form input until validation, using the existing shared rules and focused Actions. The reusable bulk Action independently enforces a positive ascending range of at most 200 with arithmetic that cannot overflow. A required model save returning false aborts the batch transaction. Derive the final preview from known existing codes and actual saved model values so event-driven code changes remain represented without repeating ownership/code queries. Retain archived-code reservation, explicit QR generation and unchanged Blade bindings; do not replace eventful writes with a bulk insert merely to reduce query counts.
+
 ## D-031 — Menu input types and safe dependent selections
 
 Extend the original-transport boundary to Catalog, Modifiers and Variants. Use mixed editable values, string-only trimming and numeric plus integer rules; map only validated data into existing Actions. BranchMenuComponent owns the small repeated read projection, which must never overwrite the original public selection. Apply bail before database-dependent validation after a type failure. Retain server-owned locked context and existing permission checks. Preserve established flat bindings and rule builders for this defect correction; a separate Form extraction must establish a concrete boundary rather than create parallel state. Verify malformed transport and exact valid persistence for all seven editors and create/edit paths; no schema or dependency rewrite is justified.

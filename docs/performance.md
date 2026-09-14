@@ -1,5 +1,9 @@
 # Performance
 
+## Eighth audit: bounded bulk creation — 2026-09-14
+
+BulkServicePointActionTest measures one newly created table and two reserved codes: 3 to 2 database queries without an area, and 5 to 3 with an area. Writes and model events are unchanged; the removed queries are the repeated existing-code lookup and optional area ownership check. Allocation rejects nonpositive/descending or more than 200 entries before queries or range construction, including extreme integer inputs. Exactly 200 entries and outer rollback/retry are tested. This is query-count evidence, not a production latency estimate. Telescope/Debugbar MCP is unavailable; executable query counters and Boost schema inspection provide the evidence.
+
 ## Seventh audit: validation before dependent reads — 2026-09-14
 
 The menu transport correction adds no database access, schema, cache or eager-loading path. Dependent selectors continue through existing scoped read services; bail rules avoid uniqueness/existence checks after prerequisite type failure. Query delta for valid operations is expected to be zero by unchanged query structure; this audit makes no new latency or throughput claim. Existing eager-loading/query-budget regressions run with the full suite. Telescope/Debugbar MCP is not exposed; scoped executable query counters and read-only Boost schema inspection remain the available evidence.

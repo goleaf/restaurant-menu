@@ -215,10 +215,10 @@ class RestaurantValidationRules
     public static function areaNode(string $prefix = '', array $iconValues = []): array
     {
         return [
-            self::field($prefix, 'name') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'name') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'type') => ['required', 'string', Rule::in(AreaNodeType::values())],
             self::field($prefix, 'icon') => self::enumTextRules($iconValues, required: true),
-            self::field($prefix, 'sortOrder') => ['required', 'integer', 'min:0', 'max:9999'],
+            self::field($prefix, 'sortOrder') => ['required', 'numeric', 'integer', 'min:0', 'max:9999'],
             self::field($prefix, 'isActive') => ['boolean'],
         ];
     }
@@ -232,9 +232,9 @@ class RestaurantValidationRules
         return [
             self::field($prefix, 'type') => ['required', 'string', Rule::in(ServicePointType::values())],
             self::field($prefix, 'icon') => self::enumTextRules($iconValues, required: true),
-            self::field($prefix, 'name') => ['required', 'string', 'max:160'],
+            self::field($prefix, 'name') => ['bail', 'required', 'string', 'max:160'],
             self::field($prefix, 'displayNumber') => ['nullable', 'string', 'max:80'],
-            self::field($prefix, 'capacity') => ['required', 'integer', 'min:1', 'max:999'],
+            self::field($prefix, 'capacity') => ['required', 'numeric', 'integer', 'min:1', 'max:999'],
             self::field($prefix, 'isActive') => ['boolean'],
         ];
     }
@@ -246,10 +246,10 @@ class RestaurantValidationRules
     {
         return [
             'bulkType' => ['required', 'string', Rule::in(ServicePointType::values())],
-            'bulkPrefix' => ['required', 'string', 'max:20', 'regex:/\A[A-Za-z0-9_-]+\z/'],
-            'bulkFrom' => ['required', 'integer', 'min:1', 'max:9999'],
-            'bulkTo' => ['required', 'integer', 'min:1', 'max:9999', 'gte:bulkFrom'],
-            'bulkCapacity' => ['required', 'integer', 'min:1', 'max:999'],
+            'bulkPrefix' => ['bail', 'required', 'string', 'max:20', 'regex:/\A[A-Za-z0-9_-]+\z/'],
+            'bulkFrom' => ['bail', 'required', 'numeric', 'integer', 'min:1', 'max:9999'],
+            'bulkTo' => ['bail', 'required', 'numeric', 'integer', 'min:1', 'max:9999', 'gte:bulkFrom'],
+            'bulkCapacity' => ['required', 'numeric', 'integer', 'min:1', 'max:999'],
         ];
     }
 

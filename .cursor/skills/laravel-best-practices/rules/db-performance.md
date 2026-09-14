@@ -93,6 +93,10 @@ User::where('active', false)->chunkById(200, function ($users) {
 
 Keep a stable, unique cursor key selected and unchanged. Use `reorder()` to remove unrelated display ordering before ID-based traversal while preserving predicates and tenant scopes. Changing primary or relationship foreign keys can still omit rows; verify traversal across multiple batches rather than assuming arbitrary mutations are safe.
 
+## Guard Bulk Allocation in the Action
+
+A component-only limit does not protect another caller of the same Action. Validate an ascending, bounded range before `range()` or allocating model rows, using overflow-safe comparisons. Preserve transactional model events and throw when a required save returns false. Once persistence succeeds, reuse known existing codes and the actual saved model values to prepare the response; do not repeat an ownership lookup or full preview query just to reconstruct known results. Measure reads and writes separately and retain archived-code reservations.
+
 ## Add Database Indexes
 
 Index columns that appear in `WHERE`, `ORDER BY`, `JOIN`, and `GROUP BY` clauses.

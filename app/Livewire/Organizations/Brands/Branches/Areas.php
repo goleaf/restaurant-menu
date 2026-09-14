@@ -60,31 +60,31 @@ class Areas extends Component
     #[Url(as: 'sort', except: 'position')]
     public string $sort = 'position';
 
-    public string $name = '';
+    public mixed $name = '';
 
-    public string $type = 'group';
+    public mixed $type = 'group';
 
-    public string $icon = 'folder';
+    public mixed $icon = 'folder';
 
-    public string $parentId = '';
+    public mixed $parentId = '';
 
-    public int $sortOrder = 0;
+    public mixed $sortOrder = 0;
 
-    public bool $isActive = true;
+    public mixed $isActive = true;
 
     public ?int $editingAreaNodeId = null;
 
-    public string $editingName = '';
+    public mixed $editingName = '';
 
-    public string $editingType = 'group';
+    public mixed $editingType = 'group';
 
-    public string $editingIcon = 'folder';
+    public mixed $editingIcon = 'folder';
 
-    public string $editingParentId = '';
+    public mixed $editingParentId = '';
 
-    public int $editingSortOrder = 0;
+    public mixed $editingSortOrder = 0;
 
-    public bool $editingIsActive = true;
+    public mixed $editingIsActive = true;
 
     public ?int $deletingAreaNodeId = null;
 
@@ -140,7 +140,9 @@ class Areas extends Component
     {
         $this->authorizeZoneManagement();
 
-        $this->name = trim($this->name);
+        if (is_string($this->name)) {
+            $this->name = trim($this->name);
+        }
 
         $validated = $this->validate($this->areaNodeRules());
 
@@ -190,7 +192,9 @@ class Areas extends Component
             return;
         }
 
-        $this->editingName = trim($this->editingName);
+        if (is_string($this->editingName)) {
+            $this->editingName = trim($this->editingName);
+        }
 
         $validated = $this->validate($this->areaNodeRules('editing', $this->editingAreaNodeId));
 
@@ -417,9 +421,10 @@ class Areas extends Component
         $fieldPrefix = $prefix === '' ? '' : $prefix;
         $parentField = $fieldPrefix === '' ? 'parentId' : $fieldPrefix.'ParentId';
         $parentValue = $fieldPrefix === '' ? $this->parentId : $this->editingParentId;
-        $parentRules = ['nullable'];
+        $parentRules = ['bail', 'nullable'];
 
         if ($parentValue !== '') {
+            $parentRules[] = 'numeric';
             $parentRules[] = 'integer';
             $parentRules[] = $this->parentRule($editingAreaNodeId);
         }

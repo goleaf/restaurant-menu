@@ -1,5 +1,17 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — eighth audit: area/table transport and bounded bulk creation
+
+Baseline: clean published `51840d6`. Extend original-value validation to area and service-point editors, and move the existing 200-table allocation limit into the reusable bulk Action. No dependency, product or schema change is planned.
+
+- [x] Reproduce malformed create/edit/bulk Livewire transport with valid controls, unchanged persistence, and existing tenant/permission regressions. Preserve raw editable values, trim strings only, and combine numeric/integer validation without changing Blade bindings.
+- [x] Reproduce direct bulk Action range violations and repeated reads with bounded factory data. Enforce positive ascending ranges of at most 200 before allocation, retain transactional model events, reject cancelled required saves explicitly, and derive successful preview state from persisted results instead of repeating ownership/code reads.
+- [x] Audit all models/factories/migrations, Action/Request/Form boundaries, Markdown links and repository skill mirrors. Update affected contracts and retain valid deployed migrations and correct definitions.
+- [ ] Run targeted RED/GREEN tests, independent specification and quality review, Pint/Larastan, browser/parallel/sequential coverage suites, dependency audits/build/translations and isolated migration/seed/cache gates against stable source. Require zero failing/skipped tests and report statement coverage separately.
+- [ ] Review owned changes, commit in English, push current main normally and verify the exact remote SHA.
+
+Design: keep existing field ownership and focused Actions. Raw browser values remain available to shared rules; server-owned context and capabilities retain their existing types/authorization. The bulk Action guards allocation independently of Livewire, validates existing area ownership, preserves archived-code reservation and model events, and reports success only after every required write succeeds. Existing numeric range rules and localized field errors remain the presentation contract. A full Form rewrite or an upsert bypassing events would add unnecessary behavior changes. A bounded worker owns transport code/tests; the primary agent owns bulk invariants, integration and evidence. Reviewers inspect specification compliance before code quality.
+
 ## 2026-09-14 — seventh audit: menu transport types and dependent selections
 
 Baseline: clean published `47badf0`. Review the remaining catalog, modifier and variant editors after the kitchen-department fix. Typed public form values may be coerced before shared rules run; dependent selections are also consumed by hooks, uniqueness rules and prepared reads. Validate this with real Livewire POSTs before editing implementation.

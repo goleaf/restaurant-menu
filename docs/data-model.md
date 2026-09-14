@@ -1,5 +1,9 @@
 # Data model
 
+## Eighth audit persistence review — 2026-09-14
+
+Read-only Boost inspection retains 61 tables / 633 columns / 308 indexes / 144 foreign keys, with no missing leading foreign-key index. All 49 Eloquent models have factories; all 88 migrations retain up/down methods. Area/table input validation and bulk allocation guards require no schema changes. Existing branch/internal-code uniqueness reserves archived codes; per-row model events, all-or-nothing writes and outer rollback behavior are preserved.
+
 ## Seventh audit persistence review — 2026-09-14
 
 Fresh read-only Boost inspection confirms 61 tables / 633 columns / 308 indexes / 144 foreign keys and no missing leading foreign-key index. All 49 model definitions retain matching factories; all 88 migration files provide up/down and are recorded in the application migration ledger through batch 9. The full owned SQLite migrate/reset/migrate roundtrip and two default seed runs pass. Menu transport hardening changes the validation boundary only: decimal strings become exact integer cents after validation, stored flags and limits keep their existing types, and deployed migrations, permanent identities, snapshots and application data are preserved.

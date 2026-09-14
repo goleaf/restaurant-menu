@@ -17,6 +17,8 @@ test('dangerous action registry covers prompt 346 actions', function () {
         'payment_correction',
         'close_table_with_unpaid_amount',
         'delete_or_deactivate_menu_item',
+        'delete_menu',
+        'delete_menu_category',
         'clear_cache_all',
         'download_backup',
         'download_media_backup',

@@ -119,26 +119,32 @@ final class DraftReview extends TableDetailSection
     public function mount(int $tableSessionId, array $initialDraftReview = []): void
     {
         $this->tableSessionId = $tableSessionId;
-        $this->authorizeViewableTableSession();
-        $this->draftReview = $initialDraftReview === []
-            ? $this->draftReviewPayload($this->freshViewableTablePayload())
-            : $initialDraftReview;
-        $this->changeFingerprint = $this->changeDetector->draftReviewFingerprint($this->tableSessionId);
+        if ($initialDraftReview === []) {
+            $this->refreshDraftReview();
+        } else {
+            $this->authorizeViewableTableSession();
+            $this->draftReview = $initialDraftReview;
+            $this->changeFingerprint = $this->changeDetector->fingerprint($initialDraftReview);
+        }
         $this->addDraftItemAttemptId = (string) Str::uuid();
-        $this->syncAddableMenuItems();
+
+        if ($initialDraftReview !== []) {
+            $this->syncAddableMenuItems();
+        }
     }
 
     public function refreshDraftReview(): void
     {
-        $this->authorizeViewableTableSession();
-        $currentFingerprint = $this->changeDetector->draftReviewFingerprint($this->tableSessionId);
+        $snapshot = $this->changeDetector->snapshot(
+            fn (): array => $this->draftReviewPayload($this->freshViewableTablePayload('draft')),
+        );
 
-        if ($this->changeFingerprint !== '' && hash_equals($this->changeFingerprint, $currentFingerprint)) {
+        if ($this->changeFingerprint !== '' && hash_equals($this->changeFingerprint, $snapshot['fingerprint'])) {
             return;
         }
 
-        $this->draftReview = $this->draftReviewPayload($this->freshViewableTablePayload());
-        $this->changeFingerprint = $this->changeDetector->draftReviewFingerprint($this->tableSessionId);
+        $this->draftReview = $snapshot['payload'];
+        $this->changeFingerprint = $snapshot['fingerprint'];
         $this->syncAddableMenuItems();
     }
 

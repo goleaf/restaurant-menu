@@ -4,7 +4,7 @@
     wire:loading.attr="aria-busy"
     wire:target="refreshDepartment,setItemStatus,previousTicketPage,nextTicketPage"
     aria-busy="false"
-    class="flex h-full w-full flex-1 flex-col gap-6"
+    class="flex h-full w-full min-w-0 flex-1 flex-col gap-6"
 >
     <p role="status" aria-atomic="true" class="sr-only">{{ $updateAnnouncement }}</p>
 
@@ -65,6 +65,7 @@
             <article wire:key="{{ $dataPage }}-ticket-{{ $ticket['id'] }}" class="overflow-hidden rounded-card border border-border-subtle bg-surface shadow-card">
                 <header class="border-b border-border-subtle p-4">
                     <x-ui.priority-row
+                        class="min-w-0 [&_span]:break-words"
                         :title="$ticket['service_point_label']"
                         :description="$ticket['work_status']['label']"
                         :tone="$ticket['is_terminal'] ? 'neutral' : ($ticket['delay_state'] === 'delayed' ? 'danger' : ($ticket['delay_state'] === 'attention' ? 'warning' : 'neutral'))"

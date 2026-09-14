@@ -6,10 +6,10 @@
             @endisset
 
             <div class="min-w-0">
-                <p class="truncate font-semibold text-text-primary">{{ __($title) }}</p>
+                <p class="content-safe text-pretty font-semibold leading-5 text-text-primary">{{ __($title) }}</p>
 
                 @if ($subtitle)
-                    <p class="mt-1 truncate text-text-muted">{{ __($subtitle) }}</p>
+                    <p class="content-safe mt-1 text-pretty leading-5 text-text-muted">{{ __($subtitle) }}</p>
                 @endif
             </div>
         </div>
@@ -32,10 +32,10 @@
             @endisset
 
             <div class="min-w-0">
-                <p class="truncate font-semibold text-text-primary">{{ __($title) }}</p>
+                <p class="content-safe text-pretty font-semibold leading-5 text-text-primary">{{ __($title) }}</p>
 
                 @if ($subtitle)
-                    <p class="mt-1 truncate text-text-muted">{{ __($subtitle) }}</p>
+                    <p class="content-safe mt-1 text-pretty leading-5 text-text-muted">{{ __($subtitle) }}</p>
                 @endif
             </div>
         </div>

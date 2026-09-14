@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Menus\GetGuestMenuItemGalleryAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\MenuItemVariantType;
 use App\Enums\MenuStatus;
@@ -20,6 +21,7 @@ use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuCategoryTranslation;
 use App\Models\MenuItem;
+use App\Models\MenuItemImage;
 use App\Models\MenuItemTranslation;
 use App\Models\MenuItemVariant;
 use App\Models\MenuItemVariantTranslation;
@@ -79,13 +81,114 @@ test('guest menu shows stop listed item but blocks adding it', function () {
         ->assertSeeText($unavailableItem->name)
         ->assertSeeText('Out of stock')
         ->call('openItem', $unavailableItem->id)
-        ->assertSet('selectedItemId', null)
-        ->set('selectedItemId', $unavailableItem->id)
+        ->assertSet('selectedItemId', $unavailableItem->id)
         ->call('saveConfiguredItem')
         ->assertSet('selectedItemId', null);
 
     expect(DraftOrderModel::query()->exists())->toBeFalse()
         ->and(DraftOrderItem::query()->exists())->toBeFalse();
+});
+
+test('guest can inspect unavailable dishes without ordering access', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , , $unavailableItem] = createGuestMenuRows($branch);
+
+    Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'currency' => 'EUR',
+        'guestCanAddItems' => false,
+        'branchCanAcceptOrders' => false,
+    ])
+        ->call('openItem', $unavailableItem->id)
+        ->assertSet('selectedItemId', $unavailableItem->id)
+        ->assertSeeText($unavailableItem->name)
+        ->assertDontSee('wire:click="saveConfiguredItem"', false);
+
+    expect(DraftOrderItem::query()->exists())->toBeFalse();
+});
+
+test('guest menu loads gallery only for the selected branch item', function () {
+    Storage::fake('public');
+    [, $branch] = createGuestMenuDisplayContext();
+    [, , $availableItem] = createGuestMenuRows($branch);
+    $gallery = MenuItemImage::factory()->for($availableItem, 'item')->create([
+        'path' => 'media/testing/'.fake()->uuid().'.v1-900x600.jpg',
+    ]);
+    $foreignItem = MenuItem::query()->where('name', 'Other branch dish')->firstOrFail();
+    MenuItemImage::factory()->for($foreignItem, 'item')->create([
+        'path' => 'media/testing/'.fake()->uuid().'.v1-800x500.jpg',
+    ]);
+    $action = app(GetGuestMenuItemGalleryAction::class);
+
+    $menuPayload = app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'en');
+    $galleryPayload = [];
+    $galleryQueryCount = countDatabaseQueries(function () use ($action, $branch, $availableItem, &$galleryPayload): void {
+        $galleryPayload = $action->handle($branch->id, $availableItem->id);
+    });
+
+    expect($menuPayload)
+        ->not->toHaveKey('gallery')
+        ->and(json_encode($menuPayload))->not->toContain($gallery->path)
+        ->and($action->handle($branch->id, $foreignItem->id))->toBeEmpty()
+        ->and($galleryPayload)->toHaveCount(2)
+        ->and($galleryPayload[1])->toMatchArray([
+            'width' => 900,
+            'height' => 600,
+            'thumbnail_width' => 480,
+            'thumbnail_height' => 320,
+        ])
+        ->and($galleryQueryCount)->toBeLessThanOrEqual(2);
+
+    Livewire::test(GuestMenu::class, ['branchId' => $branch->id, 'currency' => 'EUR'])
+        ->assertDontSee(Storage::disk('public')->url($gallery->path), false)
+        ->call('openItem', $availableItem->id)
+        ->assertSee(Storage::disk('public')->url($gallery->path), false);
+});
+
+test('guest menu searches localized descriptions and treats missing allergens as unknown', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, $category, $availableItem, $unknownItem] = createGuestMenuRows($branch);
+    $availableItem->update(['allergens' => ['milk'], 'dietary_labels' => ['vegetarian']]);
+    MenuItemTranslation::factory()->for($availableItem, 'item')->create([
+        'language_code' => 'lt',
+        'name' => 'Margarita LT',
+        'description' => 'Bazilikų puota',
+    ]);
+
+    Livewire::test(GuestMenu::class, ['branchId' => $branch->id, 'currency' => 'EUR', 'language' => 'lt'])
+        ->set('search', 'bazilikų')
+        ->assertSeeText('Margarita LT')
+        ->assertDontSeeText($unknownItem->name)
+        ->set('search', '')
+        ->set('selectedCategoryId', $category->id)
+        ->set('dietaryFilters', ['vegetarian'])
+        ->assertSeeText('Margarita LT')
+        ->assertDontSeeText($unknownItem->name)
+        ->set('dietaryFilters', [])
+        ->set('excludedAllergens', ['gluten'])
+        ->assertSeeText('Margarita LT')
+        ->assertDontSeeText($unknownItem->name);
+});
+
+test('guest locale switch preserves browsing state selection and configured feedback', function () {
+    [, $branch] = createGuestMenuDisplayContext();
+    [, $category, $availableItem] = createGuestMenuRows($branch);
+
+    Livewire::test(GuestMenu::class, ['branchId' => $branch->id, 'currency' => 'EUR'])
+        ->set('search', 'pizza')
+        ->set('selectedCategoryId', $category->id)
+        ->set('configuredItems', [$availableItem->id => [
+            'name' => $availableItem->name,
+            'total_price' => '€14.50',
+            'modifier_summary' => [],
+            'comment' => null,
+        ]])
+        ->call('openItem', $availableItem->id)
+        ->set('language', 'ru')
+        ->assertSet('search', 'pizza')
+        ->assertSet('selectedCategoryId', $category->id)
+        ->assertSet('selectedItemId', $availableItem->id)
+        ->assertSet('configuredItems.'.$availableItem->id.'.total_price', '€14.50');
 });
 
 test('guest menu hides an item only until its temporary hiding deadline', function () {
@@ -515,8 +618,7 @@ test('guest menu blocks rejected guest from adding draft items', function () {
             'guestCanAddItems' => false,
         ])
         ->call('openItem', $availableItem->id)
-        ->assertSet('selectedItemId', null)
-        ->set('selectedItemId', $availableItem->id)
+        ->assertSet('selectedItemId', $availableItem->id)
         ->set('selectedModifierOptions.'.(string) $requiredGroup->id, [$largeOption->id])
         ->call('saveConfiguredItem')
         ->assertHasErrors(['guest']);

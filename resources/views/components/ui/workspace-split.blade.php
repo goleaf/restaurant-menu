@@ -1,12 +1,12 @@
 <section
     data-workspace-split
-    {{ $attributes->class('overflow-hidden rounded-card border border-border-subtle bg-surface lg:grid lg:grid-cols-[minmax(18rem,0.8fr)_minmax(24rem,1.2fr)]') }}
+    {{ $attributes->class('min-w-0 overflow-hidden rounded-card border border-border-subtle bg-surface lg:grid lg:grid-cols-[minmax(17rem,0.72fr)_minmax(25rem,1.28fr)]') }}
 >
-    <div class="min-w-0 bg-surface-muted p-3 sm:p-4 lg:border-e lg:border-border-subtle">
+    <div class="min-w-0 bg-surface-muted p-2.5 sm:p-3 lg:border-e lg:border-border-subtle">
         {{ $queue }}
     </div>
 
-    <div class="hidden min-w-0 bg-surface p-4 lg:block lg:p-5">
+    <div class="hidden min-w-0 bg-surface p-4 lg:block">
         @if ($detail->isEmpty())
             {{ $emptyDetail }}
         @else

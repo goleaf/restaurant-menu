@@ -343,6 +343,9 @@ class Modifiers extends BranchMenuComponent
 
     public function render(): View
     {
+        $this->authorizeBranchAbility('manageMenu');
+        $this->refreshMutationCapabilities();
+
         return view('livewire.organizations.brands.branches.menu.modifiers', [
             'modifierGroupRows' => $this->groups->map(fn (ModifierGroup $group): array => [
                 'id' => $group->id,

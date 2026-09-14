@@ -11,6 +11,8 @@ use App\Models\MenuItem;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
 
 final class UpdateMenuItemAction
 {
@@ -30,11 +32,26 @@ final class UpdateMenuItemAction
         MenuCategory $category,
         ?int $kitchenDepartmentId,
         array $data,
+        ?string $expectedVersion = null,
     ): MenuItem {
         Gate::forUser($actor)->authorize('update', $menu);
 
-        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data): MenuItem {
-            $item->updateOrFail($this->buildAttributes->handle(
+        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data, $expectedVersion): MenuItem {
+            if ($expectedVersion !== null) {
+                $item = MenuItem::query()
+                    ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])
+                    ->with('translations')
+                    ->whereKey($item->id)
+                    ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id)->whereNull('menus.deleted_at'))
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (! hash_equals($item->contentFingerprint(), $expectedVersion)) {
+                    throw ValidationException::withMessages(['editingItemVersion' => __('menu.editor.conflict')]);
+                }
+            }
+
+            if ($item->updateOrFail($this->buildAttributes->handle(
                 actor: $actor,
                 branch: $branch,
                 menu: $menu,
@@ -42,7 +59,9 @@ final class UpdateMenuItemAction
                 kitchenDepartmentId: $kitchenDepartmentId,
                 data: $data,
                 existingItem: $item,
-            ));
+            )) !== true) {
+                throw new RuntimeException('The menu item update was cancelled.');
+            }
 
             if (array_key_exists('translations', $data)) {
                 $this->syncTranslations->handle($item, $data['translations']);

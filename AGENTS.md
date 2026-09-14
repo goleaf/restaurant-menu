@@ -1,3 +1,7 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+<!-- END GITHUB_PUSH_ONLY -->
+
 # Repository operating rules
 
 ## Purpose
@@ -15,7 +19,7 @@ Before changing code, read:
 5. The topic document for the affected area, then relevant tests and implementation.
 6. Root `ROADMAP.md` when scheduled work remains open.
 
-For repository-completion work, also read `docs/IMPLEMENTATION_PLAN.md`, `docs/PROGRESS.md`, and `docs/DECISIONS.md`. They are execution and evidence ledgers only: `docs/requirements.md` remains the sole active requirement catalogue, and GitHub Issues remain the external delivery backlog.
+For repository-completion work, also read `docs/IMPLEMENTATION_PLAN.md`, `docs/PROGRESS.md`, and `docs/DECISIONS.md`. They are execution and evidence ledgers only: `docs/requirements.md` remains the sole active requirement catalogue, and the current local implementation plan owns task status. Historical external backlog references must not be consulted under the push-only GitHub restriction.
 
 For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend.md`, `docs/design-system.md`, `docs/accessibility.md`, and `docs/tailwind.md`. They define product/design context without overriding `docs/requirements.md`.
 

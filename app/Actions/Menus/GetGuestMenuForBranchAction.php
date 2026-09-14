@@ -21,6 +21,7 @@ use App\Models\ModifierGroup;
 use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
+use App\Support\LocalImageVariants;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -69,7 +70,7 @@ class GetGuestMenuForBranchAction
 
     public static function cacheKey(int $branchId, string $languageCode = 'en'): string
     {
-        return 'guest-menu:v5:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v6:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
@@ -94,6 +95,10 @@ class GetGuestMenuForBranchAction
         return [
             ...array_map(
                 fn (string $languageCode): string => self::cacheKey($branchId, $languageCode),
+                self::supportedLanguageCodes(),
+            ),
+            ...array_map(
+                fn (string $languageCode): string => 'guest-menu:v5:branch:'.$branchId.':language:'.$languageCode,
                 self::supportedLanguageCodes(),
             ),
             ...array_map(
@@ -578,6 +583,8 @@ class GetGuestMenuForBranchAction
      */
     private function itemPayload(MenuItem $item, string $languageCode): array
     {
+        $imageVariants = LocalImageVariants::forPath($item->image);
+
         return [
             'id' => $item->id,
             'name' => $this->translatedText(
@@ -595,7 +602,8 @@ class GetGuestMenuForBranchAction
             'price_cents' => $item->price_cents,
             'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options($languageCode)),
             'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options($languageCode)),
-            'image_url' => $item->imageUrl(),
+            'image_url' => $imageVariants['url'],
+            'image_variants' => $imageVariants,
             'weight' => $item->weight,
             'volume' => $item->volume,
             'calories' => $item->calories,

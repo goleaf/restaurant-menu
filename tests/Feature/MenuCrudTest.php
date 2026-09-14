@@ -37,6 +37,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -276,7 +278,7 @@ test('manager can create menu categories dishes and upload local dish photo', fu
         ->set('editingCategoryIsActive', false)
         ->call('updateCategory')
         ->assertHasNoErrors()
-        ->call('removeItemImage', $item->id)
+        ->call('removeItemImage', $item->id, hash('sha256', $imagePath), (string) Str::uuid())
         ->assertHasNoErrors();
 
     expect($menu->refresh()->name)->toBe('Evening Menu')
@@ -387,17 +389,17 @@ test('menu item image gallery livewire actions promote and remove owned images',
             'branchId' => $branch->id,
         ])
         ->call('startEditingItem', $item->id)
-        ->call('promoteItemImage', $item->id, $promoted->id)
+        ->call('promoteItemImage', $item->id, $promoted->id, hash('sha256', $promotedPath), (string) Str::uuid())
         ->assertHasNoErrors();
 
     expect($item->refresh()->image)->toBe($promotedPath)
         ->and($promoted->refresh()->path)->toBe($primaryPath);
 
     $component
-        ->call('removeItemGalleryImage', $item->id, $removed->id)
+        ->call('removeItemGalleryImage', $item->id, $removed->id, hash('sha256', $removedPath), (string) Str::uuid())
         ->assertHasNoErrors()
         ->assertDispatched('modal-close')
-        ->call('removeItemImage', $item->id)
+        ->call('removeItemImage', $item->id, hash('sha256', $promotedPath), (string) Str::uuid())
         ->assertHasNoErrors()
         ->assertDispatched('modal-close');
 
@@ -1008,10 +1010,12 @@ test('manager can delete dishes categories and menus while cleaning local dish p
         ->and(MenuItemImage::query()->where('menu_item_id', $firstItem->id)->exists())->toBeFalse();
     Storage::disk('public')->assertMissing([$firstItem->image, ...$firstGalleryPaths]);
 
-    Livewire::actingAs($manager)
+    $categoryDeletion = Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteCategory', $category->id)
         ->assertHasNoErrors();
+
+    finishMenuCrudOperation($categoryDeletion);
 
     expect(MenuCategory::query()->whereKey($category->id)->exists())->toBeFalse()
         ->and(MenuItem::query()->whereKey($secondItem->id)->exists())->toBeFalse()
@@ -1037,10 +1041,12 @@ test('manager can delete dishes categories and menus while cleaning local dish p
     Storage::disk('public')->put($remainingItem->image, 'remaining');
     $remainingGalleryPaths = createStoredMenuItemGallery($remainingItem, 'remaining');
 
-    Livewire::actingAs($manager)
+    $menuDeletion = Livewire::actingAs($manager)
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
         ->call('deleteMenu', $menu->id)
         ->assertHasNoErrors();
+
+    finishMenuCrudOperation($menuDeletion);
 
     expect(Menu::query()->whereKey($menu->id)->exists())->toBeFalse()
         ->and(MenuCategory::query()->whereKey($remainingCategory->id)->exists())->toBeFalse()
@@ -1061,6 +1067,15 @@ test('branch must belong to route brand and organization on menu page', function
         ->test(MenuCatalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $otherBranch->id])
         ->assertForbidden();
 });
+
+function finishMenuCrudOperation(Testable $component): void
+{
+    for ($step = 0; $step < 30 && $component->get('activeCatalogOperationId') !== ''; $step++) {
+        $component->call('advanceCatalogOperation')->assertHasNoErrors();
+    }
+
+    $component->assertSet('activeCatalogOperationId', '');
+}
 
 function createMenuCrudBranch(string $organizationName = 'Menu Group', string $brandName = 'Menu Brand'): array
 {

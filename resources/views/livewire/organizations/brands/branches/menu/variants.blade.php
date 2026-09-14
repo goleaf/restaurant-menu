@@ -37,7 +37,7 @@
                         <flux:select.option wire:key="new-variant-type-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                     @endforeach
                 </flux:select>
-                <flux:input wire:model="variantName" :label="__('reports.csv.name')" required maxlength="160" />
+
                 @if ($canChangePrices)
                     <flux:input wire:model="variantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
                 @endif
@@ -46,14 +46,7 @@
                 <flux:input wire:model="variantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
             </div>
 
-            <fieldset class="mt-4 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ __('menu.variants.admin.translations') }}</legend>
-                <div class="mt-2 grid gap-3 md:grid-cols-3">
-                    @foreach ($languageOptions as $languageCode => $languageLabel)
-                        <flux:input wire:key="new-variant-translation-{{ $languageCode }}" wire:model="variantTranslations.{{ $languageCode }}" :label="$languageLabel" maxlength="160" />
-                    @endforeach
-                </div>
-            </fieldset>
+            <x-menu.name-translations id-prefix="variantTranslations" model="variantTranslations" base-name-model="variantName" :language-options="$languageOptions" :name-max="160" />
 
             <div class="mt-4 flex flex-wrap gap-4">
                 <flux:switch wire:model="variantIsDefault" :label="__('menu.variants.admin.default')" />
@@ -79,7 +72,7 @@
                                             <flux:select.option wire:key="editing-variant-{{ $variant['id'] }}-type-{{ $value }}" value="{{ $value }}">{{ $label }}</flux:select.option>
                                         @endforeach
                                     </flux:select>
-                                    <flux:input wire:model="editingVariantName" :label="__('reports.csv.name')" required maxlength="160" />
+
                                     @if ($canChangePrices)
                                         <flux:input wire:model="editingVariantPrice" :label="__('guest.cart.price')" type="number" required min="0" max="999999.99" step="0.01" />
                                     @endif
@@ -88,14 +81,7 @@
                                     <flux:input wire:model="editingVariantVolume" :label="__('menu.variants.admin.volume')" type="number" min="0" max="999999.99" step="0.01" />
                                 </div>
 
-                                <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                                    <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ __('menu.variants.admin.translations') }}</legend>
-                                    <div class="mt-2 grid gap-3 md:grid-cols-3">
-                                        @foreach ($languageOptions as $languageCode => $languageLabel)
-                                            <flux:input wire:key="editing-variant-translation-{{ $languageCode }}" wire:model="editingVariantTranslations.{{ $languageCode }}" :label="$languageLabel" maxlength="160" />
-                                        @endforeach
-                                    </div>
-                                </fieldset>
+                                <x-menu.name-translations id-prefix="editingVariantTranslations" model="editingVariantTranslations" base-name-model="editingVariantName" :language-options="$languageOptions" :name-max="160" />
 
                                 <div class="flex flex-wrap items-center gap-3">
                                     <flux:switch wire:model="editingVariantIsDefault" :label="__('menu.variants.admin.default')" />

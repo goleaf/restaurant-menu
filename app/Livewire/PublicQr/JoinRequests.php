@@ -15,11 +15,19 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Isolate]
 class JoinRequests extends Component
 {
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = SupportedLocale::normalize($language, $this->language);
+        $this->applyLocale();
+    }
+
     private PublicQrQueryService $publicQrQueries;
 
     #[Locked]

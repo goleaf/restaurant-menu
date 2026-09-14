@@ -84,9 +84,9 @@ abstract class TableDetailSection extends Component
     /**
      * @return array<string, mixed>
      */
-    protected function freshViewableTablePayload(): array
+    protected function freshViewableTablePayload(?string $section = null): array
     {
-        return $this->buildTablePayload($this->authorizeViewableTableSession());
+        return $this->buildTablePayload($this->authorizeViewableTableSession(), $section);
     }
 
     /** @return array<string, mixed> */
@@ -96,9 +96,9 @@ abstract class TableDetailSection extends Component
     }
 
     /** @return array<string, mixed> */
-    private function buildTablePayload(TableSession $tableSession): array
+    private function buildTablePayload(TableSession $tableSession, ?string $section = null): array
     {
-        $payload = $this->buildWaiterTableDetail->handle($this->currentUser(), $tableSession);
+        $payload = $this->buildWaiterTableDetail->handle($this->currentUser(), $tableSession, $section);
 
         if (! $payload['has_access'] || ! is_array($payload['table'])) {
             abort(403);

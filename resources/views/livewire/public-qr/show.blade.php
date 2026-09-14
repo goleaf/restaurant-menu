@@ -1,12 +1,12 @@
 <div class="min-h-svh">
     <header class="sticky top-0 z-40 border-b border-border-subtle bg-surface-raised px-4 py-3">
-        <div class="mx-auto flex w-full max-w-lg items-center justify-between gap-3">
+        <div class="mx-auto flex w-full max-w-lg flex-wrap items-center justify-between gap-2">
             <a href="{{ route('guest.home') }}" class="flex items-center gap-2 font-semibold" wire:navigate>
                 <x-app-logo-icon class="size-8 text-text-primary" />
                 <span>{{ __('layout.app_name') }}</span>
             </a>
 
-            <div class="flex items-center gap-2">
+            <div class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                 @if ($state === 'ready')
                     <label for="guest-page-language" class="sr-only">{{ __('guest.table.interface_language') }}</label>
                     <select
@@ -33,7 +33,7 @@
         <livewire:public-qr.guest-entry
             :token="$token"
             :language="$language"
-            wire:key="guest-entry-{{ $token }}-{{ $language }}"
+            wire:key="guest-entry-{{ $token }}"
         />
     @else
         <main id="main-content" tabindex="-1" class="mx-auto flex w-full max-w-lg flex-col gap-4 px-4 py-5 pb-8 sm:py-8">

@@ -203,7 +203,7 @@ test('local image storage validates direct action calls and never uses the origi
 
     expect($path)->toStartWith('media/security-check/')
         ->and(basename($path))->not->toContain('my.original.logo')
-        ->and(basename($path))->toMatch('/^[0-9a-f-]{36}\.(jpg|jpeg|png|webp)$/');
+        ->and(basename($path))->toMatch('/^[0-9a-f-]{36}\.v1-[1-9][0-9]*x[1-9][0-9]*\.(jpg|png|webp)$/');
 
     Storage::disk('public')->assertExists($path);
 });

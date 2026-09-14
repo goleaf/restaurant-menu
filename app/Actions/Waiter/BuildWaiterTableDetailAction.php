@@ -40,10 +40,16 @@ class BuildWaiterTableDetailAction
     /**
      * @return array{has_access: bool, table: array<string, mixed>|null}
      */
-    public function handle(User $user, TableSession $tableSession): array
+    public function handle(User $user, TableSession $tableSession, ?string $section = null): array
     {
-        $accessibleBranchIds = $this->resolveAccessibleBranchIds->handle($user);
-        $paymentViewableBranchIds = $this->resolvePaymentAccess->viewableBranchIds($user);
+        $sectionPermissions = $section === null ? null : $this->resolveAccessibleBranchIds->handleMany($user, [
+            SystemPermission::ViewOrders, SystemPermission::ConfirmOrders, SystemPermission::EditPendingOrders,
+            SystemPermission::SendToKitchen, SystemPermission::CancelOrders,
+        ]);
+        $accessibleBranchIds = $sectionPermissions[SystemPermission::ViewOrders->value] ?? $this->resolveAccessibleBranchIds->handle($user);
+        $paymentViewableBranchIds = $accessibleBranchIds->contains((int) $tableSession->branch_id)
+            ? collect()
+            : $this->resolvePaymentAccess->viewableBranchIds($user);
 
         if (! $accessibleBranchIds->contains((int) $tableSession->branch_id)
             && ! $paymentViewableBranchIds->contains((int) $tableSession->branch_id)) {
@@ -218,13 +224,50 @@ class BuildWaiterTableDetailAction
                     ->orderBy('created_at')
                     ->orderBy('id'),
             ])
+            ->when($section !== null, fn ($query) => $query->without(['servicePoint', 'activeServicePointLinks', 'openedByUser', 'openedByGuest']))
             ->withExists('manualPayments')
             ->whereKey($tableSession->id)
             ->firstOrFail();
 
         return [
             'has_access' => true,
-            'table' => $this->tablePayload($tableSession, $user),
+            'table' => $section === null ? $this->tablePayload($tableSession, $user) : $this->sectionPayload($tableSession, $user, $section, $sectionPermissions ?? []),
+        ];
+    }
+
+    /**
+     * @param  array<string, Collection<int, int>>  $permissions
+     * @return array<string, mixed>
+     */
+    private function sectionPayload(TableSession $tableSession, User $user, string $section, array $permissions): array
+    {
+        $branch = $tableSession->branch;
+        $draft = $tableSession->draftOrder;
+        $currency = $branch->currency;
+        $canConfirm = $permissions[SystemPermission::ConfirmOrders->value]->contains($branch->id);
+        $canEdit = $canConfirm || $permissions[SystemPermission::EditPendingOrders->value]->contains($branch->id);
+        $canCancel = $permissions[SystemPermission::CancelOrders->value]->contains($branch->id)
+            || $user->hasOrganizationRole((int) $branch->organization_id, SystemRole::Director)
+            || $user->hasOrganizationRole((int) $branch->organization_id, SystemRole::ShiftManager);
+        $guests = $this->guestSections($tableSession->guests, $draft instanceof DraftOrder ? $draft->items : collect(), $currency);
+        $total = collect($guests)->sum('total_cents');
+        $payload = ['draft' => $this->draftPayload(
+            $draft, $tableSession->status, $currency, $total, $canConfirm, $canEdit,
+            $permissions[SystemPermission::SendToKitchen->value]->contains($branch->id), $canCancel,
+        )];
+        if ($section === 'fulfilment') {
+            return [...$payload, 'orders' => $this->fulfilmentOrdersPayload(
+                $tableSession->orders, $currency, $canCancel, (bool) $tableSession->getAttribute('manual_payments_exists'),
+            )];
+        }
+
+        return [...$payload,
+            'branch' => ['id' => $branch->id, 'name' => $branch->name, 'brand_name' => $branch->brand?->name,
+                'organization_name' => $branch->organization->name, 'city' => $branch->city, 'currency' => $currency],
+            'guest_sections' => $guests,
+            'manual_order' => ['can_add' => $canEdit && $tableSession->status === TableSessionStatus::Active],
+            'current_draft_total' => $this->formatCents($total, $currency),
+            'total' => $this->formatCents($this->confirmedOrdersTotalCents($tableSession->orders) + $this->openDraftTotalCents($draft, $total), $currency),
         ];
     }
 

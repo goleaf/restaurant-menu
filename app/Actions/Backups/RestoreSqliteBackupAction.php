@@ -7,9 +7,10 @@ namespace App\Actions\Backups;
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Exceptions\InvalidSqliteBackupException;
+use App\Models\DatabaseSessionRecord;
 use App\Models\User;
+use App\Support\SqliteRestoreRequestLock;
 use Illuminate\Cache\CacheManager;
-use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Filesystem\Filesystem;
@@ -30,6 +31,7 @@ final class RestoreSqliteBackupAction
         private readonly SessionManager $sessions,
         private readonly MaintenanceMode $maintenanceMode,
         private readonly Filesystem $files,
+        private readonly SqliteRestoreRequestLock $requestLock,
     ) {}
 
     /**
@@ -42,22 +44,14 @@ final class RestoreSqliteBackupAction
         $candidate = $this->prepareRestoreCandidate->handle($uploadedPath, $connectionName);
 
         try {
-            $lockProvider = $this->cache->store('file')->getStore();
-
-            if (! $lockProvider instanceof LockProvider) {
-                throw new RuntimeException('The configured restore lock store does not support atomic locks.');
-            }
-
-            $result = $lockProvider
-                ->lock('sqlite-database-restore', 300)
-                ->block(5, fn (): array => $this->restoreWhileLocked(
-                    candidatePath: $candidate['path'],
-                    candidateFingerprint: $candidate['schema_fingerprint'],
-                    livePath: $livePath,
-                    connectionName: $connectionName,
-                    actor: $actor,
-                    reason: $reason,
-                ));
+            $result = $this->restoreWhileLocked(
+                candidatePath: $candidate['path'],
+                candidateFingerprint: $candidate['schema_fingerprint'],
+                livePath: $livePath,
+                connectionName: $connectionName,
+                actor: $actor,
+                reason: $reason,
+            );
 
             return $result;
         } finally {
@@ -82,8 +76,10 @@ final class RestoreSqliteBackupAction
         string $reason,
     ): array {
         $activatedMaintenanceMode = ! $this->maintenanceMode->active();
+        $recoveryWasRequired = $this->requestLock->requiresRecovery();
         $safetyBackupPath = null;
         $replacementStarted = false;
+        $safeToResume = false;
 
         if ($activatedMaintenanceMode) {
             $this->maintenanceMode->activate([
@@ -98,9 +94,17 @@ final class RestoreSqliteBackupAction
         }
 
         try {
+            $this->requestLock->acquireExclusive();
+            $safeToResume = ! $recoveryWasRequired;
+            if (! $this->maintenanceMode->active()) {
+                $activatedMaintenanceMode = true;
+                $this->maintenanceMode->activate(['status' => 503, 'retry' => 60]);
+            }
             $safetyBackupPath = $this->createConsistentBackup->handle();
             $this->database->purge($connectionName);
+            $this->requestLock->markUnsafe();
             $replacementStarted = true;
+            $safeToResume = false;
             $this->copyDatabase($candidatePath, $livePath);
             $this->database->purge($connectionName);
 
@@ -135,11 +139,9 @@ final class RestoreSqliteBackupAction
                 );
             });
 
-            $this->sessions->driver()->getHandler()->gc(0);
+            $this->invalidateRuntimeState();
 
-            if ($this->defaultCacheUsesDatabase()) {
-                $this->cache->store()->flush();
-            }
+            $safeToResume = true;
 
             return ['safety_backup_path' => $safetyBackupPath];
         } catch (Throwable $restoreException) {
@@ -156,6 +158,7 @@ final class RestoreSqliteBackupAction
             try {
                 $this->copyDatabase($safetyBackupPath, $livePath);
                 $this->database->purge($connectionName);
+                $safeToResume = ! $recoveryWasRequired;
             } catch (Throwable $rollbackException) {
                 report($restoreException);
 
@@ -171,10 +174,18 @@ final class RestoreSqliteBackupAction
 
             throw new RuntimeException('SQLite restoration failed and the live database was rolled back.', previous: $restoreException);
         } finally {
-            $this->database->purge($connectionName);
+            try {
+                $this->database->purge($connectionName);
 
-            if ($activatedMaintenanceMode) {
-                $this->maintenanceMode->deactivate();
+                if ($safeToResume) {
+                    $this->requestLock->markSafe();
+                }
+
+                if ($activatedMaintenanceMode && $safeToResume) {
+                    $this->maintenanceMode->deactivate();
+                }
+            } finally {
+                $this->requestLock->releaseOutsideRequest();
             }
         }
     }
@@ -205,10 +216,33 @@ final class RestoreSqliteBackupAction
         }
     }
 
-    private function defaultCacheUsesDatabase(): bool
+    private function invalidateRuntimeState(): void
     {
-        $defaultStore = (string) config('cache.default');
-
-        return config("cache.stores.{$defaultStore}.driver") === 'database';
+        $driver = config('session.driver');
+        if ($driver === 'database') {
+            $record = new DatabaseSessionRecord;
+            $record->setConnection(config('session.connection') ?? config('database.default'));
+            $record->setTable((string) config('session.table', 'sessions'));
+            $record->newQuery()->delete();
+        } elseif ($driver === 'file') {
+            foreach ($this->files->files((string) config('session.files')) as $file) {
+                if (! $this->files->delete($file->getPathname())) {
+                    throw new RuntimeException('Unable to invalidate restored file sessions.');
+                }
+            }
+        } elseif ($driver === 'array') {
+            $this->sessions->driver()->getHandler()->gc(0);
+        } else {
+            throw new RuntimeException('The configured session driver does not support safe SQLite restoration.');
+        }
+        foreach (array_keys(config('cache.stores', [])) as $store) {
+            if (config("cache.stores.{$store}.driver") === 'file'
+                && ! $this->files->isDirectory((string) config("cache.stores.{$store}.path"))) {
+                continue;
+            }
+            if (! $this->cache->store($store)->flush()) {
+                throw new RuntimeException('Unable to invalidate the restored application cache.');
+            }
+        }
     }
 }

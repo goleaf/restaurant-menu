@@ -4,24 +4,41 @@ declare(strict_types=1);
 
 namespace App\Actions\Media;
 
+use App\Support\LocalImageVariants;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
+use Throwable;
 
 class StoreLocalImageAction
 {
     public const MAX_IMAGE_KILOBYTES = 2048;
+
+    public function __construct(
+        private readonly ProcessLocalImageAction $processLocalImage,
+        private readonly DeleteLocalMediaFileAction $deleteLocalMediaFile,
+    ) {}
 
     /**
      * @return list<string>
      */
     public static function allowedExtensions(): array
     {
-        $extensions = ['jpg', 'jpeg', 'png'];
+        $extensions = [];
+        $support = function_exists('gd_info') ? gd_info() : [];
 
-        if (defined('IMAGETYPE_WEBP')) {
+        if (($support['JPEG Support'] ?? false) && function_exists('imagecreatefromjpeg') && function_exists('imagejpeg') && function_exists('exif_read_data')) {
+            $extensions = ['jpg', 'jpeg'];
+        }
+
+        if (($support['PNG Support'] ?? false) && function_exists('imagecreatefrompng') && function_exists('imagepng')) {
+            $extensions[] = 'png';
+        }
+
+        if (($support['WebP Support'] ?? false) && function_exists('imagecreatefromwebp') && function_exists('imagewebp')) {
             $extensions[] = 'webp';
         }
 
@@ -30,10 +47,12 @@ class StoreLocalImageAction
 
     public static function acceptedMimeTypes(): string
     {
-        $mimeTypes = ['image/jpeg', 'image/png'];
+        $mimeTypes = [];
 
-        if (in_array('webp', self::allowedExtensions(), true)) {
-            $mimeTypes[] = 'image/webp';
+        foreach (['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'] as $extension => $mimeType) {
+            if (in_array($extension, self::allowedExtensions(), true)) {
+                $mimeTypes[] = $mimeType;
+            }
         }
 
         return implode(',', $mimeTypes);
@@ -109,15 +128,24 @@ class StoreLocalImageAction
     {
         $this->validateFile($file);
 
-        $extension = $this->safeExtension($file);
-        $path = $file->storePubliclyAs(
-            path: $this->safeDirectory($directory),
-            name: Str::uuid()->toString().'.'.$extension,
-            options: 'public',
-        );
+        $directory = $this->safeDirectory($directory);
+        $processed = $this->processLocalImage->handle($file, $this->safeExtension($file));
+        $path = $directory.'/'.Str::uuid()->toString().'.v1-'.$processed['width'].'x'.$processed['height'].'.'.$processed['extension'];
+        $paths = LocalImageVariants::paths($path);
+        $disk = Storage::disk('public');
 
-        if (! is_string($path) || blank($path)) {
-            throw new RuntimeException(__('uploads.errors.upload_failed'));
+        try {
+            if (! $disk->put($path, $processed['display'], 'public')) {
+                throw new RuntimeException(__('uploads.errors.upload_failed'));
+            }
+
+            if (isset($paths[1]) && ! $disk->put($paths[1], $processed['thumbnail'], 'public')) {
+                throw new RuntimeException(__('uploads.errors.upload_failed'));
+            }
+        } catch (Throwable $exception) {
+            $this->deleteLocalMediaFile->handle($path);
+
+            throw $exception;
         }
 
         return $path;

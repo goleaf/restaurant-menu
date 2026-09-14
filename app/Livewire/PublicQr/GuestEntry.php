@@ -13,6 +13,7 @@ use App\Actions\TableSessions\ExpireTableSessionJoinRequestAction;
 use App\Enums\GuestTableEntryState;
 use App\Enums\QrCodeStatus;
 use App\Enums\SupportedLocale;
+use App\Enums\TableSessionGuestStatus;
 use App\Enums\TableSessionJoinRequestStatus;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
@@ -27,10 +28,74 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class GuestEntry extends Component
 {
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = SupportedLocale::normalize($language, $this->language);
+        $this->applyGuestLocale();
+        $this->refreshLocalizedPresentation();
+        $entryState = GuestTableEntryState::tryFrom($this->entryState);
+
+        if ($entryState instanceof GuestTableEntryState) {
+            $this->entryMessage = $this->presenter->messageForEntryState($entryState);
+        }
+
+        $qrCode = $this->buildGuestEntryContext->findQrCode($this->token);
+        $servicePoint = $qrCode?->servicePoint;
+        $guestToken = $this->guestTokenFromCurrentCookie();
+
+        if (! $servicePoint instanceof ServicePoint || $guestToken === null) {
+            return;
+        }
+
+        $guest = $this->findGuestByToken($servicePoint, $guestToken);
+
+        if ($guest instanceof TableSessionGuest && $guest->tableSession instanceof TableSession) {
+            $this->entryMessage = $this->presenter->messageForGuestAccess($guest, $guest->tableSession);
+            $this->entryIssueCode = $this->presenter->guestAccessIssueCode($guest, $guest->tableSession);
+        }
+
+        if (! $guest instanceof TableSessionGuest
+            || $guest->id !== $this->currentGuestId
+            || $guest->table_session_id !== $this->currentTableSessionId
+            || $guest->status !== TableSessionGuestStatus::Active) {
+            return;
+        }
+
+        $this->updateGuestLocale->handle($guest, $this->language);
+    }
+
+    private function refreshLocalizedPresentation(): void
+    {
+        $context = $this->buildGuestEntryContext->handle(
+            $this->token,
+            $this->language,
+            true,
+            $this->currentInviteToken() !== null,
+        );
+
+        if (! is_array($context['landing'])) {
+            return;
+        }
+
+        $this->message = $context['message'];
+
+        foreach ([
+            'default_language_label',
+            'public_description',
+            'opening_status_label',
+            'opening_status_detail',
+            'service_point_type',
+        ] as $key) {
+            $this->landing[$key] = $context['landing'][$key];
+        }
+    }
+
     private BuildGuestEntryContextAction $buildGuestEntryContext;
 
     private ExpireTableSessionJoinRequestAction $expireJoinRequest;
@@ -605,7 +670,7 @@ class GuestEntry extends Component
 
         $this->landing['service_point_name'] = $servicePoint->name;
         $this->landing['service_point_display_number'] = $servicePoint->display_number;
-        $this->landing['service_point_type'] = $servicePoint->type->label();
+        $this->landing['service_point_type'] = __(sprintf('reports.service_point_types.%s', $servicePoint->type->value));
         $this->landing['area_name'] = $servicePoint->areaNode?->name;
     }
 

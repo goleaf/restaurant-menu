@@ -195,9 +195,44 @@ test('runtime stylesheet exposes semantic workspace roles and avoids decorative 
         ->toContain('--color-information-border:')
         ->toContain('--spacing-operational-touch: 3.5rem;')
         ->toContain('--duration-state: 180ms;')
+        ->toContain("--font-sans: 'Noto Sans Variable'")
+        ->toContain('--color-control-hover:')
+        ->toContain('--z-docked: 30;')
         ->toContain('--shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);')
         ->not->toContain('border-left-width: 10px;')
         ->not->toContain('0 8px 24px');
+});
+
+test('shared shell and controls use semantic surfaces and resilient narrow layouts', function () {
+    $css = File::get(resource_path('css/app.css'));
+    $button = File::get(app_path('View/Components/Ui/Button.php'));
+    $appLayout = File::get(resource_path('views/layouts/app.blade.php'));
+    $sidebar = File::get(resource_path('views/layouts/app/sidebar.blade.php'));
+    $guestLayout = File::get(resource_path('views/layouts/guest.blade.php'));
+    $pageHeader = File::get(resource_path('views/components/ui/page-header.blade.php'));
+
+    expect($css)
+        ->toContain('[data-flux-sidebar-item][data-current]')
+        ->toContain("[data-priority-row][data-selected='true']")
+        ->toContain('@utility content-safe')
+        ->and($button)
+        ->toContain('bg-accent text-accent-foreground')
+        ->toContain('border-border-strong bg-surface text-text-primary')
+        ->not->toMatch('/(?:bg|border|text|ring)-(?:zinc|red|amber|sky)-/')
+        ->and($appLayout)
+        ->toContain('max-w-content')
+        ->toContain('bg-canvas')
+        ->and($sidebar)
+        ->toContain('bg-surface-muted')
+        ->toContain('z-navigation')
+        ->not->toContain('bg-zinc-')
+        ->and($guestLayout)
+        ->toContain('bg-canvas text-text-primary')
+        ->not->toContain('bg-zinc-')
+        ->and($pageHeader)
+        ->toContain('content-safe')
+        ->toContain('xs:grid-cols-2')
+        ->toContain('[&>*]:w-full');
 });
 
 test('semantic utility names resolve to declared design tokens', function () {

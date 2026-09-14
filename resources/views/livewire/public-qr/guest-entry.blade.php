@@ -4,7 +4,7 @@
                 <section data-page="guest-table-shell" class="flex flex-col gap-4">
                     <div data-guest-table-context class="overflow-hidden rounded-card border border-border-subtle bg-surface">
                         <div class="border-b border-border-subtle bg-surface-muted px-4 py-3">
-                            <div class="flex items-center justify-between gap-3">
+                            <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
                                 <x-ui.status-badge tone="success" dot>
                                     {{ __('guest.table.entry_saved_badge') }}
                                 </x-ui.status-badge>
@@ -129,7 +129,7 @@
                         :branch-can-accept-orders="$landing['can_accept_orders']"
                         :branch-opening-status-message="$landing['opening_status_detail']"
                         :language="$language"
-                        wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}-{{ $language }}"
+                        wire:key="guest-menu-{{ $landing['branch_id'] }}-{{ $currentTableSessionId }}-{{ $currentGuestId }}"
                     />
 
                     <livewire:public-qr.draft-order

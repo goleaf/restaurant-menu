@@ -1,4 +1,36 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+<!-- END GITHUB_PUSH_ONLY -->
+
 # Testing and quality gates
+
+## Current product verification — 2026-09-14
+
+Final product checks cover the changes after local `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`. All suites below completed with zero failures/skips. Distinct backend plus browser evidence is 2,361 passing tests; repeated parallel and coverage execution is not counted as additional distinct tests. Test pass rate is 100%; statement coverage is 93.8%, a separate metric.
+
+| Local gate | Observed result |
+| --- | --- |
+| `composer test:backend` | 2,351 tests / 51,962 assertions, 317.58 s |
+| `composer test:browser -- --browser safari` | 10 tests / 591 assertions, 58.8 s; Playwright WebKit |
+| Four-process Unit/Feature suite | 2,351 tests / 51,962 assertions, 149.56 s |
+| `composer test:coverage` | 2,351 tests / 51,962 assertions, 93.8% application coverage; threshold remains 90% |
+| Composer strict validation, platform requirements and audit | Exit 0; no dependency advisories |
+| Pint and canonical Larastan | Exit 0; no errors |
+| Translation scan/audit | Exit 0; EN/LT/RU key and placeholder parity |
+| `npm ci --ignore-scripts`, npm audit, production build | Exit 0; existing lockfile, npm registry only, no advisories |
+| Isolated SQLite migrations and runtime caches | Migrate/reset/remigrate, seed twice, config/route/event/view compilation: exit 0 |
+
+The 1074-file code/config/test/manifest digest `446b23ee4a21f831d86eea235d4326a5362f3f24408e0a3e5b4105fede3627f5` was unchanged throughout these full gates. Final documentation updates, whitespace-only removal on otherwise empty Blade lines and restoration of the prior Composer empty-map JSON notation follow the run. Their local architecture/traceability, compiled-view, strict Composer and diff checks are recorded in PROGRESS.md. No PHP, JavaScript, dependency package graph or behavioral implementation is changed after the full gates.
+
+The first integration attempt stopped at Composer's 300-second process limit and exposed seven regressions. It is not counted as a pass. The corrected run uses `COMPOSER_PROCESS_TIMEOUT=0`; the underlying test scripts and assertions are unchanged. Final focused integration passes 64 / 561: branch invalidation falls from eleven database deletes to one, the ManageSettings-positive fixture is explicit, the dangerous-operation enum registry includes actual new operations, and Blade retains native escaped JSON plus defined semantic tokens. Existing AuditLog query ceilings are preserved.
+
+Late adversarial evidence: image mutation replay/cleanup and actual rendered UI arguments pass 116 / 753 after observed RED. Locale persistence passes 12 / 96, including four revoked-guest cases observed failing before the status guard. Independent reviewers inspected implementation and confirmed the final image/continuation, locale, cache and Blade corrections; their reports do not substitute for root-observed test results.
+
+The browser suite includes the complete owner-onboarding-to-paid-table-closure journey, administration, guest allergen/diet labels, kitchen timers and notification preferences. Product checks cover EN/LT/RU, long content, image upload/reorder/promotion, validation language focus, on-demand browse-only galleries, locale/basket continuity, keyboard focus/restore, owner/settings/guest/waiter/kitchen/bar at 320/390/768/1280/1440 pixels, light/dark states and 200% text enlargement. Actual screenshots were inspected. This is desktop browser emulation, not physical iPhone testing, a real screen-reader audit or full browser-zoom certification.
+
+An independent isolated Chrome context navigated through Herd to the login page on the final build: eight HTTP-200 resources, no console warnings/errors/issues, no horizontal overflow at 1440 pixels and the local Noto Sans font loaded. Telescope/Debugbar MCP is not exposed; executable query counters and Boost schema inspection provide query evidence. Production load, physical-device behavior and multi-host contention remain unmeasured.
+
+Inventory: 52 models with factories, 89 reversible migration definitions, 63 fully migrated tables, 234 Actions, 13 controller files, 4 Form Requests, 64 Livewire files including 4 Forms, 18 policies, 135 Blade views and 196 Unit/Feature/Browser PHP files. All 175 project Markdown files have exactly one policy block, 314 local link occurrences resolve, and eight project skills match across all three providers. Composer package arrays are unchanged; all npm package resolutions use registry.npmjs.org.
 
 ## Seventh audit — menu transport types and dependent selections (2026-09-14)
 

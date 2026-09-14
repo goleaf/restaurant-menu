@@ -3,11 +3,11 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
+    <body class="min-h-screen overflow-x-clip bg-canvas text-text-primary antialiased">
         <a href="#main-content" class="skip-link">
             {{ __('ui.accessibility.skip_to_content') }}
         </a>
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-border-subtle bg-surface-muted">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" class="min-h-touch" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="min-h-touch min-w-touch lg:hidden" />
@@ -104,7 +104,7 @@
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
+        <flux:header class="sticky top-0 z-navigation min-w-0 overflow-x-clip border-b border-border-subtle bg-surface-raised lg:hidden">
             <flux:sidebar.toggle class="min-h-touch min-w-touch lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
@@ -112,7 +112,7 @@
             <livewire:notifications.unread-count :compact="true" />
 
             @if ($authenticatedUser !== null)
-            <flux:dropdown position="top" align="end">
+            <flux:dropdown position="bottom" align="end" class="max-w-11 overflow-hidden">
                 <flux:profile
                     :initials="$authenticatedUser['initials']"
                     :aria-label="__('navigation.account_menu', ['initials' => $authenticatedUser['initials'], 'name' => $authenticatedUser['name']])"

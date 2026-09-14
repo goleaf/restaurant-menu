@@ -7,6 +7,9 @@ namespace App\Livewire\PublicQr;
 use App\Actions\DraftOrders\AddGuestDraftOrderItemAction;
 use App\Actions\Localization\UpdateGuestLocaleAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Menus\GetGuestMenuItemGalleryAction;
+use App\Enums\MenuAllergen;
+use App\Enums\MenuDietaryLabel;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
 use App\Models\MenuItem;
@@ -21,12 +24,17 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
+use Livewire\Attributes\Reactive;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
+/** @property-read list<array<string, mixed>> $selectedItemGallery */
 class GuestMenu extends Component
 {
     private GetGuestMenuForBranchAction $getGuestMenuForBranch;
+
+    private GetGuestMenuItemGalleryAction $getGuestMenuItemGallery;
 
     private PublicQrQueryService $publicQrQueries;
 
@@ -51,6 +59,7 @@ class GuestMenu extends Component
 
     public bool $branchCanAcceptOrders = true;
 
+    #[Reactive]
     public string $branchOpeningStatusMessage = '';
 
     public string $currency = 'EUR';
@@ -76,6 +85,16 @@ class GuestMenu extends Component
 
     public string $feedbackMessage = '';
 
+    public string $search = '';
+
+    public ?int $selectedCategoryId = null;
+
+    /** @var list<string> */
+    public array $dietaryFilters = [];
+
+    /** @var list<string> */
+    public array $excludedAllergens = [];
+
     /**
      * @var array<int, array{name: string, total_price: string, modifier_summary: list<string>, comment: string|null}>
      */
@@ -83,10 +102,12 @@ class GuestMenu extends Component
 
     public function boot(
         GetGuestMenuForBranchAction $getGuestMenuForBranch,
+        GetGuestMenuItemGalleryAction $getGuestMenuItemGallery,
         PublicQrQueryService $publicQrQueries,
         UpdateGuestLocaleAction $updateGuestLocale,
     ): void {
         $this->getGuestMenuForBranch = $getGuestMenuForBranch;
+        $this->getGuestMenuItemGallery = $getGuestMenuItemGallery;
         $this->publicQrQueries = $publicQrQueries;
         $this->updateGuestLocale = $updateGuestLocale;
     }
@@ -127,28 +148,34 @@ class GuestMenu extends Component
         }
 
         unset($this->guestMenu);
-        $this->configuredItems = [];
-        $this->closeItemSheet();
+        unset($this->selectedItemGallery);
+        $this->dispatch('guest-locale-updated', language: $this->language);
+    }
+
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $language);
+        $this->applyLocale();
+        unset($this->guestMenu);
+        unset($this->selectedItemGallery);
     }
 
     public function openItem(int $itemId): void
     {
-        if (! $this->guestCanAddItems || ! $this->branchCanAcceptOrders) {
-            return;
-        }
-
         $item = $this->findItemInGuestMenu($itemId);
 
-        if ($item === null || ! (bool) $item['is_available']) {
+        if ($item === null) {
             return;
         }
 
         $this->resetValidation();
-        $this->itemAddAttemptId = (string) Str::uuid();
+        $this->itemAddAttemptId = $this->canConfigureItem($item) ? (string) Str::uuid() : '';
         $this->selectedItemId = $itemId;
         $this->selectedItemVariantId = $this->defaultVariantId($item);
         $this->selectedModifierOptions = [];
         $this->itemComment = '';
+        unset($this->selectedItemGallery);
 
         foreach ($item['modifier_groups'] as $modifierGroup) {
             $this->selectedModifierOptions[$modifierGroup['id']] = [];
@@ -163,6 +190,15 @@ class GuestMenu extends Component
         $this->selectedItemVariantId = null;
         $this->selectedModifierOptions = [];
         $this->itemComment = '';
+        unset($this->selectedItemGallery);
+    }
+
+    public function resetMenuFilters(): void
+    {
+        $this->search = '';
+        $this->selectedCategoryId = null;
+        $this->dietaryFilters = [];
+        $this->excludedAllergens = [];
     }
 
     public function toggleModifierOption(int $modifierGroupId, int $modifierOptionId): void
@@ -297,11 +333,28 @@ class GuestMenu extends Component
         return $this->getGuestMenuForBranch->handle($this->branchId, $this->language);
     }
 
+    /** @return list<array<string, mixed>> */
+    #[Computed]
+    public function selectedItemGallery(): array
+    {
+        if ($this->selectedItemId === null) {
+            return [];
+        }
+
+        return $this->getGuestMenuItemGallery->handle($this->branchId, $this->selectedItemId);
+    }
+
     public function render(): View
     {
         $this->applyLocale();
 
         $selectedItem = $this->selectedItem();
+        $categoryOptions = collect($this->guestMenu()['menus'] ?? [])
+            ->flatMap(fn (array $menu): array => $menu['categories'] ?? [])
+            ->map(fn (array $category): array => ['id' => (int) $category['id'], 'name' => (string) $category['name']])
+            ->unique('id')
+            ->values()
+            ->all();
         $guestMenu = $this->displayGuestMenu();
         $availableMenus = $guestMenu['menus'] ?? [];
 
@@ -311,7 +364,11 @@ class GuestMenu extends Component
             'availableMenuCount' => count($availableMenus),
             'unavailableMenus' => $guestMenu['unavailable_menus'] ?? [],
             'selectedItem' => $selectedItem === null ? null : $this->displayItem($selectedItem),
+            'selectedItemGallery' => $this->selectedItemGallery,
             'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::formatCents(0, $this->currency) : $this->selectedItemTotal($selectedItem),
+            'dietaryOptions' => MenuDietaryLabel::options($this->language),
+            'allergenOptions' => MenuAllergen::options($this->language),
+            'categoryOptions' => $categoryOptions,
         ]);
     }
 
@@ -551,17 +608,38 @@ class GuestMenu extends Component
      */
     private function displayCategories(array $categories): array
     {
+        $search = mb_strtolower(trim($this->search));
+        $dietaryFilters = array_values(array_intersect(array_filter($this->dietaryFilters, is_string(...)), MenuDietaryLabel::values()));
+        $excludedAllergens = array_values(array_intersect(array_filter($this->excludedAllergens, is_string(...)), MenuAllergen::values()));
+
         return collect($categories)
-            ->map(function (array $category): array {
+            ->filter(fn (array $category): bool => $this->selectedCategoryId === null || (int) $category['id'] === $this->selectedCategoryId)
+            ->map(function (array $category) use ($search, $dietaryFilters, $excludedAllergens): array {
                 $category['items'] = collect($category['items'] ?? [])
+                    ->filter(function (array $item) use ($search, $dietaryFilters, $excludedAllergens): bool {
+                        $haystack = mb_strtolower((string) $item['name'].' '.(string) ($item['description'] ?? ''));
+                        $dietaryValues = collect($item['dietary_labels'] ?? [])->pluck('value')->all();
+                        $allergenValues = collect($item['allergens'] ?? [])->pluck('value')->all();
+
+                        return ($search === '' || str_contains($haystack, $search))
+                            && array_diff($dietaryFilters, $dietaryValues) === []
+                            && ($excludedAllergens === [] || ($allergenValues !== [] && array_intersect($excludedAllergens, $allergenValues) === []));
+                    })
                     ->map(fn (array $item): array => $this->displayItem($item))
                     ->values()
                     ->all();
 
                 return $category;
             })
+            ->filter(fn (array $category): bool => $category['items'] !== [])
             ->values()
             ->all();
+    }
+
+    /** @param array<string, mixed> $item */
+    private function canConfigureItem(array $item): bool
+    {
+        return $this->guestCanAddItems && $this->branchCanAcceptOrders && (bool) $item['is_available'];
     }
 
     /**

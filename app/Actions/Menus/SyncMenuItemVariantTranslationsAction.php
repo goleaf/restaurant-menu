@@ -16,6 +16,10 @@ class SyncMenuItemVariantTranslationsAction
     public function handle(MenuItemVariant $variant, array $translations): void
     {
         foreach (SupportedLocale::values() as $languageCode) {
+            if (! array_key_exists($languageCode, $translations)) {
+                continue;
+            }
+
             $name = PlainText::optional($translations[$languageCode] ?? null, 160, squish: true);
 
             if ($name === null) {

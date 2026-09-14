@@ -9,22 +9,61 @@ use App\Actions\Menus\AddMenuItemImagesAction;
 use App\Actions\Menus\PromoteMenuItemImageAction;
 use App\Actions\Menus\RemoveMenuItemGalleryImageAction;
 use App\Actions\Menus\RemoveMenuItemImageAction;
+use App\Actions\Menus\ReorderMenuItemImagesAction;
 use App\Models\MenuItem;
 use App\Support\Validation\RestaurantValidationRules;
+use Closure;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
+use RuntimeException;
 
 trait ManagesItemImages
 {
+    /** @var array<int, string> */
+    #[Locked]
+    public array $itemImageRequestIds = [];
+
+    public function updatedItemImageUploads(mixed $value, string $key): void
+    {
+        $this->authorizeMenuManagement();
+        $itemId = (int) explode('.', $key)[0];
+        abort_unless($this->editingItemId === $itemId, 403);
+        $this->itemImageRequestIds[$itemId] = (string) Str::uuid();
+    }
+
+    public function removePendingItemImage(int $itemId, int $index): void
+    {
+        $this->authorizeMenuManagement();
+        $this->catalogData->findBranchItem($this->branchId, $itemId);
+        abort_unless($this->editingItemId === $itemId, 403);
+        $files = $this->itemImageUploads[$itemId] ?? [];
+        if (! is_array($files) || $index < 0 || ! array_key_exists($index, $files) || ! $files[$index] instanceof UploadedFile) {
+            return;
+        }
+        array_splice($files, $index, 1);
+        $this->itemImageUploads[$itemId] = $files;
+        $this->itemImageRequestIds[$itemId] = (string) Str::uuid();
+        $this->resetValidation(['itemImageUploads.'.$itemId, 'itemImageUploads.'.$itemId.'.*']);
+    }
+
+    /** @param list<int> $imageIds */
+    public function reorderItemImages(int $itemId, array $imageIds, ReorderMenuItemImagesAction $reorder): void
+    {
+        $this->authorizeMenuManagement();
+        $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
+        $reorder->handle($this->branch, $item, $imageIds);
+        $this->forgetMenuComputed();
+        Flux::toast(variant: 'success', text: __('uploads.editor.order_saved'));
+    }
+
     public function saveItemImages(int $itemId, AddMenuItemImagesAction $addImages): void
     {
         $this->authorizeMenuManagement();
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
-        $remainingSlots = MenuItem::MAX_IMAGES
-            - (filled($item->image) ? 1 : 0)
-            - $item->galleryImages->count();
         $field = 'itemImageUploads.'.$item->id;
 
         if ($this->editingItemId !== $item->id) {
@@ -33,14 +72,8 @@ trait ManagesItemImages
             ]);
         }
 
-        if ($remainingSlots < 1) {
-            $this->addError($field, __('uploads.errors.maximum_images', ['count' => MenuItem::MAX_IMAGES]));
-
-            return;
-        }
-
         $this->validate(
-            RestaurantValidationRules::imageUploads($field, $remainingSlots),
+            RestaurantValidationRules::imageUploads($field, MenuItem::MAX_IMAGES),
             StoreLocalImageAction::validationMessages($field.'.*') + [
                 $field.'.max' => __('uploads.errors.maximum_images', ['count' => MenuItem::MAX_IMAGES]),
             ],
@@ -55,17 +88,27 @@ trait ManagesItemImages
         }
 
         try {
-            $addImages->handle($this->branch, $item, $files);
+            $addImages->handle(
+                $this->branch,
+                $item,
+                $files,
+                $this->itemImageRequestIds[$item->id] ?? null,
+                $this->currentUser(),
+            );
         } catch (ValidationException $exception) {
-            foreach ($exception->errors() as $messages) {
+            foreach ($exception->errors() as $errorField => $messages) {
+                $target = preg_match('/^images\.(\d+)$/', $errorField, $matches) === 1
+                    ? $field.'.'.$matches[1]
+                    : $field;
                 foreach ($messages as $message) {
-                    $this->addError($field, $message);
+                    $this->addError($target, $message);
                 }
             }
 
             return;
         }
 
+        $this->dispatch('item-images-saved', itemId: $item->id);
         $uploadedCount = count($files);
         $this->clearItemImageUpload($item->id);
         $this->forgetMenuComputed();
@@ -79,61 +122,104 @@ trait ManagesItemImages
     public function promoteItemImage(
         int $itemId,
         int $imageId,
+        string $expectedImageIdentity,
+        string $requestId,
         PromoteMenuItemImageAction $promoteImage,
     ): void {
         $this->authorizeMenuManagement();
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
-        $image = $this->catalogData->findBranchItemImage($this->branchId, $item->id, $imageId);
-
-        $promoteImage->handle($this->branch, $item, $image);
-
-        $this->clearItemImageUpload($item->id);
-        $this->forgetMenuComputed();
-
-        Flux::toast(variant: 'success', text: __('uploads.messages.primary_changed'));
+        if ($this->performImageMutation($itemId, $requestId, fn (): MenuItem => $promoteImage->handle(
+            $this->branch, $item, $imageId, $expectedImageIdentity, $requestId, $this->currentUser(),
+        ))) {
+            Flux::toast(variant: 'success', text: __('uploads.messages.primary_changed'));
+        }
     }
 
     public function removeItemGalleryImage(
         int $itemId,
         int $imageId,
+        string $expectedImageIdentity,
+        string $requestId,
         RemoveMenuItemGalleryImageAction $removeImage,
     ): void {
         $this->authorizeMenuManagement();
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
-        $image = $this->catalogData->findBranchItemImage($this->branchId, $item->id, $imageId);
-
-        $removeImage->handle($this->branch, $item, $image);
-
-        $this->clearItemImageUpload($item->id);
-        $this->forgetMenuComputed();
-        Flux::modals()->close();
-
-        Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
+        $removed = $this->performImageMutation($itemId, $requestId, fn (): MenuItem => $removeImage->handle(
+            $this->branch, $item, $imageId, $expectedImageIdentity, $requestId, $this->currentUser(),
+        ));
+        Flux::modal('remove-menu-item-image-'.$item->id.'-gallery-'.$imageId)->close();
+        if ($removed) {
+            Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
+        }
     }
 
-    public function removeItemImage(int $itemId, RemoveMenuItemImageAction $removeItemImage): void
+    public function removeItemImage(int $itemId, string $expectedImageIdentity, string $requestId, RemoveMenuItemImageAction $removeItemImage): void
     {
         $this->authorizeMenuManagement();
 
         $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
 
-        $removeItemImage->handle($this->branch, $item);
+        $removed = $this->performImageMutation($itemId, $requestId, fn (): MenuItem => $removeItemImage->handle(
+            $this->branch, $item, $expectedImageIdentity, $requestId, $this->currentUser(),
+        ));
+        Flux::modal('remove-menu-item-image-'.$item->id.'-primary-'.$item->id)->close();
+        if ($removed) {
+            Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
+        }
+    }
 
-        $this->clearItemImageUpload($item->id);
-        $this->forgetMenuComputed();
-        Flux::modals()->close();
+    /** @param Closure(): MenuItem $mutation */
+    private function performImageMutation(int $itemId, string $requestId, Closure $mutation): bool
+    {
+        $this->resetValidation('itemImageUploads.'.$itemId);
+        try {
+            $mutation();
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $messages) {
+                foreach ($messages as $message) {
+                    $this->addError('itemImageUploads.'.$itemId, $message);
+                }
+            }
 
-        Flux::toast(variant: 'success', text: __('uploads.messages.removed'));
+            return false;
+        } catch (RuntimeException $exception) {
+            report($exception);
+            $operation = $this->catalogData->operation($this->branch, $this->currentUser(), $requestId);
+            if ($operation !== null && $operation->completed_at === null) {
+                $this->activeCatalogOperationId = $requestId;
+                $this->catalogOperationPaused = true;
+                $this->addError('catalogOperation', __('menu.operations.retry_help'));
+            } else {
+                $this->addError('itemImageUploads.'.$itemId, __('uploads.editor.retry_help'));
+            }
+
+            return false;
+        } finally {
+            $this->forgetMenuComputed();
+        }
+
+        return true;
     }
 
     private function clearItemImageUpload(int $itemId): void
     {
-        unset($this->itemImageUploads[$itemId]);
+        unset($this->itemImageUploads[$itemId], $this->itemImageRequestIds[$itemId]);
         $this->resetValidation([
             'itemImageUploads.'.$itemId,
             'itemImageUploads.'.$itemId.'.*',
         ]);
+    }
+
+    /** @return array<int, list<mixed>> */
+    private function imageUploadPresentation(): array
+    {
+        if ($this->editingItemId === null) {
+            return [];
+        }
+        $files = $this->itemImageUploads[$this->editingItemId] ?? [];
+
+        return [$this->editingItemId => is_array($files) ? array_values($files) : []];
     }
 }

@@ -39,24 +39,27 @@ final class OrderFulfilment extends TableDetailSection
     public function mount(int $tableSessionId, array $initialOrderFulfilment = []): void
     {
         $this->tableSessionId = $tableSessionId;
-        $this->authorizeViewableTableSession();
-        $this->orderFulfilment = $initialOrderFulfilment === []
-            ? $this->orderFulfilmentPayload($this->freshViewableTablePayload())
-            : $initialOrderFulfilment;
-        $this->changeFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
+        if ($initialOrderFulfilment === []) {
+            $this->refreshOrderFulfilment();
+        } else {
+            $this->authorizeViewableTableSession();
+            $this->orderFulfilment = $initialOrderFulfilment;
+            $this->changeFingerprint = $this->changeDetector->fingerprint($initialOrderFulfilment);
+        }
     }
 
     public function refreshOrderFulfilment(): void
     {
-        $this->authorizeViewableTableSession();
-        $currentFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
+        $snapshot = $this->changeDetector->snapshot(
+            fn (): array => $this->orderFulfilmentPayload($this->freshViewableTablePayload('fulfilment')),
+        );
 
-        if ($this->changeFingerprint !== '' && hash_equals($this->changeFingerprint, $currentFingerprint)) {
+        if ($this->changeFingerprint !== '' && hash_equals($this->changeFingerprint, $snapshot['fingerprint'])) {
             return;
         }
 
-        $this->orderFulfilment = $this->orderFulfilmentPayload($this->freshViewableTablePayload());
-        $this->changeFingerprint = $this->changeDetector->orderFulfilmentFingerprint($this->tableSessionId);
+        $this->orderFulfilment = $snapshot['payload'];
+        $this->changeFingerprint = $snapshot['fingerprint'];
     }
 
     public function sendOrderToKitchenBar(SendOrderToKitchenBarAction $sendOrderToKitchenBar): void

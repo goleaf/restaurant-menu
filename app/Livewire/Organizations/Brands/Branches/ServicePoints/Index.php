@@ -38,6 +38,11 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+/**
+ * @property-read Paginator<int, ServicePoint> $servicePoints
+ * @property-read EloquentCollection<int, AreaNode> $areaNodes
+ * @property-read list<array{area_id: int|null, name: string, type: string|null, type_label: string|null, icon: string|null, is_active: bool, service_point_count: int, service_points: list<array<string, mixed>>}> $floorBoardSections
+ */
 class Index extends Component
 {
     use WithPagination;
@@ -54,6 +59,8 @@ class Index extends Component
 
     #[Url(as: 'q', except: '')]
     public string $servicePointSearch = '';
+
+    public string $areaSearch = '';
 
     #[Url(as: 'zone', except: 'all')]
     public string $filterAreaNodeId = 'all';
@@ -551,6 +558,7 @@ class Index extends Component
             self::SERVICE_POINTS_PER_PAGE,
         );
 
+        $this->statusSelections = array_intersect_key($this->statusSelections, array_fill_keys($servicePoints->getCollection()->pluck('id')->all(), true));
         $servicePoints->getCollection()->each(function (ServicePoint $servicePoint): void {
             $this->statusSelections[$servicePoint->id] ??= $servicePoint->status->value;
         });
@@ -564,22 +572,14 @@ class Index extends Component
     #[Computed]
     public function floorBoardSections(): array
     {
-        $servicePoints = new EloquentCollection($this->servicePoints()->getCollection()->all());
-        $areaIds = $servicePoints
-            ->pluck('area_node_id')
-            ->filter(fn (mixed $areaNodeId): bool => $areaNodeId !== null)
-            ->map(fn (mixed $areaNodeId): int => (int) $areaNodeId)
-            ->unique()
-            ->values();
-
+        $servicePoints = new EloquentCollection($this->servicePoints->getCollection()->all());
         $servicePointsByAreaId = $servicePoints->groupBy(
             fn (ServicePoint $servicePoint): string => $servicePoint->area_node_id === null
                 ? 'none'
                 : (string) $servicePoint->area_node_id,
         );
 
-        $sections = $this->areaNodes()
-            ->whereIn('id', $areaIds->all())
+        $sections = $servicePoints->pluck('areaNode')->filter()->unique('id')->sortBy('sort_order')
             ->map(fn (AreaNode $areaNode): array => [
                 'area_id' => $areaNode->id,
                 'name' => $areaNode->name,
@@ -621,7 +621,7 @@ class Index extends Component
     #[Computed]
     public function floorBoardServicePointCount(): int
     {
-        return array_sum(array_column($this->floorBoardSections(), 'service_point_count'));
+        return array_sum(array_column($this->floorBoardSections, 'service_point_count'));
     }
 
     /**
@@ -630,7 +630,11 @@ class Index extends Component
     #[Computed]
     public function areaNodes(): EloquentCollection
     {
-        return $this->servicePointQueries->areaNodes($this->branch);
+        $selectedIds = collect([$this->areaNodeId, $this->editingAreaNodeId, $this->bulkAreaNodeId, $this->filterAreaNodeId])
+            ->filter(fn (mixed $value): bool => is_int($value) || (is_string($value) && ctype_digit($value)))
+            ->map(fn (mixed $value): int => (int) $value)->unique()->values()->all();
+
+        return $this->servicePointQueries->areaNodes($this->branch, $this->areaSearch, $selectedIds);
     }
 
     /**
@@ -641,7 +645,7 @@ class Index extends Component
     {
         return array_merge(
             [['value' => '', 'label' => __('qr.filters.no_zone')]],
-            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes())),
+            $this->areaNodes->map(fn (AreaNode $node): array => ['value' => (string) $node->id, 'label' => ($node->parent === null ? '' : $node->parent->name.' / ').$node->name])->all(),
         );
     }
 
@@ -656,7 +660,7 @@ class Index extends Component
                 ['value' => 'all', 'label' => __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones')],
                 ['value' => 'none', 'label' => __('qr.filters.no_zone')],
             ],
-            $this->flattenAreaOptions($this->buildAreaTree($this->areaNodes())),
+            $this->areaNodes->map(fn (AreaNode $node): array => ['value' => (string) $node->id, 'label' => ($node->parent === null ? '' : $node->parent->name.' / ').$node->name])->all(),
         );
     }
 
@@ -758,8 +762,8 @@ class Index extends Component
 
     public function render(): View
     {
-        $floorBoardSections = $this->filterLifecycle === 'active' ? $this->floorBoardSections() : [];
-        $servicePointPaginator = $this->servicePoints();
+        $floorBoardSections = $this->filterLifecycle === 'active' ? $this->floorBoardSections : [];
+        $servicePointPaginator = $this->servicePoints;
         $servicePointRows = $servicePointPaginator->getCollection()
             ->map(fn (ServicePoint $servicePoint): array => $this->presentServicePoint($servicePoint))
             ->all();
@@ -971,44 +975,6 @@ class Index extends Component
         if (is_string($this->bulkPrefix)) {
             $this->bulkPrefix = trim($this->bulkPrefix);
         }
-    }
-
-    /**
-     * @param  EloquentCollection<int, AreaNode>  $nodes
-     * @return list<array{id: int, name: string, depth: int, children: list<array>}>
-     */
-    private function buildAreaTree(EloquentCollection $nodes, ?int $parentId = null, int $depth = 0): array
-    {
-        return $nodes
-            ->where('parent_id', $parentId)
-            ->values()
-            ->map(fn (AreaNode $node): array => [
-                'id' => $node->id,
-                'name' => $node->name,
-                'depth' => $depth,
-                'children' => $this->buildAreaTree($nodes, $node->id, $depth + 1),
-            ])
-            ->all();
-    }
-
-    /**
-     * @param  list<array{id: int, name: string, depth: int, children: list<array>}>  $nodes
-     * @return list<array{value: string, label: string}>
-     */
-    private function flattenAreaOptions(array $nodes): array
-    {
-        $options = [];
-
-        foreach ($nodes as $node) {
-            $options[] = [
-                'value' => (string) $node['id'],
-                'label' => str_repeat('— ', $node['depth']).$node['name'],
-            ];
-
-            $options = array_merge($options, $this->flattenAreaOptions($node['children']));
-        }
-
-        return $options;
     }
 
     /**

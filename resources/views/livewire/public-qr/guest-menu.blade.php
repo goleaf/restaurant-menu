@@ -82,19 +82,64 @@
             </x-ui.alert>
         @endif
 
+        <div class="mt-4 grid gap-3 rounded-control border border-border-subtle bg-surface-muted p-3">
+            <label class="grid gap-1 text-sm font-medium text-text-primary">
+                <span>{{ __('menu.guest.search') }}</span>
+                <input type="search" wire:model.live.debounce.250ms="search" placeholder="{{ __('menu.guest.search_placeholder') }}" class="min-h-touch rounded-control border border-border-strong bg-surface px-3 text-base text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus">
+            </label>
+
+            <details class="group">
+                <summary class="flex min-h-touch cursor-pointer items-center justify-between gap-3 rounded-control font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus">
+                    {{ __('menu.guest.filters') }}
+                    <flux:icon name="chevron-down" variant="micro" class="size-4 transition group-open:rotate-180" />
+                </summary>
+                <div class="grid gap-4 pb-1 pt-3 sm:grid-cols-2">
+                    <fieldset>
+                        <legend class="text-sm font-semibold text-text-primary">{{ __('menu.guest.dietary_filter') }}</legend>
+                        <div class="mt-2 grid gap-2">
+                            @foreach ($dietaryOptions as $option)
+                                <label class="flex min-h-touch items-center gap-2 text-sm text-text-muted">
+                                    <input type="checkbox" wire:model.live="dietaryFilters" value="{{ $option['value'] }}" class="size-5 rounded border-border-strong text-accent focus:ring-focus">
+                                    <span>{{ $option['label'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend class="text-sm font-semibold text-text-primary">{{ __('menu.guest.exclude_allergens') }}</legend>
+                        <div class="mt-2 grid gap-2">
+                            @foreach ($allergenOptions as $option)
+                                <label class="flex min-h-touch items-center gap-2 text-sm text-text-muted">
+                                    <input type="checkbox" wire:model.live="excludedAllergens" value="{{ $option['value'] }}" class="size-5 rounded border-border-strong text-accent focus:ring-focus">
+                                    <span>{{ $option['label'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </fieldset>
+                </div>
+                @if ($excludedAllergens !== [])
+                    <p class="mt-2 text-sm leading-5 text-text-muted">{{ __('menu.guest.unknown_allergens_excluded') }}</p>
+                @endif
+            </details>
+
+            @if ($search !== '' || $selectedCategoryId !== null || $dietaryFilters !== [] || $excludedAllergens !== [])
+                <x-ui.button type="button" wire:click="resetMenuFilters" variant="secondary" size="sm">{{ __('menu.guest.reset_filters') }}</x-ui.button>
+            @endif
+        </div>
+
         <nav data-guest-category-nav aria-label="{{ __('menu.guest.categories') }}" class="mt-4 overflow-x-auto overscroll-x-contain pb-1">
             <ul class="flex w-max min-w-full gap-2">
-                @foreach ($availableMenus as $menu)
-                    @foreach ($menu['categories'] as $category)
-                        <li wire:key="guest-menu-category-link-{{ $menu['id'] }}-{{ $category['id'] }}">
-                            <a
-                                href="#guest-menu-category-{{ $menu['id'] }}-{{ $category['id'] }}"
-                                class="inline-flex min-h-touch items-center rounded-control border border-border-subtle bg-surface-muted px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
-                            >
+                <li>
+                    <button type="button" wire:click="$set('selectedCategoryId', null)" aria-pressed="{{ $selectedCategoryId === null ? 'true' : 'false' }}" class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus {{ $selectedCategoryId === null ? 'bg-accent-soft' : 'bg-surface' }}">
+                        {{ __('menu.guest.all_categories') }}
+                    </button>
+                </li>
+                @foreach ($categoryOptions as $category)
+                        <li wire:key="guest-menu-category-link-{{ $category['id'] }}">
+                            <button type="button" wire:click="$set('selectedCategoryId', {{ $category['id'] }})" aria-pressed="{{ $selectedCategoryId === $category['id'] ? 'true' : 'false' }}" class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus {{ $selectedCategoryId === $category['id'] ? 'bg-accent-soft' : 'bg-surface' }}">
                                 {{ $category['name'] }}
-                            </a>
+                            </button>
                         </li>
-                    @endforeach
                 @endforeach
             </ul>
         </nav>
@@ -138,10 +183,19 @@
                                     'opacity-65' => ! $item['is_available'],
                                 ])
                             >
-                                <div class="grid grid-cols-[5.5rem_1fr] gap-3 p-3">
-                                    <div class="flex aspect-square w-full shrink-0 items-center justify-center overflow-hidden rounded-control border border-border-subtle bg-surface-muted">
-                                        @if ($item['image_url'])
-                                            <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="176" height="176" loading="lazy" decoding="async" class="size-full object-cover">
+                                <div class="grid gap-3 p-3 min-[360px]:grid-cols-[5.5rem_1fr]">
+                                    <div class="flex aspect-video w-full shrink-0 items-center justify-center overflow-hidden rounded-control border border-border-subtle bg-surface-muted min-[360px]:aspect-square">
+                                        @if (($item['image_variants']['thumbnail_url'] ?? $item['image_url']) !== null)
+                                            <img
+                                                src="{{ $item['image_variants']['thumbnail_url'] ?? $item['image_url'] }}"
+                                                @if (($item['image_variants']['srcset'] ?? null) !== null) srcset="{{ $item['image_variants']['srcset'] }}" sizes="(min-width: 360px) 88px, calc(100vw - 2.5rem)" @endif
+                                                alt="{{ $item['name'] }}"
+                                                @if (($item['image_variants']['thumbnail_width'] ?? null) !== null) width="{{ $item['image_variants']['thumbnail_width'] }}" @else width="176" @endif
+                                                @if (($item['image_variants']['thumbnail_height'] ?? null) !== null) height="{{ $item['image_variants']['thumbnail_height'] }}" @else height="176" @endif
+                                                loading="lazy"
+                                                decoding="async"
+                                                class="size-full object-cover"
+                                            >
                                         @else
                                             <span class="px-2 text-center text-xs font-semibold text-text-muted">{{ __('menu.item_detail.gallery') }}</span>
                                         @endif
@@ -177,7 +231,10 @@
                                             :dietary-labels="$item['dietary_labels']"
                                         />
 
-                                        <div class="mt-3">
+                                        <div class="mt-3 grid gap-2">
+                                            <x-ui.button id="guest-menu-item-details-{{ $item['id'] }}" type="button" wire:click="openItem({{ $item['id'] }})" variant="secondary" size="sm" full-width icon="eye">
+                                                {{ __('menu.guest.view_details') }}
+                                            </x-ui.button>
                                             @if ($item['is_available'] && $guestCanAddItems && $branchCanAcceptOrders)
                                                 <div class="grid gap-2">
                                                     <div>
@@ -250,7 +307,7 @@
             @empty
                 <x-ui.empty-state
                     icon="book-open"
-                    :heading="__('menu.guest.unavailable')"
+                    :heading="__('menu.guest.no_results')"
                 />
             @endforelse
 
@@ -273,36 +330,76 @@
     @endif
 
     @if ($selectedItem !== null)
-        <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
-            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-dialog bg-white p-4 shadow-elevated dark:bg-zinc-950 sm:rounded-dialog">
+        <div
+            class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/60 px-3 py-0 sm:items-center sm:py-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guest-menu-item-title-{{ $selectedItem['id'] }}"
+            x-data="{ image: 0 }"
+            x-trap.inert.noscroll="true"
+            x-init="$nextTick(() => $refs.close.focus())"
+            @keydown.escape.window="$wire.closeItemSheet().then(() => document.getElementById('guest-menu-item-details-{{ $selectedItem['id'] }}')?.focus())"
+        >
+            <div class="max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-dialog bg-surface p-4 shadow-elevated sm:rounded-dialog">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex min-w-0 items-start gap-3">
                         <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
-                            @if ($selectedItem['image_url'])
-                                <img src="{{ $selectedItem['image_url'] }}" alt="{{ $selectedItem['name'] }}" width="64" height="64" decoding="async" class="size-full object-cover">
+                            @if (($selectedItem['image_variants']['thumbnail_url'] ?? $selectedItem['image_url']) !== null)
+                                <img
+                                    src="{{ $selectedItem['image_variants']['thumbnail_url'] ?? $selectedItem['image_url'] }}"
+                                    @if (($selectedItem['image_variants']['srcset'] ?? null) !== null) srcset="{{ $selectedItem['image_variants']['srcset'] }}" sizes="64px" @endif
+                                    alt="{{ $selectedItem['name'] }}"
+                                    @if (($selectedItem['image_variants']['thumbnail_width'] ?? null) !== null) width="{{ $selectedItem['image_variants']['thumbnail_width'] }}" @else width="64" @endif
+                                    @if (($selectedItem['image_variants']['thumbnail_height'] ?? null) !== null) height="{{ $selectedItem['image_variants']['thumbnail_height'] }}" @else height="64" @endif
+                                    decoding="async"
+                                    class="size-full object-cover"
+                                >
                             @else
                                 <span class="px-2 text-center text-xs font-semibold text-zinc-600 dark:text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                             @endif
                         </div>
 
                         <div class="min-w-0">
-                            <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('menu.item_detail.title') }}</p>
-                            <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $selectedItem['name'] }}</h3>
+                            <p class="text-xs font-medium uppercase text-accent">{{ __('menu.item_detail.title') }}</p>
+                            <h3 id="guest-menu-item-title-{{ $selectedItem['id'] }}" class="mt-1 text-lg font-semibold leading-tight text-text-primary">{{ $selectedItem['name'] }}</h3>
                             <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
 
-                            <x-ui.plain-text :text="$selectedItem['description']" :preserve-lines="false" class="mt-1 line-clamp-2 block text-sm leading-5 text-zinc-600 dark:text-zinc-300" />
                         </div>
                     </div>
 
                     <button
                         type="button"
-                        wire:click="closeItemSheet"
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        x-ref="close"
+                        @click="$wire.closeItemSheet().then(() => document.getElementById('guest-menu-item-details-{{ $selectedItem['id'] }}')?.focus())"
+                        class="inline-flex size-11 shrink-0 items-center justify-center rounded-control border border-border-strong text-text-muted transition hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                         aria-label="{{ __('menu.guest.close') }}"
                     >
                         <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
                 </div>
+
+                @if ($selectedItemGallery !== [])
+                    <div class="relative mt-4 overflow-hidden rounded-card bg-surface-muted">
+                        @foreach ($selectedItemGallery as $imageIndex => $image)
+                            <img
+                                x-show="image === {{ $imageIndex }}"
+                                x-cloak
+                                src="{{ $image['url'] }}"
+                                @if ($image['srcset']) srcset="{{ $image['srcset'] }}" sizes="(min-width: 640px) 38rem, 100vw" @endif
+                                @if ($image['width']) width="{{ $image['width'] }}" @endif
+                                @if ($image['height']) height="{{ $image['height'] }}" @endif
+                                alt="{{ $selectedItem['name'] }} — {{ __('menu.guest.image_count', ['current' => $imageIndex + 1, 'total' => count($selectedItemGallery)]) }}"
+                                class="max-h-[24rem] w-full object-contain"
+                            >
+                        @endforeach
+                        @if (count($selectedItemGallery) > 1)
+                            <button type="button" @click="image = (image - 1 + {{ count($selectedItemGallery) }}) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_previous') }}" class="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-left" class="size-5" /></button>
+                            <button type="button" @click="image = (image + 1) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_next') }}" class="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-right" class="size-5" /></button>
+                        @endif
+                    </div>
+                @endif
+
+                <x-ui.plain-text :text="$selectedItem['description']" class="mt-4 block text-sm leading-6 text-text-muted" />
 
                 <x-menu.item-labels
                     class="mt-4"
@@ -410,6 +507,7 @@
                         />
                     @endforelse
 
+                    @if ($guestCanAddItems && $branchCanAcceptOrders && $selectedItem['is_available'])
                     <label class="grid gap-1 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.guest.comment') }}</span>
                         <textarea
@@ -423,8 +521,12 @@
                             <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
                     </label>
+                    @else
+                        <x-ui.alert tone="info">{{ __('menu.guest.ordering_unavailable') }}</x-ui.alert>
+                    @endif
                 </div>
 
+                @if ($guestCanAddItems && $branchCanAcceptOrders && $selectedItem['is_available'])
                 <x-ui.mobile-bottom-actions class="mt-5" :summary="$selectedItemTotal">
                     <x-ui.button
                         type="button"
@@ -439,6 +541,7 @@
                         <span wire:loading wire:target="saveConfiguredItem">{{ __('menu.guest.adding') }}</span>
                     </x-ui.button>
                 </x-ui.mobile-bottom-actions>
+                @endif
             </div>
         </div>
     @endif

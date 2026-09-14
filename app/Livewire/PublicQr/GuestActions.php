@@ -19,10 +19,18 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class GuestActions extends Component
 {
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = SupportedLocale::normalize($language, $this->language);
+        $this->applyGuestLocale();
+    }
+
     private PublicQrQueryService $publicQrQueries;
 
     #[Locked]

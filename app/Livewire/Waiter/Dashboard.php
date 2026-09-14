@@ -26,6 +26,8 @@ class Dashboard extends Component
 
     private WaiterTableQueryService $waiterQueries;
 
+    private ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds;
+
     /**
      * @var list<array<string, mixed>>
      */
@@ -65,12 +67,34 @@ class Dashboard extends Component
     #[Url(as: 'table', history: true)]
     public ?int $selectedTableSessionId = null;
 
+    #[Url(as: 'branch')]
+    public ?int $selectedBranchId = null;
+
+    public string $branchSearch = '';
+
+    /** @var list<array{value: string, label: string}> */
+    public array $branchOptions = [];
+
+    #[Url(as: 'page', except: 1)]
+    public int $tablePage = 1;
+
+    #[Url(as: 'attention', except: false)]
+    public bool $attentionOnly = false;
+
+    public bool $hasMorePages = false;
+
+    public int $pollingInterval = 1;
+
+    public int $attentionCount = 0;
+
     public function boot(
         BuildWaiterDashboardAction $buildWaiterDashboard,
         WaiterTableQueryService $waiterQueries,
+        ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
     ): void {
         $this->buildWaiterDashboard = $buildWaiterDashboard;
         $this->waiterQueries = $waiterQueries;
+        $this->resolveAccessibleBranchIds = $resolveAccessibleBranchIds;
     }
 
     public function mount(): void
@@ -80,13 +104,24 @@ class Dashboard extends Component
 
     public function refreshDashboard(): void
     {
-        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope());
+        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope(), $this->selectedBranchId, $this->tablePage, $this->branchSearch, $this->attentionOnly);
 
         if (! $payload['has_access']) {
             abort(403);
         }
 
-        $this->branches = $payload['branches'];
+        $this->selectedBranchId = $payload['selected_branch_id'];
+        $this->branchOptions = $payload['branch_options'];
+        $this->tablePage = $payload['page'];
+        $this->hasMorePages = $payload['has_more_pages'];
+        $this->pollingInterval = $payload['polling_interval'];
+        $this->attentionCount = $payload['attention_count'];
+
+        $settingsBranchIds = $this->resolveAccessibleBranchIds->handle($this->currentUser(), SystemPermission::ManageSettings);
+        $this->branches = array_map(fn (array $branch): array => [
+            ...$branch,
+            'can_manage_settings' => $settingsBranchIds->contains((int) $branch['id']),
+        ], $payload['branches']);
         $this->servicePointCount = $payload['service_point_count'];
         $this->activeSessionCount = $payload['active_session_count'];
         $this->newDraftCount = $payload['new_draft_count'];
@@ -96,7 +131,7 @@ class Dashboard extends Component
         $this->refreshedAt = LocalizedDateFormatter::timeWithSeconds(now()) ?? '';
         $this->normalizeSelectedTable();
 
-        $currentWorkIds = $this->currentWorkIds($this->branches);
+        $currentWorkIds = $payload['work_ids'];
 
         if ($this->knownWorkIds !== null) {
             $this->dispatchNewWorkEvents($currentWorkIds, $this->knownWorkIds);
@@ -108,7 +143,32 @@ class Dashboard extends Component
     public function setZoneScope(string $zoneScope): void
     {
         $this->zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
+        $this->tablePage = 1;
         $this->knownWorkIds = null;
+        $this->refreshDashboard();
+    }
+
+    public function updatedSelectedBranchId(): void
+    {
+        $this->tablePage = 1;
+        $this->knownWorkIds = null;
+        $this->refreshDashboard();
+    }
+
+    public function updatedBranchSearch(): void
+    {
+        $this->refreshDashboard();
+    }
+
+    public function updatedAttentionOnly(): void
+    {
+        $this->tablePage = 1;
+        $this->refreshDashboard();
+    }
+
+    public function changeTablePage(int $page): void
+    {
+        $this->tablePage = max(1, $page);
         $this->refreshDashboard();
     }
 
@@ -171,10 +231,7 @@ class Dashboard extends Component
     ): void {
         $user = $this->currentUser();
         $branchIds = $resolveAccessibleBranchIds
-            ->handle($user, SystemPermission::ViewOrders)
-            ->merge($resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
-            ->unique()
-            ->values();
+            ->handle($user, SystemPermission::ManageSettings);
 
         if (! $branchIds->contains($branchId)) {
             abort(403);
@@ -268,53 +325,6 @@ class Dashboard extends Component
         }
 
         return null;
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $branches
-     * @return array{
-     *     new_drafts: list<int>,
-     *     waiter_calls: list<int>,
-     *     bill_requests: list<int>,
-     *     ready_items: list<int>
-     * }
-     */
-    private function currentWorkIds(array $branches): array
-    {
-        return [
-            'new_drafts' => $this->branchItemIds($branches, 'drafts'),
-            'waiter_calls' => $this->branchItemIds($branches, 'waiter_calls'),
-            'bill_requests' => $this->branchItemIds($branches, 'bill_requests'),
-            'ready_items' => $this->branchItemIds($branches, 'ready_items'),
-        ];
-    }
-
-    /**
-     * @param  list<array<string, mixed>>  $branches
-     * @return list<int>
-     */
-    private function branchItemIds(array $branches, string $payloadKey): array
-    {
-        $ids = [];
-
-        foreach ($branches as $branch) {
-            $items = $branch[$payloadKey] ?? [];
-
-            if (! is_array($items)) {
-                continue;
-            }
-
-            foreach ($items as $item) {
-                if (is_array($item) && isset($item['id'])) {
-                    $ids[] = (int) $item['id'];
-                }
-            }
-        }
-
-        $ids = array_values(array_unique($ids));
-        sort($ids, SORT_NUMERIC);
-
-        return $ids;
     }
 
     /**

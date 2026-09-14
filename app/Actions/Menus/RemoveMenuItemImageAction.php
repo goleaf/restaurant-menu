@@ -4,72 +4,47 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
-use App\Actions\Media\RemoveLocalImageAction;
+use App\Enums\MenuOperationKind;
 use App\Models\Branch;
 use App\Models\MenuItem;
-use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
+use App\Models\User;
 use RuntimeException;
 
 final class RemoveMenuItemImageAction
 {
     public function __construct(
-        private readonly RemoveLocalImageAction $removeLocalImage,
+        private readonly RunMenuItemImageOperationAction $runOperation,
     ) {}
 
-    public function handle(Branch $branch, MenuItem $item): MenuItem
-    {
-        $scopedItem = $this->branchItem($branch, $item);
-        $oldPrimaryPath = $scopedItem->image;
+    public function handle(
+        Branch $branch,
+        MenuItem $item,
+        ?string $expectedImageIdentity = null,
+        ?string $requestId = null,
+        ?User $actor = null,
+    ): MenuItem {
+        return $this->runOperation->handle(
+            $branch, $item, null, MenuOperationKind::ImageRemove,
+            $expectedImageIdentity, $requestId, $actor,
+            function (MenuItem $currentItem): array {
+                $oldPrimaryPath = $currentItem->image;
+                $promotedImage = $currentItem->galleryImages()
+                    ->select(['id', 'menu_item_id', 'path', 'sort_order'])
+                    ->lockForUpdate()
+                    ->first();
 
-        $this->removeLocalImage->handle(
-            oldPath: $oldPrimaryPath,
-            persist: function () use ($branch, $item, $oldPrimaryPath): void {
-                DB::transaction(function () use ($branch, $item, $oldPrimaryPath): void {
-                    $currentItem = $this->branchItem($branch, $item, lockForUpdate: true);
+                $currentItem->image = $promotedImage?->path;
 
-                    if ($currentItem->image !== $oldPrimaryPath) {
-                        throw new RuntimeException('The primary image changed before it could be removed.');
-                    }
+                if ($currentItem->save() !== true) {
+                    throw new RuntimeException('The primary image reference could not be saved.');
+                }
 
-                    $promotedImage = $currentItem->galleryImages()
-                        ->select(['id', 'menu_item_id', 'path', 'sort_order'])
-                        ->lockForUpdate()
-                        ->first();
+                if ($promotedImage !== null && $promotedImage->delete() !== true) {
+                    throw new RuntimeException('The promoted gallery image could not be removed.');
+                }
 
-                    $currentItem->image = $promotedImage?->path;
-
-                    if ($currentItem->save() !== true) {
-                        throw new RuntimeException('The primary image reference could not be saved.');
-                    }
-
-                    if ($promotedImage !== null && $promotedImage->delete() !== true) {
-                        throw new RuntimeException('The promoted gallery image could not be removed.');
-                    }
-                });
+                return filled($oldPrimaryPath) ? [$oldPrimaryPath] : [];
             },
         );
-
-        return $scopedItem->refresh()->load('galleryImages');
-    }
-
-    private function branchItem(Branch $branch, MenuItem $item, bool $lockForUpdate = false): MenuItem
-    {
-        $query = MenuItem::query()
-            ->select(['id', 'menu_id', 'image'])
-            ->whereKey($item->id)
-            ->whereHas('menu', fn ($menuQuery) => $menuQuery->where('branch_id', $branch->id));
-
-        if ($lockForUpdate) {
-            $query->lockForUpdate();
-        }
-
-        $scopedItem = $query->first();
-
-        if (! $scopedItem instanceof MenuItem) {
-            throw new InvalidArgumentException('The menu item does not belong to the selected branch.');
-        }
-
-        return $scopedItem;
     }
 }

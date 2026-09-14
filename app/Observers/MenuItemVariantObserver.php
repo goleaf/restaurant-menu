@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
+use App\Actions\Menus\MarkMenuCopySourceChangedAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\MenuItemVariant;
@@ -13,6 +14,7 @@ class MenuItemVariantObserver
 {
     public function __construct(
         private readonly ForgetBranchCacheAction $forgetBranchCache,
+        private readonly MarkMenuCopySourceChangedAction $markCopySourceChanged,
     ) {}
 
     public function created(MenuItemVariant $menuItemVariant): void
@@ -46,6 +48,8 @@ class MenuItemVariantObserver
         if ($itemId === null) {
             return;
         }
+
+        $this->markCopySourceChanged->handle($itemId);
 
         $menuId = MenuItem::query()->select('menu_id')->whereKey($itemId)->value('menu_id');
         $branchId = is_numeric($menuId)

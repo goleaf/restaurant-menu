@@ -10,6 +10,7 @@ use App\Exceptions\InvalidSqliteBackupException;
 use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\SqliteRestoreRequestLock;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Contracts\Foundation\MaintenanceMode;
 use Illuminate\Database\Schema\Blueprint;
@@ -30,7 +31,12 @@ beforeEach(function (): void {
         'testing.sqlite_restore.original_local_root' => config('filesystems.disks.local.root'),
         'testing.sqlite_restore.temporary_local_root' => $temporaryLocalRoot,
         'filesystems.disks.local.root' => $temporaryLocalRoot,
+        'cache.stores.file.path' => $temporaryLocalRoot.'/cache',
+        'cache.stores.file.lock_path' => $temporaryLocalRoot.'/cache-locks',
+        'session.files' => $temporaryLocalRoot.'/sessions',
     ]);
+    app()->instance(SqliteRestoreRequestLock::class, new SqliteRestoreRequestLock($temporaryLocalRoot.'/requests.lock'));
+    File::ensureDirectoryExists($temporaryLocalRoot.'/sessions');
     app(FilesystemManager::class)->forgetDisk('local');
 
     app()->instance(MaintenanceMode::class, new class implements MaintenanceMode
@@ -76,7 +82,7 @@ afterEach(function (): void {
     }
 });
 
-test('a compatible sqlite backup restores data and retains a safety snapshot', function (): void {
+test('a compatible sqlite backup restores data and retains a safety snapshot', function (string $cacheDriver, string $sessionDriver): void {
     $sandbox = sqliteRestoreSandbox('compatible');
     $candidateArtifactsBefore = sqliteRestoreCandidateArtifacts();
     $originalDefault = config('database.default');
@@ -95,15 +101,20 @@ test('a compatible sqlite backup restores data and retains a safety snapshot', f
             ->create(['name' => 'Name in verified backup']);
 
         config()->set('database.default', $sandbox['connection']);
-        config()->set('cache.default', 'database');
+        config()->set('cache.default', $cacheDriver);
         config()->set('session.connection', $sandbox['connection']);
-        config()->set('session.driver', 'database');
+        config()->set('session.driver', $sessionDriver);
         app(SessionManager::class)->forgetDrivers();
 
         Cache::put('stale-after-restore', 'cached before snapshot', now()->addHour());
         $sessionHandler = app(SessionManager::class)->driver()->getHandler();
+        $this->travel(2)->days();
         $sessionHandler->write('session-that-must-be-invalidated', serialize(['user_id' => $restoredUser->id]));
 
+        if ($sessionDriver === 'file') {
+            touch(config('session.files').'/session-that-must-be-invalidated', now()->timestamp);
+        }
+        $this->travelBack();
         $sourceBackup = app(CreateConsistentSqliteBackupAction::class)->handle();
 
         User::on($sandbox['connection'])
@@ -153,7 +164,7 @@ test('a compatible sqlite backup restores data and retains a safety snapshot', f
             File::delete($result['safety_backup_path']);
         }
     }
-});
+})->with([['database', 'database'], ['file', 'file']]);
 
 test('an incompatible sqlite schema is rejected without changing live data', function (): void {
     $sandbox = sqliteRestoreSandbox('incompatible-live');
@@ -402,3 +413,73 @@ function sqliteRestoreCandidateArtifacts(): array
         ->values()
         ->all();
 }
+
+test('a failed restore and failed rollback keep maintenance active', function (): void {
+    $sandbox = sqliteRestoreSandbox('double-failure');
+    $originalDefault = config('database.default');
+    $backupDirectory = app(FilesystemManager::class)
+        ->disk('local')
+        ->path('backups/sqlite');
+    $backupFilesBefore = collect(File::glob($backupDirectory.'/*.sqlite'));
+
+    try {
+        Artisan::call('migrate', [
+            '--database' => $sandbox['connection'],
+            '--force' => true,
+        ]);
+
+        config()->set('database.default', $sandbox['connection']);
+
+        $restoredUser = User::factory()
+            ->connection($sandbox['connection'])
+            ->create(['name' => 'Older backup state']);
+        $sourceBackup = app(CreateConsistentSqliteBackupAction::class)->handle();
+
+        User::on($sandbox['connection'])
+            ->whereKey($restoredUser->id)
+            ->update(['name' => 'Current live state']);
+
+        $auditLog = Mockery::mock(RecordAuditLogAction::class);
+        $auditLog->shouldReceive('handle')
+            ->once()
+            ->andReturnUsing(function () use ($backupDirectory, $sourceBackup): never {
+                foreach (File::glob($backupDirectory.'/*.sqlite') as $path) {
+                    if ($path !== $sourceBackup) {
+                        File::delete($path);
+                    }
+                }
+                throw new RuntimeException('Simulated post-replacement failure.');
+            });
+        app()->instance(RecordAuditLogAction::class, $auditLog);
+
+        $actor = User::factory()->make([
+            'id' => 999_999,
+            'email' => 'restore-operator@example.test',
+        ]);
+
+        expect(fn () => app(RestoreSqliteBackupAction::class)->handle(
+            uploadedPath: $sourceBackup,
+            actor: $actor,
+            reason: 'Testing automatic rollback',
+        ))->toThrow(RuntimeException::class, 'SQLite restoration failed and the automatic rollback could not be completed.');
+
+        DB::purge($sandbox['connection']);
+
+        expect(app(MaintenanceMode::class)->active())->toBeTrue()
+            ->and(app(SqliteRestoreRequestLock::class)->requiresRecovery())->toBeTrue();
+    } finally {
+        app()->forgetInstance(RecordAuditLogAction::class);
+        config()->set('database.default', $originalDefault);
+        DB::purge($sandbox['connection']);
+        config()->set("database.connections.{$sandbox['connection']}", null);
+        File::deleteDirectory($sandbox['directory']);
+
+        if (isset($sourceBackup)) {
+            File::delete($sourceBackup);
+        }
+
+        collect(File::glob($backupDirectory.'/*.sqlite'))
+            ->diff($backupFilesBefore)
+            ->each(fn (string $path): bool => File::delete($path));
+    }
+});

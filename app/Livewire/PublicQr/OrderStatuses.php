@@ -24,11 +24,19 @@ use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
 use Livewire\Attributes\Isolate;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 #[Isolate]
 class OrderStatuses extends Component
 {
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = SupportedLocale::normalize($language, $this->language);
+        $this->applyLocale();
+    }
+
     private PublicQrQueryService $publicQrQueries;
 
     private ActiveGuestAccessService $activeGuestAccess;

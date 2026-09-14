@@ -9,7 +9,7 @@
     'status' => null,
 ])
 
-<header {{ $attributes->class('flex flex-col gap-4 border-b border-border-subtle pb-5 md:flex-row md:items-end md:justify-between') }}>
+<header {{ $attributes->class('flex min-w-0 flex-col gap-4 border-b border-border-subtle pb-4 sm:pb-5 xl:flex-row xl:items-end xl:justify-between') }}>
     <div class="min-w-0">
         @if ($breadcrumbs !== [])
             <nav aria-label="{{ __($breadcrumbLabel) }}">
@@ -37,14 +37,14 @@
             <p class="text-sm font-medium text-text-muted">{{ __($context ?? $eyebrow) }}</p>
         @endif
 
-        <div class="mt-1 flex min-w-0 items-center gap-3">
+        <div class="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5">
             @if ($icon)
-                <span class="flex size-10 shrink-0 items-center justify-center rounded-control bg-surface-muted text-text-primary">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface text-accent">
                     <flux:icon :name="$icon" variant="mini" class="size-5" />
                 </span>
             @endif
 
-            <h1 class="min-w-0 text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-text-primary">{{ __($title) }}</h1>
+            <h1 class="content-safe min-w-0 flex-1 text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-text-primary">{{ __($title) }}</h1>
 
             @if ($status)
                 <x-ui.status-badge :tone="$status['tone'] ?? 'muted'" :icon="$status['icon'] ?? null">
@@ -63,7 +63,7 @@
     </div>
 
     @isset($actions)
-        <div class="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <div class="grid w-full gap-2 xs:grid-cols-2 xl:flex xl:w-auto xl:shrink-0 xl:flex-wrap xl:justify-end [&>*]:w-full xl:[&>*]:w-auto">
             {{ $actions }}
         </div>
     @endisset

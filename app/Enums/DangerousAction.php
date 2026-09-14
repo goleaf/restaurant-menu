@@ -19,6 +19,8 @@ enum DangerousAction: string
     case PaymentCorrection = 'payment_correction';
     case CloseTableWithUnpaidAmount = 'close_table_with_unpaid_amount';
     case DeleteOrDeactivateMenuItem = 'delete_or_deactivate_menu_item';
+    case DeleteMenu = 'delete_menu';
+    case DeleteMenuCategory = 'delete_menu_category';
     case ClearCacheAll = 'clear_cache_all';
     case DownloadBackup = 'download_backup';
     case DownloadMediaBackup = 'download_media_backup';
@@ -41,6 +43,8 @@ enum DangerousAction: string
             self::PaymentCorrection => __('ui.confirmations.payment_correction.title'),
             self::CloseTableWithUnpaidAmount => __('ui.confirmations.close_unpaid_session.title'),
             self::DeleteOrDeactivateMenuItem => __('ui.confirmations.delete_or_deactivate_menu_item.title'),
+            self::DeleteMenu => __('menu.operations.delete_menu_title'),
+            self::DeleteMenuCategory => __('menu.operations.delete_category_title'),
             self::ClearCacheAll => __('ui.confirmations.clear_cache_all.title'),
             self::DownloadBackup => __('ui.confirmations.download_backup.title'),
             self::DownloadMediaBackup => __('ui.confirmations.download_media_backup.title'),
@@ -65,6 +69,7 @@ enum DangerousAction: string
             self::PaymentCorrection => __('ui.confirmations.payment_correction.description'),
             self::CloseTableWithUnpaidAmount => __('ui.confirmations.close_unpaid_session.description'),
             self::DeleteOrDeactivateMenuItem => __('ui.confirmations.delete_or_deactivate_menu_item.description'),
+            self::DeleteMenu, self::DeleteMenuCategory => __('menu.operations.delete_help'),
             self::ClearCacheAll => __('ui.confirmations.clear_cache_all.description'),
             self::DownloadBackup => __('ui.confirmations.download_backup.description'),
             self::DownloadMediaBackup => __('ui.confirmations.download_media_backup.description'),

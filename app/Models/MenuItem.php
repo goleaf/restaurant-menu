@@ -146,6 +146,18 @@ class MenuItem extends Model
             ->orderBy('modifier_groups.id');
     }
 
+    /** The caller loads translations inside the same read transaction as these attributes. */
+    public function contentFingerprint(): string
+    {
+        return hash('sha256', serialize([
+            $this->only(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents',
+                'allergens', 'dietary_labels', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order']),
+            $this->translations->sortBy('language_code')->map(fn (MenuItemTranslation $translation): array => [
+                $translation->language_code, $translation->name, $translation->description,
+            ])->values()->all(),
+        ]));
+    }
+
     public function imageUrl(): ?string
     {
         if (! is_string($this->image) || blank($this->image)) {

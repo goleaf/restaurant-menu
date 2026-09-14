@@ -221,6 +221,9 @@ final class Variants extends BranchMenuComponent
 
     public function render(): View
     {
+        $this->authorizeBranchAbility('manageMenu');
+        $this->refreshMutationCapabilities();
+
         return view('livewire.organizations.brands.branches.menu.variants', [
             'menuOptions' => $this->menuOptions(),
             'itemOptions' => $this->itemOptions(),

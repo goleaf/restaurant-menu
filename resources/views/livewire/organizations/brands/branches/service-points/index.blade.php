@@ -15,6 +15,10 @@
         </div>
     </header>
 
+    <div class="max-w-xl">
+        <flux:input wire:model.live.debounce.300ms="areaSearch" :label="__('ui.service_points.search_areas')" :description="__('ui.service_points.area_results_limited')" maxlength="100" />
+    </div>
+
     @if ($canManageServicePoints && $filterLifecycle === 'active')
         <x-ui.card
             :heading="__('ui.organizations.brands.branches.service_points.index.sag_3_dobavte_stoly')"

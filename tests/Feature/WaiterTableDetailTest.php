@@ -28,8 +28,9 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
-use Mockery\MockInterface;
 
 beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
@@ -219,30 +220,15 @@ test('waiter table detail refresh shows newly added draft item without websocket
         ->assertSet('draftReview.total', '€25.50');
 });
 
-test('unchanged polling sections do not rebuild the complete waiter table graph', function () {
+test('unchanged polling sections retain the same snapshot fingerprint', function () {
     [$organization, , , $tableSession] = createPrompt53TableDetailScenario();
     $waiter = User::factory()->create();
     attachPrompt53Waiter($waiter, $organization);
-
-    $this->mock(BuildWaiterTableDetailAction::class, function (MockInterface $mock): void {
-        $mock->shouldNotReceive('handle');
-    });
-
-    Livewire::actingAs($waiter)
-        ->test(DraftReview::class, [
-            'tableSessionId' => $tableSession->id,
-            'initialDraftReview' => ['manual_order' => ['can_add' => false]],
-        ])
-        ->call('refreshDraftReview')
-        ->assertOk();
-
-    Livewire::actingAs($waiter)
-        ->test(OrderFulfilment::class, [
-            'tableSessionId' => $tableSession->id,
-            'initialOrderFulfilment' => ['draft' => []],
-        ])
-        ->call('refreshOrderFulfilment')
-        ->assertOk();
+    foreach ([[DraftReview::class, 'refreshDraftReview'], [OrderFulfilment::class, 'refreshOrderFulfilment']] as [$section, $method]) {
+        $component = Livewire::actingAs($waiter)->test($section, ['tableSessionId' => $tableSession->id]);
+        $fingerprint = $component->get('changeFingerprint');
+        $component->call($method)->assertSet('changeFingerprint', $fingerprint)->assertOk();
+    }
 });
 
 test('payment-only access cannot invoke waiter draft mutations directly', function () {
@@ -408,3 +394,132 @@ function attachPrompt53PaymentViewer(User $user, Organization $organization): Ro
 
     return $role;
 }
+
+test('draft polling sees same-second edits and replacement rows', function (string $change): void {
+    $this->freezeTime();
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    [$guest, , $draft] = createPrompt53Draft($session);
+    $component = Livewire::actingAs($user)->test(DraftReview::class, ['tableSessionId' => $session->id]);
+    if ($change === 'guest') {
+        $guest->update(['guest_name' => 'Changed guest']);
+        $expected = 'Changed guest';
+    } else {
+        $item = $draft->items()->firstOrFail();
+        if ($change === 'replace') {
+            $item->delete();
+            DraftOrderItem::factory()->for($draft, 'draftOrder')->for($guest, 'guest')->create(['item_name' => 'Replacement item']);
+            $expected = 'Replacement item';
+        } else {
+            $item->update(['comment' => 'Same second comment']);
+            $expected = 'Same second comment';
+        }
+    }
+    $component->call('refreshDraftReview')->assertSee($expected);
+})->with(['guest', 'item', 'replace']);
+
+test('fulfilment polling sees edits to an older order even below the latest timestamp', function (): void {
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    $older = Order::factory()->for($session)->create(['updated_at' => now()->subDays(2)]);
+    Order::factory()->for($session)->create(['updated_at' => now()]);
+    $component = Livewire::actingAs($user)->test(OrderFulfilment::class, ['tableSessionId' => $session->id]);
+    $older->forceFill(['status' => OrderStatus::Cancelled, 'updated_at' => now()->subDay()])->save();
+    $component->call('refreshOrderFulfilment');
+    expect(collect($component->get('orderFulfilment.orders'))->firstWhere('id', $older->id)['status_value'])->toBe(OrderStatus::Cancelled->value);
+});
+
+test('initial section snapshots cannot mask a newer database state on the next poll', function (string $section, string $initial, string $method): void {
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    [, , $draft] = createPrompt53Draft($session);
+    $component = Livewire::actingAs($user)->test($section, ['tableSessionId' => $session->id, $initial => ['draft' => [], 'manual_order' => ['can_add' => false]]]);
+    $component->call($method)->assertSet(lcfirst(substr($initial, 7)).'.draft.id', $draft->id);
+})->with([
+    [DraftReview::class, 'initialDraftReview', 'refreshDraftReview'],
+    [OrderFulfilment::class, 'initialOrderFulfilment', 'refreshOrderFulfilment'],
+]);
+
+test('polling observes rollback without retaining an uncommitted fingerprint', function (): void {
+    $this->freezeTime();
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    [$guest] = createPrompt53Draft($session);
+    $originalName = $guest->guest_name;
+    $component = Livewire::actingAs($user)->test(DraftReview::class, ['tableSessionId' => $session->id]);
+    DB::beginTransaction();
+    try {
+        $guest->update(['guest_name' => 'Uncommitted guest']);
+        $component->call('refreshDraftReview')->assertSee('Uncommitted guest');
+    } finally {
+        DB::rollBack();
+    }
+    $component->call('refreshDraftReview')->assertSee($originalName)->assertDontSee('Uncommitted guest');
+});
+
+test('polling fixed fixture measures reads and model hydration', function (string $section, string $method): void {
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    createPrompt53Draft($session);
+    $component = Livewire::actingAs($user)->test($section, ['tableSessionId' => $session->id]);
+    $hydrated = 0;
+    $measuring = true;
+    Event::listen('eloquent.retrieved: *', function () use (&$hydrated, &$measuring): void {
+        if ($measuring) {
+            $hydrated++;
+        }
+    });
+    $queries = countDatabaseQueries(fn () => $component->call($method)->assertOk());
+    $measuring = false;
+    expect($queries)->toBe(32)->and($hydrated)->toBe(28);
+})->with([[DraftReview::class, 'refreshDraftReview'], [OrderFulfilment::class, 'refreshOrderFulfilment']]);
+
+test('a mutation after payload preparation remains visible to the following poll', function (): void {
+    $this->freezeTime();
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    [$guest] = createPrompt53Draft($session);
+    $reader = app(BuildWaiterTableDetailAction::class);
+    $reads = 0;
+    $mock = Mockery::mock(BuildWaiterTableDetailAction::class);
+    $mock->shouldReceive('handle')->andReturnUsing(function (User $actor, TableSession $table) use ($reader, $guest, &$reads): array {
+        $payload = $reader->handle($actor, $table);
+        if (++$reads === 1) {
+            $guest->update(['guest_name' => 'Arrived after snapshot']);
+        }
+
+        return $payload;
+    });
+    app()->instance(BuildWaiterTableDetailAction::class, $mock);
+    $component = Livewire::actingAs($user)->test(DraftReview::class, ['tableSessionId' => $session->id]);
+    $component->assertDontSee('Arrived after snapshot')->call('refreshDraftReview')->assertSee('Arrived after snapshot');
+});
+
+test('polling rechecks revoked access even when its presentation was unchanged', function (string $section, string $method): void {
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    $component = Livewire::actingAs($user)->test($section, ['tableSessionId' => $session->id]);
+    $organization->users()->updateExistingPivot($user->id, ['status' => OrganizationUserStatus::Suspended->value]);
+    $component->call($method)->assertForbidden();
+})->with([[DraftReview::class, 'refreshDraftReview'], [OrderFulfilment::class, 'refreshOrderFulfilment']]);
+
+test('section reads preserve the canonical prepared payload contract', function (string $section, array $keys): void {
+    [$organization, , , $session] = createPrompt53TableDetailScenario();
+    $user = User::factory()->create();
+    attachPrompt53Waiter($user, $organization);
+    createPrompt53Draft($session);
+    $reader = app(BuildWaiterTableDetailAction::class);
+    $full = $reader->handle($user, $session)['table'];
+    $partial = $reader->handle($user, $session, $section)['table'];
+    expect($partial)->toEqual(collect($full)->only($keys)->all());
+})->with([
+    ['draft', ['branch', 'guest_sections', 'draft', 'manual_order', 'current_draft_total', 'total']],
+    ['fulfilment', ['draft', 'orders']],
+]);

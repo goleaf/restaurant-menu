@@ -2,6 +2,7 @@
 
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Actions\Waiter\BuildWaiterDashboardAction;
+use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\DraftOrderStatus;
 use App\Enums\KitchenTicketItemStatus;
 use App\Enums\OrderStatus;
@@ -131,7 +132,7 @@ test('waiter dashboard shows branch service points sessions and sent drafts', fu
         ->assertSee('wire:poll.visible.1s="refreshDashboard"', false);
 });
 
-test('waiter inactivity uses loaded branches with a constant query budget', function (int $sessionsPerBranch): void {
+test('waiter inactivity uses the loaded selected branch with a constant query budget', function (int $sessionsPerBranch): void {
     $this->freezeTime();
     [$organization, $brand, $branch] = createPrompt52Branch();
     $otherBranch = Branch::factory()->for($organization)->for($brand)->create(['timezone' => 'Asia/Tokyo']);
@@ -151,10 +152,10 @@ test('waiter inactivity uses loaded branches with a constant query budget', func
     }
 
     $queries = countDatabaseQueries(function () use ($waiter, $branch, $sessionsPerBranch): void {
-        $payload = app(BuildWaiterDashboardAction::class)->handle($waiter);
+        $payload = app(BuildWaiterDashboardAction::class)->handle($waiter, selectedBranchId: $branch->id);
 
-        expect($payload['branches'])->toHaveCount(2)
-            ->and($payload['active_session_count'])->toBe($sessionsPerBranch * 2);
+        expect($payload['branches'])->toHaveCount(1)
+            ->and($payload['active_session_count'])->toBe($sessionsPerBranch);
 
         foreach ($payload['branches'] as $branchPayload) {
             $warningMinutes = $branchPayload['id'] === $branch->id ? 90 : 45;
@@ -585,3 +586,119 @@ function enablePrompt52Permission(Role $role, SystemPermission $permissionCode):
 
     $role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);
 }
+
+test('temporary closure requires fresh settings permission and branch scope', function (string $scenario): void {
+    [$organization, $brand, $branch] = createPrompt52Branch();
+    $branch->update(['is_temporarily_closed' => true]);
+    $waiter = User::factory()->create();
+    $role = attachPrompt52Waiter($waiter, $organization);
+    if ($scenario !== 'view only') {
+        enablePrompt52Permission($role, SystemPermission::ManageSettings);
+    }
+    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
+    if ($scenario === 'view only') {
+        $component->assertDontSee('wire:click="disableTemporaryClosure(', false);
+    } else {
+        $component->assertSee('wire:click="disableTemporaryClosure(', false);
+    }
+    if ($scenario === 'revoked') {
+        $permission = Permission::query()->where('code', SystemPermission::ManageSettings->value)->firstOrFail();
+        $role->permissions()->updateExistingPivot($permission->id, ['enabled' => false]);
+    }
+    if ($scenario === 'foreign tenant') {
+        [, , $branch] = createPrompt52Branch('Foreign');
+        $branch->update(['is_temporarily_closed' => true]);
+    }
+    if ($scenario === 'unassigned branch') {
+        BranchUser::factory()->for($organization)->for($branch)->for($waiter)->create(['status' => OrganizationUserStatus::Active]);
+        $branch = Branch::factory()->for($organization)->for($brand)->create(['is_temporarily_closed' => true]);
+    }
+    $component->call('disableTemporaryClosure', $branch->id);
+    if ($scenario === 'authorized') {
+        $component->assertHasNoErrors();
+        expect($branch->fresh()->is_temporarily_closed)->toBeFalse();
+    } else {
+        $component->assertForbidden();
+        expect($branch->fresh()->is_temporarily_closed)->toBeTrue();
+    }
+})->with(['view only', 'authorized', 'revoked', 'foreign tenant', 'unassigned branch']);
+
+test('batched waiter access preserves overrides assignments and membership scoping', function (string $mode): void {
+    [$organization, , $branch] = createPrompt52Branch();
+    $user = User::factory()->create();
+    $role = attachPrompt52Waiter($user, $organization);
+    enablePrompt52Permission($role, SystemPermission::ManageSettings);
+    [$otherOrganization, , $otherBranch] = createPrompt52Branch('Other');
+    attachPrompt52Waiter($user, $otherOrganization);
+    $permission = Permission::query()->where('code', SystemPermission::ManageSettings->value)->firstOrFail();
+    if ($mode === 'deny' || $mode === 'grant') {
+        $user->permissionOverrides()->attach($permission, ['enabled' => $mode === 'grant']);
+    }
+    if ($mode === 'assigned') {
+        BranchUser::factory()->for($organization)->for($branch)->for($user)->create(['status' => OrganizationUserStatus::Active]);
+    }
+    if ($mode === 'revoked') {
+        $organization->users()->updateExistingPivot($user->id, ['status' => OrganizationUserStatus::Suspended]);
+    }
+    $resolver = app(ResolveWaiterAccessibleBranchIdsAction::class);
+    $permissions = [SystemPermission::ManageSettings, SystemPermission::ViewOrders, SystemPermission::ManagePayments];
+    $batched = $resolver->handleMany($user, $permissions);
+    foreach ($permissions as $permission) {
+        expect($batched[$permission->value]->all())->toBe($resolver->handle($user, $permission)->all());
+    }
+})->with(['normal', 'deny', 'grant', 'assigned', 'revoked']);
+
+test('waiter dashboard bounds the selected branch and service point page while honoring polling settings', function (): void {
+    [$organization, $brand, $branch] = createPrompt52Branch(branchName: 'A branch');
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+    BranchSetting::factory()->for($branch)->create(['polling_interval_seconds' => 12]);
+    ServicePoint::factory()->count(60)->for($branch)->create();
+    $other = Branch::factory()->for($organization)->for($brand)->create(['name' => 'B branch']);
+    ServicePoint::factory()->count(60)->for($other)->create();
+    $hydrated = 0;
+    Event::listen('eloquent.retrieved: *', function () use (&$hydrated): void {
+        $hydrated++;
+    });
+    $payload = [];
+    $queries = countDatabaseQueries(function () use ($waiter, &$payload): void {
+        $payload = app(BuildWaiterDashboardAction::class)->handle($waiter);
+    });
+    expect($queries)->toBeLessThanOrEqual(35)->and($hydrated)->toBeLessThanOrEqual(70)
+        ->and(strlen(json_encode($payload)))->toBeLessThan(50_000);
+    expect($payload['branches'])->toHaveCount(1)
+        ->and($payload['branches'][0]['service_points'])->toHaveCount(50)
+        ->and($payload['service_point_count'])->toBe(60);
+    Livewire::actingAs($waiter)->test(WaiterDashboard::class)->assertSee('wire:poll.visible.12s="refreshDashboard"', false);
+});
+
+test('off-page work changes branch counters and notifications and is reachable through attention filtering', function (): void {
+    [$organization, , $branch] = createPrompt52Branch();
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+    ServicePoint::factory()->count(50)->for($branch)->sequence(fn ($sequence) => ['name' => sprintf('A table %03d', $sequence->index)])->create();
+    $point = ServicePoint::factory()->for($branch)->create(['name' => 'Z urgent table']);
+    $session = TableSession::factory()->forServicePoint($point)->active()->create();
+    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class)->assertDontSee('Z urgent table');
+    $guest = TableSessionGuest::factory()->for($session)->create();
+    WaiterCall::factory()->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $component->call('refreshDashboard')->assertSet('waiterCallCount', 1)->assertSet('attentionCount', 1)
+        ->assertDispatched('waiter-called')->assertDontSee('Z urgent table');
+    $component->set('attentionOnly', true)->assertSee('Z urgent table')->assertSet('servicePointCount', 51);
+});
+
+test('dashboard branch selection search paging and polling remain scoped and fresh', function (): void {
+    [$organization, $brand, $first] = createPrompt52Branch(branchName: 'A first');
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+    $second = Branch::factory()->for($organization)->for($brand)->create(['name' => 'B second']);
+    BranchSetting::factory()->for($second)->create(['polling_interval_seconds' => 17]);
+    ServicePoint::factory()->count(51)->for($second)->sequence(fn ($sequence) => ['name' => sprintf('Second %03d', $sequence->index)])->create();
+    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
+    $component->set('selectedBranchId', $second->id)->assertSee('wire:poll.visible.17s="refreshDashboard"', false)
+        ->assertSet('servicePointCount', 51)->assertSee('Second 000')->assertDontSee('Second 050');
+    $component->call('changeTablePage', 2)->assertSee('Second 050')->assertDontSee('Second 000');
+    $component->set('branchSearch', 'A first')->assertSet('selectedBranchId', $second->id);
+    $foreign = Branch::factory()->create();
+    $component->set('selectedBranchId', $foreign->id)->assertForbidden();
+});

@@ -4,57 +4,54 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
+use App\Enums\MenuOperationKind;
 use App\Models\Branch;
 use App\Models\MenuItem;
 use App\Models\MenuItemImage;
-use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
+use App\Models\User;
 use RuntimeException;
 
 final class PromoteMenuItemImageAction
 {
-    public function handle(Branch $branch, MenuItem $item, MenuItemImage $image): MenuItem
-    {
-        if ((int) $image->menu_item_id !== (int) $item->id) {
-            throw new InvalidArgumentException('The image does not belong to the selected menu item.');
-        }
+    public function __construct(
+        private readonly RunMenuItemImageOperationAction $runOperation,
+    ) {}
 
-        return DB::transaction(function () use ($branch, $item, $image): MenuItem {
-            $scopedItem = MenuItem::query()
-                ->select(['id', 'menu_id', 'image'])
-                ->whereKey($item->id)
-                ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
-                ->lockForUpdate()
-                ->first();
-            $scopedImage = MenuItemImage::query()
-                ->select(['id', 'menu_item_id', 'path', 'sort_order'])
-                ->whereKey($image->id)
-                ->where('menu_item_id', $item->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (! $scopedItem instanceof MenuItem || ! $scopedImage instanceof MenuItemImage) {
-                throw new InvalidArgumentException('The image does not belong to the selected branch and menu item.');
-            }
-
-            $oldPrimaryPath = $scopedItem->image;
-            $scopedItem->image = $scopedImage->path;
-
-            if ($scopedItem->save() !== true) {
-                throw new RuntimeException('The primary image reference could not be saved.');
-            }
-
-            if (filled($oldPrimaryPath)) {
-                $scopedImage->path = $oldPrimaryPath;
-
-                if ($scopedImage->save() !== true) {
-                    throw new RuntimeException('The gallery image reference could not be saved.');
+    public function handle(
+        Branch $branch,
+        MenuItem $item,
+        MenuItemImage|int $image,
+        ?string $expectedImageIdentity = null,
+        ?string $requestId = null,
+        ?User $actor = null,
+    ): MenuItem {
+        return $this->runOperation->handle(
+            $branch, $item, $image instanceof MenuItemImage ? $image->id : $image,
+            MenuOperationKind::ImagePromote, $expectedImageIdentity, $requestId, $actor,
+            function (MenuItem $currentItem, ?MenuItemImage $currentImage): array {
+                if (! $currentImage instanceof MenuItemImage) {
+                    throw new RuntimeException('The gallery image reference is missing.');
                 }
-            } elseif ($scopedImage->delete() !== true) {
-                throw new RuntimeException('The promoted gallery image could not be removed.');
-            }
 
-            return $scopedItem->refresh()->load('galleryImages');
-        });
+                $oldPrimaryPath = $currentItem->image;
+                $currentItem->image = $currentImage->path;
+
+                if ($currentItem->save() !== true) {
+                    throw new RuntimeException('The primary image reference could not be saved.');
+                }
+
+                if (filled($oldPrimaryPath)) {
+                    $currentImage->path = $oldPrimaryPath;
+
+                    if ($currentImage->save() !== true) {
+                        throw new RuntimeException('The gallery image reference could not be saved.');
+                    }
+                } elseif ($currentImage->delete() !== true) {
+                    throw new RuntimeException('The promoted gallery image could not be removed.');
+                }
+
+                return [];
+            },
+        );
     }
 }

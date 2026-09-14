@@ -7,10 +7,11 @@
             </flux:button>
         </div>
         <div class="mt-4 grid gap-3">
-            <flux:input wire:model="modifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
             <x-menu.name-translations
                 id-prefix="create-modifier-group"
                 model="modifierGroupTranslations"
+ base-name-model="modifierGroupName"
                 :language-options="$languageOptions"
             />
             <div class="grid gap-3 sm:grid-cols-2">
@@ -47,10 +48,11 @@
                         @endforelse
                     </flux:select>
 
-                    <flux:input wire:model="modifierOptionName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
                     <x-menu.name-translations
                         id-prefix="create-modifier-option"
                         model="modifierOptionTranslations"
+ base-name-model="modifierOptionName"
                         :language-options="$languageOptions"
                     />
 
@@ -109,11 +111,12 @@
                 <div wire:key="modifier-group-{{ $modifierGroup['id'] }}" class="px-4 py-4">
                     @if ($editingModifierGroupId === $modifierGroup['id'])
                         <form wire:submit="updateModifierGroup" class="grid gap-3 md:grid-cols-[1fr_100px_100px_120px_auto] md:items-end">
-                            <flux:input wire:model="editingModifierGroupName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
                             <x-menu.name-translations
                                 class="md:col-span-full"
                                 id-prefix="edit-modifier-group-{{ $modifierGroup['id'] }}"
                                 model="editingModifierGroupTranslations"
+ base-name-model="editingModifierGroupName"
                                 :language-options="$languageOptions"
                             />
                             <flux:input wire:model="editingModifierGroupMinSelect" :label="__('ui.organizations.brands.branches.menu.index.min')" type="number" required min="0" max="50" />
@@ -170,11 +173,12 @@
                             <div wire:key="modifier-option-{{ $modifierOption['id'] }}" class="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60">
                                 @if ($editingModifierOptionId === $modifierOption['id'])
                                     <form wire:submit="updateModifierOption" class="grid gap-3 md:grid-cols-[1fr_140px_120px_auto] md:items-end">
-                                        <flux:input wire:model="editingModifierOptionName" :label="__('reports.csv.name')" type="text" required maxlength="160" />
+
                                         <x-menu.name-translations
                                             class="md:col-span-full"
                                             id-prefix="edit-modifier-option-{{ $modifierOption['id'] }}"
                                             model="editingModifierOptionTranslations"
+ base-name-model="editingModifierOptionName"
                                             :language-options="$languageOptions"
                                         />
 

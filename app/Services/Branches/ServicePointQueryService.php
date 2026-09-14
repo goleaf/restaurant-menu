@@ -86,24 +86,20 @@ final class ServicePointQueryService
         return $servicePoints->simplePaginate($perPage);
     }
 
-    /** @return EloquentCollection<int, AreaNode> */
-    public function areaNodes(Branch $branch): EloquentCollection
+    /**
+     * @param  list<int>  $selectedIds
+     * @return EloquentCollection<int, AreaNode>
+     */
+    public function areaNodes(Branch $branch, string $search = '', array $selectedIds = []): EloquentCollection
     {
-        return $branch->areaNodes()
-            ->select([
-                'id',
-                'branch_id',
-                'parent_id',
-                'type',
-                'name',
-                'icon',
-                'sort_order',
-                'is_active',
-            ])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
+        $query = $branch->areaNodes()->select(['id', 'branch_id', 'parent_id', 'type', 'name', 'icon', 'sort_order', 'is_active'])
+            ->with('parent:id,name')->orderBy('sort_order')->orderBy('name')->orderBy('id');
+        $selected = $selectedIds === [] ? new EloquentCollection : (clone $query)->whereKey(array_slice($selectedIds, 0, 4))->get();
+        $matches = (clone $query)->whereNotIn('id', $selected->modelKeys())
+            ->when(trim($search) !== '', fn ($query) => $query->where('name', 'like', '%'.mb_substr(trim($search), 0, 100).'%'))
+            ->limit(100 - $selected->count())->get();
+
+        return $selected->merge($matches);
     }
 
     public function findForBranch(Branch $branch, int $servicePointId, bool $withTrashed = false): ServicePoint

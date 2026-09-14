@@ -8,6 +8,7 @@ use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Support\MenuDeletionContext;
 use RuntimeException;
 
 class MenuObserver
@@ -37,8 +38,10 @@ class MenuObserver
      */
     public function deleted(Menu $menu): void
     {
-        $this->softDeleteCategories($menu);
-        $this->softDeleteRemainingItems($menu);
+        if (! MenuDeletionContext::contains($menu)) {
+            $this->softDeleteCategories($menu);
+            $this->softDeleteRemainingItems($menu);
+        }
         $this->forgetGuestMenu($menu);
     }
 

@@ -14,6 +14,10 @@ class SyncMenuTranslationsAction
     public function handle(Menu $menu, array $translations): void
     {
         foreach (SupportedLocale::values() as $languageCode) {
+            if (! array_key_exists($languageCode, $translations)) {
+                continue;
+            }
+
             $menu->translations()->updateOrCreate(
                 ['language_code' => $languageCode],
                 ['name' => PlainText::required($translations[$languageCode] ?? null, 160, squish: true)],

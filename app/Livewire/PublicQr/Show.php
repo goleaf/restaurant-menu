@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\App;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -127,6 +128,18 @@ class Show extends Component
         $this->language = $this->branchId > 0
             ? $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $this->language)
             : SupportedLocale::normalize($this->language);
+
+        $this->applyGuestLocale();
+        $this->message = __('guest.table.enter_name');
+        $this->dispatch('guest-locale-updated', language: $this->language);
+    }
+
+    #[On('guest-locale-updated')]
+    public function synchronizeGuestLocale(string $language): void
+    {
+        $this->language = $this->branchId > 0
+            ? $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $language)
+            : SupportedLocale::normalize($language, $this->language);
 
         $this->applyGuestLocale();
         $this->message = __('guest.table.enter_name');

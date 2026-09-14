@@ -1,4 +1,32 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+<!-- END GITHUB_PUSH_ONLY -->
+
 # Restaurant Menu completion progress
+
+## Current product integration evidence — 2026-09-14
+
+Implementation and all full local gates are complete; final addressed staging, local commit and ordinary push are the remaining delivery step. No production deployment or GitHub operation other than the forthcoming ordinary push is authorized. Publication evidence is appended only after the actual command returns.
+
+- Delivered the shared visual system, local Noto Sans, focused multilingual catalogue, independent translation persistence, conflict protection, search, scoped availability/move/duplicate controls, and bounded resumable deletion.
+- Completed image decode limits/orientation/metadata removal, responsive variants, upload previews/progress/removal/order/primary controls, and durable upload/removal/promotion receipts. Failed cleanup resumes safely without deleting the catalogue; actual rendered-button replay tests preserve editor input and files.
+- Delivered lazy guest galleries and browse-only details, localized search/category/allergen/diet filters and coherent language changes without losing basket, guest identity or open navigation state. Existing full restaurant flow completes through manual settlement and table closure.
+- Corrected settings-only reopening, revoked reads, same-snapshot polling and fail-closed SQLite restore/request coordination. Final independent review has no unresolved blocker.
+- Full backend: 2,351 tests / 51,962 assertions. WebKit: 10 tests / 591 assertions. Four-process backend: 2,351 tests / 51,962 assertions. Coverage: 2,351 tests / 51,962 assertions, 93.8%. Every run has zero failures/skips; all dependency, format/static, translation and build gates exit 0. Details and source digest are in testing.md.
+- Current catalogue fixture: 852 to 187 retrieved models; 191,519 to 94,261 prepared JSON bytes; five-run local median 35.17 to 10.883 ms. Branch-cache invalidation: 11 to 1 query. Waiter and image measurements plus explicit limitations remain in performance.md.
+- All 89 migrations pass an isolated roundtrip, default seeding twice and config/route/event/view caches pass. The authorized local forward migration used consistent private SQLite Online Backup snapshots and the exclusive request barrier: ledger 88 to 89, tables 61 to 63, integrity OK/FK violations zero, exact row counts and hashes preserved for all 60 pre-existing non-migration tables. No application refresh, seeding or production migration occurred.
+- All 175 Markdown policy blocks, 314 local links, 52 model factories and eight three-provider skill mirrors pass the final audit. Historical GitHub references are archival and grant no authorization; workflows are unchanged.
+- Composer's first 300-second test timeout and the process-launcher descriptor limitation are recorded as diagnostic limitations, not successful checks. The final suites ran through one owned shell without terminating unowned processes.
+
+- Final documentation/architecture checks pass 16 tests / 1,055 assertions; strict Composer validation, isolated Blade compilation, Markdown/link/skill inventories and `git diff --check` also pass. Final post-suite source edits only remove blank-line whitespace and preserve Composer empty-map notation; package arrays and executable behavior are unchanged.
+
+## 2026-09-14 — product delivery starting record
+
+- Starting local main: `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`, clean before this task. The previous transport/bulk implementation is already present and will not be repeated. GitHub is now restricted to ordinary final push; all remote issue/check/publication references below are archival.
+- Added the single GitHub policy block to all 174 tracked Markdown files, preserving skill frontmatter and provider mirrors. Updated active AGENTS/ROADMAP instructions to use local requirements and execution evidence. The current 12-stage plan and file ownership are in IMPLEMENTATION_PLAN.md.
+- Reused installed Boost, Chrome DevTools and Playwright. Impeccable loaded existing PRODUCT/DESIGN context; no external design credentials or alternative frontend are required. Media, safety and shared-design implementation streams are assigned; root owns catalogue/guest integration and shared files.
+- Prior baseline evidence (not the future product gate): the completed eighth-run backend/coverage suite passed 2,171 tests / 49,933 assertions, browser WebKit 5 / 433, zero failures/skips; canonical coverage 94.0%. Those runs preceded this product implementation and are not claimed as final validation of subsequent changes.
+- At this starting checkpoint, product implementation and integrated checks were in progress. Final execution and publication evidence is recorded above; this entry is historical.
 
 ## 2026-09-14 — eighth audit: area/table transport and bulk allocation
 

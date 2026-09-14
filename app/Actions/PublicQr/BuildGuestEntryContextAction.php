@@ -125,7 +125,7 @@ final readonly class BuildGuestEntryContextAction
                 'can_accept_orders' => $openingStatus['can_accept_orders'],
                 'service_point_name' => $servicePoint->name,
                 'service_point_display_number' => $servicePoint->display_number,
-                'service_point_type' => $servicePoint->type->label(),
+                'service_point_type' => __(sprintf('reports.service_point_types.%s', $servicePoint->type->value)),
                 'area_name' => $servicePoint->areaNode?->name,
                 'short_code' => $qrCode->short_code,
             ],

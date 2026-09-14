@@ -6,6 +6,7 @@ namespace App\Observers;
 
 use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Actions\Branches\ForgetBranchCacheAction;
+use App\Actions\Menus\MarkMenuCopySourceChangedAction;
 use App\Enums\AuditLogAction;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -17,6 +18,7 @@ class MenuItemObserver
     public function __construct(
         private readonly ForgetBranchCacheAction $forgetBranchCache,
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly MarkMenuCopySourceChangedAction $markCopySourceChanged,
     ) {}
 
     /**
@@ -63,6 +65,7 @@ class MenuItemObserver
 
     private function forgetGuestMenu(MenuItem $menuItem): void
     {
+        $this->markCopySourceChanged->handle($menuItem->id);
         $this->forgetForMenuId($menuItem->menu_id);
 
         $originalMenuId = $menuItem->getOriginal('menu_id');

@@ -165,7 +165,7 @@ test('temporary closed mode blocks guest draft item creation and sending draft t
     expect($branch->fresh()->is_temporarily_closed)->toBeTrue();
 });
 
-test('waiter can disable temporary closed mode from dashboard', function () {
+test('waiter with manage settings permission can disable temporary closed mode from dashboard', function () {
     Carbon::setTestNow(Carbon::parse('2026-06-04 10:00:00', 'Europe/Vilnius'));
 
     [$organization, , $branch] = createPrompt103Branch(withOwner: false);
@@ -176,7 +176,13 @@ test('waiter can disable temporary closed mode from dashboard', function () {
     ]);
     $waiter = User::factory()->create(['name' => 'Prompt 103 Waiter']);
 
-    attachPrompt103Waiter($waiter, $organization);
+    $waiterRole = attachPrompt103Waiter($waiter, $organization);
+    $manageSettings = Permission::query()
+        ->where('code', SystemPermission::ManageSettings->value)
+        ->firstOrFail();
+    $waiterRole->permissions()->syncWithoutDetachingOrFail([
+        $manageSettings->id => ['enabled' => true],
+    ]);
 
     Livewire::actingAs($waiter)
         ->test(WaiterDashboard::class)

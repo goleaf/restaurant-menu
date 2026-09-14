@@ -553,3 +553,35 @@ function attachServicePointCrudWaiter(User $user, Organization $organization): v
         ],
     ]);
 }
+
+test('service point screen bounds searchable area choices and reuses page hydration', function (int $areaCount): void {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    AreaNode::factory()->count($areaCount)->for($branch)->create();
+    ServicePoint::factory()->count(30)->for($branch)->create();
+    $hydrated = 0;
+    Event::listen('eloquent.retrieved: *', function () use (&$hydrated): void {
+        $hydrated++;
+    });
+    $component = null;
+    $queries = countDatabaseQueries(function () use ($organization, $brand, $branch, $manager, &$component): void {
+        $component = Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'));
+    });
+    expect($queries)->toBeLessThanOrEqual(70)->and($hydrated)->toBeLessThanOrEqual(120)
+        ->and(strlen($component->html()))->toBeLessThan(500_000)
+        ->and($component->get('areaOptions'))->toHaveCount(101);
+})->with([150, 1500]);
+
+test('area search reaches omitted children and preserves selected zones for bulk creation', function (): void {
+    [$organization, $brand, $branch, $manager] = createServicePointCrudBranch();
+    grantServicePointCrudPermission($manager, $organization);
+    AreaNode::factory()->count(101)->for($branch)->create(['name' => 'A common zone']);
+    $parent = AreaNode::factory()->for($branch)->create(['name' => 'Z parent']);
+    $child = AreaNode::factory()->for($branch)->create(['parent_id' => $parent->id, 'name' => 'Z child']);
+    $component = Livewire::actingAs($manager)->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'));
+    $component->set('areaSearch', 'Z child')->assertSee('Z parent / Z child')
+        ->set('bulkAreaNodeId', (string) $child->id)->set('areaSearch', 'no match');
+    expect(collect($component->get('areaOptions'))->pluck('value')->all())->toContain((string) $child->id);
+    $component->set('bulkFrom', 1)->set('bulkTo', 2)->call('previewBulkCreate')->call('confirmBulkCreate')->assertHasNoErrors();
+    expect(ServicePoint::query()->where('branch_id', $branch->id)->where('area_node_id', $child->id)->count())->toBe(2);
+});

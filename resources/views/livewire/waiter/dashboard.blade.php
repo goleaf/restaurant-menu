@@ -1,8 +1,8 @@
 <section
     data-page="waiter-dashboard"
     data-waiter-sounds
-    wire:poll.visible.1s="refreshDashboard"
-    class="flex h-full w-full flex-1 flex-col gap-5"
+    wire:poll.visible.{{ $pollingInterval }}s="refreshDashboard"
+    class="flex h-full w-full min-w-0 flex-1 flex-col gap-5"
 >
     <x-ui.page-header
         :eyebrow="__('layout.restaurant_workspace')"
@@ -67,6 +67,25 @@
         </x-slot:actions>
     </x-ui.page-header>
 
+    <div class="grid gap-3 sm:grid-cols-2">
+        <flux:input wire:model.live.debounce.300ms="branchSearch" :label="__('ui.waiter.dashboard.search_branches')" maxlength="100" />
+        <flux:select wire:model.live="selectedBranchId" :label="__('ui.waiter.dashboard.branch_scope')">
+            @forelse ($branchOptions as $option)
+                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+            @empty
+                <option value="">{{ __('ui.waiter.dashboard.branch_scope') }}</option>
+            @endforelse
+        </flux:select>
+    </div>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <flux:checkbox wire:model.live="attentionOnly" :label="__('ui.waiter.dashboard.needs_attention', ['count' => $attentionCount])" />
+        <p class="text-sm text-text-muted">{{ __('ui.waiter.dashboard.visible_page_scope') }}</p>
+        <div class="flex gap-2">
+            <flux:button wire:click="changeTablePage({{ $tablePage - 1 }})" :disabled="$tablePage <= 1" icon="chevron-left">{{ __('pagination.previous') }}</flux:button>
+            <flux:button wire:click="changeTablePage({{ $tablePage + 1 }})" :disabled="! $hasMorePages" icon-trailing="chevron-right">{{ __('pagination.next') }}</flux:button>
+        </div>
+    </div>
+
     @if ($waiterCallMessage || $tableActionMessage)
         <div class="space-y-2" aria-live="polite">
             @if ($waiterCallMessage)
@@ -130,6 +149,7 @@
                                     · {{ __('ui.waiter.dashboard.zakryto_do') }} {{ $branch['temporary_closed_until_label'] }}
                                 @endif
 
+                                @if ($branch['can_manage_settings'])
                                 <x-slot:actions>
                                     <flux:button
                                         class="min-h-touch"
@@ -143,6 +163,7 @@
                                         {{ __('ui.waiter.dashboard.otkryt_zakazy') }}
                                     </flux:button>
                                 </x-slot:actions>
+                                @endif
                             </x-ui.alert>
                         @endif
 

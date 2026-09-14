@@ -12,6 +12,10 @@
     "license": "MIT",
     "require": {
         "php": ">=8.5.0 <8.6.0",
+        "ext-exif": "*",
+        "ext-gd": "*",
+        "ext-pdo_sqlite": "*",
+        "ext-sqlite3": "*",
         "ext-zip": "*",
         "dompdf/dompdf": "^3.1.6",
         "laravel/fortify": "^1.38",

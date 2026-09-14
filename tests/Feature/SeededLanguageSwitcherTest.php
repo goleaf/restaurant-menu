@@ -84,7 +84,10 @@ test('seeded guest language switcher persists and renders translated ui and menu
         ->assertSet('language', 'en')
         ->assertSeeText('Your name')
         ->set('language', 'lt')
-        ->assertSet('language', 'lt');
+        ->assertSet('language', 'lt')
+        ->assertDispatched('guest-locale-updated', language: 'lt')
+        ->dispatch('guest-locale-updated', language: 'ru')
+        ->assertSet('language', 'ru');
 
     Livewire::test(GuestEntry::class, [
         'token' => $qrCode->public_token,

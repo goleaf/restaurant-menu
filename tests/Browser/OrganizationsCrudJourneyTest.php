@@ -130,6 +130,22 @@ test('demo owner can complete the organization administration browser journey', 
         assertOrganizationsBrowserPage($page, $pageSelector);
     }
 
+    $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false));
+    clickOrganizationsBrowserElement($page, '[wire\\:model\\.live="form.serviceChargeEnabled"]');
+    $page->assertEnabled('input[wire\\:model="form.serviceChargePercent"]');
+    $page->fill('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
+        ->fill('input[wire\\:model="form.serviceChargePercent"]', '12.50');
+    clickOrganizationsBrowserElement($page, 'form[wire\\:submit="save"] button[type="submit"]');
+    $page->assertSee(__('ui.livewire.organizations.brands.branches.settings.settings_saved'))
+        ->assertNoJavaScriptErrors();
+
+    expect($branch->fresh()->public_name)->toBe('Browser verified restaurant')
+        ->and($branch->settings()->sole()->service_charge_basis_points)->toBe(1250);
+
+    $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $brand, $branch], false))
+        ->assertValue('input[wire\\:model="form.publicName"]', 'Browser verified restaurant')
+        ->assertValue('input[wire\\:model="form.serviceChargePercent"]', '12.50');
+
     $page
         ->resize(1440, 1000)
         ->navigate(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch], false))

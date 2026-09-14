@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use Closure;
+use Illuminate\Support\Facades\DB;
 
 final class RemoveLocalImageAction
 {
@@ -18,6 +19,14 @@ final class RemoveLocalImageAction
     public function handle(?string $oldPath, Closure $persist): void
     {
         $persist();
-        $this->deleteLocalMediaFile->handle($oldPath);
+
+        $deleteOldFile = fn () => $this->deleteLocalMediaFile->handle($oldPath);
+        $connection = DB::connection();
+
+        if ($connection->transactionLevel() > 0) {
+            $connection->afterCommit($deleteOldFile);
+        } else {
+            $deleteOldFile();
+        }
     }
 }

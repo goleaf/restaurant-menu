@@ -1,5 +1,9 @@
 # Restaurant Menu completion decisions
 
+## 2026-09-14 — atomic settings and local schema reconciliation
+
+A reproduced late-step failure justifies one aggregate Save Action and a dedicated Form; child Actions remain reusable. Shared media participates in the default SQLite transaction lifecycle. Do not rewrite valid models or deployed migrations to increase adoption of article examples. The local database had one pending existing allergen-snapshot migration; after a private consistent backup and isolated rollback/reapply proof, apply that migration forward only. This is local runtime maintenance, not production deployment. Test pass rate and measured coverage remain separate.
+
 These decisions record repository-completion work beginning on 2026-08-23 and its dated follow-ups. Long-lived architecture decisions remain in [`decisions/`](decisions/); [`requirements.md`](requirements.md) remains the sole product contract.
 
 ## 2026-09-14 — report freshness, credential boundaries and reproducible delivery

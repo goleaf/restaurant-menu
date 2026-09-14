@@ -1,5 +1,9 @@
 # Performance
 
+## Branch settings reads — 2026-09-14
+
+An identical isolated direct-mount fixture measured **17 SQL queries** for the component at `930059f` and **14** after the Form/query-service refactor. Three repeated branch refreshes were removed. The permanent regression holds the 14-query budget for both no opening intervals and a full 28-interval week, while verifying populated settings and schedule state. The aggregate Save intentionally adds a fresh branch lookup and authorization before writes; this measurement is mount-only and does not claim a full-request latency improvement or reduced save query count.
+
 ## Repository audit (2026-09-14)
 
 Report-cache versioning prioritizes correct invalidation under overlapping writes. The same single-branch fixture measures analytics cold/fresh/stale query counts of **16/9/9 before** and **22/10/10 after**; restaurant dashboard counts are **74/63/63 before** and **80/64/64 after**. The extra warm query batches all branch generations: both one and twenty branches require one metadata SELECT. Cold builds include first-generation initialization and the bounded cleanup check; no stale-hit foreground rebuild or cleanup is introduced. These are isolated SQLite query counts, not production latency measurements.

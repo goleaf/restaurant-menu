@@ -1,5 +1,13 @@
 # Restaurant Menu completion progress
 
+## 2026-09-14 — second audit: atomic settings and local migration
+
+- Reproduced and fixed partial branch configuration saves, premature old-image deletion, duplicate weekdays and the inactive dependent percentage input. Added a validated Form, one authorized aggregate transaction, rollback-aware shared media, corrected Form error bindings and immediate dependent-field switches.
+- Direct mount queries decreased 17→14. Regression budgets remain 14 for empty/full weekly schedules. Direct aggregate tests reject foreign settings, changed tenant ownership, revoked membership and archived branches; failed saves can be corrected/retried without leaked replacement files.
+- Audited all 49 Eloquent models/factories and 88 migrations. Boost found one unapplied local migration; a private consistent SQLite backup was verified by integrity/FK checks and an isolated restore, then the reviewed migration completed successfully. Ledger 88/88, no pending/unknown; orders/items/tickets/ticket-items remain 19/49/13/23. The private backup is `storage/app/private/backups/sqlite/a34c1d66-1399-4442-ac25-0d1115433fb2.sqlite` (0600); no production deployment occurred.
+- Focused 42/1,248 and independent aggregate/query 9/45 pass. Final browser **5/424** and four-process backend **1,771/47,713** pass with zero failures or skips (26.17s / 129.83s). Canonical sequential coverage passes the same **1,771/47,713** without failures/skips in **799.62s**, with **93.8% application coverage**. All **221 Actions** execute at **94.86% statement coverage**. The 1,006-file source digest remains unchanged throughout the final gates; publication follows these verified results.
+- Formatting, static analysis, audits/build, translations and isolated cache compilation pass. Markdown links and all eight skills were reviewed; provider skill mirrors agree. Final source digest/evidence is in `testing.md`.
+
 ## Repository-wide audit and publication — 2026-09-14
 
 - Completed model/migration, validation/Action, cache/query and local skill/documentation audits. Added report-generation fences, separate-cache transaction-end invalidation and bounded expiration cleanup; preserved scope, locale and existing report ages.

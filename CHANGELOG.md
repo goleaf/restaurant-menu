@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-09-14 — atomic branch configuration and media lifecycle
+
+- Move branch settings validation into `BranchSettingsForm` and persist the complete submission through an authorized transaction-owning Action. Reject duplicate weekdays and malformed transport values.
+- Preserve old images until the outer transaction commits; remove new files on rollback and retain committed replacements if later cleanup fails.
+- Remove repeated branch refreshes and component relationship queries; prepare schedule data through the existing query service. React immediately when schedule/service-charge controls enable dependent fields.
+- Add rollback, nested media lifecycle, direct authorization, validation/retry and real browser save regressions. Update current architecture/security/schema documentation and the shared workflow skill.
+- Safely apply the sole pending local allergen-snapshot migration after a checked backup; preserve all existing rows. Final gate evidence is recorded in `docs/testing.md`.
+- Verify all 1,771 backend tests and five browser scenarios with zero failures/skips; application coverage is 93.8%, and all 221 Actions execute. Mount queries decrease from 17 to 14.
+
 ## 2026-09-14 — repository audit, cache concurrency and authentication guards
 
 - Fence report snapshots with atomic per-branch generations, including separate cache-connection commit/rollback handling. Prune expired report records in batches of up to 500 during actual builds, rate-limited to once per minute.

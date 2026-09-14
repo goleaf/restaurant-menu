@@ -5,32 +5,22 @@ declare(strict_types=1);
 namespace App\Livewire\Organizations\Brands\Branches;
 
 use App\Actions\Branches\EnsureBranchSettingsAction;
-use App\Actions\Branches\GetBranchOpeningStatusAction;
-use App\Actions\Branches\UpdateBranchCoverImageAction;
-use App\Actions\Branches\UpdateBranchLogoAction;
-use App\Actions\Branches\UpdateBranchOpeningHoursAction;
-use App\Actions\Branches\UpdateBranchPublicProfileAction;
-use App\Actions\Branches\UpdateBranchSettingsAction;
-use App\Actions\Branches\UpdateBranchTemporaryClosureAction;
-use App\Actions\Media\StoreLocalImageAction;
+use App\Actions\Branches\SaveBranchConfigurationAction;
 use App\Actions\TableSessions\CleanupInactiveTableSessionsAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\BranchServiceMode;
 use App\Enums\SupportedCurrency;
 use App\Enums\SupportedLocale;
+use App\Livewire\Forms\BranchSettingsForm;
 use App\Models\Branch;
 use App\Models\BranchSetting;
 use App\Models\Brand;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Branches\BranchSettingsQueryService;
-use App\Support\MoneyFormatter;
-use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -50,75 +40,11 @@ class Settings extends Component
 
     public int $settingsId;
 
-    public bool $requireWaiterConfirmationForOrders = true;
-
-    public bool $allowGuestCreatedSessions = true;
-
-    public bool $allowWaiterOpenedSessions = true;
-
-    public bool $allowGuestInviteLinks = true;
-
-    public bool $guestJoinRequiresApproval = true;
-
-    public int $pollingIntervalSeconds = 1;
-
-    public int $inactivityWarningMinutes = 45;
-
-    public int $pendingSessionExpireMinutes = 30;
-
-    public string $defaultLanguage = 'en';
-
-    public string $defaultCurrency = 'EUR';
-
-    public bool $serviceChargeEnabled = false;
-
-    public string $serviceChargePercent = '0.00';
-
-    public bool $tipsEnabled = false;
-
-    public string $orderFlowMode = 'waiter_confirmation';
-
-    /**
-     * @var list<string>
-     */
-    public array $serviceModes = [];
-
-    public string $publicName = '';
-
-    public string $publicDescription = '';
-
-    public string $phone = '';
-
-    public string $email = '';
-
-    public string $websiteUrl = '';
-
-    public string $instagramUrl = '';
-
-    public string $facebookUrl = '';
-
-    public string $tiktokUrl = '';
+    public BranchSettingsForm $form;
 
     public ?string $currentLogoUrl = null;
 
     public ?string $currentCoverImageUrl = null;
-
-    public mixed $publicLogo = null;
-
-    public mixed $coverImage = null;
-
-    public bool $temporarilyClosed = false;
-
-    public string $temporaryClosedReason = '';
-
-    public string $temporaryClosedUntil = '';
-
-    public bool $openingHoursConfigured = false;
-
-    /**
-     * @var list<array{day_of_week: int, label: string, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>
-     */
-    public array $openingHours = [];
 
     public bool $saved = false;
 
@@ -161,83 +87,16 @@ class Settings extends Component
 
         Gate::forUser($this->currentUser())->authorize('manageSettings', $branch);
 
-        $this->fillFromSettings($ensureBranchSettings->handle($branch));
-        $this->fillFromBranchProfile($this->branch);
-        $this->fillFromTemporaryClosure($this->branch);
-        $this->fillFromOpeningHours($this->branch);
+        $this->populateForm($branch, $ensureBranchSettings->handle($branch));
     }
 
-    public function save(
-        UpdateBranchSettingsAction $updateBranchSettings,
-        UpdateBranchPublicProfileAction $updateBranchPublicProfile,
-        UpdateBranchOpeningHoursAction $updateBranchOpeningHours,
-        UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
-        UpdateBranchLogoAction $updateBranchLogo,
-        UpdateBranchCoverImageAction $updateBranchCoverImage,
-    ): void {
+    public function save(SaveBranchConfigurationAction $saveConfiguration): void
+    {
         $this->authorizeSettingsManagement();
-        $this->defaultCurrency = SupportedCurrency::clean($this->defaultCurrency);
-
-        $validated = $this->validate($this->rules(), $this->imageValidationMessages());
-        $openingHoursConfigured = (bool) $validated['openingHoursConfigured'];
-        $openingHours = $openingHoursConfigured
-            ? $this->validatedOpeningHours($validated['openingHours'] ?? [])
-            : [];
-
-        $settings = $updateBranchSettings->handle(
-            $this->findSettings(),
-            [
-                'require_waiter_confirmation_for_orders' => (bool) $validated['requireWaiterConfirmationForOrders'],
-                'allow_guest_created_sessions' => (bool) $validated['allowGuestCreatedSessions'],
-                'allow_waiter_opened_sessions' => (bool) $validated['allowWaiterOpenedSessions'],
-                'allow_guest_invite_links' => (bool) $validated['allowGuestInviteLinks'],
-                'guest_join_requires_approval' => (bool) $validated['guestJoinRequiresApproval'],
-                'polling_interval_seconds' => (int) $validated['pollingIntervalSeconds'],
-                'inactivity_warning_minutes' => (int) $validated['inactivityWarningMinutes'],
-                'pending_session_expire_minutes' => (int) $validated['pendingSessionExpireMinutes'],
-                'default_language' => SupportedLocale::normalize($validated['defaultLanguage']),
-                'default_currency' => SupportedCurrency::normalize($validated['defaultCurrency']),
-                'service_charge_enabled' => (bool) $validated['serviceChargeEnabled'],
-                'service_charge_percent' => $validated['serviceChargePercent'],
-                'tips_enabled' => (bool) $validated['tipsEnabled'],
-                'order_flow_mode' => $validated['orderFlowMode'],
-                'service_modes' => $validated['serviceModes'],
-            ],
-        );
-
-        $profilePayload = [
-            'public_name' => $validated['publicName'],
-            'public_description' => $validated['publicDescription'],
-            'phone' => $validated['phone'],
-            'email' => $validated['email'],
-            'website_url' => $validated['websiteUrl'],
-            'instagram_url' => $validated['instagramUrl'],
-            'facebook_url' => $validated['facebookUrl'],
-            'tiktok_url' => $validated['tiktokUrl'],
-        ];
-
-        if ($this->publicLogo instanceof UploadedFile) {
-            $profilePayload['logo_path'] = $updateBranchLogo->handle($this->branch, $this->publicLogo)->logo_path;
-        }
-
-        if ($this->coverImage instanceof UploadedFile) {
-            $profilePayload['cover_image_path'] = $updateBranchCoverImage->handle($this->branch, $this->coverImage)->cover_image_path;
-        }
-
-        $branch = $updateBranchPublicProfile->handle($this->branch, $profilePayload);
-        $branch = $updateBranchTemporaryClosure->handle(
-            branch: $branch,
-            isTemporarilyClosed: (bool) $validated['temporarilyClosed'],
-            reason: $validated['temporaryClosedReason'],
-            closedUntil: $validated['temporaryClosedUntil'],
-        );
-        $updateBranchOpeningHours->handle($branch, $openingHours, $openingHoursConfigured);
-
-        $this->fillFromSettings($settings);
-        $this->fillFromBranchProfile($branch);
-        $this->fillFromTemporaryClosure($branch);
-        $this->fillFromOpeningHours($branch);
-        $this->reset('publicLogo', 'coverImage');
+        $data = $this->form->validatedConfiguration();
+        $result = $saveConfiguration->handle($this->currentUser(), $this->branch, $this->settingsId, $data);
+        $this->populateForm($result['branch'], $result['settings']);
+        $this->form->reset('publicLogo', 'coverImage');
         $this->saved = true;
 
         Flux::toast(variant: 'success', text: __('ui.livewire.organizations.brands.branches.settings.settings_saved'));
@@ -274,6 +133,7 @@ class Settings extends Component
     public function render(): View
     {
         return view('livewire.organizations.brands.branches.settings', [
+            'openingDays' => $this->form->displayOpeningHours(),
             'branchesUrl' => route('organizations.brands.branches.index', [$this->organization, $this->brand]),
             'branchName' => $this->branch->name,
             'contextLabel' => $this->organization->name.' / '.$this->brand->name.' / '.$this->branch->name,
@@ -285,226 +145,21 @@ class Settings extends Component
 
     public function addOpeningInterval(int $dayOfWeek): void
     {
-        $this->openingHoursConfigured = true;
-
-        foreach ($this->openingHours as $index => $day) {
-            if ((int) $day['day_of_week'] !== $dayOfWeek) {
-                continue;
-            }
-
-            $this->openingHours[$index]['is_closed'] = false;
-            $this->openingHours[$index]['intervals'][] = [
-                'opens_at' => '10:00',
-                'closes_at' => '22:00',
-            ];
-
-            return;
-        }
+        $this->form->addOpeningInterval($dayOfWeek);
     }
 
     public function removeOpeningInterval(int $dayOfWeek, int $intervalIndex): void
     {
-        foreach ($this->openingHours as $index => $day) {
-            if ((int) $day['day_of_week'] !== $dayOfWeek) {
-                continue;
-            }
-
-            unset($this->openingHours[$index]['intervals'][$intervalIndex]);
-            $this->openingHours[$index]['intervals'] = array_values($this->openingHours[$index]['intervals']);
-            $this->openingHours[$index]['is_closed'] = $this->openingHours[$index]['intervals'] === [];
-
-            return;
-        }
+        $this->form->removeOpeningInterval($dayOfWeek, $intervalIndex);
     }
 
-    /**
-     * @return array<string, list<mixed>>
-     */
-    private function rules(): array
+    private function populateForm(Branch $branch, BranchSetting $settings): void
     {
-        return [
-            ...RestaurantValidationRules::branchSettings(),
-            ...RestaurantValidationRules::branchProfile(),
-            'publicLogo' => $this->optionalImageRules(),
-            'coverImage' => $this->optionalImageRules(),
-            ...RestaurantValidationRules::temporaryClosure($this->temporarilyClosed),
-            ...RestaurantValidationRules::openingHours(),
-        ];
-    }
-
-    private function fillFromSettings(BranchSetting $settings): void
-    {
+        $this->branch = $branch;
         $this->settingsId = $settings->id;
-        $this->requireWaiterConfirmationForOrders = $settings->require_waiter_confirmation_for_orders;
-        $this->allowGuestCreatedSessions = $settings->allow_guest_created_sessions;
-        $this->allowWaiterOpenedSessions = $settings->allow_waiter_opened_sessions;
-        $this->allowGuestInviteLinks = $settings->allow_guest_invite_links;
-        $this->guestJoinRequiresApproval = $settings->guest_join_requires_approval;
-        $this->pollingIntervalSeconds = $settings->polling_interval_seconds;
-        $this->inactivityWarningMinutes = $settings->inactivity_warning_minutes;
-        $this->pendingSessionExpireMinutes = $settings->pending_session_expire_minutes;
-        $this->defaultLanguage = $settings->default_language;
-        $this->defaultCurrency = SupportedCurrency::normalize($settings->default_currency);
-        $this->serviceChargeEnabled = $settings->service_charge_enabled;
-        $this->serviceChargePercent = MoneyFormatter::centsToDecimal($settings->service_charge_basis_points);
-        $this->tipsEnabled = $settings->tips_enabled;
-        $this->orderFlowMode = $settings->order_flow_mode->value;
-        $this->serviceModes = BranchServiceMode::normalizeList($settings->service_modes);
-        $this->branch->refresh();
-    }
-
-    private function fillFromBranchProfile(Branch $branch): void
-    {
-        $this->branch = $branch->refresh();
-        $this->publicName = (string) ($this->branch->public_name ?? '');
-        $this->publicDescription = (string) ($this->branch->public_description ?? '');
-        $this->phone = (string) ($this->branch->phone ?? '');
-        $this->email = (string) ($this->branch->email ?? '');
-        $this->websiteUrl = (string) ($this->branch->website_url ?? '');
-        $this->instagramUrl = (string) ($this->branch->instagram_url ?? '');
-        $this->facebookUrl = (string) ($this->branch->facebook_url ?? '');
-        $this->tiktokUrl = (string) ($this->branch->tiktok_url ?? '');
-        $this->currentLogoUrl = $this->branch->logoUrl();
-        $this->currentCoverImageUrl = $this->branch->coverImageUrl();
-    }
-
-    private function fillFromTemporaryClosure(Branch $branch): void
-    {
-        $this->branch = $branch->refresh();
-        $this->temporarilyClosed = (bool) $this->branch->is_temporarily_closed;
-        $this->temporaryClosedReason = (string) ($this->branch->temporary_closed_reason ?? '');
-        $temporaryClosedUntil = $this->branch->temporaryClosedUntilForBranch();
-        $this->temporaryClosedUntil = $temporaryClosedUntil === null
-            ? ''
-            : $temporaryClosedUntil->format('Y-m-d\TH:i');
-    }
-
-    private function fillFromOpeningHours(Branch $branch): void
-    {
-        $openingHours = $branch->openingHours()
-            ->select([
-                'id',
-                'branch_id',
-                'day_of_week',
-                'is_closed',
-                'opens_at',
-                'closes_at',
-                'sort_order',
-            ])
-            ->get()
-            ->groupBy('day_of_week');
-
-        $this->openingHoursConfigured = $openingHours->isNotEmpty();
-        $this->openingHours = collect(GetBranchOpeningStatusAction::dayLabels())
-            ->map(function (string $label, int $dayOfWeek) use ($openingHours): array {
-                $dayRows = $openingHours->get($dayOfWeek, collect());
-                $intervals = $dayRows
-                    ->filter(fn ($openingHour): bool => ! $openingHour->is_closed)
-                    ->map(fn ($openingHour): array => [
-                        'opens_at' => substr((string) $openingHour->opens_at, 0, 5),
-                        'closes_at' => substr((string) $openingHour->closes_at, 0, 5),
-                    ])
-                    ->values()
-                    ->all();
-
-                return [
-                    'day_of_week' => $dayOfWeek,
-                    'label' => $label,
-                    'is_closed' => $this->openingHoursConfigured && $intervals === [],
-                    'intervals' => $intervals !== [] ? $intervals : [
-                        [
-                            'opens_at' => '10:00',
-                            'closes_at' => '22:00',
-                        ],
-                    ],
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $openingHours
-     * @return list<array{day_of_week: int, is_closed: bool, intervals: list<array{opens_at: string, closes_at: string}>}>
-     */
-    private function validatedOpeningHours(array $openingHours): array
-    {
-        $errors = [];
-        $normalizedDays = [];
-
-        foreach ($openingHours as $dayIndex => $day) {
-            $dayOfWeek = (int) ($day['day_of_week'] ?? 0);
-            $isClosed = (bool) ($day['is_closed'] ?? false);
-            $intervals = [];
-
-            if ($dayOfWeek < 1 || $dayOfWeek > 7) {
-                continue;
-            }
-
-            if (! $isClosed) {
-                foreach (($day['intervals'] ?? []) as $intervalIndex => $interval) {
-                    $opensAt = substr((string) ($interval['opens_at'] ?? ''), 0, 5);
-                    $closesAt = substr((string) ($interval['closes_at'] ?? ''), 0, 5);
-
-                    if ($opensAt === '' || $closesAt === '') {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.opens_at"] = __('ui.livewire.organizations.brands.branches.settings.ukazite_nacalo_i_konec_i');
-
-                        continue;
-                    }
-
-                    if ($opensAt === $closesAt) {
-                        $errors["openingHours.$dayIndex.intervals.$intervalIndex.closes_at"] = __('ui.livewire.organizations.brands.branches.settings.vremia_zakrytiia_dolzno');
-
-                        continue;
-                    }
-
-                    $intervals[] = [
-                        'opens_at' => $opensAt,
-                        'closes_at' => $closesAt,
-                    ];
-                }
-
-                if ($intervals === []) {
-                    $errors["openingHours.$dayIndex.intervals"] = __('ui.livewire.organizations.brands.branches.settings.dobavte_interval_ili_otm');
-                }
-            }
-
-            $normalizedDays[] = [
-                'day_of_week' => $dayOfWeek,
-                'is_closed' => $isClosed,
-                'intervals' => $intervals,
-            ];
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
-        }
-
-        return $normalizedDays;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function optionalImageRules(): array
-    {
-        return RestaurantValidationRules::optionalImageUpload('image')['image'];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function imageValidationMessages(): array
-    {
-        return [
-            ...StoreLocalImageAction::validationMessages('publicLogo'),
-            ...StoreLocalImageAction::validationMessages('coverImage'),
-        ];
-    }
-
-    private function findSettings(): BranchSetting
-    {
-        return $this->branchSettingsQueries->find($this->branch, $this->settingsId);
+        $this->form->populate($branch, $settings, $this->branchSettingsQueries->openingHours($branch));
+        $this->currentLogoUrl = $branch->logoUrl();
+        $this->currentCoverImageUrl = $branch->coverImageUrl();
     }
 
     /**

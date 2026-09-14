@@ -40,7 +40,15 @@ Treat every public property, action argument, URL value, and stale Livewire snap
 - For every mutation, prove the outcomes for: repeat execution, concurrent duplicate execution, failure halfway, and retry after failure. Use database uniqueness/integrity constraints plus the Action transaction rather than frontend flags alone.
 - Multi-record writes must be atomic or have an explicit compensating boundary for filesystem effects. Retry must converge on one valid tenant graph.
 - Use Eloquent only. Preserve SQLite foreign keys, uniqueness, index order, and lock/transaction behavior. Migrations are additive, reversible where safe, compatible with existing data, and tested on an isolated SQLite database; never rewrite deployed migrations or run `migrate:fresh` against the application database.
+- For an already-authorized local application-database forward migration, freshly verify the effective environment, exact SQLite path and pending migrations, create a consistent private backup with integrity and isolated restoration proof, apply only reviewed migrations, then verify intended schema changes and row-count preservation as described in [deployment](../../../docs/deployment.md) and [operations](../../../docs/operations.md).
 - Keep money as decimal strings or integer minor units, never binary floats.
+
+## Compound saves and local media
+
+- Treat one branch-settings Save submission as one operation across settings, public profile, uploads, temporary closure and opening hours. Validate the whole payload in `BranchSettingsForm`, then invoke `SaveBranchConfigurationAction` once; it reloads and authorizes the branch/settings before composing the focused Actions inside one transaction. Separate child-Action transactions do not make a sequential component save atomic. Independent controls may retain their own operation when that matches the UI contract.
+- Reuse `ReplaceLocalImageAction` and `RemoveLocalImageAction`. A persistence callback returning, or a nested transaction committing, does not mean the enclosing transaction committed. Preserve the old file until the owning connection's `afterCommit`; replacement cleanup on persistence failure or `afterRollBack` removes only newly stored files. With no active transaction, cleanup follows successful persistence immediately.
+- An exception during old-file cleanup after commit cannot roll back the persisted path. Preserve the referenced replacement and report the cleanup failure; do not catch the entire operation as a persistence failure and delete the new file.
+- Inspect `tests/Feature/BranchSettingsTest.php` and `tests/Feature/LocalImageTransactionTest.php` when changing these boundaries. Prove late-step failure restores every earlier database field and old file, nested commit followed by parent rollback removes new files, inner rollback followed by parent commit preserves surviving files, and post-commit cleanup failure keeps the committed replacement. Passing child-Action happy paths alone does not prove the compound save.
 
 ## Drive changes with adversarial Pest tests
 

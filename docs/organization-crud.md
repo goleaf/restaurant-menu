@@ -1,5 +1,9 @@
 # Organization administration CRUD evidence index
 
+## Atomic branch configuration
+
+Rows 4–7 share one Save operation. `BranchSettingsForm` validates all fields and `SaveBranchConfigurationAction` reloads/authorizes the branch and composes the existing Actions in one transaction. Late failure restores settings, profile, closure, schedule and original media; filesystem replacements follow commit/rollback. Separate forms are not required for independent controls that already have focused validation boundaries.
+
 This document is an implementation and test-evidence view of canonical requirement `sys-admin-crud-001`. It does not redefine product requirements. The executable inventory is `Tests\Support\OrganizationCrudMatrix`; focused feature tests remain authoritative for behavior, authorization, validation and tenant isolation.
 
 CRUD uses the domain-safe lifecycle equivalent where physical deletion would violate identity or history. For the restaurant hierarchy, “delete” therefore means confirmed archive through soft deletion; authorized restore is available from the archived filter, while ordinary force deletion is intentionally absent.

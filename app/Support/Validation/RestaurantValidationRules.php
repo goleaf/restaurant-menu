@@ -197,7 +197,7 @@ class RestaurantValidationRules
         return [
             'openingHoursConfigured' => ['boolean'],
             'openingHours' => ['array', 'size:7'],
-            'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7'],
+            'openingHours.*.day_of_week' => ['required', 'integer', 'min:1', 'max:7', 'distinct'],
             'openingHours.*.label' => ['required', 'string', 'max:40'],
             'openingHours.*.is_closed' => ['boolean'],
             'openingHours.*.intervals' => ['array', 'max:4'],

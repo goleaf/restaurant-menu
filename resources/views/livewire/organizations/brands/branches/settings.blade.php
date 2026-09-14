@@ -25,19 +25,19 @@
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="publicName" :label="__('ui.organizations.brands.branches.settings.venue_name')" maxlength="160" :placeholder="$branchName" />
-                    <flux:input wire:model="phone" :label="__('ui.organizations.brands.branches.settings.phone')" maxlength="80" :placeholder="__('fields.placeholders.phone_example')" />
-                    <flux:input wire:model="email" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" :placeholder="__('fields.placeholders.branch_email_example')" />
-                    <flux:input wire:model="websiteUrl" :label="__('guest.table.website')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.website_url_example')" />
-                    <flux:input wire:model="instagramUrl" :label="__('ui.organizations.brands.branches.settings.instagram_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.instagram_url_example')" />
-                    <flux:input wire:model="facebookUrl" :label="__('ui.organizations.brands.branches.settings.facebook_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.facebook_url_example')" />
-                    <flux:input wire:model="tiktokUrl" :label="__('ui.organizations.brands.branches.settings.tiktok_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.tiktok_url_example')" />
+                    <flux:input wire:model="form.publicName" :label="__('ui.organizations.brands.branches.settings.venue_name')" maxlength="160" :placeholder="$branchName" />
+                    <flux:input wire:model="form.phone" :label="__('ui.organizations.brands.branches.settings.phone')" maxlength="80" :placeholder="__('fields.placeholders.phone_example')" />
+                    <flux:input wire:model="form.email" :label="__('ui.auth.reset_password.email')" type="email" maxlength="255" :placeholder="__('fields.placeholders.branch_email_example')" />
+                    <flux:input wire:model="form.websiteUrl" :label="__('guest.table.website')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.website_url_example')" />
+                    <flux:input wire:model="form.instagramUrl" :label="__('ui.organizations.brands.branches.settings.instagram_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.instagram_url_example')" />
+                    <flux:input wire:model="form.facebookUrl" :label="__('ui.organizations.brands.branches.settings.facebook_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.facebook_url_example')" />
+                    <flux:input wire:model="form.tiktokUrl" :label="__('ui.organizations.brands.branches.settings.tiktok_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.tiktok_url_example')" />
                 </div>
 
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.short_description') }}</span>
-                    <textarea wire:model="publicDescription" rows="3" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
-                    @error('publicDescription')
+                    <textarea wire:model="form.publicDescription" rows="3" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
+                    @error('form.publicDescription')
                         <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                     @enderror
                 </label>
@@ -50,8 +50,8 @@
                         @else
                             <div class="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.logo') }}</div>
                         @endif
-                        <x-ui.image-upload-input wire:model="publicLogo" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" />
-                        @error('publicLogo')
+                        <x-ui.image-upload-input wire:model="form.publicLogo" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.logo')" />
+                        @error('form.publicLogo')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
                     </label>
@@ -63,8 +63,8 @@
                         @else
                             <div class="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-xs font-medium text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-400">{{ __('uploads.labels.image') }}</div>
                         @endif
-                        <x-ui.image-upload-input wire:model="coverImage" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" />
-                        @error('coverImage')
+                        <x-ui.image-upload-input wire:model="form.coverImage" :aria-label="__('uploads.actions.choose_file').' '.__('uploads.labels.image')" />
+                        @error('form.coverImage')
                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                         @enderror
                     </label>
@@ -78,17 +78,17 @@
                         <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.qr_and_menu_browsing_stay_availab') }}</p>
                     </div>
 
-                    <flux:switch wire:model.live="temporarilyClosed" :label="__('ui.organizations.brands.branches.settings.restaurant_is_temporarily_closed')" />
+                    <flux:switch wire:model.live="form.temporarilyClosed" :label="__('ui.organizations.brands.branches.settings.restaurant_is_temporarily_closed')" />
                 </div>
 
-                @if ($temporarilyClosed)
+                @if ($form->temporarilyClosed)
                     <x-ui.alert tone="danger" :heading="__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt')">
                         {{ __('ui.organizations.brands.branches.settings.guests_will_see_this_warning_and') }}
                     </x-ui.alert>
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <flux:input
-                            wire:model="temporaryClosedReason"
+                            wire:model="form.temporaryClosedReason"
                             :label="__('guest.table.reason')"
                             maxlength="255"
                             list="temporary-closed-reasons"
@@ -96,7 +96,7 @@
                         />
 
                         <flux:input
-                            wire:model="temporaryClosedUntil"
+                            wire:model="form.temporaryClosedUntil"
                             :label="__('ui.organizations.brands.branches.settings.closed_until_optional')"
                             type="datetime-local"
                         />
@@ -122,12 +122,12 @@
                         <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.guests_can_still_open_the_qr_page') }}</p>
                     </div>
 
-                    <flux:switch wire:model="openingHoursConfigured" :label="__('ui.organizations.brands.branches.settings.use_schedule')" />
+                    <flux:switch wire:model.live="form.openingHoursConfigured" :label="__('ui.organizations.brands.branches.settings.use_schedule')" />
                 </div>
 
-                @if ($openingHoursConfigured)
+                @if ($form->openingHoursConfigured)
                     <div class="grid gap-3">
-                        @foreach ($openingHours as $dayIndex => $day)
+                        @foreach ($openingDays as $dayIndex => $day)
                             <div wire:key="branch-opening-day-{{ $day['day_of_week'] }}" class="rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
@@ -136,7 +136,7 @@
                                     </div>
 
                                     <label class="inline-flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                                        <input type="checkbox" wire:model.live="openingHours.{{ $dayIndex }}.is_closed" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+                                        <input type="checkbox" wire:model.live="form.openingHours.{{ $dayIndex }}.is_closed" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
                                         {{ __('reports.statuses.orders.closed') }}
                                     </label>
                                 </div>
@@ -145,8 +145,8 @@
                                     <div class="mt-3 grid gap-2">
                                         @foreach ($day['intervals'] as $intervalIndex => $interval)
                                             <div wire:key="branch-opening-interval-{{ $day['day_of_week'] }}-{{ $intervalIndex }}" class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-                                                <flux:input wire:model="openingHours.{{ $dayIndex }}.intervals.{{ $intervalIndex }}.opens_at" :label="__('ui.organizations.brands.branches.settings.opens')" type="time" />
-                                                <flux:input wire:model="openingHours.{{ $dayIndex }}.intervals.{{ $intervalIndex }}.closes_at" :label="__('ui.organizations.brands.branches.settings.closes')" type="time" />
+                                                <flux:input wire:model="form.openingHours.{{ $dayIndex }}.intervals.{{ $intervalIndex }}.opens_at" :label="__('ui.organizations.brands.branches.settings.opens')" type="time" />
+                                                <flux:input wire:model="form.openingHours.{{ $dayIndex }}.intervals.{{ $intervalIndex }}.closes_at" :label="__('ui.organizations.brands.branches.settings.closes')" type="time" />
                                                 <flux:button
                                                     type="button"
                                                     icon="trash"
@@ -158,7 +158,7 @@
                                             </div>
                                         @endforeach
 
-                                        @error('openingHours.'.$dayIndex.'.intervals')
+                                        @error('form.openingHours.'.$dayIndex.'.intervals')
                                             <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                                         @enderror
 
@@ -192,7 +192,7 @@
                 <div class="grid gap-3 md:grid-cols-2">
                     @foreach ($serviceModeOptions as $mode)
                         <label wire:key="branch-service-mode-{{ $mode['value'] }}" class="flex gap-3 rounded-lg border border-zinc-200 bg-white p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900">
-                            <input type="checkbox" wire:model="serviceModes" value="{{ $mode['value'] }}" class="mt-1 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
+                            <input type="checkbox" wire:model="form.serviceModes" value="{{ $mode['value'] }}" class="mt-1 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
                             <span class="grid gap-1">
                                 <span class="font-medium text-zinc-950 dark:text-white">{{ __($mode['label']) }}</span>
                                 <span class="text-zinc-600 dark:text-zinc-300">{{ __($mode['description']) }}</span>
@@ -201,11 +201,11 @@
                     @endforeach
                 </div>
 
-                @error('serviceModes')
+                @error('form.serviceModes')
                     <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                 @enderror
 
-                @error('serviceModes.*')
+                @error('form.serviceModes.*')
                     <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                 @enderror
             </section>
@@ -223,8 +223,8 @@
                 @endif
 
                 <div class="grid gap-4 md:grid-cols-2">
-                    <flux:input wire:model="inactivityWarningMinutes" :label="__('ui.organizations.brands.branches.settings.warn_waiter_after_inactivity_minu')" type="number" required min="1" max="1440" />
-                    <flux:input wire:model="pendingSessionExpireMinutes" :label="__('ui.organizations.brands.branches.settings.cancel_empty_pending_session_afte')" type="number" required min="1" max="1440" />
+                    <flux:input wire:model="form.inactivityWarningMinutes" :label="__('ui.organizations.brands.branches.settings.warn_waiter_after_inactivity_minu')" type="number" required min="1" max="1440" />
+                    <flux:input wire:model="form.pendingSessionExpireMinutes" :label="__('ui.organizations.brands.branches.settings.cancel_empty_pending_session_afte')" type="number" required min="1" max="1440" />
                 </div>
 
                 <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white p-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
@@ -243,24 +243,24 @@
             </section>
 
             <div class="grid gap-4 md:grid-cols-2">
-                <flux:switch wire:model="requireWaiterConfirmationForOrders" :label="__('ui.organizations.brands.branches.settings.require_waiter_confirmation_for_o')" />
-                <flux:switch wire:model="guestJoinRequiresApproval" :label="__('ui.organizations.brands.branches.settings.guest_join_requires_approval')" />
-                <flux:switch wire:model="allowGuestCreatedSessions" :label="__('ui.organizations.brands.branches.settings.allow_guest_created_sessions')" />
-                <flux:switch wire:model="allowWaiterOpenedSessions" :label="__('ui.organizations.brands.branches.settings.allow_waiter_opened_sessions')" />
-                <flux:switch wire:model="allowGuestInviteLinks" :label="__('ui.organizations.brands.branches.settings.allow_guest_invite_links')" />
-                <flux:switch wire:model="serviceChargeEnabled" :label="__('ui.organizations.brands.branches.settings.service_charge_enabled')" />
-                <flux:switch wire:model="tipsEnabled" :label="__('ui.organizations.brands.branches.settings.tips_enabled')" />
+                <flux:switch wire:model="form.requireWaiterConfirmationForOrders" :label="__('ui.organizations.brands.branches.settings.require_waiter_confirmation_for_o')" />
+                <flux:switch wire:model="form.guestJoinRequiresApproval" :label="__('ui.organizations.brands.branches.settings.guest_join_requires_approval')" />
+                <flux:switch wire:model="form.allowGuestCreatedSessions" :label="__('ui.organizations.brands.branches.settings.allow_guest_created_sessions')" />
+                <flux:switch wire:model="form.allowWaiterOpenedSessions" :label="__('ui.organizations.brands.branches.settings.allow_waiter_opened_sessions')" />
+                <flux:switch wire:model="form.allowGuestInviteLinks" :label="__('ui.organizations.brands.branches.settings.allow_guest_invite_links')" />
+                <flux:switch wire:model.live="form.serviceChargeEnabled" :label="__('ui.organizations.brands.branches.settings.service_charge_enabled')" />
+                <flux:switch wire:model="form.tipsEnabled" :label="__('ui.organizations.brands.branches.settings.tips_enabled')" />
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
                 <flux:input
-                    wire:model="serviceChargePercent"
+                    wire:model="form.serviceChargePercent"
                     :label="__('ui.organizations.brands.branches.settings.service_charge_percent')"
                     type="number"
                     min="0"
                     max="100"
                     step="0.01"
-                    :disabled="! $serviceChargeEnabled"
+                    :disabled="! $form->serviceChargeEnabled"
                 />
 
                 <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-950/60 dark:text-zinc-300">
@@ -269,39 +269,39 @@
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
-                <flux:input wire:model="pollingIntervalSeconds" :label="__('ui.organizations.brands.branches.settings.polling_interval_seconds')" type="number" required min="1" max="60" />
+                <flux:input wire:model="form.pollingIntervalSeconds" :label="__('ui.organizations.brands.branches.settings.polling_interval_seconds')" type="number" required min="1" max="60" />
                 <flux:field>
                     <flux:label>{{ __('ui.organizations.brands.branches.settings.default_language') }}</flux:label>
-                    <flux:select wire:model="defaultLanguage">
+                    <flux:select wire:model="form.defaultLanguage">
                         @foreach ($languageOptions as $languageCode => $languageLabel)
                             <flux:select.option wire:key="branch-default-language-{{ $languageCode }}" value="{{ $languageCode }}">
                                 {{ $languageLabel }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:error name="defaultLanguage" />
+                    <flux:error name="form.defaultLanguage" />
                 </flux:field>
                 <flux:field>
                     <flux:label>{{ __('ui.organizations.brands.branches.settings.default_currency') }}</flux:label>
-                    <flux:select wire:model="defaultCurrency">
+                    <flux:select wire:model="form.defaultCurrency">
                         @foreach ($currencyOptions as $currencyCode => $currencyLabel)
                             <flux:select.option wire:key="branch-default-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">
                                 {{ $currencyLabel }}
                             </flux:select.option>
                         @endforeach
                     </flux:select>
-                    <flux:error name="defaultCurrency" />
+                    <flux:error name="form.defaultCurrency" />
                 </flux:field>
 
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.order_flow_mode') }}</span>
-                    <select wire:model="orderFlowMode" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-xs outline-hidden focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white">
+                    <select wire:model="form.orderFlowMode" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-xs outline-hidden focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white">
                         @foreach ($orderFlowModeOptions as $option)
                             <option wire:key="order-flow-mode-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ __($option['label']) }}</option>
                         @endforeach
                     </select>
 
-                    @error('orderFlowMode')
+                    @error('form.orderFlowMode')
                         <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
                     @enderror
                 </label>

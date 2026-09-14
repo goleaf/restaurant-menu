@@ -55,20 +55,20 @@ test('owner can manage branch opening hours from branch settings', function () {
 
     $intervalEditor = Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch]);
-    $mondayIntervals = $intervalEditor->get('openingHours')[0]['intervals'];
+    $mondayIntervals = $intervalEditor->get('form.openingHours')[0]['intervals'];
 
     $intervalEditor->call('addOpeningInterval', 1);
 
-    expect($intervalEditor->get('openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals) + 1);
+    expect($intervalEditor->get('form.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals) + 1);
 
     $intervalEditor->call('removeOpeningInterval', 1, count($mondayIntervals));
 
-    expect($intervalEditor->get('openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals));
+    expect($intervalEditor->get('form.openingHours')[0]['intervals'])->toHaveCount(count($mondayIntervals));
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('openingHoursConfigured', true)
-        ->set('openingHours', prompt102WeeklyHours([
+        ->set('form.openingHoursConfigured', true)
+        ->set('form.openingHours', prompt102WeeklyHours([
             1 => [
                 ['opens_at' => '10:00', 'closes_at' => '14:00'],
                 ['opens_at' => '18:00', 'closes_at' => '22:00'],

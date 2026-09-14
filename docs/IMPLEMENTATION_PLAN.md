@@ -1,5 +1,19 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — second audit: atomic branch configuration
+
+Baseline: clean published `930059f`. Reuse the completed 49-model/88-migration audit and 1,738-test baseline, then investigate the remaining branch-settings operation. At that baseline, the single Save button performed independent settings, image, profile, closure and opening-hour writes. A later failure may retain earlier changes; wrapping the sequence alone is insufficient because generic media replacement deletes the old file before an enclosing transaction commits.
+
+- [x] Reproduce partial settings persistence and image loss/leaks with focused failure/rollback tests. Confirm actual schema/indexes through the now-available Boost MCP without mutating application data.
+- [x] Make shared image replacement/removal respect enclosing transaction commit/rollback while preserving immediate behavior outside transactions. Verify nested rollback and successful commit with owned temporary data/files.
+- [x] Move substantial settings state/validation into a Livewire Form, prepared reads into the existing query service, and the complete authorized Save operation into one focused Action. Preserve localized bindings, tenant rejection, exact money and retry behavior.
+- [x] Check meaningful query changes, all models/migrations and current documentation/skills; update only stale contracts and preserve valid code and historical migration files. Record a reusable rule for compound saves and filesystem compensation.
+- [x] Run focused tests, formatting/static analysis, browser/build/localization, full parallel and sequential coverage gates on stable source. Require zero failing/skipped tests; report measured coverage separately.
+- [ ] Review and commit the verified changes with English Conventional Commit messages, push `main` normally and verify the remote SHA. Record actual results in `PROGRESS.md`.
+
+The generic media lifecycle is an independent implementation task; root owns the settings Form/Action/UI integration and documentation. The schema audit found one pending local migration; it was applied after a checked private SQLite backup, with all row counts and integrity preserved. No production migration, seed, deployment or new dependency is required by the proposed repair.
+
+
 ## 2026-09-14 — repository-wide audit and publication
 
 The expanded user request authorizes model/migration, Action/validation, performance/test and repository-local Markdown/skill audits, implementation of evidenced fixes, and a verified commit/push to the current `main` branch. English commit/release notes are required. Preserve existing data, applied migration history and the current authorized changes. Review every first-party area; update files whose contracts or evidence are stale rather than mechanically rewriting valid code or historical records.

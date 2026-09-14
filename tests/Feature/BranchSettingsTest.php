@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Branches\CreateBranchAction;
+use App\Actions\Branches\UpdateBranchOpeningHoursAction;
 use App\Actions\Organizations\CreateOrganizationAction;
 use App\Enums\BranchOrderFlowMode;
 use App\Enums\OrganizationUserStatus;
@@ -11,7 +12,9 @@ use App\Models\Brand;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -80,27 +83,27 @@ test('owner can update branch settings', function () {
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('requireWaiterConfirmationForOrders', true)
-        ->assertSet('allowGuestCreatedSessions', true)
-        ->assertSet('allowWaiterOpenedSessions', true)
-        ->assertSet('allowGuestInviteLinks', true)
-        ->assertSet('guestJoinRequiresApproval', true)
-        ->assertSet('pollingIntervalSeconds', 1)
-        ->assertSet('serviceChargePercent', '0.00')
-        ->assertSet('serviceModes', ['dine_in'])
+        ->assertSet('form.requireWaiterConfirmationForOrders', true)
+        ->assertSet('form.allowGuestCreatedSessions', true)
+        ->assertSet('form.allowWaiterOpenedSessions', true)
+        ->assertSet('form.allowGuestInviteLinks', true)
+        ->assertSet('form.guestJoinRequiresApproval', true)
+        ->assertSet('form.pollingIntervalSeconds', 1)
+        ->assertSet('form.serviceChargePercent', '0.00')
+        ->assertSet('form.serviceModes', ['dine_in'])
         ->assertSeeText('Service modes')
-        ->set('allowGuestCreatedSessions', true)
-        ->set('allowWaiterOpenedSessions', true)
-        ->set('allowGuestInviteLinks', true)
-        ->set('guestJoinRequiresApproval', false)
-        ->set('pollingIntervalSeconds', 5)
-        ->set('defaultLanguage', 'lt')
-        ->set('defaultCurrency', 'usd')
-        ->set('serviceChargeEnabled', true)
-        ->set('serviceChargePercent', '12.50')
-        ->set('tipsEnabled', true)
-        ->set('orderFlowMode', BranchOrderFlowMode::StaffManaged->value)
-        ->set('serviceModes', ['pickup', 'delivery', 'hotel_room_service', 'bar_only', 'custom'])
+        ->set('form.allowGuestCreatedSessions', true)
+        ->set('form.allowWaiterOpenedSessions', true)
+        ->set('form.allowGuestInviteLinks', true)
+        ->set('form.guestJoinRequiresApproval', false)
+        ->set('form.pollingIntervalSeconds', 5)
+        ->set('form.defaultLanguage', 'lt')
+        ->set('form.defaultCurrency', 'usd')
+        ->set('form.serviceChargeEnabled', true)
+        ->set('form.serviceChargePercent', '12.50')
+        ->set('form.tipsEnabled', true)
+        ->set('form.orderFlowMode', BranchOrderFlowMode::StaffManaged->value)
+        ->set('form.serviceModes', ['pickup', 'delivery', 'hotel_room_service', 'bar_only', 'custom'])
         ->call('save')
         ->assertHasNoErrors()
         ->assertSee('Settings saved.');
@@ -138,9 +141,9 @@ test('settings page creates missing settings for existing branch', function () {
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('requireWaiterConfirmationForOrders', true)
-        ->assertSet('guestJoinRequiresApproval', true)
-        ->assertSet('pollingIntervalSeconds', 1);
+        ->assertSet('form.requireWaiterConfirmationForOrders', true)
+        ->assertSet('form.guestJoinRequiresApproval', true)
+        ->assertSet('form.pollingIntervalSeconds', 1);
 
     expect($branch->settings()->exists())->toBeTrue();
 });
@@ -179,20 +182,124 @@ test('settings validation keeps polling and order flow safe', function () {
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('pollingIntervalSeconds', 0)
-        ->set('defaultCurrency', 'EURO')
-        ->set('orderFlowMode', 'guest_direct')
-        ->set('serviceChargeEnabled', true)
-        ->set('serviceChargePercent', '100.01')
-        ->set('serviceModes', ['maps_and_couriers'])
+        ->set('form.pollingIntervalSeconds', 0)
+        ->set('form.defaultCurrency', 'EURO')
+        ->set('form.orderFlowMode', 'guest_direct')
+        ->set('form.serviceChargeEnabled', true)
+        ->set('form.serviceChargePercent', '100.01')
+        ->set('form.serviceModes', ['maps_and_couriers'])
         ->call('save')
         ->assertHasErrors([
-            'pollingIntervalSeconds' => ['min'],
-            'defaultCurrency' => ['size', 'in'],
-            'orderFlowMode' => ['in'],
-            'serviceChargePercent' => ['max'],
-            'serviceModes.0' => ['in'],
+            'form.pollingIntervalSeconds' => ['min'],
+            'form.defaultCurrency' => ['size', 'in'],
+            'form.orderFlowMode' => ['in'],
+            'form.serviceChargePercent' => ['max'],
+            'form.serviceModes.0' => ['in'],
         ]);
+});
+
+test('a failed branch configuration save preserves settings profile schedule and original images', function (bool $withImages): void {
+    Storage::fake('public');
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $directory = "media/organizations/{$organization->id}/brands/{$brand->id}/branches/{$branch->id}";
+    $originalLogo = $directory.'/logos/original.png';
+    $originalCover = $directory.'/covers/original.jpg';
+    Storage::disk('public')->put($originalLogo, 'original logo');
+    Storage::disk('public')->put($originalCover, 'original cover');
+    $branch->update(['public_name' => 'Original restaurant', 'logo_path' => $originalLogo, 'cover_image_path' => $originalCover]);
+    $settings = $branch->settings()->firstOrFail();
+    $originalBranch = $branch->refresh()->getRawOriginal();
+    $originalSettings = $settings->getRawOriginal();
+    $component = Livewire::actingAs($owner)
+        ->test(Settings::class, compact('organization', 'brand', 'branch'))
+        ->set('form.pollingIntervalSeconds', 5)
+        ->set('form.publicName', 'Changed restaurant')
+        ->set('form.defaultCurrency', 'USD')
+        ->set('form.temporarilyClosed', true)
+        ->set('form.temporaryClosedReason', 'Maintenance');
+
+    if ($withImages) {
+        $component->set('form.publicLogo', UploadedFile::fake()->image('new-logo.png'))
+            ->set('form.coverImage', UploadedFile::fake()->image('new-cover.jpg'));
+    }
+
+    $this->mock(UpdateBranchOpeningHoursAction::class)
+        ->shouldReceive('handle')->once()->andThrow(new RuntimeException('Schedule persistence failed.'));
+
+    expect(fn () => $component->call('save'))->toThrow(RuntimeException::class, 'Schedule persistence failed.');
+
+    expect($settings->refresh()->getRawOriginal())->toBe($originalSettings)
+        ->and($branch->refresh()->getRawOriginal())->toBe($originalBranch);
+    expect(Storage::disk('public')->allFiles($directory))->toEqualCanonicalizing([$originalLogo, $originalCover]);
+    Storage::disk('public')->assertExists([$originalLogo, $originalCover]);
+
+    app()->forgetInstance(UpdateBranchOpeningHoursAction::class);
+    $component->call('save')->assertHasNoErrors();
+
+    expect($settings->refresh()->polling_interval_seconds)->toBe(5)
+        ->and($branch->refresh()->public_name)->toBe('Changed restaurant')
+        ->and($branch->currency)->toBe('USD')
+        ->and($branch->is_temporarily_closed)->toBeTrue();
+
+    if ($withImages) {
+        Storage::disk('public')->assertMissing([$originalLogo, $originalCover]);
+        Storage::disk('public')->assertExists([$branch->logo_path, $branch->cover_image_path]);
+        expect(Storage::disk('public')->allFiles($directory))->toHaveCount(2);
+    }
+})->with(['database changes' => false, 'database and image changes' => true]);
+
+test('branch settings reject malformed transport values without changing persistence', function (string $field, mixed $value): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $original = $branch->settings()->firstOrFail()->getRawOriginal();
+
+    Livewire::actingAs($owner)
+        ->test(Settings::class, compact('organization', 'brand', 'branch'))
+        ->set('form.'.$field, $value)
+        ->call('save')
+        ->assertHasErrors('form.'.$field);
+
+    expect($branch->settings()->firstOrFail()->getRawOriginal())->toBe($original);
+})->with([
+    'float money' => ['serviceChargePercent', 12.5],
+    'array money' => ['serviceChargePercent', ['12.50']],
+    'array currency' => ['defaultCurrency', ['EUR']],
+    'null polling' => ['pollingIntervalSeconds', null],
+    'scalar modes' => ['serviceModes', 'dine_in'],
+    'scalar schedule' => ['openingHours', 'invalid'],
+    'null schedule' => ['openingHours', null],
+    'invalid closed state' => ['temporarilyClosed', []],
+]);
+
+test('branch settings reject duplicate weekdays and retain the previous schedule', function (): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $component = Livewire::actingAs($owner)
+        ->test(Settings::class, compact('organization', 'brand', 'branch'));
+    $hours = $component->get('form.openingHours');
+    $hours[1]['day_of_week'] = 1;
+
+    $component->set('form.openingHoursConfigured', true)
+        ->set('form.openingHours', $hours)
+        ->call('save')
+        ->assertHasErrors(['form.openingHours.1.day_of_week' => 'distinct']);
+
+    expect($branch->openingHours()->exists())->toBeFalse();
+});
+
+test('branch settings report interval errors on the form and allow a corrected retry', function (): void {
+    [$organization, $brand, $branch, $owner] = createOrganizationBrandBranchForSettings();
+    $component = Livewire::actingAs($owner)
+        ->test(Settings::class, compact('organization', 'brand', 'branch'))
+        ->set('form.openingHoursConfigured', true)
+        ->set('form.openingHours.0.intervals.0.closes_at', '10:00')
+        ->call('save')
+        ->assertHasErrors('form.openingHours.0.intervals.0.closes_at');
+
+    expect($branch->openingHours()->exists())->toBeFalse();
+
+    $component->set('form.openingHours.0.intervals.0.closes_at', '18:00')
+        ->call('save')->assertHasNoErrors();
+
+    expect($branch->openingHours()->where('day_of_week', 1)->sole()->closes_at)->toStartWith('18:00');
 });
 
 function createOrganizationBrandForSettings(

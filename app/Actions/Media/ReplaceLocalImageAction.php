@@ -6,6 +6,7 @@ namespace App\Actions\Media;
 
 use Closure;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 final class ReplaceLocalImageAction
@@ -30,8 +31,19 @@ final class ReplaceLocalImageAction
             throw $exception;
         }
 
-        if ($oldPath !== $newPath) {
-            $this->deleteLocalMediaFile->handle($oldPath);
+        $deleteOldFile = function () use ($oldPath, $newPath): void {
+            if ($oldPath !== $newPath) {
+                $this->deleteLocalMediaFile->handle($oldPath);
+            }
+        };
+
+        $connection = DB::connection();
+
+        if ($connection->transactionLevel() > 0) {
+            $connection->afterRollBack(fn () => $this->deleteLocalMediaFile->handle($newPath));
+            $connection->afterCommit($deleteOldFile);
+        } else {
+            $deleteOldFile();
         }
 
         return $newPath;

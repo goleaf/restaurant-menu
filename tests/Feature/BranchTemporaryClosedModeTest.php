@@ -59,10 +59,10 @@ test('owner can enable and disable temporary closed mode from branch settings', 
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->assertSet('temporarilyClosed', false)
-        ->set('temporarilyClosed', true)
-        ->set('temporaryClosedReason', 'Частное мероприятие')
-        ->set('temporaryClosedUntil', '2026-06-04T18:00')
+        ->assertSet('form.temporarilyClosed', false)
+        ->set('form.temporarilyClosed', true)
+        ->set('form.temporaryClosedReason', 'Частное мероприятие')
+        ->set('form.temporaryClosedUntil', '2026-06-04T18:00')
         ->call('save')
         ->assertHasNoErrors()
         ->assertSee(__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt'))
@@ -76,7 +76,7 @@ test('owner can enable and disable temporary closed mode from branch settings', 
 
     Livewire::actingAs($owner)
         ->test(Settings::class, ['organization' => $organization, 'brand' => $brand, 'branch' => $branch])
-        ->set('temporarilyClosed', false)
+        ->set('form.temporarilyClosed', false)
         ->call('save')
         ->assertHasNoErrors();
 

@@ -2,12 +2,12 @@
 
 Updated 2026-09-14. This is an observed evidence ledger for [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md), not a source of requirements. Command results are recorded only after their exit status/output has been observed.
 
-## 2026-09-14 — export and report-cache audit
+## 2026-09-14 — export and report-cache audit: bounded implementation verified
 
 - Executed Tasks 1–3 in `IMPLEMENTATION_PLAN.md`: one CSV cell boundary protects all four streams and uses standard quoting; dashboard v4 separates ViewOrders link access from ConfirmOrders; both bounded report registries delete displaced payloads and flexible timestamps.
 - Observed RED before each implementation: export/dashboard regressions reported 20 failures and 5 passes; registry overflow reported 2 failures. The final integrated four-file regression run passes 63 tests / 853 assertions. Pint passes; Larastan reports zero errors. WebKit browser scenarios pass 5 / 415 in 29.99 seconds. Translation scan/audit reports 2,222 aligned keys and zero issues.
-- The first full coverage attempt exposed a Faker duplicate-name collision in the 52-branch overflow fixture (1 failed / 1,677 passed / 8 skipped). Deterministic sequence names fix that fixture; the final five-file run, including the strengthened traceability consistency check, passes 64 / 1,859. Full parallel verification passes 1,678 / 47,307 with eight skips in 224.74 seconds; canonical coverage is executing; earlier 1,651-test coverage evidence belongs to the preceding article implementation.
-- Concurrency during already-running refresh/publication and registry get/put remains a planned, unverified follow-up. Missing root lockfiles leave two release requirements partially implemented. No commit, push, deployment, dependency declaration change or application-database migration/seed was performed. The attempted independent reviewer could not run because of the agent service usage limit; the final diff is reviewed locally.
+- The first full coverage attempt exposed a Faker duplicate-name collision in the 52-branch overflow fixture (1 failed / 1,677 passed / 8 skipped). Deterministic sequence names fix that fixture; the final five-file run, including the strengthened traceability consistency check, passes 64 / 1,859. Full parallel verification passes 1,678 / 47,307 with eight skips in 224.74 seconds; canonical coverage passes the same 1,678 / 47,307 with eight skips at 93.5% in 816.82 seconds, exit 0; earlier 1,651-test coverage evidence belongs to the preceding article implementation.
+- Concurrency during already-running refresh/publication and registry get/put remains a planned, unverified follow-up. Missing root lockfiles leave two release requirements partially implemented. No commit, push, deployment, dependency declaration change or application-database migration/seed was performed. The attempted independent reviewer could not run because of the agent service usage limit; the changed Actions, tests and documentation received a completed local diff review.
 
 ## Concurrency, race-condition and idempotency audit — complete
 

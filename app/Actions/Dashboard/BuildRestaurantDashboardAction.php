@@ -20,6 +20,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\BranchReportCacheVersion;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
@@ -62,9 +63,11 @@ class BuildRestaurantDashboardAction
             ];
         }
 
-        $cacheKey = self::cacheKeyForAccess($access);
+        $cache = self::cache();
+        $cacheKey = self::cacheKeyForAccess($access)
+            .':generation:'.BranchReportCacheVersion::fingerprint($cache, 'dashboard', $access['dashboard']);
         $locale = App::currentLocale();
-        $dashboard = self::cache()->flexible(
+        $dashboard = $cache->flexible(
             $cacheKey,
             [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
             fn (): array => $this->withLocale($locale, fn (): array => $this->buildDashboard($access, $cacheKey)),
@@ -91,6 +94,7 @@ class BuildRestaurantDashboardAction
         }
 
         $cache = self::cache();
+        BranchReportCacheVersion::invalidate($cache, 'dashboard', $branchId);
         $indexKey = self::branchCacheKeysKey($branchId);
         $cacheKeys = $cache->get($indexKey, []);
 
@@ -131,7 +135,7 @@ class BuildRestaurantDashboardAction
             ->map(fn (string $branchIds, string $key): string => $key.':'.$branchIds)
             ->implode('|');
 
-        return 'restaurant-dashboard:v4:'.sha1($signature)
+        return 'restaurant-dashboard:v5:'.sha1($signature)
             .':today:'.$date->toDateString()
             .':locale:'.App::currentLocale();
     }

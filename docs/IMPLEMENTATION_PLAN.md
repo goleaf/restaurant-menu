@@ -1,5 +1,31 @@
 # Restaurant Menu completion implementation plan
 
+## 2026-09-14 — repository-wide audit and publication
+
+The expanded user request authorizes model/migration, Action/validation, performance/test and repository-local Markdown/skill audits, implementation of evidenced fixes, and a verified commit/push to the current `main` branch. English commit/release notes are required. Preserve existing data, applied migration history and the current authorized changes. Review every first-party area; update files whose contracts or evidence are stale rather than mechanically rewriting valid code or historical records.
+
+- [ ] Finish report-cache concurrency protection and its regression/query-cost evidence.
+- [ ] Audit all models, factories and migrations for integrity, indexes, relationships, safe rollback and meaningful executable coverage. Use additive migrations only where a verified defect requires one.
+- [ ] Audit controller/Livewire authorization, validation and Action boundaries; inspect query and test gaps. Implement reproduced defects with focused tests.
+- [ ] Audit all repository-local skills and first-party Markdown, repair stale current guidance and links, and distinguish historical results from fresh evidence.
+- [ ] Run formatting/static analysis, dependency validation/audits, browser/build/localization, full sequential/parallel tests, canonical coverage and isolated schema/seed checks as applicable. Report passed, failed, skipped and code-coverage numbers separately; never turn a skipped case or unmeasured coverage into a 100% claim.
+- [ ] Review the final diff, stage only verified authorized files, create English Conventional Commits and push without force; verify the remote commit identity.
+
+Independent read-only audits cover model/schema, validation boundaries and skills/documentation while the primary work completes the cache correction. No production deployment or third-party service change is included.
+
+## 2026-09-14 — concurrent report-cache invalidation
+
+Scope: `perf-cache-001` / `sys-report-001`; preserve current report ages, authorization and prepared payloads. Current baseline is commit `0ce85ba`; the four existing documentation changes are retained.
+
+Analysis: a cold or already-running deferred build can write an obsolete snapshot after invalidation. Concurrent registry appends can lose a key, so deleting indexed entries alone cannot guarantee freshness. Shared branch locks risk adding waits and coupling cache publication to SQLite source transactions. Use a per-report, per-branch random generation in snapshot keys; rotate it before physical invalidation. Correctness then does not depend on the registry or a lock lease. The bounded registry remains an opportunistic physical-cleanup mechanism; overlapping in-flight records may survive until their normal TTL but must be unreachable by subsequent reads.
+
+- [x] Reproduce cold publication, already-running refresh and lost-registry-entry invalidation with deterministic interleavings against the actual Laravel database cache and Actions. The corrected eight-case fixture also covers an expired refresh lease: all eight fail against the original Actions loaded from `0ce85ba` and pass with versioning.
+- [x] Add a shared generation-signature module: batched reads, atomic `Cache::add` initialization, invalidation by deleting the generation before physical cleanup, and a one-day metadata TTL. Integrate both report Actions after access resolution, without request-local memoization.
+- [ ] Verify competing initialization, expiry/recreation, branch/scope/locale separation, pending refresh cancellation, preserved overflow bounds and query cost. Record explicit limitations of interleaved versus real-process evidence.
+- [ ] Run formatting, static analysis, targeted/full tests and coverage; update canonical evidence and review the final diff. The expanded request above now authorizes commit and push after verification.
+
+Source: [Laravel cache documentation](https://laravel.com/docs/13.x/cache#storing-items-in-the-cache), installed Laravel 13.26.1 `Cache/Repository.php::flexible` and database cache store. Boost MCP is unavailable in this session; official documentation and installed sources are the fallback.
+
 ## 2026-09-14 — export and report-cache audit
 
 This is a scoped implementation/evidence plan for the requested analysis and immediate improvements. `requirements.md` remains authoritative; no new product feature, dependency or deployment is introduced. Preserve the existing article-review work on `main`.
@@ -40,10 +66,12 @@ Files: both report dashboard Actions and `tests/Feature/BasicAnalyticsTest.php`.
 
 ### Task 4 — integrated verification and evidence
 
-- [ ] Run Pint, Larastan, the full Unit/Feature suite and canonical coverage; run browser scenarios because dashboard link availability changes.
-- [ ] Record measured query effects and explicitly identify unmeasured changes; update testing/security/cache/compliance documents and this checklist, and review the final diff. Keep implementation, tests and deployment evidence distinct.
+- [x] Run Pint, Larastan, the full Unit/Feature suite and canonical coverage; run browser scenarios because dashboard link availability changes.
+- [x] Record measured query effects and explicitly identify unmeasured changes; update testing/security/cache/compliance documents and this checklist, and review the final diff. Keep implementation, tests and deployment evidence distinct.
 - [x] Reconcile current missing-lockfile gaps in both compliance and traceability; strengthen `RequirementsTraceabilityTest` to verify all 51 statuses agree instead of requiring every applicable row to claim completion.
 - [x] Correct the observed coverage-run Faker collision with deterministic names in the 52-branch fixture; rerun the two overflow cases and the full five-file focused batch.
+
+Final evidence: 64 focused tests / 1,859 assertions; 1,678 Unit/Feature tests / 47,307 assertions and eight configured skips in both the four-process and canonical coverage runs; 93.5% application coverage; five WebKit browser scenarios / 415 assertions; Pint and Larastan pass. The first coverage attempt found a duplicate Faker branch name; the final fixture uses deterministic sequence names. Final 988-file source digest: `c9edb6d5dd9355f14aaae856a31ee1255da056241dc37775003890e6781d8dd5`. Independent agent review was unavailable because of the service usage limit; local diff review was completed. Details and limits are in `testing.md`.
 
 The next concurrency stage requires an owned temporary SQLite database, bounded process timeouts and a test reproducing invalidation between snapshot construction and cache write. Its acceptance condition is that subsequent authorized reads cannot discover an invalidated snapshot even when registration or refresh overlaps the mutation; registry memory remains bounded and read latency is measured.
 

@@ -13,6 +13,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Support\BranchReportCacheVersion;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
@@ -53,9 +54,11 @@ class BuildBasicAnalyticsDashboardAction
             ];
         }
 
-        $cacheKey = self::cacheKeyForBranchIds($branchIds);
+        $cache = self::cache();
+        $cacheKey = self::cacheKeyForBranchIds($branchIds)
+            .':generation:'.BranchReportCacheVersion::fingerprint($cache, 'analytics', $branchIds);
         $locale = App::currentLocale();
-        $analytics = self::cache()->flexible(
+        $analytics = $cache->flexible(
             $cacheKey,
             [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
             fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branchIds, $cacheKey)),
@@ -77,6 +80,7 @@ class BuildBasicAnalyticsDashboardAction
         }
 
         $cache = self::cache();
+        BranchReportCacheVersion::invalidate($cache, 'analytics', $branchId);
         $indexKey = self::branchCacheKeysKey($branchId);
         $cacheKeys = $cache->get($indexKey, []);
 
@@ -121,7 +125,7 @@ class BuildBasicAnalyticsDashboardAction
 
         $date ??= CarbonImmutable::now();
 
-        return 'analytics:dashboard:v3:branches:'
+        return 'analytics:dashboard:v4:branches:'
             .sha1($normalizedBranchIds->implode(','))
             .':today:'.$date->toDateString()
             .':locale:'.App::currentLocale();

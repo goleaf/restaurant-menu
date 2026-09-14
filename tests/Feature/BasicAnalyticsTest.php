@@ -25,12 +25,15 @@ use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Cache\Events\WritingKey;
+use Illuminate\Cache\Events\WritingManyKeys;
 use Illuminate\Cache\Repository;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-04 12:00:00'));
@@ -207,6 +210,112 @@ test('report cache eviction removes displaced snapshots and cancels their pendin
     }
 })->with('report cache strategies');
 
+test('report invalidation fences a snapshot published by an overlapping build', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds, bool $deferred, int $writeDelay,
+) {
+    [$user, , , $session] = createPrompt69AnalyticsContext();
+    $action = app($actionClass);
+    $prefix = $payloadKey === 'analytics' ? 'analytics:dashboard:' : 'restaurant-dashboard:';
+    $metric = $payloadKey === 'analytics' ? 'active_tables_count' : 'metrics.active_tables_count';
+
+    if ($deferred) {
+        $action->handle($user);
+        $this->travel($freshSeconds)->seconds();
+        $action->handle($user);
+    }
+
+    $interruptedKey = null;
+    Event::listen(WritingManyKeys::class, function (WritingManyKeys $event) use (&$interruptedKey, $prefix, $session, $writeDelay): void {
+        if ($interruptedKey !== null || ! str_starts_with($event->keys[0], $prefix)) {
+            return;
+        }
+
+        $interruptedKey = $event->keys[0];
+        $this->travel($writeDelay)->seconds();
+        $session->forceFill(['status' => TableSessionStatus::Closed, 'ended_at' => now()])->save();
+    });
+
+    if ($deferred) {
+        app(InvokeDeferredCallbacks::class)->terminate(Request::create('/'), response('ok'));
+    } else {
+        $action->handle($user);
+    }
+
+    expect($interruptedKey)->not->toBeNull();
+    $current = $action->handle($user)[$payloadKey];
+
+    expect(data_get($current, $metric))->toBe(0)
+        ->and($current['cache_key'])->not->toBe($interruptedKey)
+        ->and($action->handle($user)[$payloadKey])->toBe($current);
+})->with('report cache strategies')->with([
+    'cold build' => [false, 0],
+    'deferred build' => [true, 0],
+    'expired refresh lease' => [true, 31],
+]);
+
+test('report cache versioning keeps foreground query costs bounded', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+): void {
+    [$user] = createPrompt69AnalyticsContext();
+    $action = app($actionClass);
+    $operation = fn (): array => $action->handle($user);
+    $cold = countDatabaseQueries($operation);
+    $fresh = countDatabaseQueries($operation);
+    $this->travel($freshSeconds)->seconds();
+    $stale = countDatabaseQueries($operation);
+
+    expect($cold)->toBe($payloadKey === 'analytics' ? 19 : 77)
+        ->and($fresh)->toBe($payloadKey === 'analytics' ? 10 : 64)
+        ->and($stale)->toBe($fresh);
+})->with('report cache strategies');
+
+test('report invalidation survives a registry key lost by overlapping registrations', function (
+    string $actionClass, string $payloadKey, int $freshSeconds, int $maximumSeconds,
+) {
+    [$user, $branch, , $session] = createPrompt69AnalyticsContext();
+    $otherBranch = Branch::factory()->create([
+        'organization_id' => $branch->organization_id,
+        'brand_id' => $branch->brand_id,
+        'name' => 'Concurrent report branch',
+    ]);
+    $accessibleIds = collect([$branch->id]);
+    $this->mock(ResolveWaiterAccessibleBranchIdsAction::class)
+        ->shouldReceive('handle')
+        ->andReturnUsing(function (User $user, SystemPermission $permission = SystemPermission::ViewOrders) use (&$accessibleIds) {
+            return $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
+        });
+    $action = app($actionClass);
+    $cache = Cache::store($actionClass::cacheStore());
+    $indexKey = ($payloadKey === 'analytics' ? 'analytics:dashboard' : 'restaurant-dashboard').':branch:'.$branch->id.':keys';
+    $interleaved = false;
+    $overlappingSnapshot = null;
+    Event::listen(WritingKey::class, function (WritingKey $event) use (
+        &$interleaved, &$overlappingSnapshot, &$accessibleIds, $indexKey, $branch, $otherBranch, $action, $user, $payloadKey,
+    ): void {
+        if ($interleaved || $event->key !== $indexKey) {
+            return;
+        }
+
+        $interleaved = true;
+        $accessibleIds = collect([$branch->id, $otherBranch->id]);
+        $overlappingSnapshot = $action->handle($user)[$payloadKey];
+        $accessibleIds = collect([$branch->id]);
+    });
+
+    $action->handle($user);
+
+    expect($interleaved)->toBeTrue()
+        ->and($cache->get($indexKey))->not->toContain($overlappingSnapshot['cache_key']);
+
+    $session->forceFill(['status' => TableSessionStatus::Closed, 'ended_at' => now()])->save();
+    $accessibleIds = collect([$branch->id, $otherBranch->id]);
+    $current = $action->handle($user)[$payloadKey];
+    $metric = $payloadKey === 'analytics' ? 'active_tables_count' : 'metrics.active_tables_count';
+
+    expect(data_get($current, $metric))->toBe(0)
+        ->and($current['cache_key'])->not->toBe($overlappingSnapshot['cache_key']);
+})->with('report cache strategies');
+
 test('reports viewer sees cached basic analytics for demo data', function () {
     [$user] = createPrompt69AnalyticsContext();
 
@@ -360,16 +469,17 @@ test('payment and session changes invalidate analytics cache', function () {
 
     expect(analyticsCacheStore()->has($cacheKey))->toBeFalse();
 
-    $action->handle($user);
+    $nextCacheKey = $action->handle($user)['analytics']['cache_key'];
 
-    expect(analyticsCacheStore()->has($cacheKey))->toBeTrue();
+    expect($nextCacheKey)->not->toBe($cacheKey)
+        ->and(analyticsCacheStore()->has($nextCacheKey))->toBeTrue();
 
     $activeSession->forceFill([
         'status' => TableSessionStatus::Closed,
         'ended_at' => now(),
     ])->save();
 
-    expect(analyticsCacheStore()->has($cacheKey))->toBeFalse();
+    expect(analyticsCacheStore()->has($nextCacheKey))->toBeFalse();
 
     $updatedAnalytics = $action->handle($user)['analytics'];
 

@@ -176,13 +176,14 @@ test('restaurant dashboard cache is invalidated by draft and kitchen ticket item
 
     expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeFalse();
 
-    $action->handle($manager);
+    $nextCacheKey = $action->handle($manager)['dashboard']['cache_key'];
 
-    expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeTrue();
+    expect($nextCacheKey)->not->toBe($cacheKey)
+        ->and(restaurantDashboardCacheStore()->has($nextCacheKey))->toBeTrue();
 
     $ticketItem->update(['served_at' => now()]);
 
-    expect(restaurantDashboardCacheStore()->has($cacheKey))->toBeFalse();
+    expect(restaurantDashboardCacheStore()->has($nextCacheKey))->toBeFalse();
 });
 
 test('restaurant dashboard cache keeps localized snapshots separate and invalidates every language', function () {

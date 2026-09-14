@@ -9,7 +9,7 @@ Baseline: clean published `4e7be68`. Fresh Boost inspection confirms the local d
 - [x] Reproduce overlapping/overnight/week-boundary schedule input and out-of-order next-opening results. Implement reusable validation with localized field errors, a four-interval editor guard, DST occurrence handling and chronological availability without adding queries.
 - [x] Recheck all model/migration, Action/request, query, Markdown and project-skill evidence; fix only confirmed gaps, preserve deployed migration history and existing data.
 - [x] Run targeted regressions, formatting/static analysis, full browser/parallel/backend coverage gates, audits/build/translations and relevant schema/seed checks on stable source. Browser 5/433; backend 1,831/47,956 in parallel and canonical sequential coverage; zero failures/skips; application coverage 93.9%.
-- [ ] Review, commit with English Conventional Commit messages, push normally to main, verify the remote SHA and record actual publication evidence.
+- [x] Review, commit with English Conventional Commit messages, push normally to main, verify the remote SHA and record actual publication evidence. Implementation `8b2ce02bd63f82a2237434090567ad590a0b6ab5` was pushed and the exact remote ref was observed; publication evidence is in `PROGRESS.md`.
 
 The primary agent owns schedule validation and final integration. Bounded workers implemented verified menu media, factory-state and DST fixes after independent read-only audits. This work adds no deployment, external service or dependency requirement.
 

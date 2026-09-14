@@ -7,6 +7,7 @@
 - Fixed variant factory branch graphs, converted default source drafts and active-line integer totals. Audited all 49 models/factories and 88 migrations; fresh live schema matches the fully migrated isolated schema, with no data rewrite.
 - Updated source-confirmed Laravel skill guidance and affected canonical Markdown. All 172 Markdown files/295 local links pass and all eight skill mirrors agree.
 - Browser **5/433** and parallel backend **1,831/47,956** pass with zero failures/skips. Formatting, static analysis, audits/build, translations, owned cache compilation, migration roundtrip and repeated default seeds pass. Canonical sequential coverage passes the same **1,831/47,956** in **821.14s**, with **93.9% application coverage**. All **221 Actions** execute at **94.90% statement coverage**. Combined backend/browser: **1,836 passed / 48,389 assertions**, zero failures/skips. The source manifest remains unchanged throughout final gates; publication follows the final documentation check.
+- Final documentation/architecture checks pass **16 tests / 1,043 assertions**. Implementation commit `8b2ce02bd63f82a2237434090567ad590a0b6ab5` (`fix: preserve menu media and weekly schedule integrity`) contains the 49 reviewed files. Normal `git push origin main` succeeded, and `git ls-remote origin refs/heads/main` returned that exact SHA. This follow-up records observed publication; no production deployment or remote CI execution is claimed.
 
 ## 2026-09-14 — second audit: atomic settings and local migration
 

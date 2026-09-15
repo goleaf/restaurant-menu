@@ -89,6 +89,37 @@ test('waiter dashboard exposes accessible persistent notification sound controls
         ->assertDontSee('new AudioContext', false);
 });
 
+test('waiter zone attention badges interpolate their count in every interface locale', function (string $locale, string $expectedLabel): void {
+    [$organization, , $branch] = createPrompt52Branch();
+    $waiter = User::factory()->create(['locale' => $locale]);
+    attachPrompt52Waiter($waiter, $organization);
+    $area = AreaNode::factory()->for($branch)->create(['name' => 'Terrace']);
+
+    $servicePoints = ServicePoint::factory()
+        ->count(2)
+        ->for($branch)
+        ->for($area, 'areaNode')
+        ->create(['status' => ServicePointStatus::WaitingWaiter]);
+
+    foreach ($servicePoints as $servicePoint) {
+        $session = TableSession::factory()->forServicePoint($servicePoint)->active()->create();
+        WaiterCall::factory()->forTableSession($session)->create();
+    }
+
+    app()->setLocale($locale);
+
+    Livewire::actingAs($waiter)
+        ->test(WaiterDashboard::class)
+        ->assertSet('waiterCallCount', 2)
+        ->assertSee($expectedLabel)
+        ->assertDontSee(':count')
+        ->assertDontSee('2 '.$expectedLabel);
+})->with([
+    'English' => ['en', 'Needs attention: 2'],
+    'Lithuanian' => ['lt', 'Reikia dėmesio: 2'],
+    'Russian' => ['ru', 'Требуют внимания: 2'],
+]);
+
 test('waiter dashboard shows branch service points sessions and sent drafts', function () {
     [$organization, $brand, $branch] = createPrompt52Branch();
     $waiter = User::factory()->create();

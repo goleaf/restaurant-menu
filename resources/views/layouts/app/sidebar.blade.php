@@ -3,169 +3,129 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen overflow-x-clip bg-canvas text-text-primary antialiased">
-        <a href="#main-content" class="skip-link">
-            {{ __('ui.accessibility.skip_to_content') }}
-        </a>
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-border-subtle bg-surface-muted">
+    <body
+        class="min-h-screen overflow-x-clip bg-canvas text-text-primary antialiased"
+        x-data="workspaceNavigation"
+        x-on:keydown.window="handleShortcut($event)"
+        data-workspace-navigation
+    >
+        <a href="#main-content" class="skip-link">{{ __('ui.accessibility.skip_to_content') }}</a>
+
+        <flux:sidebar sticky collapsible class="border-e border-border-subtle bg-surface-muted">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" class="min-h-touch" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="min-h-touch min-w-touch lg:hidden" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.group class="grid">
-                    <x-slot:heading><span class="text-text-muted">{{ __('navigation.workspaces') }}</span></x-slot:heading>
-                    <flux:sidebar.item class="workspace-nav-item" icon="home" :href="route('dashboard')" :current="$currentNavigation['dashboard']" wire:navigate>
-                        {{ __('navigation.dashboard') }}
-                    </flux:sidebar.item>
-
-                    <flux:sidebar.item class="workspace-nav-item" icon="building-office" :href="route('organizations.index')" :current="$currentNavigation['organizations']" wire:navigate>
-                        {{ __('navigation.organizations') }}
-                    </flux:sidebar.item>
-
-                    @if ($canAccessOnboarding ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
-                            {{ __('navigation.onboarding') }}
-                        </flux:sidebar.item>
+            <flux:sidebar.nav :aria-label="__('navigation.workspaces')">
+                <p class="px-3 py-2 text-sm font-medium text-text-muted in-data-flux-sidebar-collapsed-desktop:hidden">{{ __('navigation.workspaces') }}</p>
+                @foreach ($navigationItems as $item)
+                    @if ($item['group'] === 'workspace')
+                        <flux:sidebar.item
+                            class="workspace-nav-item min-h-touch"
+                            :icon="$item['icon']"
+                            :href="$item['href']"
+                            :current="$item['current']"
+                            :aria-label="$item['label']"
+                            :tooltip="$item['label']"
+                            :data-navigation-key="$item['key']"
+                            wire:navigate
+                        >{{ $item['label'] }}</flux:sidebar.item>
                     @endif
-
-                    <flux:sidebar.item class="workspace-nav-item" icon="squares-2x2" :href="route('restaurant.dashboard')" :current="$currentNavigation['restaurant_dashboard']" wire:navigate>
-                        {{ __('navigation.restaurant') }}
-                    </flux:sidebar.item>
-
-                    @if ($canAccessQrLookup ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="$currentNavigation['qr_lookup']" wire:navigate>
-                            {{ __('navigation.qr_codes') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessWaiterDashboard ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="$currentNavigation['waiter']" wire:navigate>
-                            {{ __('navigation.waiter') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessKitchenDashboard ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="$currentNavigation['kitchen']" wire:navigate>
-                            {{ __('navigation.kitchen') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessBarDashboard ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="beaker" :href="route('restaurant.bar.dashboard')" :current="$currentNavigation['bar']" wire:navigate>
-                            {{ __('navigation.bar') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessAuditLog ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="shield-check" :href="route('restaurant.audit-log.index')" :current="$currentNavigation['audit_log']" wire:navigate>
-                            {{ __('navigation.audit_log') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessDataExports ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="$currentNavigation['exports']" wire:navigate>
-                            {{ __('navigation.exports') }}
-                        </flux:sidebar.item>
-                    @endif
-
-                    @if ($canAccessPlatformDashboard ?? false)
-                        <flux:sidebar.item class="workspace-nav-item" icon="rectangle-group" :href="route('superadmin.dashboard')" :current="$currentNavigation['superadmin']" wire:navigate>
-                            {{ __('navigation.superadmin') }}
-                        </flux:sidebar.item>
-                    @endif
-                </flux:sidebar.group>
+                @endforeach
             </flux:sidebar.nav>
 
             <flux:spacer />
 
-            <div class="px-3 pb-3">
-                <livewire:notifications.unread-count />
-            </div>
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item class="workspace-nav-item" icon="home" :href="route('guest.home')" wire:navigate>
-                    {{ __('navigation.guest_area') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item class="workspace-nav-item" icon="squares-2x2" :href="route('profile.edit')" :current="$currentNavigation['profile']" wire:navigate>
-                    {{ __('navigation.settings') }}
-                </flux:sidebar.item>
+            <flux:sidebar.nav :aria-label="__('navigation.settings')">
+                @foreach ($navigationItems as $item)
+                    @if ($item['group'] === 'account')
+                        <flux:sidebar.item
+                            class="workspace-nav-item min-h-touch"
+                            :icon="$item['icon']"
+                            :href="$item['href']"
+                            :current="$item['current']"
+                            :aria-label="$item['label']"
+                            :tooltip="$item['label']"
+                            :data-navigation-key="$item['key']"
+                            wire:navigate
+                        >{{ $item['label'] }}</flux:sidebar.item>
+                    @endif
+                @endforeach
             </flux:sidebar.nav>
+        </flux:sidebar>
 
+        <flux:header class="sticky top-0 z-navigation flex! min-w-0 flex-wrap gap-2 border-b border-border-subtle bg-surface-raised px-3! py-2! sm:px-6!">
+            <flux:sidebar.toggle
+                class="min-h-touch min-w-touch"
+                icon="bars-2"
+                :aria-label="__('navigation.toggle_sidebar')"
+                :tooltip="__('navigation.toggle_sidebar')"
+            />
+            <flux:button
+                variant="ghost"
+                icon="magnifying-glass"
+                class="min-h-touch min-w-touch"
+                :aria-label="__('navigation.search')"
+                x-on:click="openSearch()"
+                data-navigation-search-trigger
+            >
+                <span class="hidden sm:inline">{{ __('navigation.search') }}</span>
+            </flux:button>
+            <flux:spacer />
+            <livewire:notifications.unread-count />
             @if ($authenticatedUser !== null)
-                <x-desktop-user-menu
-                    class="hidden lg:block"
+                <x-account-menu
                     :name="$authenticatedUser['name']"
                     :email="$authenticatedUser['email']"
                     :initials="$authenticatedUser['initials']"
                 />
             @endif
-        </flux:sidebar>
-
-        <!-- Mobile User Menu -->
-        <flux:header class="sticky top-0 z-navigation min-w-0 overflow-x-clip border-b border-border-subtle bg-surface-raised lg:hidden">
-            <flux:sidebar.toggle class="min-h-touch min-w-touch lg:hidden" icon="bars-2" inset="left" />
-
-            <flux:spacer />
-
-            <livewire:notifications.unread-count :compact="true" />
-
-            @if ($authenticatedUser !== null)
-            <flux:dropdown position="bottom" align="end" class="max-w-11 overflow-hidden">
-                <flux:profile
-                    :initials="$authenticatedUser['initials']"
-                    :aria-label="__('navigation.account_menu', ['initials' => $authenticatedUser['initials'], 'name' => $authenticatedUser['name']])"
-                    class="min-h-touch"
-                    icon-trailing="chevron-down"
-                />
-
-                <flux:menu class="border-border-subtle! bg-surface-raised! shadow-elevated!">
-                    <flux:menu.radio.group>
-                        <div class="p-0 text-sm font-normal">
-                            <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-                                <flux:avatar
-                                    :name="$authenticatedUser['name']"
-                                    :initials="$authenticatedUser['initials']"
-                                />
-
-                                <div class="grid flex-1 text-start text-sm leading-tight">
-                                    <flux:heading class="truncate">{{ $authenticatedUser['name'] }}</flux:heading>
-                                    <flux:text class="truncate">{{ $authenticatedUser['email'] }}</flux:text>
-                                </div>
-                            </div>
-                        </div>
-                    </flux:menu.radio.group>
-
-                    <flux:menu.separator />
-
-                    <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
-                            {{ __('navigation.settings') }}
-                        </flux:menu.item>
-                    </flux:menu.radio.group>
-
-                    <flux:menu.separator />
-
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
-                        @csrf
-                        <flux:menu.item
-                            as="button"
-                            type="submit"
-                            icon="arrow-right-start-on-rectangle"
-                            class="w-full cursor-pointer"
-                            data-test="logout-button"
-                        >
-                            {{ __('navigation.logout') }}
-                        </flux:menu.item>
-                    </form>
-                </flux:menu>
-            </flux:dropdown>
-            @endif
         </flux:header>
 
         {{ $slot }}
+
+        <flux:modal name="workspace-navigation" :closable="false" class="w-full min-w-0! max-w-lg space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <flux:heading id="workspace-navigation-heading" level="2" size="lg" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)">{{ __('navigation.search') }}</flux:heading>
+                    <flux:text class="mt-1">{{ __('navigation.search_description') }}</flux:text>
+                </div>
+                <flux:modal.close>
+                    <flux:button variant="ghost" icon="x-mark" class="min-h-touch min-w-touch" :aria-label="__('ui.accessibility.close_dialog')" />
+                </flux:modal.close>
+            </div>
+            <flux:input
+                data-workspace-search-input
+                x-model="query"
+                type="search"
+                icon="magnifying-glass"
+                class:input="min-h-touch"
+                :label="__('navigation.search_placeholder')"
+                autocomplete="off"
+                autofocus
+                x-on:keydown.escape.stop.prevent="$flux.modal('workspace-navigation').close()"
+                x-on:keydown.arrow-down.prevent="focusFirstResult()"
+                x-on:keydown.enter.prevent="visitFirstResult()"
+            />
+            <nav aria-label="{{ __('navigation.workspaces') }}" class="max-h-[60dvh] overflow-y-auto">
+                <ul class="space-y-1">
+                    @foreach ($navigationItems as $item)
+                        <li x-show="matches($el.dataset.searchLabel)" data-search-label="{{ $item['label'] }}">
+                            <flux:button
+                                :href="$item['href']"
+                                :icon="$item['icon']"
+                                :aria-current="$item['current'] ? 'page' : null"
+                                :data-navigation-search-key="$item['key']"
+                                variant="ghost"
+                                class="h-auto! min-h-touch w-full justify-start! whitespace-normal! py-2 text-start"
+                                wire:navigate
+                            >{{ $item['label'] }}</flux:button>
+                        </li>
+                    @endforeach
+                </ul>
+                <flux:text x-show="!hasMatches" x-cloak role="status" class="py-4">{{ __('navigation.search_empty') }}</flux:text>
+            </nav>
+        </flux:modal>
 
         @persist('toast')
             <flux:toast.group>

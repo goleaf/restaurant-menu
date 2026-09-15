@@ -4,6 +4,12 @@
 
 # Tailwind CSS 4
 
+## Unified workspace continuation — 2026-09-16
+
+The existing three-file native CSS architecture and 216-line app.css remain intact. Navigation, account preferences, branch controls and notification presentation use available Flux components and static Tailwind classes without another generic wrapper layer. The retained six vendor-selector occurrences remain limited to the documented orange-badge contrast and coarse-pointer touch integrations. New error contrast uses supported `class` / `error:class` with `text-danger!`, avoiding a global vendor error override.
+
+Print CSS now applies the existing paper variable to both document root and body only under print media, preventing the dark appearance from coloring empty parts of later PDF pages. Sticker dimensions and preset rules are unchanged. Current before/after assets and HTML/poll payload measurements are in `performance.md`; local Noto Sans and all three language subsets remain unchanged.
+
 Tailwind 4.3.3 is integrated directly through `@tailwindcss/vite` 4.3.3. [`resources/css/app.css`](../resources/css/app.css) is CSS-first: `@import 'tailwindcss' source(none)`, explicit `@source` paths for first-party PHP/Blade/JavaScript, Laravel pagination and installed Flux Free stubs, `@custom-variant dark`, an OKLCH `@theme` token system and a small `@utility touch-target`. No Tailwind 3 JavaScript/PostCSS configuration, Sass/Less, Flux Pro source or unsafe runtime class construction remains.
 
 ## Design tokens

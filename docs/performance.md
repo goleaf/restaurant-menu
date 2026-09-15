@@ -4,6 +4,28 @@
 
 # Performance
 
+## Unified Flux workspace measurements — 2026-09-15
+
+This stage compares its own production baseline at `eb3fa3d`, preserving the previous CSS cleanup and unrelated package-source work. Python gzip level 9 / mtime 0 is used on both sides. These are local measurements, not production performance guarantees.
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| UI PHP classes / UI Blade views | 7 / 14 | 7 / 14 |
+| Published Flux overrides | 2 | 2 |
+| Native CSS files / app.css lines | 3 / 216 | 3 / 216 |
+| Main CSS bytes / gzip | 295,175 / 39,026 | 294,059 / 38,916 |
+| Font CSS bytes / gzip | 964 / 398 | 964 / 398 |
+| Print CSS bytes / gzip | 6,895 / 1,708 | 6,912 / 1,709 |
+| All CSS bytes / gzip | 303,034 / 41,132 | 301,935 / 41,023 |
+| Application JS bytes / gzip | 22,760 / 6,212 | 23,969 / 6,570 |
+| Owner dashboard HTML bytes, RU / 1440px | 87,728 | 118,396 |
+| Mounted Livewire components on that dashboard | 3 | 2 |
+| Notification components per poll with mobile sidebar open | 2 | 1 |
+| Closed poll request bytes | 1,103 | 703 |
+| Closed poll response bytes | 4,561 | 599 |
+
+The dashboard HTML grows because the shared navigation search and notification modal hosts are mounted once. Stable closed polling now sends state without panel HTML, an 86.9% response reduction in the observed samples. Both before and after retained approximately five-second bundled requests; the reduction is component work/payload, not a claimed halving of HTTP frequency. Two final closed samples returned 200 in 56.42 and 62.43 ms under local conditions; no matched baseline latency was captured. The branch picker limits rendered matches to 25 plus the selected branch, but keeps the existing all-branch reporting graph, so no database query reduction is claimed. Noto font binaries, weight range and Latin/Latin-ext/Cyrillic support are unchanged. The complete npm build took 1.441 → 1.571 seconds in the recorded samples; build timing is environment-sensitive.
+
 
 ## Final team workspace comparison — 2026-09-15
 

@@ -253,13 +253,14 @@ test('coarse pointer and livewire request states preserve practical controls', f
 
 test('application shell keeps sidebar headings and account menu names accessible', function () {
     $sidebar = File::get(resource_path('views/layouts/app/sidebar.blade.php'));
-    $desktopUserMenu = File::get(resource_path('views/components/desktop-user-menu.blade.php'));
+    $accountMenu = File::get(resource_path('views/components/account-menu.blade.php'));
 
     expect($sidebar)
-        ->toContain('<x-slot:heading><span class="text-text-muted">')
+        ->toContain(':aria-label="__(\'navigation.workspaces\')"')
+        ->toContain('in-data-flux-sidebar-collapsed-desktop:hidden')
         ->not->toContain('[&>div:first-child>div]')
-        ->toContain("'initials' => \$authenticatedUser['initials']")
-        ->and($desktopUserMenu)
+        ->toContain('<x-account-menu')
+        ->and($accountMenu)
         ->toContain("'initials' => \$initials");
 });
 

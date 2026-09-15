@@ -127,8 +127,9 @@
         margin: 8mm;
     }
 
+    :root,
     body[data-layout='print'] {
-        background: white !important;
+        background: var(--qr-paper) !important;
     }
 
     .qr-print-page {

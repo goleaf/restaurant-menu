@@ -5,25 +5,23 @@ declare(strict_types=1);
 namespace App\Actions\Notifications;
 
 use App\Models\User;
-use Illuminate\Notifications\DatabaseNotification;
+use App\Services\Notifications\UserNotificationQueryService;
 
 final class MarkUserNotificationsReadAction
 {
+    public function __construct(
+        private readonly UserNotificationQueryService $notificationQueries,
+    ) {}
+
     public function one(User $user, string $notificationId): bool
     {
-        $notification = $user->unreadNotifications()->whereKey($notificationId)->first();
-
-        if (! $notification instanceof DatabaseNotification) {
-            return false;
-        }
-
-        $notification->markAsRead();
-
-        return true;
+        return $this->notificationQueries->accessibleQuery($user)
+            ->whereKey($notificationId)->whereNull('read_at')->update(['read_at' => now()]) === 1;
     }
 
     public function all(User $user): int
     {
-        return $user->unreadNotifications()->update(['read_at' => now()]);
+        return $this->notificationQueries->accessibleQuery($user)
+            ->whereNull('read_at')->update(['read_at' => now()]);
     }
 }

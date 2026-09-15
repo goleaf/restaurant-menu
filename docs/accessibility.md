@@ -4,6 +4,10 @@
 
 # Accessibility
 
+## Unified workspace checks — 2026-09-15
+
+The shared sidebar has translated names/tooltips in compact mode; section search restores focus and ignores shortcuts during text entry or another modal. The bell opens a labelled, scrollable Flux panel with explicit read status/actions, locally available Close, loading and persistent offline/error states. Branch radio cards retain visible descriptions and 44px targets inside a bounded scroll area; their group announces disabled state during offline/loading. Explicit description/error IDs protect the actual installed Flux association behavior. Dangerous confirmation inputs retain names, validation and safe Cancel autofocus. The local component reference exercises independent draft preservation and translated states for browser verification.
+
 ## Second Flux cleanup pass — 2026-09-15
 
 Product state panels retain their status/alert roles, polite announcements, busy state and actions while using Flux Callout/Skeleton. A small public callout-variable utility fixes the installed green/yellow heading contrast: the browser regression reproduces the former failure and requires at least 4.5:1. Flux fields own label/error association for migrated guest entry, notes and confirmations. Guest entry keeps a 56-pixel field; normal controls retain 44-pixel touch targets.

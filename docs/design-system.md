@@ -4,6 +4,10 @@
 
 # Design system
 
+## Workspace composition — 2026-09-15
+
+Use one shared header/account menu above product workspaces. Official Flux sidebar collapse, modal, input, radio cards and buttons own generic interaction; native branch details retains useful offline/focus behavior. Navigation search and notification viewing are product compositions, not new generic widget frameworks. Keep one notification host per shell and distinguish opening, reading and completing restaurant work. The restricted local component reference demonstrates actual Free controls and semantic state panels with fictional data.
+
 ## Flux and utility ownership — 2026-09-15
 
 Use documented Flux props, classes and slots for controls; the sidebar heading slot owns heading presentation and `workspace-nav-item` is the reusable product navigation utility. Native details/summary, language tabs, checkbox forms and domain status panels remain where their semantics and behavior already fit. Do not replace them solely to increase the Flux tag count.

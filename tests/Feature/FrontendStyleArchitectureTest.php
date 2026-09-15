@@ -64,6 +64,8 @@ test('print integration loads only on print layouts and preserves physical QR di
         ->toContain('--qr-sticker-width: 76mm;')
         ->toContain('--qr-sticker-height: 104mm;')
         ->toContain('print-color-adjust: exact;')
+        ->toContain(":root,\n    body[data-layout='print']")
+        ->toContain('background: var(--qr-paper) !important;')
         ->toContain('break-inside: avoid;');
 });
 
@@ -189,3 +191,9 @@ test('dangerous confirmation initially focuses only the safe cancel action', fun
         ->and($dom->querySelectorAll('dialog [data-flux-modal-close]')->length)->toBe(1)
         ->and($dom->querySelectorAll('dialog [data-flux-field]')->length)->toBe(2);
 })->with(['en', 'lt', 'ru']);
+
+test('Livewire completions close a named component modal rather than every open editor', function (): void {
+    foreach (File::allFiles(app_path('Livewire')) as $file) {
+        expect($file->getContents())->not->toContain('Flux::modals()->close()');
+    }
+});

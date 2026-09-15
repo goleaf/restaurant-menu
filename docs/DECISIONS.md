@@ -4,6 +4,14 @@
 
 # Restaurant Menu completion decisions
 
+## 2026-09-15 — Unified workspace and explicit notification reads
+
+- Retain installed Flux Free 2.17.0 / Livewire 4.4.1. Current compatible 2.20.0 / 4.4.5 distributions require prohibited GitHub requests; cached archives only contain installed revisions. The separately committed `flux-pro/` source directory does not change the installed dependency or license contract.
+- One header and account-menu composition replace parallel desktop/mobile controls. Persist only Flux appearance/collapse preferences; navigation permissions and notification contents remain identity-scoped server data. Navigation search is local over the prepared permitted links.
+- Bell opening never acknowledges notifications. Use the existing query service/read Action, separately bounded count/detail paths, explicit read scope, current entity authorization and no payload URL navigation. Stable closed polls omit rendered HTML; a first closing refresh removes old detail markup. Offline failures require an explicit retry and never simulate successful reads.
+- Close successful editors by component-scoped modal name. Do not use global modal closure: another feature may contain an unsaved form. Keep safe Cancel autofocus and explicit native dialog names, help and error associations for installed Flux behavior.
+- The local superadmin reference is a fictional, non-persistent verification surface. It is denied in production and reauthorizes every hydrated request; it is not a new administration capability.
+
 
 ## 2026-09-15 — Final team consent and editor boundaries
 

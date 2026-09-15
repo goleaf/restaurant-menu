@@ -90,7 +90,7 @@ class ShortCodeLookup extends Component
 
         unset($this->qrCode);
 
-        Flux::modals()->close();
+        $this->modal('qr-lookup-disable-'.$qrCode->id)->close();
         Flux::toast(variant: 'success', text: __('qr.messages.disabled'));
     }
 
@@ -128,7 +128,7 @@ class ShortCodeLookup extends Component
 
         unset($this->qrCode);
 
-        Flux::modals()->close();
+        $this->modal('qr-lookup-reissue-'.$qrCode->id)->close();
         Flux::toast(variant: 'success', text: __('qr.messages.reissued'));
     }
 

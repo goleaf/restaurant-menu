@@ -4,6 +4,12 @@
 
 # Livewire 4
 
+## Workspace lifecycle contracts — 2026-09-15
+
+One `notifications.unread-count` instance owns bounded visible polling in the shared header. Opening requests details without marking read. Public action arguments are hostile; the query service re-scopes the user and branches, and the read Action reuses that scope. Notification messages are prepared privately for rendering, with a locked audience fingerprint preventing identity reuse. A closed stable refresh updates the reactive count without HTML; the first refresh after closing clears previously rendered details. A failed offline opening shows an explicit Retry when connectivity returns. Keep Alpine visibility and `wire:offline` on separate elements so reconnect does not overwrite local state visibility.
+
+Use `$this->modal('exact-name')->close()` after an editor succeeds. Global `Flux::modals()->close()` is prohibited by the frontend architecture regression because it can close an independent draft. Local cancellation still uses Flux close controls; dismissal does not roll back a dispatched domain operation.
+
 ## Flux interaction lifecycle — second cleanup pass
 
 Use the installed Free controls directly; Flux buttons own their standard loading spinner and disabled behavior. Keep explicit targeted loading/offline attributes where a control belongs to a different action or a multi-step form; these never replace server authorization or idempotency. The waiter attention filter uses Flux Toggle for its existing boolean query state. Labeled persistent settings remain Switch; independent multi-selections remain checkboxes.

@@ -63,6 +63,7 @@ test('media ZIP confirmation requires an audited reason and exact typed confirma
         ->set('mediaBackupDownloadConfirmation', 'MEDIA')
         ->call('downloadMediaBackup')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'media-backup-download')
         ->assertRedirect(route('superadmin.backups.media.download'));
 
     expect(session('media_backup_download_authorization'))

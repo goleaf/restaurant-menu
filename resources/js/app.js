@@ -6,3 +6,4 @@ import './menu-image-picker';
 
 import './menu-workspace';
 import './staff-workspace';
+import './workspace-navigation';

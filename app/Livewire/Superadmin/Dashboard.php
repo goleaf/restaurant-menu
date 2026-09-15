@@ -139,7 +139,7 @@ class Dashboard extends Component
         $this->organizationSuspendReason = '';
         unset($this->organizations);
 
-        Flux::modals()->close();
+        $this->modal('suspend-organization-'.$organizationId)->close();
         Flux::toast(variant: 'success', text: __('ui.livewire.superadmin.dashboard.organization_suspended'));
     }
 
@@ -175,7 +175,7 @@ class Dashboard extends Component
         ]);
 
         $this->reset('backupDownloadConfirmation', 'backupDownloadReason');
-        Flux::modals()->close();
+        $this->modal('sqlite-backup-download')->close();
 
         $this->redirectRoute('superadmin.backups.sqlite.download');
     }
@@ -203,7 +203,7 @@ class Dashboard extends Component
         ]);
 
         $this->reset('mediaBackupDownloadConfirmation', 'mediaBackupDownloadReason');
-        Flux::modals()->close();
+        $this->modal('media-backup-download')->close();
 
         $this->redirectRoute('superadmin.backups.media.download');
     }
@@ -231,7 +231,7 @@ class Dashboard extends Component
         ]);
 
         $this->reset('backupRestoreConfirmation', 'backupRestoreReason');
-        Flux::modals()->close();
+        $this->modal('sqlite-backup-restore')->close();
 
         $this->redirectRoute('superadmin.backups.sqlite.restore');
     }

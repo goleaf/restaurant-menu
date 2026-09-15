@@ -264,7 +264,7 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $r
     $page->navigate(route('onboarding.restaurant', ['lang' => 'en'], false));
     $page
         ->resize(1440, 1000)
-        ->assertVisible('nav[aria-label]');
+        ->assertVisible('nav[aria-label="'.__('ui.onboarding.restaurant_setup.steps_navigation').'"]');
     assertBrowserDarkThemeLayout($page);
     assertBrowserKeyboardFocusIsVisible($page);
 

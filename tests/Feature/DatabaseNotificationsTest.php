@@ -21,6 +21,7 @@ use App\Enums\TableSessionStatus;
 use App\Livewire\Notifications\UnreadCount;
 use App\Livewire\PublicQr\Notifications as GuestNotifications;
 use App\Models\Branch;
+use App\Models\BranchUser;
 use App\Models\Brand;
 use App\Models\DraftOrder;
 use App\Models\DraftOrderItem;
@@ -40,7 +41,9 @@ use App\Models\WaiterCall;
 use App\Notifications\BillRequestedNotification;
 use App\Notifications\KitchenItemReadyNotification;
 use App\Notifications\WaiterCalledNotification;
+use App\Services\Notifications\UserNotificationQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -145,6 +148,8 @@ test('sent draft creates unread database notification for waiter and unread coun
         ->test(UnreadCount::class)
         ->assertSet('unreadCount', 1)
         ->assertSee(__('ui.notifications.unread_count.notifications'))
+        ->assertDontSee(__('ui.livewire.notifications.unreadcount.novyi_zakaz'))
+        ->call('openPanel')
         ->assertSee(__('ui.livewire.notifications.unreadcount.novyi_zakaz'))
         ->call('markAllRead')
         ->assertSet('unreadCount', 0);
@@ -153,8 +158,9 @@ test('sent draft creates unread database notification for waiter and unread coun
 });
 
 test('staff notification ui lists waiter events and can mark one notification read', function () {
-    [, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
+    [$organization, $branch, $servicePoint, $tableSession, $guest] = createPrompt81NotificationContext();
     $waiter = User::factory()->create(['name' => 'Prompt 82 Panel Waiter']);
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
     $waiterCall = WaiterCall::factory()
         ->forServicePoint($servicePoint)
         ->forTableSession($tableSession)
@@ -173,6 +179,7 @@ test('staff notification ui lists waiter events and can mark one notification re
     Livewire::actingAs($waiter)
         ->test(UnreadCount::class)
         ->assertSet('unreadCount', 3)
+        ->call('openPanel')
         ->assertSee(__('ui.livewire.notifications.unreadcount.vyzov_oficianta'))
         ->assertSee(__('ui.livewire.notifications.unreadcount.prosba_sceta'))
         ->assertSee(__('ui.livewire.notifications.unreadcount.poziciia_gotova_d55866f3'))
@@ -181,6 +188,187 @@ test('staff notification ui lists waiter events and can mark one notification re
 
     expect($waiter->unreadNotifications()->where('type', 'waiter_called')->count())->toBe(0)
         ->and($waiter->readNotifications()->where('type', 'waiter_called')->count())->toBe(1);
+});
+
+test('notification bell opens a bounded panel without reading notifications', function (): void {
+    [$organization, , $servicePoint, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($servicePoint)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    foreach (range(1, 23) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)
+        ->assertSet('unreadCount', 23)
+        ->assertSet('panelOpen', false)
+        ->assertDontSee('Ana')
+        ->assertSee('$wire.openPanel()', false)
+        ->call('openPanel')
+        ->assertSet('panelOpen', true)
+        ->assertSee('Ana');
+
+    expect(substr_count($component->html(), 'data-notification-item='))->toBe(20)
+        ->and($waiter->unreadNotifications()->count())->toBe(23)
+        ->and($component->snapshot['data'])->not->toHaveKey('notifications');
+
+    $component->set('panelOpen', false)->call('refreshUnreadCount')->assertDontSee('Ana');
+});
+
+test('notification reads recheck ownership permission and branch access without changing restaurant work', function (): void {
+    [$organization, $branch, $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $other = User::factory()->create();
+    $waiter->notify(new WaiterCalledNotification($call));
+    $other->notify(new WaiterCalledNotification($call));
+    $own = $waiter->unreadNotifications()->firstOrFail();
+    $foreign = $other->unreadNotifications()->firstOrFail();
+    $originalStatus = $call->status;
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel');
+    $component->call('markNotificationRead', $foreign->id)->assertSet('unreadCount', 1);
+    expect($foreign->fresh()->read_at)->toBeNull();
+    $component->call('markNotificationRead', $own->id)->assertSet('unreadCount', 0)
+        ->call('markNotificationRead', $own->id)->assertSet('unreadCount', 0);
+    expect($own->fresh()->read_at)->not->toBeNull()
+        ->and($call->fresh()->status)->toBe($originalStatus);
+
+    $waiter->notify(new WaiterCalledNotification($call));
+    $organization->users()->updateExistingPivot($waiter->id, ['status' => OrganizationUserStatus::Suspended->value]);
+    $component->call('refreshUnreadCount')->assertSet('unreadCount', 0)->assertDontSee('Ana')
+        ->call('markAllRead')->assertSet('unreadCount', 0);
+    expect($waiter->unreadNotifications()->count())->toBe(1);
+});
+
+test('notification destinations are re-resolved and ignore arbitrary payload URLs', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $notification = $waiter->unreadNotifications()->firstOrFail();
+    $notification->update(['data' => [...$notification->data, 'url' => 'https://outside.invalid/steal']]);
+    Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')->assertDontSee('outside.invalid')
+        ->call('openNotification', $notification->id)
+        ->assertRedirect(route('restaurant.waiter.tables.show', $session));
+    expect($notification->fresh()->read_at)->toBeNull();
+
+    $organization->users()->updateExistingPivot($waiter->id, ['status' => OrganizationUserStatus::Suspended->value]);
+    Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openNotification', $notification->id)->assertNoRedirect();
+});
+
+test('notification panels reject stale account actions and clear their prior audience', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    $replacement = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    attachPrompt81Staff($replacement, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $replacement->notify(new WaiterCalledNotification($call));
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')->assertSee('Ana');
+    Auth::login($replacement);
+    $component->call('markAllRead')->assertSet('unreadCount', 0)->assertSet('panelOpen', false)->assertDontSee('Ana');
+    expect($waiter->unreadNotifications()->count())->toBe(1)
+        ->and($replacement->unreadNotifications()->count())->toBe(1);
+});
+
+test('notification scope respects revoked branch assignments and explicit permission denies', function (): void {
+    [$organization, $branch, $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    $role = attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $assignment = BranchUser::factory()->for($organization)->for($branch)->for($waiter)->create(['role_id' => $role->id, 'status' => OrganizationUserStatus::Active]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $notification = $waiter->unreadNotifications()->firstOrFail();
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->assertSet('unreadCount', 1)->call('openPanel');
+    $assignment->forceFill(['status' => OrganizationUserStatus::Removed])->save();
+    $component->call('markNotificationRead', $notification->id)->assertSet('unreadCount', 0)->assertDontSee('Ana');
+    expect($notification->fresh()->read_at)->toBeNull();
+    $assignment->forceFill(['status' => OrganizationUserStatus::Active])->save();
+    $permission = Permission::query()->where('code', SystemPermission::ViewOrders->value)->firstOrFail();
+    $role->permissions()->updateExistingPivot($permission->id, ['enabled' => false]);
+    $component->call('markAllRead')->assertSet('unreadCount', 0)->assertDontSee('Ana');
+    expect($notification->fresh()->read_at)->toBeNull();
+});
+
+test('closed notification polling hydrates no messages and open detail queries stay constant', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    foreach (range(1, 25) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+    $queries = app(UserNotificationQueryService::class);
+    $closedQueries = countDatabaseQueries(function () use ($queries, $waiter): void {
+        $snapshot = $queries->snapshot($waiter, false);
+        expect($snapshot['count'])->toBe(25)->and($snapshot['notifications'])->toHaveCount(0);
+    });
+    $openQueries = countDatabaseQueries(function () use ($queries, $waiter): void {
+        $snapshot = $queries->snapshot($waiter, true);
+        expect($snapshot['notifications'])->toHaveCount(20)->and($snapshot['destinations'])->toHaveCount(20);
+    });
+    expect($openQueries)->toBe($closedQueries + 2);
+});
+
+test('notification destinations disappear when their table context is missing or mismatched', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $notification = $waiter->unreadNotifications()->firstOrFail();
+    foreach ([null, '1', 999999] as $missingPoint) {
+        $notification->update(['data' => [...$notification->data, 'service_point_id' => $missingPoint]]);
+        Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')->assertDontSee(__('notifications.panel.open_table'))
+            ->call('openNotification', $notification->id)->assertNoRedirect()->assertSet('destinationUnavailable', true);
+    }
+    expect($notification->fresh()->read_at)->toBeNull();
+});
+
+test('notification actions reject malformed browser identifiers', function (): void {
+    $user = User::factory()->create();
+    foreach ([null, true, 42, [], ['id' => 'forged'], 'not-a-uuid'] as $identifier) {
+        foreach (['markNotificationRead', 'openNotification'] as $action) {
+            Livewire::actingAs($user)->test(UnreadCount::class)->call($action, $identifier)->assertStatus(422);
+        }
+    }
+});
+
+test('stable closed notification polls update state without retransmitting the panel markup', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->assertSee('data-notification-trigger', false);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $component->call('refreshUnreadCount')->assertSet('unreadCount', 1);
+    expect($component->effects)->not->toHaveKey('html');
+    $component->call('openPanel')->assertSee('Ana')->assertSet('detailsRendered', true);
+    $component->update(calls: [['method' => 'refreshUnreadCount', 'params' => [], 'path' => '']], updates: ['panelOpen' => false])
+        ->assertDontSee('Ana')->assertSet('detailsRendered', false);
+    expect($component->effects)->toHaveKey('html');
+    $component->call('refreshUnreadCount');
+    expect($component->effects)->not->toHaveKey('html');
+    $component->call('openPanel')->assertSee('Ana')->assertSet('detailsRendered', true);
+});
+
+test('notification fallback messages follow the current interface locale rather than the delivery locale', function (): void {
+    [$organization, , $point, $session] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => null]);
+    $waiter->notify(new WaiterCalledNotification($call));
+    $notification = $waiter->unreadNotifications()->firstOrFail();
+    $notification->update(['data' => [...$notification->data, 'message' => 'Old delivery language']]);
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $waiter->forceFill(['locale' => $locale])->save();
+        app()->setLocale($locale);
+        Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')
+            ->assertSee(__('ui.livewire.notifications.unreadcount.gost_zovet_oficianta'))->assertDontSee('Old delivery language');
+    }
 });
 
 test('kitchen ready creates one unread database notification for waiter recipients', function () {

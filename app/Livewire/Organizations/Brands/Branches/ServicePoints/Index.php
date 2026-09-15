@@ -454,7 +454,7 @@ class Index extends Component
 
         $this->forgetServicePointDisplays();
 
-        Flux::modals()->close();
+        $this->modal('delete-service-point-'.$servicePointId)->close();
         Flux::toast(variant: 'success', text: __('service_points.messages.deleted'));
     }
 

@@ -4,6 +4,16 @@
 
 # Frontend architecture
 
+## Unified Flux workspace — 2026-09-15
+
+The application shell uses one Flux header, one account menu and one notification component at every breakpoint. Flux owns mobile disclosure and persisted desktop collapse; permitted links are rebuilt on the server for the current identity. A local Flux modal searches the same prepared navigation items, including accent-insensitive matching, keyboard entry and focus restoration. Its component-owned shortcut ignores text entry and existing dialogs; no permission data is persisted.
+
+The notification bell only opens the panel. The existing query service supplies the count and, only while open, at most 20 recent accessible notifications. The existing read Action performs explicit single/all read operations within the stated current-user/accessible-branch scope. Reading is independent of restaurant work completion. Destinations are derived from current table context and authorization, never an arbitrary payload URL. Closed stable polls skip HTML rendering; the first poll after dismissal clears rendered message details. Opening offline exposes a retry after reconnect, and closing always works locally.
+
+Branch selection retains native details for local dismissal and focus, with Flux Input and radio cards. Its option projection contains at most 25 search matches plus the currently selected authorized branch. This limits rendered options, not the dashboard service's existing complete permitted branch graph; no new unbounded search query was added. Help/error associations and the installed radio disabled-state bridge are explicit and browser-tested.
+
+`/local/components` is available only in local/testing to an authenticated superadmin, with authorization repeated on hydration. Its fictional examples exercise controls, states, lists, modal validation and independent drafts without changing restaurant records. The component is unavailable in production even with cached routes. Existing menu/media, QR print and guest native-dialog contracts are preserved.
+
 ## Flux Free modernization — 2026-09-15
 
 Installed and locked versions remain Flux **2.17.0** and Livewire **4.4.1**. Packagist metadata and local outdated checks identify compatible stable **2.20.0 / 4.4.5**. Their available distribution archives point to GitHub API URLs, prohibited by this repository's push-only rule; the local Composer cache contains only the installed versions. No lock file, unrelated dependency or Pro package was changed. This is an explicit upgrade blocker, not a completed version upgrade.

@@ -154,7 +154,7 @@ class Permissions extends Component
         if ($systemPermission?->isCritical()) {
             $this->lastCriticalWarning = __('permissions.messages.critical_permission_changed');
             $this->criticalPermissionChangeReason = '';
-            Flux::modals()->close();
+            $this->modal('critical-permission-'.$permissionId.'-'.$state)->close();
             Flux::toast(variant: 'warning', text: $this->lastCriticalWarning);
         } else {
             $this->lastCriticalWarning = null;

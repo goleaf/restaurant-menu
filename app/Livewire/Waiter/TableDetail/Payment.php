@@ -8,7 +8,6 @@ use App\Actions\Payments\RecordManualPaymentAction;
 use App\Actions\TableSessions\CloseTableSessionAction;
 use App\Models\TableSessionGuest;
 use App\Support\Validation\RestaurantValidationRules;
-use Flux\Flux;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -142,7 +141,7 @@ final class Payment extends TableDetailSection
 
         $this->closeTableConfirmation = '';
         $this->paymentFeedbackMessage = __('payments.messages.session_closed');
-        Flux::modals()->close();
+        $this->modal('close-table-session')->close();
         $this->refreshPayment();
         $this->dispatch('waiter-table-session-updated');
     }

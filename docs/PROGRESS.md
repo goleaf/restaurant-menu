@@ -4,6 +4,12 @@
 
 # Restaurant Menu completion progress
 
+## Unified Flux workspace — 2026-09-16
+
+Implemented the shared collapsible sidebar/header/account menu, permitted local navigation search, one explicit-read notification panel, bounded Flux branch options, named modal closure and local superadmin component reference. Fixed error associations/contrast, Safari pointer-focus restoration, reconnect visibility, translated waiter counts and the QR print page background. Existing menu/media/team/domain work and the independent Pro preparation remain preserved.
+
+Implementation and local verification are complete. Full WebKit passes 23 / 1,627; independent review has no remaining P1/P2 findings. Final full backend passes 2,794 / 59,017; canonical coverage passes at 93.7% with the unchanged 90% minimum. Commit/push delivery is recorded separately in local Git history and the final session response. Runtime remains installed Flux Free 2.17.0 / Livewire 4.4.1 because the compatible update archives require prohibited GitHub requests. See testing.md and performance.md for measured evidence and environmental limits.
+
 ## Second Flux cleanup pass — 2026-09-15
 
 Direct Flux controls replace the generic button/alert/form-field framework and unused row/error wrappers. PHP UI classes decrease 12 → 7; UI Blade views 19 → 14. Product Card, EmptyState and StatePanel keep their semantic APIs and compose Flux. The two published accessibility overrides are intentionally retained and guarded against upstream drift. Native CSS stays in three files; `app.css` is 244 → 216 lines, all generated CSS 306,051 → 303,034 bytes (gzip 41,375 → 41,132). Application JS and local Noto subsets are unchanged.

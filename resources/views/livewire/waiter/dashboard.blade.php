@@ -217,7 +217,7 @@
                                             <x-ui.status-badge tone="info">{{ __('ui.waiter.dashboard.assigned') }}</x-ui.status-badge>
                                         @endif
                                         @if ($zone['priority_count'] > 0)
-                                            <x-ui.status-badge tone="danger">{{ $zone['priority_count'] }} {{ __('ui.waiter.dashboard.needs_attention') }}</x-ui.status-badge>
+                                            <x-ui.status-badge tone="danger">{{ __('ui.waiter.dashboard.needs_attention', ['count' => $zone['priority_count']]) }}</x-ui.status-badge>
                                         @endif
                                     </div>
                                 </div>

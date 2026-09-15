@@ -14,3 +14,6 @@ Use installed Flux Free directly for buttons, fields, callouts, cards and skelet
 
 ## Label the native Flux 2.17 dialog from its persistent heading
 Flux 2.17 forwards aria-label/aria-labelledby on flux:modal to ui-modal rather than its dialog. In product modal compositions, a persistent heading with a stable id uses x-init and native closest('dialog') to set aria-labelledby. This lets translated/morphed heading text remain the accessible name without a published modal override. Browser tests must assert the actual dialog name and focus restoration; reevaluate when Flux changes its attribute forwarding.
+
+## Associate Flux errors and use semantic error contrast
+Installed Flux 2.17 does not automatically associate every error/help node with its field. Changed forms use explicit description:id/error:id plus aria-describedby (or full field composition). For normal-size error text use text-danger! via class or the documented error:class attribute: upstream light red-500 measured only 3.81:1 on white. WorkspaceComponentsTest checks rendered contrast >=4.5. Avoid a global vendor selector override.

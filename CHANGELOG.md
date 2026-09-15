@@ -4,6 +4,14 @@
 
 # Changelog
 
+## Unified Flux workspace — 2026-09-16
+
+- Unify desktop/mobile navigation and account preferences; add desktop collapse and local permitted-section search.
+- Make the notification bell open a readable Flux panel; preserve separate authorized single/all read actions, bounded polling, offline retry and safe table destinations.
+- Compose branch selection with Flux controls; retain selected context, keyboard/offline behavior and unsaved-draft protection.
+- Close only the successful named modal, strengthen field associations/contrast and add a protected local component reference.
+- Correct translated waiter attention counts and preserve white QR paper across dark-mode print pages.
+
 ## 2026-09-15 — second Flux cleanup pass
 
 - Remove five generic or unused UI views and their five PHP classes; compose the retained semantic cards, states and empty panels from Flux.

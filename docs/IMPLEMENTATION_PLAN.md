@@ -4,6 +4,21 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-15 — unified Flux workspace (implemented and verified 2026-09-16)
+
+Continue from the verified cleanup and preserve the independently added `eb3fa3d` package-source commit. The installed runtime remains Flux Free 2.17.0 / Livewire 4.4.1; a checked-in package directory is not an installed dependency or license decision.
+
+| Work | Owner | Status |
+| --- | --- | --- |
+| Installed compatibility, theme, shared entrypoints, translations, local component reference, documentation | Root | implemented and verified on Free 2.17.0 / Livewire 4.4.1; compatible archive upgrade blocked by push-only policy |
+| Authorized navigation data, desktop collapse, local section search and one account menu | Navigation worker | implemented; full backend/browser checks pass |
+| One notification counter and bounded explicit-read panel using existing service/Action | Notification worker | implemented; reconnect, stale response, scope and focus regressions pass |
+| Branch picker, selected-context retention and form/dialog regression review | Branch/forms worker | implemented; full backend/browser checks pass |
+| Integrated browser/performance checks, independent review, full local gates | Root and independent reviewer | verified: backend 2,794 / 59,017; WebKit 23 / 1,627; coverage 93.7%; no remaining P1/P2 review findings |
+| Scoped Conventional Commit and ordinary existing-origin push | Root | local gates complete; delivery outcome recorded separately in Git history and the final session response |
+
+Use Free controls actually present in the installed package. Preserve domain Actions, server authorization, all translations, menu/media drafts, QR print and the native guest dish dialog. No new runtime service, framework, worker or production data operation is part of this stage. Only the Flux desktop appearance preference may persist; permission-sensitive navigation and notification data are rebuilt for the current account.
+
 ## 2026-09-15 — second Flux cleanup pass (verified)
 
 - Done: inspect installed Free package, baseline assets and shared branch; preserve concurrent team verification commit `70fcc3e`.

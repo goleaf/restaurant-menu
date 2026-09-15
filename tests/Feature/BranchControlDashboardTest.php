@@ -15,6 +15,7 @@ use App\Models\KitchenDepartment;
 use App\Models\OrganizationUser;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Dom\HTMLDocument;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -43,6 +44,53 @@ test('multiple branches default to an explicit overview without a first branch a
             expect($link['href'])->toBeNull();
         }
     }
+});
+
+test('branch search keeps the selected authorized branch available beside matching options', function () {
+    $matching = Branch::factory()->for($this->branch->organization)->for($this->branch->brand)->create(['name' => 'Kaunas matching']);
+    $foreign = Branch::factory()->create(['name' => 'Kaunas foreign']);
+
+    Livewire::actingAs($this->owner)->withQueryParams(['branch' => (string) $this->branch->id])->test(Dashboard::class)
+        ->set('branchSearch', 'Kaunas')
+        ->assertSet('selectedBranchId', (string) $this->branch->id)
+        ->assertViewHas('dashboard', fn (array $dashboard): bool => array_column($dashboard['branches'], 'id') === [$this->branch->id, $matching->id]
+            && ! $dashboard['branch_search_empty'])
+        ->assertDontSee($foreign->name)
+        ->set('branchSearch', 'No matching restaurant')
+        ->assertViewHas('dashboard', fn (array $dashboard): bool => array_column($dashboard['branches'], 'id') === [$this->branch->id]
+            && $dashboard['branch_search_empty'])
+        ->assertSee(__('dashboard.control.branch_search_empty'));
+});
+
+test('branch options are bounded without dropping the selected branch or all-branch context', function () {
+    Branch::factory()->count(26)->for($this->branch->organization)->for($this->branch->brand)
+        ->sequence(fn ($sequence): array => ['name' => sprintf('A branch %02d', $sequence->index)])->create();
+
+    Livewire::actingAs($this->owner)->test(Dashboard::class)
+        ->assertSet('selectedBranchId', '')
+        ->assertViewHas('dashboard', fn (array $dashboard): bool => count($dashboard['branches']) === 25
+            && $dashboard['branch_count'] === 27 && $dashboard['selected_branch'] === null)
+        ->set('selectedBranchId', (string) $this->branch->id)
+        ->assertViewHas('dashboard', fn (array $dashboard): bool => count($dashboard['branches']) === 26
+            && $dashboard['branches'][0]['id'] === $this->branch->id);
+});
+
+test('branch picker preserves explicit search and selection error associations', function () {
+    $component = Livewire::actingAs($this->owner)->test(Dashboard::class)
+        ->set('branchSearch', str_repeat('x', 121))->assertHasErrors('branchSearch');
+    $document = HTMLDocument::createFromString($component->html(), LIBXML_NOERROR);
+    $search = $document->querySelector('input[name="branchSearch"]');
+    expect($search->getAttribute('aria-invalid'))->toBe('true')
+        ->and($search->getAttribute('aria-describedby'))->toBe('dashboard-branch-search-help dashboard-branch-search-error')
+        ->and($document->querySelectorAll('#dashboard-branch-search-error')->length)->toBe(1);
+
+    $component->set('branchSearch', '')->set('selectedBranchId', Branch::factory()->create()->id)
+        ->assertHasErrors('selectedBranchId');
+    $document = HTMLDocument::createFromString($component->html(), LIBXML_NOERROR);
+    $selection = $document->querySelector('ui-radio-group[name="selectedBranchId"]');
+    expect($selection->getAttribute('aria-invalid'))->toBe('true')
+        ->and($selection->getAttribute('aria-describedby'))->toBe('dashboard-branch-error')
+        ->and($document->querySelectorAll('#dashboard-branch-error')->length)->toBe(1);
 });
 
 test('branch control rejects malformed and foreign branch selections before using them', function (mixed $selection) {

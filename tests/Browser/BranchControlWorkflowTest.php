@@ -21,8 +21,18 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page = visit(route('demo-login.index', absolute: false));
     branchControlClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
     $page->assertPathIs(route('dashboard', absolute: false));
+    $page->navigate(route('restaurant.dashboard', absolute: false));
+    $page->assertAttribute('ui-radio-group[name="selectedBranchId"] ui-radio[value=""]', 'aria-checked', 'true');
     $page->navigate(route('restaurant.dashboard', ['branch' => $branch->id], false));
     $page->assertSee($branch->name)->assertPresent('[data-dashboard-operations]')->assertPresent('[data-dashboard-readiness]');
+    branchControlClick($page, '[data-dashboard-branch-picker] summary');
+    $page->fill('input[name="branchSearch"]', 'No matching restaurant');
+    $page->assertSee(__('dashboard.control.branch_search_empty'))
+        ->assertAttribute('ui-radio[value="'.$branch->id.'"]', 'aria-checked', 'true');
+    $page->fill('input[name="branchSearch"]', '');
+    $page->keys('input[name="branchSearch"]', 'Escape');
+    expect($page->script("document.querySelector('[data-dashboard-branch-picker]').open"))->toBeFalse();
+    expect($page->script("document.activeElement.matches('[data-dashboard-branch-picker] summary')"))->toBeTrue();
     $page->select('select[name="periodDraft"]', 'custom');
     $page->fill('input[name="dateFromDraft"]', '2026-06-01')->fill('input[name="dateToDraft"]', '2026-06-07');
     branchControlClick($page, '[data-dashboard-period-form] button[type="submit"]');
@@ -39,9 +49,25 @@ test('branch control preserves URL history local periods and ordering drafts acr
     branchControlClick($page, '[data-ordering-controls] summary');
     $page->fill('input[name="closure.temporaryClosedReason"]', 'Browser unsaved reason');
     branchControlClick($page, '[data-dashboard-branch-picker] summary');
-    branchControlClick($page, 'input[name="selectedBranchId"][value=""]');
+    branchControlClick($page, 'ui-radio-group[name="selectedBranchId"] ui-radio[value=""]');
     $page->assertSee(__('dashboard.control.unsaved_ordering'))->assertQueryStringHas('branch', (string) $branch->id);
     branchControlClick($page, 'button[wire\\:click="discardOrdering"]');
+
+    branchControlClick($page, '[data-dashboard-branch-picker] summary');
+    branchControlClick($page, 'ui-radio-group[name="selectedBranchId"] ui-radio[value=""]');
+    $page->assertSee(__('dashboard.control.all_branches_description'));
+    branchControlClick($page, '[data-dashboard-branch-picker] summary');
+    branchControlClick($page, 'ui-radio-group[name="selectedBranchId"] ui-radio[value="'.$branch->id.'"]');
+    $page->assertQueryStringHas('branch', (string) $branch->id);
+    expect($page->script("document.querySelector('[data-dashboard-branch-picker]').open"))->toBeFalse();
+    expect($page->script("document.activeElement.matches('[data-dashboard-branch-picker] summary')"))->toBeTrue();
+
+    $page->resize(390, 844);
+    branchControlClick($page, '[data-dashboard-branch-picker] summary');
+    expect($page->script("Array.from(document.querySelectorAll('ui-radio-group[name=\"selectedBranchId\"] ui-radio')).every(el => el.scrollHeight <= el.clientHeight + 1)"))->toBeTrue();
+    $page->screenshot(true, 'branch-picker-390');
+    copy(base_path('tests/Browser/Screenshots/branch-picker-390.png'), storage_path('logs/branch-picker-390.png'));
+    $page->keys('input[name="branchSearch"]', 'Escape');
 
     $page->script("document.querySelector('[data-ordering-controls]').open = false");
     foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
@@ -81,8 +107,17 @@ test('branch control preserves URL history local periods and ordering drafts acr
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     $page->script("window.dispatchEvent(new Event('offline'))");
     $page->assertDisabled('button[wire\\:click="refreshOperations"]');
+    branchControlClick($page, '[data-dashboard-branch-picker] summary');
+    $page->assertDisabled('input[name="branchSearch"]')
+        ->assertAttribute('ui-radio-group[name="selectedBranchId"]', 'aria-disabled', 'true');
+    expect($page->script("Array.from(document.querySelectorAll('ui-radio-group[name=\"selectedBranchId\"] ui-radio')).every(el => el.disabled)"))->toBeTrue();
+    $page->script("document.querySelector('ui-radio-group[name=\"selectedBranchId\"] ui-radio[value=\"\"]').click()");
+    $page->assertQueryStringHas('branch', (string) $branch->id);
+    $page->keys('[data-dashboard-branch-picker] summary', 'Escape');
+    expect($page->script("document.querySelector('[data-dashboard-branch-picker]').open"))->toBeFalse();
     $page->script("window.dispatchEvent(new Event('online'))");
-    $page->assertEnabled('button[wire\\:click="refreshOperations"]');
+    $page->assertEnabled('button[wire\\:click="refreshOperations"]')
+        ->assertAttribute('ui-radio-group[name="selectedBranchId"]', 'aria-disabled', 'false');
 
     branchControlClick($page, '[data-operation="pending"] a');
     $page->assertPathIs(route('restaurant.waiter.dashboard', absolute: false))->assertQueryStringHas('branch', (string) $branch->id)->assertQueryStringHas('attention', 'pending');

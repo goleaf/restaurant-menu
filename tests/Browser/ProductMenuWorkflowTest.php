@@ -281,7 +281,7 @@ test('owner previews local CSV discards safely and applies a page scoped availab
     $page->assertPresent('[data-section="catalog-transfer"] [role="status"]');
     productMenuClick($page, '[data-menu-section="catalog"]');
     $page->assertAttribute('[data-menu-section="catalog"]', 'aria-current', 'page');
-    $page->fill('input[type="search"]', 'Browser CSV dish')->wait(1);
+    $page->fill('input[name="filters.search"]', 'Browser CSV dish')->wait(1);
     productMenuClick($page, 'button[wire\\:click="selectCatalogPage"]');
     $page->assertSee(__('menu.bulk.selected', ['count' => 1]));
     $page->select('select[wire\\:model\\.live="bulk.operation"]', 'available')->wait(1);

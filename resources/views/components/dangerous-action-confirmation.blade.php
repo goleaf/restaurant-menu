@@ -16,12 +16,13 @@
                     id="dangerous-action-{{ $name }}-reason"
                     name="{{ $reasonModel }}"
                     wire:model="{{ $reasonModel }}"
+                    aria-describedby="dangerous-action-{{ $name }}-reason-error"
                     rows="3"
                     maxlength="500"
                     :required="$reasonRequired"
                     :placeholder="__($reasonPlaceholder)"
                 />
-                <flux:error :name="$reasonModel" />
+                <flux:error :name="$reasonModel" id="dangerous-action-{{ $name }}-reason-error" class="text-danger!" />
             </flux:field>
         @endif
 
@@ -32,12 +33,13 @@
                     id="dangerous-action-{{ $name }}-confirmation"
                     name="{{ $confirmationModel }}"
                     wire:model="{{ $confirmationModel }}"
+                    aria-describedby="dangerous-action-{{ $name }}-confirmation-help dangerous-action-{{ $name }}-confirmation-error"
                     autocomplete="off"
                     required
                     class:input="min-h-touch"
                 />
-                <flux:description>{{ __($confirmationHelp ?: 'ui.confirmations.typed_confirmation_help', ['text' => $confirmationText]) }}</flux:description>
-                <flux:error :name="$confirmationModel" />
+                <flux:description id="dangerous-action-{{ $name }}-confirmation-help">{{ __($confirmationHelp ?: 'ui.confirmations.typed_confirmation_help', ['text' => $confirmationText]) }}</flux:description>
+                <flux:error :name="$confirmationModel" id="dangerous-action-{{ $name }}-confirmation-error" class="text-danger!" />
             </flux:field>
         @endif
 

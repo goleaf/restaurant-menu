@@ -160,6 +160,7 @@ test('critical permission changes show a warning', function () {
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
         ->set('criticalPermissionChangeReason', 'Temporary access reduction during audit.')
         ->call('setPermissionState', $manageStaff->id, 'deny')
+        ->assertDispatched('modal-close', name: 'critical-permission-'.$manageStaff->id.'-deny')
         ->assertSee(__('permissions.messages.critical_permission_changed'));
 });
 

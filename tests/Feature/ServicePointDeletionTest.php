@@ -140,8 +140,13 @@ test('repeated delete confirmation cannot delete a different service point', fun
 
     Livewire::actingAs($owner)
         ->test(ServicePointsIndex::class, compact('organization', 'brand', 'branch'))
+        ->call('startEditing', $other->id)
+        ->set('editingName', 'Unfinished table name')
         ->call('deleteServicePoint', $selected->id)
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'delete-service-point-'.$selected->id)
+        ->assertSet('editingServicePointId', $other->id)
+        ->assertSet('editingName', 'Unfinished table name')
         ->assertDontSee('Selected deletion row')
         ->assertSee('Other protected row');
 

@@ -12,6 +12,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Actions,Livewire}/** | .ai/rules/actions-livewire.md |
 | app/Actions/** | .ai/rules/actions.md |
 | app/** | .ai/rules/app.md |
+| resources/views/components/dashboard/branch-picker.blade.php | .ai/rules/dashboard.md |
 | database/factories/** | .ai/rules/factories.md |
 | resources/views/flux/** | .ai/rules/flux.md |
 | app/{Actions/Invitations,Http/Controllers/Invitations,Livewire/**,Models/Invitation.php}/** | .ai/rules/invitations-livewire.md |

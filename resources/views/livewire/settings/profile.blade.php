@@ -26,7 +26,7 @@
 
             <flux:field>
                 <flux:label>{{ __('guest.table.interface_language') }}</flux:label>
-                <flux:select wire:model="locale">
+                <flux:select id="profile-interface-language" wire:model="locale">
                     @foreach ($localeOptions as $localeCode => $localeLabel)
                         <flux:select.option wire:key="profile-locale-{{ $localeCode }}" value="{{ $localeCode }}">
                             {{ $localeLabel }}

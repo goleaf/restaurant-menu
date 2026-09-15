@@ -56,8 +56,8 @@ test('staff with close table sessions permission can close an active session and
         ->whereHas('order', fn ($query) => $query->where('table_session_id', $tableSession->id))
         ->count();
 
-    Livewire::actingAs($staff)
-        ->test(Payment::class, ['tableSessionId' => $tableSession->id])
+    $component = Livewire::actingAs($staff)->test(Payment::class, ['tableSessionId' => $tableSession->id]);
+    $component
         ->assertSet('payment.session.can_close', true)
         ->assertSet('payment.session.close_requires_warning', true)
         ->assertSee('id="dangerous-action-close-table-session-confirmation"', false)
@@ -65,6 +65,7 @@ test('staff with close table sessions permission can close an active session and
         ->set('closeTableConfirmation', 'CLOSE')
         ->call('closeTableSession')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'close-table-session', scope: $component->instance()->getId())
         ->call('closeTableSession')
         ->assertHasNoErrors()
         ->assertSee(__('payments.messages.session_closed'));

@@ -233,6 +233,11 @@ class Dashboard extends Component
             if ($search !== '') {
                 $dashboard['branches'] = array_values(array_filter($dashboard['branches'], fn (array $branch): bool => str_contains(mb_strtolower($branch['label']), $search)));
             }
+            $dashboard['branch_search_empty'] = $search !== '' && $dashboard['branches'] === [];
+            $dashboard['branches'] = array_slice($dashboard['branches'], 0, 25);
+            if ($selected !== null && ! in_array($selected['id'], array_column($dashboard['branches'], 'id'), true)) {
+                array_unshift($dashboard['branches'], $selected);
+            }
         }
 
         return view('livewire.restaurant.dashboard', ['dashboard' => $dashboard]);

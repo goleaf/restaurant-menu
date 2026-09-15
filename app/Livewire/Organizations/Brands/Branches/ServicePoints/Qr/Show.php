@@ -93,7 +93,7 @@ class Show extends Component
         $this->qrDisableReason = '';
         $this->reloadQrCode();
 
-        Flux::modals()->close();
+        $this->modal('qr-disable-'.$this->qrCode->id)->close();
         Flux::toast(variant: 'success', text: __('qr.messages.disabled'));
     }
 

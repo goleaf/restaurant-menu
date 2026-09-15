@@ -1,105 +1,128 @@
-<div data-component="notifications-unread-count" wire:poll.visible.5s="refreshUnreadCount">
-    @if ($compact)
-        <button
-            type="button"
-            wire:click="markAllRead"
-            @class([
-                'relative inline-flex size-10 min-h-touch min-w-touch items-center justify-center rounded-lg border text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-amber-500/30',
-                'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-100' => $unreadCount > 0,
-                'border-zinc-200 bg-white text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300' => $unreadCount === 0,
-            ])
-            title="{{ $unreadCount > 0 ? __('ui.notifications.unread_count.mark_notifications_as_read') : __('ui.empty.no_notifications') }}"
-            aria-label="{{ __('ui.notifications.unread_count.unread_notifications') }}"
+<div
+    x-data="{
+        panelReady: false,
+        panelFailed: false,
+        panelEpoch: 0,
+        async loadPanel() {
+            this.panelReady = false;
+            this.panelFailed = false;
+            const epoch = ++this.panelEpoch;
+            if (!navigator.onLine) {
+                this.panelFailed = true;
+                return;
+            }
+            try {
+                await this.$wire.openPanel();
+                if (epoch === this.panelEpoch) this.panelReady = true;
+                else this.$wire.$set('panelOpen', false, false);
+            } catch {
+                if (epoch === this.panelEpoch) this.panelFailed = true;
+            }
+        }
+    }" data-component="notifications-unread-count" wire:poll.visible.5s="refreshUnreadCount">
+    <flux:modal.trigger name="staff-notifications">
+        <flux:button
+            x-on:click="$el.focus(); loadPanel()"
+            variant="ghost"
+            icon="bell"
+            class="min-h-touch min-w-touch"
+            :aria-label="__('notifications.panel.open', ['count' => $unreadCount])"
+            data-notification-label="{{ __('notifications.panel.open', ['count' => ':count']) }}"
+            x-bind:aria-label="$el.dataset.notificationLabel.replace(':count', $wire.unreadCount)"
+            aria-haspopup="dialog"
+            data-notification-trigger
         >
-            <flux:icon.bell class="size-4" />
+            <flux:badge size="sm" color="zinc" aria-hidden="true" x-show="$wire.unreadCount > 0" x-text="$wire.unreadCount > 99 ? '99+' : $wire.unreadCount" x-cloak>{{ $unreadCount > 99 ? '99+' : $unreadCount }}</flux:badge>
+        </flux:button>
+    </flux:modal.trigger>
 
-            @if ($unreadCount > 0)
-                <span class="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold leading-5 text-white">
-                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
-                </span>
-            @endif
-        </button>
-    @else
-        <div class="rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="flex items-center justify-between gap-3">
-                <span class="inline-flex min-w-0 items-center gap-2 text-zinc-700 dark:text-zinc-200">
-                    <flux:icon.bell class="size-4 shrink-0" />
-                    <span class="truncate font-medium">{{ __('ui.notifications.unread_count.notifications') }}</span>
-                </span>
-
-                <span @class([
-                    'inline-flex min-w-7 justify-center rounded-md px-2 py-0.5 text-xs font-semibold',
-                    'bg-red-600 text-white' => $unreadCount > 0,
-                    'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-300' => $unreadCount === 0,
-                ])>
-                    {{ $unreadCount > 99 ? '99+' : $unreadCount }}
-                </span>
+    <flux:modal
+        name="staff-notifications"
+        flyout
+        :closable="false"
+        class="w-full min-w-0 max-w-lg px-4 py-6 sm:px-6"
+        x-on:close="panelEpoch++; panelReady = false; $wire.$set('panelOpen', false, false)"
+    >
+        <div class="space-y-5">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <flux:heading
+                        level="2"
+                        size="lg"
+                        id="staff-notifications-title"
+                        class="break-words"
+                        x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)"
+                    >{{ __('ui.notifications.unread_count.notifications') }}</flux:heading>
+                    <flux:text class="mt-2">{{ __('notifications.panel.scope') }}</flux:text>
+                </div>
+                <flux:modal.close>
+                    <flux:button variant="ghost" icon="x-mark" class="min-h-touch min-w-touch shrink-0" :aria-label="__('notifications.panel.close')" autofocus />
+                </flux:modal.close>
             </div>
 
-            @if ($unreadCount === 0)
-                <p class="mt-3 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                    {{ __('ui.empty.no_notifications') }}
-                </p>
-            @else
-                <div class="mt-3 space-y-2">
-                    @forelse ($notifications as $notification)
-                        <article
-                            wire:key="staff-notification-{{ $notification['id'] }}"
-                            @class([
-                                'rounded-lg border p-2.5',
-                                'border-sky-200 bg-sky-50/70 dark:border-sky-900 dark:bg-sky-950/20' => $notification['tone'] === 'sky',
-                                'border-orange-200 bg-orange-50/70 dark:border-orange-900 dark:bg-orange-950/20' => $notification['tone'] === 'orange',
-                                'border-amber-200 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-950/20' => $notification['tone'] === 'amber',
-                                'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20' => $notification['tone'] === 'emerald',
-                                'border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/50' => $notification['tone'] === 'zinc',
-                            ])
-                        >
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <x-ui.plain-text :text="$notification['title']" class="block text-xs font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                    <x-ui.plain-text :text="$notification['body']" class="mt-1 block text-xs leading-5 text-zinc-700 dark:text-zinc-200" />
+            <div wire:offline role="status">
+                <flux:callout variant="warning" icon="wifi" class="callout-contrast" :heading="__('notifications.panel.offline_title')" :text="__('notifications.panel.offline_description')" />
+            </div>
 
-                                    @if ($notification['meta'] || $notification['created_label'])
-                                        <p class="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                                            <x-ui.plain-text :text="$notification['meta']" class="inline" :preserve-lines="false" />
+            @if ($destinationUnavailable)
+                <flux:callout variant="warning" icon="information-circle" class="callout-contrast" role="status" :text="__('notifications.panel.destination_unavailable')" />
+            @endif
 
-                                            @if ($notification['meta'] && $notification['created_label'])
-                                                ·
-                                            @endif
+            <div wire:offline.remove class="w-full">
+                <div x-show="!panelReady && !panelFailed" role="status" aria-busy="true" aria-label="{{ __('notifications.panel.loading') }}" data-notification-loading>
+                    <flux:skeleton.group animate="shimmer" class="space-y-3">
+                        <flux:skeleton.line />
+                        <flux:skeleton.line />
+                        <flux:skeleton.line />
+                    </flux:skeleton.group>
+                </div>
+                <div x-show="panelFailed" x-cloak role="status" class="space-y-3" data-notification-failure>
+                    <flux:callout variant="warning" icon="arrow-path" class="callout-contrast" :text="__('notifications.panel.load_failed')" />
+                    <flux:button x-on:click="loadPanel()" variant="outline" class="min-h-touch" wire:offline.attr="disabled">{{ __('notifications.panel.retry') }}</flux:button>
+                </div>
+            </div>
 
-                                            {{ $notification['created_label'] }}
-                                        </p>
+            <div x-show="panelReady" x-cloak class="space-y-4">
+                @if ($panelOpen)
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <flux:text role="status" aria-live="polite" aria-atomic="true">{{ __('notifications.panel.unread', ['count' => $unreadCount]) }}</flux:text>
+                        <flux:button wire:click="markAllRead" variant="filled" icon="check" class="h-auto min-h-touch min-w-0 max-w-full py-2 text-start" :disabled="$unreadCount === 0" wire:offline.attr="disabled">
+                            <span class="whitespace-normal wrap-anywhere">{{ __('ui.notifications.unread_count.mark_all_as_read') }}</span>
+                        </flux:button>
+                    </div>
+                    <flux:text size="sm">{{ __('notifications.panel.recent_limit', ['count' => 20]) }}</flux:text>
+
+                    <div class="space-y-3" data-notification-list>
+                        @forelse ($notifications as $notification)
+                            <flux:card wire:key="staff-notification-{{ $notification['id'] }}" data-notification-item="{{ $notification['id'] }}" class="min-w-0 space-y-3 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-2">
+                                    <flux:heading class="min-w-0 break-words">{{ $notification['title'] }}</flux:heading>
+                                    <flux:badge size="sm" :color="$notification['unread'] ? 'blue' : 'zinc'">{{ $notification['unread'] ? __('notifications.panel.unread_status') : __('notifications.panel.read_status') }}</flux:badge>
+                                </div>
+                                <x-ui.plain-text :text="$notification['body']" class="block text-sm text-text-primary" />
+                                @if ($notification['meta'])
+                                    <x-ui.plain-text :text="$notification['meta']" class="block text-sm text-text-muted" :preserve-lines="false" />
+                                @endif
+                                <time datetime="{{ $notification['created_at'] }}" class="block text-sm text-text-muted">{{ $notification['created_label'] }}</time>
+                                <div class="flex flex-wrap gap-2">
+                                    @if ($notification['can_open'])
+                                        <flux:button wire:click="openNotification('{{ $notification['id'] }}')" variant="outline" icon="arrow-top-right-on-square" class="h-auto min-h-touch min-w-0 max-w-full py-2 text-start" wire:offline.attr="disabled">
+                                            <span class="whitespace-normal wrap-anywhere">{{ __('notifications.panel.open_table') }}</span>
+                                        </flux:button>
+                                    @endif
+                                    @if ($notification['unread'])
+                                        <flux:button wire:click="markNotificationRead('{{ $notification['id'] }}')" variant="ghost" icon="check" class="h-auto min-h-touch min-w-0 max-w-full py-2 text-start" wire:offline.attr="disabled">
+                                            <span class="whitespace-normal wrap-anywhere">{{ __('ui.notifications.unread_count.mark_notifications_as_read') }}</span>
+                                        </flux:button>
                                     @endif
                                 </div>
-
-                                <button
-                                    type="button"
-                                    wire:click="markNotificationRead('{{ $notification['id'] }}')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="markNotificationRead('{{ $notification['id'] }}')"
-                                    class="min-h-touch min-w-touch shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                                >
-                                    {{ __('ui.notifications.unread_count.read') }}
-                                </button>
-                            </div>
-                        </article>
-                    @empty
-                        <p class="rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                            {{ __('ui.empty.no_notifications') }}
-                        </p>
-                    @endforelse
-                </div>
-
-                <button
-                    type="button"
-                    wire:click="markAllRead"
-                    wire:loading.attr="disabled"
-                    wire:target="markAllRead"
-                    class="mt-3 flex min-h-touch w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                >
-                    {{ __('ui.notifications.unread_count.mark_all_as_read') }}
-                </button>
-            @endif
+                            </flux:card>
+                        @empty
+                            <x-ui.state-panel kind="empty" :title="__('ui.empty.no_notifications')" :description="__('notifications.panel.empty_description')" />
+                        @endforelse
+                    </div>
+                @endif
+            </div>
         </div>
-    @endif
+    </flux:modal>
 </div>

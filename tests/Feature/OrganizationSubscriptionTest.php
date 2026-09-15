@@ -55,6 +55,7 @@ test('superadmin can deactivate and activate organization subscription', functio
         ->assertSee('Active')
         ->set('organizationSuspendReason', 'Manual billing pause for subscription test.')
         ->call('suspendOrganization', $organization->id)
+        ->assertDispatched('modal-close', name: 'suspend-organization-'.$organization->id)
         ->assertSee('Inactive');
 
     expect($organization->fresh()->subscription->status)->toBe(OrganizationSubscriptionStatus::Inactive);

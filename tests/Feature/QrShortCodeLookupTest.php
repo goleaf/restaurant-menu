@@ -110,6 +110,7 @@ test('manager can disable qr from short code lookup', function () {
         ->set('qrDisableReason', 'Printed sticker is damaged.')
         ->call('disableQr')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'qr-lookup-disable-'.$qrCode->id)
         ->assertSee('Disabled');
 
     $qrCode->refresh();
@@ -139,6 +140,7 @@ test('manager can reissue qr from short code lookup after warning', function () 
         ->set('qrReissueConfirmation', $qrCode->short_code)
         ->call('reissueQr')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'qr-lookup-reissue-'.$qrCode->id)
         ->assertSet('confirmingReissue', false)
         ->assertNotSet('shortCode', $oldShortCode);
 

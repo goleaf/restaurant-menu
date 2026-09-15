@@ -108,12 +108,16 @@ test('backup authorization requires typed confirmation and an audited reason', f
 
     Livewire::actingAs($superadmin)
         ->test(Dashboard::class)
+        ->set('backupRestoreReason', 'Unfinished restore explanation')
         ->set('backupDownloadConfirmation', 'BACKUP')
         ->call('downloadBackup')
         ->assertHasErrors(['backupDownloadReason'])
+        ->assertSet('backupDownloadConfirmation', 'BACKUP')
         ->set('backupDownloadReason', 'Encrypted disaster recovery copy')
         ->call('downloadBackup')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'sqlite-backup-download')
+        ->assertSet('backupRestoreReason', 'Unfinished restore explanation')
         ->assertRedirect(route('superadmin.backups.sqlite.download'));
 
     expect(session('sqlite_backup_download_authorization'))
@@ -147,6 +151,7 @@ test('backup restore authorization requires typed confirmation and an audited re
         ->set('backupRestoreReason', 'Recovering the restaurant after verified data loss')
         ->call('prepareBackupRestore')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'sqlite-backup-restore')
         ->assertRedirect(route('superadmin.backups.sqlite.restore'));
 
     expect(session('sqlite_backup_restore_authorization'))

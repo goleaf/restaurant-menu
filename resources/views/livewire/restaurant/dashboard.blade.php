@@ -50,7 +50,7 @@
                         <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('dashboard.control.all_branches_description') }}</p>
                     @endif
                 </div>
-                <x-dashboard.branch-picker :branches="$dashboard['branches']" :selected-branch="$dashboard['selected_branch']" :search="$branchSearch" />
+                <x-dashboard.branch-picker :branches="$dashboard['branches']" :selected-branch="$dashboard['selected_branch']" :search="$branchSearch" :search-empty="$dashboard['branch_search_empty']" />
             </div>
 
             @if ($dashboard['ordering'] !== null)

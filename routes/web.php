@@ -23,6 +23,7 @@ use App\Livewire\Departments\TicketPrint as DepartmentTicketPrint;
 use App\Livewire\Exports\Index as DataExportsIndex;
 use App\Livewire\Guest\Home as GuestHome;
 use App\Livewire\Kitchen\Dashboard as KitchenDashboard;
+use App\Livewire\Local\ComponentReference;
 use App\Livewire\Onboarding\RestaurantSetup as RestaurantOnboarding;
 use App\Livewire\Organizations\Brands\Branches\Areas as OrganizationBrandBranchAreas;
 use App\Livewire\Organizations\Brands\Branches\Index as OrganizationBrandBranchesIndex;
@@ -76,6 +77,13 @@ Route::middleware(['demo-login', 'guest', 'throttle:demo-login'])
 Route::middleware(['auth'])->group(function () {
     Route::view('dashboard', 'dashboard')->name('dashboard');
 });
+
+Route::middleware(['auth', 'superadmin'])
+    ->prefix('local')
+    ->name('local.')
+    ->group(function (): void {
+        Route::livewire('components', ComponentReference::class)->name('components');
+    });
 
 Route::middleware(['throttle:staff-invitations'])
     ->prefix('invite')

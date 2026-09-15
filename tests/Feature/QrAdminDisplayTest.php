@@ -140,6 +140,7 @@ test('manager can disable qr and public route shows disabled message', function 
         ->set('qrDisableReason', 'Printed sticker was placed at the wrong table.')
         ->call('disableQr')
         ->assertHasNoErrors()
+        ->assertDispatched('modal-close', name: 'qr-disable-'.$qrCode->id)
         ->assertSee('Disabled');
 
     $qrCode->refresh();

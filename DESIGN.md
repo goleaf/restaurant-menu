@@ -116,6 +116,10 @@ components:
 
 # Design System: Restaurant Menu
 
+## Unified workspace interactions — 2026-09-15
+
+Keep the warm palette, semantic surfaces and local Noto Sans. One header contains sidebar collapse, permitted section search, notifications and account preferences on desktop and mobile. Compact navigation retains labelled icons and tooltips; appearance preferences do not cache permission data. The notification bell opens readable content in a full-height Flux panel, with a separate explicit read action and persistent offline recovery. Branch selection remains a lightweight disclosure with searchable Flux input and readable radio cards; the selected branch remains visible outside search matches. Short critical confirmations focus Cancel and close only their own dialog. The local superadmin component reference uses fictional data for visual and keyboard checks.
+
 ## Interaction continuity refinement — 2026-09-15
 
 The existing warm restaurant interface remains the visual baseline. Refine its interaction states consistently: language panels reveal repeated validation errors, EN shows base-field conflicts beside the editable value, photo previews accumulate without changing file identity, and offline/busy controls cannot imply an unaccepted change. Guest detail dismissal is immediate and returns focus while retaining unfinished configuration for an explicit reopen. These are refinements across catalogue and guest screens, not another theme or component system.

@@ -47,7 +47,7 @@ afterEach(function () {
 
 dataset('report cache strategies', [
     'analytics' => [BuildBasicAnalyticsDashboardAction::class, 'analytics', 240, 300],
-    'restaurant dashboard' => [BuildRestaurantDashboardAction::class, 'dashboard', 45, 60],
+    'restaurant dashboard' => [BuildRestaurantDashboardAction::class, 'report_snapshot', 45, 60],
 ]);
 
 test('report caches refresh after the response in their original locale', function (
@@ -169,8 +169,19 @@ test('report cache eviction removes displaced snapshots and cancels their pendin
         ->create();
     $commonBranch = $branches->first();
     $accessibleIds = collect([$commonBranch->id]);
-    $this->mock(ResolveWaiterAccessibleBranchIdsAction::class)
-        ->shouldReceive('handle')
+    $resolver = $this->mock(ResolveWaiterAccessibleBranchIdsAction::class);
+    $resolver->shouldReceive('authorizedBranchQuery')->andReturnUsing(function () use (&$accessibleIds) {
+        return Branch::query()->select('id')->whereIn('id', $accessibleIds);
+    });
+    $resolver->shouldReceive('handleMany')->andReturnUsing(function (User $user, array $permissions) use (&$accessibleIds): array {
+        $result = [];
+        foreach ($permissions as $permission) {
+            $result[$permission->value] = $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
+        }
+
+        return $result;
+    });
+    $resolver->shouldReceive('handle')
         ->andReturnUsing(function (User $user, SystemPermission $permission = SystemPermission::ViewOrders) use (&$accessibleIds) {
             return $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
         });
@@ -216,7 +227,7 @@ test('report invalidation fences a snapshot published by an overlapping build', 
     [$user, , , $session] = createPrompt69AnalyticsContext();
     $action = app($actionClass);
     $prefix = $payloadKey === 'analytics' ? 'analytics:dashboard:' : 'restaurant-dashboard:';
-    $metric = $payloadKey === 'analytics' ? 'active_tables_count' : 'metrics.active_tables_count';
+    $metric = 'active_tables_count';
 
     if ($deferred) {
         $action->handle($user);
@@ -264,8 +275,8 @@ test('report cache versioning keeps foreground query costs bounded', function (
     $this->travel($freshSeconds)->seconds();
     $stale = countDatabaseQueries($operation);
 
-    expect($cold)->toBe($payloadKey === 'analytics' ? 22 : 80)
-        ->and($fresh)->toBe($payloadKey === 'analytics' ? 10 : 64)
+    expect($cold)->toBe($payloadKey === 'analytics' ? 23 : 105)
+        ->and($fresh)->toBe($payloadKey === 'analytics' ? 11 : 93)
         ->and($stale)->toBe($fresh);
 })->with('report cache strategies');
 
@@ -279,8 +290,19 @@ test('report invalidation survives a registry key lost by overlapping registrati
         'name' => 'Concurrent report branch',
     ]);
     $accessibleIds = collect([$branch->id]);
-    $this->mock(ResolveWaiterAccessibleBranchIdsAction::class)
-        ->shouldReceive('handle')
+    $resolver = $this->mock(ResolveWaiterAccessibleBranchIdsAction::class);
+    $resolver->shouldReceive('authorizedBranchQuery')->andReturnUsing(function () use (&$accessibleIds) {
+        return Branch::query()->select('id')->whereIn('id', $accessibleIds);
+    });
+    $resolver->shouldReceive('handleMany')->andReturnUsing(function (User $user, array $permissions) use (&$accessibleIds): array {
+        $result = [];
+        foreach ($permissions as $permission) {
+            $result[$permission->value] = $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
+        }
+
+        return $result;
+    });
+    $resolver->shouldReceive('handle')
         ->andReturnUsing(function (User $user, SystemPermission $permission = SystemPermission::ViewOrders) use (&$accessibleIds) {
             return $permission === SystemPermission::ViewReports ? $accessibleIds : collect();
         });
@@ -310,7 +332,7 @@ test('report invalidation survives a registry key lost by overlapping registrati
     $session->forceFill(['status' => TableSessionStatus::Closed, 'ended_at' => now()])->save();
     $accessibleIds = collect([$branch->id, $otherBranch->id]);
     $current = $action->handle($user)[$payloadKey];
-    $metric = $payloadKey === 'analytics' ? 'active_tables_count' : 'metrics.active_tables_count';
+    $metric = 'active_tables_count';
 
     expect(data_get($current, $metric))->toBe(0)
         ->and($current['cache_key'])->not->toBe($overlappingSnapshot['cache_key']);
@@ -338,7 +360,7 @@ test('reports viewer sees cached basic analytics for demo data', function () {
         ->assertOk()
         ->assertSee('data-layout="restaurant-dashboard"', false)
         ->assertSeeText(__('reports.title'))
-        ->assertSeeText(__('reports.revenue.net_total'))
+        ->assertSeeText(__('dashboard.control.order_amount'))
         ->assertSeeText('€30.00')
         ->assertSeeText('Pizza');
 });
@@ -350,7 +372,7 @@ test('restaurant dashboard hides analytics without view reports access', functio
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertDontSeeText('Orders today')
-        ->assertSeeText('Restaurant dashboard access appears when the user has branch-level operational or reporting access.');
+        ->assertSeeText(__('dashboard.control.no_access_description'));
 });
 
 test('empty analytics day uses branch currency for zero amounts', function () {

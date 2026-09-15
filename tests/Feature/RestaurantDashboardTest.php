@@ -71,19 +71,19 @@ test('manager sees restaurant dashboard metrics and quick actions', function () 
         ->assertOk()
         ->assertSee('data-layout="restaurant-dashboard"', false)
         ->assertSeeText(__('reports.title'))
-        ->assertSeeText(__('reports.active_tables'))
-        ->assertSeeText(__('reports.new_orders_to_waiter'))
-        ->assertSeeText(__('reports.cooking_orders'))
-        ->assertSeeText(__('reports.ready_positions'))
-        ->assertSeeText(__('reports.revenue.net_total'))
+        ->assertSeeText(__('dashboard.control.operation_all'))
+        ->assertSeeText(__('dashboard.control.operation_pending'))
+        ->assertSeeText(__('dashboard.control.operation_calls'))
+        ->assertSeeText(__('dashboard.control.operation_ready'))
+        ->assertSeeText(__('dashboard.control.order_amount'))
         ->assertSeeText('€32.00')
         ->assertSeeText('Pasta')
-        ->assertSeeText(__('reports.quick_actions.title'))
+        ->assertSee('aria-label="'.__('dashboard.control.main_links').'"', false)
         ->assertSee('data-quick-action-link', false)
         ->assertSeeText('Menu')
         ->assertSeeText('Tables')
         ->assertSeeText('QR')
-        ->assertSeeText('Waiter screen')
+        ->assertSeeText(__('navigation.waiter'))
         ->assertSeeText('Kitchen')
         ->assertSeeText(__('reports.title'));
 });
@@ -111,8 +111,8 @@ test('waiter sees operational dashboard without report totals', function () {
         ->get(route('restaurant.dashboard'))
         ->assertOk()
         ->assertSeeText(__('reports.title'))
-        ->assertSeeText(__('reports.access_required'))
-        ->assertSeeText(__('reports.access_required_popular_items'))
+        ->assertSeeText(__('dashboard.control.report.no_access'))
+        ->assertSeeText(__('dashboard.control.report.no_access_description'))
         ->assertDontSeeText('€32.00');
 });
 
@@ -139,7 +139,7 @@ test('waiter quick action cache respects distinct view and confirm permissions',
         $snapshot = $action->handle($user)['dashboard'];
         $waiterLink = collect($snapshot['quick_actions'])->firstWhere('label', 'Waiter screen');
         expect($waiterLink['is_available'])->toBe($user->is($viewer))
-            ->and($waiterLink['href'])->toBe($user->is($viewer) ? route('restaurant.waiter.dashboard') : null);
+            ->and($waiterLink['href'])->toBe($user->is($viewer) ? route('restaurant.waiter.dashboard', ['branch' => $snapshot['selected_branch']['id']]) : null);
     }
 
     $this->actingAs($confirmer)->get(route('restaurant.waiter.dashboard'))->assertForbidden();
@@ -200,7 +200,7 @@ test('restaurant dashboard cache keeps localized snapshots separate and invalida
         app()->setLocale($locale);
         $dashboard = $action->handle($manager)['dashboard'];
 
-        expect($dashboard['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()))
+        expect($dashboard['cached_at'])->toBe(LocalizedDateFormatter::dateTime(CarbonImmutable::now()->setTimezone('Europe/Vilnius')))
             ->and($dashboard['metrics']['orders_today_total'])->toBe(MoneyFormatter::formatCents(3200, 'EUR'));
 
         $snapshots[$locale] = $dashboard;

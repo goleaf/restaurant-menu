@@ -5,17 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Analytics;
 
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
-use App\Enums\OrderStatus;
 use App\Enums\SystemPermission;
-use App\Enums\TableSessionStatus;
 use App\Models\Branch;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\TableSession;
 use App\Models\User;
+use App\Services\Reports\BranchReportQuery;
 use App\Support\BranchReportCacheVersion;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
+use App\Support\Reports\BranchReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
@@ -38,12 +35,13 @@ class BuildBasicAnalyticsDashboardAction
 
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
+        private readonly BranchReportQuery $reportQuery,
     ) {}
 
     /**
      * @return array{has_access: bool, analytics: array<string, mixed>|null}
      */
-    public function handle(User $user): array
+    public function handle(User $user, string $preset = 'today', ?string $dateFrom = null, ?string $dateTo = null): array
     {
         $branchIds = $this->accessibleBranchIds($user);
 
@@ -54,14 +52,21 @@ class BuildBasicAnalyticsDashboardAction
             ];
         }
 
+        $branches = Branch::query()
+            ->select(['id', 'name', 'currency', 'timezone'])
+            ->whereIn('id', $branchIds)
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
+        $period = BranchReportPeriod::fromSelection($branches, $preset, $dateFrom, $dateTo);
         $cache = self::cache();
-        $cacheKey = self::cacheKeyForBranchIds($branchIds)
+        $cacheKey = self::cacheKeyForBranchIds($branchIds).':period:'.$period->fingerprint()
             .':generation:'.BranchReportCacheVersion::fingerprint($cache, 'analytics', $branchIds);
         $locale = App::currentLocale();
         $analytics = $cache->flexible(
             $cacheKey,
             [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
-            fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branchIds, $cacheKey)),
+            fn (): array => $this->withLocale($locale, fn (): array => $this->buildAnalytics($branches, $period, $cacheKey)),
             lock: ['seconds' => 30],
         );
 
@@ -125,7 +130,7 @@ class BuildBasicAnalyticsDashboardAction
 
         $date ??= CarbonImmutable::now();
 
-        return 'analytics:dashboard:v4:branches:'
+        return 'analytics:dashboard:v5:branches:'
             .sha1($normalizedBranchIds->implode(','))
             .':today:'.$date->toDateString()
             .':locale:'.App::currentLocale();
@@ -162,171 +167,38 @@ class BuildBasicAnalyticsDashboardAction
     }
 
     /**
-     * @param  Collection<int, covariant int>  $branchIds
+     * @param  Collection<int, Branch>  $branches
      * @return array<string, mixed>
      */
-    private function buildAnalytics(Collection $branchIds, string $cacheKey): array
+    private function buildAnalytics(Collection $branches, BranchReportPeriod $period, string $cacheKey): array
     {
         (new PruneExpiredReportCacheEntriesAction)->handle(self::cache());
 
-        $now = CarbonImmutable::now();
-        $periodStart = $now->startOfDay();
-        $periodEnd = $now->endOfDay();
-        $branches = Branch::query()
-            ->select(['id', 'name', 'currency'])
-            ->whereIn('id', $branchIds)
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get();
-
-        $todayOrders = $this->todayOrders($branchIds, $periodStart, $periodEnd);
-        $todayOrderIds = $todayOrders->pluck('id');
-        $currencyTotals = $this->currencyTotals($todayOrders);
-        $ordersTodayCount = $todayOrders->count();
-        $totalOrderCents = $currencyTotals->sum(fn (array $currencyTotal): int => (int) $currencyTotal['total_cents']);
-        $defaultCurrency = $this->defaultCurrency($branches);
-        $singleCurrency = $this->singleCurrency($currencyTotals, $defaultCurrency);
+        $report = $this->reportQuery->handle($branches, $period);
+        $singleCurrency = $report['single_currency'];
+        $ordersCount = $report['orders_count'];
+        $totalCents = $report['order_total_cents'];
 
         return [
             'cache_key' => $cacheKey,
-            'cached_at' => LocalizedDateFormatter::dateTime($now),
-            'period_label' => $periodStart->toDateString(),
+            'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now()),
+            'period_label' => $period->label(),
             'branch_count' => $branches->count(),
-            'branch_names' => $branches
-                ->pluck('name')
-                ->values()
-                ->all(),
-            'orders_today_count' => $ordersTodayCount,
+            'branch_names' => $branches->pluck('name')->values()->all(),
+            'orders_today_count' => $ordersCount,
             'orders_today_total' => $singleCurrency !== null
-                ? $this->formatCents($totalOrderCents, $singleCurrency)
+                ? MoneyFormatter::formatCents((int) $totalCents, $singleCurrency)
                 : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies'),
-            'average_check' => $singleCurrency !== null && $ordersTodayCount > 0
-                ? $this->formatCents(MoneyFormatter::roundedDivide($totalOrderCents, $ordersTodayCount), $singleCurrency)
-                : ($ordersTodayCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : $this->formatCents(0, $defaultCurrency)),
-            'currency_totals' => $currencyTotals->values()->all(),
-            'popular_items' => $this->popularItems($todayOrderIds, $singleCurrency),
-            'active_tables_count' => $this->activeTablesCount($branchIds),
-            'closed_sessions_count' => $this->closedSessionsCount($branchIds, $periodStart, $periodEnd),
-            'cancelled_orders_count' => $this->cancelledOrdersCount($branchIds, $periodStart, $periodEnd),
+            'average_check' => $singleCurrency !== null && $ordersCount > 0
+                ? MoneyFormatter::formatCents(MoneyFormatter::roundedDivide((int) $totalCents, $ordersCount), $singleCurrency)
+                : ($ordersCount > 0 ? __('ui.actions.analytics.buildbasicanalyticsdashboardaction.multiple_currencies') : MoneyFormatter::formatCents(0, $report['default_currency'])),
+            'currency_totals' => $report['currency_totals'],
+            'payment_currency_totals' => $report['payment_currency_totals'],
+            'popular_items' => $report['popular_items'],
+            'active_tables_count' => $report['active_tables_count'],
+            'closed_sessions_count' => $report['closed_sessions_count'],
+            'cancelled_orders_count' => $report['cancelled_orders_count'],
         ];
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     * @return Collection<int, Order>
-     */
-    private function todayOrders(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): Collection
-    {
-        return Order::query()
-            ->select(['id', 'branch_id', 'status', 'confirmed_at', 'total_price_cents', 'currency'])
-            ->whereIn('branch_id', $branchIds)
-            ->whereNotIn('status', [OrderStatus::Cancelled->value])
-            ->whereBetween('confirmed_at', [$periodStart, $periodEnd])
-            ->orderBy('confirmed_at')
-            ->orderBy('id')
-            ->get();
-    }
-
-    /**
-     * @param  Collection<int, Order>  $orders
-     * @return Collection<int, array{currency: string, total_cents: int, total: string}>
-     */
-    private function currencyTotals(Collection $orders): Collection
-    {
-        return $orders
-            ->groupBy(fn (Order $order): string => $order->currency ?: 'EUR')
-            ->map(function (Collection $currencyOrders, string $currency): array {
-                $totalCents = (int) $currencyOrders->sum('total_price_cents');
-
-                return [
-                    'currency' => $currency,
-                    'total_cents' => $totalCents,
-                    'total' => $this->formatCents($totalCents, $currency),
-                ];
-            })
-            ->sortKeys()
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $orderIds
-     * @return list<array{item_name: string, quantity: int, total: string}>
-     */
-    private function popularItems(Collection $orderIds, ?string $singleCurrency): array
-    {
-        if ($orderIds->isEmpty()) {
-            return [];
-        }
-
-        return OrderItem::query()
-            ->select(['id', 'order_id', 'item_name', 'item_name_snapshot', 'quantity', 'total_price_cents'])
-            ->whereIn('order_id', $orderIds)
-            ->active()
-            ->orderBy('item_name')
-            ->orderBy('id')
-            ->get()
-            ->groupBy(fn (OrderItem $item): string => mb_strtolower($item->historicalItemName()))
-            ->map(function (Collection $items): array {
-                $firstItem = $items->first();
-                $totalCents = (int) $items->sum('total_price_cents');
-
-                return [
-                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish'),
-                    'quantity' => $items->sum(fn (OrderItem $item): int => (int) $item->quantity),
-                    'total_cents' => $totalCents,
-                ];
-            })
-            ->sortByDesc('quantity')
-            ->take(5)
-            ->map(fn (array $item): array => [
-                'item_name' => $item['item_name'],
-                'quantity' => (int) $item['quantity'],
-                'total' => $singleCurrency !== null
-                    ? $this->formatCents((int) $item['total_cents'], $singleCurrency)
-                    : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     */
-    private function activeTablesCount(Collection $branchIds): int
-    {
-        return TableSession::query()
-            ->whereIn('branch_id', $branchIds)
-            ->whereIn('status', [
-                TableSessionStatus::Pending->value,
-                TableSessionStatus::Active->value,
-                TableSessionStatus::WaitingWaiterConfirmation->value,
-                TableSessionStatus::PaymentRequested->value,
-            ])
-            ->count();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     */
-    private function closedSessionsCount(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): int
-    {
-        return TableSession::query()
-            ->whereIn('branch_id', $branchIds)
-            ->where('status', TableSessionStatus::Closed->value)
-            ->whereBetween('ended_at', [$periodStart, $periodEnd])
-            ->count();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     */
-    private function cancelledOrdersCount(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): int
-    {
-        return Order::query()
-            ->whereIn('branch_id', $branchIds)
-            ->where('status', OrderStatus::Cancelled->value)
-            ->whereBetween('updated_at', [$periodStart, $periodEnd])
-            ->count();
     }
 
     /**
@@ -353,39 +225,5 @@ class BuildBasicAnalyticsDashboardAction
 
             $cache->put($indexKey, $retainedKeys->values()->all(), self::INDEX_SECONDS);
         });
-    }
-
-    private function formatCents(int $cents, string $currency): string
-    {
-        return MoneyFormatter::formatCents($cents, $currency);
-    }
-
-    /**
-     * @param  Collection<int, Branch>  $branches
-     */
-    private function defaultCurrency(Collection $branches): string
-    {
-        $currency = $branches
-            ->pluck('currency')
-            ->filter(fn (mixed $currency): bool => is_string($currency) && $currency !== '')
-            ->first();
-
-        return $currency ?? 'EUR';
-    }
-
-    /**
-     * @param  Collection<int, array{currency: string, total_cents: int, total: string}>  $currencyTotals
-     */
-    private function singleCurrency(Collection $currencyTotals, string $defaultCurrency): ?string
-    {
-        if ($currencyTotals->isEmpty()) {
-            return $defaultCurrency;
-        }
-
-        if ($currencyTotals->count() === 1) {
-            return (string) $currencyTotals->first()['currency'];
-        }
-
-        return null;
     }
 }

@@ -77,13 +77,31 @@
             @endforelse
         </flux:select>
     </div>
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+        <flux:select wire:model.live="attention" :label="__('operations.attention.label')">
+            @forelse ($attentionOptions as $option)
+                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+            @empty
+            @endforelse
+        </flux:select>
         <flux:checkbox wire:model.live="attentionOnly" :label="__('ui.waiter.dashboard.needs_attention', ['count' => $attentionCount])" />
         <p class="text-sm text-text-muted">{{ __('ui.waiter.dashboard.visible_page_scope') }}</p>
         <div class="flex gap-2">
             <flux:button wire:click="changeTablePage({{ $tablePage - 1 }})" :disabled="$tablePage <= 1" icon="chevron-left">{{ __('pagination.previous') }}</flux:button>
             <flux:button wire:click="changeTablePage({{ $tablePage + 1 }})" :disabled="! $hasMorePages" icon-trailing="chevron-right">{{ __('pagination.next') }}</flux:button>
         </div>
+    </div>
+
+    @if ($attentionReason)
+        <x-ui.alert tone="info">
+            {{ $attentionReason }}
+            <x-slot:actions>
+                <flux:button wire:click="resetAttention" size="sm">{{ __('operations.attention.reset') }}</flux:button>
+            </x-slot:actions>
+        </x-ui.alert>
+    @endif
+    <div>
+        <flux:button :href="$branchOverviewUrl" wire:navigate variant="ghost" icon="arrow-left">{{ __('operations.back_to_branch') }}</flux:button>
     </div>
 
     @if ($waiterCallMessage || $tableActionMessage)

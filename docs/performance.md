@@ -4,6 +4,48 @@
 
 # Performance
 
+
+## Branch control component comparison — 2026-09-15
+
+A separate local fixture compared the old Dashboard/Action/view from `a88de9e` with the new component, using the same installed framework, shared models, schema and one authorized owner. These are component renders, not complete HTTP documents or production timings. Each cold sample uses a fresh PHP process and array cache; warm samples reuse its report cache. The report-service comparison below isolates a different, smaller boundary.
+
+| 2000 orders / 6000 repeated-name items | Before | After |
+| --- | ---: | ---: |
+| Actual `wire:snapshot` bytes | 2519 | 848 |
+| Serialized public state bytes | 2201 | 530 |
+| Component HTML bytes | 35958 | 82177 |
+| Cold / warm SQL count | 121 / 105 | 105 / 93 |
+| Cold / warm hydrated models | 8033 / 29 | 39 / 37 |
+| Cold peak memory growth, bytes | 25435656 | 6190376 |
+| Cold / warm render, ms (single laboratory sample) | 199.667 / 21.927 | 189.088 / 40.957 |
+| Cold / warm SQL time, ms | 8.96 / 2.37 | 15.63 / 2.88 |
+
+At 200 orders, snapshots were 2515 → 848 bytes, hydration 833 → 39 models, and cold memory growth 4.80 → 6.19 MB. The new interface has more HTML, permissions/readiness work and fresh operational reads; its small-fixture and warm render were slower. There is no blanket dashboard speedup claim. The improvement is bounded order hydration, lower large-fixture memory, fewer SQL statements and smaller persistent client state. Actual elapsed time depends on fixture diversity, cache, process startup and machine load. Final live-region visibility, localized shortcut labels and mobile padding corrections follow the measured view; they do not change its public state or report queries and were not re-timed.
+
+
+## Branch-local report aggregation — 2026-09-15
+
+These are recorded development-stage measurements of a cold `BuildBasicAnalyticsDashboardAction` call, using isolated SQLite `:memory:` databases and separate PHP processes for each before/after run. The fixed UTC fixture has one branch, one currency, 200 or 2,000 confirmed orders, three identically named historical items per order, and no payments. Fixture creation is outside the measured operation. The baseline is the saved pre-refactor Action; the comparison uses `BranchReportQuery`. These samples do not certify the later integrated dashboard, current full-suite gates, HTTP latency or production performance.
+
+| Fixture / metric | Before | After aggregation |
+| --- | ---: | ---: |
+| 200 orders / 600 items: queries | 16 | 17 |
+| Elapsed time | 31.524 ms | 14.208 ms |
+| Retrieved Order / OrderItem models | 200 / 600 | 1 / 1 |
+| Peak memory growth during the measured call | 3,288,232 B | 1,111,744 B |
+| Prepared analytics JSON | 667 B | 837 B |
+| 2,000 orders / 6,000 items: queries | 16 | 17 |
+| Elapsed time | 152.585 ms | 17.217 ms |
+| Retrieved Order / OrderItem models | 2,000 / 6,000 | 1 / 1 |
+| Peak memory growth during the measured call | 24,187,280 B | 1,111,744 B |
+| Prepared analytics JSON | 673 B | 845 B |
+
+Every run also retrieves one Branch model. The additional query reads recorded payments independently; larger payloads carry per-currency averages, payment totals and the period-aware cache identity. Memory is peak growth from immediately before the call, not whole-process peak. Query counts include cache bookkeeping and a mocked permission resolver, so they are not full authenticated-page budgets. `BranchReportingTest` retains the two fixture sizes and exact totals/hydration assertions.
+
+A separate 2,000-order / 6,000-item fixture with 100 distinct stored names measured 234.727 ms without the name index and 20.821 ms with `(item_name, item_name_snapshot)`. Both runs used 17 queries, retrieved 1 Order and 100 aggregated OrderItem rows plus 1 Branch, grew peak memory by 1,179,392 B and returned 1,139 B of analytics JSON. This isolated schema probe motivated the additive `order_items_report_names_idx` migration; it is not an observed production migration or production index benchmark.
+
+Eloquent currency aggregates and an order-ID subquery remove full order hydration and expanding PHP order-ID lists. SQLite aggregates exact stored name pairs before a cursor applies historical-name fallback and Unicode case folding. The final list is five items, but name-group memory still grows with distinct historical names; the repeated-name fixture does not establish constant memory for arbitrary menus. Current integrated verification is recorded separately in [testing](testing.md) and [progress](PROGRESS.md).
+
 ## Focused workspace laboratory comparison — 2026-09-15
 
 The same 30-dish fixture shape and HTTP route were measured before and after integration. Dish names, descriptions, prices and counts were fixed; other factory labels varied slightly, so HTML byte differences are approximate. These are local laboratory results, not production Core Web Vitals.

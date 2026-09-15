@@ -4,6 +4,21 @@
 
 # Data model
 
+## Branch report data semantics — 2026-09-15
+
+Application timestamp writers use `now()` with the configured UTC application timezone. `BranchReportPeriod` converts branch-local calendar boundaries into UTC comparisons; it does not change timestamp storage, add date columns or migrate historical values. Report windows are half-open (`>=` local start converted to UTC, `<` the next local midnight converted to UTC), including 23/25-hour DST days. `today`, `yesterday`, `last7` and custom ranges of at most 31 inclusive calendar days resolve separately for every selected authorized branch.
+
+| Report measure | Persistent source and inclusion rule |
+| --- | --- |
+| Confirmed order count and amount | `orders.confirmed_at` falls in the branch window; `status != cancelled`. All other canonical order statuses remain eligible, including unpaid, paid and closed orders. Amount is `total_price_cents`, grouped by recorded `currency`. Legacy empty order currency retains its EUR fallback. |
+| Recorded payments | `manual_payments.paid_at` falls in the branch window; sum recorded `amount_cents` and count rows by currency independently of order confirmation dates or current order/session status. There is no `recorded_at` or payment-status field in this report contract. |
+| Popular items | Active (`cancelled_at IS NULL`) OrderItems belonging to the qualifying order subquery. Exact `item_name` / `item_name_snapshot` pairs aggregate in SQLite; historical fallback and `mb_strtolower()` merge Unicode names before the stable quantity-ranked top five is selected. |
+| Closed sessions / cancelled orders | Respectively `table_sessions.status = closed` with `ended_at` in the window, and `orders.status = cancelled` with `updated_at` in the window. Active-session counts remain current and do not use the historical date window. |
+
+Order amounts are not receipts. Payments can cover different confirmation dates and include their recorded service/tip amounts. The immutable payment model has no refund/reversal workflow; reporting preserves the sign of any stored amount without inventing such an operation. Money from different currencies is never added together: counts may combine, amounts stay per currency, order averages are rounded per currency, and combined order/item money is null when currencies differ. A payment-only period can contain payment totals with no confirmed orders; it is not a zero-payment period.
+
+Migration `2026_09_15_121714_add_report_name_index_to_order_items_table.php` adds `order_items_report_names_idx` on `(item_name, item_name_snapshot)` for the correlated name-aggregate lookups. Its rollback drops only that index. It adds no table, rewrites no historical snapshot and changes no permanent QR identity. Local schema presence does not imply the migration has run on a deployed database.
+
 ## Additive photo presentation — 2026-09-15
 
 Migration `2026_09_15_094602_add_presentation_to_menu_images` adds nullable JSON `menu_items.image_presentation` and `menu_item_images.presentation`. Values hold focal_x/focal_y (0–100), EN/LT/RU alt/caption and an internal revision used in stale-write detection. Public projection exposes only selected-language alt/caption and a normalized object position. Existing files are unchanged. Null is the legacy center/default-alt presentation. No index is added because these columns are never filter predicates. Existing in-progress duplication receipts interpret a missing presentation snapshot as null; later metadata changes still invalidate the copy. Both factories provide opt-in withPresentation states.
@@ -30,7 +45,7 @@ The schema remains 61 tables / 633 columns / 308 indexes / 144 foreign keys acro
 
 ## Database contract
 
-SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 90 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer. `DatabaseCacheEntry` maps the existing framework cache table for bounded expiration cleanup; it adds no application table or migration.
+SQLite is the supported local, test and production database. The schema is migration-owned and currently consists of 91 migrations with no view, trigger or routine dependency and no first-party raw SQL query strings. Foreign keys, unique constraints and query-driven indexes are required; Eloquent is the only first-party query layer. `DatabaseCacheEntry` maps the existing framework cache table for bounded expiration cleanup; it adds no application table or migration.
 
 ## Restaurant hierarchy
 
@@ -67,7 +82,7 @@ Structure lifecycle is intentionally reversible. Organization, brand, branch, ar
 ## Value conventions
 
 - Money: validated decimal input is converted to integer cents for persistence and arithmetic; percentage rates use integer basis points. Binary float never crosses a domain boundary. Display formatting is locale/currency aware and never feeds persistence.
-- Time: database timestamps represent an unambiguous instant; branch/user locale formats presentation.
+- Time: application timestamps are written in UTC; branch timezone defines report calendar boundaries and branch/user locale formats presentation.
 - State: backed enum values persisted as canonical lowercase snake-case strings.
 - Order lifecycle: `confirmed_by_waiter → sent_to_kitchen_bar → in_progress → ready → served → payment_requested → paid → closed` is forward-only, with guarded shortcuts for all-ready, direct offline settlement and eligible manual close; cancellation is terminal. The transient confirmed state exists for atomic construction and legacy repair but normal waiter confirmation commits only after department tickets and the sent state exist. Ticket-item `new → accepted → in_progress → ready` is subordinate, supports terminal cancellation and guarded forward shortcuts, and cannot overwrite or regress the canonical order state. Department `completed` is a read state derived from `ready` plus non-null `served_at`, not another persisted status.
 - Onboarding progress: current step is reconstructed from non-deleted scoped relationships, the persisted expected table count, contiguous ordered table-only service-point positions and active permanent QR completeness; identity links, the minimal expected-count invariant and a write-once explicit completion timestamp are persisted, so browser state cannot advance or re-time the workflow. The count detects a hard-deleted trailing pivot that relational links alone cannot distinguish from a smaller valid set. Soft-deleted links and same-branch survivors of a hard-deleted area remain available for authorized recovery, while retries and later operational disable/archive flags do not erase completed setup history.

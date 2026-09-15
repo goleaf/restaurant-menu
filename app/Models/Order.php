@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Support\Reports\BranchReportPeriod;
 use Carbon\CarbonInterface;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -56,6 +57,23 @@ class Order extends Model
     public function scopeActive(Builder $query): void
     {
         $query->whereIn('status', OrderStatus::activeValues());
+    }
+
+    /**
+     * @param  Builder<Order>  $query
+     */
+    public function scopeForReportPeriod(Builder $query, BranchReportPeriod $period): void
+    {
+        $period->apply($query, 'confirmed_at')
+            ->where($query->qualifyColumn('status'), '!=', OrderStatus::Cancelled->value);
+    }
+
+    /**
+     * @return HasMany<Order, $this>
+     */
+    public function reportCurrencyOrders(): HasMany
+    {
+        return $this->hasMany(self::class, 'currency', 'currency');
     }
 
     /**

@@ -4,6 +4,43 @@
 
 # Testing and quality gates
 
+
+## Branch control center verification — 2026-09-15
+
+The stage starts from clean local `a88de9e`. The executable manifest contains 1,148 existing/new non-Markdown tracked or task files and remained unchanged during the full backend, coverage and browser gates. Only the dashboard Blade spacing and its browser regression changed afterward; the affected browser scenario and production build were repeated as detailed below. Previous sections describe earlier source states. Test databases/storage/cache paths are disposable; the working database, photos and APP_KEY are unchanged.
+
+| Gate | Current observed result |
+| --- | --- |
+| `composer test:backend -- --parallel --processes=4` | 2,583 passed / 56,192 assertions, 131.16 s, zero failures/skips |
+| `composer test:coverage -- --parallel --processes=4` | 2,583 passed / 56,206 assertions, 409.95 s; 93.7% application coverage against the unchanged 90% gate |
+| Complete browser inventory | Final full repeat: 16 passed / 1,021 assertions, zero failures/timeouts; coordinator exits 0 |
+| Extended branch browser | Final focused run: 68 assertions passed after the mobile label-spacing correction, including history, dirty form, five widths, LT/RU, long name, keyboard and offline UI |
+| Pint / Larastan | Dirty Pint passes; `composer analyse` exits 0 with no errors |
+| Composer strict validation / platform / locked audit | Exit 0; no advisories |
+| Translation audit and scan | Exit 0; 7,599 values, 710 scanned files, zero critical issues, missing or unused keys and phrase calls |
+| npm audit / production build | Exit 0; no vulnerabilities; final build 2.12 s |
+| Isolated schema / seeds / caches | 13 commands exit 0: migrate, latest migration rollback, migrate, two default seeds, config/routes/views/events cache and clear |
+| Markdown policy | All 178 first-party files have the exact single block; both synchronization passes change zero files |
+
+### Reproducible browser command
+
+`composer test:browser` discovers the entire `tests/Browser` inventory, including datasets, and runs each case in a separate bounded POSIX session. Default `--browser=safari` means Playwright WebKit, not native Safari; Chrome and Firefox are optional installed engines. Use `composer test:browser -- --browser=chrome --timeout=180` to choose an engine. The per-case timeout accepts 10–900 seconds, defaults to 180, and no test is retried or skipped. Composer's outer 300-second timeout is disabled so the coordinator owns the limit. This is local tooling, not a runtime service or remote check.
+
+The installed Pest XML contains evaluable IDs; `tests/browser-discover.php` records printable names from the loaded test registry so `--filter` selects the exact case without guessing punctuation or dataset names. A valid exit code and exactly one passing JUnit case are required. Empty/truncated reports, skipped cases, failures and timeouts make the combined result nonzero. Logs, JUnit, retained screenshots and `summary.json` live under the printed disposable artifact directory. Each case receives its own database/cache/storage context; the runner terminates only process groups it created, including on interruption. Independent probes verify timeout/empty-report continuation, SIGTERM cleanup and exact numeric/Unicode/quoted/nested dataset filtering.
+
+The initial new runner invocation failed safely because internal IDs were passed directly to the printable-name filter; it was not counted as a pass. Focused browser debugging also exposed ambiguous bare-tag selectors in Pest (`body`, `html`) and a direct low-level keyboard call that stalled shutdown. Use explicit selectors such as `body[class]` and `html[lang]` through the awaitable API. The final scenario retains the real keyboard assertions.
+
+### Scope and evidence limits
+
+Fresh regressions cover branch ID tampering, two-organization permissions and revoked assignments, local midnight/month-end/leap-day/DST ranges, currency isolation, order/payment differences, report failure age, revoked cached data, matching operational filters, off-page table links, readiness changes and explicit replayable pause. The full browser inventory also retains menu/photo/CSV/guest recovery and restaurant onboarding through paid table closure.
+
+Screenshots are real browser output. The root inspected mobile/desktop and light/dark examples, including long Lithuanian names and Russian/Lithuanian interface text. Five widths are 320/390/768/1024/1440; the 200% test uses browser CSS layout zoom. Offline checks dispatch offline/online browser events; they do not claim a physical device, native browser zoom, real network outage or screen-reader audit. A screenshot found untranslated legacy shortcut labels; they now use existing semantic JSON keys with LT/RU regressions. A final 320px screenshot also showed a split waiter label; smaller mobile button padding preserves the 44px target and the LT/RU label on one line. A real text-range geometry regression fails before that correction and passes after it. Only the dashboard Blade spacing and its browser regression changed after the complete release gates; the PHP/config/translation files remain identical. The affected 68-assertion browser scenario and production build were repeated successfully, and its new screenshots were inspected.
+
+Existing Laravel Boost was actually called for installed context, schema, version-aware docs and Herd URL resolution. Chrome DevTools and Playwright MCP each navigated and inspected the local application in isolated contexts. Pest/WebKit supplies the repeated product scenarios. No Figma input, extra MCP installation, dependency upgrade or production configuration change was required.
+
+Compiled assets: application JS 16.06 kB (5.17 gzip), main CSS 309.60 kB (41.59 gzip), font CSS 0.96 kB (0.40 gzip), local fonts 20.08/35.82/167.96 kB. Comparable PHP report and actual Livewire component measurements, including slower warm renders and larger HTML, are in [performance](performance.md). No production latency or Core Web Vitals claim follows from these local samples.
+
+
 ## Next product level verification — 2026-09-15
 
 This execution starts from local `8dd6de4` with inherited recovery work already present. It implements the focused workspace, quality/bulk actions, CSV exchange, photo presentation and translation/guest continuity. The earlier sections below are historical evidence, not results for this source.

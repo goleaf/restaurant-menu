@@ -219,7 +219,7 @@ test('waiter dashboard summarizes drafts without hydrating their items', functio
     'larger draft' => [array_fill(0, 40, 29), '€11.60'],
 ]);
 
-test('waiter dashboard exposes a query free desktop table preview with a mobile detail fallback', function () {
+test('waiter dashboard exposes a freshly authorized bounded desktop table preview with a mobile detail fallback', function () {
     [$organization, , $branch] = createPrompt52Branch();
     $waiter = User::factory()->create();
     attachPrompt52Waiter($waiter, $organization);
@@ -255,7 +255,7 @@ test('waiter dashboard exposes a query free desktop table preview with a mobile 
         $component->call('selectTable', $tableSession->id);
     });
 
-    expect($queryCount)->toBe(0);
+    expect($queryCount)->toBeLessThanOrEqual(14);
 
     $component
         ->call('selectTable', PHP_INT_MAX)

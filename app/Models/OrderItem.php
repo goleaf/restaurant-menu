@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -65,6 +66,17 @@ class OrderItem extends Model
             'variant_type' => MenuItemVariantType::class,
             'cancelled_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Exact stored names are aggregated in SQLite before historical fallback and
+     * Unicode case folding merge the resulting name groups in the report.
+     *
+     * @return HasMany<OrderItem, $this>
+     */
+    public function reportNameItems(): HasMany
+    {
+        return $this->hasMany(self::class, 'item_name', 'item_name');
     }
 
     /**

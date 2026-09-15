@@ -4,6 +4,14 @@
 
 # Accessibility
 
+## Branch control interaction contract — 2026-09-15
+
+The [branch picker](../resources/views/components/dashboard/branch-picker.blade.php) uses a native disclosure, a labelled search field and radio choices. Organization, brand, branch and time zone remain readable outside the picker. All-branch scope is named explicitly. Branch-required actions open the picker and focus search; choosing a branch returns focus to its disclosure trigger. Readiness uses a separate native disclosure with named states and permission-aware links.
+
+The [period form](../resources/views/components/dashboard/report.blade.php) labels each control, reveals custom dates locally and applies the complete range only on submit. The [dashboard](../resources/views/livewire/restaurant/dashboard.blade.php) handles `dashboard-validation-failed` by opening the relevant disclosure and focusing the first invalid control after rendering, with a focusable error panel as fallback. The pause form offers explicit Save and Discard actions; a rejected branch change preserves the draft and explains the required recovery.
+
+Current queues, period totals and setup checks have separate headings and state messages. Loading keeps action labels visible; saving and refresh controls disable for their pending request and while offline. Missing permission, stale data and load failure use text as well as visual treatment. Layout and control acceptance includes 320-pixel reflow, 200% zoom, long EN/LT/RU content, keyboard focus, light/dark themes, reduced motion and forced colors. These are the implemented interaction contracts and acceptance targets; executed browser results and environmental limits belong in [testing](testing.md).
+
 ## Repeated form errors and local dismissal — 2026-09-15
 
 Keep translated forms' `novalidate` attribute in Blade, not only in initialization JavaScript. Server errors remain required, localized and connected to visible fields; repeated failures reopen the corresponding panel. Guest Close/Escape is independent of connectivity, releases inert/focus trapping and returns focus even when the card has disappeared. Offline language and pending-photo controls are disabled without discarding existing selections. The browser regressions verify these interactions; synthetic offline events and WebKit viewport emulation are not physical-device or screen-reader verification.

@@ -87,7 +87,8 @@
             "@php artisan test"
         ],
         "test:browser": [
-            "@php vendor/bin/pest tests/Browser --compact"
+            "Composer\\Config::disableProcessTimeout",
+            "@php tests/browser.php"
         ],
         "test:coverage": [
             "Composer\\Config::disableProcessTimeout",

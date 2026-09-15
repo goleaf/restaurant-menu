@@ -4,6 +4,18 @@
 
 # Frontend architecture
 
+## Branch control center — 2026-09-15
+
+The [restaurant dashboard](../resources/views/livewire/restaurant/dashboard.blade.php) starts with Organization → Brand → Branch context and a searchable native branch disclosure. A single accessible branch is selected directly; multiple branches start in an explicit overview. Branch-specific links request a selection in overview mode and use only the destinations permitted for that branch. Missing access is labelled and never represented by an active link to an arbitrary first branch.
+
+Current service queues and historical results are separate sections. Pending drafts, ready positions, waiter calls, bill requests and open tables link to the matching waiter workspace. Manual refresh updates the current view; this dashboard has no page-wide polling timer. Reports retain their own timestamp, unavailable and stale states, and show amounts separately by currency. Unavailable data is not presented as zero.
+
+The [Livewire component](../app/Livewire/Restaurant/Dashboard.php) keeps editable period fields separate from the applied range. Apply validates the complete range and changes one URL parameter: `period=today`, `yesterday`, `last7`, or `custom:YYYY-MM-DD:YYYY-MM-DD`. Browser history restores that range as one value. Custom ranges include at most 31 calendar days; [BranchReportPeriod](../app/Support/Reports/BranchReportPeriod.php) resolves each branch's local dates before querying UTC timestamps. Search, refresh and editing the form do not apply an unfinished date range.
+
+[Branch readiness](../app/Services/Restaurant/BranchReadinessService.php) supplies compact ready, required, review and optional checks with permission-aware settings links. Ordering status distinguishes a manual pause, schedule closure and setup problem; readiness does not rewrite onboarding completion. The explicit pause form saves through [SaveDashboardOrderingAction](../app/Actions/Dashboard/SaveDashboardOrderingAction.php). Unsaved pause fields survive refresh and failed saves; switching branches asks the user to save or discard those changes before the context changes.
+
+Waiter drill-down accepts only `attention=all|pending|ready|calls|bills`, alongside the authorized branch and zone scope. A selected open session outside the current 50-table page is resolved within that same scope and opens its matching page when it satisfies the active filter. Selection outside the permitted branch, zone or open-session state fails closed. See [BuildWaiterDashboardAction](../app/Actions/Waiter/BuildWaiterDashboardAction.php) and [WaiterTableQueryService](../app/Services/Waiter/WaiterTableQueryService.php). Integrated browser evidence is recorded separately in [testing](testing.md).
+
 ## Focused menu workspace — 2026-09-15
 
 Six compact navigation entries select catalogue, availability, variants, preparation, extras and CSV exchange. Inactive Livewire sections are not mounted. The mobile catalogue keeps search visible, with secondary filters in an accessible disclosure and bulk forms only after selection. The editor uses the existing responsive dialog, separate image-save feedback, keyboard photo ordering and a non-destructive focal-point preview. Dirty protection includes programmatic translation copying and separately saved photo/CSV state; completed or discarded media state releases its registration. History is retained through allowlisted URL state. Actual viewport, keyboard and screenshot evidence belongs to the current testing section.
@@ -58,7 +70,7 @@ The token system is defined in [`design-system.md`](design-system.md), Livewire 
 
 Public entry presents staff login as its sole primary action and explains the guest QR path as a secondary journey. Authenticated landing prioritizes the restaurant workspace; restaurant quick actions are descriptive full-row links rather than repeated generic buttons.
 
-Staff dashboards present one ordered operational queue. The waiter dashboard validates the nullable URL-backed `table` selection against the already prepared visible payload, renders `aria-current` on the selected row and performs no query on selection. Desktop keeps the selected table preview beside the queue; mobile preserves the normal table-detail link. Kitchen and bar share the same priority-row hierarchy, visible department scope, oldest-first age signal and 56-pixel status actions. Their isolated polling and existing Action boundaries remain unchanged.
+Staff dashboards present one ordered operational queue. The waiter dashboard validates the nullable URL-backed `table` selection within its authorized branch and zone, seeks the containing page when needed, and renders `aria-current` on a matching selected row. Desktop keeps the selected table preview beside the queue; mobile preserves the normal table-detail link. Kitchen and bar share the same priority-row hierarchy, visible department scope, oldest-first age signal and 56-pixel status actions. Their isolated polling and existing Action boundaries remain unchanged.
 
 Guest table screens keep venue/table context above the journey, expose category anchors in an internally scrollable labelled navigation, use flat menu-item rows and keep totals/actions in the existing safe-area-aware mobile action dock. Offline state is explicit and content remains browseable where the domain allows it.
 

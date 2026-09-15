@@ -18,19 +18,23 @@ use App\Models\DraftOrder;
 use App\Models\KitchenDepartment;
 use App\Models\KitchenTicketItem;
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\TableSession;
 use App\Models\User;
+use App\Services\Reports\BranchReportQuery;
+use App\Services\Restaurant\BranchReadinessService;
+use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\BranchReportCacheVersion;
 use App\Support\LocalizedDateFormatter;
-use App\Support\MoneyFormatter;
+use App\Support\Reports\BranchReportPeriod;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\Repository as CacheRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Traits\Localizable;
+use Illuminate\Validation\ValidationException;
 use LogicException;
+use Throwable;
 
 class BuildRestaurantDashboardAction
 {
@@ -48,39 +52,55 @@ class BuildRestaurantDashboardAction
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly ResolveKitchenAccessibleDepartmentIdsAction $resolveKitchenDepartments,
         private readonly ResolveBarAccessibleDepartmentIdsAction $resolveBarDepartments,
+        private readonly BranchReportQuery $reportQuery,
+        private readonly BranchReadinessService $readiness,
+        private readonly WaiterTableQueryService $waiterTables,
+        private readonly PruneExpiredReportCacheEntriesAction $pruneReportCache,
     ) {}
 
     /**
      * @return array{has_access: bool, dashboard: array<string, mixed>|null}
      */
-    public function handle(User $user): array
+    public function handle(User $user, mixed $branchId = '', string $preset = 'today', ?string $from = null, ?string $to = null): array
     {
-        $access = $this->resolveAccess($user);
+        $context = $this->context($user, $branchId);
+        if ($context['access']['dashboard']->isEmpty()) {
+            return ['has_access' => false, 'dashboard' => null];
+        }
+        $dashboard = $this->buildDashboard($user, $context, $preset, $from, $to);
 
-        if ($access['dashboard']->isEmpty()) {
-            return [
-                'has_access' => false,
-                'dashboard' => null,
-            ];
+        return ['has_access' => true, 'dashboard' => $dashboard, 'report_snapshot' => $dashboard['report_snapshot']];
+    }
+
+    /** @return array{access: array<string, Collection<int, int>>, branches: Collection<int, Branch>, selected: Branch|null} */
+    public function context(User $user, mixed $selection = ''): array
+    {
+        $id = self::validatedBranchId($selection);
+        $access = $this->resolveAccess($user->fresh() ?? $user);
+        $branches = $this->branches($access['dashboard'], $user);
+        $access = array_map(fn (Collection $ids): Collection => $ids->intersect($branches->pluck('id'))->values(), $access);
+        if ($id !== null && ! $access['dashboard']->contains($id)) {
+            throw ValidationException::withMessages(['selectedBranchId' => __('dashboard.control.invalid_branch')]);
+        }
+        $selected = $id === null ? ($branches->count() === 1 ? $branches->first() : null) : $branches->firstWhere('id', $id);
+        if ($selected instanceof Branch) {
+            $access = array_map(fn (Collection $ids): Collection => $ids->intersect([$selected->id])->values(), $access);
         }
 
-        $cache = self::cache();
-        $cacheKey = self::cacheKeyForAccess($access)
-            .':generation:'.BranchReportCacheVersion::fingerprint($cache, 'dashboard', $access['dashboard']);
-        $locale = App::currentLocale();
-        $dashboard = $cache->flexible(
-            $cacheKey,
-            [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS],
-            fn (): array => $this->withLocale($locale, fn (): array => $this->buildDashboard($access, $cacheKey)),
-            lock: ['seconds' => 30],
-        );
+        return ['access' => $access, 'branches' => $branches, 'selected' => $selected];
+    }
 
-        $this->rememberBranchCacheKeys($access['dashboard'], $cacheKey);
+    public static function validatedBranchId(mixed $value): ?int
+    {
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        if ((! is_int($value) && ! is_string($value)) || ! preg_match('/^[1-9][0-9]*$/D', (string) $value)
+            || filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false) {
+            throw ValidationException::withMessages(['selectedBranchId' => __('dashboard.control.invalid_branch')]);
+        }
 
-        return [
-            'has_access' => true,
-            'dashboard' => $dashboard,
-        ];
+        return (int) $value;
     }
 
     public function userHasAccess(User $user): bool
@@ -158,18 +178,19 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @return array<string, Collection<int, int<1, max>>>
+     * @return array<string, Collection<int, int>>
      */
     private function resolveAccess(User $user): array
     {
-        $reportBranchIds = $this->branchIdsForPermission($user, SystemPermission::ViewReports);
-        $viewOrderBranchIds = $this->branchIdsForPermission($user, SystemPermission::ViewOrders);
-        $confirmOrderBranchIds = $this->branchIdsForPermission($user, SystemPermission::ConfirmOrders);
-        $menuBranchIds = $this->branchIdsForPermission($user, SystemPermission::ManageMenu);
-        $servicePointBranchIds = $this->branchIdsForPermission($user, SystemPermission::ManageServicePoints)
+        $permissions = $this->resolveAccessibleBranchIds->handleMany($user, [SystemPermission::ViewReports, SystemPermission::ViewOrders, SystemPermission::ConfirmOrders, SystemPermission::ManageMenu, SystemPermission::ManageServicePoints, SystemPermission::GenerateQr]);
+        $reportBranchIds = $permissions[SystemPermission::ViewReports->value];
+        $viewOrderBranchIds = $permissions[SystemPermission::ViewOrders->value];
+        $confirmOrderBranchIds = $permissions[SystemPermission::ConfirmOrders->value];
+        $menuBranchIds = $permissions[SystemPermission::ManageMenu->value];
+        $servicePointBranchIds = $permissions[SystemPermission::ManageServicePoints->value]
             ->merge($viewOrderBranchIds)
             ->merge($confirmOrderBranchIds);
-        $qrBranchIds = $this->branchIdsForPermission($user, SystemPermission::GenerateQr);
+        $qrBranchIds = $permissions[SystemPermission::GenerateQr->value];
         $kitchenBranchIds = $this->branchIdsForDepartments($this->resolveKitchenDepartments->handle($user));
         $barBranchIds = $this->branchIdsForDepartments($this->resolveBarDepartments->handle($user));
         $orderBranchIds = $viewOrderBranchIds
@@ -206,64 +227,154 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  array<string, Collection<int, covariant int>>  $access
+     * @param  array{access:array<string,Collection<int,int>>,branches:Collection<int,Branch>,selected:Branch|null}  $context
      * @return array<string, mixed>
      */
-    private function buildDashboard(array $access, string $cacheKey): array
+    private function buildDashboard(User $user, array $context, string $preset, ?string $from, ?string $to): array
     {
-        (new PruneExpiredReportCacheEntriesAction)->handle(self::cache());
+        $access = $context['access'];
+        $selected = $context['selected'];
+        $branches = $context['branches']->whereIn('id', $access['dashboard'])->values();
+        $reportBranches = $branches->whereIn('id', $access['reports'])->values();
+        $period = BranchReportPeriod::fromSelection($branches, $preset, $from, $to);
+        $cacheKey = self::cacheKeyForAccess($access).':period:'.$period->fingerprint();
+        $reportPeriod = BranchReportPeriod::fromSelection($reportBranches, $preset, $from, $to);
+        $reportKey = $cacheKey.':generation:'.BranchReportCacheVersion::fingerprint(self::cache(), 'dashboard', $access['dashboard']);
+        $canViewReports = $reportBranches->isNotEmpty();
+        $report = null;
+        $stale = false;
+        $locale = App::currentLocale();
+        if ($canViewReports) {
+            try {
+                $report = self::cache()->flexible($reportKey, [self::CACHE_FRESH_SECONDS, self::CACHE_SECONDS], function () use ($reportBranches, $reportPeriod, $reportKey, $locale): array {
+                    $this->pruneReportCache->handle(self::cache());
 
-        $now = CarbonImmutable::now();
-        $periodStart = $now->startOfDay();
-        $periodEnd = $now->endOfDay();
-        $branches = $this->branches($access['dashboard']);
-        $defaultCurrency = $this->defaultCurrency($branches);
-        $reportOrders = $this->todayOrders($access['reports'], $periodStart, $periodEnd);
-        $reportOrderIds = $reportOrders->pluck('id');
-        $currencyTotals = $this->currencyTotals($reportOrders);
-        $totalOrderCents = $currencyTotals->sum(fn (array $currencyTotal): int => (int) $currencyTotal['total_cents']);
-        $singleCurrency = $this->singleCurrency($currencyTotals, $defaultCurrency);
-        $canViewReports = $access['reports']->isNotEmpty();
+                    return $this->withLocale($locale, fn (): array => [...$this->reportQuery->handle($reportBranches, $reportPeriod), 'cache_key' => $reportKey, 'generated_at' => CarbonImmutable::now()->toIso8601String(), 'cached_at' => LocalizedDateFormatter::dateTime(CarbonImmutable::now())]);
+                }, lock: ['seconds' => 30]);
+                self::cache()->put($cacheKey.':last-success', $report, 600);
+                $this->rememberBranchCacheKeys($access['dashboard'], $reportKey);
+            } catch (Throwable $exception) {
+                report($exception);
+                $report = self::cache()->get($cacheKey.':last-success');
+                $stale = true;
+            }
+        }
+        $reportSnapshot = $report;
+        $operationsKey = self::cacheKeyForAccess($access).':operations:actor:'.$user->id;
+        $operationsStale = false;
+        try {
+            $operationSnapshot = ['items' => $this->operationCards($user, $branches, $access, $selected), 'at' => CarbonImmutable::now()->toIso8601String()];
+            self::cache()->put($operationsKey, $operationSnapshot, 120);
+        } catch (Throwable $exception) {
+            report($exception);
+            $operationSnapshot = self::cache()->get($operationsKey, ['items' => [], 'at' => null]);
+            $operationsStale = true;
+        }
+        $operations = $operationSnapshot['items'];
+        if (is_array($report) && isset($report['generated_at'])) {
+            $report['cached_at'] = LocalizedDateFormatter::dateTime(CarbonImmutable::parse($report['generated_at'])->setTimezone($selected?->timezone ?: 'UTC'));
+        }
+        $readiness = $selected instanceof Branch ? $this->readiness->handle($user, $selected) : null;
+        $quickActions = $this->quickActions($access, $selected);
+        foreach ($quickActions as &$action) {
+            if ($action['label'] === 'reports.title' && $action['is_available']) {
+                $action['href'] = route('restaurant.dashboard', [
+                    'branch' => $selected?->id,
+                    'period' => $preset === 'custom' ? 'custom:'.$from.':'.$to : $preset,
+                ]).'#reports';
+            }
+        }
+        unset($action);
+        $mainLinks = array_map(fn (array $action): array => [
+            'key' => $action['label'], 'label' => match ($action['label']) {
+                'Menu' => __('navigation.menu'),
+                'Tables' => __('reports.exports.tables'),
+                'QR' => __('qr.labels.qr'),
+                'QR lookup' => __('qr.lookup.title'),
+                'Waiter screen' => __('navigation.waiter'),
+                'Kitchen' => __('navigation.kitchen'),
+                default => __($action['label']),
+            }, 'icon' => $action['icon'], 'href' => $action['href'],
+            'requires_branch' => $action['requires_branch'], 'is_available' => $action['is_available'],
+        ], $quickActions);
+        $popularItems = $report['popular_items'] ?? [];
+        $metrics = [
+            'active_tables_count' => $this->activeTablesCount($access['operations']),
+            'new_orders_to_waiter_count' => $this->newOrdersToWaiterCount($access['orders']->merge($access['reports'])->unique()->values()),
+            'cooking_orders_count' => $this->cookingOrdersCount($access['operations']),
+            'ready_positions_count' => $this->readyPositionsCount($access['operations']),
+            'orders_today_total' => ($report['order_total_cents'] ?? null) !== null && count($report['currency_totals'] ?? []) === 1 ? $report['currency_totals'][0]['total'] : null,
+            'orders_today_count' => $report['orders_count'] ?? null,
+        ];
 
         return [
-            'cache_key' => $cacheKey,
-            'cached_at' => LocalizedDateFormatter::dateTime($now),
-            'period_label' => $periodStart->toDateString(),
-            'branch_count' => $branches->count(),
-            'branch_names' => $branches->pluck('name')->values()->all(),
-            'can_view_reports' => $canViewReports,
-            'metrics' => [
-                'active_tables_count' => $this->activeTablesCount($access['operations']),
-                'new_orders_to_waiter_count' => $this->newOrdersToWaiterCount($access['orders']->merge($access['reports'])->unique()->values()),
-                'cooking_orders_count' => $this->cookingOrdersCount($access['operations']),
-                'ready_positions_count' => $this->readyPositionsCount($access['operations']),
-                'orders_today_total' => $canViewReports && $singleCurrency !== null
-                    ? $this->formatCents($totalOrderCents, $singleCurrency)
-                    : null,
-                'orders_today_count' => $canViewReports ? $reportOrders->count() : null,
+            'report_snapshot' => $reportSnapshot, 'cache_key' => $reportKey, 'cached_at' => $report['cached_at'] ?? null, 'period_label' => $period->label(),
+            'branch_count' => $branches->count(), 'branch_names' => $branches->pluck('name')->all(),
+            'branches' => $context['branches']->map(fn (Branch $branch): array => $this->branchPresentation($branch))->all(),
+            'selected_branch' => $selected instanceof Branch ? $this->branchPresentation($selected) : null,
+            'can_view_reports' => $canViewReports, 'metrics' => $metrics, 'popular_items' => $popularItems,
+            'quick_actions' => $quickActions, 'main_links' => $mainLinks, 'operations' => $operations,
+            'operations_updated_at' => ($operationSnapshot['at'] === null ? '—' : LocalizedDateFormatter::dateTime(CarbonImmutable::parse($operationSnapshot['at'])->setTimezone($selected?->timezone ?: 'UTC'))),
+            'operations_stale' => $operationsStale, 'readiness' => $readiness, 'ordering' => $readiness['ordering'] ?? null,
+            'report' => [
+                'can_view_reports' => $canViewReports, 'period_label' => $period->label(), 'cached_at' => $report['cached_at'] ?? null,
+                'stale' => $stale, 'unavailable' => $canViewReports && $report === null,
+                'metrics' => $this->reportCards($report), 'popular_items' => array_map(fn (array $item): array => ['key' => $item['item_name'], ...$item], $popularItems),
+                'empty' => $report !== null && $report['orders_count'] === 0,
             ],
-            'popular_items' => $canViewReports ? $this->popularItems($reportOrderIds, $singleCurrency) : [],
-            'quick_actions' => $this->quickActions($access),
         ];
     }
 
-    /**
-     * @return Collection<int, int<1, max>>
-     */
-    private function branchIdsForPermission(User $user, SystemPermission $permission): Collection
+    /** @return array{id:int,label:string,organization_name:string,brand_name:string,name:string,timezone:string} */
+    private function branchPresentation(Branch $branch): array
     {
-        return $this->resolveAccessibleBranchIds
-            ->handle($user, $permission)
-            ->map(fn (mixed $branchId): int => (int) $branchId)
-            ->filter(fn (int $branchId): bool => $branchId > 0)
-            ->unique()
-            ->sort()
-            ->values();
+        return ['id' => $branch->id, 'label' => $branch->organization->name.' → '.$branch->brand->name.' → '.$branch->name,
+            'organization_name' => $branch->organization->name, 'brand_name' => $branch->brand->name, 'name' => $branch->name, 'timezone' => $branch->timezone];
+    }
+
+    /** @param array<string,mixed>|null $report @return list<array<string,mixed>> */
+    private function reportCards(?array $report): array
+    {
+        if ($report === null) {
+            return [];
+        }
+        $cards = [['key' => 'orders', 'label' => __('dashboard.control.confirmed_orders'), 'value' => $report['orders_count'], 'description' => __('dashboard.control.orders_help')]];
+        foreach ($report['currency_totals'] as $currency) {
+            $cards[] = ['key' => 'orders-'.$currency['currency'], 'label' => __('dashboard.control.order_amount').' · '.$currency['currency'], 'value' => $currency['total'], 'description' => __('dashboard.control.order_amount_help')];
+            $cards[] = ['key' => 'average-'.$currency['currency'], 'label' => __('dashboard.control.average_order').' · '.$currency['currency'], 'value' => $currency['average_check'] ?? '—', 'description' => __('dashboard.control.average_help')];
+        }
+        foreach ($report['payment_currency_totals'] as $currency) {
+            $cards[] = ['key' => 'payments-'.$currency['currency'], 'label' => __('dashboard.control.payments').' · '.$currency['currency'], 'value' => $currency['total'], 'description' => __('dashboard.control.payments_help')];
+        }
+
+        return $cards;
+    }
+
+    /** @param Collection<int,Branch> $branches @param array<string,Collection<int,int>> $access @return list<array<string,mixed>> */
+    private function operationCards(User $user, Collection $branches, array $access, ?Branch $selected): array
+    {
+        $counts = $this->waiterTables->operationCounts($user, $selected);
+        $cards = [];
+        $definitions = [
+            'all' => ['active_session_count', 'dashboard.control.operation_all', 'dashboard.control.operation_all_help'],
+            'pending' => ['new_draft_count', 'dashboard.control.operation_pending', 'dashboard.control.operation_pending_help'],
+            'ready' => ['ready_item_count', 'dashboard.control.operation_ready', 'dashboard.control.operation_ready_help'],
+            'calls' => ['waiter_call_count', 'dashboard.control.operation_calls', 'dashboard.control.operation_calls_help'],
+            'bills' => ['bill_request_count', 'dashboard.control.operation_bills', 'dashboard.control.operation_bills_help'],
+        ];
+        foreach ($definitions as $attention => [$key, $label, $description]) {
+            $canOpen = $access['waiter']->isNotEmpty();
+            $cards[] = ['key' => $attention, 'label' => __($label), 'description' => __($description),
+                'value' => $canOpen ? $counts[$key] : null, 'href' => $canOpen && $selected instanceof Branch ? route('restaurant.waiter.dashboard', ['branch' => $selected->id, 'attention' => $attention, 'zone' => 'all']) : null,
+                'tone' => $attention !== 'all' && $counts[$key] > 0 ? 'warning' : 'neutral', 'is_available' => $canOpen, 'requires_branch' => $selected === null];
+        }
+
+        return $cards;
     }
 
     /**
      * @param  Collection<int, covariant int>  $departmentIds
-     * @return Collection<int, int<1, max>>
+     * @return Collection<int, int>
      */
     private function branchIdsForDepartments(Collection $departmentIds): Collection
     {
@@ -277,7 +388,6 @@ class BuildRestaurantDashboardAction
             ->orderBy('branch_id')
             ->pluck('branch_id')
             ->map(fn (mixed $branchId): int => (int) $branchId)
-            ->filter(fn (int $branchId): bool => $branchId > 0)
             ->unique()
             ->values();
     }
@@ -286,36 +396,18 @@ class BuildRestaurantDashboardAction
      * @param  Collection<int, covariant int>  $branchIds
      * @return Collection<int, Branch>
      */
-    private function branches(Collection $branchIds): Collection
+    private function branches(Collection $branchIds, User $user): Collection
     {
         if ($branchIds->isEmpty()) {
             return collect();
         }
 
         return Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name', 'currency'])
+            ->select(['id', 'organization_id', 'brand_id', 'name', 'currency', 'timezone', 'is_active', 'is_temporarily_closed', 'temporary_closed_reason', 'temporary_closed_until'])
+            ->with(['organization:id,name', 'brand:id,name'])
             ->whereIn('id', $branchIds)
+            ->whereIn('id', $this->resolveAccessibleBranchIds->authorizedBranchQuery($user))
             ->orderBy('name')
-            ->orderBy('id')
-            ->get();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     * @return Collection<int, Order>
-     */
-    private function todayOrders(Collection $branchIds, CarbonImmutable $periodStart, CarbonImmutable $periodEnd): Collection
-    {
-        if ($branchIds->isEmpty()) {
-            return collect();
-        }
-
-        return Order::query()
-            ->select(['id', 'branch_id', 'status', 'confirmed_at', 'total_price_cents', 'currency'])
-            ->whereIn('branch_id', $branchIds)
-            ->whereNotIn('status', [OrderStatus::Cancelled->value])
-            ->whereBetween('confirmed_at', [$periodStart, $periodEnd])
-            ->orderBy('confirmed_at')
             ->orderBy('id')
             ->get();
     }
@@ -394,72 +486,10 @@ class BuildRestaurantDashboardAction
     }
 
     /**
-     * @param  Collection<int, Order>  $orders
-     * @return Collection<int, array{currency: string, total_cents: int, total: string}>
-     */
-    private function currencyTotals(Collection $orders): Collection
-    {
-        return $orders
-            ->groupBy(fn (Order $order): string => $order->currency ?: 'EUR')
-            ->map(function (Collection $currencyOrders, string $currency): array {
-                $totalCents = (int) $currencyOrders->sum('total_price_cents');
-
-                return [
-                    'currency' => $currency,
-                    'total_cents' => $totalCents,
-                    'total' => $this->formatCents($totalCents, $currency),
-                ];
-            })
-            ->sortKeys()
-            ->values();
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $orderIds
-     * @return list<array{item_name: string, quantity: int, total: string}>
-     */
-    private function popularItems(Collection $orderIds, ?string $singleCurrency): array
-    {
-        if ($orderIds->isEmpty()) {
-            return [];
-        }
-
-        return OrderItem::query()
-            ->select(['id', 'order_id', 'item_name', 'item_name_snapshot', 'quantity', 'total_price_cents'])
-            ->whereIn('order_id', $orderIds)
-            ->active()
-            ->orderBy('item_name')
-            ->orderBy('id')
-            ->get()
-            ->groupBy(fn (OrderItem $item): string => mb_strtolower($item->historicalItemName()))
-            ->map(function (Collection $items): array {
-                $firstItem = $items->first();
-                $totalCents = (int) $items->sum('total_price_cents');
-
-                return [
-                    'item_name' => $firstItem instanceof OrderItem ? $firstItem->historicalItemName() : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.dish'),
-                    'quantity' => $items->sum(fn (OrderItem $item): int => (int) $item->quantity),
-                    'total_cents' => $totalCents,
-                ];
-            })
-            ->sortByDesc('quantity')
-            ->take(5)
-            ->map(fn (array $item): array => [
-                'item_name' => $item['item_name'],
-                'quantity' => (int) $item['quantity'],
-                'total' => $singleCurrency !== null
-                    ? $this->formatCents((int) $item['total_cents'], $singleCurrency)
-                    : __('ui.actions.analytics.buildbasicanalyticsdashboardaction.mixed'),
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
      * @param  array<string, Collection<int, covariant int>>  $access
-     * @return list<array{label: string, description: string, icon: string, href: string|null, is_available: bool}>
+     * @return list<array{label: string, description: string, icon: string, href: string|null, is_available: bool, requires_branch: bool}>
      */
-    private function quickActions(array $access): array
+    private function quickActions(array $access, ?Branch $selected): array
     {
         return [
             $this->branchQuickAction(
@@ -467,21 +497,21 @@ class BuildRestaurantDashboardAction
                 description: 'Manage branch menu',
                 icon: 'book-open',
                 routeName: 'organizations.brands.branches.menu.index',
-                branchIds: $access['menu'],
+                branchIds: $access['menu'], selected: $selected,
             ),
             $this->branchQuickAction(
                 label: 'Tables',
                 description: 'Open tables and manage service points',
                 icon: 'squares-2x2',
                 routeName: 'organizations.brands.branches.service-points.index',
-                branchIds: $access['service_points'],
+                branchIds: $access['service_points'], selected: $selected,
             ),
             $this->branchQuickAction(
                 label: 'QR',
                 description: 'Print permanent branch QR codes',
                 icon: 'qr-code',
                 routeName: 'organizations.brands.branches.qr.print',
-                branchIds: $access['qr'],
+                branchIds: $access['qr'], selected: $selected,
             ),
             $this->screenQuickAction(
                 label: 'QR lookup',
@@ -495,7 +525,7 @@ class BuildRestaurantDashboardAction
                 description: 'Open live waiter workspace',
                 icon: 'clipboard-document-list',
                 routeName: 'restaurant.waiter.dashboard',
-                isAvailable: $access['waiter']->isNotEmpty(),
+                isAvailable: $access['waiter']->isNotEmpty(), branchId: $selected?->id,
             ),
             $this->screenQuickAction(
                 label: 'Kitchen',
@@ -509,18 +539,18 @@ class BuildRestaurantDashboardAction
                 description: 'reports.quick_actions.view_cached_branch_analytics',
                 icon: 'chart-bar',
                 routeName: 'restaurant.dashboard',
-                isAvailable: $access['reports']->isNotEmpty(),
+                isAvailable: $access['reports']->isNotEmpty(), branchId: $selected?->id,
             ),
         ];
     }
 
     /**
      * @param  Collection<int, covariant int>  $branchIds
-     * @return array{label: string, description: string, icon: string, href: string|null, is_available: bool}
+     * @return array{label: string, description: string, icon: string, href: string|null, is_available: bool, requires_branch: bool}
      */
-    private function branchQuickAction(string $label, string $description, string $icon, string $routeName, Collection $branchIds): array
+    private function branchQuickAction(string $label, string $description, string $icon, string $routeName, Collection $branchIds, ?Branch $selected): array
     {
-        $branch = $this->firstBranch($branchIds);
+        $branch = $selected instanceof Branch && $branchIds->contains($selected->id) ? $selected : null;
 
         return [
             'label' => $label,
@@ -531,68 +561,22 @@ class BuildRestaurantDashboardAction
                 'brand' => $branch->brand_id,
                 'branch' => $branch->id,
             ]) : null,
-            'is_available' => $branch instanceof Branch,
+            'is_available' => $branchIds->isNotEmpty(), 'requires_branch' => $branchIds->isNotEmpty() && $selected === null,
         ];
     }
 
     /**
-     * @return array{label: string, description: string, icon: string, href: string|null, is_available: bool}
+     * @return array{label: string, description: string, icon: string, href: string|null, is_available: bool, requires_branch: bool}
      */
-    private function screenQuickAction(string $label, string $description, string $icon, string $routeName, bool $isAvailable): array
+    private function screenQuickAction(string $label, string $description, string $icon, string $routeName, bool $isAvailable, ?int $branchId = null): array
     {
         return [
             'label' => $label,
             'description' => $description,
             'icon' => $icon,
-            'href' => $isAvailable ? route($routeName) : null,
-            'is_available' => $isAvailable,
+            'href' => $isAvailable && ($routeName !== 'restaurant.waiter.dashboard' || $branchId !== null) ? route($routeName, $branchId === null ? [] : ['branch' => $branchId]) : null,
+            'is_available' => $isAvailable, 'requires_branch' => $isAvailable && $routeName === 'restaurant.waiter.dashboard' && $branchId === null,
         ];
-    }
-
-    /**
-     * @param  Collection<int, covariant int>  $branchIds
-     */
-    private function firstBranch(Collection $branchIds): ?Branch
-    {
-        if ($branchIds->isEmpty()) {
-            return null;
-        }
-
-        return Branch::query()
-            ->select(['id', 'organization_id', 'brand_id', 'name'])
-            ->whereIn('id', $branchIds)
-            ->orderBy('name')
-            ->orderBy('id')
-            ->first();
-    }
-
-    /**
-     * @param  Collection<int, Branch>  $branches
-     */
-    private function defaultCurrency(Collection $branches): string
-    {
-        $currency = $branches
-            ->pluck('currency')
-            ->filter(fn (mixed $currency): bool => is_string($currency) && $currency !== '')
-            ->first();
-
-        return $currency ?? 'EUR';
-    }
-
-    /**
-     * @param  Collection<int, array{currency: string, total_cents: int, total: string}>  $currencyTotals
-     */
-    private function singleCurrency(Collection $currencyTotals, string $defaultCurrency): ?string
-    {
-        if ($currencyTotals->isEmpty()) {
-            return $defaultCurrency;
-        }
-
-        if ($currencyTotals->count() === 1) {
-            return (string) $currencyTotals->first()['currency'];
-        }
-
-        return null;
     }
 
     /**
@@ -619,10 +603,5 @@ class BuildRestaurantDashboardAction
 
             $cache->put($indexKey, $retainedKeys->values()->all(), self::INDEX_SECONDS);
         });
-    }
-
-    private function formatCents(int $cents, string $currency): string
-    {
-        return MoneyFormatter::formatCents($cents, $currency);
     }
 }

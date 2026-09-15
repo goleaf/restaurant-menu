@@ -21,17 +21,19 @@ use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\User;
 use App\Models\WaiterCall;
+use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\LocalizedDateFormatter;
 use App\Support\MoneyFormatter;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 
 class BuildWaiterDashboardAction
 {
     public function __construct(
         private readonly ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
         private readonly BuildTableSessionInactivityStateAction $buildInactivityState,
+        private readonly WaiterTableQueryService $tableQueries,
     ) {}
 
     /**
@@ -48,9 +50,10 @@ class BuildWaiterDashboardAction
      *     ready_item_count: int
      * }
      */
-    public function handle(User $user, string $zoneScope = 'mine', ?int $selectedBranchId = null, int $page = 1, string $branchSearch = '', bool $attentionOnly = false): array
+    public function handle(User $user, string $zoneScope = 'mine', ?int $selectedBranchId = null, int $page = 1, string $branchSearch = '', bool $attentionOnly = false, string $attention = 'all', ?int $selectedTableSessionId = null): array
     {
         $zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
+        abort_unless(in_array($attention, WaiterTableQueryService::ATTENTION_TYPES, true), 422);
         $permissions = $this->resolveAccessibleBranchIds->handleMany($user, [SystemPermission::ViewOrders, SystemPermission::ConfirmOrders, SystemPermission::CloseTableSessions]);
         $branchIds = $permissions[SystemPermission::ViewOrders->value];
         $openTableBranchIds = $branchIds->merge($permissions[SystemPermission::ConfirmOrders->value])->unique();
@@ -111,6 +114,7 @@ class BuildWaiterDashboardAction
             ->get();
 
         abort_if($branches->isEmpty(), 404);
+        Gate::forUser($user)->authorize('view', $branches->first());
         $branchIds = $branches->pluck('id');
         $assignedAreaNodeIdsByBranch = $this->assignedAreaNodeIdsByBranch($user, $branchIds);
         $hasAssignedAreaNodes = $assignedAreaNodeIdsByBranch->isNotEmpty();
@@ -123,13 +127,28 @@ class BuildWaiterDashboardAction
                 $this->applyAssignedAreaNodeFilter($query, $branchIds, $assignedAreaNodeIdsByBranch);
             });
         $scope = (clone $servicePointQuery)->withoutEagerLoads()->select(['id']);
-        $totals = $this->scopeTotals($scope);
-        $attentionScope = $this->attentionScope(clone $scope);
+        $totals = $this->tableQueries->scopeTotals($scope);
+        $attentionScope = $this->tableQueries->attentionScope(clone $scope);
         $attentionCount = (clone $attentionScope)->count();
         if ($attentionOnly) {
             $servicePointQuery->whereIn('id', $attentionScope);
         }
-        $page = max(1, min($page, (int) max(1, ceil(($attentionOnly ? $attentionCount : $totals['service_point_count']) / 50))));
+        if ($attention !== 'all') {
+            $this->tableQueries->filterAttention($servicePointQuery, $attention);
+        }
+        $filteredCount = $attention !== 'all' ? (clone $servicePointQuery)->count() : ($attentionOnly ? $attentionCount : $totals['service_point_count']);
+        $page = max(1, min($page, (int) max(1, ceil($filteredCount / 50))));
+        if ($selectedTableSessionId !== null) {
+            $selectedPoint = $this->tableQueries->selectedServicePoint($selectedTableSessionId, $selectedBranchId, clone $scope);
+            $filteredPoint = (clone $servicePointQuery)->whereKey($selectedPoint->id)->exists();
+            if ($filteredPoint) {
+                $beforeSelected = (clone $servicePointQuery)->where(function ($query) use ($selectedPoint): void {
+                    $query->where('name', '<', $selectedPoint->name)
+                        ->orWhere(fn ($sameName) => $sameName->where('name', $selectedPoint->name)->where('id', '<', $selectedPoint->id));
+                })->count();
+                $page = intdiv($beforeSelected, 50) + 1;
+            }
+        }
         $paginator = $servicePointQuery->orderBy('branch_id')->orderBy('name')->orderBy('id')->simplePaginate(50, pageName: 'tablePage', page: $page);
         $servicePoints = $paginator->getCollection();
 
@@ -195,48 +214,6 @@ class BuildWaiterDashboardAction
                 ->all(),
             ...$totals,
         ];
-    }
-
-    /**
-     * @param  Builder<ServicePoint>  $scope
-     * @return array{service_point_count: int, active_session_count: int, new_draft_count: int, waiter_call_count: int, bill_request_count: int, ready_item_count: int, work_ids: array{new_drafts: list<int>, waiter_calls: list<int>, bill_requests: list<int>, ready_items: list<int>}}
-     */
-    private function scopeTotals(Builder $scope): array
-    {
-        $sessions = TableSession::query()->select(['id'])->whereIn('service_point_id', clone $scope)->whereIn('status', $this->openSessionStatuses());
-        $drafts = DraftOrder::query()->whereIn('table_session_id', clone $sessions)->whereIn('status', [DraftOrderStatus::SentToWaiter->value, DraftOrderStatus::WaiterReview->value]);
-        $calls = WaiterCall::query()->whereIn('service_point_id', clone $scope)->where('status', WaiterCallStatus::Pending->value);
-        $bills = (clone $sessions)->where('status', TableSessionStatus::PaymentRequested->value);
-        $ready = KitchenTicketItem::query()->where('status', KitchenTicketItemStatus::Ready->value)->whereNull('served_at')
-            ->whereHas('kitchenTicket', fn ($query) => $query->whereIn('service_point_id', clone $scope));
-
-        return [
-            'service_point_count' => (clone $scope)->count(),
-            'active_session_count' => (clone $sessions)->count(),
-            'new_draft_count' => (clone $drafts)->count(),
-            'waiter_call_count' => (clone $calls)->count(),
-            'bill_request_count' => (clone $bills)->count(),
-            'ready_item_count' => (clone $ready)->count(),
-            'work_ids' => [
-                'new_drafts' => $drafts->orderByDesc('id')->limit(100)->pluck('id')->all(),
-                'waiter_calls' => $calls->orderByDesc('id')->limit(100)->pluck('id')->all(),
-                'bill_requests' => $bills->orderByDesc('id')->limit(100)->pluck('id')->all(),
-                'ready_items' => $ready->orderByDesc('id')->limit(100)->pluck('id')->all(),
-            ],
-        ];
-    }
-
-    /** @param Builder<ServicePoint> $scope @return Builder<ServicePoint> */
-    private function attentionScope(Builder $scope): Builder
-    {
-        return $scope->where(function ($query): void {
-            $query->whereHas('waiterCalls', fn ($calls) => $calls->where('status', WaiterCallStatus::Pending->value))
-                ->orWhereHas('tableSessions', fn ($sessions) => $sessions->whereIn('status', $this->openSessionStatuses())->where(function ($session): void {
-                    $session->where('status', TableSessionStatus::PaymentRequested->value)
-                        ->orWhereHas('draftOrder', fn ($draft) => $draft->whereIn('status', [DraftOrderStatus::SentToWaiter->value, DraftOrderStatus::WaiterReview->value]));
-                }))
-                ->orWhereHas('kitchenTickets.items', fn ($items) => $items->where('status', KitchenTicketItemStatus::Ready->value)->whereNull('served_at'));
-        });
     }
 
     public function userHasAccess(User $user): bool

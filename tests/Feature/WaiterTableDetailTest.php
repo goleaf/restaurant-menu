@@ -476,7 +476,7 @@ test('polling fixed fixture measures reads and model hydration', function (strin
     });
     $queries = countDatabaseQueries(fn () => $component->call($method)->assertOk());
     $measuring = false;
-    expect($queries)->toBe(32)->and($hydrated)->toBe(28);
+    expect($queries)->toBe(32)->and($hydrated)->toBe(27);
 })->with([[DraftReview::class, 'refreshDraftReview'], [OrderFulfilment::class, 'refreshOrderFulfilment']]);
 
 test('a mutation after payload preparation remains visible to the following poll', function (): void {

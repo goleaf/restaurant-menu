@@ -31,6 +31,7 @@ class Dashboard extends Component
     /**
      * @var list<array<string, mixed>>
      */
+    #[Locked]
     public array $branches = [];
 
     public int $servicePointCount = 0;
@@ -62,24 +63,29 @@ class Dashboard extends Component
 
     public string $refreshedAt = '';
 
-    public string $zoneScope = 'mine';
+    #[Url(as: 'zone', history: true, except: 'mine')]
+    public mixed $zoneScope = 'mine';
 
     #[Url(as: 'table', history: true)]
-    public ?int $selectedTableSessionId = null;
+    public mixed $selectedTableSessionId = null;
 
-    #[Url(as: 'branch')]
-    public ?int $selectedBranchId = null;
+    #[Url(as: 'branch', history: true)]
+    public mixed $selectedBranchId = null;
 
     public string $branchSearch = '';
 
     /** @var list<array{value: string, label: string}> */
     public array $branchOptions = [];
 
-    #[Url(as: 'page', except: 1)]
-    public int $tablePage = 1;
+    #[Url(as: 'page', history: true, except: 1)]
+    public mixed $tablePage = 1;
 
-    #[Url(as: 'attention', except: false)]
     public bool $attentionOnly = false;
+
+    #[Url(as: 'attention', history: true, except: 'all')]
+    public mixed $attention = 'all';
+
+    private bool $responseAuthorized = false;
 
     public bool $hasMorePages = false;
 
@@ -104,13 +110,15 @@ class Dashboard extends Component
 
     public function refreshDashboard(): void
     {
-        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope(), $this->selectedBranchId, $this->tablePage, $this->branchSearch, $this->attentionOnly);
+        $this->validateSelections();
+        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope(), $this->selectedBranchId, $this->tablePage, $this->branchSearch, $this->attentionOnly, $this->attention, $this->selectedTableSessionId);
 
         if (! $payload['has_access']) {
             abort(403);
         }
 
         $this->selectedBranchId = $payload['selected_branch_id'];
+        $this->responseAuthorized = true;
         $this->branchOptions = $payload['branch_options'];
         $this->tablePage = $payload['page'];
         $this->hasMorePages = $payload['has_more_pages'];
@@ -140,9 +148,11 @@ class Dashboard extends Component
         $this->knownWorkIds = $currentWorkIds;
     }
 
-    public function setZoneScope(string $zoneScope): void
+    public function setZoneScope(mixed $zoneScope): void
     {
-        $this->zoneScope = $zoneScope === 'all' ? 'all' : 'mine';
+        abort_unless(is_string($zoneScope) && in_array($zoneScope, ['mine', 'all'], true), 422);
+        $this->zoneScope = $zoneScope;
+        $this->selectedTableSessionId = null;
         $this->tablePage = 1;
         $this->knownWorkIds = null;
         $this->refreshDashboard();
@@ -150,6 +160,8 @@ class Dashboard extends Component
 
     public function updatedSelectedBranchId(): void
     {
+        $this->selectedTableSessionId = null;
+        $this->zoneScope = 'mine';
         $this->tablePage = 1;
         $this->knownWorkIds = null;
         $this->refreshDashboard();
@@ -160,32 +172,66 @@ class Dashboard extends Component
         $this->refreshDashboard();
     }
 
+    public function updatedAttention(): void
+    {
+        $this->attentionOnly = false;
+        $this->selectedTableSessionId = null;
+        $this->tablePage = 1;
+        $this->refreshDashboard();
+    }
+
+    public function resetAttention(): void
+    {
+        $this->attention = 'all';
+        $this->updatedAttention();
+    }
+
+    public function updatedSelectedTableSessionId(): void
+    {
+        $this->refreshDashboard();
+    }
+
+    public function updatedZoneScope(): void
+    {
+        $this->selectedTableSessionId = null;
+        $this->tablePage = 1;
+        $this->refreshDashboard();
+    }
+
+    public function updatedTablePage(): void
+    {
+        $this->selectedTableSessionId = null;
+        $this->refreshDashboard();
+    }
+
     public function updatedAttentionOnly(): void
     {
         $this->tablePage = 1;
         $this->refreshDashboard();
     }
 
-    public function changeTablePage(int $page): void
+    public function changeTablePage(mixed $page): void
     {
-        $this->tablePage = max(1, $page);
+        $this->selectedTableSessionId = null;
+        $this->tablePage = $this->positiveIdentifier($page);
         $this->refreshDashboard();
     }
 
-    public function selectTable(int $tableSessionId): void
+    public function selectTable(mixed $tableSessionId): void
     {
+        $tableSessionId = $this->positiveIdentifier($tableSessionId);
         $this->selectedTableSessionId = $this->visibleTableSummary($tableSessionId) === null
             ? null
             : $tableSessionId;
     }
 
     public function openTable(
-        int $servicePointId,
+        mixed $servicePointId,
         OpenTableSessionForServicePointAction $openTableSession,
         ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
     ): void {
         $user = $this->currentUser();
-        $servicePoint = $this->waiterQueries->servicePoint($servicePointId);
+        $servicePoint = $this->waiterQueries->servicePoint($this->positiveIdentifier($servicePointId));
 
         if ($servicePoint === null) {
             abort(404);
@@ -210,9 +256,9 @@ class Dashboard extends Component
         $this->refreshDashboard();
     }
 
-    public function markWaiterCallHandled(int $waiterCallId, MarkWaiterCallHandledAction $markHandled): void
+    public function markWaiterCallHandled(mixed $waiterCallId, MarkWaiterCallHandledAction $markHandled): void
     {
-        $waiterCall = $this->waiterQueries->waiterCall($waiterCallId);
+        $waiterCall = $this->waiterQueries->waiterCall($this->positiveIdentifier($waiterCallId));
 
         try {
             $markHandled->handle($waiterCall, $this->currentUser());
@@ -225,11 +271,12 @@ class Dashboard extends Component
     }
 
     public function disableTemporaryClosure(
-        int $branchId,
+        mixed $branchId,
         UpdateBranchTemporaryClosureAction $updateBranchTemporaryClosure,
         ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds,
     ): void {
         $user = $this->currentUser();
+        $branchId = $this->positiveIdentifier($branchId);
         $branchIds = $resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ManageSettings);
 
@@ -247,7 +294,24 @@ class Dashboard extends Component
 
     public function render(): View
     {
+        $this->validateSelections();
+        if (! $this->responseAuthorized) {
+            $permissions = $this->resolveAccessibleBranchIds->handleMany($this->currentUser(), [SystemPermission::ViewOrders, SystemPermission::ManageSettings]);
+            abort_unless($permissions[SystemPermission::ViewOrders->value]->contains($this->selectedBranchId), 403);
+            $this->waiterQueries->authorizeBranchView($this->currentUser(), $this->selectedBranchId);
+            $this->branchOptions = array_values(array_filter($this->branchOptions, fn (array $option): bool => $permissions[SystemPermission::ViewOrders->value]->contains((int) $option['value'])));
+            $this->branches = array_map(fn (array $branch): array => [
+                ...$branch,
+                'can_manage_settings' => $permissions[SystemPermission::ManageSettings->value]->contains((int) $branch['id']),
+            ], $this->branches);
+        }
+
+        $attentionLabels = ['all' => __('operations.attention.all'), 'pending' => __('operations.attention.pending'), 'ready' => __('operations.attention.ready'), 'calls' => __('operations.attention.calls'), 'bills' => __('operations.attention.bills')];
+
         return view('livewire.waiter.dashboard', [
+            'branchOverviewUrl' => route('restaurant.dashboard', ['branch' => $this->selectedBranchId]),
+            'attentionOptions' => array_map(fn (string $type): array => ['value' => $type, 'label' => $attentionLabels[$type]], WaiterTableQueryService::ATTENTION_TYPES),
+            'attentionReason' => $this->attention !== 'all' ? __('operations.attention.reason', ['type' => $attentionLabels[$this->attention]]) : null,
             'selectedTable' => $this->selectedTableSessionId === null
                 ? null
                 : $this->visibleTableSummary($this->selectedTableSessionId),
@@ -271,6 +335,25 @@ class Dashboard extends Component
         $messages = collect($exception->errors())->flatten();
 
         return (string) ($messages->first() ?? __('ui.livewire.waiter.dashboard.ne_udalos_obrabotat_vyzov_oficianta'));
+    }
+
+    private function validateSelections(): void
+    {
+        $this->selectedBranchId = $this->positiveIdentifier($this->selectedBranchId, true);
+        $this->selectedTableSessionId = $this->positiveIdentifier($this->selectedTableSessionId, true);
+        $this->tablePage = $this->positiveIdentifier($this->tablePage);
+        abort_unless(is_string($this->attention) && in_array($this->attention, WaiterTableQueryService::ATTENTION_TYPES, true), 422);
+        abort_unless(is_string($this->zoneScope) && in_array($this->zoneScope, ['mine', 'all'], true), 422);
+    }
+
+    private function positiveIdentifier(mixed $value, bool $nullable = false): ?int
+    {
+        if ($nullable && ($value === null || $value === '')) {
+            return null;
+        }
+        abort_unless((is_int($value) && $value > 0) || (is_string($value) && preg_match('/^[1-9][0-9]*$/D', $value) === 1 && filter_var($value, FILTER_VALIDATE_INT) !== false), 422);
+
+        return (int) $value;
     }
 
     private function normalizedZoneScope(): string

@@ -42,7 +42,7 @@ test('restaurant dashboard is available to authenticated users', function () {
         ->assertSee('<main', false)
         ->assertSee('wire:offline', false)
         ->assertSee('data-layout="restaurant-dashboard"', false)
-        ->assertSee('Restaurant dashboard');
+        ->assertSee(__('dashboard.control.title'));
 });
 
 test('superadmin dashboard requires authentication', function () {

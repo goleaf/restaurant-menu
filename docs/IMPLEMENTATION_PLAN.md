@@ -5,6 +5,24 @@
 # Restaurant Menu completion implementation plan
 
 
+## 2026-09-15 — branch control center (active)
+
+Baseline: clean local main `a88de9e`. Earlier product delivery and its test results are historical. Preserve the existing menu, media, language, CSV and restaurant lifecycle contracts. Root owns integration and serialized final gates; all fixtures and runtime artifacts use disposable storage/databases.
+
+| Task | Status | User outcome | Owner | Dependencies | Acceptance |
+| --- | --- | --- | --- | --- | --- |
+| Local state, tools and baseline | done | Continue safely from delivered product | Root/reporting | None | Actual MCP local calls; isolated comparable dashboard fixtures |
+| Branch and local calendar context | done | Bookmark the exact branch and reporting period | Root/reporting | Baseline | Strict URL IDs/history, branch rights, local midnight/DST/date bounds |
+| Shared reporting and bounded reads | done | Correct order/payment amounts by currency | Reporting | Calendar context | Same-fixture output/query/model/memory/payload comparisons and regressions |
+| Readiness and operational drilldowns | done | Find and resolve the right current task | Operations | Branch context | Matching waiter filters, off-page links, revoked rights, dynamic readiness |
+| Dashboard visual integration | done | Clear current work and separate historical results | Design/root | Contracts | Five widths, themes, focus, zoom, loading/error/offline and actual screenshots |
+| Reproducible full browser runner | done | One local command discovers and reports all browser cases | Root | Baseline | Bounded owned child processes; failure/timeout returns nonzero |
+| Integrated regressions and local gates | done | Existing restaurant workflows remain reliable | Root | Implementation | Backend/browser/coverage>=90/static/translations/audits/build; isolated schema/seeds/caches |
+| Independent review and corrections | done | Reviewed implementation before delivery | Independent reviewer | Stable implementation | Actual diff reviewed, confirmed findings fixed and retested |
+| Documentation, commit and ordinary push | in_progress | Verified work delivered on existing main | Root | Review and gates | Exact staging; local commit; observed push result only |
+
+Ownership: reporting owns shared period/report services, BasicAnalytics, Order/OrderItem/Payment reporting scopes and focused tests. Operations owns readiness service, existing waiter Dashboard/Action/query service/view and TableSession/ServicePoint scopes. Design owns restaurant dashboard Blade and new static dashboard components. Root owns Restaurant Dashboard PHP/Action, JSON translations, shared manifests/migrations/docs, browser coordinator and full runs. No overlapping writers, working-database migrations, or GitHub requests except final ordinary push.
+
 ## 2026-09-15 — next product level (current run)
 
 Baseline: local main `8dd6de4`, 46 modified files and two untracked rule files inherited at entry. Their content is preserved in an external temporary baseline snapshot and is not claimed as new work. PHP/Laravel/Livewire patch versions are checked locally; Herd maps this checkout to `ruflo.test`.

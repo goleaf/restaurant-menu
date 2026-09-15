@@ -6,12 +6,15 @@ namespace App\Models;
 
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
+use App\Support\Reports\BranchReportPeriod;
 use Carbon\CarbonInterface;
 use Database\Factories\ManualPaymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property ManualPaymentScope $scope
@@ -89,6 +92,22 @@ class ManualPayment extends Model
             'paid_at' => 'datetime',
             'metadata' => 'array',
         ];
+    }
+
+    /**
+     * @param  Builder<ManualPayment>  $query
+     */
+    public function scopeForReportPeriod(Builder $query, BranchReportPeriod $period): void
+    {
+        $period->apply($query, 'paid_at');
+    }
+
+    /**
+     * @return HasMany<ManualPayment, $this>
+     */
+    public function reportCurrencyPayments(): HasMany
+    {
+        return $this->hasMany(self::class, 'currency', 'currency');
     }
 
     /**

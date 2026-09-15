@@ -4,6 +4,20 @@
 
 # Restaurant Menu completion decisions
 
+
+## 2026-09-15 — branch control implementation contracts
+
+- Preserve branch selection and reporting dates with native Livewire URL history. Encode each reporting selection in one `period` value (`today`, `yesterday`, `last7`, or `custom:YYYY-MM-DD:YYYY-MM-DD`), so Apply produces one history entry. Three independently updated URL properties produced intermediate history entries in the real browser.
+- Keep current service tasks independent of the historical report. Explicit refresh re-reads current scoped data; only the report uses the existing 45/60-second stale-while-revalidate cache. Show its actual generation time and preserve a labelled last-success result on a read error. Resolve current rights before any cached data is returned.
+- Restrict assignments separately for each organization, considering revoked/suspended assignment records. Removing the last active assignment must not turn into unrestricted organization access; prune waiter branch options on ordinary refresh.
+- Use the existing temporary-closure Action with an explicit desired state. Guard an unsaved ordering form when changing branch. Readiness reuses guest schedule availability and keeps optional content/routing warnings separate from blockers.
+- Run all discovered browser cases in sequential owned POSIX sessions with isolated runtime storage, bounded time, exact Pest printable-name mapping, one-case JUnit validation and aggregate failure status. The real XML uses evaluable IDs, while Pest's filter uses printable descriptions; use the loaded registry rather than reverse-engineering names. Kill only child process groups created by the coordinator. No retries, skipped tests, dependency changes or sandbox relaxation.
+- Keep the historical-name aggregate index as one forward migration, backed by an isolated EXPLAIN showing its use. Preserve UTF-8 case grouping and order/payment currency semantics.
+
+## 2026-09-15 — Separate current work from local reporting
+
+Keep branch selection and period in validated Livewire URL state. An all-branches overview never silently chooses the first branch for a mutation. Current operations use the waiter workflow contract independently of historical dates. Reporting uses each branch local calendar and stored timestamp timezone with an exclusive next-midnight boundary. Reuse existing readiness, guest availability and temporary-closure rules; preserve the visual tokens and delivered catalogue features.
+
 ## 2026-09-15 — final integration boundaries
 
 - Closed Flux modal wrappers directly inside the catalogue use `display: contents`, so hidden dialogs create no empty grid rows. A browser RED measured 80 pixels; the fixed layout meets the 32-pixel maximum gap at 320/390/768/1024/1440 widths without hiding horizontal overflow.

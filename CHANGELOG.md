@@ -4,6 +4,15 @@
 
 # Changelog
 
+
+## 2026-09-15 — Branch control center
+
+- Add searchable branch/all-branch context, atomic reporting URL history, branch-local calendar periods and currency-separated order/payment results.
+- Separate current operational queues from reports; link each attention type to the existing scoped waiter workspace, including permitted off-page tables.
+- Add dynamic readiness, clear ordering status and the existing explicit temporary pause with unsaved-form protection.
+- Bound report hydration, shrink Livewire public state and add a reversible historical-name report index; close revoked-assignment access gaps.
+- Add a complete local browser coordinator with isolated cases, discovery, timeouts, cleanup and aggregate failure reporting. Fresh gate and delivery evidence is in `docs/testing.md` and `docs/PROGRESS.md`.
+
 ## 2026-09-15 — Focused catalogue and completed content workflows
 
 Implemented fixed-section menu navigation with URL/history and unsaved protection; compact content-quality filters and current-page bulk availability/move/archive; bounded preview-first local CSV exchange; per-photo focal point and EN/LT/RU alt/caption; adjacent translation editing with empty-only copy and branch-scoped guest language. Added safe repeatable APP_KEY setup. Preserved inherited interaction-recovery edits at session entry; those changes are not claimed as newly authored. Current evidence and delivery status are maintained in docs/testing.md and docs/PROGRESS.md.

@@ -2,13 +2,16 @@
 
 namespace App\Actions\Waiter;
 
+use App\Enums\OrganizationSubscriptionStatus;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Models\Branch;
 use App\Models\BranchUser;
+use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Collection;
 
@@ -32,13 +35,14 @@ class ResolveWaiterAccessibleBranchIdsAction
         $memberships = OrganizationUser::query()
             ->select(['id', 'organization_id', 'role_id'])
             ->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value)
+            ->whereIn('organization_id', $this->activeOrganizationIds())
             ->with(['role' => fn ($query) => $query->select(['id'])->with([
                 'permissions' => fn ($query) => $query->whereIn('permissions.code', $codes),
             ])])->get();
         $organizationIds = $memberships->pluck('organization_id')->unique();
         $branches = Branch::query()->whereIn('organization_id', $organizationIds)->orderBy('id')->pluck('organization_id', 'id');
-        $assignments = BranchUser::query()->select(['id', 'organization_id', 'branch_id'])
-            ->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value)
+        $assignments = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'status'])
+            ->where('user_id', $user->id)
             ->whereIn('organization_id', $organizationIds)->get();
         $result = [];
         foreach ($codes as $code) {
@@ -51,12 +55,34 @@ class ResolveWaiterAccessibleBranchIdsAction
             $allowedOrganizations = $memberships->filter(fn (OrganizationUser $membership): bool => $override instanceof Permission
                 || $membership->role?->permissions->contains(fn (Permission $permission): bool => $permission->code === $code && $this->permissionIsEnabled($permission)))
                 ->pluck('organization_id')->unique();
-            $allowedBranches = $branches->filter(fn (int $organizationId): bool => $allowedOrganizations->contains($organizationId))->keys();
-            $assigned = $assignments->whereIn('organization_id', $allowedOrganizations)->pluck('branch_id');
-            $result[$code] = ($assigned->isEmpty() ? $allowedBranches : $allowedBranches->intersect($assigned))->values();
+            $allowedBranches = $branches->filter(fn (int $organizationId): bool => $allowedOrganizations->contains($organizationId));
+            $result[$code] = $this->restrictToAssignments($allowedBranches, $assignments);
         }
 
         return $result;
+    }
+
+    /** @return Builder<Organization> */
+    private function activeOrganizationIds(): Builder
+    {
+        return Organization::query()->select(['id'])->where(fn ($organization) => $organization
+            ->whereDoesntHave('subscription')
+            ->orWhereHas('subscription', fn ($subscription) => $subscription->where('status', OrganizationSubscriptionStatus::Active->value)));
+    }
+
+    /** @return Builder<Branch> */
+    public function authorizedBranchQuery(User $user): Builder
+    {
+        $query = Branch::query()->select('branches.id');
+        if ($user->isSuperadmin()) {
+            return $query;
+        }
+        $assignments = BranchUser::query()->select('id')->where('user_id', $user->id)->whereColumn('organization_id', 'branches.organization_id');
+
+        return $query->whereIn('organization_id', $this->activeOrganizationIds())
+            ->whereIn('organization_id', OrganizationUser::query()->select('organization_id')->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value))
+            ->where(fn ($branch) => $branch->whereNotExists($assignments)
+                ->orWhereExists((clone $assignments)->whereColumn('branch_id', 'branches.id')->where('status', OrganizationUserStatus::Active->value)));
     }
 
     private function permissionIsEnabled(Permission $permission): bool
@@ -99,6 +125,7 @@ class ResolveWaiterAccessibleBranchIdsAction
             ->select(['id', 'organization_id', 'role_id'])
             ->where('user_id', $user->id)
             ->where('status', OrganizationUserStatus::Active->value)
+            ->whereIn('organization_id', $this->activeOrganizationIds())
             ->when(! $override instanceof Permission, function ($query) use ($permission): void {
                 $query->whereHas('role.permissions', function ($permissionQuery) use ($permission): void {
                     $permissionQuery
@@ -114,28 +141,27 @@ class ResolveWaiterAccessibleBranchIdsAction
         }
 
         $organizationIds = $memberships->pluck('organization_id')->unique()->values();
-        $branchIds = Branch::query()
+        $branches = Branch::query()
             ->select(['id', 'organization_id'])
             ->whereIn('organization_id', $organizationIds)
             ->orderBy('id')
-            ->pluck('id');
+            ->pluck('organization_id', 'id');
 
-        $assignedBranchIds = BranchUser::query()
+        $assignments = BranchUser::query()
             ->select(['id', 'organization_id', 'branch_id', 'user_id', 'status'])
             ->where('user_id', $user->id)
-            ->where('status', OrganizationUserStatus::Active->value)
             ->whereIn('organization_id', $organizationIds)
-            ->orderBy('branch_id')
-            ->pluck('branch_id')
-            ->unique()
-            ->values();
+            ->orderBy('branch_id')->get();
 
-        if ($assignedBranchIds->isEmpty()) {
-            return $branchIds;
-        }
+        return $this->restrictToAssignments($branches, $assignments);
+    }
 
-        return $branchIds
-            ->intersect($assignedBranchIds)
-            ->values();
+    /** @param Collection<int,int> $branches @param Collection<int,BranchUser> $assignments @return Collection<int,int> */
+    private function restrictToAssignments(Collection $branches, Collection $assignments): Collection
+    {
+        $restrictedOrganizations = $assignments->pluck('organization_id')->flip();
+        $activeBranches = $assignments->filter(fn (BranchUser $assignment): bool => $assignment->status === OrganizationUserStatus::Active)->pluck('branch_id')->flip();
+
+        return $branches->filter(fn (int $organizationId, int $branchId): bool => ! $restrictedOrganizations->has($organizationId) || $activeBranches->has($branchId))->keys()->values();
     }
 }

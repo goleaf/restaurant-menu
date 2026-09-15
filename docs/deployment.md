@@ -4,6 +4,12 @@
 
 # Deployment
 
+
+## Branch control update — 2026-09-15
+
+Apply the additive `2026_09_15_121714_add_report_name_index_to_order_items_table` migration through the existing one-time deployment procedure after backup. It adds the report-name index without rewriting order names, timestamps or prices; its isolated rollback only removes that index. Existing working databases are not migrated by the development verification run. No cron, worker, Redis, WebSocket or runtime Node dependency is added. Rebuild frontend assets for the updated Blade screens and refresh the usual caches.
+
+
 ## Product-level migration and repeatable setup — 2026-09-15
 
 Deploy code with the additive photo-presentation migration using the existing migration procedure and a verified backup; do not rewrite existing migrations or reset application data. No new dependency, service, scheduler requirement or secret is introduced. `composer setup` calls `app:ensure-key`, which preserves an existing environment-file or externally configured APP_KEY and only generates a missing key. The command is tested with disposable environment files; the working key is never regenerated for verification. Public menu cache payload moves to v7 and invalidation includes previous v6 keys.

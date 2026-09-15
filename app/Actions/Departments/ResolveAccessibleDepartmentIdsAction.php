@@ -8,7 +8,6 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\Branch;
-use App\Models\BranchUser;
 use App\Models\KitchenDepartment;
 use App\Models\OrganizationUser;
 use App\Models\User;
@@ -113,25 +112,10 @@ class ResolveAccessibleDepartmentIdsAction
         $branchIds = Branch::query()
             ->select(['id', 'organization_id'])
             ->whereIn('organization_id', $organizationIds)
+            ->whereIn('id', $this->resolveAccessibleBranchIds->authorizedBranchQuery($user))
             ->orderBy('id')
             ->pluck('id');
 
-        $assignedBranchIds = BranchUser::query()
-            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'status'])
-            ->where('user_id', $user->id)
-            ->where('status', OrganizationUserStatus::Active->value)
-            ->whereIn('organization_id', $organizationIds)
-            ->orderBy('branch_id')
-            ->pluck('branch_id')
-            ->unique()
-            ->values();
-
-        if ($assignedBranchIds->isEmpty()) {
-            return $branchIds;
-        }
-
-        return $branchIds
-            ->intersect($assignedBranchIds)
-            ->values();
+        return $branchIds;
     }
 }

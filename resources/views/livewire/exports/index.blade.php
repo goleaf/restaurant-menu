@@ -9,7 +9,7 @@
                 </p>
             </div>
 
-            <flux:button icon="layout-grid" :href="route('restaurant.dashboard')" wire:navigate>
+            <flux:button icon="squares-2x2" :href="route('restaurant.dashboard')" wire:navigate>
                 {{ __('navigation.restaurant_dashboard') }}
             </flux:button>
         </div>

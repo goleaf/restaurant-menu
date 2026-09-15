@@ -1,4 +1,29 @@
 function registerStaffWorkspace() {
+    window.Alpine.data('staffEditor', () => ({
+        viewport: null,
+        onViewportChange: null,
+        init() {
+            this.viewport = window.matchMedia('(min-width: 64rem)');
+            this.onViewportChange = () => {
+                if (this.$el.open) this.present();
+            };
+            this.viewport.addEventListener('change', this.onViewportChange);
+            this.$nextTick(() => this.present());
+        },
+        present() {
+            if (!this.$el.isConnected) return;
+            const active = document.activeElement;
+            const focusedInside = this.$el.contains(active);
+            this.$el.close();
+            if (this.viewport.matches) this.$el.show();
+            else this.$el.showModal();
+            if (focusedInside) active.focus();
+        },
+        destroy() {
+            this.viewport?.removeEventListener('change', this.onViewportChange);
+        },
+    }));
+
     window.Alpine.data('invitationClipboard', () => ({
         busy: false,
         copied: false,
@@ -25,6 +50,7 @@ function registerStaffWorkspace() {
     window.Alpine.data('staffWorkspace', () => ({
         online: navigator.onLine,
         dirty: false,
+        editorDismissed: false,
         pendingNavigation: null,
         discardEditorBeforeNavigation: true,
         bypassNavigation: false,
@@ -52,6 +78,20 @@ function registerStaffWorkspace() {
                 const button = event.target.closest('[wire\\:click]');
                 if (button && /^open(Invitation|Member|Assignments|ExistingAssignment)\b/.test(button.getAttribute('wire:click'))) this.trigger = button;
             }, options);
+            this.$el.addEventListener('click', async (event) => {
+                const button = event.target.closest('[wire\\:click]');
+                const action = button?.getAttribute('wire:click') ?? '';
+                if (!this.editorDismissed || !this.online || !/^open(Invitation|Member|Assignments|ExistingAssignment)\b/.test(action)) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                try {
+                    await this.$wire.discardEditor();
+                    this.editorDismissed = false;
+                    this.$nextTick(() => [...this.$el.querySelectorAll('[wire\\:click]')].find((element) => element.getAttribute('wire:click') === action)?.click());
+                } catch {
+                    this.focusError();
+                }
+            }, { ...options, capture: true });
             this.$el.addEventListener('submit', (event) => {
                 if (this.online) return;
                 event.preventDefault();
@@ -65,7 +105,12 @@ function registerStaffWorkspace() {
             }, options);
             window.addEventListener('staff-editor-opened', () => {
                 this.dirty = false;
-                this.$nextTick(() => this.$el.querySelector('[data-staff-editor] input:not([type=hidden]), [data-staff-editor] select')?.focus());
+                this.editorDismissed = false;
+                this.$nextTick(() => {
+                    const editor = this.$el.querySelector('[data-staff-editor]');
+                    if (editor) window.Alpine.$data(editor).present();
+                    editor?.querySelector('input:not([type=hidden]), select')?.focus();
+                });
             }, options);
             window.addEventListener('staff-editor-closed', () => {
                 this.dirty = false;
@@ -105,8 +150,20 @@ function registerStaffWorkspace() {
             error.focus();
         },
         restoreFocus() {
-            const target = this.trigger?.isConnected && this.trigger.getClientRects().length && !this.trigger.disabled ? this.trigger : this.$el.querySelector('[data-staff-heading]');
+            const target = this.trigger?.isConnected && this.trigger.getClientRects().length && !this.trigger.disabled ? this.trigger : this.$el.closest('[data-staff-workspace]')?.querySelector('[data-staff-heading]');
             target?.focus();
+        },
+        async dismissEditor() {
+            this.$el.closest('[data-staff-workspace]')?.querySelector('[data-staff-editor]')?.close();
+            this.editorDismissed = true;
+            this.dirty = false;
+            this.restoreFocus();
+            if (!this.online) return;
+            try {
+                await this.$wire.discardEditor();
+            } catch {
+                this.focusError();
+            }
         },
         navigateSection(event, section) {
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;

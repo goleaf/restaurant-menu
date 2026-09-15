@@ -4,11 +4,76 @@
 
 # Testing and quality gates
 
-## Team center verification — 2026-09-15 (final gates in progress)
+## Flux/CSS modernization — 2026-09-15
+
+This pass preserves concurrent team work in the shared checkout. Runtime changes are frontend composition/styles; the only PHP implementation change is the operational button presentation component. No migrations, application database writes or dependency upgrades were performed.
+
+| Gate | Observed result |
+| --- | --- |
+| `composer validate --strict`, `composer audit`, `npm audit` | pass; zero reported dependency advisories |
+| Pint and `composer lint:check` | pass |
+| `composer analyse` | pass; zero errors |
+| Style/design/traceability focused suite | 32 passed / 1,281 assertions; final architecture/traceability rerun 15 / 1,129 |
+| Onboarding Feature suite | 192 passed / 2,412 assertions |
+| `composer test:backend -- --parallel --processes=4` | 2,727 passed / 58,076 assertions; 492.64 seconds |
+| `composer test:coverage -- --parallel --processes=4` | final rerun in progress with process-local `COMPOSER_MEMORY_LIMIT=3G`; minimum remains 90% |
+| `composer test:browser -- --timeout=180` | 21 WebKit scenarios / 1,462 assertions; zero failures/timeouts |
+| Translation scan/audit | no missing, unused or phrase keys; latest audit 7,851 semantic entries across EN/LT/RU, 712 scanned code files, zero critical issues |
+| Production Vite build | pass; 835 ms; exact bytes and consistent gzip comparison in `tailwind.md` |
+| Independent review | actionable department wrapping issue fixed and re-reviewed; no remaining blocking finding |
+
+The initial backend pass exposed a stale traceability path after removing the generic input clone; that reference is corrected. A shared foreign-gallery test chained a save after the upload setter had already returned 403, producing an invalid Livewire snapshot. The regression now asserts the setter's 403 and a specific `ModelNotFoundException` on a fresh foreign-save request, retaining the data/file invariants. No production permission behavior was changed. Onboarding's appearance test now waits for loaded CSS and uses `Flux.appearance` before verifying persistence across navigation. The first coverage aggregation exhausted the default 1.5 GiB PHP limit; only the verification process limit is raised for the final run.
+
+### Browser and print evidence
+
+- Disposable stable Chrome through Playwright MCP and Chrome DevTools MCP used Herd at the Boost-resolved URL. Both tools completed actual navigation/inspection; no personal profile or browser sandbox weakening was used.
+- Organizations, menu management, service points, waiter, kitchen, bar and authentication each passed the seven-width matrix (360/390/430/768/1024/1440/1920), EN/LT/RU and light/dark appearance without horizontal overflow or page errors.
+- Isolated WebKit fixtures cover onboarding at those widths plus 320, all three locales and 200% text; the full operational onboarding-to-paid-table journey passes. The actual guest-menu fixture covers all three locales, both appearances and all eight widths while retaining locale/search/category/basket state. The separate gallery interaction verifies keyboard containment, Escape and focus restoration; the broad width matrix is measured with that dialog closed.
+- Chrome confirms password Space/Enter behavior and translated pressed state, named 44×44 toast dismissal with Enter, account dropdown Arrow/Enter/Escape behavior, menu modal autofocus/background isolation/trigger restoration, Flux system preference changes, forced-color focus and reduced motion. Russian kitchen actions remain within their bounds at 200% text on 360 pixels.
+- All six QR presets in EN/LT/RU with optional table numbers preserve 76×104 mm sticker bounds, a 48 mm QR square, exact print colors and nonbreaking labels. Print toolbar is hidden. The seven-sticker Chromium PDF contains two A4 pages (four and three labels); both pages were rasterized with macOS PDFKit and visually checked without split or clipped stickers.
+- Final Chrome DevTools console has no warnings/errors/issues; Playwright's final navigation has zero warnings/errors. Boost browser logs had no retrievable entries. Physical printing, physical screen readers and physical mobile devices were not tested.
+
+Owned raw evidence is outside the repository at `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-flux-20260915-8krwm2q0`; final WebKit case logs are at `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-browser-827d1e24fe25dcc3`. Initial Chromium Pest launch could not find its matching browser revision; the repository's installed WebKit runner and separate sandboxed stable Chrome MCP checks provide the observed browser coverage. New package releases remain blocked by their prohibited GitHub distribution URLs; installed versions and Free applicability are recorded in `frontend.md`.
+
+
+## Team control center continuation — 2026-09-15
+
+The verified delivery candidate starts from local `5505ef3`, preserving the previously implemented branch/team work. A disposable source mirror contains only this task's changes; concurrent Flux/CSS edits and their staging remain in the shared checkout. PHP is the installed Herd 8.5.8 binary. All fixtures, sessions, caches and storage are isolated; neither the working database nor real employee invitations are used.
+
+| Gate | Fresh observed result |
+| --- | --- |
+| Full four-process backend | 2,712 passed / 58,003 assertions, 216.96 s, exit 0 |
+| Full application coverage | Running; the unchanged minimum is 90% |
+| Complete browser inventory | Repeating after the independently reviewed Playwright shutdown correction |
+| Invitation validation and existing menu regressions | 75 passed / 611 assertions, 39.78 s |
+| Browser coordinator subprocess regression | 8 passed / 25 assertions; genuine Node processes exercise shutdown, natural exit, quoted paths, preserved options, errors and timeout |
+| Composer strict validation / platform / locked audit | Exit 0; no advisories |
+| Translation audit / scan | 7,848 values, 2,616 keys, 725 files; zero missing/unused keys, phrase calls or critical issues |
+| Isolated schema / seeds / caches | 13 commands exit 0: migrate, guarded rollback/reapply, two default seeds, config/route/view/event cache and clear |
+
+### Recipient, administrator and concurrency evidence
+
+Independent actors exercise copied links, recipient signup/consent, existing-account login, mismatch/switching, stale open forms after credential rotation, employee visibility, area preview/save and access revocation in an already opened session. New accounts retain EN/LT/RU without marking email verified. Exact localized validation regressions cover required fields, password length/confirmation, retained safe input and equal rejection of known/unknown foreign emails. Current-role resolution and policy explanations use the same authorization boundary as server operations.
+
+Separate-process file-backed SQLite tests retain real concurrent create/accept/reissue/cancel/suspend, role/last-manager and area conflict scenarios. Their distinct connections, barriers and conditional writes are separate evidence from sequential stale-version tests. Audit-failure rollback, cross-tenant identifiers, legacy override compatibility and direct removed Livewire provisioning paths remain covered by the complete backend inventory.
+
+### Browser evidence and limitations
+
+Actual WebKit tests capture 320/390/768/1024/1440 widths, light/dark, EN/LT/RU, keyboard/Escape, focus restoration, 200% CSS layout zoom, truthful clipboard success/denial and native modal mobile editors. The editor test toggles the actual Playwright context offline and checks `navigator.onLine`; recipient offline feedback additionally uses dispatched events. No physical-phone, native browser zoom or screen-reader certification is claimed. Representative actual screenshots were visually inspected; this exposed and corrected the untranslated invitation validation and generic name label. Full-page recipient captures scroll to the top so an off-viewport fixed skip link is not captured over document content.
+
+Two full-browser attempts returned nonzero despite completed assertions because Node's Playwright `run-server` survived Symfony's repeated SIGTERM and PHP blocked in `proc_close`/`waitpid`. They are failed attempts, not passing gates. The first also exposed a photo-test synchronization race: the test now waits for enabled upload input, exact pending counts and saved gallery state, preserving all identity/order assertions. No photo runtime behavior changed. The coordinator now appends a quoted first-party Node preload only to its owned children; a marker plus `run-server` argv guard permits natural shutdown and bounds a surviving listener to one second after SIGTERM. Vendor files and dependencies are unchanged. Actual Pest exit zero and one complete passing JUnit case remain mandatory; failures, skips, incomplete reports and timeouts remain failures. A repeat mistakenly started from the moving shared checkout was stopped and is not candidate evidence.
+
+### Comparable measurement and source boundary
+
+Fresh equal-fixture measurements are in [performance](performance.md): SQL 29 → 33, hydrated models 424 → 50, HTML 1,279,182 → 91,416 bytes, Livewire snapshot 2,907 → 1,512 bytes and warm median render 240.63 → 26.36 ms. Cold peak allocation increases from 6,682,160 to 9,105,152 bytes; warm peak decreases. These are local component renders with separate cold caches and five warm samples, not production HTTP latency. Additional bounded authorization reads remain intentional.
+
+The application/config/translation sources were unchanged across full backend and coverage. The subsequent test-runner-only correction and screenshot capture position are verified separately and by the complete browser repeat. Final source digest and delivery status are recorded after the gates finish.
+
+## Earlier team center checkpoint — 2026-09-15 (historical)
 
 Current source preserves the existing restaurant/menu/guest workflows. Team feature tests cover invitation-only provisioning, digest/version-bound acceptance, tenant overrides, stale membership writes, audit rollback, suspended invitations and exact area selection. Independent process SQLite fixtures use distinct PIDs and readiness barriers for create/accept/reissue/cancel/suspend and overlapping role/area/last-manager writes.
 
-### Current final gates
+### Observed gates before the continuation
 
 | Gate | Observed result |
 | --- | --- |

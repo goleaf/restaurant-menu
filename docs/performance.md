@@ -5,6 +5,23 @@
 # Performance
 
 
+## Final team workspace comparison — 2026-09-15
+
+The same isolated fixture contains 30 branch employees, 30 invitations, 60 areas and 300 assignments. Baseline staff components/query service/views come from local `b68f31b` through an external autoload/view overlay; current shared authorization and schema are held constant. Main sources were never reverted. Each cold run uses a separate empty compiled-view directory; warm figures are medians of five further renders. These are local component measurements, not production HTTP latency or Core Web Vitals.
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| SQL queries | 29 | 33 |
+| Hydrated models | 424 | 50 |
+| HTML bytes | 1,279,182 | 91,416 |
+| Livewire snapshot bytes | 2,907 | 1,512 |
+| Cold response, ms | 325.39 | 135.14 |
+| Warm median response, ms | 240.63 | 26.36 |
+| Cold peak memory increase, bytes | 6,682,160 | 9,105,152 |
+| Warm median peak memory increase, bytes | 3,008,728 | 1,698,792 |
+
+The four additional bounded reads retain current authorization and permission-link checks. The reduction comes from current-page summaries and one requested editor, without the old complete assignment map or all row forms. Cold peak memory increased; only warm peak memory improved. Whole-process cold peaks were 63,646,264 and 65,790,280 bytes. Invitation status counts use one aggregate query and hydrate zero invitation models in the 67-invitation regression, with the same scope/search/role/effective-expiry semantics as the list. Counters load only in the invitation section.
+
 ## Branch control component comparison — 2026-09-15
 
 A separate local fixture compared the old Dashboard/Action/view from `a88de9e` with the new component, using the same installed framework, shared models, schema and one authorized owner. These are component renders, not complete HTTP documents or production timings. Each cold sample uses a fresh PHP process and array cache; warm samples reuse its report cache. The report-service comparison below isolates a different, smaller boundary.

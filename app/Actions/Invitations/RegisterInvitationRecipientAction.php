@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Invitations;
 
 use App\Enums\InvitationStatus;
+use App\Enums\SupportedLocale;
 use App\Models\Invitation;
 use App\Models\User;
 use DomainException;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -26,6 +28,7 @@ final class RegisterInvitationRecipientAction
 
         return DB::transaction(function () use ($invitation, $data): User {
             $expectedDigest = $invitation->invite_token_hash;
+            $expectedVersion = $invitation->credentialVersion();
             $invitation = Invitation::query()
                 ->select([
                     'id',
@@ -40,12 +43,14 @@ final class RegisterInvitationRecipientAction
                     'accepted_by_user_id',
                     'accepted_at',
                     'invite_token_hash',
+                    'invite_code_hash',
                 ])
                 ->whereKey($invitation->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! $invitation->matchesCredential($expectedDigest)) {
+            if (! $invitation->matchesCredential($expectedDigest)
+                || ! hash_equals($invitation->credentialVersion(), $expectedVersion)) {
                 throw new DomainException('Invitation registration is no longer available.');
             }
             $existingRecipient = User::query()
@@ -70,6 +75,7 @@ final class RegisterInvitationRecipientAction
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => $data['password'],
+                'locale' => SupportedLocale::normalize(App::currentLocale()),
             ]);
 
             if (! $recipient->exists) {

@@ -54,7 +54,8 @@ final class AcceptInvitationAction
                 ->first();
 
             if (! $lockedInvitation instanceof Invitation
-                || ! $lockedInvitation->matchesCredential($invitation->invite_token_hash)) {
+                || ! $lockedInvitation->matchesCredential($invitation->invite_token_hash)
+                || ! hash_equals($lockedInvitation->credentialVersion(), $invitation->credentialVersion())) {
                 throw new DomainException('Invitation is no longer available.');
             }
 

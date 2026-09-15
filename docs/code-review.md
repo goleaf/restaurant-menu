@@ -4,6 +4,11 @@
 
 # Final code review
 
+## Flux/CSS review — 2026-09-15
+
+A separate read-only reviewer compared the CSS/source changes, Flux compositions, override diffs and print entry with the installed Free templates. The review found department actions needed wrapping and their previous text size; all three status actions now use `h-auto!`, `min-w-0`, `whitespace-normal!`, `text-base!` and operational minimum height. Follow-up review found no blocking defect in the print geometry, localized modal autofocus or the precise foreign-image rejection regression. Two documentation wording issues were corrected. Build-size arithmetic was independently recomputed. Browser and executable gate evidence remains in `testing.md`; review alone is not a test result.
+
+
 The 2026-09-14 audit reviewed model/schema, controller/validation, report-cache, credential and repository-guidance boundaries against the 51 canonical requirements. Independent review found the cache-connection and physical-retention issues; both were implemented and re-reviewed. Current command evidence, rather than a blanket claim of complete optimization or coverage, is recorded in `testing.md`. Detailed route/UI/authorization/table/test evidence is in [`REQUIREMENTS_TRACEABILITY.md`](REQUIREMENTS_TRACEABILITY.md).
 
 ## Review outcome

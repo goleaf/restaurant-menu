@@ -4,6 +4,23 @@
 
 # Frontend architecture
 
+## Flux Free modernization — 2026-09-15
+
+Installed and locked versions remain Flux **2.17.0** and Livewire **4.4.1**. Packagist metadata and local outdated checks identify compatible stable **2.20.0 / 4.4.5**. Their available distribution archives point to GitHub API URLs, prohibited by this repository's push-only rule; the local Composer cache contains only the installed versions. No lock file, unrelated dependency or Pro package was changed. This is an explicit upgrade blocker, not a completed version upgrade.
+
+The installed Free templates were inspected before adoption. Button groups, native selects, primary/danger/outline/ghost buttons and normal toasts are available. Toggle, Flag, rich select/listbox and chart components are absent; newer toast inversion/actions and expanded colored variants cannot be assumed on 2.17. No speculative premium markup was added. Country/currency/timezone inputs retain their native, keyboard-accessible options and visible text; binary form preferences retain conventional checkbox/switch semantics.
+
+Waiter zone filters, department status actions, onboarding step navigation and the guest-menu language selector now use supported Flux controls. `x-ui.button` remains a small operational composition: Flux owns links, icons, loading and disabled semantics; the wrapper owns translated-slot composition, semantic variants, wrapping and operational sizes. Seven unused generic control views and four backing classes were removed. Shared page headers, metrics, state panels and workspace layouts retain their product purpose. Server authorization, validation, queries and workflow Actions are unchanged by this frontend pass.
+
+Catalogue modal hosts now sit outside the layout grid without a vendor `display: contents` workaround. Five menu dialogs use `:closable="false"` plus the existing translated close composition with explicit autofocus; Escape and backdrop handling remain owned by Flux. Appearance remains a single Flux-managed light/dark/system state with `@fluxAppearance` and the CSS dark variant.
+
+### Published Flux templates
+
+- Removed unused `navlist/group` and local icon copies; callers use official `squares-2x2` and `chevron-up-down` icons.
+- Retained `input/viewable` only for the EN/LT/RU accessible name and `aria-pressed` state; installed Flux exposes no label prop for this internal visibility button.
+- Added a minimal `toast/index` override: translated dismiss label and a 44-pixel target on the existing close button. Slots, events, duration and markup otherwise match installed upstream.
+- `FrontendStyleArchitectureTest` restricts the override allowlist and hashes the two installed upstream templates. Every dependency upgrade must compare those templates and remove the override when an upstream supported API closes the accessibility gap.
+
 ## Branch control center — 2026-09-15
 
 The [restaurant dashboard](../resources/views/livewire/restaurant/dashboard.blade.php) starts with Organization → Brand → Branch context and a searchable native branch disclosure. A single accessible branch is selected directly; multiple branches start in an explicit overview. Branch-specific links request a selection in overview mode and use only the destinations permitted for that branch. Missing access is labelled and never represented by an active link to an arbitrary first branch.

@@ -181,7 +181,8 @@ test('a new recipient can register and atomically accept a branch invitation', f
 
     $this->assertAuthenticatedAs($recipient);
     expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Accepted)
-        ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id);
+        ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id)
+        ->and($recipient->email_verified_at)->toBeNull();
 
     $this->assertDatabaseHas('organization_users', [
         'organization_id' => $organization->id,

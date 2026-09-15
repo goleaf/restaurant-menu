@@ -1,5 +1,5 @@
-<main data-page="branch-bulk-qr-print" class="qr-print-page qr-print-page-bulk">
-    <div class="qr-print-toolbar">
+<main data-page="branch-bulk-qr-print" class="qr-print-page flex min-h-svh flex-col items-center gap-4 px-4 py-6 qr-print-page-bulk">
+    <div class="qr-print-toolbar flex w-full max-w-4xl flex-col justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950">{{ __('qr.print.bulk_title') }}</h1>
@@ -29,7 +29,7 @@
         </div>
     </div>
 
-    <section class="qr-print-controls">
+    <section class="qr-print-controls w-full max-w-4xl rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
         <div class="grid gap-4 md:grid-cols-[1fr_16rem_auto] md:items-end">
             <flux:select wire:model.live="areaNodeId" :label="__('qr.labels.zone')">
                 @foreach ($areaOptions as $option)
@@ -72,14 +72,14 @@
     </section>
 
     @if ($printTableNumber)
-        <div class="qr-print-warning">
+        <div class="qr-print-warning w-full max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             {{ __('qr.print.table_number_warning') }}
         </div>
     @endif
 
-    <section class="qr-print-list" aria-label="{{ __('qr.labels.list') }}">
+    <section class="qr-print-list w-full max-w-4xl divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm" aria-label="{{ __('qr.labels.list') }}">
         @forelse ($servicePointRows as $servicePoint)
-            <article wire:key="bulk-qr-service-point-{{ $servicePoint['id'] }}" class="qr-print-list-row">
+            <article wire:key="bulk-qr-service-point-{{ $servicePoint['id'] }}" class="qr-print-list-row flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
                 <label class="flex min-w-0 flex-1 items-start gap-3">
                     <input
                         type="checkbox"
@@ -111,18 +111,18 @@
                 </div>
             </article>
         @empty
-            <div class="qr-print-list-empty">
+            <div class="qr-print-list-empty w-full max-w-4xl rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-6 text-center text-sm text-zinc-500">
                 {{ __('qr.empty.no_service_points_in_zone') }}
             </div>
         @endforelse
     </section>
 
     @if (count($printItems) === 0)
-        <section class="qr-print-empty-preview">
+        <section class="qr-print-empty-preview w-full max-w-4xl rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-6 text-center text-sm text-zinc-500">
             {{ __('qr.print.empty_preview') }}
         </section>
     @else
-        <section class="qr-bulk-sticker-grid" aria-label="{{ __('qr.labels.stickers_preview') }}">
+        <section class="qr-bulk-sticker-grid grid w-full max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="{{ __('qr.labels.stickers_preview') }}">
             @foreach ($printItems as $item)
                 <article
                     wire:key="bulk-print-sticker-{{ $item['service_point_id'] }}"

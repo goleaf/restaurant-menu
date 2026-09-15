@@ -14,63 +14,64 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('navigation.workspaces')" class="grid [&>div:first-child>div]:!text-text-muted">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="$currentNavigation['dashboard']" wire:navigate>
+                <flux:sidebar.group class="grid">
+                    <x-slot:heading><span class="text-text-muted">{{ __('navigation.workspaces') }}</span></x-slot:heading>
+                    <flux:sidebar.item class="workspace-nav-item" icon="home" :href="route('dashboard')" :current="$currentNavigation['dashboard']" wire:navigate>
                         {{ __('navigation.dashboard') }}
                     </flux:sidebar.item>
 
-                    <flux:sidebar.item icon="building-office" :href="route('organizations.index')" :current="$currentNavigation['organizations']" wire:navigate>
+                    <flux:sidebar.item class="workspace-nav-item" icon="building-office" :href="route('organizations.index')" :current="$currentNavigation['organizations']" wire:navigate>
                         {{ __('navigation.organizations') }}
                     </flux:sidebar.item>
 
                     @if ($canAccessOnboarding ?? false)
-                        <flux:sidebar.item icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="sparkles" :href="route('onboarding.restaurant')" :current="$currentNavigation['onboarding']" wire:navigate>
                             {{ __('navigation.onboarding') }}
                         </flux:sidebar.item>
                     @endif
 
-                    <flux:sidebar.item icon="layout-grid" :href="route('restaurant.dashboard')" :current="$currentNavigation['restaurant_dashboard']" wire:navigate>
+                    <flux:sidebar.item class="workspace-nav-item" icon="squares-2x2" :href="route('restaurant.dashboard')" :current="$currentNavigation['restaurant_dashboard']" wire:navigate>
                         {{ __('navigation.restaurant') }}
                     </flux:sidebar.item>
 
                     @if ($canAccessQrLookup ?? false)
-                        <flux:sidebar.item icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="$currentNavigation['qr_lookup']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="qr-code" :href="route('restaurant.qr-lookup.index')" :current="$currentNavigation['qr_lookup']" wire:navigate>
                             {{ __('navigation.qr_codes') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessWaiterDashboard ?? false)
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="$currentNavigation['waiter']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="clipboard-document-list" :href="route('restaurant.waiter.dashboard')" :current="$currentNavigation['waiter']" wire:navigate>
                             {{ __('navigation.waiter') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessKitchenDashboard ?? false)
-                        <flux:sidebar.item icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="$currentNavigation['kitchen']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="fire" :href="route('restaurant.kitchen.dashboard')" :current="$currentNavigation['kitchen']" wire:navigate>
                             {{ __('navigation.kitchen') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessBarDashboard ?? false)
-                        <flux:sidebar.item icon="beaker" :href="route('restaurant.bar.dashboard')" :current="$currentNavigation['bar']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="beaker" :href="route('restaurant.bar.dashboard')" :current="$currentNavigation['bar']" wire:navigate>
                             {{ __('navigation.bar') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessAuditLog ?? false)
-                        <flux:sidebar.item icon="shield-check" :href="route('restaurant.audit-log.index')" :current="$currentNavigation['audit_log']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="shield-check" :href="route('restaurant.audit-log.index')" :current="$currentNavigation['audit_log']" wire:navigate>
                             {{ __('navigation.audit_log') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessDataExports ?? false)
-                        <flux:sidebar.item icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="$currentNavigation['exports']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="arrow-down-tray" :href="route('restaurant.exports.index')" :current="$currentNavigation['exports']" wire:navigate>
                             {{ __('navigation.exports') }}
                         </flux:sidebar.item>
                     @endif
 
                     @if ($canAccessPlatformDashboard ?? false)
-                        <flux:sidebar.item icon="rectangle-group" :href="route('superadmin.dashboard')" :current="$currentNavigation['superadmin']" wire:navigate>
+                        <flux:sidebar.item class="workspace-nav-item" icon="rectangle-group" :href="route('superadmin.dashboard')" :current="$currentNavigation['superadmin']" wire:navigate>
                             {{ __('navigation.superadmin') }}
                         </flux:sidebar.item>
                     @endif
@@ -84,11 +85,11 @@
             </div>
 
             <flux:sidebar.nav>
-                <flux:sidebar.item icon="home" :href="route('guest.home')" wire:navigate>
+                <flux:sidebar.item class="workspace-nav-item" icon="home" :href="route('guest.home')" wire:navigate>
                     {{ __('navigation.guest_area') }}
                 </flux:sidebar.item>
 
-                <flux:sidebar.item icon="layout-grid" :href="route('profile.edit')" :current="$currentNavigation['profile']" wire:navigate>
+                <flux:sidebar.item class="workspace-nav-item" icon="squares-2x2" :href="route('profile.edit')" :current="$currentNavigation['profile']" wire:navigate>
                     {{ __('navigation.settings') }}
                 </flux:sidebar.item>
             </flux:sidebar.nav>
@@ -120,7 +121,7 @@
                     icon-trailing="chevron-down"
                 />
 
-                <flux:menu>
+                <flux:menu class="border-border-subtle! bg-surface-raised! shadow-elevated!">
                     <flux:menu.radio.group>
                         <div class="p-0 text-sm font-normal">
                             <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">

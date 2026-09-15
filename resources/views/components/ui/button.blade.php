@@ -1,25 +1,8 @@
-@if ($attributes->has('href'))
-    <a {{ $attributes->class([$baseClasses, $variantClasses, $sizeClasses, $widthClasses]) }}>
-        @if ($icon)
-            <flux:icon :name="$icon" variant="micro" class="size-4 shrink-0" />
-        @endif
-
-        {{ $slot }}
-
-        @if ($iconTrailing)
-            <flux:icon :name="$iconTrailing" variant="micro" class="size-4 shrink-0" />
-        @endif
-    </a>
-@else
-    <button {{ $attributes->merge(['type' => 'button'])->class([$baseClasses, $variantClasses, $sizeClasses, $widthClasses]) }}>
-        @if ($icon)
-            <flux:icon :name="$icon" variant="micro" class="size-4 shrink-0" />
-        @endif
-
-        {{ $slot }}
-
-        @if ($iconTrailing)
-            <flux:icon :name="$iconTrailing" variant="micro" class="size-4 shrink-0" />
-        @endif
-    </button>
-@endif
+<flux:button
+    :variant="$fluxVariant"
+    :icon="$icon"
+    :icon:trailing="$iconTrailing"
+    {{ $attributes->class(['h-auto! min-w-0 whitespace-normal! rounded-control! font-semibold! leading-tight text-pretty', $variantClasses, $sizeClasses, $widthClasses]) }}
+>
+    {{ $slot }}
+</flux:button>

@@ -10,8 +10,10 @@ use App\Enums\OrganizationUserStatus;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Organization;
+use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -30,17 +32,27 @@ class AddBranchStaffMemberAction
         }
 
         return DB::transaction(function () use ($organization, $branch, $role, $assignedBy, $data): User {
+            $organization = Organization::query()->whereKey($organization->id)->firstOrFail();
             $branch = Branch::query()->whereKey($branch->id)->where('organization_id', $organization->id)->firstOrFail();
+            $role = Role::query()->select(['id', 'code', 'name', 'sort_order'])->whereKey($role->id)->firstOrFail();
             $assignedBy = User::query()->with('roles')->whereKey($assignedBy->id)->firstOrFail();
             Gate::forUser($assignedBy)->authorize('manageStaff', $branch);
             Gate::forUser($assignedBy)->authorize('assign', [$role, $organization]);
             $email = mb_strtolower(trim($data['email']));
-            $user = User::query()->where('email', $email)
-                ->whereHas('organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id)
-                    ->where('status', OrganizationUserStatus::Active->value))->first();
-            if (! $user instanceof User || $user->isSuperadmin()) {
+            $organizationMembership = OrganizationUser::query()
+                ->select(['id', 'organization_id', 'user_id', 'role_id', 'status'])
+                ->with(['user', 'role:id,code,name,sort_order'])
+                ->where('organization_id', $organization->id)
+                ->where('status', OrganizationUserStatus::Active->value)
+                ->whereHas('user', fn ($query) => $query->where('email', $email))->first();
+            $user = $organizationMembership?->user;
+            if (! $user instanceof User || ! $organizationMembership->role instanceof Role || $user->isSuperadmin()) {
                 throw ValidationException::withMessages(['email' => __('staff.errors.invitation_required')]);
             }
+            if ($user->id === $assignedBy->id) {
+                throw new AuthorizationException;
+            }
+            Gate::forUser($assignedBy)->authorize('assign', [$organizationMembership->role, $organization]);
             $existing = BranchUser::query()->where('organization_id', $organization->id)
                 ->where('branch_id', $branch->id)->where('user_id', $user->id)->first();
             if ($existing instanceof BranchUser) {

@@ -33,8 +33,12 @@ final class ReissueInvitationAction
 
         return DB::transaction(function () use ($actor, $organization, $invitation, $expectedVersion): CreatedInvitation {
             $actor = $actor->fresh();
+            $organization = Organization::query()->whereKey($organization->id)->first();
             if (! $actor instanceof User) {
                 throw new DomainException('Invitation issuer is no longer available.');
+            }
+            if (! $organization instanceof Organization) {
+                throw new DomainException('Invitation organization is not available.');
             }
             Gate::forUser($actor)->authorize('manageStaff', $organization);
             $scopedInvitation = Invitation::query()

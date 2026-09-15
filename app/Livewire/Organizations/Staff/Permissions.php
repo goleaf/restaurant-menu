@@ -173,7 +173,7 @@ class Permissions extends Component
         $overrides = $this->permissionQueries->userOverrides($this->staffMember, $this->organization->id);
 
         $permissions = $this->permissionQueries->permissions();
-        $decisions = $this->staffMember->organizationPermissionDecisions($this->organization, $permissions->pluck('code')->all());
+        $decisions = $this->permissionQueries->organizationAccessDecisions($this->staffMember, $this->organization, $permissions->pluck('code')->all());
 
         return $permissions->map(function (Permission $permission) use ($roleDefaults, $overrides, $decisions): array {
             $hasOverride = $overrides->has($permission->id);
@@ -212,6 +212,8 @@ class Permissions extends Component
                     'role' => 'permissions.sources.role',
                     'scope_restricted' => 'permissions.sources.scope_restricted',
                     'superadmin' => 'permissions.sources.superadmin',
+                    'policy_allowed' => 'permissions.sources.policy_allowed',
+                    'policy_denied' => 'permissions.sources.policy_denied',
                 }),
                 'effective_label' => $effectiveAllowed ? __('permissions.states.allowed') : __('permissions.states.denied'),
             ];

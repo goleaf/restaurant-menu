@@ -4,11 +4,17 @@
 
 # Authorization model
 
+## Final team decision consistency — 2026-09-15
+
+Organization access explanations use `Gate::inspect` for view, update, branch management, staff management and permission management. Where a policy adds an allowance or denial beyond permission defaults, the displayed effective result and reason follow that policy. Generic capability summaries still explain role defaults and scoped exceptions; they do not promise unrestricted order/table/area access.
+
+Existing-member branch assignment checks both the current organization role and proposed branch role against the actor's current hierarchy and rejects self-assignment. This matters because the first branch assignment narrows organization-wide fallback access. Stale target-role objects, archived organizations, cross-tenant IDs and suspended memberships are rejected by the domain Action, not just the candidate list.
+
 ## Team access contract — 2026-09-15
 
 Permission decisions use the same organization-scoped resolver in User checks, permission explanations, waiter scope and audit scope. New overrides carry organization_id and a unique user/permission/scope_key; organization administration never writes global account permissions. Explicit scoped allow/deny takes precedence. Preserved legacy deny remains conservative; legacy allow applies only when the user has exactly one organization membership. Ambiguous legacy grants remain stored, unapplied and marked for review. An inactive membership and insufficient scope still deny access. Branch roles retain their existing domain-specific contract; the permissions page explains organization capability defaults and does not promise access to every order or area.
 
-Role/status Actions reload scoped membership, require current authorization and a reason, compare access_version, and commit audit with the change. Hierarchy, self-change and last eligible manager checks are enforced in the Action. Suspension cancels pending invitations only in its scope and does not close tables, delete history or disable independent memberships. Restoration is explicit and preserves the current role. Existing accepted active organization members may be assigned to a branch without changing identity, password or organization role; suspended membership is not silently reactivated.
+Role/status Actions reload scoped membership, require current authorization, compare access_version, and commit audit with the change. Role changes and suspension require a reason; restoration validates a reason when one is supplied. Hierarchy, self-change and last eligible manager checks are enforced in the Action. Suspension cancels pending invitations only in its scope and does not close tables, delete history or disable independent memberships. Restoration is explicit and preserves the current role. Existing accepted active organization members may be assigned to a branch without changing identity, password or organization role; suspended membership is not silently reactivated.
 
 
 ## Bounded single-branch decisions — 2026-09-14

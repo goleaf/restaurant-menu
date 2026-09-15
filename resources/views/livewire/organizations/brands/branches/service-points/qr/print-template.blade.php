@@ -1,5 +1,5 @@
-<main data-page="qr-print-template" class="qr-print-page qr-print-page-single">
-    <div class="qr-print-toolbar">
+<main data-page="qr-print-template" class="qr-print-page flex min-h-svh flex-col items-center gap-4 px-4 py-6 qr-print-page-single">
+    <div class="qr-print-toolbar flex w-full max-w-4xl flex-col justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950">{{ __('qr.print.single_title') }}</h1>
@@ -38,7 +38,7 @@
     </div>
 
     @if ($printTableNumber)
-        <div class="qr-print-warning">
+        <div class="qr-print-warning w-full max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
             {{ __('qr.print.table_number_warning') }}
         </div>
     @endif

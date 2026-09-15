@@ -4,6 +4,14 @@
 
 # Application security
 
+## Final team security corrections — 2026-09-15
+
+The recipient form rejects an email that differs from the invitation before querying global account uniqueness. Existing and unknown foreign addresses produce the same localized mismatch response. Password requirements retain the shared Fortify-compatible rules and receive complete EN/LT/RU validation messages.
+
+Invitation consent includes current recipient, scope, role and credential digests; stale forms cannot accept a replaced version. Current archived organization state blocks creation/reissue, including system actors. Exact successful replay does not mutate membership or repeat audit. All invitation responses, including 410, validation redirects and 429, carry no-store, no-referrer and noindex headers. Raw credentials remain transient and are excluded from snapshots, logs and browser storage.
+
+Branch assignment of an existing accepted member checks the member's current organization role as well as the requested branch role and rejects self-assignment. This prevents a lower administrator from narrowing a higher manager's other branch access. Organization capability explanations inspect the actual Gate/Policy response. Current membership, subscription, branch and object-specific checks remain authoritative on every request.
+
 ## Team invitations and access — 2026-09-15
 
 Manual browser staff provisioning is removed at the callable Livewire boundary. Invitation creation creates no User or active membership. Existing provisioning for factories, demo data and initial organization ownership remains separate. Normalized email retains provider-independent dots and plus suffixes. Creation and rotation reject duplicate active invitations in the same scope under SQLite write serialization.

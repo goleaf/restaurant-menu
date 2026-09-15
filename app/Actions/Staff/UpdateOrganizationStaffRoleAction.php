@@ -42,6 +42,7 @@ final class UpdateOrganizationStaffRoleAction
             $scopedMembership = OrganizationUser::query()
                 ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at', 'access_version'])
                 ->where('organization_id', $organization->id)
+                ->whereHas('organization')
                 ->whereKey($membership->id)
                 ->lockForUpdate()
                 ->firstOrFail();

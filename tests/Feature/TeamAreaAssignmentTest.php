@@ -106,3 +106,54 @@ test('coverage overview matches exact selected areas and unrestricted active wai
     $overview = app(StaffQueryService::class)->coverageOverview($this->branch);
     expect($overview['unrestricted_count'])->toBe(0);
 });
+
+test('area review shows named selected current added and removed assignments across search pages', function () {
+    $added = AreaNode::factory()->forBranch($this->branch)->withParent($this->area)->create(['name' => 'Quiet terrace']);
+    app(SyncWaiterAreaAssignmentsAction::class)->handle($this->branch, $this->member, $this->owner, [$this->area->id]);
+    $component = Livewire\Livewire::actingAs($this->owner)->test(Index::class, ['organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch])
+        ->call('openAssignments', $this->member->id)->set('assignmentForm.areaIds', [(string) $added->id])
+        ->set('assignmentForm.search', 'No matching area')->call('previewAreaAssignments');
+    $review = $component->viewData('areaEditor');
+    expect($review['groups'])->toBe([])
+        ->and(array_column($review['current'], 'id'))->toBe([$this->area->id])
+        ->and(array_column($review['selected'], 'id'))->toBe([$added->id])
+        ->and(array_column($review['added'], 'id'))->toBe([$added->id])
+        ->and(array_column($review['removed'], 'id'))->toBe([$this->area->id])
+        ->and($review['added'][0]['label'])->toContain($this->area->name, 'Quiet terrace');
+});
+
+test('area conflict comparison preserves the draft and displays the newly saved names', function () {
+    $mine = AreaNode::factory()->forBranch($this->branch)->create(['name' => 'My proposed zone']);
+    $theirs = AreaNode::factory()->forBranch($this->branch)->create(['name' => 'Recently assigned zone']);
+    $component = Livewire\Livewire::actingAs($this->owner)->test(Index::class, ['organization' => $this->branch->organization, 'brand' => $this->branch->brand, 'branch' => $this->branch])
+        ->call('openAssignments', $this->member->id)->set('assignmentForm.areaIds', [(string) $mine->id])->call('previewAreaAssignments');
+    app(SyncWaiterAreaAssignmentsAction::class)->handle($this->branch, $this->member, $this->owner, [$theirs->id]);
+    $component->call('saveAreaAssignments')->assertHasErrors('assignmentForm.areaIds')->call('refreshAssignments', true);
+    $review = $component->viewData('areaEditor');
+    expect(array_column($review['current'], 'id'))->toBe([$theirs->id])
+        ->and(array_column($review['selected'], 'id'))->toBe([$mine->id]);
+    $component->call('saveAreaAssignments')->assertHasErrors('preview');
+    expect(AreaNodeWaiter::query()->pluck('area_node_id')->all())->toBe([$theirs->id]);
+});
+
+test('a forged foreign area is rejected as a complete batch without changing saved selection', function () {
+    $foreign = AreaNode::factory()->create();
+    $action = app(SyncWaiterAreaAssignmentsAction::class);
+    $action->handle($this->branch, $this->member, $this->owner, [$this->area->id]);
+    $snapshot = app(StaffQueryService::class)->assignmentSnapshot($this->branch, $this->member);
+    expect(fn () => $action->handle($this->branch, $this->member, $this->owner, [$foreign->id], $snapshot['fingerprint']))->toThrow(ValidationException::class);
+    expect(AreaNodeWaiter::query()->where('user_id', $this->waiter->id)->pluck('area_node_id')->all())->toBe([$this->area->id]);
+    $review = app(StaffQueryService::class)->areaEditor($this->branch, [$foreign->id], '');
+    expect($review['unavailable'][0]['label'])->not->toContain($foreign->name)
+        ->and($review['unavailable'][0]['available'])->toBeFalse();
+});
+
+test('rejected assignment persistence rolls back removed areas and preserves the original fingerprint', function () {
+    $replacement = AreaNode::factory()->forBranch($this->branch)->create();
+    $action = app(SyncWaiterAreaAssignmentsAction::class);
+    $action->handle($this->branch, $this->member, $this->owner, [$this->area->id]);
+    $before = app(StaffQueryService::class)->assignmentSnapshot($this->branch, $this->member);
+    AreaNodeWaiter::saving(fn (AreaNodeWaiter $assignment): bool => $assignment->area_node_id !== $replacement->id);
+    expect(fn () => $action->handle($this->branch, $this->member, $this->owner, [$replacement->id], $before['fingerprint']))->toThrow(RuntimeException::class);
+    expect(app(StaffQueryService::class)->assignmentSnapshot($this->branch, $this->member))->toBe($before);
+});

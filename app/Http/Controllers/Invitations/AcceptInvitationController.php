@@ -46,8 +46,6 @@ class AcceptInvitationController extends Controller
 
         $request->session()->forget(['staff_invitation_id', 'staff_invitation_state', 'staff_invitation_credential', 'url.intended']);
 
-        return redirect()->to($destination->handle($invitation, $recipient))->with('status', __('invitations.messages.accepted'))->withHeaders([
-            'Cache-Control' => 'no-store, private', 'Referrer-Policy' => 'no-referrer',
-        ]);
+        return redirect()->to($destination->handle($invitation, $recipient))->with('status', __('invitations.messages.accepted'));
     }
 }

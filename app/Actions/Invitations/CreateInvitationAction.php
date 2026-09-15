@@ -62,10 +62,11 @@ final class CreateInvitationAction
 
         return DB::transaction(function () use ($organization, $brand, $branch, $role, $invitedBy, $data, $email, $phone, $credentials): CreatedInvitation {
             $invitedBy = $invitedBy->fresh();
-            $organization = $organization->fresh();
+            $organization = Organization::query()->whereKey($organization->id)->first();
             if (! $invitedBy instanceof User || ! $organization instanceof Organization) {
                 throw new DomainException('Invitation issuer is no longer available.');
             }
+            $role = Role::query()->select(['id', 'code', 'name', 'sort_order'])->whereKey($role->id)->firstOrFail();
             Gate::forUser($invitedBy)->authorize('manageStaff', $organization);
             Gate::forUser($invitedBy)->authorize('assign', [$role, $organization]);
             if ($brand instanceof Brand) {

@@ -4,6 +4,16 @@
 
 # Design system
 
+## Flux and utility ownership — 2026-09-15
+
+Use documented Flux props, classes and slots for controls; the sidebar heading slot owns heading presentation and `workspace-nav-item` is the reusable product navigation utility. Native details/summary, language tabs, checkbox forms and domain status panels remain where their semantics and behavior already fit. Do not replace them solely to increase the Flux tag count.
+
+Primary actions use Flux primary, normal secondary actions outline/default, lower-emphasis actions ghost and destructive actions danger. Operational warning/info/dark variants in `x-ui.button` configure the supported accent CSS variables rather than duplicating generic button markup. Department actions keep explicit text, 56-pixel minimum targets and wrapping under enlarged text.
+
+Only contrast and coarse-pointer target corrections still depend on Flux data attributes: light orange badge text, light red danger-button backgrounds and minimum control/button/sidebar-item sizes. Installed 2.17 has no global public minimum-target or contrast prop. These are intentional accessibility integration rules, protected by design/architecture tests and real browser touch/contrast checks; recheck them on upgrades. Surface, header, menu, label, field and navigation presentation no longer use vendor-internal selectors.
+
+Theme utilities use Tailwind's real namespaces: `--transition-duration-state` and `--z-index-*`. Noto Sans Variable remains local with Latin, Latin-ext and Cyrillic subsets, `font-display: swap`, and the existing weight range. There are no duplicate font imports or remote font requests.
+
 ## Current shared product surfaces
 
 The font stack is local Noto Sans Variable with Latin, Latin-ext and Cyrillic subsets. Shared navigation, buttons, fields, focus rings and state panels use semantic tokens from app.css. Catalogue filters reflow by available width; locale tabs preserve state and reveal validation errors. Gallery controls, progress/retry and destructive confirmations use existing Blade/Flux primitives. The guest modal traps and restores focus; small cards stack photos below 360 pixels. See DESIGN.md for intent and testing.md for observed browser coverage.

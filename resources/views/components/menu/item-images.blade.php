@@ -2,7 +2,7 @@
 
 <section
     data-menu-item-images
-    aria-labelledby="item-{{ $item['id'] }}-photos-heading" class="grid gap-4 rounded-card border border-border p-4"
+    aria-labelledby="item-{{ $item['id'] }}-photos-heading" class="grid gap-4 rounded-card border border-border-subtle p-4"
     x-data="menuImagePicker({ itemId: {{ $item['id'] }} })"
     x-on:livewire-upload-start="uploading = true; failed = false; progress = 0"
     x-on:livewire-upload-progress="progress = $event.detail.progress"
@@ -17,7 +17,7 @@
 >
     <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
-            <h3 id="item-{{ $item['id'] }}-photos-heading" class="text-sm font-semibold text-text">{{ __('uploads.labels.gallery') }}</h3>
+            <h3 id="item-{{ $item['id'] }}-photos-heading" class="text-sm font-semibold text-text-primary">{{ __('uploads.labels.gallery') }}</h3>
             <p class="mt-1 text-xs text-text-muted">{{ __('uploads.labels.image_count', ['count' => $item['image_count'], 'max' => $item['max_image_count']]) }}</p>
         </div>
         <p class="text-xs text-text-muted">{{ __('uploads.editor.primary_first') }}</p>
@@ -31,21 +31,21 @@
             @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="drop($event)"
             :class="dragging ? 'outline-2 outline-focus' : ''"
         >
-            <label for="item-images-{{ $item['id'] }}" class="text-sm font-medium text-text">{{ __('uploads.editor.drop_or_choose') }}</label>
+            <label for="item-images-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.editor.drop_or_choose') }}</label>
             <x-ui.image-upload-input id="item-images-{{ $item['id'] }}" x-ref="files" @change.capture="preview($event)" x-bind:disabled="busy" wire:model="itemImageUploads.{{ $item['id'] }}" multiple :aria-label="__('uploads.labels.multiple_images')" />
             <p class="text-xs text-text-muted">{{ __('uploads.labels.up_to_images', ['count' => $item['remaining_image_slots']]) }}</p>
             <div x-show="uploading" class="grid gap-1" role="status">
                 <span class="text-xs text-text-muted">{{ __('uploads.editor.uploading') }} <span x-text="progress + '%'"></span></span>
                 <progress max="100" :value="progress" class="h-2 w-full accent-[var(--color-accent)]" aria-label="{{ __('uploads.editor.uploading') }}"></progress>
             </div>
-            <p x-show="failed" role="alert" class="text-sm text-danger-foreground">{{ __('uploads.editor.retry_help') }}</p>
+            <p x-show="failed" role="alert" class="text-sm text-danger">{{ __('uploads.editor.retry_help') }}</p>
             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" x-show="previews.length > 0">
                 <template x-for="(preview, index) in previews" :key="preview.key">
-                    <figure class="min-w-0 overflow-hidden rounded-control border border-border bg-surface">
+                    <figure class="min-w-0 overflow-hidden rounded-control border border-border-subtle bg-surface">
                         <img :src="preview.url" :alt="preview.name" width="240" height="180" class="aspect-4/3 w-full object-cover">
                         <figcaption class="grid gap-1 p-2">
-                            <span class="truncate text-xs text-text" x-text="preview.name"></span>
-                            <button type="button" class="min-h-touch rounded-control px-2 text-sm font-medium text-danger-foreground focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50" :disabled="busy" @click="remove(preview.key)">{{ __('uploads.editor.remove_pending') }}</button>
+                            <span class="truncate text-xs text-text-primary" x-text="preview.name"></span>
+                            <button type="button" class="min-h-touch rounded-control px-2 text-sm font-medium text-danger focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50" :disabled="busy" @click="remove(preview.key)">{{ __('uploads.editor.remove_pending') }}</button>
                         </figcaption>
                     </figure>
                 </template>
@@ -55,15 +55,15 @@
     @endif
 
     @error('itemImageUploads.'.$item['id'])
-        <p role="alert" class="text-sm font-medium text-danger-foreground">{{ $message }}</p>
+        <p role="alert" class="text-sm font-medium text-danger">{{ $message }}</p>
     @enderror
     @error('catalogOperation')
-        <p role="alert" class="text-sm font-medium text-danger-foreground">{{ $message }}</p>
+        <p role="alert" class="text-sm font-medium text-danger">{{ $message }}</p>
         <flux:button type="button" wire:click="resumeCatalogOperation" wire:loading.attr="disabled" icon="arrow-path">{{ __('menu.operations.resume') }}</flux:button>
     @enderror
     @forelse ($pendingUploads as $uploadIndex => $pendingUpload)
         @error('itemImageUploads.'.$item['id'].'.'.$uploadIndex)
-            <p role="alert" class="text-sm text-danger-foreground">{{ __('uploads.editor.file_number', ['number' => $uploadIndex + 1]) }}: {{ $message }}</p>
+            <p role="alert" class="text-sm text-danger">{{ __('uploads.editor.file_number', ['number' => $uploadIndex + 1]) }}: {{ $message }}</p>
         @enderror
     @empty
     @endforelse
@@ -77,12 +77,12 @@
             data-image-presentation-editor
         >
             <div>
-                <h4 tabindex="-1" x-ref="heading" class="text-base font-semibold text-text">{{ __('uploads.presentation.title') }}</h4>
+                <h4 tabindex="-1" x-ref="heading" class="text-base font-semibold text-text-primary">{{ __('uploads.presentation.title') }}</h4>
                 <p class="mt-1 text-sm text-text-muted">{{ __('uploads.presentation.help') }}</p>
                 <p class="mt-2 text-xs text-text-muted">{{ $presentationContext['file_details'] }}</p>
             </div>
             @error('imagePresentationForm')
-                <p role="alert" tabindex="-1" data-image-error class="text-sm font-medium text-danger-foreground">{{ $message }}</p>
+                <p role="alert" tabindex="-1" data-image-error class="text-sm font-medium text-danger">{{ $message }}</p>
             @enderror
             <div class="grid min-w-0 gap-4 sm:grid-cols-2">
                 <figure class="min-w-0">
@@ -96,21 +96,21 @@
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label for="image-focal-x-{{ $item['id'] }}" class="text-sm font-medium text-text">{{ __('uploads.presentation.horizontal') }} <output x-text="focalX + '%'" class="tabular-nums"></output></label>
+                    <label for="image-focal-x-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.presentation.horizontal') }} <output x-text="focalX + '%'" class="tabular-nums"></output></label>
                     <input id="image-focal-x-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalX" wire:model="imagePresentationForm.focal_x" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
-                    @error('imagePresentationForm.focal_x')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger-foreground">{{ $message }}</p>@enderror
+                    @error('imagePresentationForm.focal_x')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label for="image-focal-y-{{ $item['id'] }}" class="text-sm font-medium text-text">{{ __('uploads.presentation.vertical') }} <output x-text="focalY + '%'" class="tabular-nums"></output></label>
+                    <label for="image-focal-y-{{ $item['id'] }}" class="text-sm font-medium text-text-primary">{{ __('uploads.presentation.vertical') }} <output x-text="focalY + '%'" class="tabular-nums"></output></label>
                     <input id="image-focal-y-{{ $item['id'] }}" type="range" min="0" max="100" step="1" x-model="focalY" wire:model="imagePresentationForm.focal_y" class="mt-1 min-h-touch w-full accent-[var(--color-accent)] focus-visible:outline-2 focus-visible:outline-focus">
-                    @error('imagePresentationForm.focal_y')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger-foreground">{{ $message }}</p>@enderror
+                    @error('imagePresentationForm.focal_y')<p role="alert" tabindex="-1" data-image-error class="text-sm text-danger">{{ $message }}</p>@enderror
                 </div>
             </div>
             <fieldset class="min-w-0">
-                <legend class="mb-2 text-sm font-medium text-text">{{ __('uploads.presentation.translations') }}</legend>
+                <legend class="mb-2 text-sm font-medium text-text-primary">{{ __('uploads.presentation.translations') }}</legend>
                 <div role="tablist" aria-label="{{ __('uploads.presentation.translations') }}" class="mb-3 flex gap-1 rounded-control bg-surface-muted p-1">
                     @forelse (['en', 'lt', 'ru'] as $photoLocale)
-                        <button type="button" role="tab" id="image-{{ $item['id'] }}-{{ $photoLocale }}-tab" aria-controls="image-{{ $item['id'] }}-{{ $photoLocale }}-panel" :aria-selected="locale === '{{ $photoLocale }}'" :tabindex="locale === '{{ $photoLocale }}' ? 0 : -1" @click="locale = '{{ $photoLocale }}'" @keydown.arrow-right.prevent="nextLocale(1)" @keydown.arrow-left.prevent="nextLocale(-1)" class="min-h-touch flex-1 rounded-control px-3 text-sm font-medium uppercase focus-visible:outline-2 focus-visible:outline-focus" :class="locale === '{{ $photoLocale }}' ? 'bg-surface text-text shadow-sm' : 'text-text-muted'">{{ $photoLocale }}</button>
+                        <button type="button" role="tab" id="image-{{ $item['id'] }}-{{ $photoLocale }}-tab" aria-controls="image-{{ $item['id'] }}-{{ $photoLocale }}-panel" :aria-selected="locale === '{{ $photoLocale }}'" :tabindex="locale === '{{ $photoLocale }}' ? 0 : -1" @click="locale = '{{ $photoLocale }}'" @keydown.arrow-right.prevent="nextLocale(1)" @keydown.arrow-left.prevent="nextLocale(-1)" class="min-h-touch flex-1 rounded-control px-3 text-sm font-medium uppercase focus-visible:outline-2 focus-visible:outline-focus" :class="locale === '{{ $photoLocale }}' ? 'bg-surface text-text-primary shadow-sm' : 'text-text-muted'">{{ $photoLocale }}</button>
                     @empty
                     @endforelse
                 </div>
@@ -123,7 +123,7 @@
                 @empty
                 @endforelse
             </fieldset>
-            <div class="grid gap-2 border-t border-border pt-4 sm:flex sm:flex-wrap">
+            <div class="grid gap-2 border-t border-border-subtle pt-4 sm:flex sm:flex-wrap">
                 <flux:button type="button" variant="primary" wire:click="saveItemImagePresentation" wire:loading.attr="disabled" wire:target="saveItemImagePresentation" x-bind:disabled="offline">{{ __('uploads.presentation.save') }}</flux:button>
                 <flux:button type="button" wire:click="closeItemImagePresentation" wire:loading.attr="disabled" wire:target="saveItemImagePresentation">{{ __('uploads.presentation.discard') }}</flux:button>
                 <p wire:dirty wire:target="imagePresentationForm" class="self-center text-xs text-warning-foreground" role="status">{{ __('uploads.presentation.unsaved') }}</p>
@@ -133,7 +133,7 @@
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         @forelse ($item['images'] as $image)
-            <figure wire:key="menu-item-{{ $item['id'] }}-image-{{ $image['key'] }}" class="min-w-0 overflow-hidden rounded-control border border-border bg-surface-muted">
+            <figure wire:key="menu-item-{{ $item['id'] }}-image-{{ $image['key'] }}" class="min-w-0 overflow-hidden rounded-control border border-border-subtle bg-surface-muted">
                 <img src="{{ $image['thumbnail_url'] ?? $image['url'] }}" srcset="{{ $image['srcset'] ?? '' }}" sizes="(min-width: 1024px) 180px, (min-width: 640px) 28vw, 42vw" alt="{{ $image['alt'] }}" width="{{ $image['width'] ?? 320 }}" height="{{ $image['height'] ?? 240 }}" loading="lazy" decoding="async" style="object-position: {{ $image['object_position'] ?? '50% 50%' }}" class="aspect-4/3 w-full object-cover">
                 <figcaption class="grid gap-2 p-3">
                     <flux:button type="button" icon="adjustments-horizontal" wire:click="{{ $image['presentation_action'] }}" wire:loading.attr="disabled" :disabled="$presentationContext !== []" data-image-settings-trigger @click="settingsTrigger = $event.currentTarget">{{ __('uploads.presentation.edit') }}</flux:button>

@@ -7,6 +7,7 @@ namespace Tests\Support;
 use App\Actions\Invitations\AcceptInvitationAction;
 use App\Actions\Invitations\CancelInvitationAction;
 use App\Actions\Invitations\CreateInvitationAction;
+use App\Actions\Invitations\RegisterInvitationRecipientAction;
 use App\Actions\Invitations\ReissueInvitationAction;
 use App\Actions\Staff\SetOrganizationStaffStatusAction;
 use App\Models\Invitation;
@@ -50,6 +51,12 @@ final class TeamInvitationConcurrencyTasks
             try {
                 if ($operation === 'accept') {
                     app(AcceptInvitationAction::class)->handle($invitation, User::findOrFail($recipientId));
+                } elseif ($operation === 'register') {
+                    app(RegisterInvitationRecipientAction::class)->handle($invitation, [
+                        'name' => 'Concurrent Recipient',
+                        'email' => 'concurrent@example.test',
+                        'password' => 'ConcurrentInvitation2026!',
+                    ]);
                 } elseif ($operation === 'cancel') {
                     app(CancelInvitationAction::class)->handle(User::findOrFail($actorId), Organization::findOrFail($invitation->organization_id), $invitation);
                 } elseif ($operation === 'suspend') {

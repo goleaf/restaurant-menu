@@ -45,6 +45,9 @@ final class BrowserSuiteRunner
     /** @param list<string> $command @param array<string,string> $environment @return array{exit_code:int,timeout:bool,output:string} */
     public function runProcess(array $command, array $environment, int $timeout): array
     {
+        $preload = json_encode($this->root.'/tests/Support/browser-playwright-shutdown.cjs', JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $environment['NODE_OPTIONS'] = trim(($environment['NODE_OPTIONS'] ?? (getenv('NODE_OPTIONS') ?: '')).' --require '.$preload);
+        $environment['RESTAURANT_BROWSER_COORDINATOR'] = '1';
         $process = new Process([PHP_BINARY, $this->root.'/tests/browser-child.php', ...$command], $this->root, $environment, timeout: $timeout);
         $process->start();
         $pid = $process->getPid();

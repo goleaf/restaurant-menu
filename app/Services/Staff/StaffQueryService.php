@@ -6,6 +6,7 @@ namespace App\Services\Staff;
 
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
@@ -119,6 +120,26 @@ final class StaffQueryService
             ->simplePaginate($perPage, pageName: 'branchInvitationsPage')->withQueryString();
     }
 
+    /** @param array{search:string,role:string,status:string,sort:string} $filters @return list<array{status:string,label:string,count:int}> */
+    public function invitationSummary(Organization $organization, ?Branch $branch, array $filters): array
+    {
+        $counts = [];
+        foreach (InvitationStatus::cases() as $status) {
+            $counts['invitations as '.$status->value.'_count'] = fn ($query) => $query
+                ->when($branch instanceof Branch,
+                    fn ($query) => $query->where('brand_id', $branch->brand_id)->where('branch_id', $branch->id),
+                    fn ($query) => $query->whereNull('brand_id')->whereNull('branch_id'))
+                ->when($filters['search'] !== '', fn ($query) => $query->whereAny(['email', 'phone'], 'like', '%'.$filters['search'].'%'))
+                ->when($filters['role'] !== '', fn ($query) => $query->whereHas('role', fn ($role) => $role->where('code', $filters['role'])))
+                ->withEffectiveStatus($status);
+        }
+        $summary = Organization::query()->select('id')->whereKey($organization->id)->withCount($counts)->firstOrFail();
+
+        return array_map(fn (InvitationStatus $status): array => [
+            'status' => $status->value, 'label' => $status->localizedLabel(), 'count' => (int) $summary->getAttribute($status->value.'_count'),
+        ], InvitationStatus::cases());
+    }
+
     /** @return EloquentCollection<int, Role> */
     public function assignableRoles(User $actor, Organization $organization): EloquentCollection
     {
@@ -179,6 +200,15 @@ final class StaffQueryService
         }
 
         return $role;
+    }
+
+    /** @return list<string> */
+    public function roleAccessPreview(Role $role): array
+    {
+        return $role->permissions()->select(['permissions.id', 'permissions.code', 'permissions.sort_order'])
+            ->wherePivot('enabled', true)->whereIn('permissions.code', array_column(SystemPermission::cases(), 'value'))
+            ->orderBy('permissions.sort_order')->orderBy('permissions.id')->limit(count(SystemPermission::cases()))->get()
+            ->map(fn ($permission): string => __(SystemPermission::from($permission->code)->uiLabelKey()))->all();
     }
 
     public function findOrganizationMembership(Organization $organization, int $membershipId): OrganizationUser
@@ -327,17 +357,19 @@ final class StaffQueryService
     }
 
     /** @return EloquentCollection<int,OrganizationUser> */
-    public function assignableOrganizationMembers(Organization $organization, Branch $branch, string $search): EloquentCollection
+    public function assignableOrganizationMembers(Organization $organization, Branch $branch, string $search, User $actor): EloquentCollection
     {
         return OrganizationUser::query()->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'access_version'])
             ->with(['user:id,name,email'])->where('organization_id', $organization->id)->where('status', OrganizationUserStatus::Active->value)
+            ->where('user_id', '!=', $actor->id)->whereIn('role_id', $this->assignableRoles($actor, $organization)->modelKeys())
+            ->whereDoesntHave('user.roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value))
             ->whereNotIn('user_id', BranchUser::query()->select('user_id')->where('branch_id', $branch->id))
             ->when($search !== '', fn ($query) => $query->whereHas('user', fn ($users) => $users->whereAny(['name', 'email'], 'like', '%'.trim($search).'%')))
             ->orderByDesc('id')->limit(25)->get();
     }
 
-    /** @param list<int> $selected @return array<string,mixed> */
-    public function areaEditor(Branch $branch, array $selected, string $search): array
+    /** @param list<int> $selected @param list<int> $current @return array<string,mixed> */
+    public function areaEditor(Branch $branch, array $selected, string $search, array $current = []): array
     {
         $areas = AreaNode::query()->select(['id', 'branch_id', 'parent_id', 'name', 'sort_order', 'is_active'])
             ->with(['parent' => fn ($query) => $query->select(['id', 'branch_id', 'name'])->where('branch_id', $branch->id)])
@@ -350,9 +382,25 @@ final class StaffQueryService
             $groups[$area->parent_id ?? 0] ??= ['label' => $label, 'areas' => []];
             $groups[$area->parent_id ?? 0]['areas'][] = ['id' => $area->id, 'name' => $area->name];
         }
-        $validSelected = $selected === [] ? [] : AreaNode::query()->where('branch_id', $branch->id)->where('is_active', true)->whereIn('id', $selected)->pluck('id')->all();
+        $reviewIds = array_values(array_unique([...$current, ...$selected]));
+        $reviewAreas = $reviewIds === [] ? new EloquentCollection : AreaNode::query()->withTrashed()
+            ->select(['id', 'branch_id', 'parent_id', 'name', 'is_active', 'deleted_at'])
+            ->with(['parent' => fn ($query) => $query->select(['id', 'branch_id', 'name'])->where('branch_id', $branch->id)])
+            ->where('branch_id', $branch->id)->whereIn('id', $reviewIds)->get()->keyBy('id');
+        $rows = static fn (array $ids): array => array_map(static function (int $id) use ($reviewAreas): array {
+            $area = $reviewAreas->get($id);
 
-        return ['groups' => array_values($groups), 'unavailable' => array_values(array_diff($selected, $validSelected)), 'paginator' => $areas];
+            return ['id' => $id, 'label' => $area instanceof AreaNode
+                ? ($area->parent?->name !== null ? $area->parent->name.' → ' : '').$area->name
+                : __('staff.workspace.unavailable_area'),
+                'available' => $area instanceof AreaNode && $area->is_active && ! $area->trashed()];
+        }, array_values($ids));
+        $selectedRows = $rows($selected);
+
+        return ['groups' => array_values($groups), 'paginator' => $areas,
+            'unavailable' => array_values(array_filter($selectedRows, static fn (array $row): bool => ! $row['available'])),
+            'selected' => $selectedRows, 'current' => $rows($current),
+            'added' => $rows(array_diff($selected, $current)), 'removed' => $rows(array_diff($current, $selected))];
     }
 
     /** @return list<string> */

@@ -194,39 +194,39 @@
 
                             <div class="grid content-start gap-3">
                                 @if ($item['can_accept'])
-                                    <x-ui.primary-button
+                                    <flux:button variant="primary"
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'accepted')"
                                         wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-operational-touch touch-manipulation"
+                                        class="h-auto! min-h-operational-touch min-w-0 whitespace-normal! py-2.5 text-base! touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.accept') }}
-                                    </x-ui.primary-button>
+                                    </flux:button>
                                 @endif
 
                                 @if ($item['can_start'])
-                                    <x-ui.primary-button
+                                    <flux:button variant="primary"
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'in_progress')"
                                         wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-operational-touch touch-manipulation"
+                                        class="h-auto! min-h-operational-touch min-w-0 whitespace-normal! py-2.5 text-base! touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.start_preparing') }}
-                                    </x-ui.primary-button>
+                                    </flux:button>
                                 @endif
 
                                 @if ($item['can_mark_ready'])
-                                    <x-ui.primary-button
+                                    <flux:button variant="primary"
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'ready')"
                                         wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-operational-touch touch-manipulation"
+                                        class="h-auto! min-h-operational-touch min-w-0 whitespace-normal! py-2.5 text-base! touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.mark_ready') }}
-                                    </x-ui.primary-button>
+                                    </flux:button>
                                 @endif
 
                                 @if (! $item['can_accept'] && ! $item['can_start'] && ! $item['can_mark_ready'])

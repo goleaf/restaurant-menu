@@ -237,12 +237,17 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $r
         ->assertVisible('progress[aria-label]')
         ->assertAttribute('input[name="organization_name"]', 'type', 'text')
         ->assertAttribute('input[name="organization_name"]', 'autocomplete', 'organization');
-    assertBrowserHasNoHorizontalOverflow($page, 320, 720);
-    assertBrowserHasNoHorizontalOverflow($page, 390, 844);
-    assertBrowserHasNoHorizontalOverflow($page, 768, 900);
-    assertBrowserHasNoHorizontalOverflow($page, 1024, 900);
-    assertBrowserHasNoHorizontalOverflow($page, 1440, 1000);
-    assertBrowserOnboardingTextZoomReflow($page);
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $page->navigate(route('onboarding.restaurant', ['lang' => $locale], false))
+            ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_kompanii', [], $locale));
+
+        foreach ([[320, 720], [360, 800], [390, 844], [430, 932], [768, 900], [1024, 900], [1440, 1000], [1920, 1080]] as [$width, $height]) {
+            assertBrowserHasNoHorizontalOverflow($page, $width, $height);
+        }
+
+        assertBrowserOnboardingTextZoomReflow($page);
+    }
+    $page->navigate(route('onboarding.restaurant', ['lang' => 'en'], false));
     $page
         ->resize(1440, 1000)
         ->assertVisible('nav[aria-label]');
@@ -432,6 +437,7 @@ function assertBrowserOnboardingLocaleLayout(
 
 function assertBrowserDarkThemeLayout(PendingAwaitablePage $page): void
 {
+    $page->assertScript("getComputedStyle(document.body).backgroundColor !== 'rgba(0, 0, 0, 0)'");
     $styleState = $page->script(<<<'JAVASCRIPT'
         ({
             canvas: getComputedStyle(document.body).backgroundColor,
@@ -452,9 +458,10 @@ function assertBrowserDarkThemeLayout(PendingAwaitablePage $page): void
 
     $lightCanvas = $styleState['canvas'];
 
-    $page->script("window.localStorage.setItem('flux.appearance', 'dark')");
+    $page->script("window.Flux.appearance = 'dark'");
     $page->resize(390, 844);
     $page->navigate(route('onboarding.restaurant', absolute: false));
+    $page->assertScript("document.documentElement.classList.contains('dark') && getComputedStyle(document.body).backgroundColor !== 'rgba(0, 0, 0, 0)'");
 
     $darkCanvas = $page->script('getComputedStyle(document.body).backgroundColor');
 
@@ -462,7 +469,7 @@ function assertBrowserDarkThemeLayout(PendingAwaitablePage $page): void
 
     assertBrowserHasNoHorizontalOverflow($page, 390, 844);
 
-    $page->script("window.localStorage.setItem('flux.appearance', 'light')");
+    $page->script("window.Flux.appearance = 'light'");
     $page->navigate(route('onboarding.restaurant', absolute: false));
 }
 

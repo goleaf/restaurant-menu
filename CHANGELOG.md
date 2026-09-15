@@ -4,9 +4,19 @@
 
 # Changelog
 
+## 2026-09-15 — Flux controls and CSS-first cleanup
+
+- Delegate operational buttons, zone filters, onboarding navigation and the guest-menu language selector to available Flux Free primitives; remove unused generic wrappers and published vendor copies.
+- Preserve translated password state and notification dismissal, localized menu dialog autofocus and keyboard restoration; keep longer operational labels usable at enlarged text sizes.
+- Reduce application CSS and vendor selector coupling; preserve explicit Tailwind 4 runtime sources, semantic tokens, local multilingual fonts and one Flux appearance state. Load QR print styles only on print layouts and keep every preset inside physical sticker bounds.
+- Add architecture/rendering guards and expand multilingual responsive browser checks. Correct the foreign-gallery regression to assert setter denial separately from a fresh unauthorized save. Version upgrade remains blocked by the GitHub distribution restriction; complete measurements and gate evidence are in `docs/tailwind.md` and `docs/testing.md`.
+
+
 
 ## 2026-09-15 — Team control center
 
+- Complete native fullscreen mobile editing and adjacent desktop details, offline dismissal/reconnect, named area previews and aggregate invitation counters.
+- Enforce current recipient consent and target-role hierarchy, protect invitation error responses and preserve the chosen language and authorized branch/department destination after acceptance.
 - Replace manual browser account creation with a focused invitation-only employee workspace, scoped search/filters and requested editors.
 - Add previewed link creation, truthful clipboard fallback, effective invitation statuses and explicit credential rotation; bind acceptance to the displayed invitation version and recipient account.
 - Isolate permission overrides by organization, explain actual access, and preserve ambiguous legacy records without distributing grants across tenants.

@@ -4,6 +4,12 @@
 
 # Restaurant Menu completion progress
 
+## Team continuation — current verification
+
+Preserved the external local baseline `5505ef3` and concurrent Flux/CSS work. Invitation credential/role/consent checks, tenant-safe current-policy explanations, branch assignment delegation, scoped recipient destinations, response protection and responsive area editing are integrated and independently reviewed. New EN/LT/RU recipients retain their locale; validation preserves safe input and rejects mismatched email without enumerating other accounts.
+
+Fresh full four-process backend passes 2,712 tests / 58,003 assertions in 216.96 s. Translation audit/scan, dependency checks, isolated migration/seed/cache roundtrip and targeted regressions pass. Full coverage and the complete browser repeat are pending. Earlier browser assertions passed but two child shutdowns timed out; the runner correction has an independent review and 8 passing subprocess regressions and must still pass the full repeat. See testing.md for failed-attempt details and performance.md for fresh measurements, including higher query count and cold memory. Commit/push are pending; numerical evidence below is historical.
+
 ## Team center integration — 2026-09-15
 
 Final independent source/security/documentation review is clear after correcting the area-audit wording. Full four-process backend passes 2,649 tests / 57,278 assertions in 136.94 s; Larastan has no errors. Full four-process coverage passes the same 2,649 / 57,278 in 411.64 s at 93.6%, above the unchanged 90% minimum. Pint and production build pass; the complete browser inventory remains in progress.

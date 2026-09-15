@@ -12,6 +12,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -64,6 +65,41 @@ test('staff permission page groups permissions with human labels and description
         ->assertSee(__('permissions.descriptions.manage_menu'))
         ->assertDontSee(SystemPermission::ManageServicePoints->value)
         ->assertDontSee(SystemPermission::ManageMenu->value);
+});
+
+test('organization access explanations follow actual policies when a capability alone differs', function (): void {
+    [$manager, $organization] = createPrompt16Organization();
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
+    $edit = Permission::query()->where('code', SystemPermission::EditRestaurant->value)->firstOrFail();
+    $view = Permission::query()->where('code', SystemPermission::ViewRestaurant->value)->firstOrFail();
+    $staff->permissionOverrides($organization->id)->attach($edit, ['enabled' => true]);
+    $staff->permissionOverrides($organization->id)->attach($view, ['enabled' => false]);
+
+    $component = Livewire::actingAs($manager)
+        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff]);
+    $rows = collect($component->instance()->permissionRows())->keyBy('code');
+
+    expect($rows[SystemPermission::EditRestaurant->value]['effective_allowed'])
+        ->toBe(Gate::forUser($staff)->inspect('update', $organization)->allowed())
+        ->and($rows[SystemPermission::ViewRestaurant->value]['effective_allowed'])
+        ->toBe(Gate::forUser($staff)->inspect('view', $organization)->allowed())
+        ->and($rows[SystemPermission::EditRestaurant->value]['effective_reason'])->toBe(__('permissions.sources.policy_denied'))
+        ->and($rows[SystemPermission::ViewRestaurant->value]['effective_reason'])->toBe(__('permissions.sources.policy_allowed'));
+});
+
+test('an opened permission editor rechecks a revoked administrator before mutation', function (): void {
+    [$manager, $organization] = createPrompt16Organization();
+    grantPrompt16Permission($manager, $organization, SystemPermission::ManagePermissions);
+    $staff = createPrompt16StaffMember($organization, SystemRole::Waiter);
+    $permission = Permission::query()->where('code', SystemPermission::ManageMenu->value)->firstOrFail();
+    $component = Livewire::actingAs($manager)
+        ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff]);
+    OrganizationUser::query()->where('organization_id', $organization->id)->where('user_id', $manager->id)
+        ->firstOrFail()->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
+
+    $component->call('setPermissionState', $permission->id, 'allow')->assertForbidden();
+    expect($staff->permissionOverrides($organization->id)->exists())->toBeFalse();
 });
 
 test('superadmin can see technical permission keys in permission UI', function () {

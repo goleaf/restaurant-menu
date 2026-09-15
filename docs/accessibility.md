@@ -4,6 +4,12 @@
 
 # Accessibility
 
+## Flux modernization checks — 2026-09-15
+
+Disposable Chrome on Herd verified translated password names and pressed state, Space/Enter visibility control, 44×44 notification dismissal and keyboard Enter dismissal. Menu dialogs focus their localized close control, use native modal background isolation and restore the trigger on Escape. Keyboard traversal reaches dialog controls without focusing background controls; native browser chrome may receive focus at the tab boundary. Existing dangerous confirmations retain safe-cancel focus. Guest gallery focus trap/restoration is covered by isolated WebKit tests.
+
+Login follows Flux light/dark/system appearance; emulated forced colors retain a visible 2-pixel outline and reduced-motion durations collapse. At 360 CSS pixels with text enlarged to 200%, Russian department action labels wrap within their controls (32-pixel text, 214-pixel available control width). Chrome viewport/locale/theme matrices and QR print checks are recorded in `testing.md`; these checks do not establish physical-device, screen-reader or universal WCAG conformance.
+
 ## Branch control interaction contract — 2026-09-15
 
 The [branch picker](../resources/views/components/dashboard/branch-picker.blade.php) uses a native disclosure, a labelled search field and radio choices. Organization, brand, branch and time zone remain readable outside the picker. All-branch scope is named explicitly. Branch-required actions open the picker and focus search; choosing a branch returns focus to its disclosure trigger. Readiness uses a separate native disclosure with named states and permission-aware links.

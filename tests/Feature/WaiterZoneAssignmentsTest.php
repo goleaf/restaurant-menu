@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Actions\Staff\SyncWaiterAreaAssignmentsAction;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
@@ -231,3 +232,25 @@ function grantPrompt112PermissionToRole(Role $role, SystemPermission $permission
 
     $role->permissions()->updateExistingPivot($permission->id, ['enabled' => true]);
 }
+
+test('waiter area selection follows exact parent child assignment and a moved table', function (): void {
+    [$manager, $organization, , $branch] = createPrompt112Branch();
+    grantPrompt112Permission($manager, $organization, SystemPermission::ManageStaff);
+    $waiter = User::factory()->create();
+    attachPrompt112Waiter($waiter, $organization, $branch, $manager);
+    $membership = BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $waiter->id)->firstOrFail();
+    $parent = AreaNode::factory()->forBranch($branch)->create(['name' => 'Parent zone']);
+    $child = AreaNode::factory()->forBranch($branch)->withParent($parent)->create(['name' => 'Child zone']);
+    $table = ServicePoint::factory()->forBranch($branch)->for($parent, 'areaNode')->create(['name' => 'Table moved between zones']);
+    $childTable = ServicePoint::factory()->forBranch($branch)->for($child, 'areaNode')->create(['name' => 'Child only table']);
+    $assign = app(SyncWaiterAreaAssignmentsAction::class);
+    $assign->handle($branch, $membership, $manager, [$parent->id]);
+    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class)
+        ->assertSee($table->name)->assertDontSee($childTable->name);
+    $table->forceFill(['area_node_id' => $child->id])->save();
+    $component->call('refreshDashboard')->assertDontSee($table->name)->assertDontSee($childTable->name);
+    $assign->handle($branch, $membership, $manager, [$child->id]);
+    $component->call('refreshDashboard')->assertSee($table->name)->assertSee($childTable->name);
+    $assign->handle($branch, $membership, $manager, []);
+    $component->call('refreshDashboard')->assertSee($table->name)->assertSee($childTable->name);
+});

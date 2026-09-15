@@ -32,6 +32,7 @@ use App\Models\TableSessionGuest;
 use App\Models\User;
 use App\Models\WaiterCall;
 use Database\Seeders\SystemPermissionsSeeder;
+use Dom\HTMLDocument;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -49,6 +50,25 @@ test('waiter dashboard requires view orders permission', function () {
     $this->actingAs($user)
         ->get(route('restaurant.waiter.dashboard'))
         ->assertForbidden();
+});
+
+test('waiter zone filters expose the selected scope through Flux pressed buttons', function () {
+    [$organization] = createPrompt52Branch();
+    $waiter = User::factory()->create();
+    attachPrompt52Waiter($waiter, $organization);
+
+    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
+
+    foreach (['mine', 'all'] as $scope) {
+        $component->call('setZoneScope', $scope)->assertHasNoErrors();
+        $document = HTMLDocument::createFromString('<!doctype html><html><body>'.$component->html().'</body></html>');
+        $selected = $document->querySelector('[data-zone-scope="'.$scope.'"]');
+
+        expect($selected)->not->toBeNull()
+            ->and($selected?->getAttribute('aria-pressed'))->toBe('true')
+            ->and($selected?->hasAttribute('data-flux-button'))->toBeTrue();
+        expect($document->querySelectorAll('[data-zone-scope][aria-pressed="true"]')->length)->toBe(1);
+    }
 });
 
 test('waiter dashboard exposes accessible persistent notification sound controls', function () {

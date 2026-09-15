@@ -4,8 +4,35 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-15 — Flux and CSS-first modernization (active)
+
+This scoped pass preserves the concurrent team-control-center work and its staged files. It owns frontend styling, shared presentation components, Flux override cleanup and focused style regressions; it does not change tenant workflows or application data.
+
+| Task | Status | Acceptance |
+| --- | --- | --- |
+| Installed versions, Free capabilities and baseline | done | Flux 2.17.0 / Livewire 4.4.1 verified; isolated production baseline captured |
+| Compatible dependency upgrades | blocked | Packagist offers Flux 2.20.0 / Livewire 4.4.5, but their only package archives use prohibited GitHub API URLs; local cache contains only installed versions |
+| CSS-first sources, tokens and integration cleanup | done | Explicit runtime source coverage, no preprocessors, fewer redundant rules and measured production bundles |
+| Flux overrides and shared controls | done | Remove obsolete copies, preserve translated password visibility, supported Free APIs and accessible operational sizes |
+| Representative workflows and print | done | Onboarding, administration, menu, service points, waiter, department, guest and auth; seven widths, locales, appearance and keyboard checks |
+| Regression gates and independent review | in_progress | Targeted/full backend, coverage, browser, formatting/static analysis, translations, audits/build and actual diff review |
+| Scoped Conventional Commit | pending | Preserve unrelated index/work; commit verified owned paths; push only if required by the current workflow |
+
+Baseline build uses a disposable output directory: main CSS 310.24 kB (gzip 41.75 kB), font CSS 0.96 kB (gzip 0.40 kB), JavaScript 22.76 kB (gzip 6.24 kB), Vite duration 3.62 s. Exact byte comparison and final evidence will be recorded in the existing frontend/testing documentation.
+
 
 ## 2026-09-15 — team control center (active)
+
+### Continuation checkpoint
+
+Entry inspection found the unfinished team implementation on `b68f31b`; an external local commit then advanced the shared main to `5505ef3`. Preserve that complete baseline. Earlier done rows and numerical results below are prior-run evidence and do not certify new edits. Three real workers own invitations, access, and staff/area UX; root owns shared UI, translations, migrations, documentation, browser integration and final verification.
+
+- Done: current-policy permission explanations, stale invitation consent/role validation, scoped recipient destinations, error response headers, named area previews and filtered invitation counters.
+- Done: fullscreen native mobile editor and adjacent desktop detail panel, verified clipboard success/denial, local dismissal during a real network outage and explicit reconnect draft reconciliation.
+- Done: independent cross-review corrected higher-role/self branch assignment and new-recipient LT/RU persistence; focused regressions pass. Equal-fixture measurements are in performance.md, including the query/cold-memory increases.
+- In progress: fresh complete backend/browser/coverage gates on the verified task snapshot; unrelated concurrent Flux/CSS work is preserved outside that snapshot.
+- Pending: reconcile externally changed staging, create the verified local commit and perform only ordinary `git push origin main`.
+
 
 Baseline: clean local main `b68f31b`; branch control implementation `8a3945d` and delivery are present locally. Earlier verification remains historical. The stage preserves the delivered catalogue, guest and branch dashboard workflows.
 

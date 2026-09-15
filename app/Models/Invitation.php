@@ -138,8 +138,6 @@ class Invitation extends Model
             $this->expires_at->toIso8601String(),
             (string) $this->invite_token_hash,
             (string) $this->invite_code_hash,
-            (string) $this->getRawOriginal('updated_at'),
-            $this->status->value,
         ]));
     }
 

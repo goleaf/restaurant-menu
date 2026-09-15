@@ -9,7 +9,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2">
-            <flux:button icon="layout-grid" :href="route('restaurant.dashboard')" wire:navigate>
+            <flux:button icon="squares-2x2" :href="route('restaurant.dashboard')" wire:navigate>
                 {{ __('navigation.dashboard') }}
             </flux:button>
             <flux:button icon="arrow-path" wire:click="refreshAuditLog">

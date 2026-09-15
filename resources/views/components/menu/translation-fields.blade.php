@@ -17,7 +17,7 @@
 >
     <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
-            <h3 id="{{ $idPrefix }}-translations-heading" class="text-sm font-semibold text-text">{{ __('menu.translations.heading') }}</h3>
+            <h3 id="{{ $idPrefix }}-translations-heading" class="text-sm font-semibold text-text-primary">{{ __('menu.translations.heading') }}</h3>
             <p class="mt-1 text-xs text-text-muted">{{ __('menu.translations.required_help') }}</p>
         </div>
         <span class="text-xs font-medium text-warning-foreground" wire:dirty wire:target="{{ $model }}">{{ __('menu.editor.unsaved') }}</span>
@@ -30,7 +30,7 @@
                 aria-controls="{{ $idPrefix }}-panel-{{ $languageCode }}"
                 :aria-selected="active === {{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}" :tabindex="active === {{ json_encode($languageCode, JSON_THROW_ON_ERROR) }} ? 0 : -1"
                 @click="activate({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" @keydown="navigate($event)" data-locale-tab="{{ $languageCode }}"
-                class="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium text-text-muted aria-selected:border-border aria-selected:bg-surface aria-selected:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                class="inline-flex min-h-touch flex-1 items-center justify-center gap-2 rounded-control border border-transparent px-3 text-sm font-medium text-text-muted aria-selected:border-border-subtle aria-selected:bg-surface aria-selected:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             >
                 <span>{{ $languageLabel }}</span>
                 @if ($languageCode === 'en')
@@ -46,10 +46,10 @@
     </div>
 
     <div class="grid min-w-0 items-start gap-5" :class="active !== 'en' ? 'lg:grid-cols-2' : ''">
-        <aside x-show="active !== 'en'" x-cloak data-original-reference class="hidden min-w-0 border-s border-border ps-4 lg:block" aria-labelledby="{{ $idPrefix }}-original-heading">
-            <h4 id="{{ $idPrefix }}-original-heading" class="text-sm font-semibold text-text">{{ __('menu.editor.original_reference') }}</h4>
+        <aside x-show="active !== 'en'" x-cloak data-original-reference class="hidden min-w-0 border-s border-border-subtle ps-4 lg:block" aria-labelledby="{{ $idPrefix }}-original-heading">
+            <h4 id="{{ $idPrefix }}-original-heading" class="text-sm font-semibold text-text-primary">{{ __('menu.editor.original_reference') }}</h4>
             <p class="mt-1 text-xs leading-relaxed text-text-muted">{{ __('menu.editor.original_reference_help') }}</p>
-            <p lang="en" class="mt-4 break-words font-semibold text-text" x-text="name('en')"></p>
+            <p lang="en" class="mt-4 break-words font-semibold text-text-primary" x-text="name('en')"></p>
             @unless ($nameOnly)
                 <p lang="en" class="mt-3 whitespace-pre-line break-words text-sm leading-relaxed text-text-muted" x-text="description('en')"></p>
             @endunless
@@ -86,10 +86,10 @@
                     <flux:error :name="$baseDescriptionModel" />
                 @endif
                 <p class="-mt-2 text-end text-xs text-text-muted" x-text="length(description({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})) + ' / {{ $descriptionMax }}'"></p>
-                <details class="rounded-control border border-border p-3">
-                    <summary class="cursor-pointer text-sm font-medium text-text focus-visible:outline-2 focus-visible:outline-focus">{{ __('menu.editor.guest_preview') }}</summary>
+                <details class="rounded-control border border-border-subtle p-3">
+                    <summary class="cursor-pointer text-sm font-medium text-text-primary focus-visible:outline-2 focus-visible:outline-focus">{{ __('menu.editor.guest_preview') }}</summary>
                     <div lang="{{ $languageCode }}" class="mt-3 space-y-2 break-words">
-                        <p class="font-semibold text-text" x-text="name({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})"></p>
+                        <p class="font-semibold text-text-primary" x-text="name({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})"></p>
                         <p class="whitespace-pre-line text-sm leading-relaxed text-text-muted" x-text="description({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})"></p>
                     </div>
                 </details>

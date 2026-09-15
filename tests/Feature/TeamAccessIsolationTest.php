@@ -12,6 +12,7 @@ use App\Actions\Staff\UpdateBranchStaffRoleAction;
 use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\AuditLogAction;
+use App\Enums\DataExportType;
 use App\Enums\OrganizationUserStatus;
 use App\Enums\PermissionOverrideState;
 use App\Enums\SystemPermission;
@@ -24,6 +25,8 @@ use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
 use App\Models\Role;
+use App\Models\ServicePoint;
+use App\Models\TableSession;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -275,4 +278,111 @@ test('an already opened branch role form cannot mutate an archived branch', func
     expect(fn () => app(UpdateBranchStaffRoleAction::class)->handle($owner, $staleBranch, $assignment, Role::query()->where('code', SystemRole::Cook->value)->firstOrFail(), 'Attempt after archive.'))
         ->toThrow(ModelNotFoundException::class)
         ->and($assignment->fresh()->role_id)->toBe($member->role_id);
+});
+
+test('branch assignment authorizes the persisted role instead of a forged model', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $role = Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail();
+    $role->forceFill(['code' => SystemRole::Waiter, 'sort_order' => 1000]);
+
+    expect(fn () => app(AddBranchStaffMemberAction::class)->handle($organization, $branch, $role, $owner, ['email' => $member->user->email]))
+        ->toThrow(AuthorizationException::class)
+        ->and(BranchUser::query()->where('branch_id', $branch->id)->where('user_id', $member->user_id)->exists())->toBeFalse();
+});
+
+test('an already opened organization role form cannot mutate an archived organization', function (): void {
+    [, $organization, $member] = teamAccessMember();
+    $superadmin = User::factory()->create();
+    $superadmin->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail());
+    $staleOrganization = clone $organization;
+    $organization->delete();
+
+    expect(fn () => app(UpdateOrganizationStaffRoleAction::class)->handle(
+        $superadmin, $staleOrganization, $member,
+        Role::query()->where('code', SystemRole::Cook->value)->firstOrFail(),
+        'Attempt after organization archive.',
+    ))->toThrow(ModelNotFoundException::class)
+        ->and($member->fresh()->role_id)->toBe($member->role_id);
+});
+
+test('branch suspension revokes an existing download session without closing its active tables', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $assignment = BranchUser::factory()->forBranch($branch)->forUser($member->user)->forRole($member->role)->active()->create();
+    $permission = Permission::query()->where('code', SystemPermission::ExportData->value)->firstOrFail();
+    app(SetUserPermissionOverrideAction::class)->handle($member->user, $permission, PermissionOverrideState::Allow, $owner, $organization->id, 'Allow this employee to prepare reports.');
+    $point = ServicePoint::factory()->for($branch)->create();
+    $table = TableSession::factory()->forServicePoint($point)->active()->create(['opened_by_user_id' => $member->user_id]);
+    $route = route('restaurant.exports.download', [$branch, DataExportType::ServicePoints->value]);
+
+    $this->actingAs($member->user)->get($route)->assertOk();
+    app(SetBranchStaffStatusAction::class)->suspend($assignment, $owner, 'Review branch reporting access.');
+    $this->get($route)->assertForbidden();
+
+    expect($table->fresh()->status)->toBe($table->status)
+        ->and($table->fresh()->ended_at)->toBeNull()
+        ->and($point->fresh())->not->toBeNull()
+        ->and($member->fresh()->status)->toBe(OrganizationUserStatus::Active);
+});
+
+test('explicit restoration preserves a newer role and rejects the previous editor version', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $assignment = BranchUser::factory()->forBranch($branch)->forUser($member->user)->forRole($member->role)->active()->create();
+    $action = app(SetBranchStaffStatusAction::class);
+    $action->suspend($assignment, $owner, 'Review branch duties.');
+    $suspended = $assignment->fresh();
+    $cook = Role::query()->where('code', SystemRole::Cook->value)->firstOrFail();
+    app(UpdateBranchStaffRoleAction::class)->handle($owner, $branch, $suspended, $cook, 'Kitchen duties after the access review.');
+
+    expect(fn () => $action->activate($suspended, $owner, 'Review complete.'))->toThrow(ValidationException::class);
+    $action->activate($assignment->fresh(), $owner, 'Review complete with the revised duties.');
+
+    expect($assignment->fresh()->role_id)->toBe($cook->id)
+        ->and($assignment->fresh()->status)->toBe(OrganizationUserStatus::Active)
+        ->and($member->fresh()->role_id)->toBe($member->role_id);
+});
+
+test('branch assignment cannot narrow a higher ranking members existing branch access', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $otherBranch = Branch::factory()->for($organization)->for($branch->brand)->create();
+    $administrator = User::factory()->create();
+    OrganizationUser::factory()->forOrganization($organization)->forUser($administrator)
+        ->forSystemRole(SystemRole::RestaurantAdmin)->active()->create();
+    $auditCount = AuditLog::query()->count();
+
+    expect($owner->canAccessBranch($branch))->toBeTrue()
+        ->and($owner->canAccessBranch($otherBranch))->toBeTrue();
+
+    expect(fn () => app(AddBranchStaffMemberAction::class)->handle(
+        $organization, $branch, $member->role, $administrator, ['email' => $owner->email],
+    ))->toThrow(AuthorizationException::class);
+
+    expect(BranchUser::query()->where('user_id', $owner->id)->exists())->toBeFalse()
+        ->and($owner->canAccessBranch($otherBranch))->toBeTrue()
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+});
+
+test('branch assignment cannot narrow the acting administrators own branch access', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $auditCount = AuditLog::query()->count();
+
+    expect(fn () => app(AddBranchStaffMemberAction::class)->handle(
+        $organization, $branch, $member->role, $owner, ['email' => $owner->email],
+    ))->toThrow(AuthorizationException::class);
+
+    expect(BranchUser::query()->where('user_id', $owner->id)->exists())->toBeFalse()
+        ->and(AuditLog::query()->count())->toBe($auditCount);
+});
+
+test('branch assignment rechecks a promoted targets current organization role', function (): void {
+    [$owner, $organization, $member, $branch] = teamAccessMember();
+    $administrator = User::factory()->create();
+    OrganizationUser::factory()->forOrganization($organization)->forUser($administrator)
+        ->forSystemRole(SystemRole::RestaurantAdmin)->active()->create();
+    $member->fresh()->forceFill(['role_id' => Role::query()->where('code', SystemRole::Director->value)->firstOrFail()->id])->save();
+
+    expect(fn () => app(AddBranchStaffMemberAction::class)->handle(
+        $organization, $branch, $member->role, $administrator, ['email' => $member->user->email],
+    ))->toThrow(AuthorizationException::class);
+
+    expect(BranchUser::query()->where('user_id', $member->user_id)->exists())->toBeFalse();
 });

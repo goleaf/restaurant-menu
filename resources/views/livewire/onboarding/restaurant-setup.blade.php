@@ -47,19 +47,17 @@
         <aside class="hidden min-w-0 lg:block">
             <nav aria-label="{{ __('ui.onboarding.restaurant_setup.steps_navigation') }}">
                 <ol class="grid gap-1.5">
-                    @foreach ($this->steps as $wizardStep)
+                    @forelse ($this->steps as $wizardStep)
                         <li wire:key="onboarding-step-{{ $wizardStep['number'] }}">
-                            <button
+                            <flux:button
+                                variant="ghost"
+                                :loading="false"
                                 type="button"
                                 wire:click="goToStep({{ $wizardStep['number'] }})"
                                 wire:offline.attr="disabled"
-                                @disabled(! $wizardStep['is_available'])
-                                @if ($wizardStep['is_current']) aria-current="step" @endif
-                                @class([
-                                    'group flex min-h-touch w-full min-w-0 items-center gap-3 rounded-control border px-3 py-2 text-left outline-none transition duration-state focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50',
-                                    'border-brand-200 bg-surface-selected text-text-primary' => $wizardStep['is_current'],
-                                    'border-transparent bg-transparent text-text-muted hover:border-border-subtle hover:bg-surface-muted hover:text-text-primary' => ! $wizardStep['is_current'],
-                                ])
+                                :disabled="! $wizardStep['is_available']"
+                                :aria-current="$wizardStep['is_current'] ? 'step' : null"
+                                class="group h-auto! min-h-touch w-full min-w-0 justify-start! gap-3 rounded-control! border px-3 py-2 text-left whitespace-normal! {{ $wizardStep['is_current'] ? 'border-brand-200! bg-surface-selected! text-text-primary!' : 'border-transparent bg-transparent text-text-muted! hover:border-border-subtle hover:bg-surface-muted hover:text-text-primary' }}"
                             >
                                 <span
                                     @class([
@@ -82,9 +80,10 @@
                                         {{ $wizardStep['is_done'] ? __('ui.departments.dashboard.gotovo') : ($wizardStep['is_current'] ? __('ui.onboarding.restaurant_setup.seicas') : __('ui.onboarding.restaurant_setup.pozze')) }}
                                     </span>
                                 </span>
-                            </button>
+                            </flux:button>
                         </li>
-                    @endforeach
+                    @empty
+                    @endforelse
                 </ol>
             </nav>
 
@@ -119,6 +118,8 @@
                     </div>
 
                     <flux:input
+                        class="min-w-0"
+                        class:input="min-h-touch placeholder:text-text-muted"
                         wire:model="form.organizationName"
                         name="organization_name"
                         error:name="form.organizationName"
@@ -140,7 +141,7 @@
                         <p id="onboarding-create-organization-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted sm:text-right" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createOrganization">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-organization-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createOrganization">
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-organization-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createOrganization">
                             {{ __('ui.onboarding.restaurant_setup.dalse') }}
                         </flux:button>
                     </div>
@@ -154,6 +155,8 @@
                     </div>
 
                     <flux:input
+                        class="min-w-0"
+                        class:input="min-h-touch placeholder:text-text-muted"
                         wire:model="form.brandName"
                         name="brand_name"
                         error:name="form.brandName"
@@ -170,11 +173,11 @@
                     />
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(1)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(1)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-create-brand-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createBrand">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-brand-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBrand">
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-brand-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBrand">
                             {{ __('ui.onboarding.restaurant_setup.dalse') }}
                         </flux:button>
                     </div>
@@ -188,24 +191,24 @@
                     </div>
 
                     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
-                        <flux:input wire:model="form.branchName" name="branch_name" error:name="form.branchName" error:id="branch-name-error" :invalid="$errors->has('form.branchName')" aria-describedby="branch-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input wire:model="form.branchAddress" name="branch_address" error:name="form.branchAddress" error:id="branch-address-error" :invalid="$errors->has('form.branchAddress')" aria-describedby="branch-address-error" :label="__('ui.onboarding.restaurant_setup.adres_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_address_placeholder')" type="text" required maxlength="255" autocomplete="street-address" />
-                        <flux:input wire:model="form.branchCity" name="branch_city" error:name="form.branchCity" error:id="branch-city-error" :invalid="$errors->has('form.branchCity')" aria-describedby="branch-city-error" :label="__('ui.onboarding.restaurant_setup.gorod')" :placeholder="__('ui.onboarding.restaurant_setup.branch_city_placeholder')" type="text" required maxlength="120" autocomplete="address-level2" autocapitalize="words" />
-                        <flux:input wire:model="form.branchCountryCode" name="branch_country_code" error:name="form.branchCountryCode" error:id="branch-country-code-error" description:id="branch-country-code-help" :invalid="$errors->has('form.branchCountryCode')" aria-describedby="branch-country-code-help branch-country-code-error" :label="__('ui.onboarding.restaurant_setup.strana')" :description="__('ui.onboarding.restaurant_setup.country_help')" :placeholder="__('ui.onboarding.restaurant_setup.country_placeholder')" type="text" required maxlength="2" pattern="[A-Za-z]{2}" list="restaurant-country-options" autocomplete="country" autocapitalize="characters" spellcheck="false" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchName" name="branch_name" error:name="form.branchName" error:id="branch-name-error" :invalid="$errors->has('form.branchName')" aria-describedby="branch-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchAddress" name="branch_address" error:name="form.branchAddress" error:id="branch-address-error" :invalid="$errors->has('form.branchAddress')" aria-describedby="branch-address-error" :label="__('ui.onboarding.restaurant_setup.adres_filiala')" :placeholder="__('ui.onboarding.restaurant_setup.branch_address_placeholder')" type="text" required maxlength="255" autocomplete="street-address" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchCity" name="branch_city" error:name="form.branchCity" error:id="branch-city-error" :invalid="$errors->has('form.branchCity')" aria-describedby="branch-city-error" :label="__('ui.onboarding.restaurant_setup.gorod')" :placeholder="__('ui.onboarding.restaurant_setup.branch_city_placeholder')" type="text" required maxlength="120" autocomplete="address-level2" autocapitalize="words" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchCountryCode" name="branch_country_code" error:name="form.branchCountryCode" error:id="branch-country-code-error" description:id="branch-country-code-help" :invalid="$errors->has('form.branchCountryCode')" aria-describedby="branch-country-code-help branch-country-code-error" :label="__('ui.onboarding.restaurant_setup.strana')" :description="__('ui.onboarding.restaurant_setup.country_help')" :placeholder="__('ui.onboarding.restaurant_setup.country_placeholder')" type="text" required maxlength="2" pattern="[A-Za-z]{2}" list="restaurant-country-options" autocomplete="country" autocapitalize="characters" spellcheck="false" />
                         <datalist id="restaurant-country-options">
                             @foreach ($this->countryOptions as $countryCode => $countryLabel)
                                 <option wire:key="onboarding-country-{{ $countryCode }}" value="{{ $countryCode }}" label="{{ $countryLabel }}"></option>
                             @endforeach
                         </datalist>
 
-                        <flux:input wire:model="form.branchTimezone" name="branch_timezone" error:name="form.branchTimezone" error:id="branch-timezone-error" description:id="branch-timezone-help" :invalid="$errors->has('form.branchTimezone')" aria-describedby="branch-timezone-help branch-timezone-error" :label="__('ui.onboarding.restaurant_setup.casovoi_poias')" :description="__('ui.onboarding.restaurant_setup.timezone_help')" :placeholder="__('ui.onboarding.restaurant_setup.timezone_placeholder')" type="text" required maxlength="64" list="restaurant-timezone-options" autocomplete="off" spellcheck="false" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.branchTimezone" name="branch_timezone" error:name="form.branchTimezone" error:id="branch-timezone-error" description:id="branch-timezone-help" :invalid="$errors->has('form.branchTimezone')" aria-describedby="branch-timezone-help branch-timezone-error" :label="__('ui.onboarding.restaurant_setup.casovoi_poias')" :description="__('ui.onboarding.restaurant_setup.timezone_help')" :placeholder="__('ui.onboarding.restaurant_setup.timezone_placeholder')" type="text" required maxlength="64" list="restaurant-timezone-options" autocomplete="off" spellcheck="false" />
                         <datalist id="restaurant-timezone-options">
                             @foreach ($this->timezoneOptions as $timezoneIdentifier => $timezoneLabel)
                                 <option wire:key="onboarding-timezone-{{ $timezoneIdentifier }}" value="{{ $timezoneIdentifier }}" label="{{ $timezoneLabel }}"></option>
                             @endforeach
                         </datalist>
 
-                        <flux:select wire:model="form.branchCurrency" name="branch_currency" error:name="form.branchCurrency" error:id="branch-currency-error" description:id="branch-currency-help" :invalid="$errors->has('form.branchCurrency')" aria-describedby="branch-currency-help branch-currency-error" :label="__('ui.onboarding.restaurant_setup.valiuta')" :description="__('ui.onboarding.restaurant_setup.currency_help')" required>
+                        <flux:select class="min-h-touch max-w-full" wire:model="form.branchCurrency" name="branch_currency" error:name="form.branchCurrency" error:id="branch-currency-error" description:id="branch-currency-help" :invalid="$errors->has('form.branchCurrency')" aria-describedby="branch-currency-help branch-currency-error" :label="__('ui.onboarding.restaurant_setup.valiuta')" :description="__('ui.onboarding.restaurant_setup.currency_help')" required>
                             <flux:select.option value="">{{ __('ui.onboarding.restaurant_setup.select_currency') }}</flux:select.option>
                             @foreach ($this->currencyOptions as $currencyCode => $currencyLabel)
                                 <flux:select.option wire:key="onboarding-branch-currency-{{ $currencyCode }}" value="{{ $currencyCode }}">{{ $currencyLabel }}</flux:select.option>
@@ -214,11 +217,11 @@
                     </div>
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(2)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(2)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-create-branch-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createBranch">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-branch-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBranch">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-branch-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createBranch">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
                     </div>
                 </form>
             @elseif ($step === 4)
@@ -230,13 +233,13 @@
                     </div>
 
                     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
-                        <flux:input wire:model="form.areaName" name="area_name" error:name="form.areaName" error:id="area-name-error" :invalid="$errors->has('form.areaName')" aria-describedby="area-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" :placeholder="__('ui.onboarding.restaurant_setup.area_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:select wire:model="form.areaType" name="area_type" error:name="form.areaType" error:id="area-type-error" description:id="area-type-help" :invalid="$errors->has('form.areaType')" aria-describedby="area-type-help area-type-error" :label="__('ui.onboarding.restaurant_setup.tip_zony')" :description="__('ui.onboarding.restaurant_setup.area_type_help')" required>
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.areaName" name="area_name" error:name="form.areaName" error:id="area-name-error" :invalid="$errors->has('form.areaName')" aria-describedby="area-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_zony')" :placeholder="__('ui.onboarding.restaurant_setup.area_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
+                        <flux:select class="min-h-touch max-w-full" wire:model="form.areaType" name="area_type" error:name="form.areaType" error:id="area-type-error" description:id="area-type-help" :invalid="$errors->has('form.areaType')" aria-describedby="area-type-help area-type-error" :label="__('ui.onboarding.restaurant_setup.tip_zony')" :description="__('ui.onboarding.restaurant_setup.area_type_help')" required>
                             @foreach ($this->areaTypeOptions as $areaType => $areaTypeLabel)
                                 <flux:select.option wire:key="onboarding-area-type-{{ $areaType }}" value="{{ $areaType }}">{{ $areaTypeLabel }}</flux:select.option>
                             @endforeach
                         </flux:select>
-                        <flux:select wire:model="form.areaIcon" name="area_icon" error:name="form.areaIcon" error:id="area-icon-error" description:id="area-icon-help" :invalid="$errors->has('form.areaIcon')" aria-describedby="area-icon-help area-icon-error" :label="__('ui.onboarding.restaurant_setup.ikonka')" :description="__('ui.onboarding.restaurant_setup.area_icon_help')" required>
+                        <flux:select class="min-h-touch max-w-full" wire:model="form.areaIcon" name="area_icon" error:name="form.areaIcon" error:id="area-icon-error" description:id="area-icon-help" :invalid="$errors->has('form.areaIcon')" aria-describedby="area-icon-help area-icon-error" :label="__('ui.onboarding.restaurant_setup.ikonka')" :description="__('ui.onboarding.restaurant_setup.area_icon_help')" required>
                             @foreach ($this->areaIconOptions as $areaIcon => $areaIconLabel)
                                 <flux:select.option wire:key="onboarding-area-icon-{{ $areaIcon }}" value="{{ $areaIcon }}">{{ $areaIconLabel }}</flux:select.option>
                             @endforeach
@@ -244,11 +247,11 @@
                     </div>
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(3)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(3)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-create-area-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createArea">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-area-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createArea">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-area-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createArea">{{ __('ui.onboarding.restaurant_setup.dalse') }}</flux:button>
                     </div>
                 </form>
             @elseif ($step === 5)
@@ -260,17 +263,17 @@
                     </div>
 
                     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-3">
-                        <flux:input wire:model="form.tableCount" name="table_count" error:name="form.tableCount" error:id="table-count-error" description:id="table-count-help" :invalid="$errors->has('form.tableCount')" aria-describedby="table-count-help table-count-error" :label="__('ui.onboarding.restaurant_setup.skolko_stolov')" :description="__('ui.onboarding.restaurant_setup.table_count_help')" type="number" required min="1" max="20" step="1" inputmode="numeric" autocomplete="off" />
-                        <flux:input wire:model="form.tablePrefix" name="table_prefix" error:name="form.tablePrefix" error:id="table-prefix-error" description:id="table-prefix-help" :invalid="$errors->has('form.tablePrefix')" aria-describedby="table-prefix-help table-prefix-error" :label="__('ui.onboarding.restaurant_setup.prefiks_nazvaniia_stolov')" :description="__('ui.onboarding.restaurant_setup.table_prefix_help')" :placeholder="__('ui.onboarding.restaurant_setup.table_prefix_placeholder')" type="text" required maxlength="40" autocomplete="off" />
-                        <flux:input wire:model="form.tableCapacity" name="table_capacity" error:name="form.tableCapacity" error:id="table-capacity-error" description:id="table-capacity-help" :invalid="$errors->has('form.tableCapacity')" aria-describedby="table-capacity-help table-capacity-error" :label="__('ui.onboarding.restaurant_setup.mest_za_kazdym_stolom')" :description="__('ui.onboarding.restaurant_setup.table_capacity_help')" type="number" required min="1" max="50" step="1" inputmode="numeric" autocomplete="off" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tableCount" name="table_count" error:name="form.tableCount" error:id="table-count-error" description:id="table-count-help" :invalid="$errors->has('form.tableCount')" aria-describedby="table-count-help table-count-error" :label="__('ui.onboarding.restaurant_setup.skolko_stolov')" :description="__('ui.onboarding.restaurant_setup.table_count_help')" type="number" required min="1" max="20" step="1" inputmode="numeric" autocomplete="off" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tablePrefix" name="table_prefix" error:name="form.tablePrefix" error:id="table-prefix-error" description:id="table-prefix-help" :invalid="$errors->has('form.tablePrefix')" aria-describedby="table-prefix-help table-prefix-error" :label="__('ui.onboarding.restaurant_setup.prefiks_nazvaniia_stolov')" :description="__('ui.onboarding.restaurant_setup.table_prefix_help')" :placeholder="__('ui.onboarding.restaurant_setup.table_prefix_placeholder')" type="text" required maxlength="40" autocomplete="off" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.tableCapacity" name="table_capacity" error:name="form.tableCapacity" error:id="table-capacity-error" description:id="table-capacity-help" :invalid="$errors->has('form.tableCapacity')" aria-describedby="table-capacity-help table-capacity-error" :label="__('ui.onboarding.restaurant_setup.mest_za_kazdym_stolom')" :description="__('ui.onboarding.restaurant_setup.table_capacity_help')" type="number" required min="1" max="50" step="1" inputmode="numeric" autocomplete="off" />
                     </div>
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(4)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(4)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-create-service-points-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createServicePoints">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-service-points-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createServicePoints">{{ __('ui.onboarding.restaurant_setup.sozdat_stoly') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-right" variant="primary" type="submit" aria-describedby="onboarding-create-service-points-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createServicePoints">{{ __('ui.onboarding.restaurant_setup.sozdat_stoly') }}</flux:button>
                     </div>
                 </form>
             @elseif ($step === 6)
@@ -291,11 +294,11 @@
                     <flux:error name="form.tableCount" />
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(5)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(5)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-generate-qr-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="generateQrCodes">{{ __('ui.onboarding.restaurant_setup.generating_qr') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="qr-code" variant="primary" type="button" wire:click="generateQrCodes" aria-describedby="onboarding-generate-qr-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="generateQrCodes">{{ __('ui.onboarding.restaurant_setup.sgenerirovat_qr') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="qr-code" variant="primary" type="button" wire:click="generateQrCodes" aria-describedby="onboarding-generate-qr-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="generateQrCodes">{{ __('ui.onboarding.restaurant_setup.sgenerirovat_qr') }}</flux:button>
                     </div>
                 </div>
             @elseif ($step === 7)
@@ -307,18 +310,18 @@
                     </div>
 
                     <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
-                        <flux:input wire:model="form.menuName" name="menu_name" error:name="form.menuName" error:id="menu-name-error" :invalid="$errors->has('form.menuName')" aria-describedby="menu-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.menu_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input wire:model="form.categoryName" name="category_name" error:name="form.categoryName" error:id="category-name-error" :invalid="$errors->has('form.categoryName')" aria-describedby="category-name-error" :label="__('ui.onboarding.restaurant_setup.razdel_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.category_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
-                        <flux:input wire:model="form.itemName" name="item_name" error:name="form.itemName" error:id="item-name-error" :invalid="$errors->has('form.itemName')" aria-describedby="item-name-error" :label="__('ui.onboarding.restaurant_setup.pervoe_bliudo')" :placeholder="__('ui.onboarding.restaurant_setup.item_name_placeholder')" type="text" required maxlength="180" autocomplete="off" autocapitalize="sentences" />
-                        <flux:input wire:model="form.itemPrice" name="item_price" error:name="form.itemPrice" error:id="item-price-error" description:id="item-price-help" :invalid="$errors->has('form.itemPrice')" aria-describedby="item-price-help item-price-error" :label="__('ui.onboarding.restaurant_setup.cena')" :description="__('ui.onboarding.restaurant_setup.item_price_help', ['currency' => $form->branchCurrency])" type="number" required min="0" max="999999.99" step="0.01" inputmode="decimal" autocomplete="off" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.menuName" name="menu_name" error:name="form.menuName" error:id="menu-name-error" :invalid="$errors->has('form.menuName')" aria-describedby="menu-name-error" :label="__('ui.onboarding.restaurant_setup.nazvanie_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.menu_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.categoryName" name="category_name" error:name="form.categoryName" error:id="category-name-error" :invalid="$errors->has('form.categoryName')" aria-describedby="category-name-error" :label="__('ui.onboarding.restaurant_setup.razdel_meniu')" :placeholder="__('ui.onboarding.restaurant_setup.category_name_placeholder')" type="text" required maxlength="160" autocomplete="off" autocapitalize="words" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.itemName" name="item_name" error:name="form.itemName" error:id="item-name-error" :invalid="$errors->has('form.itemName')" aria-describedby="item-name-error" :label="__('ui.onboarding.restaurant_setup.pervoe_bliudo')" :placeholder="__('ui.onboarding.restaurant_setup.item_name_placeholder')" type="text" required maxlength="180" autocomplete="off" autocapitalize="sentences" />
+                        <flux:input class="min-w-0" class:input="min-h-touch placeholder:text-text-muted" wire:model="form.itemPrice" name="item_price" error:name="form.itemPrice" error:id="item-price-error" description:id="item-price-help" :invalid="$errors->has('form.itemPrice')" aria-describedby="item-price-help item-price-error" :label="__('ui.onboarding.restaurant_setup.cena')" :description="__('ui.onboarding.restaurant_setup.item_price_help', ['currency' => $form->branchCurrency])" type="number" required min="0" max="999999.99" step="0.01" inputmode="decimal" autocomplete="off" />
                     </div>
 
                     <div class="grid min-w-0 gap-3 border-t border-border-subtle pt-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(6)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="arrow-left" type="button" wire:click="goToStep(6)" wire:offline.attr="disabled">{{ __('ui.onboarding.restaurant_setup.nazad') }}</flux:button>
                         <p id="onboarding-create-menu-status" class="min-h-5 min-w-0 wrap-anywhere text-center text-sm text-text-muted" role="status" aria-live="polite" aria-atomic="true">
                             <span wire:loading wire:target="createStarterMenu">{{ __('ui.onboarding.restaurant_setup.saving_step') }}</span>
                         </p>
-                        <flux:button class="w-full whitespace-normal sm:w-auto" icon="check" variant="primary" type="submit" aria-describedby="onboarding-create-menu-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createStarterMenu">{{ __('ui.onboarding.restaurant_setup.dobavit_meniu') }}</flux:button>
+                        <flux:button class="h-auto! min-h-touch w-full whitespace-normal! py-2.5 sm:w-auto" icon="check" variant="primary" type="submit" aria-describedby="onboarding-create-menu-status" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:target="createStarterMenu">{{ __('ui.onboarding.restaurant_setup.dobavit_meniu') }}</flux:button>
                     </div>
                 </form>
             @else

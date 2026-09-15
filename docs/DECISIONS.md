@@ -5,6 +5,21 @@
 # Restaurant Menu completion decisions
 
 
+## 2026-09-15 — Final team consent and editor boundaries
+
+- Invitation registration validates the bound email before global uniqueness and stops after its first email failure. This removes an account-enumeration signal without changing existing-account acceptance. Localized messages and person-name labels belong to this form; shared password strength and optional Fortify features remain unchanged.
+- A newly registered invitation recipient inherits the current supported interface locale. An existing account or exact replay keeps its saved preference; browser coverage asserts both the profile and rendered workspace language.
+- Resolve the current persisted role and invitation credential version at the transactional acceptance boundary. Scope, recipient and role are part of consent; status timestamps are excluded so an exact successful retry stays idempotent. Existing accepted membership roles are preserved and explained before confirmation.
+- Derive recipient destinations from the current authorized membership inside the invitation organization. Explicit department URL selection is validated and scoped by the existing kitchen/bar resolver; another organization's first branch can never become the implicit destination.
+- Organization capability explanations inspect the existing Gates/Policies. When the domain policy adds a denial or explicit owner allowance, show that result and its localized reason rather than a second UI authorization formula.
+- Assigning an existing member to a branch can narrow organization fallback access. Enforce the hierarchy against both the target's current organization role and the requested branch role, reject self-assignment, and reload both inside the transaction.
+- The native staff dialog is modal/fullscreen below 64rem and an adjacent nonmodal detail panel above it. Preserve its browser-owned open attribute across Livewire morphs. Escape/Close can discard locally during a real network outage; reconnect alone does not reopen it, and the next explicit opener reconciles server draft state first.
+- Protect every invitation response, including validation redirects, unavailable credentials and throttling, with no-store, no-referrer and noindex. Shared middleware and the exception response hook cover these boundaries without duplicating controller behavior.
+
+## 2026-09-15 — Bounded browser shutdown
+
+The local browser coordinator preserves existing Node options and preloads a first-party shutdown guard only for marked `run-server` children. A single SIGTERM schedules an unreferenced one-second fallback; natural exit remains immediate. This addresses the sampled PHP `proc_close` wait on a surviving Playwright listener without changing installed vendor code. It does not interpret successful output as a pass: real Pest exit zero and one complete passing JUnit case remain required. The guard never signals personal browsers or another coordinator's processes.
+
 ## 2026-09-15 — Team history and verification boundaries
 
 Staff dirty-form protection observes the Navigation API entry index without cancelling its navigate event: cancellation corrupted WebKit's history cursor in the reproduced cross-page scenario. Capture popstate before Livewire restores cached state, return to the edited entry, and replay the explicit confirmed movement. Release listeners on teardown and return focus only to a visible enabled opener. Current WebKit Back/Forward, repeated cancellation and Escape are covered; older engines without entry indexes retain the local-section fallback and native document-unload warning.

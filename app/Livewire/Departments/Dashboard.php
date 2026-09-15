@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 abstract class Dashboard extends Component
@@ -37,7 +38,8 @@ abstract class Dashboard extends Component
      */
     public array $tickets = [];
 
-    public string $selectedDepartmentId = '';
+    #[Url(as: 'department')]
+    public mixed $selectedDepartmentId = '';
 
     public ?string $selectedDepartmentName = null;
 
@@ -182,9 +184,13 @@ abstract class Dashboard extends Component
      */
     private function departmentPayload(DepartmentTicketFilter $filter): array
     {
+        $departmentId = is_string($this->selectedDepartmentId) || is_int($this->selectedDepartmentId)
+            ? filter_var($this->selectedDepartmentId, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+            : false;
+
         return $this->buildDepartmentDashboard->handle(
             user: $this->currentUser(),
-            selectedDepartmentId: $this->selectedDepartmentId === '' ? null : (int) $this->selectedDepartmentId,
+            selectedDepartmentId: $departmentId === false ? null : $departmentId,
             departmentTypes: $this->departmentTypes(),
             roleCodes: $this->roleCodes(),
             permissionCodes: $this->permissionCodes(),

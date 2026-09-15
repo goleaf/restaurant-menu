@@ -34,7 +34,9 @@ test('independent sqlite writers converge on one invitation lifecycle winner', f
         $owner = User::factory()->create();
         $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Concurrent Invitation Group']);
         $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
-        $recipient = User::factory()->create(['email' => 'concurrent@example.test']);
+        $recipient = $competingOperation === 'register'
+            ? User::factory()->make(['email' => 'concurrent@example.test'])
+            : User::factory()->create(['email' => 'concurrent@example.test']);
         if ($competingOperation === 'suspend') {
             OrganizationUser::factory()->create(['organization_id' => $organization->id, 'user_id' => $recipient->id, 'role_id' => $role->id, 'status' => OrganizationUserStatus::Active]);
         }
@@ -43,7 +45,7 @@ test('independent sqlite writers converge on one invitation lifecycle winner', f
         } else {
             $created = app(CreateInvitationAction::class)->handle($organization, $role, $owner->fresh(), ['email' => $recipient->email]);
             $invitation = $created->invitation;
-            $tasks = [TeamInvitationConcurrencyTasks::mutate($connection, $invitation->id, $owner->id, $recipient->id, 'accept', $invitation->invite_token_hash, $invitation->credentialVersion()), TeamInvitationConcurrencyTasks::mutate($connection, $invitation->id, $owner->id, $recipient->id, $competingOperation, $invitation->invite_token_hash, $invitation->credentialVersion())];
+            $tasks = [TeamInvitationConcurrencyTasks::mutate($connection, $invitation->id, $owner->id, $recipient->id ?? 0, $competingOperation === 'register' ? 'register' : 'accept', $invitation->invite_token_hash, $invitation->credentialVersion()), TeamInvitationConcurrencyTasks::mutate($connection, $invitation->id, $owner->id, $recipient->id ?? 0, $competingOperation, $invitation->invite_token_hash, $invitation->credentialVersion())];
         }
         config(['database.default' => $original]);
         $results = Concurrency::driver('process')->run($tasks, 20);
@@ -51,6 +53,10 @@ test('independent sqlite writers converge on one invitation lifecycle winner', f
         config(['database.default' => 'invitation_concurrency']);
         DB::purge('invitation_concurrency');
         $invitation = Invitation::query()->sole();
+        if ($competingOperation === 'register') {
+            $recipient = User::query()->where('email', 'concurrent@example.test')->sole();
+            expect($recipient->email_verified_at)->toBeNull();
+        }
         $accepted = $invitation->status === InvitationStatus::Accepted;
         expect(OrganizationUser::query()->where('user_id', $recipient->id)->count())->toBe($accepted || $competingOperation === 'suspend' ? 1 : 0)
             ->and(AuditLog::query()->where('action', AuditLogAction::InvitationAccepted->value)->count())->toBe($accepted ? 1 : 0);
@@ -60,6 +66,8 @@ test('independent sqlite writers converge on one invitation lifecycle winner', f
             expect($states)->toBe(['created', 'duplicate']);
         } elseif ($competingOperation === 'accept') {
             expect($states)->toBe(['accept', 'accept']);
+        } elseif ($competingOperation === 'register') {
+            expect($states)->toBe(['register', 'register']);
         } elseif ($competingOperation === 'suspend') {
             expect($states)->toContain('suspend')
                 ->and(OrganizationUser::query()->where('user_id', $recipient->id)->sole()->status)->toBe(OrganizationUserStatus::Suspended)
@@ -74,4 +82,4 @@ test('independent sqlite writers converge on one invitation lifecycle winner', f
         File::delete([$path, $path.'-wal', $path.'-shm']);
         File::delete(glob($path.'.ready.*'));
     }
-})->with(['create', 'accept', 'cancel', 'reissue', 'suspend']);
+})->with(['create', 'accept', 'register', 'cancel', 'reissue', 'suspend']);

@@ -38,6 +38,10 @@
 
         <p class="text-sm leading-6 text-text-muted">{{ $accessExplanation }}</p>
 
+        @if ($isAuthenticated || $hasExistingAccount)
+            <p class="text-sm leading-6 text-text-muted">{{ __('invitations.access.existing_roles') }}</p>
+        @endif
+
         @if ($isAuthenticated)
             <form method="POST" action="{{ $acceptUrl }}" x-data="{ submitting: false, offline: !navigator.onLine }" @online.window="offline = false" @offline.window="offline = true" @submit="if (offline || submitting) { $event.preventDefault(); } else { submitting = true; }">
                 @csrf
@@ -67,7 +71,7 @@
 
                     <flux:input
                         name="name"
-                        :label="__('reports.csv.name')"
+                        :label="__('ui.auth.register.full_name')"
                         :value="old('name')"
                         type="text"
                         required

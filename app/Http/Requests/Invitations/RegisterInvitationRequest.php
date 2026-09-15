@@ -11,6 +11,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 use Stringable;
 
 class RegisterInvitationRequest extends FormRequest
@@ -36,7 +37,14 @@ class RegisterInvitationRequest extends FormRequest
         $invitationEmail = $this->invitation()->email;
 
         if ($invitationEmail !== null) {
-            $rules['email'][] = Rule::in([$invitationEmail]);
+            $emailRules = ['bail'];
+            foreach ($rules['email'] as $rule) {
+                if ($rule instanceof Unique) {
+                    $emailRules[] = Rule::in([$invitationEmail]);
+                }
+                $emailRules[] = $rule;
+            }
+            $rules['email'] = $emailRules;
         }
 
         return $rules;
@@ -48,7 +56,37 @@ class RegisterInvitationRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'name.required' => __('invitations.validation.required'),
+            'name.string' => __('invitations.validation.string'),
+            'name.max' => __('invitations.validation.max'),
+            'email.required' => __('invitations.validation.required'),
+            'email.string' => __('invitations.validation.string'),
+            'email.max' => __('invitations.validation.max'),
+            'email.email' => __('invitations.validation.email'),
+            'email.unique' => __('invitations.validation.email_unique'),
             'email.in' => __('invitations.validation.email_mismatch'),
+            'password.required' => __('invitations.validation.required'),
+            'password.string' => __('invitations.validation.string'),
+            'password.confirmed' => __('invitations.validation.password_confirmed'),
+            'password.min' => __('invitations.validation.password_min'),
+            'password.max' => __('invitations.validation.password_max'),
+            'password.password.letters' => __('invitations.validation.password_letters'),
+            'password.password.mixed' => __('invitations.validation.password_mixed'),
+            'password.password.numbers' => __('invitations.validation.password_numbers'),
+            'password.password.symbols' => __('invitations.validation.password_symbols'),
+            'password.password.uncompromised' => __('invitations.validation.password_uncompromised'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'name' => __('ui.auth.register.full_name'),
+            'email' => __('ui.auth.forgot_password.email_address'),
+            'password' => __('ui.auth.confirm_password.password'),
         ];
     }
 

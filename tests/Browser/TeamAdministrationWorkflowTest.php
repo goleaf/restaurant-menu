@@ -13,6 +13,7 @@ use App\Models\OrganizationUser;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Pest\Browser\Api\PendingAwaitablePage;
+use Pest\Browser\Playwright\Client;
 use Tests\Support\IsolatedBrowserIdentity;
 
 test('team administrators invite assign zones and change scoped access across independent browser sessions', function (): void {
@@ -69,7 +70,7 @@ test('team administrators invite assign zones and change scoped access across in
     expect(User::query()->where('email', 'team.new@example.test')->exists())->toBeFalse();
     $link = $admin->script('document.querySelector("[data-invitation-link]").value');
     $admin->click('[data-copy-invitation]')->wait(0.2);
-    expect($admin->script("Alpine.\$data(document.querySelector('[data-invitation-clipboard]')).copied || Alpine.\$data(document.querySelector('[data-invitation-clipboard]')).failed"))->toBeTrue();
+    expect($admin->script("Alpine.\$data(document.querySelector('[data-invitation-clipboard]')).copied"))->toBeTrue();
     $admin->script("Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText:async()=>{throw new Error('Denied')}}})");
     teamAdminClick($admin, '[data-copy-invitation]');
     $admin->assertSee(__('staff.link.fallback'));
@@ -138,9 +139,58 @@ test('team administrators invite assign zones and change scoped access across in
     expect(Invitation::query()->where('email', $user->email)->count())->toBe(1);
 });
 
+test('team editor is modal on phones and can close safely while offline', function (): void {
+    $this->withVite();
+    IsolatedBrowserIdentity::configure();
+    $this->seed(SystemPermissionsSeeder::class);
+    $owner = User::factory()->create(['email' => 'team.editor@example.test']);
+    $organization = app(CreateOrganizationAction::class)->handle($owner, ['name' => 'Editor test organization']);
+    $page = visit(route('login', absolute: false));
+    $page->fill('email', $owner->email)->fill('password', 'password')->click('@login-button')->assertPathIs('/dashboard');
+    $page->navigate(route('organizations.staff.index', $organization, false))->resize(390, 844);
+    teamAdminClick($page, 'button[wire\\:click="openInvitation"]');
+    expect($page->script('document.querySelector("[data-staff-editor]").matches("dialog:modal")'))->toBeTrue();
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
+        $page->resize($width, $height);
+        expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
+        $page->screenshot(false, 'team-editor-'.$width);
+    }
+    $page->resize(390, 844);
+    foreach (range(1, 10) as $tab) {
+        $page->keys('dialog[data-staff-editor]', 'Tab');
+        expect($page->script('document.querySelector("dialog[data-staff-editor]").contains(document.activeElement)'))->toBeTrue();
+    }
+    $page->fill('input[name="invitationForm.email"]', 'local.draft@example.test');
+    teamBrowserOffline($page, true);
+    expect($page->script('navigator.onLine'))->toBeFalse();
+    $page->keys('input[name="invitationForm.email"]', 'Escape');
+    teamAdminClick($page, 'button[\\@click="cancelNavigation"]');
+    $page->assertValue('input[name="invitationForm.email"]', 'local.draft@example.test');
+    $page->keys('input[name="invitationForm.email"]', 'Escape');
+    teamAdminClick($page, 'button[\\@click="discardAndNavigate"]');
+    expect($page->script('document.querySelector("[data-staff-editor]")?.open ?? false'))->toBeFalse();
+    teamBrowserOffline($page, false);
+    expect($page->script('navigator.onLine'))->toBeTrue();
+    teamAdminClick($page, 'button[wire\\:click="openInvitation"]');
+    $page->assertValue('input[name="invitationForm.email"]', '');
+    $page->resize(1440, 1000);
+    $page->assertScript('document.querySelector("[data-staff-editor]").open && !document.querySelector("[data-staff-editor]").matches(":modal")');
+    $page->assertNoJavaScriptErrors();
+});
+
 function teamAdminClick(PendingAwaitablePage $page, string $selector): void
 {
     $page->assertVisible($selector)->assertEnabled($selector);
     $page->click($selector);
     $page->wait(0.3);
+}
+
+function teamBrowserOffline(PendingAwaitablePage $page, bool $offline): void
+{
+    $context = $page->page()->context();
+    $guid = (new ReflectionProperty($context, 'guid'))->getValue($context);
+    assert(is_string($guid));
+    foreach (Client::instance()->execute($guid, 'setOffline', ['offline' => $offline]) as $message) {
+        // Consume the installed Playwright protocol response before checking browser state.
+    }
 }

@@ -9,12 +9,12 @@
         :name="$name"
         :initials="$initials"
         :aria-label="__('navigation.account_menu', ['initials' => $initials, 'name' => $name])"
-        icon:trailing="chevrons-up-down"
+        icon:trailing="chevron-up-down"
         class="min-h-touch"
         data-test="sidebar-menu-button"
     />
 
-    <flux:menu>
+    <flux:menu class="border-border-subtle! bg-surface-raised! shadow-elevated!">
         <div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
             <flux:avatar
                 :name="$name"

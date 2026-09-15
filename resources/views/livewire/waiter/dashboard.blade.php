@@ -35,31 +35,28 @@
                 </p>
             </div>
 
-            <div class="flex overflow-hidden rounded-control border border-border-subtle bg-surface text-sm font-medium">
-                <button
-                    type="button"
+            <flux:button.group>
+                <flux:button
+                    data-zone-scope="mine"
                     wire:click="setZoneScope('mine')"
-                    @class([
-                        'min-h-touch px-3 py-2 transition-colors duration-state ease-product motion-reduce:transition-none',
-                        'bg-accent text-accent-foreground' => $zoneScope === 'mine',
-                        'text-text-primary hover:bg-surface-muted' => $zoneScope !== 'mine',
-                    ])
+                    wire:offline.attr="disabled"
+                    :variant="$zoneScope === 'mine' ? 'primary' : 'outline'"
+                    :aria-pressed="$zoneScope === 'mine' ? 'true' : 'false'"
+                    class="h-auto! min-h-touch whitespace-normal! py-2"
                 >
                     {{ __('ui.waiter.dashboard.my_zones') }}
-                </button>
-
-                <button
-                    type="button"
+                </flux:button>
+                <flux:button
+                    data-zone-scope="all"
                     wire:click="setZoneScope('all')"
-                    @class([
-                        'min-h-touch border-s border-border-subtle px-3 py-2 transition-colors duration-state ease-product motion-reduce:transition-none',
-                        'bg-accent text-accent-foreground' => $zoneScope === 'all',
-                        'text-text-primary hover:bg-surface-muted' => $zoneScope !== 'all',
-                    ])
+                    wire:offline.attr="disabled"
+                    :variant="$zoneScope === 'all' ? 'primary' : 'outline'"
+                    :aria-pressed="$zoneScope === 'all' ? 'true' : 'false'"
+                    class="h-auto! min-h-touch whitespace-normal! py-2"
                 >
                     {{ __('ui.livewire.organizations.brands.branches.servicepoints.index.all_zones') }}
-                </button>
-            </div>
+                </flux:button>
+            </flux:button.group>
 
             <p class="rounded-control bg-surface-muted px-3 py-2 text-sm font-medium text-text-primary">
                 {{ __('ui.departments.dashboard.updated') }}: {{ $refreshedAt }}

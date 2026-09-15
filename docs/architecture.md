@@ -4,6 +4,10 @@
 
 # Architecture
 
+## Team completion boundaries — 2026-09-15
+
+The staff query service prepares current-page summaries, selected-editor data and invitation aggregate counts. The existing scoped Actions remain the mutation boundary; the UI does not provision accounts. `ResolveInvitationRecipientRoleAction` supplies preserved effective recipient roles to the existing acceptance screen, while `ResolveInvitationDestinationAction` resolves the authorized branch or department within the invitation organization. `ProtectInvitationResponses` and the exception response hook apply invitation cache/referrer/indexing headers, including error responses. The shared static staff editor owns only responsive dialog/focus behavior; Livewire retains validation, authorization and persistence.
+
 ## Team workspace refinement — 2026-09-15
 
 Organization Staff Index owns the shared class-based workspace contract; the branch component supplies the additional scoped route context. StaffQueryService prepares only the selected paginated list and bounded membership summaries. Invitation, member and area forms load one requested editor. Common Blade renders prepared rows; Alpine owns clipboard feedback, draft navigation confirmation and focus only. The existing invitation and membership Actions remain the mutation boundaries.

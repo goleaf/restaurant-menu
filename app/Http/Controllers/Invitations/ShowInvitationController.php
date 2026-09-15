@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Invitations;
 
 use App\Actions\Invitations\ResolvedInvitationAccess;
 use App\Actions\Invitations\ResolveInvitationAccessAction;
+use App\Actions\Invitations\ResolveInvitationRecipientRoleAction;
 use App\Enums\InvitationAccessState;
 use App\Http\Controllers\Controller;
 use App\Models\Invitation;
@@ -24,6 +25,7 @@ class ShowInvitationController extends Controller
     public function __invoke(
         Request $request,
         ResolveInvitationAccessAction $resolveInvitation,
+        ResolveInvitationRecipientRoleAction $recipientRole,
         ?string $token = null,
     ): RedirectResponse|Response {
         if ($token !== null) {
@@ -41,9 +43,7 @@ class ShowInvitationController extends Controller
                 $request->session()->put('url.intended', route('invitations.pending'));
             }
 
-            return redirect()
-                ->route('invitations.pending')
-                ->withHeaders($this->securityHeaders());
+            return redirect()->route('invitations.pending');
         }
 
         $access = $this->pendingAccess($request, $resolveInvitation);
@@ -65,7 +65,8 @@ class ShowInvitationController extends Controller
             'brand:id,name',
             'role:id,code,name',
         ]);
-        $role = $invitation->role?->code;
+        $role = ($recipient instanceof User ? $recipientRole->handle($invitation, $recipient) : null)
+            ?? $invitation->role?->code;
 
         return response()->view('invitations.show', [
             'title' => __('invitations.title'),
@@ -83,7 +84,7 @@ class ShowInvitationController extends Controller
             'acceptUrl' => route('invitations.accept'),
             'registerUrl' => route('invitations.register'),
             'loginUrl' => route('login'),
-        ])->withHeaders($this->securityHeaders());
+        ]);
     }
 
     private function pendingAccess(
@@ -118,8 +119,7 @@ class ShowInvitationController extends Controller
                 ? __('navigation.dashboard')
                 : __('ui.auth.login.log_in'),
             'switchAccountUrl' => $state === InvitationAccessState::EmailMismatch ? route('invitations.switch-account') : null,
-        ], $state === InvitationAccessState::Accepted ? 200 : 410)
-            ->withHeaders($this->securityHeaders());
+        ], $state === InvitationAccessState::Accepted ? 200 : 410);
     }
 
     private function recipient(Request $request): ?User
@@ -127,17 +127,5 @@ class ShowInvitationController extends Controller
         $recipient = $request->user();
 
         return $recipient instanceof User ? $recipient : null;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function securityHeaders(): array
-    {
-        return [
-            'Cache-Control' => 'no-store, private',
-            'Referrer-Policy' => 'no-referrer',
-            'X-Robots-Tag' => 'noindex, nofollow',
-        ];
     }
 }

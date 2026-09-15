@@ -482,3 +482,19 @@ test('area and service point pages stay bounded and eager load every rendered re
 
     expect($servicePointQueryCount)->toBeLessThanOrEqual(6);
 });
+
+test('invitation status summary counts growing data in one query without loading invitation models', function (): void {
+    $organization = Organization::factory()->create();
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    Invitation::factory()->count(60)->forOrganization($organization)->forRole($role)->pending()->create();
+    Invitation::factory()->count(7)->forOrganization($organization)->forRole($role)->expired()->create();
+    $loaded = 0;
+    Invitation::retrieved(function () use (&$loaded): void {
+        $loaded++;
+    });
+    $queries = countDatabaseQueries(function () use ($organization): void {
+        $summary = collect(app(StaffQueryService::class)->invitationSummary($organization, null, ['search' => '', 'role' => '', 'status' => '', 'sort' => 'newest']))->keyBy('status');
+        expect($summary['pending']['count'])->toBe(60)->and($summary['expired']['count'])->toBe(7);
+    });
+    expect($queries)->toBe(1)->and($loaded)->toBe(0);
+});

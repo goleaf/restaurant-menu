@@ -27,9 +27,6 @@ class SwitchInvitationAccountController extends Controller
             ]);
         }
 
-        return redirect()->route('login')->withHeaders([
-            'Cache-Control' => 'no-store, private',
-            'Referrer-Policy' => 'no-referrer',
-        ]);
+        return redirect()->route('login');
     }
 }

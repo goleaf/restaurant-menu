@@ -202,7 +202,7 @@ class Index extends Component
         $values = $this->invitationForm->validated(Rule::in($this->roles()->modelKeys()));
         $role = $this->staffQueries->findAssignableRole($this->currentUser(), $this->organization, $values['roleId']);
         $this->previewFingerprint = $this->fingerprint($values);
-        $this->preview = ['email' => $values['email'], 'role' => $role->code->localizedLabel(), 'scope' => $this->contextLabel(),
+        $this->preview = ['email' => $values['email'], 'role' => $role->code->localizedLabel(), 'scope' => $this->contextLabel(), 'role_defaults' => $this->staffQueries->roleAccessPreview($role),
             'expires' => LocalizedDateFormatter::dateTime(now()->addDays($values['expiresInDays']))];
         $this->successMessage = '';
     }
@@ -222,6 +222,7 @@ class Index extends Component
             $this->createdInvitationLink = $created->inviteLink();
             $this->discardEditor();
             $this->section = 'invitations';
+            $this->filters->reset('status');
             $this->resetPage(pageName: $this->pageName());
             $this->successMessage = __('staff.messages.invitation_created');
         });
@@ -498,17 +499,18 @@ class Index extends Component
             $this->authorizeMember($member);
             $selectedMember = $this->staffQueries->memberRow($member, $this->currentUser(), $roles->modelKeys());
         }
-        $ids = is_array($this->assignmentForm->areaIds) ? array_values(array_filter($this->assignmentForm->areaIds, fn (mixed $id): bool => (is_string($id) || is_int($id)) && ctype_digit((string) $id))) : [];
+        $ids = is_array($this->assignmentForm->areaIds) ? array_values(array_filter(array_slice($this->assignmentForm->areaIds, 0, 500), fn (mixed $id): bool => (is_string($id) || is_int($id)) && ctype_digit((string) $id))) : [];
         $ids = array_map(intval(...), $ids);
         $areas = $this->editor === 'areas' && $this->branch instanceof Branch
-            ? $this->staffQueries->areaEditor($this->branch, $ids, is_string($this->assignmentForm->search) ? mb_substr($this->assignmentForm->search, 0, 120) : '') : null;
+            ? $this->staffQueries->areaEditor($this->branch, $ids, is_string($this->assignmentForm->search) ? mb_substr($this->assignmentForm->search, 0, 120) : '', $this->originalAreaIds) : null;
         $candidates = $this->editor === 'assign' && $this->branch instanceof Branch
-            ? $this->staffQueries->assignableOrganizationMembers($this->organization, $this->branch, is_string($this->assignmentForm->search) ? mb_substr($this->assignmentForm->search, 0, 120) : '') : collect();
+            ? $this->staffQueries->assignableOrganizationMembers($this->organization, $this->branch, is_string($this->assignmentForm->search) ? mb_substr($this->assignmentForm->search, 0, 120) : '', $this->currentUser()) : collect();
 
         return view($this->viewName(), [
             'activeSection' => $section, 'isBranch' => $this->isBranchWorkspace(), 'contextLabel' => $this->contextLabel(),
             'hasActiveFilters' => $filters['search'] !== '' || $filters['role'] !== '' || $filters['status'] !== '' || $filters['sort'] !== 'newest',
             'coverageOverview' => $section === 'assignments' && $this->branch instanceof Branch ? $this->staffQueries->coverageOverview($this->branch) : null,
+            'invitationSummary' => $section === 'invitations' ? $this->staffQueries->invitationSummary($this->organization, $this->branch, $filters) : [],
             'organizationName' => $this->organization->name, 'createdInvitationLink' => $this->createdInvitationLink,
             'roleOptions' => $roles->map(fn (Role $role): array => ['id' => $role->id, 'label' => $role->code->localizedLabel()])->all(),
             'filterRoleOptions' => array_map(fn (SystemRole $role): array => ['value' => $role->value, 'label' => $role->localizedLabel()], SystemRole::cases()),

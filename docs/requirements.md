@@ -4,6 +4,10 @@
 
 # Canonical requirements catalogue
 
+## Team workspace behavior — 2026-09-15
+
+`sys-staff-001`, `sys-auth-001`, `sys-role-001` and `sys-tenant-001` include separate organization/branch employee and invitation lists with URL search/role/status/sort and independent pagination; effective expiry without cron; invitation preview and truthful clipboard fallback; explicit acceptance into the matching account; preserved existing roles and an authorized role destination; policy-consistent access explanations; scoped role/suspension/restoration with audit; and one conflict-aware branch area editor. Empty assignment retains the documented all-active-areas semantics. Coverage means assigned access, not attendance. Mobile modal dismissal remains available offline; unsaved selections survive errors and conflicts until explicitly discarded.
+
 ## Branch control behavior — 2026-09-15
 
 These refinements extend `sys-tenant-001`, `sys-branch-002`, `sys-waiter-001` and `sys-report-001` without adding a parallel requirement catalogue.

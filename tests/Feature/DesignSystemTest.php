@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\ViewErrorBag;
 
 test('auth header renders the page title as a semantic heading', function () {
     $html = Blade::render(<<<'BLADE'
@@ -16,13 +17,14 @@ test('auth header renders the page title as a semantic heading', function () {
 });
 
 test('simple design system components render shared ui primitives', function () {
+    view()->share('errors', new ViewErrorBag);
     $html = Blade::render(<<<'BLADE'
         <x-ui.card heading="Tables" description="Safe QR rules">
             <x-ui.button variant="primary" icon="plus" wire:click="save" full-width>Save</x-ui.button>
             <x-ui.button href="/guest" icon-trailing="arrow-right">Open guest</x-ui.button>
-            <x-ui.primary-button label="ui.actions.save" wire:click="savePrimary" />
-            <x-ui.secondary-button label="ui.actions.cancel" />
-            <x-ui.danger-button label="ui.actions.delete" wire:click="deleteRecord" />
+            <flux:button variant="primary" wire:click="savePrimary">{{ __('ui.actions.save') }}</flux:button>
+            <flux:button>{{ __('ui.actions.cancel') }}</flux:button>
+            <flux:button variant="danger" wire:click="deleteRecord">{{ __('ui.actions.delete') }}</flux:button>
             <x-ui.status-badge tone="warning" dot>Waiting</x-ui.status-badge>
             <x-ui.status-badge status="paid" context="payment" />
             <x-ui.money cents="1450" currency="EUR" />
@@ -30,25 +32,29 @@ test('simple design system components render shared ui primitives', function () 
             <x-ui.empty-state heading="ui.empty.no_results" description="ui.empty.no_service_points" icon="inbox" />
             <x-ui.page-header title="reports.orders.title" description="reports.exports.description">
                 <x-slot:actions>
-                    <x-ui.primary-button label="ui.actions.continue" />
+                    <flux:button variant="primary">{{ __('ui.actions.continue') }}</flux:button>
                 </x-slot:actions>
             </x-ui.page-header>
-            <x-ui.form-input name="guest_name" label="guest.table.your_name" placeholder="guest.table.enter_name" wire:model="guestName" />
-            <x-ui.select name="payment_method" label="payments.forms.method" :options="['cash' => 'ui.payment_methods.cash', 'card_terminal' => 'ui.payment_methods.card_terminal', 'other' => 'ui.payment_methods.other']" selected="cash" />
-            <x-ui.textarea name="note" label="payments.forms.note" placeholder="guest.table.guest_name_placeholder">Kitchen note</x-ui.textarea>
+            <flux:input name="guest_name" :label="__('guest.table.your_name')" :placeholder="__('guest.table.enter_name')" wire:model="guestName" />
+            <flux:select name="payment_method" :label="__('payments.forms.method')">
+                <option value="cash" selected>{{ __('ui.payment_methods.cash') }}</option>
+                <option value="card_terminal">{{ __('ui.payment_methods.card_terminal') }}</option>
+                <option value="other">{{ __('ui.payment_methods.other') }}</option>
+            </flux:select>
+            <flux:textarea name="note" :label="__('payments.forms.note')" :placeholder="__('guest.table.guest_name_placeholder')">Kitchen note</flux:textarea>
             <x-ui.validation-error error="Translated validation error." />
             <x-ui.table-row title="reports.csv.name" subtitle="reports.csv.area" meta="guest.table.status">
                 <x-slot:actions>
-                    <x-ui.secondary-button label="ui.actions.continue" />
+                    <flux:button>{{ __('ui.actions.continue') }}</flux:button>
                 </x-slot:actions>
             </x-ui.table-row>
-            <x-ui.confirmation-modal
-                trigger-label="ui.actions.delete"
-                title="ui.confirmations.danger.title"
-                description="ui.confirmations.danger.description"
-                confirm-label="ui.actions.delete"
-                confirm-action="deleteRecord"
-            />
+            <flux:modal.trigger name="design-system-confirm"><flux:button variant="danger">{{ __('ui.actions.delete') }}</flux:button></flux:modal.trigger>
+            <flux:modal name="design-system-confirm" :closable="false" focusable>
+                <x-modal-close-button autofocus />
+                <flux:heading>{{ __('ui.confirmations.danger.title') }}</flux:heading>
+                <flux:text>{{ __('ui.confirmations.danger.description') }}</flux:text>
+                <flux:button variant="danger" wire:click="deleteRecord">{{ __('ui.actions.delete') }}</flux:button>
+            </flux:modal>
             <x-ui.mobile-bottom-actions summary="Total €0.00">
                 <x-ui.button variant="primary" full-width>Send</x-ui.button>
             </x-ui.mobile-bottom-actions>
@@ -194,10 +200,10 @@ test('runtime stylesheet exposes semantic workspace roles and avoids decorative 
         ->toContain('--color-danger-border:')
         ->toContain('--color-information-border:')
         ->toContain('--spacing-operational-touch: 3.5rem;')
-        ->toContain('--duration-state: 180ms;')
+        ->toContain('--transition-duration-state: 180ms;')
         ->toContain("--font-sans: 'Noto Sans Variable'")
         ->toContain('--color-control-hover:')
-        ->toContain('--z-docked: 30;')
+        ->toContain('--z-index-docked: 30;')
         ->toContain('--shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);')
         ->not->toContain('border-left-width: 10px;')
         ->not->toContain('0 8px 24px');
@@ -212,12 +218,12 @@ test('shared shell and controls use semantic surfaces and resilient narrow layou
     $pageHeader = File::get(resource_path('views/components/ui/page-header.blade.php'));
 
     expect($css)
-        ->toContain('[data-flux-sidebar-item][data-current]')
+        ->toContain("[aria-current='page']")
         ->toContain("[data-priority-row][data-selected='true']")
         ->toContain('@utility content-safe')
         ->and($button)
-        ->toContain('bg-accent text-accent-foreground')
-        ->toContain('border-border-strong bg-surface text-text-primary')
+        ->toContain("'primary', 'dark', 'warning', 'info' => 'primary'")
+        ->toContain('border-border-strong! bg-surface! text-text-primary!')
         ->not->toMatch('/(?:bg|border|text|ring)-(?:zinc|red|amber|sky)-/')
         ->and($appLayout)
         ->toContain('max-w-content')
@@ -264,7 +270,8 @@ test('application shell keeps sidebar headings and account menu names accessible
     $desktopUserMenu = File::get(resource_path('views/components/desktop-user-menu.blade.php'));
 
     expect($sidebar)
-        ->toContain('[&>div:first-child>div]:!text-text-muted')
+        ->toContain('<x-slot:heading><span class="text-text-muted">')
+        ->not->toContain('[&>div:first-child>div]')
         ->toContain("'initials' => \$authenticatedUser['initials']")
         ->and($desktopUserMenu)
         ->toContain("'initials' => \$initials");
@@ -357,11 +364,8 @@ test('shared ui primitives consume semantic color roles instead of palette utili
         resource_path('views/components/ui/card.blade.php'),
         resource_path('views/components/ui/empty-state.blade.php'),
         resource_path('views/components/ui/form-field.blade.php'),
-        resource_path('views/components/ui/form-input.blade.php'),
         resource_path('views/components/ui/mobile-bottom-actions.blade.php'),
-        resource_path('views/components/ui/select.blade.php'),
         resource_path('views/components/ui/table-row.blade.php'),
-        resource_path('views/components/ui/textarea.blade.php'),
     ])->map(fn (string $path): string => File::get($path))->implode("\n");
 
     expect($sources)

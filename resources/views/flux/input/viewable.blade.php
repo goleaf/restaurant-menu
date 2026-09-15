@@ -16,6 +16,7 @@
     x-data="fluxInputViewable"
     x-on:click="toggle()"
     x-bind:data-viewable-open="open"
+    x-bind:aria-pressed="open"
     :aria-label="__('ui.accessibility.toggle_password_visibility')"
 >
     <flux:icon.eye-slash :variant="$iconVariant" class="hidden [[data-viewable-open]>&]:block" />

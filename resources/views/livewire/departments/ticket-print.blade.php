@@ -1,5 +1,5 @@
-<main data-page="department-ticket-print" class="qr-print-page">
-    <div class="qr-print-toolbar">
+<main data-page="department-ticket-print" class="qr-print-page flex min-h-svh flex-col items-center gap-4 px-4 py-6">
+    <div class="qr-print-toolbar flex w-full max-w-4xl flex-col justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ __('ui.departments.ticket_print.browser_print') }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950">{{ __('ui.livewire.departments.ticketprint.kitchen_ticket_print') }}</h1>

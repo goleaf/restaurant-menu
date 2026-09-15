@@ -2,6 +2,7 @@
 
 use App\Actions\Staff\UpdateOrganizationStaffRoleAction;
 use App\Enums\OrganizationUserStatus;
+use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Organizations\Brands\Branches\Staff\Index as BranchStaffIndex;
 use App\Livewire\Organizations\Staff\Index as OrganizationStaffIndex;
@@ -10,10 +11,12 @@ use App\Models\Brand;
 use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\DB;
+use Livewire\Exceptions\MethodNotFoundException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -119,4 +122,66 @@ test('member cards link to authorized organization permissions and hide self lin
     $rows = collect($component->viewData('memberRows'))->keyBy('id');
     expect($rows[$member->id]['permissions_url'])->toBe(route('organizations.staff.permissions', ['organization' => $this->organization->id, 'staffMember' => $member->user_id]))
         ->and($rows[$this->membership->id]['permissions_url'])->toBeNull();
+});
+
+test('invitation summary aggregates effective states with the same tenant search and role scope', function () {
+    $this->freezeTime();
+    $waiter = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $cook = Role::query()->where('code', SystemRole::Cook->value)->firstOrFail();
+    Invitation::factory()->forOrganization($this->organization)->pending()->create(['role_id' => $waiter->id, 'email' => 'team-pending@example.test', 'expires_at' => now()->addDay()]);
+    Invitation::factory()->forOrganization($this->organization)->pending()->create(['role_id' => $waiter->id, 'email' => 'team-expired@example.test', 'expires_at' => now()]);
+    Invitation::factory()->forOrganization($this->organization)->pending()->create(['role_id' => $cook->id, 'email' => 'team-cook@example.test']);
+    Invitation::factory()->forOrganization($this->organization)->pending()->create(['brand_id' => $this->brand->id, 'branch_id' => $this->branch->id, 'role_id' => $waiter->id, 'email' => 'team-branch@example.test']);
+    Invitation::factory()->forOrganization($this->organization)->pending()->create(['role_id' => $waiter->id, 'email' => 'other@example.test']);
+    $component = Livewire::actingAs($this->owner)->test(OrganizationStaffIndex::class, ['organization' => $this->organization])
+        ->call('selectSection', 'invitations')->set('filters.search', 'team-')->set('filters.role', $waiter->code->value);
+    $summary = collect($component->viewData('invitationSummary'))->keyBy('status');
+    expect($summary['pending']['count'])->toBe(1)->and($summary['expired']['count'])->toBe(1)->and($summary['accepted']['count'])->toBe(0);
+    $component->set('filters.status', 'expired')->assertSee('team-expired@example.test')->assertDontSee('team-pending@example.test');
+});
+
+test('removed manual provisioning cannot be called through either Livewire workspace', function (bool $branchScope) {
+    $component = Livewire::actingAs($this->owner)->test($branchScope ? BranchStaffIndex::class : OrganizationStaffIndex::class,
+        $branchScope ? ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch] : ['organization' => $this->organization]);
+    $users = User::query()->count();
+    $members = OrganizationUser::query()->count();
+    expect(fn () => $component->call('addManualStaffMember'))->toThrow(MethodNotFoundException::class);
+    expect(User::query()->count())->toBe($users)->and(OrganizationUser::query()->count())->toBe($members);
+})->with([false, true]);
+
+test('creating an invitation from a filtered employee list clears the incompatible status', function () {
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    Livewire::actingAs($this->owner)->test(OrganizationStaffIndex::class, ['organization' => $this->organization])
+        ->set('filters.status', 'active')->call('openInvitation')->set('invitationForm.email', 'filtered@example.test')
+        ->set('invitationForm.roleId', $role->id)->call('previewInvitation')->call('createInviteLink')
+        ->assertHasNoErrors()->assertSet('section', 'invitations')->assertSet('filters.status', '')
+        ->assertSee('filtered@example.test');
+});
+
+test('invitation preview explains enabled role defaults without exposing disabled or foreign grants', function () {
+    $waiter = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $enabled = Permission::query()->where('code', SystemPermission::ViewOrders->value)->firstOrFail();
+    $disabled = Permission::query()->where('code', SystemPermission::ManageStaff->value)->firstOrFail();
+    $waiter->permissions()->updateExistingPivot($enabled->id, ['enabled' => true]);
+    $waiter->permissions()->updateExistingPivot($disabled->id, ['enabled' => false]);
+    $component = Livewire::actingAs($this->owner)->test(OrganizationStaffIndex::class, ['organization' => $this->organization])
+        ->call('openInvitation')->set('invitationForm.email', 'defaults@example.test')->set('invitationForm.roleId', $waiter->id)
+        ->call('previewInvitation');
+    expect($component->get('preview.role_defaults'))->toContain(__(SystemPermission::ViewOrders->uiLabelKey()))
+        ->not->toContain(__(SystemPermission::ManageStaff->uiLabelKey()));
+    expect(Invitation::query()->count())->toBe(0);
+});
+
+test('existing branch assignment candidates exclude self higher equal suspended and global administrators', function () {
+    $admin = User::factory()->create();
+    $adminRole = Role::query()->where('code', SystemRole::RestaurantAdmin->value)->firstOrFail();
+    OrganizationUser::factory()->forOrganization($this->organization)->forUser($admin)->forRole($adminRole)->active()->create();
+    $equal = OrganizationUser::factory()->forOrganization($this->organization)->forRole($adminRole)->active()->create();
+    $lower = OrganizationUser::factory()->forOrganization($this->organization)->forSystemRole(SystemRole::Waiter)->active()->create();
+    $suspended = OrganizationUser::factory()->forOrganization($this->organization)->forSystemRole(SystemRole::Waiter)->suspended()->create();
+    $globalAdmin = OrganizationUser::factory()->forOrganization($this->organization)->forSystemRole(SystemRole::Waiter)->active()->create();
+    $globalAdmin->user->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail());
+    $component = Livewire::actingAs($admin)->test(BranchStaffIndex::class, ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch])
+        ->call('openExistingAssignment');
+    expect(array_column($component->viewData('candidateRows'), 'id'))->toBe([$lower->id]);
 });

@@ -6,6 +6,7 @@ use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\CoordinateSqliteRestore;
 use App\Http\Middleware\EnsureDemoLoginIsEnabled;
 use App\Http\Middleware\EnsureUserIsSuperadmin;
+use App\Http\Middleware\ProtectInvitationResponses;
 use App\Http\Middleware\RequireJsonHealthCheckResponse;
 use App\Http\Middleware\RequireRecentPasswordConfirmation;
 use App\Http\Middleware\SetInterfaceLocale;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(CoordinateSqliteRestore::class);
         $middleware->append(RequireJsonHealthCheckResponse::class);
         $middleware->append(AssignRequestId::class);
+        $middleware->append(ProtectInvitationResponses::class);
 
         $middleware->web(append: [
             SetInterfaceLocale::class,
@@ -98,6 +100,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate');
             }
 
-            return $response;
+            return ProtectInvitationResponses::protect($request, $response);
         });
     })->create();

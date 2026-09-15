@@ -59,7 +59,11 @@ test('branch control preserves URL history local periods and ordering drafts acr
         expect($page->script(<<<'JS'
             (() => {
                 const link = document.querySelector('[data-quick-action-link][href*="/restaurant/waiter"]');
-                const text = [...link.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+                const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT, {
+                    acceptNode: node => node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
+                });
+                const text = walker.nextNode();
+                if (!text) return 0;
                 const range = document.createRange();
                 range.selectNodeContents(text);
                 return range.getClientRects().length;

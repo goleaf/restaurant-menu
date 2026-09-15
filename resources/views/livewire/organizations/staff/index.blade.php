@@ -34,12 +34,9 @@
         <x-staff.invitation-link :value="$createdInvitationLink" />
     @endif
 
+    <div @class(['grid min-w-0 gap-5', 'lg:grid-cols-2 lg:items-start' => $editor !== ''])>
     @if ($editor !== '')
-        <section data-staff-editor tabindex="-1" aria-labelledby="staff-editor-heading" x-on:keydown.escape.stop.prevent="requestNavigation(() => $wire.discardEditor())" class="min-w-0 rounded-card border border-border-strong bg-surface p-4 sm:p-5">
-            <div class="flex items-start justify-between gap-3">
-                <h2 id="staff-editor-heading" class="text-lg font-semibold text-text-primary">{{ $selectedMember['user_name'] ?? ($editor === 'invite' ? __('staff.invite') : __('staff.workspace.edit_member')) }}</h2>
-                <x-ui.button x-on:click="requestNavigation(() => $wire.discardEditor())" icon="x-mark">{{ __('staff.workspace.close') }}</x-ui.button>
-            </div>
+        <x-staff.editor :heading="$selectedMember['user_name'] ?? ($editor === 'invite' ? __('staff.invite') : __('staff.workspace.edit_member'))">
             @if ($errors->any())
                 <div role="alert" class="my-3 rounded-control border border-danger-border bg-danger-surface p-3 text-sm text-danger" tabindex="-1">
                     @forelse ($errors->all() as $error)
@@ -66,6 +63,15 @@
                     <div class="mt-4 space-y-2 border-t border-border-subtle pt-4">
                         <p class="font-medium">{{ $preview['email'] }} · {{ $preview['role'] }}</p>
                         <p class="text-sm text-text-muted">{{ $preview['scope'] }} · {{ $preview['expires'] }}</p>
+                        <h3 class="text-sm font-semibold">{{ __('staff.workspace.role_defaults') }}</h3>
+                        <p class="text-sm text-text-muted">{{ __('staff.workspace.role_defaults_help') }}</p>
+                        <ul class="list-inside list-disc text-sm">
+                            @forelse ($preview['role_defaults'] as $capability)
+                                <li>{{ $capability }}</li>
+                            @empty
+                                <li>{{ __('staff.workspace.no_role_defaults') }}</li>
+                            @endforelse
+                        </ul>
                         <x-ui.button variant="primary" wire:click="createInviteLink" wire:loading.attr="disabled" wire:target="createInviteLink" x-bind:disabled="!online">{{ __('staff.workspace.confirm_create') }}</x-ui.button>
                     </div>
                 @endif
@@ -120,10 +126,10 @@
                 <p class="mt-2 font-medium">{{ $coverageLabel }}</p>
                 <form wire:submit="previewAreaAssignments" novalidate class="mt-4 space-y-4">
                     <flux:input wire:model.live.debounce.300ms="assignmentForm.search" name="assignmentForm.search" :label="__('staff.workspace.area_search')" type="search" maxlength="120" />
-                    @forelse ($areaEditor['unavailable'] as $areaId)
-                        <label class="flex min-h-touch items-center gap-3 rounded-control border border-warning-border p-3">
-                            <input type="checkbox" wire:model="assignmentForm.areaIds" value="{{ $areaId }}" class="size-5" />
-                            <span>{{ __('staff.workspace.area_unavailable', ['id' => $areaId]) }}</span>
+                    @forelse ($areaEditor['unavailable'] as $area)
+                        <label wire:key="unavailable-area-{{ $area['id'] }}" class="flex min-h-touch items-center gap-3 rounded-control border border-warning-border p-3">
+                            <input type="checkbox" wire:model="assignmentForm.areaIds" value="{{ $area['id'] }}" class="size-5 shrink-0" />
+                            <span>{{ $area['label'] }} · {{ __('staff.workspace.unavailable_area') }}</span>
                         </label>
                     @empty
                     @endforelse
@@ -144,8 +150,51 @@
                         @endforelse
                     </div>
                     <div>{{ $areaEditor['paginator']->links() }}</div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <section aria-label="{{ __('staff.workspace.current_areas') }}" class="min-w-0">
+                            <h3 class="text-sm font-semibold">{{ __('staff.workspace.current_areas') }}</h3>
+                            <ul class="mt-2 space-y-1 text-sm text-text-muted">
+                                @forelse ($areaEditor['current'] as $area)
+                                    <li wire:key="current-area-{{ $area['id'] }}" class="break-words">{{ $area['label'] }} @if (!$area['available']) · {{ __('staff.workspace.unavailable_area') }} @endif</li>
+                                @empty
+                                    <li>{{ __('staff.workspace.coverage_all') }}</li>
+                                @endforelse
+                            </ul>
+                        </section>
+                        <section aria-label="{{ __('staff.workspace.selected_areas') }}" class="min-w-0">
+                            <h3 class="text-sm font-semibold">{{ __('staff.workspace.selected_areas') }}</h3>
+                            <ul class="mt-2 space-y-1 text-sm text-text-muted">
+                                @forelse ($areaEditor['selected'] as $area)
+                                    <li wire:key="selected-area-{{ $area['id'] }}" class="break-words">{{ $area['label'] }}</li>
+                                @empty
+                                    <li>{{ __('staff.workspace.coverage_all') }}</li>
+                                @endforelse
+                            </ul>
+                        </section>
+                    </div>
                     @if ($previewFingerprint !== '')
-                    <p class="text-sm">{{ __('staff.workspace.added', ['count' => $areasAdded]) }} · {{ __('staff.workspace.removed', ['count' => $areasRemoved]) }}</p>
+                        <div class="grid gap-4 border-t border-border-subtle pt-4 sm:grid-cols-2">
+                            <section class="min-w-0">
+                                <h3 class="text-sm font-semibold">{{ __('staff.workspace.added_areas') }} ({{ $areasAdded }})</h3>
+                                <ul class="mt-2 space-y-1 text-sm">
+                                    @forelse ($areaEditor['added'] as $area)
+                                        <li wire:key="added-area-{{ $area['id'] }}" class="break-words">{{ $area['label'] }}</li>
+                                    @empty
+                                        <li class="text-text-muted">{{ __('staff.workspace.no_area_changes') }}</li>
+                                    @endforelse
+                                </ul>
+                            </section>
+                            <section class="min-w-0">
+                                <h3 class="text-sm font-semibold">{{ __('staff.workspace.removed_areas') }} ({{ $areasRemoved }})</h3>
+                                <ul class="mt-2 space-y-1 text-sm">
+                                    @forelse ($areaEditor['removed'] as $area)
+                                        <li wire:key="removed-area-{{ $area['id'] }}" class="break-words">{{ $area['label'] }}</li>
+                                    @empty
+                                        <li class="text-text-muted">{{ __('staff.workspace.no_area_changes') }}</li>
+                                    @endforelse
+                                </ul>
+                            </section>
+                        </div>
                     @endif
                     <div class="flex flex-wrap gap-2">
                         <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="previewAreaAssignments" x-bind:disabled="!online">{{ __('staff.workspace.preview_change') }}</x-ui.button>
@@ -166,10 +215,10 @@
                     <x-ui.button class="mt-3" wire:click="cancelInvitation({{ $confirmInvitationId }})" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.actions.cancel_invitation') }}</x-ui.button>
                 @endif
             @endif
-        </section>
+        </x-staff.editor>
     @endif
 
-    <section aria-label="{{ $activeSection === 'invitations' ? __('staff.invitations') : __('staff.list') }}" @class(['min-w-0', 'hidden lg:block' => $editor !== ''])>
+    <section aria-label="{{ $activeSection === 'invitations' ? __('staff.invitations') : __('staff.list') }}" @class(['min-w-0', 'lg:order-first' => $editor !== ''])>
         <div class="min-w-0">
             <flux:input wire:model.live.debounce.300ms="filters.search" name="filters.search" :label="__('staff.workspace.search')" type="search" maxlength="120" />
             <details data-staff-filters class="mt-3" wire:ignore.self>
@@ -233,6 +282,17 @@
             </section>
         @endif
         @if ($activeSection === 'invitations')
+            <section class="my-4" aria-label="{{ __('staff.workspace.invitation_summary') }}">
+                <h2 class="text-sm text-text-muted">{{ __('staff.workspace.invitation_summary') }}</h2>
+                <dl class="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                    @forelse ($invitationSummary as $summary)
+                        <div wire:key="invitation-summary-{{ $summary['status'] }}" class="flex gap-1">
+                            <dt>{{ $summary['label'] }}</dt><dd class="font-semibold">{{ $summary['count'] }}</dd>
+                        </div>
+                    @empty
+                    @endforelse
+                </dl>
+            </section>
             <div class="divide-y divide-border-subtle border-y border-border-subtle">
                 @forelse ($invitationRows as $invitation)
                     <article wire:key="invitation-{{ $invitation['id'] }}" class="flex min-w-0 flex-wrap items-start justify-between gap-3 py-4">
@@ -286,11 +346,12 @@
                         @endif
                     </article>
                 @empty
-                    <p class="py-6 text-text-muted">{{ __('staff.workspace.no_results') }}</p>
+                    <p class="py-6 text-text-muted">{{ __('staff.workspace.employees_empty') }}</p>
                 @endforelse
             </div>
             <div class="mt-4">{{ $membersPaginator->links() }}</div>
         @endif
     </section>
+    </div>
     <x-staff.unsaved-dialog />
 </section>

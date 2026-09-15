@@ -20,20 +20,20 @@
 
         <div class="shrink-0">
             <label for="guest-menu-language-{{ $branchId }}" class="sr-only">{{ __('menu.guest.language') }}</label>
-            <select
+            <flux:select
                 id="guest-menu-language-{{ $branchId }}"
                 wire:model.live="language"
                 wire:offline.attr="disabled"
                 wire:loading.attr="disabled"
                 wire:target="language,synchronizeGuestLocale"
-                class="min-h-touch rounded-control border border-border-strong bg-surface px-2 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+                class="min-h-touch font-semibold"
             >
                 @foreach ($languageOptions as $languageCode => $languageLabel)
                     <option wire:key="guest-menu-language-option-{{ $languageCode }}" value="{{ $languageCode }}">
                         {{ $languageLabel }}
                     </option>
                 @endforeach
-            </select>
+            </flux:select>
         </div>
     </div>
 

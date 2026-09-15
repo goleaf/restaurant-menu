@@ -31,6 +31,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -425,18 +426,17 @@ test('menu item image gallery rejects tampered branch records without storing fi
         'branchId' => $branch->id,
     ]);
 
-    $rejected = false;
+    $component
+        ->set('itemImageUploads.'.$foreignItem->id, [UploadedFile::fake()->image('foreign.jpg')->size(100)])
+        ->assertForbidden();
 
-    try {
-        $component
-            ->set('itemImageUploads.'.$foreignItem->id, [UploadedFile::fake()->image('foreign.jpg')->size(100)])
-            ->call('saveItemImages', $foreignItem->id);
-    } catch (Throwable) {
-        $rejected = true;
-    }
+    expect(fn () => Livewire::actingAs($manager)->test(MenuCatalog::class, [
+        'organizationId' => $organization->id,
+        'brandId' => $brand->id,
+        'branchId' => $branch->id,
+    ])->call('saveItemImages', $foreignItem->id))->toThrow(ModelNotFoundException::class);
 
-    expect($rejected)->toBeTrue()
-        ->and($foreignItem->refresh()->image)->toBeNull()
+    expect($foreignItem->refresh()->image)->toBeNull()
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });
 

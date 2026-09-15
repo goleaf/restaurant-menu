@@ -168,25 +168,25 @@ test('owner manages accumulated pending photos without losing image identity', f
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
 
-    $page->assertPresent('#item-images-'.$item->id)->wait(1);
-    productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
-    $page->wait(1);
-    productMenuAttachPng($page, '#item-images-'.$item->id, 'second.png');
-    $page->wait(1);
     $picker = 'section[aria-labelledby="item-'.$item->id.'-photos-heading"]';
+    $page->assertPresent('#item-images-'.$item->id);
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
+    productMenuAssertPendingFileCount($page, $picker, $item->id, 1);
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'second.png');
+    productMenuAssertPendingFileCount($page, $picker, $item->id, 2);
     $pendingFiles = productMenuPendingFiles($page, $picker, $item->id);
     expect($pendingFiles)->toHaveCount(2);
     expect($page->script("[...document.querySelectorAll('{$picker} figure figcaption span[x-text]')].map(span => span.textContent)"))->toBe(['first.png', 'second.png']);
     expect($page->script("(async () => { window.dispatchEvent(new Event('offline')); await new Promise(resolve => setTimeout(resolve, 0)); return [...document.querySelectorAll('{$picker} input[type=file], {$picker} figure:has(span[x-text]) button, {$picker} button[wire\\\\:click^=saveItemImages]')].every(button => button.disabled); })()"))->toBeTrue();
     expect(productMenuPendingFiles($page, $picker, $item->id))->toBe($pendingFiles);
     $page->script("(async () => { window.dispatchEvent(new Event('online')); await new Promise(resolve => setTimeout(resolve, 0)); const buttons=document.querySelectorAll('{$picker} figure button'); buttons[0].click(); buttons[1].click(); })()");
-    $page->wait(1);
+    productMenuAssertPendingFileCount($page, $picker, $item->id, 1);
     expect(productMenuPendingFiles($page, $picker, $item->id))->toBe([$pendingFiles[1]]);
     expect($page->script("[...document.querySelectorAll('{$picker} figure figcaption span[x-text]')].map(span => span.textContent)"))->toBe(['second.png']);
     productMenuAttachPng($page, '#item-images-'.$item->id, 'third.png');
-    $page->wait(1);
+    productMenuAssertPendingFileCount($page, $picker, $item->id, 2);
     productMenuClick($page, sprintf('button[wire\\:click="saveItemImages(%d)"]', $item->id));
-    $page->wait(1)->assertPresent('button[wire\\:click^="promoteItemImage"]')->assertPresent('button[wire\\:click^="reorderItemImages"]');
+    $page->assertCount($picker.' figure[wire\\:key^="menu-item-'.$item->id.'-image-"]', $initialImageCount + 2);
     expect($item->fresh()->galleryImages()->count() + ($item->image === null ? 0 : 1))->toBe($initialImageCount + 2);
     $galleryOrder = $item->galleryImages()->orderBy('sort_order')->pluck('id')->all();
     productMenuClick($page, 'button[wire\\:click^="reorderItemImages"]:not([disabled])');
@@ -399,10 +399,20 @@ test('browse only guest opens bounded gallery and escape restores focus', functi
         ->and($draftItem->draft_order_id)->toBe($draftOrder->id)
         ->and($guest->fresh()->table_session_id)->toBe($session->id)
         ->and($guest->refresh()->locale)->toBe('lt');
-    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
-        productMenuAssertNoOverflow($page, $width, $height);
-        $page->screenshot(false, "product-guest-{$width}x{$height}");
+    foreach (['en', 'lt', 'ru'] as $locale) {
+        $page->select('#guest-page-language', $locale)->wait(1)
+            ->assertSee(__('guest.cart.title', [], $locale));
+
+        foreach (['light', 'dark'] as $appearance) {
+            $page->script("window.Flux.appearance = '{$appearance}'");
+            $page->assertScript("document.documentElement.classList.contains('dark')", $appearance === 'dark');
+
+            foreach ([[320, 800], [360, 800], [390, 844], [430, 900], [768, 900], [1024, 900], [1440, 1000], [1920, 1080]] as [$width, $height]) {
+                productMenuAssertNoOverflow($page, $width, $height);
+            }
+        }
     }
+    $page->script("window.Flux.appearance = 'system'");
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     productMenuAssertNoFailedResources($page);
 });
@@ -609,6 +619,7 @@ function productMenuClick(PendingAwaitablePage $page, string $selector): void
 
 function productMenuAttachPng(PendingAwaitablePage $page, string $selector, string $name): void
 {
+    $page->assertEnabled($selector);
     $encodedSelector = json_encode($selector, JSON_THROW_ON_ERROR);
     $encodedName = json_encode($name, JSON_THROW_ON_ERROR);
     $encodedBytes = json_encode(base64_encode(UploadedFile::fake()->image($name, 800, 400)->getContent()), JSON_THROW_ON_ERROR);
@@ -686,6 +697,20 @@ function productMenuEnableMultipartFixtures(): void
     };
     app()->instance('browser.multipart-fixtures', $middleware);
     app(Kernel::class)->prependMiddleware('browser.multipart-fixtures');
+}
+
+function productMenuAssertPendingFileCount(PendingAwaitablePage $page, string $picker, int $itemId, int $count): void
+{
+    $encodedPicker = json_encode($picker, JSON_THROW_ON_ERROR);
+    $page->assertScript(<<<JAVASCRIPT
+        (() => {
+            const component = document.querySelector({$encodedPicker}).closest('[data-section=menu-catalog]');
+            const value = Livewire.find(component.getAttribute('wire:id')).\$get('itemImageUploads')[{$itemId}];
+            const files = typeof value === 'string' && value.startsWith('livewire-files:')
+                ? JSON.parse(value.slice('livewire-files:'.length)) : value;
+            return Array.isArray(files) ? files.length : 0;
+        })()
+    JAVASCRIPT, $count);
 }
 
 /** @return list<string> */

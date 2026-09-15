@@ -4,6 +4,12 @@
 
 # Compliance matrix
 
+## Flux/CSS modernization evidence — 2026-09-15
+
+The existing `blade-001`, `livewire-001`, `i18n-001`, `ui-accessibility-001` and `ui-responsive-001` contracts now include `FrontendStyleArchitectureTest`: explicit Tailwind 4 sources, no first-party preprocessors, bounded/pinned accessibility overrides, localized toast/password controls, translated modal autofocus and Flux operational composition. Print CSS has a dedicated entry and exact QR dimensions; `docs/tailwind.md` records the measured cleanup. The requirement traceability field example now points to an actual Flux onboarding view after removal of the unused generic input clone.
+
+`sec-dependency-001` retains audited, compatible stable installed dependencies. The requested newer Flux/Livewire releases are a separately recorded distribution-access blocker: their package archives require prohibited GitHub access. No claim of a completed upgrade or newly available Free feature is made. Current execution results and evidence limits are in `testing.md`; old numeric rows below retain their dated verification context.
+
 ## Branch control implementation — 2026-09-15
 
 The branch-control refinement is implemented and covered by focused regressions and the full browser inventory across the four rows marked below; final integrated gate evidence is recorded in [testing](testing.md) and [PROGRESS](PROGRESS.md). Earlier suite and browser totals describe their dated baseline, not this change. Current full backend/coverage/browser and final focused visual evidence are recorded in testing.md.

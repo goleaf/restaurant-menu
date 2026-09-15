@@ -125,7 +125,7 @@
 
                                 <div class="flex shrink-0 flex-wrap gap-2 lg:justify-end">
                                     <flux:button icon="pencil" type="button" wire:click="startEditingVariant({{ $variant['id'] }})">{{ __('guest.cart.edit_item') }}</flux:button>
-                                    <flux:button icon="trash" variant="danger" type="button" wire:click="deleteVariant({{ $variant['id'] }})" wire:confirm="{{ __('menu.variants.admin.delete_confirm') }}">{{ __('ui.actions.delete') }}</flux:button>
+                                    <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="deleteVariant({{ $variant['id'] }})" wire:confirm="{{ __('menu.variants.admin.delete_confirm') }}" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button>
                                 </div>
                             </div>
                         @endif

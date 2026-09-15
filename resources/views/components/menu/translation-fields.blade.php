@@ -20,7 +20,7 @@
             <h3 id="{{ $idPrefix }}-translations-heading" class="text-sm font-semibold text-text-primary">{{ __('menu.translations.heading') }}</h3>
             <p class="mt-1 text-xs text-text-muted">{{ __('menu.translations.required_help') }}</p>
         </div>
-        <span class="text-xs font-medium text-warning-foreground" wire:dirty wire:target="{{ $model }}">{{ __('menu.editor.unsaved') }}</span>
+        <span class="text-xs font-medium text-warning" wire:dirty wire:target="{{ $model }}">{{ __('menu.editor.unsaved') }}</span>
     </div>
 
     <div class="flex min-w-0 flex-wrap gap-1 rounded-control bg-surface-muted p-1" role="tablist" aria-label="{{ __('menu.translations.heading') }}">
@@ -36,8 +36,8 @@
                 @if ($languageCode === 'en')
                     <span class="text-xs">{{ __('menu.editor.primary') }}</span>
                 @endif
-                <span x-show="filled({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) && !hasError({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) && !hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" class="text-success-foreground" aria-hidden="true">✓</span>
-                <span x-show="!filled({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) || hasError({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) || hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" class="text-warning-foreground" aria-hidden="true">!</span>
+                <span x-show="filled({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) && !hasError({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) && !hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" class="text-success" aria-hidden="true">✓</span>
+                <span x-show="!filled({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) || hasError({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) || hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" class="text-warning" aria-hidden="true">!</span>
                 <span x-show="hasError({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" class="sr-only">{{ __('menu.editor.translation_error') }}</span>
                 <span class="sr-only" x-text="filled({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) ? {{ json_encode(__('menu.editor.translation_complete'), JSON_THROW_ON_ERROR) }} : {{ json_encode(__('menu.editor.translation_missing'), JSON_THROW_ON_ERROR) }}"></span>
             </button>
@@ -64,11 +64,11 @@
         >
             @if ($languageCode !== 'en')
                 <div class="grid min-w-0 gap-2">
-                    <x-ui.button type="button" variant="secondary" size="sm" class="justify-self-start" data-copy-original="{{ $languageCode }}" @click="copyOriginal({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" x-bind:disabled="!canCopyOriginal({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})">
+                    <flux:button type="button" variant="outline" size="sm" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 justify-self-start" data-copy-original="{{ $languageCode }}" @click="copyOriginal({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})" x-bind:disabled="!canCopyOriginal({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }})">
                         {{ __('menu.editor.copy_original_empty') }}
-                    </x-ui.button>
+                    </flux:button>
                     <p class="text-xs leading-relaxed text-text-muted">{{ __('menu.editor.copy_original_help') }}</p>
-                    <p role="status" data-copy-notice="{{ $languageCode }}" class="text-xs font-medium leading-relaxed text-warning-foreground" x-text="hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) ? {{ json_encode(__('menu.editor.copied_original_notice'), JSON_THROW_ON_ERROR) }} : ''"></p>
+                    <p role="status" data-copy-notice="{{ $languageCode }}" class="text-xs font-medium leading-relaxed text-warning" x-text="hasCopiedText({{ json_encode($languageCode, JSON_THROW_ON_ERROR) }}) ? {{ json_encode(__('menu.editor.copied_original_notice'), JSON_THROW_ON_ERROR) }} : ''"></p>
                 </div>
             @endif
             @if ($nameOnly)

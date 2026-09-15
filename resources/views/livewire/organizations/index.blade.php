@@ -96,7 +96,7 @@
                                         </flux:button>
 
                                         @if ($organization['logo_url'])
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="removeLogo({{ $organization['id'] }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $organization['id'] }})">
+                                            <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="removeLogo({{ $organization['id'] }})" wire:loading.attr="disabled" wire:target="removeLogo({{ $organization['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                                 {{ __('uploads.actions.remove') }}
                                             </flux:button>
                                         @endif
@@ -133,7 +133,7 @@
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $organization['id'] }})">
+                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $organization['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                     {{ __('structure.actions.archive') }}
                                 </flux:button>
                             </div>
@@ -157,7 +157,7 @@
                                     <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
-                                        <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                             {{ __('structure.actions.archive') }}
                                         </flux:button>
 

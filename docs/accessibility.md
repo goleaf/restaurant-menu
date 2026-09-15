@@ -4,6 +4,12 @@
 
 # Accessibility
 
+## Second Flux cleanup pass — 2026-09-15
+
+Product state panels retain their status/alert roles, polite announcements, busy state and actions while using Flux Callout/Skeleton. A small public callout-variable utility fixes the installed green/yellow heading contrast: the browser regression reproduces the former failure and requires at least 4.5:1. Flux fields own label/error association for migrated guest entry, notes and confirmations. Guest entry keeps a 56-pixel field; normal controls retain 44-pixel touch targets.
+
+Guest draft and dangerous-confirmation native dialogs have heading-based accessible names, safe initial focus, Escape dismissal and trigger restoration. Browser tests inspect the native dialog rather than accepting an ARIA attribute on Flux's outer custom element. Dialog max-width and wrapped actions remain within a 390-pixel viewport at 200% text size. EN/LT/RU, light/dark/system, forced colors, reduced motion, and seven viewport widths are exercised as recorded in `testing.md`. These are browser and markup checks; no physical assistive-technology certification is claimed.
+
 ## Flux modernization checks — 2026-09-15
 
 Disposable Chrome on Herd verified translated password names and pressed state, Space/Enter visibility control, 44×44 notification dismissal and keyboard Enter dismissal. Menu dialogs focus their localized close control, use native modal background isolation and restore the trigger on Escape. Keyboard traversal reaches dialog controls without focusing background controls; native browser chrome may receive focus at the tab boundary. Existing dangerous confirmations retain safe-cancel focus. Guest gallery focus trap/restoration is covered by isolated WebKit tests.

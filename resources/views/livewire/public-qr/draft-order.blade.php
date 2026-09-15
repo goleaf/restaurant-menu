@@ -16,19 +16,20 @@
             </x-ui.status-badge>
 
             @if ($showControls && $canToggleReadyStatus)
-                <x-ui.button
+                <flux:button
                     type="button"
                     wire:click="toggleReadyStatus"
                     wire:loading.attr="disabled"
                     wire:target="toggleReadyStatus"
-                    :variant="$currentGuestReady ? 'secondary' : 'primary'"
+                    :variant="$currentGuestReady ? 'outline' : 'primary'"
                     size="sm"
+                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
                 >
                     <span wire:loading.remove wire:target="toggleReadyStatus">
                         {{ $currentGuestReady ? __('guest.table.cancel_ready') : __('guest.table.mark_ready') }}
                     </span>
                     <span wire:loading wire:target="toggleReadyStatus">{{ __('guest.table.saving') }}</span>
-                </x-ui.button>
+                </flux:button>
             @endif
         </div>
     </div>
@@ -109,9 +110,11 @@
     @enderror
 
     @if (! $branchCanAcceptOrders)
-        <x-ui.alert tone="warning" class="mt-4" :heading="__('guest.table.closed_title')">
-            <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
-        </x-ui.alert>
+        <flux:callout variant="warning" class="callout-contrast content-safe mt-4" :heading="__('guest.table.closed_title')" icon="exclamation-triangle" role="status">
+            <flux:callout.text>
+                <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
+            </flux:callout.text>
+        </flux:callout>
     @endif
 
     <div class="mt-4 space-y-4">
@@ -214,25 +217,27 @@
 
                                 @if ($item['can_edit'])
                                     <div class="mt-3 flex flex-wrap gap-2">
-                                        <x-ui.button
+                                        <flux:button
                                             type="button"
                                             wire:click="editItem({{ $item['id'] }})"
-                                            variant="secondary"
+                                            variant="outline"
                                             size="sm"
+                                            class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
                                         >
                                             {{ __('guest.cart.edit_item') }}
-                                        </x-ui.button>
+                                        </flux:button>
 
-                                        <x-ui.button
+                                        <flux:button
                                             type="button"
                                             wire:click="deleteItem({{ $item['id'] }})"
                                             wire:loading.attr="disabled"
                                             wire:target="deleteItem({{ $item['id'] }})"
-                                            variant="danger"
+                                            variant="primary" color="red"
                                             size="sm"
+                                            class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
                                         >
                                             {{ __('guest.cart.remove_item') }}
-                                        </x-ui.button>
+                                        </flux:button>
                                     </div>
                                 @endif
                             </div>
@@ -283,16 +288,15 @@
                         <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalLabel }}</span>
                     </div>
                 @elseif ($canRequestBill)
-                    <button
+                    <flux:button
                         type="button"
                         wire:click="requestBill"
                         wire:loading.attr="disabled"
                         wire:target="requestBill"
-                        class="flex min-h-12 w-full items-center justify-center rounded-lg bg-sky-700 px-4 text-base font-semibold text-white transition hover:bg-sky-800 focus:outline-hidden focus:ring-2 focus:ring-sky-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
-                    >
+                    variant="outline" class="h-auto! min-h-touch whitespace-normal! py-2 w-full">
                         <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalLabel }}</span>
                         <span wire:loading wire:target="requestBill">{{ __('guest.table.sending') }}</span>
-                    </button>
+                    </flux:button>
                 @endif
             </div>
 
@@ -308,37 +312,34 @@
                             </p>
 
                             <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                                <button
+                                <flux:button
                                     type="button"
                                     wire:click="sendDraftToWaiter(true)"
                                     wire:loading.attr="disabled"
                                     wire:target="sendDraftToWaiter"
-                                    class="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-700 px-4 text-sm font-semibold text-white transition hover:bg-amber-800 focus:outline-hidden focus:ring-2 focus:ring-amber-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
-                                >
+                                variant="primary" color="amber" class="h-auto! min-h-touch whitespace-normal! py-2">
                                     <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_anyway') }}</span>
                                     <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
-                                </button>
+                                </flux:button>
 
-                                <button
+                                <flux:button
                                     type="button"
                                     wire:click="cancelSendDraftConfirmation"
-                                    class="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-semibold text-amber-800 transition hover:bg-amber-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/30 dark:border-amber-900/70 dark:bg-zinc-900 dark:text-amber-200 dark:hover:bg-amber-950/30"
-                                >
+                                variant="outline" class="h-auto! min-h-touch whitespace-normal! py-2">
                                     {{ __('guest.table.wait_for_guests') }}
-                                </button>
+                                </flux:button>
                             </div>
                         </div>
                     @else
-                        <button
+                        <flux:button
                             type="button"
                             wire:click="sendDraftToWaiter"
                             wire:loading.attr="disabled"
                             wire:target="sendDraftToWaiter"
-                            class="flex min-h-12 w-full items-center justify-center rounded-lg bg-emerald-700 px-4 text-base font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 dark:focus:ring-offset-zinc-950"
-                        >
+                        variant="primary" class="h-auto! min-h-touch whitespace-normal! py-2 w-full">
                             <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_to_waiter') }}</span>
                             <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
-                        </button>
+                        </flux:button>
                     @endif
                 </div>
             @endif
@@ -346,150 +347,131 @@
     </div>
     </div>
 
-    @if ($editingItemId !== null)
-        <div class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/50 px-3 py-0 sm:items-center sm:py-6">
-            <div class="max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-dialog bg-white p-4 shadow-elevated dark:bg-zinc-950 sm:rounded-dialog">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.my_items') }}</p>
-                        <h3 class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
-                        <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotalLabel }}</p>
-                    </div>
-
-                    <button
-                        type="button"
-                        wire:click="closeEditItem"
-                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 dark:border-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-900"
-                        aria-label="{{ __('guest.table.close') }}"
-                    >
-                        <flux:icon name="x-mark" variant="micro" class="size-4" />
-                    </button>
-                </div>
-
-                <div class="mt-4 space-y-4">
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.quantity') }}</span>
-                        <input
-                            type="number"
-                            min="1"
-                            max="99"
-                            wire:model.live="editingQuantity"
-                            class="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                        >
-                        @error('editingQuantity')
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
-                        @enderror
-                    </label>
-
-                    @if ($editingVariants !== [])
-                        <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ __('menu.variants.guest.choose') }}</legend>
-                            <div class="mt-2 grid gap-2 sm:grid-cols-2">
-                                @foreach ($editingVariants as $variant)
-                                    <label wire:key="draft-order-edit-variant-{{ $variant['id'] }}" class="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-emerald-500/30 dark:border-zinc-800">
-                                        <span class="flex items-center gap-2">
-                                            <input type="radio" wire:model.live="editingItemVariantId" value="{{ $variant['id'] }}" class="size-4 accent-emerald-600">
-                                            <span class="font-medium">{{ $variant['name'] }}</span>
-                                        </span>
-                                        <span class="font-semibold">{{ $variant['formatted_price'] }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                            @error('editingItemVariantId') <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
-                        </fieldset>
-                    @endif
-
-                    @forelse ($editingModifierGroups as $modifierGroup)
-                        <fieldset wire:key="draft-order-edit-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-                            <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">
-                                {{ $modifierGroup['name'] }}
-                            </legend>
-
-                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                @if ($modifierGroup['is_required'])
-                                    <span>{{ __('guest.cart.required') }}</span>
-                                @else
-                                    <span>{{ __('guest.cart.optional') }}</span>
-                                @endif
-
-                                <span>{{ __('guest.cart.can_choose') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</span>
-                            </div>
-
-                            <div class="mt-3 grid gap-2">
-                                @forelse ($modifierGroup['options'] as $modifierOption)
-                                    <button
-                                        type="button"
-                                        wire:key="draft-order-edit-option-{{ $modifierOption['id'] }}"
-                                        wire:click="toggleEditingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
-                                        aria-pressed="{{ in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
-                                        @class([
-                                            'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                        ])
-                                    >
-                                        <span class="font-medium">{{ $modifierOption['name'] }}</span>
-                                        <span class="shrink-0 font-semibold">
-                                            {{ $modifierOption['formatted_price_delta'] }}
-                                        </span>
-                                    </button>
-                                @empty
-                                    <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                                        {{ __('guest.cart.no_options') }}
-                                    </p>
-                                @endforelse
-                            </div>
-
-                            @error('selectedModifierOptions.'.$modifierGroup['id'])
-                                <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
-                            @enderror
-                        </fieldset>
-                    @empty
-                        <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
-                            {{ __('guest.cart.no_item_options') }}
-                        </p>
-                    @endforelse
-
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.comment') }}</span>
-                        <textarea
-                            wire:model="editingComment"
-                            rows="3"
-                            maxlength="500"
-                            class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                        ></textarea>
-                        @error('editingComment')
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
-                        @enderror
-                    </label>
-                </div>
-
-                <x-ui.mobile-bottom-actions class="mt-5" :summary="$editingItemTotalLabel">
-                    <x-ui.button
-                        type="button"
-                        wire:click="updateItem"
-                        wire:loading.attr="disabled"
-                        wire:target="updateItem"
-                        variant="primary"
-                        size="lg"
-                        full-width
-                    >
-                        <span wire:loading.remove wire:target="updateItem">{{ __('guest.cart.save_item') }} · {{ $editingItemTotalLabel }}</span>
-                        <span wire:loading wire:target="updateItem">{{ __('guest.table.saving') }}</span>
-                    </x-ui.button>
-
-                    <x-ui.button
-                        type="button"
-                        wire:click="deleteItem({{ $editingItemId }})"
-                        wire:loading.attr="disabled"
-                        wire:target="deleteItem({{ $editingItemId }})"
-                        variant="danger"
-                        full-width
-                    >
-                        {{ __('guest.cart.remove_item') }}
-                    </x-ui.button>
-                </x-ui.mobile-bottom-actions>
+    <flux:modal name="guest-draft-item" @close="closeEditItem" :closable="false" class="w-full min-w-0 max-w-lg bg-surface! p-4 text-text-primary">
+        <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.my_items') }}</p>
+                <h3 id="guest-draft-item-title" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)" class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
+                <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotalLabel }}</p>
             </div>
+
+            <flux:modal.close>
+                <flux:button variant="ghost" icon="x-mark" :aria-label="__('guest.table.close')" autofocus class="touch-target" />
+            </flux:modal.close>
         </div>
-    @endif
+
+        @if ($editingItemId !== null)
+            <div class="mt-4 space-y-4">
+                <label class="grid gap-1 text-sm">
+                    <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('guest.cart.quantity') }}</span>
+                    <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        wire:model.live="editingQuantity"
+                        class="h-11 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                    >
+                    @error('editingQuantity')
+                        <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                @if ($editingVariants !== [])
+                    <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                        <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">{{ __('menu.variants.guest.choose') }}</legend>
+                        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach ($editingVariants as $variant)
+                                <label wire:key="draft-order-edit-variant-{{ $variant['id'] }}" class="flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200 px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-emerald-500/30 dark:border-zinc-800">
+                                    <span class="flex items-center gap-2">
+                                        <input type="radio" wire:model.live="editingItemVariantId" value="{{ $variant['id'] }}" class="size-4 accent-emerald-600">
+                                        <span class="font-medium">{{ $variant['name'] }}</span>
+                                    </span>
+                                    <span class="font-semibold">{{ $variant['formatted_price'] }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error('editingItemVariantId') <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p> @enderror
+                    </fieldset>
+                @endif
+
+                @forelse ($editingModifierGroups as $modifierGroup)
+                    <fieldset wire:key="draft-order-edit-group-{{ $modifierGroup['id'] }}" class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+                        <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">
+                            {{ $modifierGroup['name'] }}
+                        </legend>
+
+                        <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            @if ($modifierGroup['is_required'])
+                                <span>{{ __('guest.cart.required') }}</span>
+                            @else
+                                <span>{{ __('guest.cart.optional') }}</span>
+                            @endif
+
+                            <span>{{ __('guest.cart.can_choose') }} {{ $modifierGroup['min_select'] }}–{{ $modifierGroup['max_select'] }}</span>
+                        </div>
+
+                        <div class="mt-3 grid gap-2">
+                            @forelse ($modifierGroup['options'] as $modifierOption)
+                                <flux:button
+                                    type="button"
+                                    wire:key="draft-order-edit-option-{{ $modifierOption['id'] }}"
+                                    wire:click="toggleEditingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
+                                    aria-pressed="{{ in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
+                                :variant="in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2 w-full [&>span]:flex [&>span]:w-full [&>span]:justify-between [&>span]:gap-3">
+                                    <span class="font-medium">{{ $modifierOption['name'] }}</span>
+                                    <span class="shrink-0 font-semibold">
+                                        {{ $modifierOption['formatted_price_delta'] }}
+                                    </span>
+                                </flux:button>
+                            @empty
+                                <p class="rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                                    {{ __('guest.cart.no_options') }}
+                                </p>
+                            @endforelse
+                        </div>
+
+                        @error('selectedModifierOptions.'.$modifierGroup['id'])
+                            <p class="mt-2 text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                        @enderror
+                    </fieldset>
+                @empty
+                    <p class="rounded-lg bg-zinc-50 px-3 py-3 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                        {{ __('guest.cart.no_item_options') }}
+                    </p>
+                @endforelse
+
+                <flux:textarea label="{{ __('guest.cart.comment') }}"
+                        wire:model="editingComment"
+                        rows="3"
+                        maxlength="500"
+                        class="min-h-touch"
+                    ></flux:textarea>
+            </div>
+
+            <x-ui.mobile-bottom-actions class="mt-5" :summary="$editingItemTotalLabel">
+                <flux:button
+                    type="button"
+                    wire:click="updateItem"
+                    wire:loading.attr="disabled"
+                    wire:target="updateItem"
+                    variant="primary"
+                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
+                >
+                    <span wire:loading.remove wire:target="updateItem">{{ __('guest.cart.save_item') }} · {{ $editingItemTotalLabel }}</span>
+                    <span wire:loading wire:target="updateItem">{{ __('guest.table.saving') }}</span>
+                </flux:button>
+
+                <flux:button
+                    type="button"
+                    wire:click="deleteItem({{ $editingItemId }})"
+                    wire:loading.attr="disabled"
+                    wire:target="deleteItem({{ $editingItemId }})"
+                    variant="primary" color="red"
+                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
+                >
+                    {{ __('guest.cart.remove_item') }}
+                </flux:button>
+            </x-ui.mobile-bottom-actions>
+        @endif
+    </flux:modal>
 </section>

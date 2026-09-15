@@ -161,7 +161,7 @@
                                 <flux:button icon="pencil" type="button" wire:click="startEditingModifierGroup({{ $modifierGroup['id'] }})">
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierGroup({{ $modifierGroup['id'] }})">
+                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteModifierGroup({{ $modifierGroup['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>
@@ -225,7 +225,7 @@
                                             <flux:button icon="pencil" type="button" wire:click="startEditingModifierOption({{ $modifierOption['id'] }})">
                                                 {{ __('guest.cart.edit_item') }}
                                             </flux:button>
-                                            <flux:button icon="trash" type="button" variant="danger" wire:click="deleteModifierOption({{ $modifierOption['id'] }})">
+                                            <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteModifierOption({{ $modifierOption['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                                 {{ __('ui.actions.delete') }}
                                             </flux:button>
                                         </div>

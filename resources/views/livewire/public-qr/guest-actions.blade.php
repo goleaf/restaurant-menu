@@ -1,5 +1,5 @@
 <div class="contents">
-    <x-ui.card data-component="guest-request-waiter" tone="warning">
+    <flux:card data-component="guest-request-waiter"  class="rounded-card border-warning-border bg-warning-surface p-4">
         <div class="flex flex-col gap-3">
             <div class="flex items-start gap-3">
                 <div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/80 text-amber-800 shadow-sm ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-100 dark:ring-amber-900/70">
@@ -13,25 +13,27 @@
             </div>
 
             @if ($waiterCallMessage)
-                <x-ui.alert tone="warning">
-                    {{ $waiterCallMessage }}
-                </x-ui.alert>
+                <flux:callout variant="warning" icon="exclamation-triangle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>
+                        {{ $waiterCallMessage }}
+                    </flux:callout.text>
+                </flux:callout>
             @endif
 
-            <x-ui.button
+            <flux:button
                 type="button"
                 wire:click="requestWaiter"
                 wire:loading.attr="disabled"
                 wire:target="requestWaiter"
-                variant="warning"
-                full-width
+                variant="primary" color="amber"
                 icon="bell"
+                class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
             >
                 <span wire:loading.remove wire:target="requestWaiter">{{ __('guest.table.request_waiter') }}</span>
                 <span wire:loading wire:target="requestWaiter">{{ __('guest.table.sending_waiter_call') }}</span>
-            </x-ui.button>
+            </flux:button>
         </div>
-    </x-ui.card>
+    </flux:card>
 
     <livewire:public-qr.table-guests
         :table-session-id="$tableSessionId"
@@ -50,31 +52,32 @@
         wire:key="guest-notifications-{{ $tableSessionId }}-{{ $currentGuestId }}"
     />
 
-    <x-ui.card data-component="guest-invite-share">
+    <flux:card data-component="guest-invite-share" class="rounded-card border-border-subtle bg-surface p-4">
         <div class="space-y-1">
             <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.table.guests') }}</p>
             <h2 class="text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ __('guest.table.invite_guest') }}</h2>
         </div>
 
         @if ($guestInviteMessage)
-            <x-ui.alert tone="info" class="mt-3">
-                {{ $guestInviteMessage }}
-            </x-ui.alert>
+            <flux:callout color="blue" class="callout-contrast content-safe mt-3" icon="information-circle" role="status">
+                <flux:callout.text>
+                    {{ $guestInviteMessage }}
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         @if ($guestInviteUrl === '')
-            <x-ui.button
+            <flux:button
                 type="button"
                 wire:click="createGuestInviteLink"
                 wire:loading.attr="disabled"
                 wire:target="createGuestInviteLink"
-                variant="dark"
-                full-width
-                class="mt-4"
+                variant="primary" color="zinc"
+                class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full mt-4"
             >
                 <span wire:loading.remove wire:target="createGuestInviteLink">{{ __('guest.table.invite_guest') }}</span>
                 <span wire:loading wire:target="createGuestInviteLink">{{ __('guest.table.preparing_link') }}</span>
-            </x-ui.button>
+            </flux:button>
         @else
             <div
                 class="mt-4 space-y-2"
@@ -107,26 +110,28 @@
             >
                 <input x-ref="inviteLink" type="text" readonly value="{{ $guestInviteUrl }}" class="sr-only" tabindex="-1" aria-hidden="true">
 
-                <x-ui.button x-show="supportsNativeShare" type="button" x-on:click="shareInvite" variant="dark" full-width>
+                <flux:button x-show="supportsNativeShare" type="button" x-on:click="shareInvite" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.share_link') }}
-                </x-ui.button>
+                </flux:button>
 
-                <x-ui.button x-show="! supportsNativeShare" type="button" x-on:click="copyInvite" variant="dark" full-width>
+                <flux:button x-show="! supportsNativeShare" type="button" x-on:click="copyInvite" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.copy_link') }}
-                </x-ui.button>
+                </flux:button>
 
-                <x-ui.button x-show="supportsNativeShare" type="button" x-on:click="copyInvite" variant="secondary" size="sm" full-width>
+                <flux:button x-show="supportsNativeShare" type="button" x-on:click="copyInvite" variant="outline" size="sm" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.copy_link') }}
-                </x-ui.button>
+                </flux:button>
 
-                <x-ui.alert x-cloak x-show="copied" tone="success">
-                    {{ __('guest.table.link_copied') }}
-                </x-ui.alert>
+                <flux:callout x-cloak x-show="copied" variant="success" icon="check-circle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>
+                        {{ __('guest.table.link_copied') }}
+                    </flux:callout.text>
+                </flux:callout>
             </div>
         @endif
-    </x-ui.card>
+    </flux:card>
 
-    <x-ui.card data-component="guest-leave-table" tone="danger">
+    <flux:card data-component="guest-leave-table"  class="rounded-card border-danger-border bg-danger-surface p-4">
         <div class="space-y-3">
             <div>
                 <p class="text-xs font-medium uppercase text-red-700 dark:text-red-300">{{ __('guest.table.session_controls') }}</p>
@@ -135,9 +140,11 @@
             </div>
 
             @if ($leaveTableMessage)
-                <x-ui.alert tone="danger">
-                    {{ $leaveTableMessage }}
-                </x-ui.alert>
+                <flux:callout variant="danger" icon="x-circle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>
+                        {{ $leaveTableMessage }}
+                    </flux:callout.text>
+                </flux:callout>
             @endif
 
             <x-dangerous-action-confirmation
@@ -149,11 +156,11 @@
                 loading-label="guest.table.leaving"
             >
                 <x-slot:trigger>
-                    <x-ui.button type="button" variant="danger" full-width icon="arrow-right-start-on-rectangle">
+                    <flux:button type="button" variant="primary" color="red" icon="arrow-right-start-on-rectangle" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                         {{ __('guest.table.leave_action') }}
-                    </x-ui.button>
+                    </flux:button>
                 </x-slot:trigger>
             </x-dangerous-action-confirmation>
         </div>
-    </x-ui.card>
+    </flux:card>
 </div>

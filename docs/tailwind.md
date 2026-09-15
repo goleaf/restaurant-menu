@@ -24,16 +24,18 @@ The theme defines brand scale, canvas/surface/raised/selected/border/text roles,
 | Text shadows, masks, zoom, tab-size | not applicable to product workflows | avoids decorative/maintenance cost | design review |
 | View transitions | not added: normal `wire:navigate` orientation and focus behavior is sufficient | avoids decorative motion | browser navigation review |
 
-## CSS architecture and measured cleanup — 2026-09-15
+## Current CSS ownership
 
 | Category | Retained ownership |
 | --- | --- |
-| Theme/design tokens | `app.css`: semantic `@theme`, dark token overrides, neutral aliases; `fonts.css`: local subset faces |
-| Reusable utility | `workspace-nav-item`, `touch-target`, `content-safe`, `skip-link` |
-| Component integration | Supported Flux accent configuration; loading cursor and `x-cloak` |
+| Theme/design tokens | `app.css`: semantic `@theme`, dark token overrides; `fonts.css`: local subset faces |
+| Reusable utility | `workspace-nav-item`, `touch-target`, `content-safe`, `skip-link`, `callout-contrast` |
+| Component integration | Supported Flux accent/callout variables and `x-cloak` |
 | Domain print | `qr-print.css`, a separate Vite entry included only by the print layout |
-| Accessibility compatibility | Focus, reduced motion, forced colors, light badge/danger contrast and coarse-pointer minimum targets |
+| Accessibility compatibility | Focus, reduced motion, forced colors, light orange badge contrast and coarse-pointer minimum targets |
 | Removed redundancy | Old universal border fallback; duplicated body/theme rules; menu layout aliases; global Flux surface/field/label selectors; unused published templates and control clones |
+
+## First pass measurements — 2026-09-15
 
 First-party CSS changes from **2 files / 649 lines / 18,405 bytes** to **3 files / 468 lines / 13,731 bytes**. `app.css` shrinks from 620 to 244 lines. `@apply` occurrences fall from 20 to 10 (eight remaining are physical QR composition); Flux data-selector occurrences fall from 26 to 8, all remaining ones serve accessibility. No preprocessor or legacy Tailwind/PostCSS configuration is introduced. Explicit sources retain all installed Free stubs and Laravel pagination; source scanning is disabled by default with `source(none)` and first-party JavaScript is explicitly included.
 
@@ -59,3 +61,26 @@ Scrollbar styling, decorative masks/shadows and additional variants did not remo
 - Public, waiter, service-point and menu mobile Lighthouse samples scored 100 in every reported category; final console inspection found no errors or issues.
 
 Component principles and token roles are in [`design-system.md`](design-system.md). Physical-device and non-Chromium evidence limits are recorded in [`known-limitations.md`](known-limitations.md).
+
+## Second pass — native CSS and Flux ownership
+
+Removed the unused control-active, brand-400/500/600 and toast/overlay z-index tokens, the redundant generic data-loading rule, the global red-button patch and eleven Zinc-to-Neutral aliases. Those aliases were not identical to Tailwind Zinc; no durable palette-pinning contract required them. Flux now uses Tailwind's standard Zinc while the application retains its semantic warm surfaces/text/status tokens. `callout-contrast` is the small accessibility integration for the installed callout variables. No source path or local Noto subset/weight range was removed.
+
+QR paper/ink and repeated preset border/accent values share domain CSS variables; physical dimensions remain unchanged. Three focused native CSS files remain sufficient. Stylesheets stay directly in the document head; Laravel's supported preload callback omits redundant CSS preloads that generated warnings after `wire:navigate`, while script module preloads remain enabled.
+
+
+| Second-pass measure | Before | After |
+| --- | ---: | ---: |
+| PHP UI components | 12 | 7 |
+| Blade UI components | 19 | 14 |
+| Published Flux templates | 2 | 2 |
+| Native CSS files / total lines | 3 / 468 | 3 / 442 |
+| `app.css` lines | 244 | 216 |
+| Main CSS bytes / gzip bytes | 298,374 / 39,288 | 295,175 / 39,026 |
+| Font CSS bytes / gzip bytes | 964 / 398 | 964 / 398 |
+| Print CSS bytes / gzip bytes | 6,713 / 1,689 | 6,895 / 1,708 |
+| All CSS bytes / gzip bytes | 306,051 / 41,375 | 303,034 / 41,132 |
+| Application JS bytes / gzip bytes | 22,760 / 6,212 | 22,760 / 6,212 |
+| Vite production build | 629 ms | 728 ms |
+
+These measurements compare the second pass against its own baseline, with the same gzip settings as above. Main CSS decreases by 3,199 bytes; all CSS decreases by 3,017 bytes (243 bytes gzip). Print CSS grows slightly because explicit shared custom properties replace literals; this keeps physical output maintainable. `@apply` remains at 10 occurrences; vendor data-selector occurrences decrease from 8 to 6, restricted to documented contrast and coarse-pointer target compatibility. Build time is environment-sensitive, not a performance guarantee.

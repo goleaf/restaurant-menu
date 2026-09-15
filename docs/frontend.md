@@ -8,9 +8,25 @@
 
 Installed and locked versions remain Flux **2.17.0** and Livewire **4.4.1**. Packagist metadata and local outdated checks identify compatible stable **2.20.0 / 4.4.5**. Their available distribution archives point to GitHub API URLs, prohibited by this repository's push-only rule; the local Composer cache contains only the installed versions. No lock file, unrelated dependency or Pro package was changed. This is an explicit upgrade blocker, not a completed version upgrade.
 
-The installed Free templates were inspected before adoption. Button groups, native selects, primary/danger/outline/ghost buttons and normal toasts are available. Toggle, Flag, rich select/listbox and chart components are absent; newer toast inversion/actions and expanded colored variants cannot be assumed on 2.17. No speculative premium markup was added. Country/currency/timezone inputs retain their native, keyboard-accessible options and visible text; binary form preferences retain conventional checkbox/switch semantics.
+The exact installed Free package includes Button (primary, outline, filled, ghost, subtle and primary color), Toggle, Callout, Card, Field/Input/Textarea, Skeleton, Progress and Table. The first-pass claim that Toggle was absent was incorrect. Flag, searchable/rich select/listbox and charts are absent; the only select variant is native. Country/timezone datalists keep text and keyboard input, currency keeps its short native select. No premium or unsupported API was added. Toasts keep one persisted group per active layout; no artificial Undo, new event action or unsupported inverted option is introduced.
 
-Waiter zone filters, department status actions, onboarding step navigation and the guest-menu language selector now use supported Flux controls. `x-ui.button` remains a small operational composition: Flux owns links, icons, loading and disabled semantics; the wrapper owns translated-slot composition, semantic variants, wrapping and operational sizes. Seven unused generic control views and four backing classes were removed. Shared page headers, metrics, state panels and workspace layouts retain their product purpose. Server authorization, validation, queries and workflow Actions are unchanged by this frontend pass.
+The second pass removes the generic button, alert and form-field layers and the unused table-row/validation-error components: five UI PHP classes and five UI Blade views. All their first-party callers now use Flux directly. The remaining 7 PHP / 14 Blade UI components carry product semantics. Card remains an anonymous heading/description/actions composition backed by Flux Card; EmptyState uses Card/Heading/Text, StatePanel uses Callout/Skeleton while retaining its state/announcement API. StatusBadge retains domain status normalization, semantic contrast and optional dots; money, plain text and restaurant icon mappings remain product presentation. ImageUploadInput retains the domain MIME/size/help contract and the native file picker (the installed Flux file control hardcodes English internal labels). PageHeader, MetricStrip, PriorityRow, WorkspaceSplit and MobileBottomActions remain repeated product compositions.
+
+### UI component inventory after the second pass
+
+| Component(s) | Classification / decision |
+| --- | --- |
+| `page-header`, `metric-strip`, `priority-row`, `workspace-split`, `mobile-bottom-actions` | A: keep repeated product layout and operational semantics |
+| `state-panel`, `empty-state` | A: keep product state APIs; compose Flux Callout/Skeleton or Card/Heading/Text |
+| `status-badge`, `money`, `plain-text`, `area-icon`, `service-point-icon` | A: keep domain status/money, tested plain-text boundary and restaurant icon mappings |
+| `card` | B: keep useful heading/description/actions composition; anonymous Flux Card, no PHP tone/padding map |
+| `image-upload-input` | E: keep domain upload constraints and translated help with native file picker |
+| `button`, `alert`, `form-field`, `table-row`, `validation-error` | C/D: migrated or orphaned; views and unnecessary PHP classes removed |
+| QR sticker/print structures outside `ui` | E: keep deterministic physical CSS and print layout |
+
+Native multi-selection checkboxes, bounded number/radio controls, file/range inputs, language navigation selects and the branch disclosure retain useful browser semantics. Existing lightweight tables remain semantic tables: wrapping them in Flux did not remove a repeated first-party table system. The native upload progress remains bound to local Alpine state. No generic wrapper is kept merely to rename Flux props; unsupported Flag, rich Select or Chart usage is deferred to an actually available Free package.
+
+Waiter attention filtering now uses the installed compact Toggle; persistent labeled booleans remain switches and independent selections remain checkboxes. Guest choice buttons and notifications use Flux Button; comment fields and dangerous-confirmation fields delegate labels/errors to Flux. The guest draft editor uses an always-mounted Flux Modal with a persistent initial-focus control: rendering the host only after `modal-show` loses the event, and rendering its autofocus control later loses initial focus. Authorized server actions open/close the modal; Escape closes locally, clears edit state on the server and restores the trigger. Onboarding Progress has a step-based `wire:key` because the installed element reads its value at initialization. Existing Actions, validation, tenant boundaries and query behavior remain intact.
 
 Catalogue modal hosts now sit outside the layout grid without a vendor `display: contents` workaround. Five menu dialogs use `:closable="false"` plus the existing translated close composition with explicit autofocus; Escape and backdrop handling remain owned by Flux. Appearance remains a single Flux-managed light/dark/system state with `@fluxAppearance` and the CSS dark variant.
 
@@ -49,7 +65,7 @@ Image selection appends previews in the same order as Livewire's temporary uploa
 
 Guest details stay open when their configured dish disappears from the current menu. The existing translated error and retry control preserve the comment, options and addition identity; unavailable dishes expose no Add action. Closing restores focus to the original trigger or the stable menu heading if that trigger no longer exists.
 
-Kitchen/bar timers use one compact wrapping row. Operational mutations reuse the primary button component with 56-pixel targets. Waiter detail and dangerous confirmations use semantic surface, text, border and state tokens in both themes. Mutation controls disable for offline and targeted loading states; browsing, reading and dismissing remain available. Server authorization is unchanged.
+Kitchen/bar timers use one compact wrapping row. Operational mutations use Flux Button directly with 56-pixel targets. Waiter detail and dangerous confirmations use semantic surface, text, border and state tokens in both themes. Mutation controls disable for offline and targeted loading states; browsing, reading and dismissing remain available. Server authorization is unchanged.
 
 ## Catalogue and guest product integration
 

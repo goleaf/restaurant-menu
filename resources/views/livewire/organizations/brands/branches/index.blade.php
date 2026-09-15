@@ -187,7 +187,7 @@
                                                 loading-label="ui.actions.removing"
                                             >
                                                 <x-slot:trigger>
-                                                    <flux:button icon="trash" type="button" variant="danger">
+                                                    <flux:button icon="trash" type="button" variant="primary" color="red" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                                         {{ __('uploads.actions.remove') }}
                                                     </flux:button>
                                                 </x-slot:trigger>
@@ -336,7 +336,7 @@
                                         {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                     </flux:button>
 
-                                    <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $branch['id'] }})">
+                                    <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $branch['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                         {{ __('structure.actions.archive') }}
                                     </flux:button>
                                 @endif
@@ -349,7 +349,7 @@
                                     <span>{{ __('structure.confirmations.archive.title') }}</span>
 
                                     <div class="flex flex-wrap gap-2">
-                                        <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                             {{ __('structure.actions.archive') }}
                                         </flux:button>
 

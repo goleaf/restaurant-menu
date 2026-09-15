@@ -4,6 +4,14 @@
 
 # Restaurant Menu completion progress
 
+## Second Flux cleanup pass — 2026-09-15
+
+Direct Flux controls replace the generic button/alert/form-field framework and unused row/error wrappers. PHP UI classes decrease 12 → 7; UI Blade views 19 → 14. Product Card, EmptyState and StatePanel keep their semantic APIs and compose Flux. The two published accessibility overrides are intentionally retained and guarded against upstream drift. Native CSS stays in three files; `app.css` is 244 → 216 lines, all generated CSS 306,051 → 303,034 bytes (gzip 41,375 → 41,132). Application JS and local Noto subsets are unchanged.
+
+The complete browser inventory passes 21 cases / 1,480 assertions after fixes for modal focus/naming, keyed progress, callout contrast, pending-photo Alpine bindings and translated reflow. Independent review has no remaining findings. Canonical coverage passes at 93.7% with the unchanged 90% minimum. Final backend passes 2,750 / 58,192; focused contracts pass 88 / 3,795 and the final administration browser repeat passes 1 / 215. Pint, Larastan, translations, audits, production build, isolated caches and final diff review pass. Detailed evidence is in `testing.md`; the verified changes are ready for addressed local Conventional Commit delivery.
+
+Flux Free remains 2.17.0 and Livewire 4.4.1: newer compatible archives still require prohibited GitHub requests. No Pro dependency is connected. The separately appearing untracked `flux-pro/` directory is preserved outside this delivery. No push is required for this local pass.
+
 ## Flux/CSS modernization verification — 2026-09-15
 
 Frontend cleanup is implemented and reviewed: native Tailwind 4 sources/tokens, fewer generic wrappers and vendor selectors, available Flux Free controls, two guarded accessibility overrides, localized modal/password/toast controls and separately loaded QR print CSS. Main CSS is 310,242 → 298,374 bytes; all CSS including print is 311,206 → 306,051 bytes. All three local Noto subsets and application JavaScript are preserved.

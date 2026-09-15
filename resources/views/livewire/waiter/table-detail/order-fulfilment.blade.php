@@ -75,7 +75,7 @@
                         reason-placeholder="ui.confirmations.reason.placeholder"
                     >
                         <x-slot:trigger>
-                            <flux:button icon="x-mark" variant="danger" type="button" class="w-full">{{ __('orders.actions.cancel') }}</flux:button>
+                            <flux:button icon="x-mark" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! w-full">{{ __('orders.actions.cancel') }}</flux:button>
                         </x-slot:trigger>
                     </x-dangerous-action-confirmation>
                 </div>
@@ -177,7 +177,7 @@
                                         :reason-required="true"
                                     >
                                         <x-slot:trigger>
-                                            <flux:button icon="x-mark" variant="danger" size="sm" type="button" class="mt-3 w-full">{{ __('orders.items.actions.cancel') }}</flux:button>
+                                            <flux:button icon="x-mark" variant="primary" color="red" size="sm" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! mt-3 w-full">{{ __('orders.items.actions.cancel') }}</flux:button>
                                         </x-slot:trigger>
                                     </x-dangerous-action-confirmation>
                                 @endif

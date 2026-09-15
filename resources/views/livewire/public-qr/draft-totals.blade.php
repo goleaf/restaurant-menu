@@ -33,27 +33,37 @@
     </div>
 
     @if ($feedbackMessage)
-        <x-ui.alert tone="success" class="mt-4">
-            {{ $feedbackMessage }}
-        </x-ui.alert>
+        <flux:callout variant="success" class="callout-contrast content-safe mt-4" icon="check-circle" role="status">
+            <flux:callout.text>
+                {{ $feedbackMessage }}
+            </flux:callout.text>
+        </flux:callout>
     @endif
 
     @error('ready_status')
-        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+        <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+            <flux:callout.text>{{ $message }}</flux:callout.text>
+        </flux:callout>
     @enderror
 
     @error('send_draft')
-        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+        <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+            <flux:callout.text>{{ $message }}</flux:callout.text>
+        </flux:callout>
     @enderror
 
     @error('bill_request')
-        <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+        <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+            <flux:callout.text>{{ $message }}</flux:callout.text>
+        </flux:callout>
     @enderror
 
     @if (! $branchCanAcceptOrders)
-        <x-ui.alert tone="warning" class="mt-4" :heading="__('guest.table.closed_title')">
-            <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
-        </x-ui.alert>
+        <flux:callout variant="warning" class="callout-contrast content-safe mt-4" :heading="__('guest.table.closed_title')" icon="exclamation-triangle" role="status">
+            <flux:callout.text>
+                <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('guest.table.closed_description')" />
+            </flux:callout.text>
+        </flux:callout>
     @endif
 
     <div class="mt-4 space-y-3">
@@ -133,83 +143,86 @@
         @if ($canToggleReadyStatus || $billRequested || $canRequestBill || $canSendDraftToWaiter)
         <x-ui.mobile-bottom-actions data-guest-cart-actions :summary="__('guest.cart.table_total').': '.$tableTotalLabel">
             @if ($canToggleReadyStatus)
-                <x-ui.button
+                <flux:button
                     type="button"
                     wire:click="toggleReadyStatus"
                     wire:loading.attr="disabled"
                     wire:target="toggleReadyStatus"
-                    :variant="$currentGuestReady ? 'secondary' : 'primary'"
-                    size="lg"
-                    full-width
+                    :variant="$currentGuestReady ? 'outline' : 'primary'"
+                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                 >
                     <span wire:loading.remove wire:target="toggleReadyStatus">
                         {{ $currentGuestReady ? __('guest.table.cancel_ready') : __('guest.table.mark_ready') }}
                     </span>
                     <span wire:loading wire:target="toggleReadyStatus">{{ __('guest.table.saving') }}</span>
-                </x-ui.button>
+                </flux:button>
             @endif
 
             @if ($billRequested)
-                <x-ui.alert tone="info">
-                    {{ __('guest.table.bill_requested') }}
-                    <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalLabel }}</span>
-                </x-ui.alert>
+                <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>
+                        {{ __('guest.table.bill_requested') }}
+                        <span class="mt-1 block font-normal">{{ __('guest.cart.table_total') }}: {{ $tableTotalLabel }}</span>
+                    </flux:callout.text>
+                </flux:callout>
             @elseif ($canRequestBill)
-                <x-ui.button
+                <flux:button
                     type="button"
                     wire:click="requestBill"
                     wire:loading.attr="disabled"
                     wire:target="requestBill"
-                    variant="info"
-                    size="lg"
-                    full-width
+                    variant="outline"
+                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                 >
                     <span wire:loading.remove wire:target="requestBill">{{ __('guest.table.request_bill') }} · {{ $tableTotalLabel }}</span>
                     <span wire:loading wire:target="requestBill">{{ __('guest.table.sending') }}</span>
-                </x-ui.button>
+                </flux:button>
             @endif
 
             @if ($canSendDraftToWaiter)
                 @if ($sendNeedsReadyConfirmation)
-                    <x-ui.alert tone="warning" :heading="__('guest.table.not_all_ready_title')">
-                        <p>
-                            {{ __('guest.table.not_all_ready_description') }}
-                        </p>
+                    <flux:callout variant="warning" :heading="__('guest.table.not_all_ready_title')" icon="exclamation-triangle" role="status" class="callout-contrast content-safe">
+                        <flux:callout.text>
+                            <p>
+                                {{ __('guest.table.not_all_ready_description') }}
+                            </p>
 
-                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                            <x-ui.button
-                                type="button"
-                                wire:click="sendDraftToWaiter(true)"
-                                wire:loading.attr="disabled"
-                                wire:target="sendDraftToWaiter"
-                                variant="warning"
-                            >
-                                <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_anyway') }}</span>
-                                <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
-                            </x-ui.button>
+                            <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                                <flux:button
+                                    type="button"
+                                    wire:click="sendDraftToWaiter(true)"
+                                    wire:loading.attr="disabled"
+                                    wire:target="sendDraftToWaiter"
+                                    variant="primary" color="amber"
+                                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
+                                >
+                                    <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_anyway') }}</span>
+                                    <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
+                                </flux:button>
 
-                            <x-ui.button
-                                type="button"
-                                wire:click="cancelSendDraftConfirmation"
-                                variant="secondary"
-                            >
-                                {{ __('guest.table.wait_for_guests') }}
-                            </x-ui.button>
-                        </div>
-                    </x-ui.alert>
+                                <flux:button
+                                    type="button"
+                                    wire:click="cancelSendDraftConfirmation"
+                                    variant="outline"
+                                    class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2"
+                                >
+                                    {{ __('guest.table.wait_for_guests') }}
+                                </flux:button>
+                            </div>
+                        </flux:callout.text>
+                    </flux:callout>
                 @else
-                    <x-ui.button
+                    <flux:button
                         type="button"
                         wire:click="sendDraftToWaiter"
                         wire:loading.attr="disabled"
                         wire:target="sendDraftToWaiter"
                         variant="primary"
-                        size="lg"
-                        full-width
+                        class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                     >
                         <span wire:loading.remove wire:target="sendDraftToWaiter">{{ __('guest.table.send_to_waiter') }}</span>
                         <span wire:loading wire:target="sendDraftToWaiter">{{ __('guest.table.sending') }}</span>
-                    </x-ui.button>
+                    </flux:button>
                 @endif
             @endif
         </x-ui.mobile-bottom-actions>

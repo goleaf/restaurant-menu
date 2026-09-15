@@ -290,64 +290,64 @@
                     </div>
 
                     <form wire:submit="enterTable" class="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                        <x-ui.form-field
-                            for="guest-name"
-                            name="guestName"
-                            :label="__('guest.table.your_name')"
-                            :description="$message"
-                        >
-                            <input
+                        <flux:field>
+                            <flux:label for="guest-name">{{ __('guest.table.your_name') }}</flux:label>
+                            <flux:description>{{ $message }}</flux:description>
+                            <flux:input
                                 id="guest-name"
                                 name="guest_name"
                                 wire:model="guestName"
-                                type="text"
+                                :invalid="$errors->has('guestName')"
                                 required
                                 minlength="2"
                                 maxlength="80"
                                 autocomplete="name"
-                                placeholder="{{ __('guest.table.guest_name_placeholder') }}"
-                                class="block h-14 w-full rounded-lg border border-zinc-300 bg-white px-4 text-lg font-semibold text-zinc-950 outline-hidden transition placeholder:text-zinc-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
-                            >
-                        </x-ui.form-field>
+                                :placeholder="__('guest.table.guest_name_placeholder')"
+                                class:input="min-h-operational-touch text-lg! font-semibold placeholder:text-text-muted"
+                            />
+                            <flux:error name="guestName" />
+                        </flux:field>
 
                         @if ($hasGuestNameConflict)
                             <div class="mt-3 space-y-3">
-                                <x-ui.alert tone="warning" :heading="__('guest.table.duplicate_guest_title')">
-                                    <p>
-                                        <x-ui.plain-text :text="__('guest.table.duplicate_guest_description', ['name' => $guestNameConflictExistingName])" />
-                                    </p>
-                                    <p class="mt-1">
-                                        {{ __('guest.table.duplicate_guest_help') }}
-                                    </p>
-                                </x-ui.alert>
+                                <flux:callout variant="warning" :heading="__('guest.table.duplicate_guest_title')" icon="exclamation-triangle" role="status" class="callout-contrast content-safe">
+                                    <flux:callout.text>
+                                        <p>
+                                            <x-ui.plain-text :text="__('guest.table.duplicate_guest_description', ['name' => $guestNameConflictExistingName])" />
+                                        </p>
+                                        <p class="mt-1">
+                                            {{ __('guest.table.duplicate_guest_help') }}
+                                        </p>
+                                    </flux:callout.text>
+                                </flux:callout>
 
                                 @if ($guestNameSuggestions !== [])
                                     <div class="grid gap-2">
                                         @foreach ($guestNameSuggestions as $suggestionIndex => $suggestion)
-                                            <x-ui.button
+                                            <flux:button
                                                 type="button"
                                                 wire:key="guest-name-suggestion-{{ $suggestionIndex }}"
                                                 wire:click="chooseGuestNameSuggestion({{ $suggestionIndex }})"
-                                                variant="secondary"
-                                                full-width
+                                                variant="outline"
+                                                class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
                                             >
                                                 {{ $suggestion }}
-                                            </x-ui.button>
+                                            </flux:button>
                                         @endforeach
                                     </div>
                                 @endif
 
                                 <div class="grid gap-2">
-                                    <x-ui.button
+                                    <flux:button
                                         type="button"
                                         wire:click="continueWithDuplicateGuestName"
                                         wire:loading.attr="disabled"
                                         wire:target="continueWithDuplicateGuestName"
-                                        variant="warning"
-                                        full-width
+                                        variant="primary" color="amber"
+                                        class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full"
                                     >
                                         {{ __('guest.table.enter_as', ['name' => $preparedGuestName ?? $guestName]) }}
-                                    </x-ui.button>
+                                    </flux:button>
 
                                     <p class="text-center text-sm text-zinc-600 dark:text-zinc-300">
                                         {{ __('guest.table.enter_different_name_help') }}
@@ -357,9 +357,11 @@
                         @endif
 
                         @if ($preparedGuestName && ! $hasGuestNameConflict)
-                            <x-ui.alert tone="success" class="mt-3">
-                                {{ __('guest.table.welcome_name', ['name' => $preparedGuestName]) }}
-                            </x-ui.alert>
+                            <flux:callout variant="success" class="callout-contrast content-safe mt-3" icon="check-circle" role="status">
+                                <flux:callout.text>
+                                    {{ __('guest.table.welcome_name', ['name' => $preparedGuestName]) }}
+                                </flux:callout.text>
+                            </flux:callout>
                         @endif
 
                         @if ($entryIssueCard['visible'])
@@ -376,24 +378,25 @@
                                 @if ($currentJoinRequestId) wire:poll.visible.{{ $landing['polling_interval_seconds'] }}s="refreshJoinRequestStatus" @endif
                             >
                                 @if ($entryMessage)
-                                    <x-ui.alert tone="info">
-                                        {{ $entryMessage }}
-                                    </x-ui.alert>
+                                    <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+                                        <flux:callout.text>
+                                            {{ $entryMessage }}
+                                        </flux:callout.text>
+                                    </flux:callout>
                                 @endif
                             </div>
                         @endif
 
                         <x-ui.mobile-bottom-actions class="mt-5">
-                            <x-ui.button
+                            <flux:button
                                 type="submit"
                                 :disabled="$currentGuestId || $currentJoinRequestId"
                                 variant="primary"
-                                size="lg"
-                                full-width
-                                icon-trailing="arrow-right"
+                                icon:trailing="arrow-right"
+                                class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                             >
                                 {{ $currentJoinRequestId ? ($entryState === 'join_request_blocked' ? __('guest.table.request_closed') : __('guest.table.request_sent')) : ($currentGuestId ? __('guest.table.entry_saved') : __('guest.table.join_table')) }}
-                            </x-ui.button>
+                            </flux:button>
                         </x-ui.mobile-bottom-actions>
                     </form>
                 </section>

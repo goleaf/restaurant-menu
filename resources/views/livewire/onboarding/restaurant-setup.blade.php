@@ -22,14 +22,13 @@
                 </p>
                 <p class="min-w-0 wrap-anywhere text-right text-text-muted">{{ $this->steps[$step - 1]['label'] }}</p>
             </div>
-            <progress
-                class="h-2 w-full overflow-hidden rounded-full accent-brand-600"
+            <flux:progress
+                wire:key="onboarding-progress-{{ $step }}"
+                class="h-2"
                 value="{{ $step }}"
                 max="8"
                 aria-label="{{ __('ui.onboarding.restaurant_setup.progress_accessible', ['current' => $step, 'total' => 8]) }}"
-            >
-                {{ __('ui.onboarding.restaurant_setup.progress', ['current' => $step, 'total' => 8]) }}
-            </progress>
+            />
 
             @if ($this->setup['highest_step'] > 1)
                 <details data-onboarding-mobile-summary class="group mt-4 min-w-0 border-t border-border-subtle pt-2">
@@ -99,7 +98,7 @@
             @if ($errors->any())
                 <flux:callout
                     id="onboarding-validation-summary"
-                    class="mb-6"
+                    class="callout-contrast mb-6"
                     role="alert"
                     tabindex="-1"
                     variant="danger"

@@ -8,12 +8,14 @@
             </p>
         </header>
 
-        <x-ui.alert
-            tone="danger"
-            heading="ui.superadmin.backup_restore.warning_title"
-        >
-            {{ __('ui.superadmin.backup_restore.warning') }}
-        </x-ui.alert>
+        <flux:callout
+            variant="danger"
+            :heading="__('ui.superadmin.backup_restore.warning_title')"
+         icon="x-circle" role="status" class="callout-contrast content-safe">
+            <flux:callout.text>
+                {{ __('ui.superadmin.backup_restore.warning') }}
+            </flux:callout.text>
+        </flux:callout>
 
         <form
             method="POST"
@@ -52,7 +54,7 @@
                 <flux:button :href="route('superadmin.dashboard')" icon="arrow-left" wire:navigate>
                     {{ __('ui.actions.cancel') }}
                 </flux:button>
-                <flux:button type="submit" variant="danger" icon="arrow-path">
+                <flux:button type="submit" variant="primary" color="red" icon="arrow-path" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                     {{ __('ui.superadmin.backup_restore.submit') }}
                 </flux:button>
             </div>

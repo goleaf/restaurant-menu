@@ -33,7 +33,7 @@
                         <p class="mt-1 text-sm leading-6 text-text-muted">{{ $item['description'] }}</p>
                     </div>
                     @if ($item['url'] !== null)
-                        <x-ui.button :href="$item['url']" wire:navigate icon-trailing="arrow-right" class="self-start sm:shrink-0" :aria-label="__('dashboard.control.readiness.open_item', ['item' => $item['label']])">{{ __('dashboard.control.readiness.review') }}</x-ui.button>
+                        <flux:button :href="$item['url']" wire:navigate icon:trailing="arrow-right" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0" :aria-label="__('dashboard.control.readiness.open_item', ['item' => $item['label']])">{{ __('dashboard.control.readiness.review') }}</flux:button>
                     @endif
                 </li>
             @empty

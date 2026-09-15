@@ -4,6 +4,16 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-15 — second Flux cleanup pass (verified)
+
+- Done: inspect installed Free package, baseline assets and shared branch; preserve concurrent team verification commit `70fcc3e`.
+- Done: remove generic button/alert/form-field and orphaned row/error components; retain product compositions above Flux.
+- Done: migrate semantic states, textarea/error associations, safe confirmations and the guest draft dialog; use Toggle and keyed Progress supported by the actual package.
+- Done: remove obsolete CSS/token/loading layers; retain native fonts and physical QR domain rules.
+- Done: independent review found and corrected progress lifecycle, callout contrast and native dialog naming; browser journeys verify these and safe focus restoration.
+- Done: full browser 21 / 1,480 plus final administration repeat 1 / 215; final backend 2,750 / 58,192, application coverage 93.7%, focused contracts 88 / 3,795; localization, static/format gates, production metrics, isolated caches and final diff review.
+- Local delivery: commit only this verified scope with Conventional Commit syntax. No mandatory push or other GitHub operation is required; preserve the unrelated untracked `flux-pro/` directory.
+
 ## 2026-09-15 — Flux and CSS-first modernization (verified; version upgrade blocked)
 
 This scoped pass preserves the concurrent team-control-center work and its staged files. It owns frontend styling, shared presentation components, Flux override cleanup and focused style regressions; it does not change tenant workflows or application data.

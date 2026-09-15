@@ -43,11 +43,15 @@
     </x-ui.page-header>
 
     @error('ticket_item_status')
-        <x-ui.alert tone="danger">{{ $message }}</x-ui.alert>
+        <flux:callout variant="danger" icon="x-circle" role="status" class="callout-contrast content-safe">
+            <flux:callout.text>{{ $message }}</flux:callout.text>
+        </flux:callout>
     @enderror
 
     @if ($feedbackMessage)
-        <x-ui.alert tone="success">{{ $feedbackMessage }}</x-ui.alert>
+        <flux:callout variant="success" icon="check-circle" role="status" class="callout-contrast content-safe">
+            <flux:callout.text>{{ $feedbackMessage }}</flux:callout.text>
+        </flux:callout>
     @endif
 
     <x-ui.metric-strip :items="[
@@ -127,15 +131,15 @@
                             class="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_18rem]"
                         >
                             <div class="min-w-0">
-                                <div class="flex gap-4">
-                                    <div class="flex h-14 min-w-14 items-center justify-center rounded-control bg-surface-raised px-3 text-xl font-semibold text-text-primary">
+                                <div class="flex flex-wrap gap-4">
+                                    <div class="flex h-14 min-w-14 shrink-0 self-start items-center justify-center rounded-control bg-surface-raised px-3 text-xl font-semibold text-text-primary">
                                         {{ $item['quantity'] }}×
                                     </div>
 
-                                    <div class="min-w-0">
+                                    <div class="min-w-0 flex-1 basis-40">
                                         <div class="flex flex-wrap items-center gap-2">
-                                            <x-ui.plain-text :text="$item['item_name']" class="block text-xl font-semibold text-text-primary" :preserve-lines="false" />
-                                            <flux:badge :color="$item['status_color']">{{ __($item['status_key']) }}</flux:badge>
+                                            <x-ui.plain-text :text="$item['item_name']" class="min-w-0 block text-xl font-semibold text-text-primary" :preserve-lines="false" />
+                                            <flux:badge :color="$item['status_color']" class="max-w-full whitespace-normal!">{{ __($item['status_key']) }}</flux:badge>
                                         </div>
 
                                         @if ($item['guest_name'])

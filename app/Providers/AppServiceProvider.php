@@ -63,6 +63,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
@@ -85,6 +86,9 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureRateLimiting();
         $this->registerModelObservers();
+
+        // Stylesheets are already in the head; repeated CSS preloads outlive wire:navigate transitions.
+        Vite::usePreloadTagAttributes(fn (?string $src, string $url): array|false => str_ends_with($url, '.css') ? false : []);
 
         Livewire::addPersistentMiddleware([
             EnsureUserIsSuperadmin::class,

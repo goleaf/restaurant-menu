@@ -178,7 +178,7 @@
                                     </flux:button>
 
                                     <x-dangerous-action-confirmation name="delete-menu-{{ $menu['id'] }}" action="delete_menu" confirm-action="deleteMenu({{ $menu['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                        <x-slot:trigger><flux:button icon="trash" type="button" variant="danger" :disabled="$activeCatalogOperationId !== ''">{{ __('ui.organizations.brands.branches.menu.index.delete_menu') }}</flux:button></x-slot:trigger>
+                                        <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.organizations.brands.branches.menu.index.delete_menu') }}</flux:button></x-slot:trigger>
                                     </x-dangerous-action-confirmation>
                                 </div>
                             </div>
@@ -231,7 +231,7 @@
                                                 <flux:button icon="pencil" type="button" wire:click="startEditingMenuSchedule({{ $schedule['id'] }})">
                                                     {{ __('menu.schedules.actions.edit') }}
                                                 </flux:button>
-                                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})">
+                                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteMenuSchedule({{ $schedule['id'] }})" wire:loading.attr="disabled" wire:target="deleteMenuSchedule({{ $schedule['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                                     {{ __('ui.actions.delete') }}
                                                 </flux:button>
                                             </div>
@@ -342,7 +342,7 @@
                                                         </flux:button>
 
                                                         <x-dangerous-action-confirmation name="delete-menu-category-{{ $category['id'] }}" action="delete_menu_category" confirm-action="deleteCategory({{ $category['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="danger" :disabled="$activeCatalogOperationId !== ''">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
+                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" :disabled="$activeCatalogOperationId !== ''" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
                                                         </x-dangerous-action-confirmation>
                                                     </div>
                                                 </div>
@@ -361,9 +361,9 @@
                                     @forelse ($menu['items'] as $item)
                                         <article wire:key="menu-item-{{ $item['id'] }}" class="min-w-0 border-b border-border-subtle py-4 last:border-0">
                                             <div class="grid min-w-0 grid-cols-[44px_56px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[44px_64px_minmax(0,1fr)_auto]">
-                                                <button type="button" role="checkbox" aria-checked="{{ isset($selectedCatalogVersions[$item['id']]) ? 'true' : 'false' }}" aria-label="{{ __('menu.bulk.select_item', ['name' => $item['name']]) }}" wire:click="toggleCatalogSelection({{ $item['id'] }})" wire:loading.attr="disabled" class="flex size-11 shrink-0 items-center justify-center rounded-control border border-border-subtle text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                                                <flux:button type="button" role="checkbox" aria-checked="{{ isset($selectedCatalogVersions[$item['id']]) ? 'true' : 'false' }}" aria-label="{{ __('menu.bulk.select_item', ['name' => $item['name']]) }}" wire:click="toggleCatalogSelection({{ $item['id'] }})" wire:loading.attr="disabled" class="flex size-11 shrink-0 items-center justify-center rounded-control border border-border-subtle text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                                                     @if (isset($selectedCatalogVersions[$item['id']]))<flux:icon.check class="size-5" />@endif
-                                                </button>
+                                                </flux:button>
                                                 <div class="flex size-14 items-center justify-center overflow-hidden rounded-control bg-surface-muted sm:size-16">
                                                     @if ($item['has_image'])
                                                         <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="64" height="64" loading="lazy" decoding="async" class="size-full object-cover">
@@ -415,7 +415,7 @@
                                                         @endif
                                                         <flux:button icon="document-duplicate" type="button" wire:click="duplicateItem({{ $item['id'] }})" wire:loading.attr="disabled" :disabled="$activeCatalogOperationId !== ''">{{ __('menu.operations.duplicate') }}</flux:button>
                                                         <x-dangerous-action-confirmation name="delete-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="deleteItem({{ $item['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
-                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="danger">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
+                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="primary" color="red" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
                                                         </x-dangerous-action-confirmation>
                                                     </div>
                                                 </div>

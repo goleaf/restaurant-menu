@@ -24,3 +24,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Actions/Menus/** | .ai/rules/menus.md |
 | app/Livewire/Onboarding/**, app/Livewire/Forms/Onboarding/**, app/Support/RestaurantSetupOptions.php | .ai/rules/onboarding-support.md |
 | app/Livewire/PublicQr/** | .ai/rules/public-qr.md |
+| resources/views/components/ui/** | .ai/rules/ui.md |

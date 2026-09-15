@@ -3,16 +3,18 @@
 :root {
     --qr-sticker-width: 76mm;
     --qr-sticker-height: 104mm;
+    --qr-paper: #ffffff;
+    --qr-ink: #0a0a0a;
 }
 
 .qr-sticker {
     @apply flex w-full max-w-80 flex-col items-center justify-between gap-4 rounded-lg border bg-white p-5 text-center text-zinc-950 shadow-sm;
-    --qr-label-bg: #ffffff;
-    --qr-label-text: #0a0a0a;
-    --qr-label-border: #0a0a0a;
-    --qr-label-accent: #0a0a0a;
-    --qr-label-code-bg: #ffffff;
-    --qr-label-code-text: #0a0a0a;
+    --qr-label-bg: var(--qr-paper);
+    --qr-label-text: var(--qr-ink);
+    --qr-label-border: var(--qr-ink);
+    --qr-label-accent: var(--qr-ink);
+    --qr-label-code-bg: var(--qr-paper);
+    --qr-label-code-text: var(--qr-ink);
     aspect-ratio: 3 / 4;
     background: var(--qr-label-bg);
     border-color: var(--qr-label-border);
@@ -57,7 +59,7 @@
 .qr-sticker-preset-classic {
     --qr-label-bg: #fffdf5;
     --qr-label-text: #171717;
-    --qr-label-border: #4a3728;
+    --qr-label-border: var(--qr-label-accent);
     --qr-label-accent: #4a3728;
     border-style: double;
     border-width: 5px;
@@ -70,7 +72,7 @@
 .qr-sticker-preset-restaurant {
     --qr-label-bg: #fffafa;
     --qr-label-text: #171717;
-    --qr-label-border: #b91c1c;
+    --qr-label-border: var(--qr-label-accent);
     --qr-label-accent: #b91c1c;
     border-width: 3px;
 }
@@ -82,10 +84,10 @@
 .qr-sticker-preset-bar {
     --qr-label-bg: #fafafa;
     --qr-label-text: #111827;
-    --qr-label-border: #3f2a56;
+    --qr-label-border: var(--qr-label-accent);
     --qr-label-accent: #3f2a56;
-    --qr-label-code-bg: #3f2a56;
-    --qr-label-code-text: #ffffff;
+    --qr-label-code-bg: var(--qr-label-accent);
+    --qr-label-code-text: var(--qr-paper);
     border-width: 3px;
 }
 
@@ -97,7 +99,7 @@
 .qr-sticker-preset-hotel {
     --qr-label-bg: #f8fcff;
     --qr-label-text: #0f172a;
-    --qr-label-border: #0369a1;
+    --qr-label-border: var(--qr-label-accent);
     --qr-label-accent: #0369a1;
     border-width: 3px;
 }
@@ -108,8 +110,8 @@
 
 .qr-sticker-preset-premium {
     --qr-label-accent: #9a6b12;
-    --qr-label-code-bg: #0a0a0a;
-    --qr-label-code-text: #ffffff;
+    --qr-label-code-bg: var(--qr-ink);
+    --qr-label-code-text: var(--qr-paper);
     border-width: 3px;
     outline: 1px solid #d6b35a;
     outline-offset: -8px;

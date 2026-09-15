@@ -77,28 +77,30 @@
                     {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                 </flux:button>
 
-                <flux:button icon="trash" type="button" variant="danger" wire:click="confirmDelete({{ $node['id'] }})">
+                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="confirmDelete({{ $node['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                     {{ __('structure.actions.archive') }}
                 </flux:button>
             @endif
         </div>
 
         @if ($deletingAreaNodeId === $node['id'])
-            <x-ui.alert tone="danger" class="md:col-span-2">
-                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <span>{{ __('structure.confirmations.archive.title') }}</span>
+            <flux:callout variant="danger" class="callout-contrast content-safe md:col-span-2" icon="x-circle" role="status">
+                <flux:callout.text>
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <span>{{ __('structure.confirmations.archive.title') }}</span>
 
-                    <div class="flex flex-wrap gap-2">
-                        <flux:button icon="trash" variant="danger" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete">
-                            {{ __('structure.actions.archive') }}
-                        </flux:button>
+                        <div class="flex flex-wrap gap-2">
+                            <flux:button icon="trash" variant="primary" color="red" type="button" wire:click="delete" wire:loading.attr="disabled" wire:target="delete" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
+                                {{ __('structure.actions.archive') }}
+                            </flux:button>
 
-                        <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
-                            {{ __('ui.actions.cancel') }}
-                        </flux:button>
+                            <flux:button icon="x-mark" type="button" wire:click="cancelDelete">
+                                {{ __('ui.actions.cancel') }}
+                            </flux:button>
+                        </div>
                     </div>
-                </div>
-            </x-ui.alert>
+                </flux:callout.text>
+            </flux:callout>
         @endif
     @endif
 

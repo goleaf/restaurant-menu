@@ -81,21 +81,23 @@
             @empty
             @endforelse
         </flux:select>
-        <flux:checkbox wire:model.live="attentionOnly" :label="__('ui.waiter.dashboard.needs_attention', ['count' => $attentionCount])" />
+        <flux:toggle wire:model.live="attentionOnly" icon="funnel" class="h-auto! min-h-touch whitespace-normal! py-2" :label="__('ui.waiter.dashboard.needs_attention', ['count' => $attentionCount])" />
         <p class="text-sm text-text-muted">{{ __('ui.waiter.dashboard.visible_page_scope') }}</p>
         <div class="flex gap-2">
             <flux:button wire:click="changeTablePage({{ $tablePage - 1 }})" :disabled="$tablePage <= 1" icon="chevron-left">{{ __('pagination.previous') }}</flux:button>
-            <flux:button wire:click="changeTablePage({{ $tablePage + 1 }})" :disabled="! $hasMorePages" icon-trailing="chevron-right">{{ __('pagination.next') }}</flux:button>
+            <flux:button wire:click="changeTablePage({{ $tablePage + 1 }})" :disabled="! $hasMorePages" icon:trailing="chevron-right">{{ __('pagination.next') }}</flux:button>
         </div>
     </div>
 
     @if ($attentionReason)
-        <x-ui.alert tone="info">
-            {{ $attentionReason }}
-            <x-slot:actions>
+        <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+            <flux:callout.text>
+                {{ $attentionReason }}
+            </flux:callout.text>
+            <x-slot:actions class="flex-wrap">
                 <flux:button wire:click="resetAttention" size="sm">{{ __('operations.attention.reset') }}</flux:button>
             </x-slot:actions>
-        </x-ui.alert>
+        </flux:callout>
     @endif
     <div>
         <flux:button :href="$branchOverviewUrl" wire:navigate variant="ghost" icon="arrow-left">{{ __('operations.back_to_branch') }}</flux:button>
@@ -104,11 +106,15 @@
     @if ($waiterCallMessage || $tableActionMessage)
         <div class="space-y-2" aria-live="polite">
             @if ($waiterCallMessage)
-                <x-ui.alert tone="success">{{ $waiterCallMessage }}</x-ui.alert>
+                <flux:callout variant="success" icon="check-circle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>{{ $waiterCallMessage }}</flux:callout.text>
+                </flux:callout>
             @endif
 
             @if ($tableActionMessage)
-                <x-ui.alert tone="info">{{ $tableActionMessage }}</x-ui.alert>
+                <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+                    <flux:callout.text>{{ $tableActionMessage }}</flux:callout.text>
+                </flux:callout>
             @endif
         </div>
     @endif
@@ -158,14 +164,15 @@
                         </div>
 
                         @if ($branch['temporary_closure_active'])
-                            <x-ui.alert tone="danger" :heading="__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt')">
-                                <x-ui.plain-text :text="$branch['temporary_closed_reason'] ?: __('ui.waiter.dashboard.pricina_ne_ukazana')" class="inline" />
-                                @if ($branch['temporary_closed_until_label'])
-                                    · {{ __('ui.waiter.dashboard.zakryto_do') }} {{ $branch['temporary_closed_until_label'] }}
-                                @endif
-
+                            <flux:callout variant="danger" :heading="__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt')" icon="x-circle" role="status" class="callout-contrast content-safe">
+                                <flux:callout.text>
+                                    <x-ui.plain-text :text="$branch['temporary_closed_reason'] ?: __('ui.waiter.dashboard.pricina_ne_ukazana')" class="inline" />
+                                    @if ($branch['temporary_closed_until_label'])
+                                        · {{ __('ui.waiter.dashboard.zakryto_do') }} {{ $branch['temporary_closed_until_label'] }}
+                                    @endif
+                                </flux:callout.text>
                                 @if ($branch['can_manage_settings'])
-                                <x-slot:actions>
+                                <x-slot:actions class="flex-wrap">
                                     <flux:button
                                         class="min-h-touch"
                                         size="sm"
@@ -179,22 +186,26 @@
                                     </flux:button>
                                 </x-slot:actions>
                                 @endif
-                            </x-ui.alert>
+                            </flux:callout>
                         @endif
 
                         @if ($branch['showing_assigned_zones_only'])
-                            <x-ui.alert tone="info">
-                                {{ __("ui.waiter.dashboard.showing_only_this_waiter_s_assigned_zones") }}
-                                <x-slot:actions>
+                            <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+                                <flux:callout.text>
+                                    {{ __("ui.waiter.dashboard.showing_only_this_waiter_s_assigned_zones") }}
+                                </flux:callout.text>
+                                <x-slot:actions class="flex-wrap">
                                     <flux:button size="sm" variant="ghost" type="button" wire:click="setZoneScope('all')">
                                         {{ __('ui.waiter.dashboard.show_all_zones') }}
                                     </flux:button>
                                 </x-slot:actions>
-                            </x-ui.alert>
+                            </flux:callout>
                         @elseif ($branch['zone_scope'] === 'mine' && $branch['assigned_area_node_count'] === 0)
-                            <x-ui.alert tone="warning">
-                                {{ __('ui.waiter.dashboard.no_waiter_zones_are_assigned_yet_showing_all_available') }}
-                            </x-ui.alert>
+                            <flux:callout variant="warning" icon="exclamation-triangle" role="status" class="callout-contrast content-safe">
+                                <flux:callout.text>
+                                    {{ __('ui.waiter.dashboard.no_waiter_zones_are_assigned_yet_showing_all_available') }}
+                                </flux:callout.text>
+                            </flux:callout>
                         @endif
 
                         @forelse ($branch['service_point_zones'] as $zone)
@@ -292,9 +303,9 @@
 
                                                 @if ($session['can_close'])
                                                     <flux:button
-                                                        class="min-h-operational-touch lg:hidden"
+                                                        class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! min-h-operational-touch lg:hidden"
                                                         size="sm"
-                                                        variant="danger"
+                                                        variant="primary" color="red"
                                                         :href="$session['detail_url'].'#close-table'"
                                                         wire:navigate
                                                     >
@@ -417,7 +428,7 @@
                         </flux:button>
 
                         @if ($selectedTable['session']['can_close'])
-                            <flux:button class="min-h-operational-touch" variant="danger" :href="$selectedTable['session']['detail_url'].'#close-table'" wire:navigate>
+                            <flux:button class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! min-h-operational-touch" variant="primary" color="red" :href="$selectedTable['session']['detail_url'].'#close-table'" wire:navigate>
                                 {{ __('ui.waiter.dashboard.close_table') }}
                             </flux:button>
                         @endif

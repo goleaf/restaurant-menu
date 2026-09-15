@@ -5,16 +5,16 @@
             <h1 data-staff-heading tabindex="-1" class="mt-1 text-2xl font-semibold text-text-primary">{{ $isBranch ? __('staff.branch_access') : __('staff.organization_access') }}</h1>
             <p class="mt-2 text-sm text-text-muted">{{ $isBranch ? __('staff.workspace.branch_scope') : __('staff.workspace.organization_scope') }}</p>
         </div>
-        <x-ui.button variant="primary" icon="user-plus" wire:click="openInvitation" wire:loading.attr="disabled" wire:target="openInvitation" x-bind:disabled="!online">{{ __('staff.invite') }}</x-ui.button>
+        <flux:button variant="primary" icon="user-plus" wire:click="openInvitation" wire:loading.attr="disabled" wire:target="openInvitation" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.invite') }}</flux:button>
     </header>
 
     <nav class="flex flex-wrap gap-2 border-b border-border-subtle pb-3" aria-label="{{ __('staff.list') }}">
-        <x-ui.button x-on:click="navigateSection($event, 'employees')" :variant="$activeSection === 'employees' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'employees' ? 'page' : null">{{ __('staff.workspace.employees') }}</x-ui.button>
-        <x-ui.button x-on:click="navigateSection($event, 'invitations')" :variant="$activeSection === 'invitations' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'invitations' ? 'page' : null">{{ __('staff.invitations') }}</x-ui.button>
+        <flux:button x-on:click="navigateSection($event, 'employees')" :variant="$activeSection === 'employees' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'employees' ? 'page' : null" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.employees') }}</flux:button>
+        <flux:button x-on:click="navigateSection($event, 'invitations')" :variant="$activeSection === 'invitations' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'invitations' ? 'page' : null" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.invitations') }}</flux:button>
         @if ($isBranch)
-            <x-ui.button x-on:click="navigateSection($event, 'assignments')" :variant="$activeSection === 'assignments' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'assignments' ? 'page' : null">{{ __('staff.workspace.assignments') }}</x-ui.button>
+            <flux:button x-on:click="navigateSection($event, 'assignments')" :variant="$activeSection === 'assignments' ? 'primary' : 'ghost'" :aria-current="$activeSection === 'assignments' ? 'page' : null" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.assignments') }}</flux:button>
         @endif
-        <x-ui.button wire:click="refreshWorkspace" wire:loading.attr="disabled" wire:target="refreshWorkspace" x-bind:disabled="!online" icon="arrow-path">{{ __('staff.workspace.refresh') }}</x-ui.button>
+        <flux:button wire:click="refreshWorkspace" wire:loading.attr="disabled" wire:target="refreshWorkspace" x-bind:disabled="!online" icon="arrow-path" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.refresh') }}</flux:button>
     </nav>
 
     <div role="status" aria-live="polite" aria-atomic="true" @class(['hidden' => $successMessage === ''])>{{ $successMessage }}</div>
@@ -57,7 +57,7 @@
                     </flux:select>
                     <flux:input wire:model="invitationForm.expiresInDays" name="invitationForm.expiresInDays" :label="__('staff.fields.invitation_expiry_days')" type="number" min="1" max="30" />
                     <p class="text-sm text-text-muted sm:col-span-2">{{ __('staff.workspace.preview_help') }} {{ $contextLabel }}</p>
-                    <x-ui.button type="submit" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.workspace.preview') }}</x-ui.button>
+                    <flux:button type="submit" wire:loading.attr="disabled" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.preview') }}</flux:button>
                 </form>
                 @if ($preview !== [])
                     <div class="mt-4 space-y-2 border-t border-border-subtle pt-4">
@@ -72,7 +72,7 @@
                                 <li>{{ __('staff.workspace.no_role_defaults') }}</li>
                             @endforelse
                         </ul>
-                        <x-ui.button variant="primary" wire:click="createInviteLink" wire:loading.attr="disabled" wire:target="createInviteLink" x-bind:disabled="!online">{{ __('staff.workspace.confirm_create') }}</x-ui.button>
+                        <flux:button variant="primary" wire:click="createInviteLink" wire:loading.attr="disabled" wire:target="createInviteLink" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.confirm_create') }}</flux:button>
                     </div>
                 @endif
             @elseif ($editor === 'member')
@@ -92,14 +92,14 @@
                         </flux:select>
                     @endif
                     <flux:input wire:model="memberForm.reason" name="memberForm.reason" :label="__('staff.workspace.reason')" maxlength="1000" required />
-                    <x-ui.button type="submit" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.workspace.preview_change') }}</x-ui.button>
+                    <flux:button type="submit" wire:loading.attr="disabled" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.preview_change') }}</flux:button>
                 </form>
                 @if ($preview !== [])
                     <dl class="mt-4 grid gap-1 border-t border-border-subtle pt-4 text-sm">
                         <dt class="text-text-muted">{{ __('staff.workspace.current') }}</dt><dd>{{ $preview['current'] }}</dd>
                         <dt class="text-text-muted">{{ __('staff.workspace.proposed') }}</dt><dd>{{ $preview['proposed'] }}</dd>
                     </dl>
-                    <x-ui.button class="mt-3" variant="primary" wire:click="saveMember" wire:loading.attr="disabled" wire:target="saveMember" x-bind:disabled="!online">{{ __('staff.workspace.confirm_change') }}</x-ui.button>
+                    <flux:button class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 mt-3" variant="primary" wire:click="saveMember" wire:loading.attr="disabled" wire:target="saveMember" x-bind:disabled="!online">{{ __('staff.workspace.confirm_change') }}</flux:button>
                 @endif
             @elseif ($editor === 'assign')
                 <p class="mt-3 text-sm text-text-muted">{{ __('staff.workspace.existing_help') }}</p>
@@ -119,7 +119,7 @@
                         @empty
                         @endforelse
                     </flux:select>
-                    <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="assignExistingMember" x-bind:disabled="!online">{{ __('staff.workspace.assign') }}</x-ui.button>
+                    <flux:button type="submit" wire:loading.attr="disabled" wire:target="assignExistingMember" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.assign') }}</flux:button>
                 </form>
             @elseif ($editor === 'areas')
                 <p class="mt-3 text-sm text-text-muted">{{ __('staff.workspace.area_help') }}</p>
@@ -197,12 +197,12 @@
                         </div>
                     @endif
                     <div class="flex flex-wrap gap-2">
-                        <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="previewAreaAssignments" x-bind:disabled="!online">{{ __('staff.workspace.preview_change') }}</x-ui.button>
+                        <flux:button type="submit" wire:loading.attr="disabled" wire:target="previewAreaAssignments" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.preview_change') }}</flux:button>
                         @if ($previewFingerprint !== '')
-                            <x-ui.button variant="primary" wire:click="saveAreaAssignments" wire:loading.attr="disabled" wire:target="saveAreaAssignments" x-bind:disabled="!online">{{ __('staff.save_zones') }}</x-ui.button>
+                            <flux:button variant="primary" wire:click="saveAreaAssignments" wire:loading.attr="disabled" wire:target="saveAreaAssignments" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.save_zones') }}</flux:button>
                         @endif
-                        <x-ui.button x-on:click="requestNavigation(() => $wire.refreshAssignments(false), false)" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.workspace.refresh_assignments') }}</x-ui.button>
-                        <x-ui.button wire:click="refreshAssignments(true)" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.workspace.reapply_assignments') }}</x-ui.button>
+                        <flux:button x-on:click="requestNavigation(() => $wire.refreshAssignments(false), false)" wire:loading.attr="disabled" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.refresh_assignments') }}</flux:button>
+                        <flux:button wire:click="refreshAssignments(true)" wire:loading.attr="disabled" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.reapply_assignments') }}</flux:button>
                     </div>
                 </form>
             @else
@@ -210,9 +210,9 @@
                 <p class="mt-2 text-sm text-text-muted">{{ $preview['scope'] }}</p>
                 @if ($editor === 'reissue')
                     <p class="mt-3 rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning">{{ __('staff.workspace.reissue_warning') }}</p>
-                    <x-ui.button class="mt-3" wire:click="reissueInvitation({{ $confirmInvitationId }})" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.actions.reissue_invitation') }}</x-ui.button>
+                    <flux:button class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 mt-3" wire:click="reissueInvitation({{ $confirmInvitationId }})" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.actions.reissue_invitation') }}</flux:button>
                 @else
-                    <x-ui.button class="mt-3" wire:click="cancelInvitation({{ $confirmInvitationId }})" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.actions.cancel_invitation') }}</x-ui.button>
+                    <flux:button class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 mt-3" wire:click="cancelInvitation({{ $confirmInvitationId }})" wire:loading.attr="disabled" x-bind:disabled="!online">{{ __('staff.actions.cancel_invitation') }}</flux:button>
                 @endif
             @endif
         </x-staff.editor>
@@ -247,9 +247,9 @@
             </details>
         </div>
         <div class="my-3 flex flex-wrap gap-2">
-            <x-ui.button wire:click="resetFilters">{{ __('staff.workspace.reset_filters') }}</x-ui.button>
+            <flux:button wire:click="resetFilters" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.reset_filters') }}</flux:button>
             @if ($isBranch && $activeSection === 'employees')
-                <x-ui.button wire:click="openExistingAssignment" x-bind:disabled="!online">{{ __('staff.workspace.assign_existing') }}</x-ui.button>
+                <flux:button wire:click="openExistingAssignment" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.assign_existing') }}</flux:button>
             @endif
         </div>
         @if ($coverageOverview !== null)
@@ -307,10 +307,10 @@
                         </div>
                         <div class="flex flex-wrap gap-2">
                             @if ($invitation['can_reissue'])
-                                <x-ui.button wire:click="confirmInvitation({{ $invitation['id'] }}, 'reissue')" x-bind:disabled="!online">{{ __('staff.actions.reissue_invitation') }}</x-ui.button>
+                                <flux:button wire:click="confirmInvitation({{ $invitation['id'] }}, 'reissue')" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.actions.reissue_invitation') }}</flux:button>
                             @endif
                             @if ($invitation['can_cancel'])
-                                <x-ui.button wire:click="confirmInvitation({{ $invitation['id'] }}, 'cancel')" x-bind:disabled="!online">{{ __('staff.actions.cancel_invitation') }}</x-ui.button>
+                                <flux:button wire:click="confirmInvitation({{ $invitation['id'] }}, 'cancel')" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.actions.cancel_invitation') }}</flux:button>
                             @endif
                         </div>
                     </article>
@@ -334,12 +334,12 @@
                         @if ($member['can_manage'])
                             <div class="flex flex-wrap gap-2">
                                 @if ($activeSection === 'assignments')
-                                    <x-ui.button wire:click="openAssignments({{ $member['id'] }})" x-bind:disabled="!online">{{ __('staff.workspace.assignments') }}</x-ui.button>
+                                    <flux:button wire:click="openAssignments({{ $member['id'] }})" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.workspace.assignments') }}</flux:button>
                                 @else
-                                    <x-ui.button wire:click="openMember({{ $member['id'] }}, 'role')" x-bind:disabled="!online">{{ __('staff.actions.edit_role') }}</x-ui.button>
-                                    <x-ui.button wire:click="openMember({{ $member['id'] }}, 'status')" x-bind:disabled="!online">{{ $member['is_active'] ? __('staff.deactivate') : __('staff.reactivate') }}</x-ui.button>
+                                    <flux:button wire:click="openMember({{ $member['id'] }}, 'role')" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('staff.actions.edit_role') }}</flux:button>
+                                    <flux:button wire:click="openMember({{ $member['id'] }}, 'status')" x-bind:disabled="!online" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ $member['is_active'] ? __('staff.deactivate') : __('staff.reactivate') }}</flux:button>
                                     @if ($member['permissions_url'] !== null)
-                                        <x-ui.button :href="$member['permissions_url']" wire:navigate>{{ $isBranch ? __('staff.workspace.organization_permissions') : __('staff.workspace.permissions') }}</x-ui.button>
+                                        <flux:button :href="$member['permissions_url']" wire:navigate class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ $isBranch ? __('staff.workspace.organization_permissions') : __('staff.workspace.permissions') }}</flux:button>
                                     @endif
                                 @endif
                             </div>

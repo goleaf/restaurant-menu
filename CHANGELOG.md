@@ -4,6 +4,14 @@
 
 # Changelog
 
+## 2026-09-15 — second Flux cleanup pass
+
+- Remove five generic or unused UI views and their five PHP classes; compose the retained semantic cards, states and empty panels from Flux.
+- Use direct Flux buttons, fields, callouts, textarea controls, attention toggle and onboarding progress; preserve validation, translated labels and server authorization.
+- Replace the guest draft sheet with a persistent Flux modal and safe focus/close behavior; keep dangerous Cancel first.
+- Remove obsolete loading/color/palette patches and dead tokens; normalize QR paper/ink variables and preserve native multilingual fonts.
+- Add real browser regressions for progress updates, callout contrast and modal restoration; eliminate redundant CSS preloads during navigation. Final measurements and verification belong in the canonical frontend/testing ledgers.
+
 ## 2026-09-15 — Flux controls and CSS-first cleanup
 
 - Delegate operational buttons, zone filters, onboarding navigation and the guest-menu language selector to available Flux Free primitives; remove unused generic wrappers and published vendor copies.

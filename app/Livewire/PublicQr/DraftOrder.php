@@ -26,6 +26,7 @@ use App\Models\TableSessionGuest;
 use App\Services\PublicQr\PublicQrQueryService;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
+use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Validation\ValidationException;
@@ -560,10 +561,15 @@ class DraftOrder extends Component
         $this->editingModifierOptions = $this->modifierOptionsFromSnapshots($draftOrderItem->selected_modifiers, $this->editingModifierGroups);
 
         $this->refreshEditingItemTotal();
+        Flux::modal('guest-draft-item')->show();
     }
 
     public function closeEditItem(): void
     {
+        if ($this->editingItemId !== null) {
+            Flux::modal('guest-draft-item')->close();
+        }
+
         $this->resetValidation();
         $this->editingItemId = null;
         $this->editingItemName = '';

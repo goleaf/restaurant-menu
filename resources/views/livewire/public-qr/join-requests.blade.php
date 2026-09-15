@@ -52,25 +52,23 @@
                     </div>
 
                     <div class="mt-3 grid grid-cols-2 gap-2">
-                        <button
+                        <flux:button
                             type="button"
                             wire:click="approve({{ $request['id'] }})"
                             wire:loading.attr="disabled"
                             wire:target="approve({{ $request['id'] }}), reject({{ $request['id'] }})"
-                            class="flex h-10 items-center justify-center rounded-lg bg-emerald-700 px-3 text-sm font-semibold text-white transition hover:bg-emerald-800 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-400 dark:focus:ring-offset-zinc-900"
-                        >
+                        variant="primary" color="green" class="h-auto! min-h-touch whitespace-normal! py-2 bg-success! hover:bg-success/90! dark:text-text-inverse!">
                             {{ __('guest.table.approve_guest') }}
-                        </button>
+                        </flux:button>
 
-                        <button
+                        <flux:button
                             type="button"
                             wire:click="reject({{ $request['id'] }})"
                             wire:loading.attr="disabled"
                             wire:target="approve({{ $request['id'] }}), reject({{ $request['id'] }})"
-                            class="flex h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900 dark:focus:ring-offset-zinc-900"
-                        >
+                        variant="ghost" class="h-auto! min-h-touch whitespace-normal! py-2 text-danger!">
                             {{ __('guest.table.reject_guest') }}
-                        </button>
+                        </flux:button>
                     </div>
                 </article>
             @empty

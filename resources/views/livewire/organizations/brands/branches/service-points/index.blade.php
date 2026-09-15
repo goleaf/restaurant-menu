@@ -1,6 +1,6 @@
 <section data-page="branch-service-points" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
+        <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
             {{ __('ui.organizations.brands.branches.areas.filialy') }}
             <span class="sr-only">{{ __('navigation.branches') }}</span>
         </flux:button>
@@ -25,21 +25,21 @@
             :description="__('ui.organizations.brands.branches.service_points.index.vyberite_tip_mesta_za')"
         >
 
-            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($quickCreateOptions as $option)
                     <flux:button
                         wire:key="service-point-preset-{{ $option['type'] }}"
                         :icon="$option['icon']"
                         type="button"
                         wire:click="prepareCreate('{{ $option['type'] }}')"
-                        class="min-h-14 justify-start"
+                        class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-14 justify-start"
                     >
                         {{ $option['label'] }}
                     </flux:button>
                 @endforeach
             </div>
 
-            <form wire:submit="create" class="mt-4 grid gap-4 md:grid-cols-2">
+            <form wire:submit="create" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                 <flux:input wire:model="name" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" autocomplete="off" required maxlength="160" />
                 <flux:input wire:model="displayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" autocomplete="off" maxlength="80" />
 
@@ -65,16 +65,16 @@
 
                 <flux:input wire:model="capacity" :label="__('ui.organizations.brands.branches.service_points.index.skolko_gostei')" type="number" required min="1" max="999" />
 
-                <div class="flex items-end justify-between gap-4 md:col-span-2">
+                <div class="flex flex-wrap items-end justify-between gap-4 md:col-span-2">
                     <flux:switch wire:model="isActive" :label="__('ui.organizations.brands.branches.service_points.index.mozno_ispolzovat')" />
 
-                    <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
+                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="create">
                         {{ __('ui.organizations.brands.branches.service_points.index.dobavit_mesto') }}
                     </flux:button>
                 </div>
             </form>
 
-            <section class="mt-6 grid gap-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+            <section class="mt-6 grid grid-cols-1 gap-4 border-t border-zinc-200 pt-5 dark:border-zinc-800">
                 <div class="flex flex-col gap-1">
                     <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('ui.organizations.brands.branches.service_points.index.dobavit_srazu_neskolk') }}</h2>
                     <p class="text-sm text-zinc-600 dark:text-zinc-300">
@@ -82,7 +82,7 @@
                     </p>
                 </div>
 
-                <form wire:submit="previewBulkCreate" class="grid gap-4 md:grid-cols-3">
+                <form wire:submit="previewBulkCreate" class="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <flux:select wire:model.live="bulkAreaNodeId" :label="__('ui.livewire.onboarding.restaurantsetup.zona')">
                         @foreach ($areaOptions as $option)
                             <flux:select.option wire:key="bulk-service-point-area-{{ $option['value'] === '' ? 'none' : $option['value'] }}" value="{{ $option['value'] }}">
@@ -103,7 +103,7 @@
                     <flux:input wire:model.live="bulkCapacity" :label="__('ui.organizations.brands.branches.service_points.index.skolko_gostei')" type="number" required min="1" max="999" />
 
                     <div class="flex flex-wrap items-end gap-2 md:col-span-3">
-                        <flux:button icon="eye" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="previewBulkCreate">
+                        <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="eye" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="previewBulkCreate">
                             {{ __('ui.organizations.brands.branches.service_points.index.pokazat_preview') }}
                         </flux:button>
                     </div>
@@ -117,7 +117,7 @@
 
                         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
                             @foreach ($bulkPreviewRows as $row)
-                                <div wire:key="bulk-service-point-preview-{{ $row['code'] }}" class="grid gap-2 px-3 py-2 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+                                <div wire:key="bulk-service-point-preview-{{ $row['code'] }}" class="grid grid-cols-1 gap-2 px-3 py-2 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
                                     <div class="font-medium text-zinc-950 dark:text-white">{{ $row['code'] }}</div>
 
                                     @if ($row['will_create'])
@@ -132,7 +132,7 @@
 
                     @if ($bulkPreviewReady)
                         <div class="flex flex-wrap items-center gap-2">
-                            <flux:button
+                            <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2"
                                 icon="plus"
                                 variant="primary"
                                 type="button"
@@ -152,37 +152,39 @@
                 @endif
 
                 @if ($bulkCreatedCount > 0)
-                    <x-ui.alert tone="success" :heading="__('ui.organizations.brands.branches.service_points.index.created_service_point', ['count' => $bulkCreatedCount])">
-                        <div class="grid gap-3">
-                            <p>
-                                {{ __('ui.organizations.brands.branches.service_points.index.skipped_existing_code') }}: {{ $bulkSkippedCount }}.
-                                {{ __('qr.messages.generate_later') }}.
-                            </p>
-
-                            @if ($canGenerateQr)
-                                <div>
-                                    <flux:button
-                                        icon="qr-code"
-                                        :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])"
-                                        wire:navigate
-                                    >
-                                        {{ __('qr.actions.bulk_print') }}
-                                    </flux:button>
-                                </div>
-                            @else
-                                <p class="text-sm">
-                                    {{ __('qr.messages.generate_permission_hint') }}
+                    <flux:callout variant="success" :heading="__('ui.organizations.brands.branches.service_points.index.created_service_point', ['count' => $bulkCreatedCount])" icon="check-circle" role="status" class="callout-contrast content-safe">
+                        <flux:callout.text>
+                            <div class="grid grid-cols-1 gap-3">
+                                <p>
+                                    {{ __('ui.organizations.brands.branches.service_points.index.skipped_existing_code') }}: {{ $bulkSkippedCount }}.
+                                    {{ __('qr.messages.generate_later') }}.
                                 </p>
-                            @endif
-                        </div>
-                    </x-ui.alert>
+
+                                @if ($canGenerateQr)
+                                    <div>
+                                        <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2"
+                                            icon="qr-code"
+                                            :href="route('organizations.brands.branches.qr.print', [$organization, $brand, $branch])"
+                                            wire:navigate
+                                        >
+                                            {{ __('qr.actions.bulk_print') }}
+                                        </flux:button>
+                                    </div>
+                                @else
+                                    <p class="text-sm">
+                                        {{ __('qr.messages.generate_permission_hint') }}
+                                    </p>
+                                @endif
+                            </div>
+                        </flux:callout.text>
+                    </flux:callout>
                 @endif
             </section>
         </x-ui.card>
     @endif
 
     @if ($filterLifecycle === 'active')
-    <x-ui.card padding="none" class="overflow-hidden">
+    <flux:card class="rounded-card border-border-subtle bg-surface p-0 overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div class="min-w-0">
@@ -198,7 +200,7 @@
             </div>
         </div>
 
-        <div class="grid gap-5 bg-zinc-50 p-4 dark:bg-zinc-950/40">
+        <div class="grid grid-cols-1 gap-5 bg-zinc-50 p-4 dark:bg-zinc-950/40">
             @forelse ($floorBoardSections as $section)
                 <section wire:key="floor-board-zone-{{ $section['area_id'] ?? 'none' }}" class="space-y-3">
                     <div class="flex flex-wrap items-center justify-between gap-3">
@@ -218,7 +220,7 @@
                         @endunless
                     </div>
 
-                    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                         @forelse ($section['service_points'] as $servicePoint)
                             <article wire:key="floor-board-service-point-{{ $servicePoint['id'] }}" class="min-h-52 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                                 <div class="flex items-start justify-between gap-3">
@@ -264,15 +266,15 @@
                                 <div class="mt-4 flex flex-wrap gap-2">
                                     @if ($canOpenTable)
                                         @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
-                                            <flux:button size="sm" icon="check" type="button" class="min-h-touch" disabled>
+                                            <flux:button size="sm" icon="check" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                             </flux:button>
                                         @elseif ($servicePoint['can_open_table'])
-                                            <flux:button size="sm" icon="play" variant="primary" type="button" class="min-h-touch" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
+                                            <flux:button size="sm" icon="play" variant="primary" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                                 {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                             </flux:button>
                                         @else
-                                            <flux:button size="sm" icon="lock-closed" type="button" class="min-h-touch" disabled>
+                                            <flux:button size="sm" icon="lock-closed" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch" disabled>
                                                 {{ __('ui.organizations.brands.branches.service_points.index.mesto_vykliuceno') }}
                                             </flux:button>
                                         @endif
@@ -283,21 +285,21 @@
                                             <flux:button
                                                 size="sm"
                                                 icon="qr-code"
-                                                class="min-h-touch"
+                                                class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch"
                                                 :href="$servicePoint['qr_show_url']"
                                                 wire:navigate
                                             >
                                                 {{ __('qr.actions.show') }}
                                             </flux:button>
                                         @else
-                                            <flux:button size="sm" icon="qr-code" type="button" class="min-h-touch" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
+                                            <flux:button size="sm" icon="qr-code" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
                                                 {{ __('qr.actions.generate') }}
                                             </flux:button>
                                         @endif
                                     @endif
 
                                     @if ($canManageServicePoints)
-                                        <flux:button size="sm" icon="pencil" type="button" class="min-h-touch" wire:click="startEditingFromBoard({{ $servicePoint['id'] }})">
+                                        <flux:button size="sm" icon="pencil" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 min-h-touch" wire:click="startEditingFromBoard({{ $servicePoint['id'] }})">
                                             {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                         </flux:button>
                                     @endif
@@ -318,18 +320,18 @@
                 />
             @endforelse
         </div>
-    </x-ui.card>
+    </flux:card>
     @endif
 
-    <x-ui.card padding="none" class="overflow-hidden">
+    <flux:card class="rounded-card border-border-subtle bg-surface p-0 overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <div class="grid gap-4">
+            <div class="grid grid-cols-1 gap-4">
                 <flux:heading size="lg">
                     {{ __('ui.organizations.brands.branches.service_points.index.stoly_i_mesta_filiala') }}
                     <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.service_points_in_thi') }}</span>
                 </flux:heading>
 
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <flux:input id="service-point-branch-context" name="servicePointBranchContext" :label="__('ui.organizations.brands.branches.service_points.index.filial')" type="text" autocomplete="off" :value="$branchName" disabled />
 
                     <flux:input
@@ -389,7 +391,7 @@
                     </flux:select>
 
                     <div class="flex items-end">
-                        <flux:button
+                        <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2"
                             icon="x-mark"
                             type="button"
                             wire:click="resetServicePointFilters"
@@ -410,9 +412,9 @@
             @enderror
 
             @forelse ($servicePointRows as $servicePoint)
-                <div wire:key="service-point-{{ $servicePoint['id'] }}" class="grid gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
+                <div wire:key="service-point-{{ $servicePoint['id'] }}" class="grid grid-cols-1 gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center">
                     @if ($editingServicePointId === $servicePoint['id'])
-                        <form wire:submit="update" class="grid gap-3 md:col-span-2 md:grid-cols-2">
+                        <form wire:submit="update" class="grid grid-cols-1 gap-3 md:col-span-2 md:grid-cols-2">
                             <flux:input wire:model="editingName" :label="__('ui.organizations.brands.branches.service_points.index.nazvanie')" type="text" autocomplete="off" required maxlength="160" />
                             <flux:input wire:model="editingDisplayNumber" :label="__('ui.organizations.brands.branches.service_points.index.nomer_na_nakleike')" type="text" autocomplete="off" maxlength="80" />
 
@@ -438,15 +440,15 @@
 
                             <flux:input wire:model="editingCapacity" :label="__('ui.organizations.brands.branches.service_points.index.skolko_gostei')" type="number" required min="1" max="999" />
 
-                            <div class="flex items-end justify-between gap-4 md:col-span-2">
+                            <div class="flex flex-wrap items-end justify-between gap-4 md:col-span-2">
                                 <flux:switch wire:model="editingIsActive" :label="__('ui.organizations.brands.branches.service_points.index.mozno_ispolzovat')" />
 
                                 <div class="flex flex-wrap gap-2">
-                                    <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="update">
                                         {{ __('ui.organizations.brands.branches.area_node_row.soxranit') }}
                                     </flux:button>
 
-                                    <flux:button icon="x-mark" type="button" wire:click="cancelEditing">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="x-mark" type="button" wire:click="cancelEditing">
                                         {{ __('ui.organizations.brands.branches.area_node_row.otmena') }}
                                     </flux:button>
                                 </div>
@@ -528,24 +530,24 @@
                         <div class="flex flex-wrap gap-2 md:justify-end">
                             @if ($servicePoint['is_archived'])
                                 @if ($canManageServicePoints)
-                                    <flux:button icon="arrow-path" variant="primary" type="button" wire:click="restoreServicePoint({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="restoreServicePoint({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="arrow-path" variant="primary" type="button" wire:click="restoreServicePoint({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="restoreServicePoint({{ $servicePoint['id'] }})">
                                         {{ __('structure.actions.restore') }}
                                     </flux:button>
                                 @endif
                             @else
                             @if ($canOpenTable)
                                 @if ($servicePoint['has_direct_session'] || $servicePoint['has_linked_session'])
-                                    <flux:button icon="check" type="button" disabled>
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="check" type="button" disabled>
                                         {{ __('ui.organizations.brands.branches.service_points.index.stol_otkryt') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.table_opened') }}</span>
                                     </flux:button>
                                 @elseif ($servicePoint['can_open_table'])
-                                    <flux:button icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="play" variant="primary" type="button" wire:click="openTable({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="openTable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.service_points.index.otkryt_stol') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.open_table') }}</span>
                                     </flux:button>
                                 @else
-                                    <flux:button icon="lock-closed" type="button" disabled>
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="lock-closed" type="button" disabled>
                                         {{ __('ui.organizations.brands.branches.service_points.index.mesto_vykliuceno') }}
                                         <span class="sr-only">{{ __('ui.organizations.brands.branches.service_points.index.place_inactive') }}</span>
                                     </flux:button>
@@ -560,7 +562,7 @@
                                         @endforeach
                                     </flux:select>
 
-                                    <flux:button icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="arrow-path" type="submit" wire:loading.attr="disabled" wire:target="changeStatus({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.service_points.index.smenit') }}
                                     </flux:button>
                                 </form>
@@ -568,7 +570,7 @@
 
                             @if ($canGenerateQr)
                                 @if ($servicePoint['has_qr'])
-                                    <flux:button
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2"
                                         icon="qr-code"
                                         :href="$servicePoint['qr_show_url']"
                                         wire:navigate
@@ -577,7 +579,7 @@
                                         <span class="sr-only">{{ __('qr.actions.show') }}</span>
                                     </flux:button>
                                 @else
-                                    <flux:button icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="qr-code" variant="primary" type="button" wire:click="generateQr({{ $servicePoint['id'] }})" wire:loading.attr="disabled" wire:target="generateQr({{ $servicePoint['id'] }})">
                                         {{ __('qr.actions.generate') }}
                                         <span class="sr-only">{{ __('qr.actions.generate') }}</span>
                                     </flux:button>
@@ -586,16 +588,16 @@
 
                             @if ($canManageServicePoints)
                                 @if ($servicePoint['is_active'])
-                                    <flux:button icon="eye-slash" type="button" wire:click="disable({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="eye-slash" type="button" wire:click="disable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.area_node_row.vykliucit') }}
                                     </flux:button>
                                 @else
-                                    <flux:button icon="eye" type="button" wire:click="enable({{ $servicePoint['id'] }})">
+                                    <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="eye" type="button" wire:click="enable({{ $servicePoint['id'] }})">
                                         {{ __('ui.organizations.brands.branches.area_node_row.vkliucit') }}
                                     </flux:button>
                                 @endif
 
-                                <flux:button icon="pencil" type="button" wire:click="startEditing({{ $servicePoint['id'] }})">
+                                <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="pencil" type="button" wire:click="startEditing({{ $servicePoint['id'] }})">
                                     {{ __('ui.organizations.brands.branches.area_node_row.izmenit') }}
                                 </flux:button>
 
@@ -608,7 +610,7 @@
                                     confirm-label="service_points.actions.delete"
                                 >
                                     <x-slot:trigger>
-                                        <flux:button icon="trash" variant="danger" type="button">
+                                        <flux:button icon="trash" variant="primary" color="red" type="button" class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2 bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                             {{ __('structure.actions.archive') }}
                                         </flux:button>
                                     </x-slot:trigger>
@@ -620,14 +622,14 @@
                         @if ($canGenerateQr && $shownQrServicePointId === $servicePoint['id'])
                             <div class="border-t border-zinc-200 pt-4 md:col-span-2 dark:border-zinc-800">
                                 @if ($servicePoint['has_qr'])
-                                    <div class="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
+                                    <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
                                         <div class="min-w-0 space-y-1">
                                             <p class="font-medium text-zinc-950 dark:text-white">{{ __('qr.labels.qr') }} {{ $servicePoint['qr_short_code'] }}</p>
                                             <p class="break-all text-zinc-600 dark:text-zinc-300">{{ $servicePoint['qr_public_path'] }}</p>
                                             <p class="text-zinc-500 dark:text-zinc-400">{{ __('ui.organizations.brands.branches.service_points.index.status') }}: {{ $servicePoint['qr_localized_status'] }}</p>
                                         </div>
 
-                                        <flux:button icon="x-mark" type="button" wire:click="hideQr">
+                                        <flux:button class="min-w-0 max-w-full h-auto! min-h-touch whitespace-normal! py-2" icon="x-mark" type="button" wire:click="hideQr">
                                             {{ __('ui.organizations.brands.branches.service_points.index.skryt') }}
                                         </flux:button>
                                     </div>
@@ -657,5 +659,5 @@
                 {{ $servicePointPaginator->links() }}
             </div>
         @endif
-    </x-ui.card>
+    </flux:card>
 </section>

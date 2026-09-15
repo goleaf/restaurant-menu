@@ -19,7 +19,7 @@
                         <option value="custom">{{ __('dashboard.control.report.custom') }}</option>
                     </flux:select>
                 </div>
-                <x-ui.button type="submit" wire:loading.attr="disabled" wire:target="applyPeriod,selectedBranchId" wire:offline.attr="disabled" class="self-start sm:shrink-0">{{ __('dashboard.control.report.apply') }}</x-ui.button>
+                <flux:button type="submit" wire:loading.attr="disabled" wire:target="applyPeriod,selectedBranchId" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0">{{ __('dashboard.control.report.apply') }}</flux:button>
                 <span wire:loading.delay wire:target="applyPeriod" role="status" class="text-sm text-text-muted">{{ __('dashboard.control.report.loading') }}</span>
             </div>
             <div x-show="$wire.periodDraft === 'custom'" x-cloak data-dashboard-custom-period class="grid min-w-0 gap-3 sm:grid-cols-2 [&>[data-flux-field]]:min-w-0 [&_[data-flux-control]]:min-w-0 [&_[data-flux-control]]:max-w-full">

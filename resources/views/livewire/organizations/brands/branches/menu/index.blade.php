@@ -59,7 +59,7 @@
             </div>
             <div class="flex flex-wrap justify-end gap-2">
                 <flux:button type="button" x-on:click="cancelNavigation">{{ __('menu.workspace.keep_editing') }}</flux:button>
-                <flux:button type="button" variant="danger" x-on:click="discardAndNavigate">{{ __('menu.workspace.discard') }}</flux:button>
+                <flux:button type="button" variant="primary" color="red" x-on:click="discardAndNavigate" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('menu.workspace.discard') }}</flux:button>
             </div>
         </div>
     </flux:modal>

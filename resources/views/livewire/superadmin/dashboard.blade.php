@@ -6,9 +6,11 @@
     />
 
     @if ($backupRestoreError !== '')
-        <x-ui.alert tone="danger" heading="ui.superadmin.backup_restore.failed_title">
-            {{ $backupRestoreError }}
-        </x-ui.alert>
+        <flux:callout variant="danger" :heading="__('ui.superadmin.backup_restore.failed_title')" icon="x-circle" role="status" class="callout-contrast content-safe">
+            <flux:callout.text>
+                {{ $backupRestoreError }}
+            </flux:callout.text>
+        </flux:callout>
     @endif
 
     <section class="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
@@ -94,7 +96,7 @@
                     confirmation-help="ui.confirmations.typed_confirmation_help"
                 >
                     <x-slot:trigger>
-                        <flux:button icon="arrow-path" variant="danger" type="button">
+                        <flux:button icon="arrow-path" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                             {{ __('ui.superadmin.dashboard.restore_sqlite') }}
                         </flux:button>
                     </x-slot:trigger>
@@ -252,7 +254,8 @@
                                                 icon="pause"
                                                 type="button"
                                                 size="sm"
-                                                variant="danger"
+                                                variant="primary" color="red"
+                                                class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
                                             >
                                                 {{ __('ui.actions.suspend') }}
                                             </flux:button>

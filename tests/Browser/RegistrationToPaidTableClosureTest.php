@@ -109,6 +109,20 @@ test('new owner can onboard and close a fully paid table through the browser', f
     $page->assertSee('€12.50');
     clickBrowserElement($page, 'button[wire\\:click="saveConfiguredItem"]');
     $page->assertSee(__('menu.guest.item_added'));
+    assertBrowserCalloutContrast($page);
+    $page->navigate(route('public.qr.show', ['token' => $qrCode->public_token], false));
+    $editSelector = 'button[wire\\:click^="editItem("]';
+    $page->assertPresent($editSelector);
+    $page->script('document.querySelector('.json_encode($editSelector, JSON_THROW_ON_ERROR).').focus()');
+    clickBrowserElement($page, $editSelector);
+    $page
+        ->assertVisible('dialog[data-modal="guest-draft-item"]')
+        ->assertScript('document.getElementById(document.querySelector("dialog[data-modal=guest-draft-item]").getAttribute("aria-labelledby"))?.textContent.trim()', $menuItem->name)
+        ->assertScript('document.activeElement.closest("dialog")?.dataset.modal === "guest-draft-item"');
+    $page->keys('dialog[data-modal="guest-draft-item"] [autofocus]', 'Escape');
+    $page
+        ->assertMissing('dialog[data-modal="guest-draft-item"][open]')
+        ->assertScript('document.activeElement.getAttribute("wire:click")?.startsWith("editItem(") === true');
     clickBrowserElement($page, 'button[wire\\:click="toggleReadyStatus"]');
     $page->assertSee(__('guest.table.ready_feedback'));
 
@@ -234,7 +248,7 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $r
     $page
         ->resize(390, 844)
         ->assertSee(__('ui.onboarding.restaurant_setup.nastroit_restoran'))
-        ->assertVisible('progress[aria-label]')
+        ->assertVisible('[data-flux-progress][aria-label]')
         ->assertAttribute('input[name="organization_name"]', 'type', 'text')
         ->assertAttribute('input[name="organization_name"]', 'autocomplete', 'organization');
     foreach (['en', 'lt', 'ru'] as $locale) {
@@ -258,6 +272,7 @@ function completeBrowserRestaurantOnboarding(PendingAwaitablePage $page, User $r
     clickBrowserElement($page, 'form[wire\\:submit="createOrganization"] button[type="submit"]');
     $page
         ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'))
+        ->assertScript('document.querySelector("[data-flux-progress]").getAttribute("aria-valuenow") === "2"')
         ->navigate(route('onboarding.restaurant', absolute: false))
         ->assertSee(__('ui.onboarding.restaurant_setup.nazvanie_restorana'))
         ->assertVisible('[data-onboarding-mobile-summary]');
@@ -563,6 +578,45 @@ function assertBrowserOnboardingTextZoomReflow(PendingAwaitablePage $page): void
         $overflowState['clientWidth'],
         'Restaurant onboarding does not reflow at 200% text size: '.json_encode($overflowState, JSON_THROW_ON_ERROR),
     );
+}
+
+function assertBrowserCalloutContrast(PendingAwaitablePage $page): void
+{
+    $contrast = $page->script(<<<'JAVASCRIPT'
+        (() => {
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = 1;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            const rgb = color => {
+                context.clearRect(0, 0, 1, 1);
+                context.fillStyle = color;
+                context.fillRect(0, 0, 1, 1);
+                return [...context.getImageData(0, 0, 1, 1).data];
+            };
+            const luminance = color => color.slice(0, 3).map(channel => {
+                const value = channel / 255;
+                return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+            }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+            return [...document.querySelectorAll('[data-flux-callout] [data-slot="heading"], [data-flux-callout] [data-slot="text"]')]
+                .filter(element => element.getClientRects().length && element.textContent.trim())
+                .map(element => {
+                    const ancestors = [];
+                    for (let parent = element; parent; parent = parent.parentElement) ancestors.unshift(parent);
+                    const background = ancestors.reduce((base, parent) => {
+                        const color = rgb(getComputedStyle(parent).backgroundColor);
+                        return base.map((channel, index) => channel * (1 - color[3] / 255) + color[index] * color[3] / 255);
+                    }, [255, 255, 255]);
+                    const foreground = luminance(rgb(getComputedStyle(element).color));
+                    const surface = luminance(background);
+                    return (Math.max(foreground, surface) + 0.05) / (Math.min(foreground, surface) + 0.05);
+                });
+        })()
+    JAVASCRIPT);
+
+    expect($contrast)->not->toBeEmpty();
+    foreach ($contrast as $ratio) {
+        expect($ratio)->toBeGreaterThanOrEqual(4.5);
+    }
 }
 
 function clickBrowserElement(PendingAwaitablePage $page, string $selector): void

@@ -356,7 +356,7 @@ test('browse only guest opens bounded gallery and escape restores focus', functi
     $page->screenshot(false, 'product-guest-dialog-320x800');
     $page->keys('button[aria-label="'.__('menu.guest.gallery_next', [], 'lt').'"]', 'Tab');
     expect($page->script("document.activeElement?.closest('[role=dialog]') !== null"))->toBeTrue();
-    $page->keys('button[aria-label="'.__('menu.guest.close', [], 'lt').'"]', 'Shift+Tab');
+    $page->keys('[data-guest-dish-dialog][open] button[aria-label="'.__('menu.guest.close', [], 'lt').'"]', 'Shift+Tab');
     expect($page->script("document.activeElement?.closest('[role=dialog]') !== null"))->toBeTrue();
     $page->keys('[role="dialog"]', 'Escape')->assertMissing('[role="dialog"][aria-modal="true"]');
     $page->assertPresent('#guest-menu-item-details-'.$item->id.':focus');

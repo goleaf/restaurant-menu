@@ -132,10 +132,7 @@
                         @endforeach
                     </flux:select>
 
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-text-primary">{{ __('payments.forms.note') }}</span>
-                        <textarea id="waiter-payment-note" name="paymentNote" wire:model="paymentNote" rows="2" maxlength="500" class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"></textarea>
-                    </label>
+                    <flux:textarea label="{{ __('payments.forms.note') }}" id="waiter-payment-note" name="paymentNote" wire:model="paymentNote" rows="2" maxlength="500" class="min-h-touch"></flux:textarea>
 
                     @if (data_get($payment, 'tips_enabled'))
                         <flux:input wire:model="tipsAmount" :label="__('payments.forms.amount')" type="number" min="0" step="0.01" />

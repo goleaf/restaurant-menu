@@ -4,6 +4,10 @@
 
 # Compliance matrix
 
+## Second Flux cleanup evidence — 2026-09-15
+
+The existing frontend/accessibility/localization requirements now use direct Flux Button, Field/Input/Textarea/Select, Callout, Toggle, Progress and Skeleton composition. Five generic PHP UI classes and five Blade views are removed; semantic Card/StatePanel/EmptyState APIs remain. `FrontendStyleArchitectureTest` guards the removed wrappers, native CSS-only dependencies, explicit Tailwind sources, semantic states and the two deliberately retained accessibility overrides. `DraftOrderFunctionalTest` covers authorized modal state and error association; browser journeys cover progress updates, contrast, native dialog names, safe focus and translated responsive behavior. Exact current gate results are in `testing.md`; measured source/bundle reductions are in `tailwind.md`. No requirement, schema, query boundary or paid-package contract changes.
+
 ## Flux/CSS modernization evidence — 2026-09-15
 
 The existing `blade-001`, `livewire-001`, `i18n-001`, `ui-accessibility-001` and `ui-responsive-001` contracts now include `FrontendStyleArchitectureTest`: explicit Tailwind 4 sources, no first-party preprocessors, bounded/pinned accessibility overrides, localized toast/password controls, translated modal autofocus and Flux operational composition. Print CSS has a dedicated entry and exact QR dimensions; `docs/tailwind.md` records the measured cleanup. The requirement traceability field example now points to an actual Flux onboarding view after removal of the unused generic input clone.

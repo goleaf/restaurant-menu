@@ -60,7 +60,7 @@
         >
             <div class="mt-3 space-y-3">
                 @error('recoveryCodes')
-                    <flux:callout variant="danger" icon="x-circle" heading="{{$message}}"/>
+                    <flux:callout class="callout-contrast" variant="danger" icon="x-circle" heading="{{$message}}"/>
                 @enderror
 
                 @if (filled($recoveryCodes))
@@ -73,7 +73,7 @@
                             <div
                                 role="listitem"
                                 class="select-text"
-                                wire:loading.class="opacity-50 animate-pulse"
+                                wire:loading.class="opacity-50"
                             >
                                 {{ $code }}
                             </div>

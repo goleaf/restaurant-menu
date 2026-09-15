@@ -4,6 +4,34 @@
 
 # Testing and quality gates
 
+## Second Flux cleanup pass — 2026-09-15
+
+This pass starts after the first Flux delivery and preserves the separate team verification commit `70fcc3e`. Installed Flux Free 2.17.0, Livewire 4.4.1, Tailwind/Vite and both locks are unchanged. Only product presentation, its regression tests and the documented Vite CSS-preload integration change. Runtime data/storage/cache paths for Pest are disposable; the committed public `.htaccess` is included in each isolated storage fixture.
+
+| Gate | Observed second-pass result |
+| --- | --- |
+| Full WebKit browser inventory | 21 passed / 1,480 assertions, zero failures/timeouts, exit 0; final administration follow-up 1 passed / 215 assertions, 19.75 s |
+| Four-process backend | 2,750 passed / 58,192 assertions, 168.61 s, exit 0 |
+| Canonical four-process coverage | 2,749 passed / 58,191 assertions, 586.45 s; **93.7%**, unchanged 90% minimum, process-local `COMPOSER_MEMORY_LIMIT=4G`, exit 0 |
+| Final design/style/localization/field translation/traceability/service-point regressions | 88 passed / 3,795 assertions, 8.17 s, exit 0 |
+| Pint and `composer lint:check` | Exit 0 |
+| `composer analyse` | Exit 0, 724 files, no errors |
+| Composer strict validation / audit, npm audit | Exit 0; no reported vulnerability advisories |
+| Translation audit / scan | Exit 0; 7,851 entries / 2,617 keys per locale; no missing/unused keys or critical issues |
+| Production build | Exit 0; exact before/after bytes and build timings in `tailwind.md` |
+| Independent source review | Progress lifecycle, callout contrast and native dialog naming findings corrected and independently re-reviewed |
+| Isolated config/route/view cache build and clear | Six commands, exit 0 |
+
+Herd Chromium QA uses disposable profiles. Staff matrices cover organizations, branch settings, menu, service points, waiter, kitchen and bar: 315 viewport/theme/locale/reflow checks. Guest entry adds 45 and authentication 42 matrix checks, with additional keyboard and 200% text checks. Widths are 360/390/430/768/1024/1440/1920, in EN/LT/RU and light/dark. Authentication also follows system appearance, emulated forced colors and reduced motion. Guest entry exposes its translated label and a 56-pixel field. Profile dropdown arrows/Escape, Toggle Space/checked state, modal safe Cancel, native dialog name, Escape and trigger restoration work. Fresh console listeners report no warnings/errors attributable to the changes; Boost browser-log inspection returned no available entries.
+
+Restaurant onboarding is tested end-to-end in the isolated Pest browser application, including validation, progress updates, navigation and successful completion through a paid table closure. The existing Herd demo owner correctly receives 403 on new onboarding; no new local account was created to bypass that rule. Browser mutations for menu/service-point/team workflows use isolated fixtures. On Herd, all six QR presets preserve 76×104 mm labels, 48 mm readable QR geometry, exact print colors and no internal overflow. Screenshots of QR, the Russian guest form, menu desktop dark and operational mobile surfaces were inspected. Physical printing and screen-reader certification are not claimed.
+
+The first browser attempt exposed Alpine `:disabled` being interpreted as a PHP Flux prop in pending photos; `x-bind:disabled` fixes the actual editor render. The next complete run passed 20 cases and failed one strict test selector because the persistent hidden draft modal added a second close control; scoping the gallery selector to its open dialog retains the same keyboard assertion. A later new regression reproduced missing native dialog names; stable heading associations fix this without another Flux override. Earlier failures are not counted as passes. The final complete browser repeat above includes all corrections. Browser review also corrected service-point/department wrapping at 200% text and contrast below 4.5:1 in green/yellow callout text.
+
+During coverage, application PHP/configuration/translation sources remain unchanged. Final cleanup removes one unused CSS token and merges a duplicated class attribute in the service-point success callout; its new architecture guard first failed and then passed. The production asset hashes remain unchanged. The final backend, focused browser and contract repeats cover these small presentation/test changes separately. Their executable/configuration/translation manifest stayed unchanged: `57f29bda7bfc5e0b14afd959f3e62027689d393b3bd19a21fa703469626175d8`. An unrelated `flux-pro/` directory appeared in the shared checkout during verification; it is not installed, sourced, staged for this delivery or modified by this pass.
+
+Owned logs/measurements are under `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-flux-pass2-7psqo0xv` and `/tmp/flux-pass2-*.log`; final browser artifacts are under `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-browser-b5824187dbcf9bfa`. Compatible package upgrades remain blocked by prohibited GitHub archive URLs; no Pro or unrelated dependency was added.
+
 ## Integrated team verification — 2026-09-15
 
 Verification now targets local `565dcf6`, which includes the team implementation and the other session's committed Flux/CSS work. A disposable source mirror preserves that complete commit. Its 1,169-file executable/config/translation manifest is `e3b91bf65f8072a2dd0bcd00d46d53499deadc8fd317f73797f5dc72f83e483e`; Markdown ledger updates are checked separately. Herd PHP 8.5.8 and the existing dependency locks are unchanged. No working database, real invitations or production deployment is involved.

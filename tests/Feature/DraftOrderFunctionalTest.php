@@ -39,6 +39,7 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
+use Dom\HTMLDocument;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -809,3 +810,47 @@ function prompt354GuestTokenCookieName(string $publicToken): string
 {
     return 'guest_token_'.substr(hash('sha256', $publicToken), 0, 24);
 }
+
+test('guest draft editing opens a scoped Flux dialog and rejects another guests item', function (): void {
+    $context = createPrompt354DraftOrderContext();
+    $item = app(AddGuestDraftOrderItemAction::class)->handle(
+        tableSession: $context['tableSession'],
+        guest: $context['ana'],
+        menuItem: $context['pizzaItem'],
+        selectedModifierOptions: [],
+    );
+    $component = Livewire::withCookie(prompt354GuestTokenCookieName($context['publicToken']), $context['ana']->guest_token)
+        ->test(GuestDraftOrderComponent::class, [
+            'tableSessionId' => $context['tableSession']->id,
+            'currentGuestId' => $context['ana']->id,
+            'publicToken' => $context['publicToken'],
+        ]);
+
+    $component->call('editItem', $item->id)
+        ->assertSet('editingItemId', $item->id)
+        ->assertDispatched('modal-show', name: 'guest-draft-item')
+        ->assertSee('data-modal="guest-draft-item"', false)
+        ->set('editingComment', str_repeat('a', 501))
+        ->call('updateItem')
+        ->assertHasErrors('editingComment');
+
+    $dom = HTMLDocument::createFromString('<!doctype html><html><body>'.$component->html().'</body></html>');
+    $comment = $dom->querySelector('textarea[name="editingComment"]');
+
+    expect($comment->getAttribute('aria-invalid'))->toBe('true')
+        ->and($comment->closest('[data-flux-field]')?->querySelector('[data-flux-error]'))->not->toBeNull();
+
+    $component->call('closeEditItem')
+        ->assertDispatched('modal-close', name: 'guest-draft-item')
+        ->assertSet('editingItemId', null);
+
+    Livewire::withCookie(prompt354GuestTokenCookieName($context['publicToken']), $context['boris']->guest_token)
+        ->test(GuestDraftOrderComponent::class, [
+            'tableSessionId' => $context['tableSession']->id,
+            'currentGuestId' => $context['boris']->id,
+            'publicToken' => $context['publicToken'],
+        ])
+        ->call('editItem', $item->id)
+        ->assertHasErrors('draft_item')
+        ->assertNotDispatched('modal-show');
+});

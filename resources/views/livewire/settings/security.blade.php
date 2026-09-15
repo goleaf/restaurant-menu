@@ -51,8 +51,9 @@
 
                             <div class="flex justify-start">
                                 <flux:button
-                                    variant="danger"
+                                    variant="primary" color="red"
                                     wire:click="disable"
+                                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
                                 >
                                     {{ __('ui.settings.security.disable_2fa') }}
                                 </flux:button>
@@ -152,15 +153,13 @@
                         </div>
                     @else
                         @error('setupData')
-                            <flux:callout variant="danger" icon="x-circle" heading="{{ $message }}"/>
+                            <flux:callout class="callout-contrast" variant="danger" icon="x-circle" heading="{{ $message }}"/>
                         @enderror
 
                         <div class="flex justify-center">
                             <div class="relative w-64 overflow-hidden border rounded-lg border-stone-200 dark:border-stone-700 aspect-square">
                                 @empty($qrCodeSvg)
-                                    <div class="absolute inset-0 flex items-center justify-center bg-white dark:bg-stone-700 animate-pulse">
-                                        <flux:icon.loading/>
-                                    </div>
+                                    <flux:skeleton class="absolute inset-0 size-full" aria-hidden="true" />
                                 @else
                                 <div x-data class="flex items-center justify-center h-full p-4">
                                     <div
@@ -325,8 +324,9 @@
                         {{ __('ui.actions.cancel') }}
                     </flux:button>
                     <flux:button
-                        variant="danger"
+                        variant="primary" color="red"
                         wire:click="deletePasskey"
+                        class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
                     >
                         {{ __('ui.actions.delete') }}
                     </flux:button>

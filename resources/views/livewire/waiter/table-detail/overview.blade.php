@@ -176,15 +176,19 @@
         </div>
 
         @if ($guestRemovalFeedbackMessage)
-            <x-ui.alert tone="success" class="mt-4">
-                {{ $guestRemovalFeedbackMessage }}
-            </x-ui.alert>
+            <flux:callout variant="success" class="callout-contrast content-safe mt-4" icon="check-circle" role="status">
+                <flux:callout.text>
+                    {{ $guestRemovalFeedbackMessage }}
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         @error('guest')
-            <x-ui.alert tone="danger" class="mt-4">
-                {{ $message }}
-            </x-ui.alert>
+            <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+                <flux:callout.text>
+                    {{ $message }}
+                </flux:callout.text>
+            </flux:callout>
         @enderror
 
         <div class="mt-4 divide-y divide-border-subtle rounded-lg border border-border-subtle">
@@ -206,7 +210,7 @@
                             submit-target="removeGuest({{ $participant['id'] }})"
                         >
                             <x-slot:trigger>
-                                <flux:button type="button" size="sm" variant="danger" icon="user-minus">
+                                <flux:button type="button" size="sm" variant="primary" color="red" icon="user-minus" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                     {{ __('ui.waiter.table_detail.remove_guest') }}
                                 </flux:button>
                             </x-slot:trigger>

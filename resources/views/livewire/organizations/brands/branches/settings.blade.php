@@ -34,13 +34,7 @@
                     <flux:input wire:model="form.tiktokUrl" :label="__('ui.organizations.brands.branches.settings.tiktok_link')" type="url" maxlength="2048" :placeholder="__('fields.placeholders.tiktok_url_example')" />
                 </div>
 
-                <label class="grid gap-2 text-sm">
-                    <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.short_description') }}</span>
-                    <textarea wire:model="form.publicDescription" rows="3" maxlength="1200" class="rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-400 focus:outline-hidden focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"></textarea>
-                    @error('form.publicDescription')
-                        <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>
-                    @enderror
-                </label>
+                <flux:textarea label="{{ __('ui.organizations.brands.branches.settings.short_description') }}" wire:model="form.publicDescription" rows="3" maxlength="1200" class="min-h-touch"></flux:textarea>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="grid gap-2 text-sm">
@@ -82,9 +76,11 @@
                 </div>
 
                 @if ($form->temporarilyClosed)
-                    <x-ui.alert tone="danger" :heading="__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt')">
-                        {{ __('ui.organizations.brands.branches.settings.guests_will_see_this_warning_and') }}
-                    </x-ui.alert>
+                    <flux:callout variant="danger" :heading="__('ui.actions.branches.getbranchopeningstatusaction.restoran_vremenno_zakryt')" icon="x-circle" role="status" class="callout-contrast content-safe">
+                        <flux:callout.text>
+                            {{ __('ui.organizations.brands.branches.settings.guests_will_see_this_warning_and') }}
+                        </flux:callout.text>
+                    </flux:callout>
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <flux:input
@@ -151,8 +147,9 @@
                                                 <flux:button
                                                     type="button"
                                                     icon="trash"
-                                                    variant="danger"
+                                                    variant="primary" color="red"
                                                     wire:click="removeOpeningInterval({{ $day['day_of_week'] }}, {{ $intervalIndex }})"
+                                                    class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!"
                                                 >
                                                     {{ __('guest.cart.remove_item') }}
                                                 </flux:button>
@@ -220,9 +217,11 @@
                 </div>
 
                 @if ($cleanupMessage)
-                    <x-ui.alert tone="success" :heading="__('ui.organizations.brands.branches.settings.cleanup_finished')">
-                        {{ $cleanupMessage }}
-                    </x-ui.alert>
+                    <flux:callout variant="success" :heading="__('ui.organizations.brands.branches.settings.cleanup_finished')" icon="check-circle" role="status" class="callout-contrast content-safe">
+                        <flux:callout.text>
+                            {{ $cleanupMessage }}
+                        </flux:callout.text>
+                    </flux:callout>
                 @endif
 
                 <div class="grid gap-4 md:grid-cols-2">
@@ -298,11 +297,11 @@
 
                 <label class="grid gap-2 text-sm">
                     <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ __('ui.organizations.brands.branches.settings.order_flow_mode') }}</span>
-                    <select wire:model="form.orderFlowMode" class="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950 shadow-xs outline-hidden focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white">
+                    <flux:select wire:model="form.orderFlowMode" class="min-h-touch">
                         @foreach ($orderFlowModeOptions as $option)
                             <option wire:key="order-flow-mode-{{ $option['value'] }}" value="{{ $option['value'] }}">{{ __($option['label']) }}</option>
                         @endforeach
-                    </select>
+                    </flux:select>
 
                     @error('form.orderFlowMode')
                         <span class="text-sm text-red-600 dark:text-red-400">{{ $message }}</span>

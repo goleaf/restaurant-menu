@@ -2,7 +2,7 @@
 
 <form wire:submit="updateItem" novalidate class="grid gap-4">
     @error('editingItemVersion')
-        <p role="alert" class="rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning-foreground">{{ $message }}</p>
+        <p role="alert" class="rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning">{{ $message }}</p>
     @enderror
                                                     <div class="grid gap-3 md:grid-cols-2">
                                                         <flux:select wire:model.live="editingItemMenuId" :label="__('menu.guest.title')">

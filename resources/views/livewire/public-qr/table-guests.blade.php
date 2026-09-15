@@ -5,9 +5,11 @@
 >
     @if (! $canRead)
         <div class="p-4">
-            <x-ui.alert tone="danger">
-                {{ __('guest.table.guest_access_unavailable_title') }}
-            </x-ui.alert>
+            <flux:callout variant="danger" icon="x-circle" role="status" class="callout-contrast content-safe">
+                <flux:callout.text>
+                    {{ __('guest.table.guest_access_unavailable_title') }}
+                </flux:callout.text>
+            </flux:callout>
         </div>
     @else
     <div class="border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">

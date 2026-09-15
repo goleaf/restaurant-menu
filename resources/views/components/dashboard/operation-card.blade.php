@@ -12,7 +12,7 @@
             <flux:icon name="arrow-right" class="size-4 shrink-0 rtl:rotate-180" aria-hidden="true" />
         </a>
     @elseif (($item['requires_branch'] ?? false) && $item['is_available'])
-        <x-ui.button x-on:click="openBranchPicker()" class="mt-3 justify-start whitespace-normal text-start">{{ __('dashboard.control.choose_branch') }}</x-ui.button>
+        <flux:button x-on:click="openBranchPicker()" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 mt-3 justify-start whitespace-normal text-start">{{ __('dashboard.control.choose_branch') }}</flux:button>
     @else
         <p class="mt-3 flex min-h-touch items-center gap-2 text-xs text-text-muted"><flux:icon name="lock-closed" class="size-4 shrink-0" aria-hidden="true" />{{ __('dashboard.control.no_access') }}</p>
     @endif

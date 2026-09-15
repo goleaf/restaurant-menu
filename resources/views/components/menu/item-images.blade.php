@@ -45,7 +45,7 @@
                         <img :src="preview.url" :alt="preview.name" width="240" height="180" class="aspect-4/3 w-full object-cover">
                         <figcaption class="grid gap-1 p-2">
                             <span class="truncate text-xs text-text-primary" x-text="preview.name"></span>
-                            <button type="button" class="min-h-touch rounded-control px-2 text-sm font-medium text-danger focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-50" :disabled="busy" @click="remove(preview.key)">{{ __('uploads.editor.remove_pending') }}</button>
+                            <flux:button type="button" x-bind:disabled="busy" @click="remove(preview.key)" variant="ghost" class="h-auto! min-h-touch whitespace-normal! py-2 text-danger!">{{ __('uploads.editor.remove_pending') }}</flux:button>
                         </figcaption>
                     </figure>
                 </template>
@@ -126,7 +126,7 @@
             <div class="grid gap-2 border-t border-border-subtle pt-4 sm:flex sm:flex-wrap">
                 <flux:button type="button" variant="primary" wire:click="saveItemImagePresentation" wire:loading.attr="disabled" wire:target="saveItemImagePresentation" x-bind:disabled="offline">{{ __('uploads.presentation.save') }}</flux:button>
                 <flux:button type="button" wire:click="closeItemImagePresentation" wire:loading.attr="disabled" wire:target="saveItemImagePresentation">{{ __('uploads.presentation.discard') }}</flux:button>
-                <p wire:dirty wire:target="imagePresentationForm" class="self-center text-xs text-warning-foreground" role="status">{{ __('uploads.presentation.unsaved') }}</p>
+                <p wire:dirty wire:target="imagePresentationForm" class="self-center text-xs text-warning" role="status">{{ __('uploads.presentation.unsaved') }}</p>
             </div>
         </div>
     @endif
@@ -147,7 +147,7 @@
                         </div>
                     @endif
                     <x-dangerous-action-confirmation name="remove-menu-item-image-{{ $item['id'] }}-{{ $image['key'] }}" action="delete_media_file" :confirm-action="$image['remove_action']" confirm-label="ui.actions.confirm" loading-label="ui.actions.removing">
-                        <x-slot:trigger><flux:button type="button" variant="danger" icon="trash" :disabled="$presentationContext !== []">{{ __('uploads.actions.remove') }}</flux:button></x-slot:trigger>
+                        <x-slot:trigger><flux:button type="button" variant="primary" color="red" icon="trash" :disabled="$presentationContext !== []" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('uploads.actions.remove') }}</flux:button></x-slot:trigger>
                     </x-dangerous-action-confirmation>
                 </figcaption>
             </figure>

@@ -11,7 +11,7 @@ final class StatePanel extends Component
 {
     public readonly string $resolvedKind;
 
-    public readonly string $toneClasses;
+    public readonly string $color;
 
     public readonly string $icon;
 
@@ -37,11 +37,11 @@ final class StatePanel extends Component
             'error',
             'fatal',
         ], true) ? $kind : 'empty';
-        $this->toneClasses = match ($this->resolvedKind) {
-            'offline', 'slow', 'stale' => 'border-warning-border bg-warning-surface text-warning',
-            'validation', 'error', 'fatal' => 'border-danger-border bg-danger-surface text-danger',
-            'unauthorized' => 'border-information-border bg-information-surface text-information',
-            default => 'border-border-subtle bg-surface-muted text-text-primary',
+        $this->color = match ($this->resolvedKind) {
+            'offline', 'slow', 'stale' => 'yellow',
+            'validation', 'error', 'fatal' => 'red',
+            'unauthorized' => 'blue',
+            default => 'zinc',
         };
         $this->icon = $icon ?? match ($this->resolvedKind) {
             'filtered-empty' => 'funnel',

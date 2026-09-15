@@ -4,6 +4,14 @@
 
 # Livewire 4
 
+## Flux interaction lifecycle — second cleanup pass
+
+Use the installed Free controls directly; Flux buttons own their standard loading spinner and disabled behavior. Keep explicit targeted loading/offline attributes where a control belongs to a different action or a multi-step form; these never replace server authorization or idempotency. The waiter attention filter uses Flux Toggle for its existing boolean query state. Labeled persistent settings remain Switch; independent multi-selections remain checkboxes.
+
+The guest draft editor uses a persistent Flux modal host and initial close control. Authorize and resolve the draft item before `Flux::modal(...)->show()`, render only editable content conditionally, and clear state on close. A guard prevents a close event from dispatching another close once editing state is already empty. Flux 2.17 forwards ARIA attributes on the modal wrapper rather than its native dialog; the persistent heading names that dialog with native `closest('dialog')` and `aria-labelledby`, so translated/morphed text stays current. Dangerous confirmations use the same heading association and focus safe Cancel first.
+
+Flux 2.17 Progress initializes its value once, so onboarding keys the progress element by step. The browser regression verifies `aria-valuenow` changes from step 1 to step 2. No new public resource identifiers, event handlers, query paths or domain mutations are introduced by these UI changes.
+
 ## Kitchen-department transport validation — 2026-09-14
 
 Editable create/edit properties stay mixed until shared field validation. Trim names only when the received value is a string. Sort order combines numeric with integer validation to reject booleans while accepting valid numeric strings; active flags are validated before casting. Normalize only validated Action payloads. MenuInputTransportTest submits property updates and the mutation in the same actual Livewire POST and checks both rejection without persistence and valid controls. No Blade binding or user-visible flow changes are required.

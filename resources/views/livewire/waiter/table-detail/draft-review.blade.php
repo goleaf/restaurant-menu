@@ -56,7 +56,7 @@
                                 @if (data_get($draftReview, 'draft.can_edit'))
                                     <div class="mt-3 flex flex-wrap gap-2">
                                         <flux:button size="sm" icon="pencil" type="button" wire:click="editDraftItem({{ $item['id'] }})">{{ __('guest.cart.edit_item') }}</flux:button>
-                                        <flux:button size="sm" icon="trash" variant="danger" type="button" wire:click="deleteDraftItem({{ $item['id'] }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $item['id'] }})">{{ __('ui.actions.delete') }}</flux:button>
+                                        <flux:button size="sm" icon="trash" variant="primary" color="red" type="button" wire:click="deleteDraftItem({{ $item['id'] }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $item['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">{{ __('ui.actions.delete') }}</flux:button>
                                     </div>
                                 @endif
                             </article>
@@ -131,31 +131,23 @@
                             </p>
                             <div class="mt-3 grid gap-2">
                                 @foreach ($modifierGroup['options'] as $modifierOption)
-                                    <button
+                                    <flux:button
                                         type="button"
                                         wire:key="waiter-add-modifier-option-{{ $modifierOption['id'] }}"
                                         wire:click="toggleAddingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
                                         aria-pressed="{{ in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
-                                        @class([
-                                            'flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-focus/30',
-                                            'border-border-strong bg-surface-selected text-text-primary' => in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                            'border-border-subtle bg-surface text-text-primary hover:bg-surface-muted' => ! in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                        ])
-                                    >
+                                    :variant="in_array($modifierOption['id'], $addingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2 w-full [&>span]:flex [&>span]:w-full [&>span]:justify-between [&>span]:gap-3">
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">{{ $modifierOption['formatted_price_delta'] }}</span>
-                                    </button>
+                                    </flux:button>
                                 @endforeach
                             </div>
                         </fieldset>
                     @endforeach
 
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-text-primary">{{ __('guest.cart.comment') }}</span>
-                        <textarea id="waiter-draft-adding-comment" name="addingComment" wire:model="addingComment" rows="3" maxlength="500" class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"></textarea>
-                    </label>
+                    <flux:textarea label="{{ __('guest.cart.comment') }}" id="waiter-draft-adding-comment" name="addingComment" wire:model="addingComment" rows="3" maxlength="500" class="min-h-touch"></flux:textarea>
 
-                    @foreach (['addingGuestId', 'manualGuestName', 'addingMenuItemId', 'addingQuantity', 'addingComment'] as $errorField)
+                    @foreach (['addingGuestId', 'manualGuestName', 'addingMenuItemId', 'addingQuantity'] as $errorField)
                         @error($errorField)
                             <p class="text-sm font-medium text-danger">{{ $message }}</p>
                         @enderror
@@ -183,11 +175,8 @@
 
         @if (data_get($draftReview, 'draft.can_reject'))
             <div class="mt-4 space-y-3">
-                <label class="grid gap-1 text-sm">
-                    <span class="font-medium text-text-primary">{{ __('ui.waiter.table_detail.rejection_reason') }}</span>
-                    <textarea id="waiter-draft-rejection-reason" name="rejectionReason" wire:model="rejectionReason" rows="4" maxlength="500" class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30" placeholder="{{ __('ui.waiter.table_detail.tell_guests_what_needs_to_change') }}"></textarea>
-                </label>
-                <flux:button icon="x-mark" variant="danger" type="button" class="w-full" wire:click="rejectDraft" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="rejectDraft">
+                <flux:textarea label="{{ __('ui.waiter.table_detail.rejection_reason') }}" id="waiter-draft-rejection-reason" name="rejectionReason" wire:model="rejectionReason" rows="4" maxlength="500" class="min-h-touch" placeholder="{{ __('ui.waiter.table_detail.tell_guests_what_needs_to_change') }}"></flux:textarea>
+                <flux:button icon="x-mark" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! w-full" wire:click="rejectDraft" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="rejectDraft">
                     <span wire:loading.remove wire:target="rejectDraft">{{ __('ui.waiter.table_detail.reject_draft') }}</span>
                     <span wire:loading wire:target="rejectDraft">{{ __('ui.waiter.table_detail.rejecting') }}</span>
                 </flux:button>
@@ -255,30 +244,21 @@
                             <legend class="px-1 text-sm font-semibold text-text-primary">{{ $modifierGroup['name'] }}</legend>
                             <div class="mt-3 grid gap-2">
                                 @foreach ($modifierGroup['options'] as $modifierOption)
-                                    <button
+                                    <flux:button
                                         type="button"
                                         wire:key="waiter-edit-modifier-option-{{ $modifierOption['id'] }}"
                                         wire:click="toggleEditingModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
                                         aria-pressed="{{ in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
-                                        @class([
-                                            'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-focus/30',
-                                            'border-border-strong bg-surface-selected text-text-primary' => in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                            'border-border-subtle bg-surface text-text-primary hover:bg-surface-muted' => ! in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                        ])
-                                    >
+                                    :variant="in_array($modifierOption['id'], $editingModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2 w-full [&>span]:flex [&>span]:w-full [&>span]:justify-between [&>span]:gap-3">
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">{{ $modifierOption['formatted_price_delta'] }}</span>
-                                    </button>
+                                    </flux:button>
                                 @endforeach
                             </div>
                         </fieldset>
                     @endforeach
 
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-text-primary">{{ __('guest.cart.comment') }}</span>
-                        <textarea id="waiter-draft-editing-comment" name="editingComment" wire:model="editingComment" rows="3" maxlength="500" class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"></textarea>
-                    </label>
-                    @error('editingComment') <p class="text-sm font-medium text-danger">{{ $message }}</p> @enderror
+                    <flux:textarea label="{{ __('guest.cart.comment') }}" id="waiter-draft-editing-comment" name="editingComment" wire:model="editingComment" rows="3" maxlength="500" class="min-h-touch"></flux:textarea>
                 </div>
 
                 <div class="sticky bottom-0 -mx-4 mt-5 grid gap-2 border-t border-border-subtle bg-surface px-4 pt-3">
@@ -286,7 +266,7 @@
                         <span wire:loading.remove wire:target="updateDraftItem">{{ __('ui.actions.save') }} · {{ $editingItemTotalLabel }}</span>
                         <span wire:loading wire:target="updateDraftItem">{{ __('guest.table.saving') }}</span>
                     </flux:button>
-                    <flux:button icon="trash" variant="danger" type="button" class="w-full" wire:click="deleteDraftItem({{ $editingItemId }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $editingItemId }})">{{ __('ui.waiter.table_detail.delete_position') }}</flux:button>
+                    <flux:button icon="trash" variant="primary" color="red" type="button" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse! w-full" wire:click="deleteDraftItem({{ $editingItemId }})" wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="deleteDraftItem({{ $editingItemId }})">{{ __('ui.waiter.table_detail.delete_position') }}</flux:button>
                 </div>
             </div>
         </div>

@@ -28,7 +28,7 @@
     @if ($errorMessage)
         <x-ui.state-panel kind="error" :title="$errorMessage" description="dashboard.control.error.description" data-dashboard-error tabindex="-1">
             <x-slot:actions>
-                <x-ui.button wire:click="refreshDashboard" wire:loading.attr="disabled" wire:target="refreshDashboard" wire:offline.attr="disabled" icon="arrow-path">{{ __('dashboard.control.refresh') }}</x-ui.button>
+                <flux:button wire:click="refreshDashboard" wire:loading.attr="disabled" wire:target="refreshDashboard" wire:offline.attr="disabled" icon="arrow-path" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.refresh') }}</flux:button>
             </x-slot:actions>
         </x-ui.state-panel>
     @endif
@@ -79,8 +79,8 @@
                                     <flux:input wire:model="closure.temporaryClosedUntil" name="closure.temporaryClosedUntil" type="datetime-local" :label="__('dashboard.control.ordering.until')" :description="__('dashboard.control.ordering.until_description')" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" />
                                 </div>
                                 <div class="flex min-w-0 flex-wrap items-center gap-3">
-                                    <x-ui.button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled">{{ __('dashboard.control.ordering.save') }}</x-ui.button>
-                                    <x-ui.button wire:click="discardOrdering" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled">{{ __('dashboard.control.ordering.discard') }}</x-ui.button>
+                                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.save') }}</flux:button>
+                                    <flux:button wire:click="discardOrdering" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.discard') }}</flux:button>
                                     <span wire:loading.delay wire:target="saveOrdering" role="status" class="text-sm text-text-muted">{{ __('dashboard.control.ordering.saving') }}</span>
                                 </div>
                             </form>
@@ -94,11 +94,11 @@
             <nav aria-label="{{ __('dashboard.control.main_links') }}" class="mt-4 grid min-w-0 grid-cols-2 gap-2 border-t border-border-subtle pt-4 xl:flex xl:flex-wrap">
                 @forelse ($dashboard['main_links'] as $link)
                     @if ($link['is_available'] && $link['href'] !== null)
-                        <x-ui.button wire:key="dashboard-link-{{ $link['key'] }}" data-quick-action-link :href="$link['href']" :icon="$link['icon']" wire:navigate class="min-w-0 justify-start whitespace-normal text-start max-sm:px-2 xl:justify-center">{{ $link['label'] }}</x-ui.button>
+                        <flux:button wire:key="dashboard-link-{{ $link['key'] }}" data-quick-action-link :href="$link['href']" :icon="$link['icon']" wire:navigate class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 min-w-0 justify-start whitespace-normal text-start max-sm:px-2 xl:justify-center">{{ $link['label'] }}</flux:button>
                     @elseif ($link['requires_branch'] && $link['is_available'])
-                        <x-ui.button wire:key="dashboard-link-{{ $link['key'] }}" x-on:click="openBranchPicker()" :icon="$link['icon']" class="min-w-0 justify-start whitespace-normal text-start max-sm:px-2 xl:justify-center">
+                        <flux:button wire:key="dashboard-link-{{ $link['key'] }}" x-on:click="openBranchPicker()" :icon="$link['icon']" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 min-w-0 justify-start whitespace-normal text-start max-sm:px-2 xl:justify-center">
                             <span>{{ $link['label'] }} <span class="block text-xs font-normal text-text-muted">{{ __('dashboard.control.choose_branch') }}</span></span>
-                        </x-ui.button>
+                        </flux:button>
                     @else
                         <div wire:key="dashboard-link-{{ $link['key'] }}" class="flex min-h-touch min-w-0 items-center gap-2 rounded-control border border-border-subtle px-3 py-2 text-sm text-text-muted">
                             <flux:icon name="lock-closed" class="size-4 shrink-0" aria-hidden="true" />
@@ -117,7 +117,7 @@
                     <h2 id="dashboard-now-title" class="text-lg font-semibold text-text-primary">{{ __('dashboard.control.now.title') }}</h2>
                     <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('dashboard.control.now.description') }}</p>
                 </div>
-                <x-ui.button icon="arrow-path" wire:click="refreshOperations" wire:loading.attr="disabled" wire:target="refreshOperations,selectedBranchId" wire:offline.attr="disabled" class="self-start sm:shrink-0">{{ __('dashboard.control.refresh') }}</x-ui.button>
+                <flux:button icon="arrow-path" wire:click="refreshOperations" wire:loading.attr="disabled" wire:target="refreshOperations,selectedBranchId" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0">{{ __('dashboard.control.refresh') }}</flux:button>
             </div>
             @if ($dashboard['operations_stale'])
                 <x-ui.state-panel kind="stale" title="dashboard.control.stale.title" description="dashboard.control.stale.description" class="mb-3" />
@@ -145,7 +145,7 @@
                     <h2 id="dashboard-readiness-title" class="text-base font-semibold text-text-primary">{{ __('dashboard.control.readiness.title') }}</h2>
                     <p class="mt-1 text-sm text-text-muted">{{ __('dashboard.control.readiness.select_branch') }}</p>
                 </div>
-                <x-ui.button x-on:click="openBranchPicker()" class="self-start sm:shrink-0">{{ __('dashboard.control.choose_branch') }}</x-ui.button>
+                <flux:button x-on:click="openBranchPicker()" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0">{{ __('dashboard.control.choose_branch') }}</flux:button>
             </section>
         @endif
     @elseif (! $errorMessage)

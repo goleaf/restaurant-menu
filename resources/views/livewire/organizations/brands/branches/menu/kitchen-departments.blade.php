@@ -81,7 +81,7 @@
                                     {{ __('guest.cart.edit_item') }}
                                 </flux:button>
 
-                                <flux:button icon="trash" type="button" variant="danger" wire:click="deleteKitchenDepartment({{ $department['id'] }})">
+                                <flux:button icon="trash" type="button" variant="primary" color="red" wire:click="deleteKitchenDepartment({{ $department['id'] }})" class="bg-danger! hover:bg-danger/90! dark:text-text-inverse!">
                                     {{ __('ui.actions.delete') }}
                                 </flux:button>
                             </div>

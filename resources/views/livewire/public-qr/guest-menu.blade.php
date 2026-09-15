@@ -68,26 +68,34 @@
     @else
         <div class="p-4">
         @if (! $branchCanAcceptOrders)
-            <x-ui.alert tone="warning" class="mt-4" :heading="__('menu.guest.closed_title')">
-                <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('menu.guest.closed_description')" />
-                <span class="mt-1 block">{{ __('menu.guest.browse_only') }}</span>
-            </x-ui.alert>
+            <flux:callout variant="warning" class="callout-contrast content-safe mt-4" :heading="__('menu.guest.closed_title')" icon="exclamation-triangle" role="status">
+                <flux:callout.text>
+                    <x-ui.plain-text :text="$branchOpeningStatusMessage ?: __('menu.guest.closed_description')" />
+                    <span class="mt-1 block">{{ __('menu.guest.browse_only') }}</span>
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         @if ($feedbackMessage)
-            <x-ui.alert tone="success" class="mt-4">
-                {{ $feedbackMessage }}
-            </x-ui.alert>
+            <flux:callout variant="success" class="callout-contrast content-safe mt-4" icon="check-circle" role="status">
+                <flux:callout.text>
+                    {{ $feedbackMessage }}
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         @error('guest')
-            <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+            <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+                <flux:callout.text>{{ $message }}</flux:callout.text>
+            </flux:callout>
         @enderror
 
         @if ($guestMenu['has_allergen_information'] ?? false)
-            <x-ui.alert tone="warning" class="mt-4" :heading="__('menu.allergens.notice_title')">
-                {{ __('menu.allergens.safety_notice') }}
-            </x-ui.alert>
+            <flux:callout variant="warning" class="callout-contrast content-safe mt-4" :heading="__('menu.allergens.notice_title')" icon="exclamation-triangle" role="status">
+                <flux:callout.text>
+                    {{ __('menu.allergens.safety_notice') }}
+                </flux:callout.text>
+            </flux:callout>
         @endif
 
         <div class="mt-4 grid gap-3 rounded-control border border-border-subtle bg-surface-muted p-3">
@@ -131,22 +139,22 @@
             </details>
 
             @if ($search !== '' || $selectedCategoryId !== null || $dietaryFilters !== [] || $excludedAllergens !== [])
-                <x-ui.button type="button" wire:click="resetMenuFilters" variant="secondary" size="sm">{{ __('menu.guest.reset_filters') }}</x-ui.button>
+                <flux:button type="button" wire:click="resetMenuFilters" variant="outline" size="sm" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('menu.guest.reset_filters') }}</flux:button>
             @endif
         </div>
 
         <nav data-guest-category-nav aria-label="{{ __('menu.guest.categories') }}" class="mt-4 overflow-x-auto overscroll-x-contain pb-1">
             <ul class="flex w-max min-w-full gap-2">
                 <li>
-                    <button type="button" wire:click="$set('selectedCategoryId', null)" aria-pressed="{{ $selectedCategoryId === null ? 'true' : 'false' }}" class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus {{ $selectedCategoryId === null ? 'bg-accent-soft' : 'bg-surface' }}">
+                    <flux:button type="button" wire:click="$set('selectedCategoryId', null)" aria-pressed="{{ $selectedCategoryId === null ? 'true' : 'false' }}" :variant="$selectedCategoryId === null ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2">
                         {{ __('menu.guest.all_categories') }}
-                    </button>
+                    </flux:button>
                 </li>
                 @foreach ($categoryOptions as $category)
                         <li wire:key="guest-menu-category-link-{{ $category['id'] }}">
-                            <button type="button" wire:click="$set('selectedCategoryId', {{ $category['id'] }})" aria-pressed="{{ $selectedCategoryId === $category['id'] ? 'true' : 'false' }}" class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus {{ $selectedCategoryId === $category['id'] ? 'bg-accent-soft' : 'bg-surface' }}">
+                            <flux:button type="button" wire:click="$set('selectedCategoryId', {{ $category['id'] }})" aria-pressed="{{ $selectedCategoryId === $category['id'] ? 'true' : 'false' }}" :variant="$selectedCategoryId === $category['id'] ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2">
                                 {{ $category['name'] }}
-                            </button>
+                            </flux:button>
                         </li>
                 @endforeach
             </ul>
@@ -241,9 +249,9 @@
                                         />
 
                                         <div class="mt-3 grid gap-2">
-                                            <x-ui.button id="guest-menu-item-details-{{ $item['id'] }}" type="button" wire:click="openItem({{ $item['id'] }})" variant="secondary" size="sm" full-width icon="eye">
+                                            <flux:button id="guest-menu-item-details-{{ $item['id'] }}" type="button" wire:click="openItem({{ $item['id'] }})" variant="outline" size="sm" icon="eye" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                                                 {{ __('menu.guest.view_details') }}
-                                            </x-ui.button>
+                                            </flux:button>
                                             @if ($item['is_available'] && $guestCanAddItems && $branchCanAcceptOrders)
                                                 <div class="grid gap-2">
                                                     <div>
@@ -252,16 +260,15 @@
                                                     </x-ui.status-badge>
                                                     </div>
 
-                                                    <x-ui.button
+                                                    <flux:button
                                                         type="button"
                                                         wire:click="openItem({{ $item['id'] }})"
-                                                        variant="dark"
-                                                        size="lg"
-                                                        full-width
+                                                        variant="primary" color="zinc"
                                                         icon="plus"
+                                                        class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                                                     >
                                                         {{ __('menu.guest.add') }}
-                                                    </x-ui.button>
+                                                    </flux:button>
                                                 </div>
                                             @elseif ($item['is_available'] && ! $branchCanAcceptOrders)
                                                 <x-ui.status-badge tone="warning">
@@ -416,26 +423,32 @@
                 </div>
 
                 @error('menu_item')
-                    <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+                    <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+                        <flux:callout.text>{{ $message }}</flux:callout.text>
+                    </flux:callout>
                 @else
                     @if ($hasMissingConfiguredItem)
-                        <x-ui.alert tone="warning" class="mt-4">{{ __('menu.guest.item_no_longer_available') }}</x-ui.alert>
+                        <flux:callout variant="warning" class="callout-contrast content-safe mt-4" icon="exclamation-triangle" role="status">
+                            <flux:callout.text>{{ __('menu.guest.item_no_longer_available') }}</flux:callout.text>
+                        </flux:callout>
                     @endif
                 @enderror
 
                 @error('guest')
-                    <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+                    <flux:callout variant="danger" class="callout-contrast content-safe mt-4" icon="x-circle" role="status">
+                        <flux:callout.text>{{ $message }}</flux:callout.text>
+                    </flux:callout>
                 @enderror
 
                 @if ($hasPendingItemConfiguration && ! $canConfigureSelectedItem)
-                    <x-ui.button
+                    <flux:button
                         type="button"
                         wire:click="refreshConfiguredItem"
                         wire:offline.attr="disabled"
                         wire:loading.attr="disabled"
                         wire:target="refreshConfiguredItem"
-                        class="mt-4"
-                    >{{ __('guest.table.try_again') }}</x-ui.button>
+                        class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 mt-4"
+                    >{{ __('guest.table.try_again') }}</flux:button>
                 @endif
 
                 @if ($selectedItemGallery !== [])
@@ -458,8 +471,8 @@
                         @empty
                         @endforelse
                         @if (count($selectedItemGallery) > 1)
-                            <button type="button" @click="image = (image - 1 + {{ count($selectedItemGallery) }}) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_previous') }}" class="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-left" class="size-5" /></button>
-                            <button type="button" @click="image = (image + 1) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_next') }}" class="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-right" class="size-5" /></button>
+                            <button type="button" @click="image = (image - 1 + {{ count($selectedItemGallery) }}) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_previous') }}" class="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-left" class="size-5" /></button>
+                            <button type="button" @click="image = (image + 1) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_next') }}" class="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-right" class="size-5" /></button>
                         @endif
                     </div>
                 @endif
@@ -540,22 +553,17 @@
 
                             <div class="mt-3 grid gap-2">
                                 @forelse ($modifierGroup['options'] as $modifierOption)
-                                    <button
+                                    <flux:button
                                         type="button"
                                         wire:key="guest-menu-selected-option-{{ $modifierOption['id'] }}"
                                         wire:click="toggleModifierOption({{ $modifierGroup['id'] }}, {{ $modifierOption['id'] }})"
                                         aria-pressed="{{ in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'true' : 'false' }}"
-                                        @class([
-                                            'flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30',
-                                            'border-emerald-500 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-50' => in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                            'border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800' => ! in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true),
-                                        ])
-                                    >
+                                    :variant="in_array($modifierOption['id'], $selectedModifierOptions[(string) $modifierGroup['id']] ?? [], true) ? 'filled' : 'outline'" class="h-auto! min-h-touch whitespace-normal! py-2 w-full [&>span]:flex [&>span]:w-full [&>span]:justify-between [&>span]:gap-3">
                                         <span class="font-medium">{{ $modifierOption['name'] }}</span>
                                         <span class="shrink-0 font-semibold">
                                             {{ __('menu.modifiers.price_delta', ['price' => $modifierOption['formatted_price_delta']]) }}
                                         </span>
-                                    </button>
+                                    </flux:button>
                                 @empty
                                     <x-ui.empty-state
                                         icon="adjustments-horizontal"
@@ -577,39 +585,34 @@
                     @endif
 
                     @if ($canReviewItemComment)
-                    <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.guest.comment') }}</span>
-                        <textarea
+                    <flux:textarea label="{{ __('menu.guest.comment') }}"
                             wire:model="itemComment"
                             rows="3"
                             maxlength="500"
                             placeholder="{{ __('menu.guest.comment_placeholder') }}"
-                            class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                        ></textarea>
-                        @error('itemComment')
-                            <span class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</span>
-                        @enderror
-                    </label>
+                            class="min-h-touch"
+                        ></flux:textarea>
                     @else
-                        <x-ui.alert tone="info">{{ __('menu.guest.ordering_unavailable') }}</x-ui.alert>
+                        <flux:callout color="blue" icon="information-circle" role="status" class="callout-contrast content-safe">
+                            <flux:callout.text>{{ __('menu.guest.ordering_unavailable') }}</flux:callout.text>
+                        </flux:callout>
                     @endif
                 </div>
 
                 @if ($canConfigureSelectedItem)
                 <x-ui.mobile-bottom-actions class="mt-5" :summary="$selectedItemTotal">
-                    <x-ui.button
+                    <flux:button
                         type="button"
                         wire:click="saveConfiguredItem"
                         wire:offline.attr="disabled"
                         wire:loading.attr="disabled"
                         wire:target="saveConfiguredItem"
                         variant="primary"
-                        size="lg"
-                        full-width
+                        class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2.5 text-base! w-full"
                     >
                         <span wire:loading.remove wire:target="saveConfiguredItem">{{ __('menu.guest.add_for_price', ['price' => $selectedItemTotal]) }}</span>
                         <span wire:loading wire:target="saveConfiguredItem">{{ __('menu.guest.adding') }}</span>
-                    </x-ui.button>
+                    </flux:button>
                 </x-ui.mobile-bottom-actions>
                 @endif
             </div>

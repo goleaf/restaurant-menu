@@ -71,7 +71,7 @@
     </x-ui.card>
     @endif
 
-    <x-ui.card padding="none" class="overflow-hidden">
+    <flux:card class="rounded-card border-border-subtle bg-surface p-0 overflow-hidden">
         <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
             <div class="grid gap-3 lg:grid-cols-5">
                 <flux:heading size="lg">{{ __('ui.organizations.brands.branches.areas.spisok_zon') }}</flux:heading>
@@ -125,5 +125,5 @@
                 {{ $areaNodesPaginator->links() }}
             </div>
         @endif
-    </x-ui.card>
+    </flux:card>
 </section>

@@ -4,7 +4,7 @@
         <p class="max-w-3xl text-sm text-text-muted">{{ __('menu.csv.intro') }}</p>
     </header>
 
-    <div wire:offline role="status" class="rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning-foreground">{{ __('menu.csv.offline') }}</div>
+    <div wire:offline role="status" class="rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning">{{ __('menu.csv.offline') }}</div>
 
     <section class="grid min-w-0 gap-4 rounded-card border border-border-subtle bg-surface p-4 sm:p-5">
         <div class="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -36,7 +36,7 @@
             <p role="alert" class="rounded-control border border-danger-border bg-danger-surface p-3 text-sm text-danger">{{ $message }}</p>
         @enderror
         @if ($success !== '')
-            <p role="status" class="rounded-control border border-success-border bg-success-surface p-3 text-sm text-success-foreground">{{ $success }}</p>
+            <p role="status" class="rounded-control border border-success-border bg-success-surface p-3 text-sm text-success">{{ $success }}</p>
         @endif
         @if ($rowErrors !== [])
             <section role="alert" class="grid gap-2 rounded-card border border-danger-border bg-danger-surface p-4 text-danger">

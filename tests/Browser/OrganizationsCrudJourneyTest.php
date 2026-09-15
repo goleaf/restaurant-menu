@@ -185,6 +185,12 @@ test('demo owner can complete the organization administration browser journey', 
     $page->navigate(route('organizations.brands.branches.service-points.qr.show', [$organization, $brand, $branch, $servicePoint, $qrCode], false));
     clickOrganizationsBrowserElement($page, 'button[wire\\:click="confirmReissue"]');
     $page->assertPresent('dialog[open]');
+    $page->assertScript('document.getElementById(document.querySelector("dialog[open]").getAttribute("aria-labelledby"))?.textContent.trim().length > 0');
+    expect(trim((string) $page->script('document.activeElement.textContent')))->toBe(__('ui.actions.cancel'));
+    $page->resize(390, 844);
+    $page->script('document.documentElement.style.fontSize = "200%"');
+    $page->assertScript('document.querySelector("dialog[open]").getBoundingClientRect().right <= innerWidth + 1');
+    $page->script('document.documentElement.style.removeProperty("font-size")');
 
     $modalFocusState = $page->script(<<<'JAVASCRIPT'
         (() => {
@@ -198,7 +204,8 @@ test('demo owner can complete the organization administration browser journey', 
 
     expect($modalFocusState)->toBeTrue();
 
-    clickOrganizationsBrowserElement($page, 'dialog[open] button[aria-label]');
+    clickOrganizationsBrowserElement($page, 'dialog[open] button[autofocus]');
+    $page->assertMissing('dialog[open]');
 
     $page->resize(1440, 1000);
     $page->script("document.documentElement.style.fontSize = '200%'");

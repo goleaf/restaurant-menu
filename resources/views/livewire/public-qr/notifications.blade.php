@@ -58,15 +58,14 @@
                             @endif
                         </div>
 
-                        <button
+                        <flux:button
                             type="button"
                             wire:click="markNotificationRead('{{ $notification['id'] }}')"
                             wire:loading.attr="disabled"
                             wire:target="markNotificationRead('{{ $notification['id'] }}')"
-                            class="shrink-0 rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                        >
+                        variant="outline" class="h-auto! min-h-touch whitespace-normal! py-2 shrink-0">
                             {{ __('ui.guest.notifications.ok') }}
-                        </button>
+                        </flux:button>
                     </div>
                 </article>
             @empty
@@ -76,14 +75,13 @@
             @endforelse
         </div>
 
-        <button
+        <flux:button
             type="button"
             wire:click="markAllRead"
             wire:loading.attr="disabled"
             wire:target="markAllRead"
-            class="mt-4 flex h-10 w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 focus:outline-hidden focus:ring-2 focus:ring-zinc-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-        >
+        variant="outline" class="h-auto! min-h-touch whitespace-normal! py-2 w-full mt-4">
             {{ __('ui.guest.notifications.otmetit_vse_procitannym') }}
-        </button>
+        </flux:button>
     @endif
 </section>

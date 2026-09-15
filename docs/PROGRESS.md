@@ -4,7 +4,7 @@
 
 # Restaurant Menu completion progress
 
-## 2026-09-15 — Branch control center: final verification
+## 2026-09-15 — Branch control center: delivered
 
 Entry was clean local main `a88de9e`. Implemented explicit branch/all context, atomic URL history, branch-local report periods, independent current queues, actionable readiness and existing explicit temporary closure. Report amounts and actual manual payments remain separate per currency. Existing waiter filters handle pending/ready/calls/bills and authorized off-page table links. Original menu/media/language/CSV workflows are retained.
 
@@ -12,7 +12,7 @@ Real Laravel Boost context/schema/docs/URL calls and isolated Chrome DevTools/Pl
 
 The coordinated complete browser inventory passed 16 cases / 1011 assertions, zero failures/timeouts. Full backend initially exposed seven architecture/documentation/old-expectation mismatches; those were corrected without weakening guards, and 146 focused cases / 2578 assertions passed. Final backend passes 2,583 / 56,192 in 131.16 s; coverage passes 2,583 / 56,206 in 409.95 s at 93.7%. The assertion difference is the updated documentation path traceability. The final complete browser repeat passes 16 / 1,021 with zero failures/timeouts. A final mobile label-spacing correction then passes the affected 68-assertion browser scenario; rebuilt assets and actual screenshots were checked. Isolated migration/rollback/reapply, two default seeds and eight cache build/clear commands all exited 0. All 178 first-party Markdown policy blocks were already exact; two synchronization passes changed no file.
 
-Measured large-fixture report aggregation reduces order/item hydration and memory; actual component snapshot is 2519 → 848 bytes and cold component hydration 8033 → 39 models. HTML grows with the new control center and warm rendering is slower; see performance.md for the separate boundaries, before/after tables and limitations. Working database/key/photos and workflow files are untouched. Local gates and independent review are complete; commit/push remain pending delivery.
+Measured large-fixture report aggregation reduces order/item hydration and memory; actual component snapshot is 2519 → 848 bytes and cold component hydration 8033 → 39 models. HTML grows with the new control center and warm rendering is slower; see performance.md for the separate boundaries, before/after tables and limitations. Working database/key/photos and workflow files are untouched. Local gates and independent review are complete. All 59 reviewed paths are in local commit `8a3945d` (`feat: add branch control center and local reporting`). Ordinary `git push origin main` returned exit 0 with `a88de9e..8a3945d main -> main`. This documentation follow-up records the observed delivery; no additional GitHub verification request or production deployment occurred. Final documentation checks pass 16 tests / 1,105 assertions.
 
 ## Next product level — current execution, 2026-09-15
 

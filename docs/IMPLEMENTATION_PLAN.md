@@ -5,7 +5,7 @@
 # Restaurant Menu completion implementation plan
 
 
-## 2026-09-15 — branch control center (active)
+## 2026-09-15 — branch control center (completed)
 
 Baseline: clean local main `a88de9e`. Earlier product delivery and its test results are historical. Preserve the existing menu, media, language, CSV and restaurant lifecycle contracts. Root owns integration and serialized final gates; all fixtures and runtime artifacts use disposable storage/databases.
 
@@ -19,7 +19,7 @@ Baseline: clean local main `a88de9e`. Earlier product delivery and its test resu
 | Reproducible full browser runner | done | One local command discovers and reports all browser cases | Root | Baseline | Bounded owned child processes; failure/timeout returns nonzero |
 | Integrated regressions and local gates | done | Existing restaurant workflows remain reliable | Root | Implementation | Backend/browser/coverage>=90/static/translations/audits/build; isolated schema/seeds/caches |
 | Independent review and corrections | done | Reviewed implementation before delivery | Independent reviewer | Stable implementation | Actual diff reviewed, confirmed findings fixed and retested |
-| Documentation, commit and ordinary push | in_progress | Verified work delivered on existing main | Root | Review and gates | Exact staging; local commit; observed push result only |
+| Documentation, commit and ordinary push | done | Verified work delivered on existing main | Root | Review and gates | All 59 reviewed paths committed as 8a3945d; ordinary git push origin main exited 0: a88de9e..8a3945d main -> main. No additional GitHub verification request. |
 
 Ownership: reporting owns shared period/report services, BasicAnalytics, Order/OrderItem/Payment reporting scopes and focused tests. Operations owns readiness service, existing waiter Dashboard/Action/query service/view and TableSession/ServicePoint scopes. Design owns restaurant dashboard Blade and new static dashboard components. Root owns Restaurant Dashboard PHP/Action, JSON translations, shared manifests/migrations/docs, browser coordinator and full runs. No overlapping writers, working-database migrations, or GitHub requests except final ordinary push.
 

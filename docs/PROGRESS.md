@@ -4,6 +4,15 @@
 
 # Restaurant Menu completion progress
 
+## Flux/CSS modernization verification — 2026-09-15
+
+Frontend cleanup is implemented and reviewed: native Tailwind 4 sources/tokens, fewer generic wrappers and vendor selectors, available Flux Free controls, two guarded accessibility overrides, localized modal/password/toast controls and separately loaded QR print CSS. Main CSS is 310,242 → 298,374 bytes; all CSS including print is 311,206 → 306,051 bytes. All three local Noto subsets and application JavaScript are preserved.
+
+Full backend: 2,727 passed / 58,076 assertions. Full coverage: 2,732 passed / 58,090 assertions, 93.7%, exit 0 with the unchanged 90% minimum. The complete WebKit inventory passes 21 scenarios / 1,465 assertions; separate Chrome matrices cover the required widths, locales, themes and keyboard behavior. Both A4 PDF pages were visually inspected. Audit, build, translations, Pint, Larastan and independent review pass; detailed evidence and physical-device limits are in `testing.md`.
+
+The shared implementation was included by another session in local commit `565dcf6`. The only remaining modernization blocker is package distribution access: Flux 2.20.0 / Livewire 4.4.5 archives require prohibited GitHub requests, so installed versions remain 2.17.0 / 4.4.1. No Pro package, unrelated dependency, migration or application data change was introduced by this frontend pass. Final verification is recorded separately without rewriting or claiming the concurrent team work.
+
+
 ## Team continuation — current verification
 
 Preserved the external local baseline `5505ef3` and concurrent Flux/CSS work. Invitation credential/role/consent checks, tenant-safe current-policy explanations, branch assignment delegation, scoped recipient destinations, response protection and responsive area editing are integrated and independently reviewed. New EN/LT/RU recipients retain their locale; validation preserves safe input and rejects mismatched email without enumerating other accounts.

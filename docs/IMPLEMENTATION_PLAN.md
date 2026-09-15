@@ -4,7 +4,7 @@
 
 # Restaurant Menu completion implementation plan
 
-## 2026-09-15 — Flux and CSS-first modernization (active)
+## 2026-09-15 — Flux and CSS-first modernization (verified; version upgrade blocked)
 
 This scoped pass preserves the concurrent team-control-center work and its staged files. It owns frontend styling, shared presentation components, Flux override cleanup and focused style regressions; it does not change tenant workflows or application data.
 
@@ -15,10 +15,10 @@ This scoped pass preserves the concurrent team-control-center work and its stage
 | CSS-first sources, tokens and integration cleanup | done | Explicit runtime source coverage, no preprocessors, fewer redundant rules and measured production bundles |
 | Flux overrides and shared controls | done | Remove obsolete copies, preserve translated password visibility, supported Free APIs and accessible operational sizes |
 | Representative workflows and print | done | Onboarding, administration, menu, service points, waiter, department, guest and auth; seven widths, locales, appearance and keyboard checks |
-| Regression gates and independent review | in_progress | Targeted/full backend, coverage, browser, formatting/static analysis, translations, audits/build and actual diff review |
-| Scoped Conventional Commit | pending | Preserve unrelated index/work; commit verified owned paths; push only if required by the current workflow |
+| Regression gates and independent review | done | Targeted/full backend, coverage, browser, formatting/static analysis, translations, audits/build and actual diff review |
+| Local verification commit | done | Implementation included by the concurrent commit `565dcf6`; commit this scoped verification record without rewriting history or including unrelated pending edits |
 
-Baseline build uses a disposable output directory: main CSS 310.24 kB (gzip 41.75 kB), font CSS 0.96 kB (gzip 0.40 kB), JavaScript 22.76 kB (gzip 6.24 kB), Vite duration 3.62 s. Exact byte comparison and final evidence will be recorded in the existing frontend/testing documentation.
+Baseline build uses a disposable output directory: main CSS 310.24 kB (gzip 41.75 kB), font CSS 0.96 kB (gzip 0.40 kB), JavaScript 22.76 kB (gzip 6.24 kB), Vite duration 3.62 s. Exact byte comparison and final evidence are recorded in `docs/tailwind.md` and `docs/testing.md`. The current workflow permits ordinary pushes but does not require one for this local modernization; this pass performs no push.
 
 
 ## 2026-09-15 — team control center (active)

@@ -12,7 +12,7 @@
 - Done: remove obsolete CSS/token/loading layers; retain native fonts and physical QR domain rules.
 - Done: independent review found and corrected progress lifecycle, callout contrast and native dialog naming; browser journeys verify these and safe focus restoration.
 - Done: full browser 21 / 1,480 plus final administration repeat 1 / 215; final backend 2,750 / 58,192, application coverage 93.7%, focused contracts 88 / 3,795; localization, static/format gates, production metrics, isolated caches and final diff review.
-- Local delivery: commit only this verified scope with Conventional Commit syntax. No mandatory push or other GitHub operation is required; preserve the unrelated untracked `flux-pro/` directory.
+- Done: verified implementation committed locally as `3f6a06e`; this final ledger update records delivery. No push was required or performed. The unrelated untracked `flux-pro/` directory and its separate integration plan remain outside this delivery.
 
 ## 2026-09-15 — Flux and CSS-first modernization (verified; version upgrade blocked)
 

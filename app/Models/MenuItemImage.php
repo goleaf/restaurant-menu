@@ -11,7 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['menu_item_id', 'path', 'sort_order'])]
+/** @property array<string, mixed>|null $presentation */
+#[Fillable(['menu_item_id', 'path', 'sort_order', 'presentation'])]
 class MenuItemImage extends Model
 {
     /** @use HasFactory<MenuItemImageFactory> */
@@ -22,6 +23,7 @@ class MenuItemImage extends Model
     {
         return [
             'sort_order' => 'integer',
+            'presentation' => 'array',
         ];
     }
 

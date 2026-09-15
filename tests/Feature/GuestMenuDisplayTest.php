@@ -319,11 +319,11 @@ test('guest menu reads translated fields without hydrating translation models', 
     expect($payload['categories'][0])->toMatchArray([
         'id' => $category->id,
         'name' => filled($translatedName) ? $translatedName : $category->name,
-        'description' => filled($translatedDescription) ? $translatedDescription : $category->description,
+        'description' => $translatedName === null ? $category->description : $translatedDescription,
     ])->and($payload['categories'][0]['items'][0])->toMatchArray([
         'id' => $item->id,
         'name' => filled($translatedName) ? $translatedName : $item->name,
-        'description' => filled($translatedDescription) ? $translatedDescription : $item->description,
+        'description' => $translatedName === null ? $item->description : $translatedDescription,
         'price_cents' => $item->price_cents,
     ])->and($hydratedTranslations)->toBe(0)
         ->and($coldQueryCount)->toBeLessThanOrEqual(13)
@@ -333,6 +333,7 @@ test('guest menu reads translated fields without hydrating translation models', 
     'missing translation' => [null, null],
     'empty name' => ['', 'Selected description'],
     'null description' => ['Selected name', null],
+    'intentionally empty description' => ['Selected name', ''],
     'whitespace fields' => ['  ', '  '],
 ]);
 

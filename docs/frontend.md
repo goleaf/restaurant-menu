@@ -1,8 +1,20 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Frontend architecture
+
+## Focused menu workspace — 2026-09-15
+
+Six compact navigation entries select catalogue, availability, variants, preparation, extras and CSV exchange. Inactive Livewire sections are not mounted. The mobile catalogue keeps search visible, with secondary filters in an accessible disclosure and bulk forms only after selection. The editor uses the existing responsive dialog, separate image-save feedback, keyboard photo ordering and a non-destructive focal-point preview. Dirty protection includes programmatic translation copying and separately saved photo/CSV state; completed or discarded media state releases its registration. History is retained through allowlisted URL state. Actual viewport, keyboard and screenshot evidence belongs to the current testing section.
+
+## Interaction recovery — 2026-09-15
+
+The native dish dialog has local Alpine visibility and synchronous showModal/close; no competing x-trap remains. Background scroll locking follows the open element, including removal after adding. Dish dismissal is local state: Escape and Close release the focus trap immediately and restore the original card or the stable menu heading. Reconnect and unrelated Livewire renders do not reopen it. A successful explicit open shows the current selected dish again, preserving its pending comment, modifiers and attempt UUID; choosing another dish resets that configuration.
+
+All twelve translated catalogue forms declare `novalidate` in Blade so morphing cannot restore browser validation over hidden language panels. Required server rules remain intact. Base-field conflicts are displayed beside EN fields, and every completed submit reopens the first invalid locale even when the errors are unchanged. Existing guest language selectors disable during their locale request and while offline.
+
+Image selection appends previews in the same order as Livewire's temporary uploads. Stable preview keys and a shared busy state serialize selection, removal and save. Failed temporary batches release only their own previews; a permanent save refusal keeps the selected batch and request identity for retry. Completed upload receipts recover a successful commit whose later callback failed.
 
 ## Recovery and operational presentation — 2026-09-15
 

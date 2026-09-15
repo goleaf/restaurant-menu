@@ -1,6 +1,6 @@
-@props(['item', 'menuOptions', 'editingItemCategoryOptions', 'activeKitchenDepartmentOptions', 'languageOptions', 'canChangePrices', 'canChangeAvailability', 'allergenOptions', 'dietaryLabelOptions', 'itemImageUploads'])
+@props(['item', 'menuOptions', 'editingItemCategoryOptions', 'activeKitchenDepartmentOptions', 'languageOptions', 'canChangePrices', 'canChangeAvailability', 'allergenOptions', 'dietaryLabelOptions', 'itemImageUploads', 'imagePresentationContext', 'imagePresentationForm'])
 
-<form wire:submit="updateItem" class="grid gap-4">
+<form wire:submit="updateItem" novalidate class="grid gap-4">
     @error('editingItemVersion')
         <p role="alert" class="rounded-control border border-warning-border bg-warning-surface p-3 text-sm text-warning-foreground">{{ $message }}</p>
     @enderror
@@ -60,7 +60,7 @@
                                                         :dietary-label-options="$dietaryLabelOptions"
                                                     />
 
-                                                    <x-menu.item-images :item="$item" :pending-uploads="$itemImageUploads[$item['id']] ?? []" />
+                                                    <x-menu.item-images :item="$item" :pending-uploads="$itemImageUploads[$item['id']] ?? []" :presentation-context="$imagePresentationContext" :presentation-form="$imagePresentationForm" />
 
                                                     <div class="flex items-center justify-between gap-3">
                                                         @if ($canChangeAvailability)
@@ -71,7 +71,7 @@
                                                         @endif
 
                                                         <div class="flex flex-wrap gap-2">
-                                                            <flux:button icon="check" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="updateItem">
+                                                            <flux:button icon="check" variant="primary" type="submit" :disabled="$imagePresentationContext !== []" wire:loading.attr="disabled" wire:target="updateItem">
                                                                 {{ __('ui.actions.save') }}
                                                             </flux:button>
 

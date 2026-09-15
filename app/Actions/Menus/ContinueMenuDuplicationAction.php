@@ -27,7 +27,8 @@ final class ContinueMenuDuplicationAction
 
             return;
         }
-        if ($source->galleryImages()->limit(MenuItem::MAX_IMAGES)->get(['id', 'path', 'sort_order'])->map->only(['id', 'path', 'sort_order'])->all() !== ($operation->payload['source_gallery'] ?? [])) {
+        $expectedGallery = array_map(fn (array $entry): array => $entry + ['presentation' => null], $operation->payload['source_gallery'] ?? []);
+        if ($source->galleryImages()->limit(MenuItem::MAX_IMAGES)->get(['id', 'path', 'sort_order', 'presentation'])->map->only(['id', 'path', 'sort_order', 'presentation'])->all() !== $expectedGallery) {
             $this->fail($operation);
 
             return;
@@ -60,10 +61,11 @@ final class ContinueMenuDuplicationAction
             $this->copyImage->handle($entry['source'], $entry['target']);
             if ($entry['primary']) {
                 $copy->image = $entry['target'];
+                $copy->image_presentation = $entry['presentation'] ?? null;
                 if ($copy->save() !== true) {
                     throw new RuntimeException('The copied primary image could not be saved.');
                 }
-            } elseif (! $copy->galleryImages()->create(['path' => $entry['target'], 'sort_order' => $entry['sort_order']])->exists) {
+            } elseif (! $copy->galleryImages()->create(['path' => $entry['target'], 'sort_order' => $entry['sort_order'], 'presentation' => $entry['presentation'] ?? null])->exists) {
                 throw new RuntimeException('The copied gallery image could not be saved.');
             }
             $operation->processed_count++;

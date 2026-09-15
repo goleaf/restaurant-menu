@@ -121,6 +121,10 @@
 }
 
 @layer base {
+    html:has(dialog[data-guest-dish-dialog][open]) {
+        overflow: hidden;
+    }
+
 
     *,
     ::after,
@@ -511,5 +515,106 @@ select:focus-visible[data-flux-control] {
     [aria-disabled='true'] {
         color: GrayText;
         opacity: 1;
+    }
+}
+
+@layer components {
+    .menu-workspace {
+        display: flex;
+        width: 100%;
+        max-width: var(--container-content);
+        min-width: 0;
+        margin-inline: auto;
+        flex: 1;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .menu-workspace-layout,
+    .menu-workspace-content {
+        display: grid;
+        min-width: 0;
+        align-content: start;
+        gap: 1.25rem;
+    }
+
+    .menu-workspace-content > [data-section='menu-catalog'] > ui-modal[data-flux-modal] {
+        display: contents;
+    }
+
+    .menu-workspace-navigation {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+        align-content: start;
+        gap: 0.375rem;
+        padding: 0.375rem;
+        border-radius: var(--radius-card);
+        background: var(--color-surface-muted);
+    }
+
+    .menu-workspace-link {
+        display: flex;
+        min-width: 0;
+        min-height: var(--spacing-touch);
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.625rem 0.75rem;
+        border: 1px solid transparent;
+        border-radius: var(--radius-control);
+        color: var(--color-text-muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.4;
+        overflow-wrap: anywhere;
+    }
+
+    .menu-workspace-link[aria-current='page'] {
+        border-color: var(--color-border-subtle);
+        background: var(--color-surface);
+        color: var(--color-accent);
+        font-weight: 650;
+    }
+
+    .menu-workspace-link:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: 2px;
+    }
+
+    .menu-workspace-link[aria-disabled='true'] {
+        opacity: 0.55;
+        cursor: wait;
+    }
+
+    @media (hover: hover) {
+        .menu-workspace-link:hover {
+            background: var(--color-control-hover);
+            color: var(--color-text-primary);
+        }
+    }
+
+    @media (min-width: 64rem) {
+        .menu-workspace-layout {
+            grid-template-columns: 11.5rem minmax(0, 1fr);
+            gap: 1.5rem;
+        }
+
+        .menu-workspace-navigation {
+            position: sticky;
+            top: 1.5rem;
+            grid-template-columns: minmax(0, 1fr);
+            align-self: start;
+        }
+    }
+
+    @media (forced-colors: active) {
+        .menu-workspace-link[aria-current='page'] {
+            border-color: Highlight;
+            color: Highlight;
+        }
+
+        .menu-workspace-link:focus-visible {
+            outline-color: Highlight;
+        }
     }
 }

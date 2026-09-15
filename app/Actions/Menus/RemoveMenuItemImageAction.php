@@ -29,11 +29,12 @@ final class RemoveMenuItemImageAction
             function (MenuItem $currentItem): array {
                 $oldPrimaryPath = $currentItem->image;
                 $promotedImage = $currentItem->galleryImages()
-                    ->select(['id', 'menu_item_id', 'path', 'sort_order'])
+                    ->select(['id', 'menu_item_id', 'path', 'sort_order', 'presentation'])
                     ->lockForUpdate()
                     ->first();
 
                 $currentItem->image = $promotedImage?->path;
+                $currentItem->image_presentation = $promotedImage?->presentation;
 
                 if ($currentItem->save() !== true) {
                     throw new RuntimeException('The primary image reference could not be saved.');

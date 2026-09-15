@@ -13,6 +13,7 @@ use App\Models\DraftOrderItem;
 use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
+use App\Models\MenuItemVariant;
 use App\Models\ModifierGroup;
 use App\Models\ModifierOption;
 use App\Models\QrCode;
@@ -42,6 +43,24 @@ test('query locale restoration persists a preference only for an active guest', 
     'rejected' => TableSessionGuestStatus::Rejected,
     'pending approval' => TableSessionGuestStatus::PendingApproval,
 ]);
+
+test('a restored guest announces its saved language to the page and uses a newer restaurant choice', function (): void {
+    [$qrCode, $branch, , $guest] = guestRecoveryContext();
+    $guest->forceFill(['locale' => 'lt'])->saveOrFail();
+    session()->put('interface_locale', 'en');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token, 'language' => 'en'])
+        ->assertSet('language', 'lt')
+        ->assertDispatched('guest-locale-updated', language: 'lt');
+
+    session()->put('guest_menu_locales.'.$branch->id, 'ru');
+
+    Livewire::test(GuestEntry::class, ['token' => $qrCode->public_token, 'language' => 'ru'])
+        ->assertSet('language', 'ru');
+
+    expect($guest->fresh()->locale)->toBe('ru')
+        ->and(session('interface_locale'))->toBe('en');
+});
 
 test('a configured guest dish becoming unavailable reports a conflict without losing unfinished input', function (string $change): void {
     [$qrCode, $branch, $tableSession, $guest] = guestRecoveryContext();
@@ -124,6 +143,44 @@ test('a configured guest dish becoming unavailable reports a conflict without lo
         ->and(DraftOrder::query()->count())->toBe(1);
 })->with(['stop listed', 'menu hidden', 'category removed', 'item hidden']);
 
+test('reopening the same configured dish preserves its unfinished choices and request identity', function (): void {
+    [$qrCode, $branch, $tableSession, $guest] = guestRecoveryContext();
+    [, $item] = guestRecoveryDish($branch);
+    [, $otherItem] = guestRecoveryDish($branch);
+    $group = ModifierGroup::factory()->for($branch)->create(['min_select' => 0, 'max_select' => 1]);
+    $option = ModifierOption::factory()->for($group)->create(['is_available' => true]);
+    $item->modifierGroups()->attach($group->id);
+    $component = Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id, 'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $guest->id, 'publicToken' => $qrCode->public_token,
+        'guestCanAddItems' => true, 'language' => 'en',
+    ])->call('openItem', $item->id)
+        ->call('toggleModifierOption', $group->id, $option->id)
+        ->set('itemComment', 'Keep this while browsing');
+    $attempt = $component->get('itemAddAttemptId');
+
+    $component->call('openItem', $item->id)
+        ->assertSet('itemComment', 'Keep this while browsing')
+        ->assertSet('selectedModifierOptions.'.$group->id, [$option->id])
+        ->assertSet('itemAddAttemptId', $attempt);
+
+    $item->update(['is_available' => false]);
+    $component->call('saveConfiguredItem')->assertHasErrors('menu_item');
+    $item->update(['is_available' => true]);
+    $component->call('openItem', $item->id)
+        ->assertHasNoErrors('menu_item')
+        ->assertSet('itemComment', 'Keep this while browsing')
+        ->assertSet('selectedModifierOptions.'.$group->id, [$option->id])
+        ->assertSet('itemAddAttemptId', $attempt);
+
+    $component->call('openItem', $otherItem->id)
+        ->assertSet('selectedItemId', $otherItem->id)
+        ->assertSet('itemComment', '')
+        ->assertSet('selectedModifierOptions', []);
+    expect($component->get('itemAddAttemptId'))->not->toBe($attempt);
+    expect(DraftOrderItem::query()->count())->toBe(0);
+});
+
 test('a dish already unavailable when opened retains its browse only save behavior', function (): void {
     [$qrCode, $branch, $tableSession, $guest] = guestRecoveryContext();
     [, $item] = guestRecoveryDish($branch);
@@ -144,6 +201,57 @@ test('a dish already unavailable when opened retains its browse only save behavi
 
     expect(DraftOrder::query()->count())->toBe(0)
         ->and(DraftOrderItem::query()->count())->toBe(0);
+});
+
+test('switching guest language retains a saved basket and every unfinished dish choice', function (): void {
+    [$qrCode, $branch, $tableSession, $guest] = guestRecoveryContext();
+    [$category, $item] = guestRecoveryDish($branch);
+    $variant = MenuItemVariant::factory()->for($item, 'item')->create(['is_default' => true, 'is_available' => true]);
+    $group = ModifierGroup::factory()->for($branch)->create(['min_select' => 0, 'max_select' => 1]);
+    $option = ModifierOption::factory()->for($group)->create(['is_available' => true]);
+    $item->modifierGroups()->attach($group->id);
+    $draft = DraftOrder::factory()->for($tableSession)->draft()->create();
+    $savedItem = DraftOrderItem::factory()->for($draft)->create([
+        'table_session_guest_id' => $guest->id,
+        'menu_item_id' => $item->id,
+        'item_name' => 'Saved historical name',
+        'unit_price_cents' => 1275,
+        'total_price_cents' => 1275,
+        'comment' => 'Saved comment',
+    ]);
+    $savedAttributes = $savedItem->fresh()->getAttributes();
+    session()->put('interface_locale', 'lt');
+    $component = Livewire::test(GuestMenu::class, [
+        'branchId' => $branch->id,
+        'tableSessionId' => $tableSession->id,
+        'currentGuestId' => $guest->id,
+        'publicToken' => $qrCode->public_token,
+        'guestCanAddItems' => true,
+        'language' => 'en',
+    ])->call('openItem', $item->id)
+        ->call('toggleModifierOption', $group->id, $option->id)
+        ->set('itemComment', "Unfinished first paragraph.\n\nSecond paragraph.")
+        ->set('search', 'Recovery')
+        ->set('selectedCategoryId', $category->id);
+    $attempt = $component->get('itemAddAttemptId');
+
+    $component->set('language', 'ru')
+        ->assertSet('language', 'ru')
+        ->assertSet('selectedItemId', $item->id)
+        ->assertSet('selectedItemVariantId', $variant->id)
+        ->assertSet('selectedModifierOptions.'.$group->id, [$option->id])
+        ->assertSet('itemComment', "Unfinished first paragraph.\n\nSecond paragraph.")
+        ->assertSet('itemAddAttemptId', $attempt)
+        ->assertSet('search', 'Recovery')
+        ->assertSet('selectedCategoryId', $category->id)
+        ->assertSet('tableSessionId', $tableSession->id)
+        ->assertSet('currentGuestId', $guest->id);
+
+    expect($savedItem->fresh()->getAttributes())->toBe($savedAttributes)
+        ->and(DraftOrderItem::query()->count())->toBe(1)
+        ->and($guest->fresh()->locale)->toBe('ru')
+        ->and(session('guest_menu_locales.'.$branch->id))->toBe('ru')
+        ->and(session('interface_locale'))->toBe('lt');
 });
 
 /** @return array{QrCode, Branch, TableSession, TableSessionGuest} */

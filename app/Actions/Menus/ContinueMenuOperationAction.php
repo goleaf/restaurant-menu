@@ -49,6 +49,9 @@ final class ContinueMenuOperationAction
 
                 return $operation;
             }
+            if (in_array($operation->kind, [MenuOperationKind::CatalogImport, MenuOperationKind::BulkItems], true) && $operation->completed_at === null) {
+                throw new AuthorizationException;
+            }
             if ($operation->completed_at !== null) {
                 return $operation;
             }

@@ -38,10 +38,16 @@ final class BuildMenuItemAttributesAction
         ?int $kitchenDepartmentId,
         array $data,
         ?MenuItem $existingItem = null,
+        bool $preserveExistingDepartment = false,
     ): array {
         $this->ensureRelationshipsBelongToBranch($branch, $menu, $category, $existingItem);
 
-        $department = $this->resolveDepartment($branch, $kitchenDepartmentId);
+        $departmentId = $preserveExistingDepartment && $existingItem instanceof MenuItem
+            ? $existingItem->kitchen_department_id
+            : $kitchenDepartmentId;
+        $department = $preserveExistingDepartment && $existingItem instanceof MenuItem && $departmentId === null
+            ? null
+            : $this->resolveDepartment($branch, $departmentId);
         $canChangePrices = Gate::forUser($actor)->allows('changePrice', $menu);
         $canChangeAvailability = Gate::forUser($actor)->allows('changeAvailability', $menu);
         $existingPriceCents = $existingItem instanceof MenuItem ? $existingItem->price_cents : 0;

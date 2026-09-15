@@ -10,11 +10,17 @@ use App\Actions\Menus\PromoteMenuItemImageAction;
 use App\Actions\Menus\RemoveMenuItemGalleryImageAction;
 use App\Actions\Menus\RemoveMenuItemImageAction;
 use App\Actions\Menus\ReorderMenuItemImagesAction;
+use App\Actions\Menus\UpdateMenuItemImagePresentationAction;
+use App\Enums\MenuOperationKind;
+use App\Livewire\Forms\MenuImagePresentationForm;
 use App\Models\MenuItem;
+use App\Support\LocalImageVariants;
+use App\Support\MenuImagePresentation;
 use App\Support\Validation\RestaurantValidationRules;
 use Closure;
 use Flux\Flux;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
@@ -25,6 +31,114 @@ trait ManagesItemImages
     /** @var array<int, string> */
     #[Locked]
     public array $itemImageRequestIds = [];
+
+    public MenuImagePresentationForm $imagePresentationForm;
+
+    /** @var array<string, mixed> */
+    #[Locked]
+    public array $imagePresentationContext = [];
+
+    public function editItemImagePresentation(int $itemId, ?int $imageId, string $expectedIdentity): void
+    {
+        $this->authorizeMenuManagement();
+        abort_unless($this->editingItemId === $itemId, 403);
+        if ($this->imagePresentationContext !== []) {
+            return;
+        }
+        $item = $this->catalogData->findBranchItem($this->branchId, $itemId);
+        $image = $imageId === null ? null : $this->catalogData->findBranchItemImage($this->branchId, $itemId, $imageId);
+        $path = $image === null ? $item->image : $image->path;
+        if (! is_string($path) || $path === '' || ! hash_equals(hash('sha256', $path), $expectedIdentity)) {
+            $this->addError('itemImageUploads.'.$itemId, __('uploads.errors.image_changed'));
+
+            return;
+        }
+        $presentation = $image === null ? $item->image_presentation : $image->presentation;
+        $variants = LocalImageVariants::forPath($path);
+        $size = null;
+        try {
+            $disk = Storage::disk('public');
+            if ($disk->exists($path)) {
+                $size = (int) ceil($disk->size($path) / 1024);
+                if ($variants['width'] === null) {
+                    $dimensions = @getimagesize($disk->path($path));
+                    if ($dimensions !== false) {
+                        $variants['width'] = $dimensions[0];
+                        $variants['height'] = $dimensions[1];
+                    }
+                }
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+        $this->imagePresentationForm->setPresentation($presentation);
+        $this->imagePresentationContext = [
+            'item_id' => $itemId, 'image_id' => $imageId, 'identity' => $expectedIdentity,
+            'version' => MenuImagePresentation::version($presentation), 'alt' => $item->name,
+            'url' => $variants['url'], 'thumbnail_url' => $variants['thumbnail_url'],
+            'width' => $variants['width'] ?? 800, 'height' => $variants['height'] ?? 600,
+            'file_details' => __('uploads.presentation.file_details', [
+                'type' => strtoupper(pathinfo($path, PATHINFO_EXTENSION)),
+                'width' => $variants['width'] ?? '—', 'height' => $variants['height'] ?? '—',
+                'size' => $size ?? '—',
+            ]),
+        ];
+        $this->clearImagePresentationErrors();
+        $this->dispatch('image-presentation-opened', itemId: $itemId);
+    }
+
+    public function closeItemImagePresentation(): void
+    {
+        $itemId = $this->imagePresentationContext['item_id'] ?? null;
+        $this->imagePresentationContext = [];
+        $this->imagePresentationForm->reset();
+        $this->clearImagePresentationErrors();
+        if ($itemId !== null) {
+            $this->dispatch('image-presentation-closed', itemId: $itemId);
+        }
+    }
+
+    public function saveItemImagePresentation(UpdateMenuItemImagePresentationAction $update): void
+    {
+        $this->authorizeMenuManagement();
+        $context = $this->imagePresentationContext;
+        abort_unless($context !== [] && $this->editingItemId === $context['item_id'], 403);
+        $this->clearImagePresentationErrors();
+        try {
+            $update->handle($this->currentUser(), $this->branch, $context['item_id'], $context['image_id'],
+                $context['identity'], $context['version'], $this->imagePresentationForm->all());
+        } catch (ValidationException $exception) {
+            $locale = null;
+            foreach ($exception->errors() as $field => $messages) {
+                $target = str_replace('presentation', 'imagePresentationForm', $field);
+                foreach ($messages as $message) {
+                    $this->addError($target, $message);
+                }
+                if ($locale === null && preg_match('/translations\.(en|lt|ru)\./', $field, $matches) === 1) {
+                    $locale = $matches[1];
+                }
+            }
+            $this->dispatch('image-presentation-invalid', locale: $locale ?? 'en');
+
+            return;
+        } catch (RuntimeException $exception) {
+            report($exception);
+            $this->addError('imagePresentationForm', __('uploads.editor.retry_help'));
+
+            return;
+        }
+        $this->closeItemImagePresentation();
+        $this->forgetMenuComputed();
+        Flux::toast(variant: 'success', text: __('uploads.presentation.saved'));
+    }
+
+    private function clearImagePresentationErrors(): void
+    {
+        $fields = array_filter($this->getErrorBag()->keys(), fn (string $field): bool => str_starts_with($field, 'imagePresentationForm'));
+        if ($fields !== []) {
+            $this->resetValidation($fields);
+        }
+    }
 
     public function updatedItemImageUploads(mixed $value, string $key): void
     {
@@ -87,12 +201,14 @@ trait ManagesItemImages
             ]);
         }
 
+        $requestId = $this->itemImageRequestIds[$item->id] ??= (string) Str::uuid();
+
         try {
             $addImages->handle(
                 $this->branch,
                 $item,
                 $files,
-                $this->itemImageRequestIds[$item->id] ?? null,
+                $requestId,
                 $this->currentUser(),
             );
         } catch (ValidationException $exception) {
@@ -106,6 +222,15 @@ trait ManagesItemImages
             }
 
             return;
+        } catch (RuntimeException $exception) {
+            report($exception);
+            $operation = $this->catalogData->operation($this->branch, $this->currentUser(), $requestId);
+            if ($operation === null || $operation->kind !== MenuOperationKind::ImageUpload
+                || $operation->target_id !== $item->id || $operation->completed_at === null) {
+                $this->addError($field, __('uploads.errors.upload_failed'));
+
+                return;
+            }
         }
 
         $this->dispatch('item-images-saved', itemId: $item->id);
@@ -206,6 +331,7 @@ trait ManagesItemImages
     private function clearItemImageUpload(int $itemId): void
     {
         unset($this->itemImageUploads[$itemId], $this->itemImageRequestIds[$itemId]);
+        $this->closeItemImagePresentation();
         $this->resetValidation([
             'itemImageUploads.'.$itemId,
             'itemImageUploads.'.$itemId.'.*',

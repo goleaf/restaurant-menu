@@ -1,8 +1,18 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Localization
+
+## Content editing and guest preference — 2026-09-15
+
+EN is the canonical authoring base and maps to base name/description on saves. LT/RU panels can show EN alongside the translation; copying fills only empty fields, marks the form unsaved and shows a review notice until changed. Existing translation rows preserve intentionally blank optional descriptions; only absent rows fall back to base content. Dish duplication preserves this distinction. Photo captions are independently optional per locale; empty alt uses the localized dish name. Guest language is remembered per branch and never overwrites the administrative interface locale. Changing language retains the guest/table/cart identity and open configuration.
+
+## Repeated validation and offline choice — 2026-09-15
+
+English remains the explicit base authoring language. Its visible name/description controls include errors raised for the legacy/base properties. The twelve translated forms keep `novalidate` in server-rendered markup while preserving all required EN/LT/RU server validation. Each submitted form checks errors after the installed Livewire `onRender` lifecycle, so a repeated identical error can reopen LT or RU after the editor switches away. Text in other panels is retained.
+
+The two existing guest language selectors disable offline and during their own locale synchronization. This prevents a local selection from appearing accepted while no request can persist it; there is no second preference store or basket.
 
 ## Catalogue editing and guest continuity — 2026-09-14
 

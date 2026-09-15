@@ -141,6 +141,7 @@ class GuestMenu extends Component
     {
         $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch($this->branchId, $this->language);
         $this->applyLocale();
+        session()->put('guest_menu_locales.'.$this->branchId, $this->language);
         $guest = $this->currentActiveGuest();
 
         if ($guest instanceof TableSessionGuest) {
@@ -169,17 +170,21 @@ class GuestMenu extends Component
             return;
         }
 
-        $this->resetValidation();
-        $this->itemAddAttemptId = $this->canConfigureItem($item) ? (string) Str::uuid() : '';
-        $this->selectedItemId = $itemId;
-        $this->selectedItemVariantId = $this->defaultVariantId($item);
-        $this->selectedModifierOptions = [];
-        $this->itemComment = '';
-        unset($this->selectedItemGallery);
+        if ($this->selectedItemId !== $itemId) {
+            $this->resetValidation();
+            $this->itemAddAttemptId = $this->canConfigureItem($item) ? (string) Str::uuid() : '';
+            $this->selectedItemId = $itemId;
+            $this->selectedItemVariantId = $this->defaultVariantId($item);
+            $this->selectedModifierOptions = [];
+            $this->itemComment = '';
 
-        foreach ($item['modifier_groups'] as $modifierGroup) {
-            $this->selectedModifierOptions[$modifierGroup['id']] = [];
+            foreach ($item['modifier_groups'] as $modifierGroup) {
+                $this->selectedModifierOptions[$modifierGroup['id']] = [];
+            }
         }
+
+        unset($this->selectedItemGallery);
+        $this->dispatch('guest-item-details-opened')->self();
     }
 
     public function closeItemSheet(): void
@@ -361,7 +366,7 @@ class GuestMenu extends Component
             return [];
         }
 
-        return $this->getGuestMenuItemGallery->handle($this->branchId, $this->selectedItemId);
+        return $this->getGuestMenuItemGallery->handle($this->branchId, $this->selectedItemId, $this->language);
     }
 
     public function render(): View
@@ -414,7 +419,6 @@ class GuestMenu extends Component
         $this->language = SupportedLocale::normalize($this->language);
 
         App::setLocale($this->language);
-        session()->put('interface_locale', $this->language);
     }
 
     /**

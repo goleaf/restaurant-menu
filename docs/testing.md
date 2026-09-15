@@ -1,10 +1,44 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Testing and quality gates
 
-## Current recovery verification — 2026-09-15
+## Next product level verification — 2026-09-15
+
+This execution starts from local `8dd6de4` with inherited recovery work already present. It implements the focused workspace, quality/bulk actions, CSV exchange, photo presentation and translation/guest continuity. The earlier sections below are historical evidence, not results for this source.
+
+| Current gate | Observed result |
+| --- | --- |
+| All browser cases, separate bounded processes | 15 passed / 940 assertions; Playwright WebKit, zero failed cases |
+| One-process canonical browser invocation | Stalled after partial progress; terminated owned PHP process; not a pass |
+| Canonical Larastan and dirty Pint | Exit 0; no errors |
+| Composer strict validation, platform requirements and locked audit | Exit 0; no advisories |
+| Translation audit | Exit 0; 7,251 values, 701 scanned files, zero critical issues or unused keys |
+| npm audit and production build | Exit 0; no advisories |
+| Isolated migration/seed/cache roundtrip | Exit 0; additive migration rollback/remigrate, two default seeds, config/routes/events/views |
+| `composer test:backend -- --parallel --processes=4` | 2,503 passed / 54,422 assertions, 124.60 s; zero failures/skips |
+| `composer test:coverage -- --parallel --processes=4` | 2,503 passed / 54,422 assertions, 382.67 s; 93.8% application coverage, unchanged 90% minimum |
+
+The complete browser inventory is exercised through `composer test:browser -- --browser safari --filter=<case>` in fresh sequential processes, with a 100-second bound for each. This follows repeated transport stalls in the one-process run. No case, assertion or coverage threshold was skipped. It covers creation and three-language editing, workspace history and dirty-form confirmation, real Livewire multipart upload/removal/order/promotion, focal-point and image metadata, CSV preview/apply/discard, bulk availability, gallery/language/basket continuity, unavailable-dish recovery, work screens and onboarding through paid table closure. Invitation and revoked-right contracts are covered by Feature tests; the browser journey begins with a factory-created owner.
+
+The multipart test adapter accepts only four named local fixtures with bounded bodies, then uses the existing signed Livewire upload pipeline. It compensates for the installed Pest browser driver's multipart parsing omission; production upload handling is unchanged. Browser offline event checks and held-transport dismissal are local simulations. Five viewport widths, both themes, keyboard/focus and 200% text enlargement are tested; text enlargement is not full browser zoom or a physical-device/screen-reader audit.
+
+Visual follow-up: 51 actual screenshots were preserved; representative catalogue/CSV/photo/guest/settings/staff views were inspected. Closed Flux modal wrappers initially created an 80-pixel empty grid gap before the catalogue. A failing browser geometry assertion reproduced it; removing their grid boxes now meets a <=32-pixel bound at all five widths, and the affected editor test passes 94 assertions. The complete 15-case browser inventory passed before this final scoped spacing correction.
+
+Compiled output is 16.06 kB application JS (5.17 kB gzip), 309.51 kB main CSS (41.60 kB gzip), and 0.96 kB font CSS (0.40 kB gzip). Local font assets are 20.08/35.82/167.96 kB. The pre-task compiled artifact may be stale, so it is not used for a before/after bundle-size claim. Fixed-fixture query/HTML/snapshot comparisons are in [performance](performance.md).
+
+Existing Laravel Boost was called for application context, schema, documentation and the actual Herd URL. Chrome DevTools and Playwright MCP each performed local navigation/inspection in isolated browser contexts. Figma was not used; no authorized design input was available. No MCP installation or configuration change was required. The working database, actual application key and real photos were not modified; the image-presentation migration remains pending there.
+
+Raw logs and the source manifest are retained outside the repository in `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-product-20260915-f6xb5krg`. The 1,097-file executable/config/translation/manifest digest before final backend/coverage is `b04c62ac1db0a6ebbed5bfa15ec1293cebd992299511d4b141d93223a51bbae2`. The source manifest is unchanged after final backend and coverage. The user approved the inherited-work integration and ordinary push. The full reviewed diff and executable manifest match the approved snapshot immediately before addressed staging. The first full backend run had four failures: missing static `.htaccess` in the isolated storage, a prohibited side-stripe style, stale requirement traceability/count and an old guest/admin locale expectation. The isolated fixture, neutral divider, 53-row traceability and branch-scoped assertions were corrected; all four affected files then passed 23 tests / 1,158 assertions before the clean full rerun.
+
+## Inherited interaction verification — 2026-09-15
+
+This pass starts from local `8dd6de4`. Focused Feature tests pass 34 / 372; the actual multipart photo browser passes 1 / 41, and the owner editor and held-network dialog scenarios pass. All ten local quality commands pass. Full backend, browser, parallel, coverage and isolated schema/cache gates are still being collected; commit and push are pending. Results in the previous recovery section below belong to the earlier delivery and are not current-run proof.
+
+The installed Pest 4.3.1 browser driver omits multipart file parsing. The photo regression decodes only allowlisted, bounded PNG fixtures into the isolated test request and initializes the existing temporary test disk, then exercises the real signed upload, validation, Livewire completion, save, order and promotion paths. It asserts exact added count and remaining file identity. A finish event alone was insufficient evidence in the old browser test.
+
+## Previous recovery verification — 2026-09-15
 
 Fresh verification of the recovery follow-up after local `0450bac12ed22ac44fb390a267c154043106b09a` is complete. All completed final suites have zero failures and skips. Distinct backend plus browser evidence is **2,377 passing tests**, a **100% pass rate**. Canonical application coverage is **93.8%**; the required minimum remains 90% and is separate from pass rate.
 

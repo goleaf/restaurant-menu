@@ -1,8 +1,12 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Accessibility
+
+## Repeated form errors and local dismissal — 2026-09-15
+
+Keep translated forms' `novalidate` attribute in Blade, not only in initialization JavaScript. Server errors remain required, localized and connected to visible fields; repeated failures reopen the corresponding panel. Guest Close/Escape is independent of connectivity, releases inert/focus trapping and returns focus even when the card has disappeared. Offline language and pending-photo controls are disabled without discarding existing selections. The browser regressions verify these interactions; synthetic offline events and WebKit viewport emulation are not physical-device or screen-reader verification.
 
 ## Recovery focus and offline actions — 2026-09-15
 

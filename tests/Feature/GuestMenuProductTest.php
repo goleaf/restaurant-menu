@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\Menus\GetGuestMenuForBranchAction;
+use App\Actions\Menus\GetGuestMenuItemGalleryAction;
 use App\Models\Branch;
 use App\Models\Menu;
 use App\Models\MenuCategory;
@@ -118,3 +119,24 @@ function guestImageProductContext(?string $path): array
 
     return [$branch, $menu, $category, $item];
 }
+
+test('guest image presentation exposes only selected language and keeps galleries demand loaded', function (): void {
+    [$branch, , , $item] = guestImageProductContext('media/primary.jpg');
+    $presentation = ['focal_x' => 20, 'focal_y' => 75, 'translations' => [
+        'en' => ['alt' => 'English photo', 'caption' => 'English caption'],
+        'lt' => ['alt' => 'Patiekalo nuotrauka', 'caption' => 'Šviežia porcija'],
+        'ru' => ['alt' => 'Русское фото', 'caption' => 'Русская подпись'],
+    ]];
+    $item->update(['image_presentation' => $presentation]);
+    MenuItemImage::factory()->for($item, 'item')->create(['path' => 'media/secondary.jpg', 'presentation' => $presentation]);
+    $payload = app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'lt');
+    $row = $payload['categories'][0]['items'][0];
+    expect($row['image_alt'])->toBe('Patiekalo nuotrauka')
+        ->and($row['image_object_position'])->toBe('20% 75%')
+        ->and(json_encode($payload, JSON_THROW_ON_ERROR))->not->toContain('English caption', 'secondary.jpg');
+    $gallery = app(GetGuestMenuItemGalleryAction::class)->handle($branch->id, $item->id, 'lt');
+    expect($gallery)->toHaveCount(2)
+        ->and($gallery[1]['caption'])->toBe('Šviežia porcija')
+        ->and($gallery[0]['object_position'])->toBe('20% 75%')
+        ->and(json_encode($gallery, JSON_THROW_ON_ERROR))->not->toContain('English caption', 'focal_x');
+});

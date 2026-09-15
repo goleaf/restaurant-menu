@@ -58,7 +58,7 @@ final class RunMenuItemImageOperationAction
                 }
             }
 
-            $scopedItem = MenuItem::query()->select(['id', 'menu_id', 'image'])
+            $scopedItem = MenuItem::query()->select(['id', 'menu_id', 'image', 'image_presentation'])
                 ->whereKey($item->id)
                 ->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))
                 ->lockForUpdate()->first();
@@ -75,7 +75,7 @@ final class RunMenuItemImageOperationAction
             }
 
             $scopedImage = $imageId === null ? null : MenuItemImage::query()
-                ->select(['id', 'menu_item_id', 'path', 'sort_order'])
+                ->select(['id', 'menu_item_id', 'path', 'sort_order', 'presentation'])
                 ->whereKey($imageId)->where('menu_item_id', $scopedItem->id)->lockForUpdate()->first();
             if ($imageId !== null && ! $scopedImage instanceof MenuItemImage) {
                 $this->invalidScope($requestId);

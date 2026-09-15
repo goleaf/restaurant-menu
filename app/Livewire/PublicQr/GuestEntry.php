@@ -472,14 +472,21 @@ class GuestEntry extends Component
 
         $tableSession = $guest->tableSession;
         $requestedLanguage = request()->query('lang');
+        $initialLanguage = $this->language;
+        $rememberedLanguage = session()->get('guest_menu_locales.'.$servicePoint->branch_id);
+        $hasRememberedLanguage = is_string($rememberedLanguage) && SupportedLocale::isSupported($rememberedLanguage);
 
         if (is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage)) {
             if ($guest->status === TableSessionGuestStatus::Active) {
                 $this->updateGuestLocale->handle($guest, $this->language);
             }
-        } elseif (SupportedLocale::isSupported($guest->locale)) {
-            $this->language = SupportedLocale::normalize($guest->locale);
+        } elseif ($hasRememberedLanguage || SupportedLocale::isSupported($guest->locale)) {
+            $this->language = SupportedLocale::normalize($hasRememberedLanguage ? $rememberedLanguage : $guest->locale);
             $this->applyGuestLocale();
+
+            if ($hasRememberedLanguage && $guest->status === TableSessionGuestStatus::Active) {
+                $this->updateGuestLocale->handle($guest, $this->language);
+            }
         }
 
         $this->guestName = $guest->guest_name;
@@ -498,6 +505,11 @@ class GuestEntry extends Component
             'guest_id' => $guest->id,
             'guest_token' => $guest->guest_token,
         ]);
+
+        if ($initialLanguage !== $this->language) {
+            $this->refreshLocalizedPresentation();
+            $this->dispatch('guest-locale-updated', language: $this->language);
+        }
     }
 
     private function restoreJoinRequestFromToken(ServicePoint $servicePoint, string $guestToken): bool
@@ -860,6 +872,5 @@ class GuestEntry extends Component
         $this->language = SupportedLocale::normalize($this->language, App::currentLocale());
 
         App::setLocale($this->language);
-        session()->put('interface_locale', $this->language);
     }
 }

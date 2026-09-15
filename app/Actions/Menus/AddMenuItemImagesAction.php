@@ -104,6 +104,7 @@ final class AddMenuItemImagesAction
 
             if (blank($scopedItem->image)) {
                 $scopedItem->image = array_shift($galleryPaths);
+                $scopedItem->image_presentation = null;
 
                 if ($scopedItem->save() !== true) {
                     throw new RuntimeException('The primary image reference could not be saved.');

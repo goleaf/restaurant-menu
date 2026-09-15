@@ -49,6 +49,18 @@ class MenuItemFactory extends Factory
         ];
     }
 
+    public function withPresentation(): static
+    {
+        return $this->state(fn (): array => ['image_presentation' => [
+            'focal_x' => 35, 'focal_y' => 60,
+            'translations' => [
+                'en' => ['alt' => 'A freshly prepared dish', 'caption' => 'Serving suggestion'],
+                'lt' => ['alt' => 'Šviežiai paruoštas patiekalas', 'caption' => 'Patiekimo pasiūlymas'],
+                'ru' => ['alt' => 'Свежеприготовленное блюдо', 'caption' => 'Вариант подачи'],
+            ],
+        ]]);
+    }
+
     public function available(): static
     {
         return $this->state(fn (): array => [

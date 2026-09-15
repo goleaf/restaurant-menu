@@ -33,10 +33,11 @@ final class UpdateMenuItemAction
         ?int $kitchenDepartmentId,
         array $data,
         ?string $expectedVersion = null,
+        bool $preserveExistingDepartment = false,
     ): MenuItem {
         Gate::forUser($actor)->authorize('update', $menu);
 
-        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data, $expectedVersion): MenuItem {
+        return DB::transaction(function () use ($actor, $branch, $item, $menu, $category, $kitchenDepartmentId, $data, $expectedVersion, $preserveExistingDepartment): MenuItem {
             if ($expectedVersion !== null) {
                 $item = MenuItem::query()
                     ->select(['id', 'menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])
@@ -59,6 +60,7 @@ final class UpdateMenuItemAction
                 kitchenDepartmentId: $kitchenDepartmentId,
                 data: $data,
                 existingItem: $item,
+                preserveExistingDepartment: $preserveExistingDepartment,
             )) !== true) {
                 throw new RuntimeException('The menu item update was cancelled.');
             }

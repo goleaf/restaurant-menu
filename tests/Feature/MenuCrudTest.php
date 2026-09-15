@@ -440,7 +440,7 @@ test('menu item image gallery rejects tampered branch records without storing fi
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });
 
-test('menu item image gallery is eager loaded with one bounded query', function () {
+test('menu catalogue does not load galleries before a dish editor is opened', function () {
     [$organization, $brand, $branch, $manager] = createMenuCrudBranch();
     grantMenuCrudPermissions($manager, $organization, [SystemPermission::ManageMenu]);
     $menu = Menu::factory()->for($branch)->create();
@@ -468,7 +468,7 @@ test('menu item image gallery is eager loaded with one bounded query', function 
     );
     DB::disableQueryLog();
 
-    expect($galleryQueries)->toHaveCount(1);
+    expect($galleryQueries)->toHaveCount(0);
 });
 
 test('menu item image gallery translations keep en lt and ru placeholders aligned', function () {

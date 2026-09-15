@@ -53,7 +53,7 @@
         "setup": [
             "composer install",
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
+            "@php artisan app:ensure-key --no-interaction",
             "@php artisan migrate --force",
             "npm ci",
             "npm run build"
@@ -79,7 +79,7 @@
             "@test:backend"
         ],
         "test:backend": [
-            "@php vendor/bin/pest tests/Unit tests/Feature --compact"
+            "@php vendor/bin/pest --testsuite=Unit,Feature --compact"
         ],
         "test": [
             "@php artisan config:clear --ansi",
@@ -92,7 +92,7 @@
         "test:coverage": [
             "Composer\\Config::disableProcessTimeout",
             "@putenv XDEBUG_MODE=coverage",
-            "@php vendor/bin/pest tests/Unit tests/Feature --compact --coverage --min=90 --only-summary-for-coverage-text"
+            "@php vendor/bin/pest --testsuite=Unit,Feature --compact --coverage --min=90 --only-summary-for-coverage-text"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

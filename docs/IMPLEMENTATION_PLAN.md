@@ -1,8 +1,48 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Restaurant Menu completion implementation plan
+
+
+## 2026-09-15 — next product level (current run)
+
+Baseline: local main `8dd6de4`, 46 modified files and two untracked rule files inherited at entry. Their content is preserved in an external temporary baseline snapshot and is not claimed as new work. PHP/Laravel/Livewire patch versions are checked locally; Herd maps this checkout to `ruflo.test`.
+
+| Task | Status | User outcome | Owner | Dependencies | Acceptance |
+| --- | --- | --- | --- | --- | --- |
+| State, policy, tools and baseline | done | Safe continuation on existing main | Root | None | Current versions; actual Boost/DevTools/Playwright local calls; exact Markdown policy and idempotence |
+| Focused menu workspace | done | One active section, clear restaurant context, history and draft protection | Design | Baseline | Allowlist/revoked-access tests; same-fixture query/HTML/snapshot comparison; responsive browser |
+| Photo presentation | done | Per-photo focal point, card/detail preview and EN/LT/RU alt/caption | Media/root | Existing gallery | Identity/stale/rollback/promotion tests; non-destructive files; selected-only public metadata |
+| Translation and guest continuity | done | Original beside translation; safe empty-field copy; restaurant-scoped guest language | Localization | Existing language panels | Copy/error focus tests; basket/admin/restaurant isolation browser regressions |
+| Content quality and quick operations | done | Actionable missing-content filters and scoped bulk category/availability operations | Root/backend | Workspace | Exact selection, tenant and revoked-right tests; bounded reads |
+| Local CSV exchange | done | Template, row errors, preview and explicit create/update with safe replay | Root/backend | Workspace | UTF-8, exact cents, malicious/foreign IDs, stale preview, atomic retry and safe export tests |
+| Repeatable setup | done | Running setup again preserves APP_KEY | Root | Baseline | Isolated environment-file command tests; unchanged actual application key |
+| Integrated restaurant/browser/performance proof | done | Usable complete authoring and service journey | Root | Implementation | Five widths/themes/keyboard/offline; real screenshots; fixed-fixture measurements |
+| Independent implementation review | done | Regressions corrected before delivery | Independent reviewer | Implementation | Actual diff and requirement review, targeted reruns |
+| Final local gates and documentation | done | Reproducible verified result | Root | Review | Composer/Pint/Larastan/backend/browser/parallel/coverage/translations/npm/build and isolated schema/seeds/caches |
+| Local commit and ordinary push | in_progress | Reviewed changes delivered to existing origin/main | Root | Gates | User explicitly approved all 253 integrated paths, including 48 inherited paths; addressed staging and ordinary push now authorized; no other GitHub requests |
+
+Current acceptance: all 15 browser cases pass in bounded, separate WebKit processes (940 assertions); the one-process suite stalled and is not recorded as passed. Full backend and coverage each pass 2,503 tests / 54,422 assertions; coverage is 93.8% against the unchanged 90% minimum. The affected final layout browser regression additionally passes 94 assertions. The entry status contains 40 staged and eight unstaged paths; the current index contains 41 staged paths, including an inherited CSS recovery hunk. The user explicitly approved including the 48 inherited paths with this implementation in one verified integration commit and performing ordinary git push origin main. Ownership is resolved; the reviewed 253-path diff and 1,097-file executable manifest match the approval snapshot.
+
+Root exclusively owns shared JSON translations, manifests, lockfiles, migrations, factories, documentation and app.js. Catalogue operations owns Catalog/CatalogData/CatalogFilterForm and the bulk Action/Form/view/tests; performance owns CSV implementation and MenuOperationKind until handoff. Completed files return to root for integration. Design owns Index, its view, CatalogFilterForm, menu-workspace.js, app.css and MenuWorkspaceTest. Media owns explicitly assigned image Actions/trait/Form/view/JS/presentation helper and tests. Localization owns translation panels/JS and guest-locale source/tests. Browser runs, global formatting, migrations and full suites are serialized by root. No application-data reset or production seeding.
+
+## 2026-09-15 — offline interaction and validation follow-up
+
+Baseline: clean local `main` at `8dd6de4`. The completed product and recovery deliveries below remain the implementation baseline. This bounded pass verifies the remaining offline dialog/language and repeated catalogue validation scenarios, then corrects reproduced defects without changing the stack or schema.
+
+| Task | Status | Owner | Dependencies | Areas and acceptance evidence |
+| --- | --- | --- | --- | --- |
+| State, policy and tools | done | Root | None | Clean main; idempotent Markdown policy synchronization made no changes; existing Boost and isolated Chrome/Herd navigation are available. |
+| Reproduce remaining interaction gaps | done | Root/catalogue/media reviewers | State | Real browser and focused Feature regressions must fail before implementation; preserve earlier passing scenarios. |
+| Catalogue validation recovery | done | Catalogue worker | Reproduction | Base-name conflicts are visible in the EN panel; repeated unchanged validation failures reopen the affected language without losing text. |
+| Guest offline interactions | done | Root | Reproduction | Escape/close dismiss immediately without connectivity; focus is restored and reconnect cannot reopen a dismissed dialog; language controls cannot falsely change while offline. |
+| Image batch recovery | done | Media worker | Reproduction | Actual multipart browser: 41 assertions; stable accumulated previews, serialized removal/offline guards, exact +2 images, ordering and promotion. Feature tests cover rollback, retry and committed receipt. |
+| Independent final review | done | Independent reviewer | Implementation | Inspect actual final source/tests and correct confirmed findings. |
+| Final local gates and documentation | in_progress | Root | Review | Run applicable local suites, coverage and quality checks on stable source; record fresh results separately from previous deliveries. |
+| Commit and ordinary push | pending | Root | Gates | Exact owned staging, Conventional Commit on main and ordinary push; no additional GitHub request. |
+
+Root owns guest views, browser tests, shared documentation/translations and all command execution. The catalogue worker exclusively owns the shared translation-fields view, translation JavaScript and its agreed Feature regression file. No concurrent runners, formatters, installations or migrations.
 
 ## 2026-09-15 — product recovery follow-up
 

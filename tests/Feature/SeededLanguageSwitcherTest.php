@@ -75,6 +75,8 @@ test('demo seeder creates database translations for every supported menu locale'
 });
 
 test('seeded guest language switcher persists and renders translated ui and menu content', function () {
+    $this->withSession(['interface_locale' => 'ru']);
+
     $this->seed(DemoRestaurantSeeder::class);
 
     $branch = seededLanguageDemoBranch();
@@ -95,7 +97,7 @@ test('seeded guest language switcher persists and renders translated ui and menu
     ])
         ->assertSeeText('Jūsų vardas');
 
-    expect(session('interface_locale'))->toBe('lt')
+    expect(session('interface_locale'))->toBe('ru')
         ->and(App::currentLocale())->toBe('lt');
 
     Livewire::test(GuestMenu::class, [
@@ -121,7 +123,8 @@ test('seeded guest language switcher persists and renders translated ui and menu
         ->assertSet('language', 'en')
         ->assertSeeText('Margherita');
 
-    expect(session('interface_locale'))->toBe('en');
+    expect(session('interface_locale'))->toBe('ru')
+        ->and(session('guest_menu_locales.'.$branch->id))->toBe('en');
 });
 
 function seededLanguageDemoBranch(): Branch

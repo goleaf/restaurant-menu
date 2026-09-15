@@ -162,10 +162,16 @@ test('demo owner can complete the organization administration browser journey', 
     $page
         ->resize(1440, 1000)
         ->navigate(route('organizations.brands.branches.menu.index', [$organization, $brand, $branch], false))
-        ->assertPresent('[data-section="menu-stop-list"]')
-        ->assertPresent('[data-section="menu-item-variants"]')
-        ->assertSee(__('ui.organizations.brands.branches.menu.index.modifier_groups'))
-        ->assertSee(__('ui.organizations.brands.branches.menu.index.kitchen_departments'));
+        ->assertPresent('[data-menu-section="availability"]')
+        ->assertPresent('[data-menu-section="variants"]')
+        ->assertSee(__('menu.workspace.modifiers'))
+        ->assertSee(__('menu.workspace.departments'));
+    clickOrganizationsBrowserElement($page, '[data-menu-section=modifiers]');
+    $page->assertSee(__('ui.organizations.brands.branches.menu.index.modifier_groups'));
+    clickOrganizationsBrowserElement($page, '[data-menu-section=departments]');
+    $page->assertSee(__('ui.organizations.brands.branches.menu.index.kitchen_departments'));
+    clickOrganizationsBrowserElement($page, '[data-menu-section=catalog]');
+    $page->assertPresent('[data-section="menu-catalog"]');
 
     clickOrganizationsBrowserElement(
         $page,

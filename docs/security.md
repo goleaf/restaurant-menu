@@ -1,8 +1,16 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Application security
+
+## Catalogue exchange and photo metadata — 2026-09-15
+
+CSV is local UTF-8, at most 100 rows and 1 MiB per import/export batch. Empty id creates an unavailable dish; an existing id updates only within the selected menu/branch. Missing CSV rows never delete data; photos, stock and kitchen routing are preserved on update. Arbitrary image URLs and foreign IDs are rejected. Preview is read-only; apply repeats validation, verifies content fingerprints and uses a durable request receipt for replay. Spreadsheet-dangerous leading values are escaped on export. Bulk selection is limited to the displayed 24 dishes with per-row scope/version checks; archive soft-deletes while preserving files and historical orders. Image presentation uses image identity plus revision checks and never rewrites originals.
+
+## Interaction recovery authorization — 2026-09-15
+
+Local guest dialog visibility grants no order permission. Opening still resolves the scoped public menu item, and adding still revalidates guest/session/branch availability and server-owned prices. Retained same-item configuration and request UUID reuse the existing idempotency boundary. A caught media failure is considered committed only after an existing receipt matches actor, branch, request, operation kind and target item; otherwise pending uploads are retained and no success is reported.
 
 ## Stale guest and rollback recovery — 2026-09-15
 

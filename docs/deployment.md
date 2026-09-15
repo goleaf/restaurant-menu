@@ -1,8 +1,16 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Deployment
+
+## Product-level migration and repeatable setup — 2026-09-15
+
+Deploy code with the additive photo-presentation migration using the existing migration procedure and a verified backup; do not rewrite existing migrations or reset application data. No new dependency, service, scheduler requirement or secret is introduced. `composer setup` calls `app:ensure-key`, which preserves an existing environment-file or externally configured APP_KEY and only generates a missing key. The command is tested with disposable environment files; the working key is never regenerated for verification. Public menu cache payload moves to v7 and invalidation includes previous v6 keys.
+
+## Interaction follow-up deployment contract — 2026-09-15
+
+This follow-up changes first-party Blade/JavaScript and Livewire recovery handling only. Deploy the normal compiled Vite assets together with the PHP/Blade release; no dependency update, migration, service, cron job or queue worker is added. The browser test's bounded multipart adapter exists only in the isolated Pest application because the installed Pest HTTP driver omits multipart files. It must never be registered in runtime middleware. Permanent upload failures retain the batch for explicit retry; a completed receipt prevents duplicating a committed upload after a callback error.
 
 ## Rollback media cleanup limit — 2026-09-15
 

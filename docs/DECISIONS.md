@@ -1,8 +1,27 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Restaurant Menu completion decisions
+
+## 2026-09-15 — final integration boundaries
+
+- Closed Flux modal wrappers directly inside the catalogue use `display: contents`, so hidden dialogs create no empty grid rows. A browser RED measured 80 pixels; the fixed layout meets the 32-pixel maximum gap at 320/390/768/1024/1440 widths without hiding horizontal overflow.
+- Guest language is scoped to its branch; seeded workflow assertions preserve a separate administrative locale. Required traceability now covers all 53 canonical requirements, including the workspace/bulk and CSV contracts.
+- One-process Pest/WebKit stalled repeatedly. Every browser case ran successfully in a fresh, bounded sequential process; the stalled invocation is not a pass. No assertions, coverage threshold or security setting were disabled.
+- Forty paths were staged and eight unstaged at entry; the current index contains 41 staged paths. The extra CSS hunk is also present in the entry baseline, but its staging author is not established. The integrated product depends on inherited recovery changes. The user subsequently explicitly approved including all 48 inherited paths in the reviewed 253-path integration commit and an ordinary git push origin main. Commit the approved complete integration; a task-only commit is not represented as the tested tree.
+
+## 2026-09-15 — focused workspace and content completion
+
+Use allowlisted URL-backed workspace sections and mount only the selected Livewire child. Keep the warm existing tokens and present context plus content rather than adding decorative dashboard cards. Extend existing gallery paths with nullable presentation metadata: focal point and language-specific plain-text alt/caption follow image identity and never rewrite pixels. Keep one metadata editor at a time. CSV is local, bounded, previewed, explicitly create/update, tenant-authorized, and uses existing item Actions; missing rows never delete content. Guest language is branch-scoped and independent of account interface preference. Existing dirty work is a preserved baseline, not newly delivered evidence.
+
+## 2026-09-15 — keep transient interface actions independent of persistence
+
+Local dish-dialog dismissal belongs to Alpine and must not wait for a server response. A native dialog owns showModal/close and modal containment; the installed x-trap schedules uncancelled delayed activation that can steal focus after rapid dismissal. Its open attribute is preserved during morphs, while a stable title ID stays valid and CSS scroll locking follows actual open state. Retain the existing server-owned configured dish until an explicit dish change or successful add; reopening the same dish preserves its comment, modifiers and request identity. Only a successful scoped open may reopen the dialog; reconnect or unrelated morphs must not do so. No second basket or locale mechanism is introduced.
+
+Catalogue validation must surface base-field conflicts through the primary EN panel and re-evaluate the submitted form after each completed render, including identical repeated errors. Use the actual installed Livewire lifecycle (`onRender` in 4.4.1), filter global subscriptions by component and form action and unregister them when the editor is destroyed. In installed 4.4.1, component-scoped message unsubscription calls a missing WeakBag.delete method. Keep novalidate in the twelve Blade forms: setting it only during Alpine initialization is undone by morphing and blocks the next invalid submit before any request.
+
+Image previews must follow the installed multiple-upload append contract. Pending removal and upload selection must not race through positional indexes. A permanent storage refusal must preserve the batch identity and expose a localized retry; a durable completed receipt distinguishes a committed upload from a rollback.
 
 ## 2026-09-15 — preserve the delivered product and fix recovery boundaries
 

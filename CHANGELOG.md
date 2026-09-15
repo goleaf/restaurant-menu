@@ -1,8 +1,19 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Changelog
+
+## 2026-09-15 — Focused catalogue and completed content workflows
+
+Implemented fixed-section menu navigation with URL/history and unsaved protection; compact content-quality filters and current-page bulk availability/move/archive; bounded preview-first local CSV exchange; per-photo focal point and EN/LT/RU alt/caption; adjacent translation editing with empty-only copy and branch-scoped guest language. Added safe repeatable APP_KEY setup. Preserved inherited interaction-recovery edits at session entry; those changes are not claimed as newly authored. Current evidence and delivery status are maintained in docs/testing.md and docs/PROGRESS.md.
+
+## 2026-09-15 — catalogue and guest interaction recovery
+
+- Preserve same-dish configuration across explicit reopen and dismiss details locally without a network request; retain focus and offline language state.
+- Keep server validation active across morphs in twelve multilingual forms; surface EN base conflicts and reopen repeated locale errors.
+- Accumulate image previews with stable removal identity and busy/offline guards; retain failed-save batches and recognize completed upload receipts after callback failure.
+- Strengthen real WebKit regressions with exact photo counts, upload identity, repeated validation and held-network dismissal. Use a bounded test-only multipart fixture adapter for the installed Pest server limitation. Fresh final gate results are recorded in testing.md.
 
 ## 2026-09-15 — guest and media recovery
 

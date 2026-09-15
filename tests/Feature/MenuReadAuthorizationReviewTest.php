@@ -20,7 +20,7 @@ test('menu child reads refresh authorization through the original route middlewa
     $membership->role->permissions()->attach($availability, ['enabled' => true]);
     $branch = Branch::factory()->for($organization)->create();
 
-    $page = $this->actingAs($user)->get(route('organizations.brands.branches.menu.index', [$organization, $branch->brand_id, $branch]));
+    $page = $this->actingAs($user)->get(route('organizations.brands.branches.menu.index', [$organization, $branch->brand_id, $branch, 'section' => $component]));
     $page->assertOk();
     preg_match_all('/wire:snapshot="([^"]+)"/', $page->getContent(), $matches);
     $snapshot = collect($matches[1])->map(fn (string $value): string => html_entity_decode($value, ENT_QUOTES))

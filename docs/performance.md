@@ -1,8 +1,31 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Performance
+
+## Focused workspace laboratory comparison — 2026-09-15
+
+The same 30-dish fixture shape and HTTP route were measured before and after integration. Dish names, descriptions, prices and counts were fixed; other factory labels varied slightly, so HTML byte differences are approximate. These are local laboratory results, not production Core Web Vitals.
+
+| Metric | Before cold / warm | Integrated cold / warm |
+| --- | --- | --- |
+| SQL queries | 393 / 378 | 200 / 185 |
+| Initial HTML bytes | 1,479,576 / 1,479,373 | 1,116,350 / 1,116,244 |
+| Mounted Livewire snapshots | 9 / 9 | 5 / 5 |
+| Snapshot bytes | 8,734 / 9,296 | 5,274 / 5,274 |
+| PHP measured elapsed ms | 1,634.11 / 555.75 | 474.43 / 373.21 |
+| PHP process peak bytes | 78,118,912 / 80,216,064 | 76,169,216 / 78,118,912 |
+
+A separate initial cold run was 869.85 ms at the same 393 queries; this variability prevents a claimed latency percentage. Inactive section components are not mounted. The list does not hydrate galleries; only an open editor requests them. Bulk selection stores one page fingerprint initially and reads bounded per-item versions when needed. This retains the original 6,000-byte empty-selection snapshot gate, rather than raising it to accommodate the first 6,939-byte integration. The focused gallery regression removes two relationship queries for the same 24 rows. CSV preview uses five queries for either 1 or 100 existing dishes; exporting 100 uses three.
+
+The current public menu retains locale-scoped v7 cache, at most 13 cold / 2 warm reads, responsive variants and an on-demand detail gallery. LCP <=2.5 s, INP <=200 ms and CLS <=0.1 remain field-quality targets, not a claim of observed production results. Final compiled asset measurements and gate source digest are recorded with verification in testing.md.
+
+## Interaction follow-up measurement scope — 2026-09-15
+
+The previous guest dialog implementation called `closeItemSheet` before dismissing. The new browser regression holds any Livewire transport and observes a hidden dialog with focus restored after 150 ms and zero close requests. This removes the network dependency from dismissal; 150 ms is the test observation window, not a measured rendering latency or server benchmark. Gallery loading remains selected-item-only and existing query/payload/image budgets remain in force.
+
+The image picker does not add a successful-save query. A caught storage/callback RuntimeException performs one scoped receipt lookup to distinguish rollback from committed success. Catalogue validation changes affect browser state, not SQL. Earlier same-fixture catalogue/dashboard/image measurements below remain historical evidence of the delivered product.
 
 ## Recovery follow-up measurement scope — 2026-09-15
 

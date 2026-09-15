@@ -6,6 +6,7 @@ namespace App\Livewire\Organizations\Brands\Branches\Menu;
 
 use App\Actions\Branches\ForgetBranchCacheAction;
 use App\Actions\KitchenDepartments\ResolveDefaultKitchenDepartmentAction;
+use App\Actions\Menus\ApplyCatalogBulkAction;
 use App\Actions\Menus\CreateMenuAction;
 use App\Actions\Menus\CreateMenuCategoryAction;
 use App\Actions\Menus\CreateMenuItemAction;
@@ -16,6 +17,7 @@ use App\Actions\Menus\UpdateMenuCategoryAction;
 use App\Actions\Menus\UpdateMenuItemAction;
 use App\Enums\MenuStatus;
 use App\Enums\SupportedLocale;
+use App\Livewire\Forms\Menus\CatalogBulkForm;
 use App\Livewire\Forms\Menus\CatalogFilterForm;
 use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\BuildsCatalogScopeRules;
 use App\Livewire\Organizations\Brands\Branches\Menu\Concerns\ManagesCatalogOperations;
@@ -26,10 +28,14 @@ use App\Services\Menus\CatalogData;
 use App\Support\MoneyFormatter;
 use App\Support\Validation\RestaurantValidationRules;
 use Flux\Flux;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
+use Throwable;
 
 class Catalog extends BranchMenuComponent
 {
@@ -41,8 +47,110 @@ class Catalog extends BranchMenuComponent
 
     public CatalogFilterForm $filters;
 
+    public CatalogBulkForm $bulk;
+
+    #[Locked]
+    public string $catalogPageFingerprint = '';
+
+    /** @var array<int, string> */
+    #[Locked]
+    public array $selectedCatalogVersions = [];
+
+    #[Locked]
+    public string $bulkRequestId = '';
+
+    public string $bulkSuccess = '';
+
+    public function selectCatalogPage(): void
+    {
+        $this->authorizeMenuManagement();
+        $this->selectedCatalogVersions = $this->selectableCatalogVersions();
+        $this->renewBulkRequest();
+    }
+
+    public function toggleCatalogSelection(mixed $itemId): void
+    {
+        $this->authorizeMenuManagement();
+        $versions = $this->selectableCatalogVersions();
+        if (! (is_int($itemId) || is_string($itemId)) || ! ctype_digit((string) $itemId) || ! isset($versions[(int) $itemId])) {
+            throw ValidationException::withMessages(['bulkSelection' => __('menu.bulk.selection_changed')]);
+        }
+        $itemId = (int) $itemId;
+        if (isset($this->selectedCatalogVersions[$itemId])) {
+            unset($this->selectedCatalogVersions[$itemId]);
+        } else {
+            $this->selectedCatalogVersions[$itemId] = $versions[$itemId];
+        }
+        $this->renewBulkRequest();
+    }
+
+    /** @return array<int, string> */
+    private function selectableCatalogVersions(): array
+    {
+        $versions = $this->catalogData->pageVersions($this->branch, $this->filters->normalized());
+        if (! hash_equals($this->catalogPageFingerprint, $this->fingerprintCatalogPage($versions))) {
+            throw ValidationException::withMessages(['bulkSelection' => __('menu.bulk.selection_changed')]);
+        }
+
+        return $versions;
+    }
+
+    /** @param array<int, string> $versions */
+    private function fingerprintCatalogPage(array $versions): string
+    {
+        return hash('sha256', json_encode($versions, JSON_THROW_ON_ERROR));
+    }
+
+    public function clearCatalogSelection(): void
+    {
+        $this->selectedCatalogVersions = [];
+        $this->bulk->reset();
+        $this->renewBulkRequest();
+    }
+
+    private function renewBulkRequest(): void
+    {
+        $this->bulkRequestId = (string) Str::uuid();
+        $this->bulkSuccess = '';
+        $this->resetErrorBag('bulkSelection');
+    }
+
+    public function applyCatalogBulk(ApplyCatalogBulkAction $apply): void
+    {
+        $this->bulkSuccess = '';
+        $this->resetErrorBag('bulkSelection');
+        $this->authorizeMenuManagement();
+        $validated = $this->bulk->validate();
+        if ($this->editingItemId !== null && isset($this->selectedCatalogVersions[$this->editingItemId])) {
+            throw ValidationException::withMessages(['bulkSelection' => __('menu.bulk.editor_open')]);
+        }
+        $selection = [];
+        foreach ($this->selectedCatalogVersions as $id => $version) {
+            $selection[] = ['id' => $id, 'version' => $version];
+        }
+        if ($selection === []) {
+            throw ValidationException::withMessages(['bulkSelection' => __('menu.bulk.select_first')]);
+        }
+        try {
+            $count = $apply->handle($this->currentUser(), $this->branch, $selection, $this->filters->normalized(), $validated['operation'], $validated['categoryId'] ?? '', $this->bulkRequestId);
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (AuthorizationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->addError('bulkSelection', __('menu.bulk.failed'));
+
+            return;
+        }
+        $this->clearCatalogSelection();
+        $this->bulkSuccess = __('menu.bulk.saved', ['count' => $count]);
+        $this->forgetMenuComputed();
+    }
+
     public function updatedFilters(mixed $value, string $key): void
     {
+        $this->clearCatalogSelection();
         if ($key !== 'page') {
             $this->filters->page = 1;
         }
@@ -51,11 +159,13 @@ class Catalog extends BranchMenuComponent
     public function resetCatalogFilters(): void
     {
         $this->filters->reset();
+        $this->clearCatalogSelection();
     }
 
     public function changeCatalogPage(int $page): void
     {
         $this->filters->page = max(1, min(10000, $page));
+        $this->clearCatalogSelection();
     }
 
     private ForgetBranchCacheAction $forgetBranchCache;
@@ -528,6 +638,10 @@ class Catalog extends BranchMenuComponent
             return;
         }
 
+        if ($this->imagePresentationContext !== []) {
+            throw ValidationException::withMessages(['imagePresentation' => __('uploads.presentation.finish_first')]);
+        }
+
         $this->editingItemName = $this->trimInput($this->editingItemName);
         $this->editingItemDescription = $this->trimInput($this->editingItemDescription);
 
@@ -594,7 +708,7 @@ class Catalog extends BranchMenuComponent
         $this->authorizeBranchAbility('manageMenu');
         $this->refreshMutationCapabilities();
 
-        return view('livewire.organizations.brands.branches.menu.catalog', [...$this->catalogData->for(
+        $data = $this->catalogData->for(
             branch: $this->branch,
             categoryMenuId: $this->selectionValue($this->categoryMenuId),
             itemMenuId: $this->selectionValue($this->itemMenuId),
@@ -602,8 +716,16 @@ class Catalog extends BranchMenuComponent
             search: $this->filters->searchTerm(),
             availability: $this->filters->availabilityValue(),
             menuFilter: $this->filters->menuSelection(),
-            page: $this->filters->page,
-        ), 'editingItem' => $this->catalogData->editingItem($this->branch, $this->editingItemId),
+            page: $this->filters->pageNumber(),
+            quality: $this->filters->qualityValue(),
+        );
+        $this->catalogPageFingerprint = $this->fingerprintCatalogPage($data['catalogPageVersions']);
+
+        return view('livewire.organizations.brands.branches.menu.catalog', [...$data,
+            'selectedCatalogCount' => count($this->selectedCatalogVersions),
+            'catalogPageNumber' => $this->filters->pageNumber(),
+            'catalogQualityValue' => $this->filters->qualityValue(),
+            'editingItem' => $this->catalogData->editingItem($this->branch, $this->editingItemId),
             'catalogOperation' => $this->catalogOperationProgress(),
             'pendingItemImageUploads' => $this->imageUploadPresentation()]);
     }

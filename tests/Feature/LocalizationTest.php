@@ -186,6 +186,38 @@ test('profile settings can update user interface language', function () {
         ->and(session('interface_locale'))->toBe('ru');
 });
 
+test('public qr language selection never changes the signed in administrator language', function (): void {
+    [$qrCode] = createPrompt77GuestQrContext();
+    $user = User::factory()->create(['locale' => 'lt']);
+    session()->put('interface_locale', 'lt');
+
+    $this->actingAs($user)
+        ->get(route('public.qr.show', ['token' => $qrCode->public_token, 'lang' => 'ru']))
+        ->assertOk();
+
+    expect($user->fresh()->locale)->toBe('lt')
+        ->and(session('interface_locale'))->toBe('lt');
+});
+
+test('an anonymous menu language choice is remembered only for its restaurant', function (): void {
+    [$firstQr, $firstBranch] = createPrompt77GuestQrContext('lt');
+    [$secondQr] = createPrompt77GuestQrContext('lt');
+    session()->put('interface_locale', 'en');
+
+    Livewire::test(PublicQrShow::class, ['token' => $firstQr->public_token])
+        ->set('language', 'ru')
+        ->assertSet('language', 'ru');
+
+    Livewire::test(PublicQrShow::class, ['token' => $secondQr->public_token])
+        ->assertSet('language', 'lt');
+
+    Livewire::test(PublicQrShow::class, ['token' => $firstQr->public_token])
+        ->assertSet('language', 'ru');
+
+    expect(session('interface_locale'))->toBe('en')
+        ->and(session('guest_menu_locales.'.$firstBranch->id))->toBe('ru');
+});
+
 test('guest and pending join locale values are persisted independently', function () {
     expect(TableSessionGuest::factory()->create(['locale' => 'lt'])->locale)->toBe('lt')
         ->and(TableSessionJoinRequest::factory()->create(['locale' => 'ru'])->locale)->toBe('ru');
@@ -583,3 +615,12 @@ function createPrompt77GuestQrContext(string $defaultLanguage = 'en'): array
 
     return [$qrCode, $branch, $servicePoint];
 }
+
+test('guest page language names refresh together with the selected language', function (): void {
+    [$qrCode] = createPrompt77GuestQrContext('en');
+    Livewire::test(PublicQrShow::class, ['token' => $qrCode->public_token])
+        ->set('language', 'lt')
+        ->assertSet('languageOptions.lt', __('ui.languages.lt', [], 'lt'))
+        ->set('language', 'ru')
+        ->assertSet('languageOptions.ru', __('ui.languages.ru', [], 'ru'));
+});

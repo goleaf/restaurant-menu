@@ -22,6 +22,7 @@ use App\Models\ModifierGroupTranslation;
 use App\Models\ModifierOption;
 use App\Models\ModifierOptionTranslation;
 use App\Support\LocalImageVariants;
+use App\Support\MenuImagePresentation;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -70,7 +71,7 @@ class GetGuestMenuForBranchAction
 
     public static function cacheKey(int $branchId, string $languageCode = 'en'): string
     {
-        return 'guest-menu:v6:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
+        return 'guest-menu:v7:branch:'.$branchId.':language:'.self::normalizeLanguageCode($languageCode);
     }
 
     public static function lockKey(int $branchId, string $languageCode = 'en'): string
@@ -95,6 +96,10 @@ class GetGuestMenuForBranchAction
         return [
             ...array_map(
                 fn (string $languageCode): string => self::cacheKey($branchId, $languageCode),
+                self::supportedLanguageCodes(),
+            ),
+            ...array_map(
+                fn (string $languageCode): string => 'guest-menu:v6:branch:'.$branchId.':language:'.$languageCode,
                 self::supportedLanguageCodes(),
             ),
             ...array_map(
@@ -236,6 +241,10 @@ class GetGuestMenuForBranchAction
                             ->where('language_code', $languageCode)
                             ->limit(1),
                     ])
+                    ->withExists([
+                        'translations as has_localized_content' => fn ($translationQuery) => $translationQuery
+                            ->where('language_code', $languageCode),
+                    ])
                     ->whereIn('menu_id', $availableMenus->pluck('id')->all())
                     ->where('is_active', true)
                     ->with([
@@ -249,6 +258,7 @@ class GetGuestMenuForBranchAction
                             'allergens',
                             'dietary_labels',
                             'image',
+                            'image_presentation',
                             'weight',
                             'volume',
                             'calories',
@@ -272,6 +282,8 @@ class GetGuestMenuForBranchAction
                                 ->whereNull('hidden_until')
                                 ->orWhere('hidden_until', '<=', now()))
                             ->withExists([
+                                'translations as has_localized_content' => fn ($translationQuery) => $translationQuery
+                                    ->where('language_code', $languageCode),
                                 'variants as has_variants',
                                 'variants as has_available_variants' => fn ($variantQuery) => $variantQuery
                                     ->where('is_available', true),
@@ -564,12 +576,9 @@ class GetGuestMenuForBranchAction
                     : null,
                 $category->name,
             ),
-            'description' => $this->translatedText(
-                is_string($category->getAttribute('localized_description'))
-                    ? $category->getAttribute('localized_description')
-                    : null,
-                $category->description,
-            ),
+            'description' => $category->getAttribute('has_localized_content')
+                ? $category->getAttribute('localized_description')
+                : $category->description,
             'icon' => $category->icon,
             'items' => $category->items
                 ->map(fn (MenuItem $item): array => $this->itemPayload($item, $languageCode))
@@ -584,6 +593,7 @@ class GetGuestMenuForBranchAction
     private function itemPayload(MenuItem $item, string $languageCode): array
     {
         $imageVariants = LocalImageVariants::forPath($item->image);
+        $imagePresentation = MenuImagePresentation::localized($item->image_presentation, $languageCode, (string) ($item->getAttribute('localized_name') ?: $item->name));
 
         return [
             'id' => $item->id,
@@ -593,17 +603,16 @@ class GetGuestMenuForBranchAction
                     : null,
                 $item->name,
             ),
-            'description' => $this->translatedText(
-                is_string($item->getAttribute('localized_description'))
-                    ? $item->getAttribute('localized_description')
-                    : null,
-                $item->description,
-            ),
+            'description' => $item->getAttribute('has_localized_content')
+                ? $item->getAttribute('localized_description')
+                : $item->description,
             'price_cents' => $item->price_cents,
             'allergens' => $this->selectedLabelOptions($item->allergens, MenuAllergen::options($languageCode)),
             'dietary_labels' => $this->selectedLabelOptions($item->dietary_labels, MenuDietaryLabel::options($languageCode)),
             'image_url' => $imageVariants['url'],
             'image_variants' => $imageVariants,
+            'image_alt' => $imagePresentation['alt'],
+            'image_object_position' => $imagePresentation['object_position'],
             'weight' => $item->weight,
             'volume' => $item->volume,
             'calories' => $item->calories,

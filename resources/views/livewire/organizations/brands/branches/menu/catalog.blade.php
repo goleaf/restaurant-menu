@@ -22,33 +22,100 @@
     @error('operation')
         <p role="alert" class="rounded-control bg-danger-surface p-3 text-sm text-danger-foreground">{{ $message }}</p>
     @enderror
-    <section class="grid min-w-0 gap-3 rounded-card border border-border bg-surface p-4" aria-label="{{ __('menu.catalog.filters') }}">
-        <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,14rem),1fr))] items-end gap-3 [&>[data-flux-field]]:min-w-0">
+    <section class="min-w-0 space-y-2 rounded-card border border-border bg-surface p-3" aria-label="{{ __('menu.catalog.filters') }}">
+        <div class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-end gap-2 [&>[data-flux-field]]:min-w-0">
             <flux:input wire:model.live.debounce.300ms="filters.search" type="search" icon="magnifying-glass" :label="__('menu.catalog.search')" :placeholder="__('menu.catalog.search_placeholder')" maxlength="200" />
-            <flux:select wire:model.live="filters.menuId" :label="__('menu.guest.title')">
-                <flux:select.option value="">{{ __('menu.catalog.all_menus') }}</flux:select.option>
-                @forelse ($menuOptions as $option)
-                    <flux:select.option value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
-                @empty
-                @endforelse
-            </flux:select>
-            <flux:select wire:model.live="filters.availability" :label="__('menu.catalog.availability')">
-                <flux:select.option value="">{{ __('menu.catalog.all_items') }}</flux:select.option>
-                <flux:select.option value="available">{{ __('menu.guest.available') }}</flux:select.option>
-                <flux:select.option value="unavailable">{{ __('menu.catalog.unavailable') }}</flux:select.option>
-            </flux:select>
-            <flux:button wire:click="resetCatalogFilters" icon="x-mark">{{ __('menu.catalog.reset_filters') }}</flux:button>
+            <flux:button wire:click="resetCatalogFilters" icon="x-mark" :aria-label="__('menu.catalog.reset_filters')" />
         </div>
-        <p class="text-xs text-text-muted">{{ __('menu.catalog.page_help', ['count' => 24]) }}</p>
+        <details class="min-w-0">
+            <summary class="min-h-11 cursor-pointer py-3 text-sm font-medium text-text-muted">{{ __('menu.catalog.filters') }}@if ($catalogQualityValue !== '') · {{ $catalogQualityOptions[$catalogQualityValue] }}@endif</summary>
+            <div class="grid min-w-0 gap-3 border-t border-border pt-3 sm:grid-cols-2 [&>[data-flux-field]]:min-w-0">
+                <flux:select wire:model.live="filters.menuId" :label="__('menu.guest.title')">
+                    <flux:select.option value="">{{ __('menu.catalog.all_menus') }}</flux:select.option>
+                    @forelse ($menuOptions as $option)
+                        <flux:select.option value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
+                    @empty
+                    @endforelse
+                </flux:select>
+                <flux:select wire:model.live="filters.availability" :label="__('menu.catalog.availability')">
+                    <flux:select.option value="">{{ __('menu.catalog.all_items') }}</flux:select.option>
+                    <flux:select.option value="available">{{ __('menu.guest.available') }}</flux:select.option>
+                    <flux:select.option value="unavailable">{{ __('menu.catalog.unavailable') }}</flux:select.option>
+                </flux:select>
+                <div class="flex flex-wrap gap-2 sm:col-span-full" aria-label="{{ __('menu.quality.title') }}">
+                    @forelse ($catalogQualityOptions as $quality => $qualityLabel)
+                        <flux:button type="button" wire:click="$set('filters.quality', '{{ $quality }}')" :variant="$catalogQualityValue === $quality ? 'primary' : 'subtle'" :aria-pressed="$catalogQualityValue === $quality ? 'true' : 'false'">{{ $qualityLabel }}</flux:button>
+                    @empty
+                    @endforelse
+                </div>
+                <p class="text-xs text-text-muted sm:col-span-full">{{ __('menu.catalog.page_help', ['count' => 24]) }}</p>
+            </div>
+        </details>
     </section>
 
-    <div class="flex flex-wrap justify-end gap-2 py-3">
+    <section class="space-y-2 rounded-card border border-border bg-surface p-3" aria-label="{{ __('menu.bulk.title') }}">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-sm font-semibold text-text" aria-live="polite">{{ __('menu.bulk.selected', ['count' => $selectedCatalogCount]) }}</p>
+                <p class="sr-only">{{ __('menu.bulk.page_only') }}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <flux:button type="button" wire:click="selectCatalogPage" :disabled="$catalogVisibleCount === 0" wire:loading.attr="disabled">{{ __('menu.bulk.select_page') }}</flux:button>
+                @if ($selectedCatalogCount > 0)<flux:button type="button" wire:click="clearCatalogSelection">{{ __('menu.bulk.clear') }}</flux:button>@endif
+            </div>
+        </div>
+        @if ($selectedCatalogCount > 0)
+            <p class="text-xs text-text-muted">{{ __('menu.bulk.page_only') }}</p>
+            <form wire:submit="applyCatalogBulk" class="space-y-3" novalidate>
+                <fieldset wire:offline.attr="disabled" wire:loading.attr="disabled" wire:target="applyCatalogBulk" class="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                    <flux:select wire:model.live="bulk.operation" :label="__('menu.bulk.action')">
+                        <flux:select.option value="">{{ __('menu.bulk.choose_action') }}</flux:select.option>
+                        @if ($canChangeAvailability)
+                            <flux:select.option value="available">{{ __('menu.bulk.available') }}</flux:select.option>
+                            <flux:select.option value="unavailable">{{ __('menu.bulk.unavailable') }}</flux:select.option>
+                        @endif
+                        <flux:select.option value="move">{{ __('menu.bulk.move') }}</flux:select.option>
+                        <flux:select.option value="archive">{{ __('menu.bulk.archive') }}</flux:select.option>
+                    </flux:select>
+                    @if ($bulk->operation === 'move')
+                        <div class="min-w-0">
+                            <flux:select wire:model.live="bulk.categoryId" :label="__('menu.bulk.category')">
+                                <flux:select.option value="">{{ __('menu.bulk.choose_category') }}</flux:select.option>
+                                @forelse ($bulkCategoryOptions as $option)
+                                    <flux:select.option value="{{ $option['value'] }}">{{ $option['label'] }}</flux:select.option>
+                                @empty
+                                @endforelse
+                            </flux:select>
+                            <p class="mt-1 text-xs text-text-muted">{{ __('menu.bulk.move_help') }}</p>
+                        </div>
+                    @endif
+                    @if ($bulk->operation === 'archive')
+                        <flux:checkbox wire:model.live="bulk.confirmArchive" :label="__('menu.bulk.archive_confirm')" :description="__('menu.bulk.archive_help')" />
+                    @endif
+                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="applyCatalogBulk" :disabled="$activeCatalogOperationId !== ''">{{ __('menu.bulk.apply', ['count' => $selectedCatalogCount]) }}</flux:button>
+                </fieldset>
+                <p wire:loading wire:target="applyCatalogBulk" role="status" class="text-sm text-text-muted">{{ __('ui.actions.saving') }}</p>
+            </form>
+        @endif
+        @error('bulkSelection')<p role="alert" class="rounded-control bg-danger-surface p-3 text-sm text-danger-foreground">{{ $message }}</p>@enderror
+        @if ($bulkSuccess !== '')<p role="status" class="text-sm text-success">{{ $bulkSuccess }}</p>@endif
+        <p wire:offline role="status" class="text-sm text-text-muted">{{ __('menu.bulk.offline') }}</p>
+    </section>
+    @if ($catalogVisibleCount === 0 && $menuRows !== [])
+        <section class="space-y-2 rounded-card border border-border bg-surface p-5" role="status">
+            <h2 class="font-semibold text-text">{{ __('menu.quality.no_results') }}</h2>
+            <p class="text-sm text-text-muted">{{ __('menu.quality.no_results_help') }}</p>
+            <flux:button wire:click="resetCatalogFilters">{{ __('menu.catalog.reset_filters') }}</flux:button>
+        </section>
+    @endif
+
+    <div data-catalog-create-actions class="flex flex-wrap justify-end gap-2 py-3">
 <flux:modal.trigger name="catalog-create-menu"><flux:button icon="plus">{{ __('ui.organizations.brands.branches.menu.index.new_menu') }}</flux:button></flux:modal.trigger>
 <flux:modal.trigger name="catalog-create-category"><flux:button icon="plus">{{ __('ui.organizations.brands.branches.menu.index.new_category') }}</flux:button></flux:modal.trigger>
 <flux:modal.trigger name="catalog-create-item"><flux:button icon="plus" variant="primary">{{ __('ui.organizations.brands.branches.menu.index.new_dish') }}</flux:button></flux:modal.trigger>
     </div>
 <flux:modal name="catalog-create-menu" class="w-full max-w-2xl">
-<form wire:submit="createMenu" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+<form wire:submit="createMenu" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_menu') }}</flux:heading>
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createMenu">
@@ -77,7 +144,7 @@
             </form>
 </flux:modal>
 <flux:modal name="catalog-create-category" class="w-full max-w-2xl">
-<form wire:submit="createCategory" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+<form wire:submit="createCategory" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_category') }}</flux:heading>
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createCategory">
@@ -131,7 +198,7 @@
             </form>
 </flux:modal>
 <flux:modal name="catalog-create-item" class="w-full max-w-2xl">
-<form wire:submit="createItem" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+<form wire:submit="createItem" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
                 <div class="flex items-center justify-between gap-3">
                     <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_dish') }}</flux:heading>
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createItem">
@@ -208,7 +275,7 @@
                 </div>
             </form>
 </flux:modal>
-        <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div data-catalog-menu-list class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
                 <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.menus_in_this_branch') }}</flux:heading>
             </div>
@@ -217,7 +284,7 @@
                 @forelse ($menuRows as $menu)
                     <div wire:key="menu-{{ $menu['id'] }}" class="grid gap-4 px-4 py-4">
                         @if ($editingMenuId === $menu['id'])
-                            <form wire:submit="updateMenu" class="grid gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
+                            <form wire:submit="updateMenu" novalidate class="grid gap-3 md:grid-cols-[1fr_180px_120px_auto] md:items-end">
 
 
                                 <x-menu.name-translations
@@ -274,7 +341,7 @@
                             </div>
                         @endif
 
-                        <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+                        <details class="rounded-control border border-border p-3" @if ($editingScheduleId !== null) open @endif><summary class="min-h-11 cursor-pointer py-2 text-sm font-semibold text-text">{{ __('ui.organizations.brands.branches.menu.index.menu_schedule') }}</summary>
                             <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
@@ -348,17 +415,17 @@
                                     {{ __('ui.organizations.brands.branches.menu.index.add_interval') }}
                                 </flux:button>
                             </form>
-                        </div>
+                        </details>
 
-                        <div class="grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
-                            <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+                        <div class="grid min-w-0 gap-4">
+                            <details class="rounded-control border border-border p-3" @if ($editingCategoryId !== null) open @endif><summary class="min-h-11 cursor-pointer py-2 text-sm font-semibold text-text">{{ __('menu.guest.categories') }}</summary>
                                 <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('menu.guest.categories') }}</p>
 
                                 <div class="mt-3 space-y-2">
                                     @forelse ($menu['categories'] as $category)
                                         <div wire:key="menu-category-{{ $category['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                                             @if ($editingCategoryId === $category['id'])
-                                                <form wire:submit="updateCategory" class="grid gap-3">
+                                                <form wire:submit="updateCategory" novalidate class="grid gap-3">
 
 
 
@@ -442,138 +509,75 @@
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('menu.empty.no_categories') }}</p>
                                     @endforelse
                                 </div>
-                            </div>
+                            </details>
 
-                            <div class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
-                                <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.dishes') }}</p>
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-text">{{ __('ui.organizations.brands.branches.menu.index.dishes') }}</p>
 
                                 <div class="mt-3 space-y-3">
                                     @forelse ($menu['items'] as $item)
-                                        <div wire:key="menu-item-{{ $item['id'] }}" class="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-
-                                                <div class="grid gap-3 md:grid-cols-[64px_1fr_auto] md:items-start">
-                                                    <div class="flex size-16 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-                                                        @if ($item['has_image'])
-                                                            <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="64" height="64" loading="lazy" decoding="async" class="size-full object-cover">
-                                                        @else
-                                                            <span class="text-xs font-medium text-zinc-600 dark:text-zinc-400">{{ __('uploads.labels.image') }}</span>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="min-w-0">
-                                                        <div class="flex flex-wrap items-center gap-2">
-                                                            <x-ui.plain-text :text="$item['name']" class="block text-base font-semibold text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                                            <flux:badge>{{ $item['category_name'] }}</flux:badge>
-                                                            @if ($item['has_department'])
-                                                                <flux:badge :color="$item['department_color']">{{ $item['department_name'] }}</flux:badge>
-                                                            @else
-                                                                <flux:badge color="zinc">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:badge>
-                                                            @endif
-
-                                                            @if ($item['is_available'])
-                                                                <flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
-                                                            @else
-                                                                <flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>
-                                                            @endif
-
-                                                            @if ($item['is_temporarily_hidden'])
-                                                                <flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until']]) }}</flux:badge>
-                                                            @endif
-                                                        </div>
-
-                                                        @if ($item['description'])
-                                                            <x-ui.plain-text :text="$item['description']" class="mt-1 block text-sm leading-5 text-zinc-500 dark:text-zinc-400" />
-                                                        @endif
-
-                                                        <dl class="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-                                                            @foreach ($languageOptions as $languageCode => $languageLabel)
-                                                                <div wire:key="menu-item-{{ $item['id'] }}-translation-{{ $languageCode }}" class="min-w-0">
-                                                                    <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ $languageLabel }}</dt>
-                                                                    <dd class="break-words text-zinc-900 dark:text-zinc-100">{{ $item['translations'][$languageCode]['name'] ?: __('menu.translations.fallback') }}</dd>
-                                                                </div>
-                                                            @endforeach
-                                                        </dl>
-
-                                                        <x-menu.item-labels
-                                                            class="mt-3"
-                                                            :allergens="$item['allergens']"
-                                                            :dietary-labels="$item['dietary_labels']"
-                                                        />
-
-                                                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                                                            {{ __('guest.cart.price') }}: {{ $item['formatted_price'] }} / {{ __('ui.departments.dashboard.sort') }} {{ $item['sort_order'] }}
-                                                        </p>
-
-                                                        <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                            {{ __('reports.csv.weight') }}: {{ $item['weight'] }}
-                                                            /
-                                                            {{ __('reports.csv.volume') }}: {{ $item['volume'] }}
-                                                            /
-                                                            {{ __('reports.csv.calories') }}: {{ $item['calories'] }}
-                                                        </p>
-
-                                                        @if ($item['modifier_groups'] !== [])
-                                                            <div class="mt-3 flex flex-wrap gap-2">
-                                                                @foreach ($item['modifier_groups'] as $modifierGroup)
-                                                                    <span wire:key="item-{{ $item['id'] }}-modifier-{{ $modifierGroup['id'] }}" class="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-                                                                        {{ $modifierGroup['name'] }}
-                                                                        <button type="button" wire:click="detachModifierGroupFromItem({{ $item['id'] }}, {{ $modifierGroup['id'] }})" class="text-zinc-600 hover:text-red-700 dark:text-zinc-400 dark:hover:text-red-400" aria-label="{{ __('ui.organizations.brands.branches.menu.index.remove_modifier_group') }}">
-                                                                            ×
-                                                                        </button>
-                                                                    </span>
-                                                                @endforeach
-                                                            </div>
-                                                        @endif
-
-                                                    </div>
-
-                                                    <div class="flex flex-wrap gap-2 md:justify-end">
+                                        <article wire:key="menu-item-{{ $item['id'] }}" class="min-w-0 border-b border-border py-4 last:border-0">
+                                            <div class="grid min-w-0 grid-cols-[44px_56px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[44px_64px_minmax(0,1fr)_auto]">
+                                                <button type="button" role="checkbox" aria-checked="{{ isset($selectedCatalogVersions[$item['id']]) ? 'true' : 'false' }}" aria-label="{{ __('menu.bulk.select_item', ['name' => $item['name']]) }}" wire:click="toggleCatalogSelection({{ $item['id'] }})" wire:loading.attr="disabled" class="flex size-11 shrink-0 items-center justify-center rounded-control border border-border text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                                                    @if (isset($selectedCatalogVersions[$item['id']]))<flux:icon.check class="size-5" />@endif
+                                                </button>
+                                                <div class="flex size-14 items-center justify-center overflow-hidden rounded-control bg-surface-muted sm:size-16">
+                                                    @if ($item['has_image'])
+                                                        <img src="{{ $item['image_url'] }}" alt="{{ $item['name'] }}" width="64" height="64" loading="lazy" decoding="async" class="size-full object-cover">
+                                                    @else
+                                                        <flux:icon.photo class="size-6 text-text-muted" />
+                                                    @endif
+                                                </div>
+                                                <div class="min-w-0 space-y-1">
+                                                    <x-ui.plain-text :text="$item['name']" class="block font-semibold text-text" :preserve-lines="false" />
+                                                    <p class="text-sm text-text-muted">{{ $item['category_name'] }}</p>
+                                                    <p class="text-sm font-semibold tabular-nums text-text">{{ $item['formatted_price'] }}</p>
+                                                    @if ($item['description_excerpt'])<p class="text-sm text-text-muted">{{ $item['description_excerpt'] }}</p>@endif
+                                                </div>
+                                                <div class="col-span-full flex flex-wrap items-center gap-2 sm:col-auto sm:max-w-56 sm:justify-end">
+                                                    @if ($item['is_available'])<flux:badge color="green">{{ __('menu.guest.available') }}</flux:badge>
+                                                    @else<flux:badge color="zinc">{{ __('menu.guest.unavailable') }}</flux:badge>@endif
+                                                    @if ($item['is_temporarily_hidden'])<flux:badge color="amber">{{ __('menu.admin.hidden_until_value', ['date' => $item['hidden_until']]) }}</flux:badge>@endif
+                                                    <flux:button type="button" icon="pencil" variant="primary" wire:click="startEditingItem({{ $item['id'] }})" wire:loading.attr="disabled">{{ __('guest.cart.edit_item') }}</flux:button>
+                                                </div>
+                                            </div>
+                                            @if ($item['quality_issues'] !== [])
+                                                <div class="mt-2 flex flex-wrap gap-1">
+                                                    @forelse ($item['quality_issues'] as $issue => $label)
+                                                        <flux:button type="button" variant="subtle" icon="exclamation-circle" wire:click="$set('filters.quality', '{{ $issue }}')">{{ $label }}</flux:button>
+                                                    @empty
+                                                    @endforelse
+                                                </div>
+                                            @endif
+                                            <details class="mt-2 min-w-0">
+                                                <summary class="flex min-h-11 cursor-pointer items-center text-sm font-medium text-text-muted focus-visible:outline-2 focus-visible:outline-accent">{{ __('menu.catalog.details_actions') }}</summary>
+                                                <div class="space-y-3 border-t border-border pt-3">
+                                                    <dl class="grid min-w-0 gap-3 sm:grid-cols-3">
+                                                        @forelse ($languageOptions as $languageCode => $languageLabel)
+                                                            <div class="min-w-0"><dt class="text-xs text-text-muted">{{ $languageLabel }}</dt><dd class="break-words text-sm text-text">{{ $item['translations'][$languageCode]['name'] ?: __('menu.translations.fallback') }}</dd></div>
+                                                        @empty
+                                                        @endforelse
+                                                    </dl>
+                                                    <x-menu.item-labels :allergens="$item['allergens']" :dietary-labels="$item['dietary_labels']" />
+                                                    <p class="text-xs text-text-muted">{{ $item['department_name'] ?: __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }} · {{ __('reports.csv.weight') }}: {{ $item['weight'] }} · {{ __('reports.csv.volume') }}: {{ $item['volume'] }} · {{ __('reports.csv.calories') }}: {{ $item['calories'] }}</p>
+                                                    <div class="flex flex-wrap gap-2">
                                                         @if ($canChangeAvailability)
                                                             @if ($item['is_available'])
-                                                                <x-dangerous-action-confirmation
-                                                                    name="disable-menu-item-{{ $item['id'] }}"
-                                                                    action="delete_or_deactivate_menu_item"
-                                                                    confirm-action="setItemAvailability({{ $item['id'] }}, false)"
-                                                                    submit-target="setItemAvailability({{ $item['id'] }}, false)"
-                                                                    confirm-label="ui.actions.confirm"
-                                                                    loading-label="ui.actions.saving"
-                                                                >
-                                                                    <x-slot:trigger>
-                                                                        <flux:button icon="eye-slash" type="button">
-                                                                            {{ __('ui.actions.disable') }}
-                                                                        </flux:button>
-                                                                    </x-slot:trigger>
+                                                                <x-dangerous-action-confirmation name="disable-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="setItemAvailability({{ $item['id'] }}, false)" confirm-label="ui.actions.confirm" loading-label="ui.actions.saving">
+                                                                    <x-slot:trigger><flux:button icon="eye-slash" type="button">{{ __('ui.actions.disable') }}</flux:button></x-slot:trigger>
                                                                 </x-dangerous-action-confirmation>
                                                             @else
-                                                                <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item['id'] }}, true)">
-                                                                    {{ __('ui.organizations.brands.branches.menu.index.enable') }}
-                                                                </flux:button>
+                                                                <flux:button icon="eye" type="button" wire:click="setItemAvailability({{ $item['id'] }}, true)">{{ __('ui.organizations.brands.branches.menu.index.enable') }}</flux:button>
                                                             @endif
                                                         @endif
-
-                                                        <flux:button icon="pencil" type="button" wire:click="startEditingItem({{ $item['id'] }})">
-                                                            {{ __('guest.cart.edit_item') }}
-                                                        </flux:button>
                                                         <flux:button icon="document-duplicate" type="button" wire:click="duplicateItem({{ $item['id'] }})" wire:loading.attr="disabled" :disabled="$activeCatalogOperationId !== ''">{{ __('menu.operations.duplicate') }}</flux:button>
-
-                                                        <x-dangerous-action-confirmation
-                                                            name="delete-menu-item-{{ $item['id'] }}"
-                                                            action="delete_or_deactivate_menu_item"
-                                                            confirm-action="deleteItem({{ $item['id'] }})"
-                                                            submit-target="deleteItem({{ $item['id'] }})"
-                                                            confirm-label="ui.actions.confirm"
-                                                            loading-label="ui.actions.deleting"
-                                                        >
-                                                            <x-slot:trigger>
-                                                                <flux:button icon="trash" type="button" variant="danger">
-                                                                    {{ __('ui.actions.delete') }}
-                                                                </flux:button>
-                                                            </x-slot:trigger>
+                                                        <x-dangerous-action-confirmation name="delete-menu-item-{{ $item['id'] }}" action="delete_or_deactivate_menu_item" confirm-action="deleteItem({{ $item['id'] }})" confirm-label="ui.actions.confirm" loading-label="ui.actions.deleting">
+                                                            <x-slot:trigger><flux:button icon="trash" type="button" variant="danger">{{ __('ui.actions.delete') }}</flux:button></x-slot:trigger>
                                                         </x-dangerous-action-confirmation>
                                                     </div>
                                                 </div>
-
-                                        </div>
+                                            </details>
+                                        </article>
                                     @empty
                                         <p class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('menu.empty.no_items') }}</p>
                                     @endforelse
@@ -590,9 +594,9 @@
         </div>
 
     <nav class="flex flex-wrap items-center justify-between gap-3 py-3" aria-label="{{ __('menu.catalog.pagination') }}">
-        <flux:button wire:click="changeCatalogPage({{ $filters->page - 1 }})" :disabled="! $catalogHasPrevious" icon="chevron-left">{{ __('menu.catalog.previous') }}</flux:button>
-        <span class="text-sm text-text-muted" aria-live="polite">{{ __('menu.catalog.page_number', ['page' => $filters->page]) }}</span>
-        <flux:button wire:click="changeCatalogPage({{ $filters->page + 1 }})" :disabled="! $catalogHasMore" icon-trailing="chevron-right">{{ __('menu.catalog.next') }}</flux:button>
+        <flux:button wire:click="changeCatalogPage({{ $catalogPageNumber - 1 }})" :disabled="! $catalogHasPrevious" icon="chevron-left">{{ __('menu.catalog.previous') }}</flux:button>
+        <span class="text-sm text-text-muted" aria-live="polite">{{ __('menu.catalog.page_number', ['page' => $catalogPageNumber]) }}</span>
+        <flux:button wire:click="changeCatalogPage({{ $catalogPageNumber + 1 }})" :disabled="! $catalogHasMore" icon-trailing="chevron-right">{{ __('menu.catalog.next') }}</flux:button>
     </nav>
     <flux:modal name="catalog-item-editor" class="w-full max-w-4xl">
         @if ($editingItem !== null)
@@ -604,7 +608,7 @@
                 :item="$editingItem" :menu-options="$menuOptions" :editing-item-category-options="$editingItemCategoryOptions"
                 :active-kitchen-department-options="$activeKitchenDepartmentOptions" :language-options="$languageOptions"
                 :can-change-prices="$canChangePrices" :can-change-availability="$canChangeAvailability"
-                :allergen-options="$allergenOptions" :dietary-label-options="$dietaryLabelOptions" :item-image-uploads="$pendingItemImageUploads"
+                :allergen-options="$allergenOptions" :dietary-label-options="$dietaryLabelOptions" :item-image-uploads="$pendingItemImageUploads" :image-presentation-context="$imagePresentationContext" :image-presentation-form="$imagePresentationForm"
             />
         @endif
     </flux:modal>

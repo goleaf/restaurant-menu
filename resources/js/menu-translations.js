@@ -1,21 +1,37 @@
 function registerTranslationEditor() {
     window.Alpine.data('menuTranslations', (config) => ({
         active: 'en',
+        copiedFields: {},
+        invalidLocales: [],
         errorSignature: '',
         observer: null,
         submitHandler: null,
+        unsubscribe: null,
         form: null,
         editor: null,
         init() {
             this.editor = this.$el;
             this.form = this.editor.closest('form');
             if (this.form) {
-                this.form.noValidate = true;
                 this.submitHandler = () => {
                     this.errorSignature = '';
                     this.syncPrimary();
                 };
                 this.form.addEventListener('submit', this.submitHandler, true);
+                const action = this.form.getAttribute('wire:submit')?.split('(')[0].trim();
+                if (action) {
+                    const componentId = this.editor.closest('[wire\\:id]')?.getAttribute('wire:id');
+                    this.unsubscribe = window.Livewire.interceptMessage(({ message, onSuccess }) => {
+                        if (message.component.id !== componentId || !Array.from(message.actions).some((entry) => entry.name === action)) return;
+                        onSuccess(({ onRender }) => {
+                            onRender(() => {
+                                if (!this.editor.isConnected) return;
+                                this.errorSignature = '';
+                                this.revealError();
+                            });
+                        });
+                    });
+                }
             }
             this.$watch(() => this.name('en'), () => this.syncPrimary());
             this.$watch(() => this.description('en'), () => this.syncPrimary());
@@ -24,6 +40,7 @@ function registerTranslationEditor() {
             this.$nextTick(() => this.revealError());
         },
         destroy() {
+            this.unsubscribe?.();
             this.observer?.disconnect();
             if (this.form && this.submitHandler) this.form.removeEventListener('submit', this.submitHandler, true);
         },
@@ -37,6 +54,27 @@ function registerTranslationEditor() {
             return typeof value === 'string' ? value : '';
         },
         filled(locale) { return this.name(locale).trim() !== ''; },
+        hasError(locale) { return this.invalidLocales.includes(locale); },
+        copyableFields(locale) {
+            if (!['lt', 'ru'].includes(locale)) return [];
+            const fields = config.nameOnly ? ['name'] : ['name', 'description'];
+            return fields.filter((field) => this[field](locale).trim() === '' && this[field]('en').trim() !== '');
+        },
+        canCopyOriginal(locale) { return this.copyableFields(locale).length > 0; },
+        copyOriginal(locale) {
+            const fields = this.copyableFields(locale);
+            for (const field of fields) {
+                const value = this[field]('en');
+                const path = `${config.model}.${locale}${config.nameOnly ? '' : `.${field}`}`;
+                this.$wire.$set(path, value, false);
+                this.copiedFields[locale] ??= {};
+                this.copiedFields[locale][field] = value;
+            }
+            if (fields.length > 0) this.$dispatch('input');
+        },
+        hasCopiedText(locale) {
+            return Object.entries(this.copiedFields[locale] ?? {}).some(([field, value]) => this[field](locale) === value);
+        },
         length(value) { return Array.from(value).length; },
         syncPrimary() {
             if (config.baseNameModel) this.$wire.$set(config.baseNameModel, this.name('en'), false);
@@ -57,6 +95,7 @@ function registerTranslationEditor() {
         },
         revealError() {
             const invalid = Array.from(this.editor.querySelectorAll('[data-locale-panel][data-invalid="true"]'));
+            this.invalidLocales = invalid.map((panel) => panel.dataset.localePanel);
             const signature = invalid.map((panel) => panel.dataset.localePanel).join(',');
             if (!signature || signature === this.errorSignature) return;
             this.errorSignature = signature;

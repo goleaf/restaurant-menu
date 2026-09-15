@@ -34,6 +34,11 @@ class SetInterfaceLocale
 
         if (is_string($queryLocale) && SupportedLocale::isSupported($queryLocale)) {
             $locale = SupportedLocale::normalize($queryLocale);
+
+            if ($request->routeIs('public.qr.*')) {
+                return $locale;
+            }
+
             $request->session()->put('interface_locale', $locale);
 
             $user = $request->user();

@@ -12,4 +12,6 @@ enum MenuOperationKind: string
     case ImageUpload = 'image_upload';
     case ImageRemove = 'image_remove';
     case ImagePromote = 'image_promote';
+    case CatalogImport = 'catalog_import';
+    case BulkItems = 'bulk_items';
 }

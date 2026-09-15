@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 /**
+ * @property array<string, mixed>|null $image_presentation
  * @property int $price_cents
  * @property list<string> $allergens
  * @property list<string> $dietary_labels
@@ -27,7 +28,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read MenuCategory $category
  * @property-read KitchenDepartment|null $kitchenDepartment
  */
-#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])]
+#[Fillable(['menu_id', 'category_id', 'kitchen_department_id', 'name', 'description', 'price_cents', 'allergens', 'dietary_labels', 'image', 'image_presentation', 'weight', 'volume', 'calories', 'is_available', 'hidden_until', 'sort_order'])]
 class MenuItem extends Model
 {
     public const MAX_IMAGES = 8;
@@ -53,6 +54,7 @@ class MenuItem extends Model
     {
         return [
             'price_cents' => 'integer',
+            'image_presentation' => 'array',
             'allergens' => 'array',
             'dietary_labels' => 'array',
             'weight' => 'decimal:2',

@@ -59,24 +59,24 @@ final class DuplicateMenuItemAction
                 $translation = $source->translations->firstWhere('language_code', $locale);
                 if (! $copy->translations()->create(['language_code' => $locale,
                     'name' => $this->copyName($translation->name ?? $source->name, $requestId, $locale),
-                    'description' => $translation->description ?? $source->description])->exists) {
+                    'description' => $translation !== null ? $translation->description : $source->description])->exists) {
                     throw new RuntimeException('The copied item translation could not be saved.');
                 }
             }
             $directory = 'media/organizations/'.$branch->organization_id.'/brands/'.$branch->brand_id.'/branches/'.$branch->id.'/menu-items/'.$copy->id.'/images';
             $plan = [];
             if (filled($source->image)) {
-                $plan[] = $this->copyImage->plan($source->image, $directory) + ['primary' => true, 'sort_order' => 0];
+                $plan[] = $this->copyImage->plan($source->image, $directory) + ['primary' => true, 'sort_order' => 0, 'presentation' => $source->image_presentation];
             }
             foreach ($source->galleryImages as $image) {
-                $plan[] = $this->copyImage->plan($image->path, $directory) + ['primary' => false, 'sort_order' => $image->sort_order];
+                $plan[] = $this->copyImage->plan($image->path, $directory) + ['primary' => false, 'sort_order' => $image->sort_order, 'presentation' => $image->presentation];
             }
             $operation = new MenuOperation;
             $operation->forceFill(['request_id' => $requestId, 'branch_id' => $branch->id, 'actor_user_id' => $actor->id,
                 'menu_id' => $source->menu_id, 'kind' => MenuOperationKind::DuplicateItem, 'target_id' => $source->id,
                 'result_id' => $copy->id, 'active_scope' => 'menu:'.$source->menu_id, 'phase' => MenuOperationPhase::Media,
                 'processed_count' => 4, 'pending_cleanup' => array_column($plan, 'target'),
-                'payload' => ['media_plan' => $plan, 'source_gallery' => $source->galleryImages->map->only(['id', 'path', 'sort_order'])->all()]]);
+                'payload' => ['media_plan' => $plan, 'source_gallery' => $source->galleryImages->map->only(['id', 'path', 'sort_order', 'presentation'])->all()]]);
             if ($operation->save() !== true) {
                 throw new RuntimeException('The copy operation could not be saved.');
             }

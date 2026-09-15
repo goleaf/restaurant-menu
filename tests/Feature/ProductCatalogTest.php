@@ -13,11 +13,14 @@ use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\MenuItemImage;
 use App\Models\MenuItemTranslation;
+use App\Models\MenuOperation;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\Menus\CatalogData;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -244,4 +247,101 @@ test('catalogue image save replays a lost response without adding the same batch
 
     expect($item->galleryImages()->count())->toBe(7)
         ->and(Storage::disk('public')->allFiles())->toBe($storedPaths);
+});
+
+test('permanent image write failure preserves pending uploads and retries the same batch without duplicates', function (): void {
+    Storage::fake('public');
+    [$owner, $organization, $brand, $branch, $menu, $category] = productCatalogContext();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => 'media/original.jpg']);
+    $gallery = MenuItemImage::factory()->for($item, 'item')->create(['path' => 'media/original-secondary.jpg']);
+    $disk = Storage::disk('public');
+    $disk->put($item->image, 'existing primary');
+    $disk->put($gallery->path, 'existing secondary');
+    $existingFiles = $disk->allFiles();
+    $files = [
+        UploadedFile::fake()->image('new-first.jpg', 800, 400),
+        UploadedFile::fake()->image('new-second.jpg', 800, 400),
+    ];
+    $field = 'itemImageUploads.'.$item->id;
+    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('startEditingItem', $item->id)
+        ->set('editingItemDescription', 'Preserve the unsaved dish description')
+        ->set($field, $files);
+    $requestId = $component->get('itemImageRequestIds.'.$item->id);
+    $writes = 0;
+    $failingDisk = Mockery::mock($disk);
+    $failingDisk->shouldReceive('put')->andReturnUsing(function (string $path, mixed $contents, mixed $options = []) use ($disk, &$writes): bool {
+        $writes++;
+
+        return $writes === 4 ? false : $disk->put($path, $contents, $options);
+    });
+    Storage::set('public', $failingDisk);
+    Exceptions::fake();
+
+    $component->call('saveItemImages', $item->id)
+        ->assertHasErrors($field)
+        ->assertSee(__('uploads.errors.upload_failed'))
+        ->assertSet('itemImageRequestIds.'.$item->id, $requestId)
+        ->assertSet('editingItemDescription', 'Preserve the unsaved dish description')
+        ->assertNotDispatched('item-images-saved');
+
+    expect($writes)->toBe(4)
+        ->and(array_map(fn (UploadedFile $file): string => $file->getClientOriginalName(), $component->get($field)))->toBe(['new-first.jpg', 'new-second.jpg'])
+        ->and($item->fresh()->image)->toBe('media/original.jpg')
+        ->and($item->galleryImages()->pluck('path', 'id')->all())->toBe([$gallery->id => 'media/original-secondary.jpg'])
+        ->and($disk->allFiles())->toBe($existingFiles)
+        ->and(MenuOperation::query()->where('request_id', $requestId)->exists())->toBeFalse();
+    Exceptions::assertReported(RuntimeException::class);
+
+    Storage::set('public', $disk);
+    $retrySnapshot = $component->snapshot;
+    $component->call('saveItemImages', $item->id)->assertHasNoErrors()->assertDispatched('item-images-saved');
+    $committedFiles = $disk->allFiles();
+    $component->snapshot = $retrySnapshot;
+    $component->call('saveItemImages', $item->id)->assertHasNoErrors();
+
+    expect($item->fresh()->image)->toBe('media/original.jpg')
+        ->and($item->galleryImages()->count())->toBe(3)
+        ->and($gallery->fresh()->path)->toBe('media/original-secondary.jpg')
+        ->and($committedFiles)->toHaveCount(6)
+        ->and($disk->allFiles())->toBe($committedFiles)
+        ->and(MenuOperation::query()->where('request_id', $requestId)->count())->toBe(1);
+});
+
+test('committed image uploads finish the picker after an observer callback fails without offering another upload', function (): void {
+    Storage::fake('public');
+    [$owner, $organization, $brand, $branch, $menu, $category] = productCatalogContext();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['image' => null]);
+    $component = Livewire::actingAs($owner)->test(Catalog::class, ['organizationId' => $organization->id, 'brandId' => $brand->id, 'branchId' => $branch->id])
+        ->call('startEditingItem', $item->id)
+        ->set('editingItemDescription', 'Still editing this dish')
+        ->set('itemImageUploads.'.$item->id, [UploadedFile::fake()->image('committed.jpg', 800, 400)]);
+    $requestId = $component->get('itemImageRequestIds.'.$item->id);
+    $snapshot = $component->snapshot;
+    MenuOperation::created(function (): void {
+        DB::afterCommit(fn () => throw new RuntimeException('The observer failed after commit.'));
+    });
+    Exceptions::fake();
+
+    $component->call('saveItemImages', $item->id)
+        ->assertHasNoErrors()
+        ->assertDispatched('item-images-saved')
+        ->assertSet('itemImageUploads', [])
+        ->assertSet('itemImageRequestIds', [])
+        ->assertSet('editingItemDescription', 'Still editing this dish');
+
+    $committedPath = $item->fresh()->image;
+    $committedFiles = Storage::disk('public')->allFiles();
+    expect($committedPath)->not->toBeNull()
+        ->and($committedFiles)->toHaveCount(2)
+        ->and(MenuOperation::query()->where('request_id', $requestId)->firstOrFail()->completed_at)->not->toBeNull();
+    Exceptions::assertReported(RuntimeException::class);
+
+    $component->snapshot = $snapshot;
+    $component->call('saveItemImages', $item->id)->assertHasNoErrors();
+
+    expect($item->fresh()->image)->toBe($committedPath)
+        ->and($item->galleryImages()->count())->toBe(0)
+        ->and(Storage::disk('public')->allFiles())->toBe($committedFiles)
+        ->and(MenuOperation::query()->where('request_id', $requestId)->count())->toBe(1);
 });

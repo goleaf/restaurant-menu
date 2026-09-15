@@ -25,9 +25,14 @@ use App\Models\TableSession;
 use App\Models\TableSessionGuest;
 use App\Support\DemoLogin\DemoAccountCatalog;
 use Database\Seeders\DemoRestaurantSeeder;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 use Pest\Browser\Api\PendingAwaitablePage;
+use Symfony\Component\HttpFoundation\Response;
 
 test('owner edits all dish locales with keyboard tabs across responsive themes', function (): void {
     $this->withVite();
@@ -40,6 +45,7 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     $item = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->firstOrFail();
     $page = visit(route('demo-login.index', absolute: false));
     productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
     productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
     $prefix = '#edit-menu-item-'.$item->id;
@@ -51,6 +57,16 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
     productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
     $page->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true')
         ->assertPresent($prefix.'-panel-lt [role="alert"]');
+    expect($page->script("document.querySelector('{$prefix}-panel-lt').closest('form').noValidate"))->toBeTrue();
+    productMenuClick($page, $prefix.'-tab-ru');
+    $page->assertEnabled('form[wire\\:submit="updateItem"] button[type="submit"]');
+    productMenuClick($page, 'form[wire\\:submit="updateItem"] button[type="submit"]');
+    $page->wait(1);
+    $page->assertAttribute($prefix.'-tab-lt', 'aria-selected', 'true');
+    productMenuClick($page, $prefix.'-tab-lt');
+    productMenuClick($page, $prefix.'-panel-lt [data-copy-original=lt]');
+    $page->assertPresent($prefix.'-panel-lt [data-copy-notice=lt]');
+    expect($page->script("document.querySelector('{$prefix}-panel-lt input[type=text]').value"))->toBe($item->translations()->where('language_code', 'en')->value('name'));
     productMenuClick($page, $prefix.'-tab-ru');
     productMenuFillLocale($page, $prefix, 'ru', 'Браузерное блюдо', "Первая строка\nВторая строка");
     productMenuClick($page, $prefix.'-tab-lt');
@@ -65,28 +81,17 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Naršyklės patiekalas')
         ->and($item->translations()->where('language_code', 'ru')->value('name'))->toBe('Браузерное блюдо');
 
-    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
-    $page->wait(1);
-    productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
-    $page->wait(1);
-    productMenuClick($page, sprintf('button[wire\\:click="saveItemImages(%d)"]', $item->id));
-    $page->wait(1);
-    productMenuAttachPng($page, '#item-images-'.$item->id, 'second.png');
-    $page->wait(1);
-    productMenuClick($page, sprintf('button[wire\\:click="saveItemImages(%d)"]', $item->id));
-    $page->wait(1)->assertPresent('button[wire\\:click^="promoteItemImage"]')->assertPresent('button[wire\\:click^="reorderItemImages"]');
-    expect($item->fresh()->galleryImages()->count() + ($item->image === null ? 0 : 1))->toBeGreaterThanOrEqual(2);
-    $galleryOrder = $item->galleryImages()->orderBy('sort_order')->pluck('id')->all();
-    productMenuClick($page, 'button[wire\\:click^="reorderItemImages"]:not([disabled])');
-    $page->wait(1);
-    expect($item->galleryImages()->orderBy('sort_order')->pluck('id')->all())->not->toBe($galleryOrder);
-    $primaryPath = $item->fresh()->image;
-    productMenuClick($page, 'button[wire\\:click^="promoteItemImage"]');
-    $page->wait(1);
-    expect($item->fresh()->image)->not->toBe($primaryPath);
-
-    foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
+        $catalogSpacing = $page->script(<<<'JAVASCRIPT'
+            (() => {
+                const actions = document.querySelector('[data-catalog-create-actions]');
+                const firstMenu = document.querySelector('[data-section="menu-catalog"] [data-catalog-menu-list]');
+                return actions && firstMenu ? firstMenu.getBoundingClientRect().top - actions.getBoundingClientRect().bottom : null;
+            })()
+        JAVASCRIPT);
+        expect($catalogSpacing)->not->toBeNull()->toBeLessThanOrEqual(32);
+        $page->script('window.scrollTo(0, 0)');
         $page->screenshot(false, "product-owner-{$width}x{$height}-light");
     }
     $page->script("document.documentElement.style.fontSize = '200%'");
@@ -98,12 +103,192 @@ test('owner edits all dish locales with keyboard tabs across responsive themes',
 
     $page->navigate(route('organizations.brands.branches.settings.index', [$organization, $branch->brand, $branch], false))
         ->assertPresent('[data-page="branch-settings"]');
-    foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $page->screenshot(false, "product-settings-{$width}x{$height}-dark");
     }
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     productMenuAssertNoFailedResources($page);
+});
+
+test('workspace protects copied translations and restores sections with browser history', function (): void {
+    $this->withVite();
+    config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['restaurant-menu.test', '127.0.0.1', 'localhost']);
+    $this->seed(DemoRestaurantSeeder::class);
+    $owner = DemoAccountCatalog::forRole(SystemRole::Owner);
+    $organization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->firstOrFail();
+    $branch = Branch::query()->where('organization_id', $organization->id)->firstOrFail();
+    $item = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->firstOrFail();
+    $item->translations()->where('language_code', 'lt')->firstOrFail()->update(['description' => null]);
+    $item->translations()->where('language_code', 'en')->firstOrFail()->update(['description' => 'Original to translate']);
+    $page = visit(route('demo-login.index', absolute: false));
+    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    $page->assertPathIs(route('dashboard', absolute: false));
+    $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
+    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
+    $prefix = '#edit-menu-item-'.$item->id;
+    productMenuClick($page, $prefix.'-tab-lt');
+    productMenuClick($page, $prefix.'-panel-lt [data-copy-original=lt]');
+    $page->assertVisible($prefix.'-panel-lt [data-copy-notice=lt]');
+    productMenuClick($page, '[data-menu-section="modifiers"]');
+    $page->assertSee(__('menu.workspace.unsaved_title'));
+    productMenuClick($page, 'button[x-on\\:click="cancelNavigation"]');
+    expect($page->script("document.querySelector('{$prefix}-panel-lt textarea').value"))->toBe('Original to translate');
+    productMenuClick($page, '[data-menu-section="modifiers"]');
+    productMenuClick($page, 'button[x-on\\:click="discardAndNavigate"]');
+    $page->assertAttribute('[data-menu-section="modifiers"]', 'aria-current', 'page');
+    productMenuClick($page, '[data-menu-section="departments"]');
+    $page->assertAttribute('[data-menu-section="departments"]', 'aria-current', 'page');
+    $page->script('window.history.back()');
+    $page->wait(1);
+    $page->assertAttribute('[data-menu-section="modifiers"]', 'aria-current', 'page');
+    $page->script('window.history.forward()');
+    $page->wait(1);
+    $page->assertAttribute('[data-menu-section="departments"]', 'aria-current', 'page');
+    expect($item->translations()->where('language_code', 'lt')->value('description'))->toBeNull();
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
+
+test('owner manages accumulated pending photos without losing image identity', function (): void {
+    $this->withVite();
+    productMenuEnableMultipartFixtures();
+    FileUploadConfiguration::storage();
+    config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['restaurant-menu.test', '127.0.0.1', 'localhost']);
+    $this->seed(DemoRestaurantSeeder::class);
+    $owner = DemoAccountCatalog::forRole(SystemRole::Owner);
+    $organization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->firstOrFail();
+    $branch = Branch::query()->where('organization_id', $organization->id)->firstOrFail();
+    $item = MenuItem::query()->whereHas('menu', fn ($query) => $query->where('branch_id', $branch->id))->firstOrFail();
+    $initialImageCount = $item->galleryImages()->count() + ($item->image === null ? 0 : 1);
+    $page = visit(route('demo-login.index', absolute: false));
+    productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $owner['role']->value));
+    $page->assertPathIs(route('dashboard', absolute: false));
+    $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false));
+    productMenuClick($page, sprintf('button[wire\\:click="startEditingItem(%d)"]', $item->id));
+
+    $page->assertPresent('#item-images-'.$item->id)->wait(1);
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
+    $page->wait(1);
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'second.png');
+    $page->wait(1);
+    $picker = 'section[aria-labelledby="item-'.$item->id.'-photos-heading"]';
+    $pendingFiles = productMenuPendingFiles($page, $picker, $item->id);
+    expect($pendingFiles)->toHaveCount(2);
+    expect($page->script("[...document.querySelectorAll('{$picker} figure figcaption span[x-text]')].map(span => span.textContent)"))->toBe(['first.png', 'second.png']);
+    expect($page->script("(async () => { window.dispatchEvent(new Event('offline')); await new Promise(resolve => setTimeout(resolve, 0)); return [...document.querySelectorAll('{$picker} input[type=file], {$picker} figure:has(span[x-text]) button, {$picker} button[wire\\\\:click^=saveItemImages]')].every(button => button.disabled); })()"))->toBeTrue();
+    expect(productMenuPendingFiles($page, $picker, $item->id))->toBe($pendingFiles);
+    $page->script("(async () => { window.dispatchEvent(new Event('online')); await new Promise(resolve => setTimeout(resolve, 0)); const buttons=document.querySelectorAll('{$picker} figure button'); buttons[0].click(); buttons[1].click(); })()");
+    $page->wait(1);
+    expect(productMenuPendingFiles($page, $picker, $item->id))->toBe([$pendingFiles[1]]);
+    expect($page->script("[...document.querySelectorAll('{$picker} figure figcaption span[x-text]')].map(span => span.textContent)"))->toBe(['second.png']);
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'third.png');
+    $page->wait(1);
+    productMenuClick($page, sprintf('button[wire\\:click="saveItemImages(%d)"]', $item->id));
+    $page->wait(1)->assertPresent('button[wire\\:click^="promoteItemImage"]')->assertPresent('button[wire\\:click^="reorderItemImages"]');
+    expect($item->fresh()->galleryImages()->count() + ($item->image === null ? 0 : 1))->toBe($initialImageCount + 2);
+    $galleryOrder = $item->galleryImages()->orderBy('sort_order')->pluck('id')->all();
+    productMenuClick($page, 'button[wire\\:click^="reorderItemImages"]:not([disabled])');
+    $page->wait(1);
+    expect($item->galleryImages()->orderBy('sort_order')->pluck('id')->all())->not->toBe($galleryOrder);
+    $primaryPath = $item->fresh()->image;
+    productMenuClick($page, 'button[wire\\:click^="promoteItemImage"]');
+    $page->wait(1);
+    expect($item->fresh()->image)->not->toBe($primaryPath);
+    $unchangedPath = $item->fresh()->image;
+    productMenuClick($page, 'button[wire\\:click^="editItemImagePresentation"]');
+    $page->assertPresent('[data-image-presentation-editor]');
+    $page->keys('#image-focal-x-'.$item->id, 'Home')->keys('#image-focal-x-'.$item->id, 'ArrowRight');
+    $page->keys('#image-focal-y-'.$item->id, 'End');
+    foreach (['en' => 'Fresh dish photo', 'lt' => 'Šviežio patiekalo nuotrauka', 'ru' => 'Фото свежего блюда'] as $locale => $alt) {
+        productMenuClick($page, '#image-'.$item->id.'-'.$locale.'-tab');
+        $page->fill('[data-photo-locale="'.$locale.'"] input', $alt)
+            ->fill('[data-photo-locale="'.$locale.'"] textarea', $alt.' caption');
+    }
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
+        productMenuAssertNoOverflow($page, $width, $height);
+        $page->script("document.querySelector('[data-image-presentation-editor]').scrollIntoView({ block: 'start' })");
+        $page->screenshot(false, "product-photo-editor-{$width}");
+    }
+    productMenuClick($page, 'button[wire\\:click="saveItemImagePresentation"]');
+    $page->wait(1)->assertNotPresent('[data-image-presentation-editor]');
+    expect($item->fresh()->image)->toBe($unchangedPath)
+        ->and($item->fresh()->image_presentation['focal_x'])->toBe(1)
+        ->and($item->fresh()->image_presentation['focal_y'])->toBe(100)
+        ->and($item->fresh()->image_presentation['translations']['ru']['alt'])->toBe('Фото свежего блюда');
+
+    productMenuAttachPng($page, '#item-images-'.$item->id, 'first.png');
+    $page->wait(1);
+    productMenuClick($page, 'button[wire\\:click="cancelItemEditing"]');
+    $page->wait(1);
+    productMenuClick($page, '[data-menu-section="availability"]');
+    $page->assertAttribute('[data-menu-section="availability"]', 'aria-current', 'page');
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
+
+test('owner previews local CSV discards safely and applies a page scoped availability change', function (): void {
+    $this->withVite();
+    productMenuEnableMultipartFixtures();
+    FileUploadConfiguration::storage();
+    config()->set('demo-login.enabled', true);
+    config()->set('demo-login.allowed_hosts', ['restaurant-menu.test', '127.0.0.1', 'localhost']);
+    $this->seed(DemoRestaurantSeeder::class);
+    $organization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->firstOrFail();
+    $branch = Branch::query()->where('organization_id', $organization->id)->firstOrFail();
+    $menu = Menu::query()->where('branch_id', $branch->id)->firstOrFail();
+    $category = MenuCategory::query()->where('menu_id', $menu->id)->where('is_active', true)->firstOrFail();
+    $page = visit(route('demo-login.index', absolute: false));
+    productMenuClick($page, 'form[action$="/demo-login/owner"] button[type="submit"]');
+    $page->assertPathIs(route('dashboard', absolute: false));
+    $page->navigate(route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch, 'section' => 'transfer'], false));
+    $page->assertPresent('[data-section="catalog-transfer"]');
+    $page->select('select[wire\\:model\\.live="form.menuId"]', (string) $menu->id);
+    productMenuAttachCsv($page, 'invalid header');
+    $page->wait(1);
+    productMenuClick($page, 'button[wire\\:click="discardImport"]');
+    $page->wait(1);
+    productMenuClick($page, '[data-menu-section="catalog"]');
+    $page->assertAttribute('[data-menu-section="catalog"]', 'aria-current', 'page');
+    productMenuClick($page, '[data-menu-section="transfer"]');
+    $page->assertPresent('[data-section="catalog-transfer"]');
+    productMenuAttachCsv($page, 'invalid header');
+    $page->wait(1);
+    productMenuClick($page, 'form[wire\\:submit="previewImport"] button[type="submit"]');
+    $page->assertPresent('[data-section="catalog-transfer"] [role="alert"]');
+    productMenuClick($page, 'button[wire\\:click="discardImport"]');
+    $page->wait(1);
+    productMenuClick($page, '[data-menu-section="catalog"]');
+    $page->assertAttribute('[data-menu-section="catalog"]', 'aria-current', 'page');
+    productMenuClick($page, '[data-menu-section="transfer"]');
+    $page->assertPresent('[data-section="catalog-transfer"]');
+    $csv = 'id,category_id,price,name_en,description_en,name_lt,description_lt,name_ru,description_ru'."\n".
+        ','.$category->id.',12.34,Browser CSV dish,Vegetables,Naršyklės patiekalas,Daržovės,Блюдо CSV,Овощи';
+    productMenuAttachCsv($page, $csv);
+    $page->wait(1);
+    productMenuClick($page, 'form[wire\\:submit="previewImport"] button[type="submit"]');
+    $page->assertSee('Browser CSV dish');
+    expect(MenuItem::query()->where('name', 'Browser CSV dish')->exists())->toBeFalse();
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
+        productMenuAssertNoOverflow($page, $width, $height);
+        $page->screenshot(false, "product-csv-{$width}");
+    }
+    productMenuClick($page, 'button[wire\\:click="applyImport"]');
+    $page->assertSee(__('menu.csv.imported', ['count' => 1]));
+    $imported = MenuItem::query()->where('name', 'Browser CSV dish')->sole();
+    expect($imported->price_cents)->toBe(1234)->and($imported->is_available)->toBeFalse();
+    productMenuClick($page, 'button[wire\\:click="exportCatalog"]');
+    $page->assertPresent('[data-section="catalog-transfer"] [role="status"]');
+    productMenuClick($page, '[data-menu-section="catalog"]');
+    $page->assertAttribute('[data-menu-section="catalog"]', 'aria-current', 'page');
+    $page->fill('input[type="search"]', 'Browser CSV dish')->wait(1);
+    productMenuClick($page, 'button[wire\\:click="selectCatalogPage"]');
+    $page->assertSee(__('menu.bulk.selected', ['count' => 1]));
+    $page->select('select[wire\\:model\\.live="bulk.operation"]', 'available')->wait(1);
+    productMenuClick($page, 'form[wire\\:submit="applyCatalogBulk"] button[type="submit"]');
+    $page->assertSee(__('menu.bulk.saved', ['count' => 1]));
+    expect($imported->fresh()->is_available)->toBeTrue();
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
 
 test('browse only guest opens bounded gallery and escape restores focus', function (): void {
@@ -173,11 +358,24 @@ test('browse only guest opens bounded gallery and escape restores focus', functi
     expect($page->script("document.activeElement?.closest('[role=dialog]') !== null"))->toBeTrue();
     $page->keys('button[aria-label="'.__('menu.guest.close', [], 'lt').'"]', 'Shift+Tab');
     expect($page->script("document.activeElement?.closest('[role=dialog]') !== null"))->toBeTrue();
-    $page->keys('[role="dialog"]', 'Escape')->assertNotPresent('[role="dialog"][aria-modal="true"]');
-    expect($page->script('document.activeElement?.id'))->toBe('guest-menu-item-details-'.$item->id);
+    $page->keys('[role="dialog"]', 'Escape')->assertMissing('[role="dialog"][aria-modal="true"]');
+    $page->assertPresent('#guest-menu-item-details-'.$item->id.':focus');
     $page->fill('input[wire\\:model\.live\.debounce\.250ms="search"]', 'Labai')->wait(1);
     productMenuClick($page, 'button[wire\\:click="$set(\'selectedCategoryId\', '.$category->id.')"]');
     $guestMenuComponentId = $page->script("document.querySelector('#guest-menu-language-{$branch->id}')?.closest('[data-component=guest-menu]')?.getAttribute('wire:id')");
+    $offlineLanguages = $page->script(<<<'JAVASCRIPT'
+        (() => {
+            const selectors = [...document.querySelectorAll('#guest-page-language, [id^="guest-menu-language-"]')];
+            const before = selectors.map(select => select.value);
+            window.dispatchEvent(new Event('offline'));
+            const disabled = selectors.map(select => select.disabled);
+            window.dispatchEvent(new Event('online'));
+            return { before, disabled, after: selectors.map(select => select.value), enabledAgain: selectors.every(select => !select.disabled) };
+        })()
+    JAVASCRIPT);
+    expect($offlineLanguages['disabled'])->toBe([true, true])
+        ->and($offlineLanguages['before'])->toBe($offlineLanguages['after'])
+        ->and($offlineLanguages['enabledAgain'])->toBeTrue();
     $page->select('#guest-menu-language-'.$branch->id, 'ru')->wait(1)
         ->assertSee('Basket sentinel')
         ->assertSee(__('guest.cart.title', [], 'ru'));
@@ -201,12 +399,65 @@ test('browse only guest opens bounded gallery and escape restores focus', functi
         ->and($draftItem->draft_order_id)->toBe($draftOrder->id)
         ->and($guest->fresh()->table_session_id)->toBe($session->id)
         ->and($guest->refresh()->locale)->toBe('lt');
-    foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $page->screenshot(false, "product-guest-{$width}x{$height}");
     }
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     productMenuAssertNoFailedResources($page);
+});
+
+test('guest dismisses dish details without waiting for a network response', function (): void {
+    $this->withVite();
+    $branch = Branch::factory()->create();
+    BranchSetting::factory()->for($branch)->create(['default_language' => 'en']);
+    $point = ServicePoint::factory()->for($branch)->create(['is_active' => true]);
+    $qr = QrCode::factory()->forServicePoint($point)->active()->create();
+    $session = TableSession::factory()->forServicePoint($point)->active()->create();
+    $guest = TableSessionGuest::factory()->for($session)->active()->create(['locale' => 'en']);
+    $this->withCookie('guest_token_'.substr(hash('sha256', $qr->public_token), 0, 24), $guest->guest_token);
+    $menu = Menu::factory()->for($branch)->active()->create();
+    $category = MenuCategory::factory()->for($menu)->active()->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['name' => 'Offline details']);
+    $page = visit(route('public.qr.show', ['token' => $qr->public_token], false));
+    productMenuClick($page, '#guest-menu-item-details-'.$item->id);
+    $page->assertPresent('[role="dialog"]');
+    $dismissed = $page->script(<<<'JAVASCRIPT'
+        (async () => {
+            const originalFetch = window.fetch;
+            const pending = [];
+            let requests = 0;
+            window.fetch = (...args) => {
+                if (!String(args[0]).includes('/livewire')) return originalFetch(...args);
+                requests++;
+                return new Promise((resolve, reject) => pending.push(() => originalFetch(...args).then(resolve, reject)));
+            };
+            window.dispatchEvent(new Event('offline'));
+            try {
+                const dialog = document.querySelector('[role="dialog"]');
+                dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                await new Promise(resolve => setTimeout(resolve, 150));
+                return { visible: dialog.isConnected && getComputedStyle(dialog).display !== 'none', focus: document.activeElement?.id, requests };
+            } finally {
+                window.fetch = originalFetch;
+                window.dispatchEvent(new Event('online'));
+                pending.forEach(resume => resume());
+            }
+        })()
+    JAVASCRIPT);
+    expect($dismissed['visible'])->toBeFalse()
+        ->and($dismissed['focus'])->toBe('guest-menu-item-details-'.$item->id)
+        ->and($dismissed['requests'])->toBe(0);
+    $page->wait(1);
+    expect($page->script("document.querySelector('[role=dialog]')?.checkVisibility() ?? false"))->toBeFalse();
+    productMenuClick($page, '#guest-menu-item-details-'.$item->id);
+    $page->assertVisible('[role="dialog"]');
+    expect($page->script('getComputedStyle(document.documentElement).overflow'))->toBe('hidden');
+    productMenuClick($page, 'button[aria-label="'.__('menu.guest.close').'"]');
+    $page->assertMissing('[role="dialog"]');
+    $page->assertPresent('#guest-menu-item-details-'.$item->id.':focus');
+    expect($page->script('getComputedStyle(document.documentElement).overflow'))->not->toBe('hidden');
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
 
 test('guest recovers a configured dish after an availability conflict without retyping', function (): void {
@@ -256,9 +507,9 @@ test('guest recovers a configured dish after an availability conflict without re
     $item->update(['hidden_until' => now()->addHour()]);
     productMenuClick($page, 'button[wire\\:click="saveConfiguredItem"]');
     $page->assertSee(__('menu.guest.item_no_longer_available'));
-    $page->keys('[role="dialog"]', 'Escape')->assertNotPresent('[role="dialog"]');
-    expect($page->script('document.activeElement?.id'))->toBe('guest-menu-title-'.$branch->id)
-        ->and(DraftOrderItem::query()->count())->toBe(1);
+    $page->keys('[role="dialog"]', 'Escape')->assertMissing('[role="dialog"]');
+    $page->assertPresent('#guest-menu-title-'.$branch->id.':focus');
+    expect(DraftOrderItem::query()->count())->toBe(1);
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     productMenuAssertNoFailedResources($page);
 });
@@ -292,7 +543,7 @@ test('populated restaurant work screens remain responsive and keyboard reachable
         ->and($offlineState['disabled'])->toBeTrue()
         ->and($onlineState)->toBeTrue();
 
-    foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+    foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $page->screenshot(false, "product-{$role->value}-{$width}x{$height}-light");
     }
@@ -306,7 +557,7 @@ test('populated restaurant work screens remain responsive and keyboard reachable
         $tableUrl = $page->script('document.querySelector(\'a[href*="/restaurant/waiter/tables/"]\')?.getAttribute("href")');
         expect($tableUrl)->toBeString();
         $page->navigate($tableUrl);
-        foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+        foreach ([[320, 800], [390, 844], [768, 900], [1024, 900], [1440, 1000]] as [$width, $height]) {
             productMenuAssertNoOverflow($page, $width, $height);
             $page->screenshot(false, "product-waiter-detail-{$width}x{$height}-dark");
         }
@@ -351,19 +602,21 @@ function productMenuAssertOfflineAction(PendingAwaitablePage $page, string $acti
 
 function productMenuClick(PendingAwaitablePage $page, string $selector): void
 {
+    $page->assertVisible('css='.$selector.' >> nth=0')->assertEnabled('css='.$selector.' >> nth=0');
     $encoded = json_encode($selector, JSON_THROW_ON_ERROR);
-    expect($page->script("document.querySelector({$encoded})?.click(); true"))->toBeTrue();
+    expect($page->script("(() => { const element = document.querySelector({$encoded}); element.scrollIntoView({block: 'center'}); if (!element.checkVisibility() || element.disabled) return false; element.click(); return true; })()"))->toBeTrue();
 }
 
 function productMenuAttachPng(PendingAwaitablePage $page, string $selector, string $name): void
 {
     $encodedSelector = json_encode($selector, JSON_THROW_ON_ERROR);
     $encodedName = json_encode($name, JSON_THROW_ON_ERROR);
+    $encodedBytes = json_encode(base64_encode(UploadedFile::fake()->image($name, 800, 400)->getContent()), JSON_THROW_ON_ERROR);
     $attached = $page->script(<<<JAVASCRIPT
         (() => {
             const input = document.querySelector({$encodedSelector});
             if (!(input instanceof HTMLInputElement)) return false;
-            const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAD0lEQVR42mP8z8AARMAgAAQAAf8CBZ0AAAAASUVORK5CYII='), character => character.charCodeAt(0));
+            const bytes = Uint8Array.from(atob({$encodedBytes}), character => character.charCodeAt(0));
             const transfer = new DataTransfer();
             transfer.items.add(new File([bytes], {$encodedName}, { type: 'image/png' }));
             input.files = transfer.files;
@@ -398,4 +651,70 @@ function productMenuAssertNoFailedResources(PendingAwaitablePage $page): void
             .map((entry) => ({ name: entry.name, status: entry.responseStatus }))
     JAVASCRIPT);
     expect($failed)->toBeEmpty();
+}
+
+/** Decode only this test's allowlisted bounded PNG and CSV fixtures; Pest 4.3.1 omits multipart files. */
+function productMenuEnableMultipartFixtures(): void
+{
+    $middleware = new class
+    {
+        public function handle(Request $request, Closure $next): Response
+        {
+            $type = $request->header('Content-Type', '');
+            if (! str_starts_with($type, 'multipart/form-data') || ! str_contains($request->path(), 'livewire')) {
+                return $next($request);
+            }
+
+            expect(preg_match('/boundary="?([^";]+)"?/', $type, $matches))->toBe(1);
+            $body = $request->getContent();
+            expect(strlen($body))->toBeLessThan(100_000);
+            $files = [];
+            foreach (explode('--'.$matches[1], $body) as $part) {
+                if (! str_contains($part, 'name="files[]"')) {
+                    continue;
+                }
+                [$headers, $content] = explode("\r\n\r\n", $part, 2);
+                expect(preg_match('/filename="([^"]+)"/', $headers, $filename))->toBe(1);
+                expect($filename[1])->toBeIn(['first.png', 'second.png', 'third.png', 'catalog-fixture.csv']);
+                $files[] = UploadedFile::fake()->createWithContent($filename[1], substr($content, 0, -2));
+            }
+            expect($files)->toHaveCount(1);
+            $request->files->set('files', $files);
+
+            return $next($request);
+        }
+    };
+    app()->instance('browser.multipart-fixtures', $middleware);
+    app(Kernel::class)->prependMiddleware('browser.multipart-fixtures');
+}
+
+/** @return list<string> */
+function productMenuPendingFiles(PendingAwaitablePage $page, string $picker, int $itemId): array
+{
+    $value = $page->script("Livewire.find(document.querySelector('{$picker}').closest('[data-section=menu-catalog]').getAttribute('wire:id')).\$get('itemImageUploads')[{$itemId}]");
+    if (is_string($value)) {
+        expect($value)->toStartWith('livewire-files:');
+
+        return json_decode(substr($value, strlen('livewire-files:')), true, flags: JSON_THROW_ON_ERROR);
+    }
+
+    expect($value)->toBeArray();
+
+    return $value;
+}
+
+function productMenuAttachCsv(PendingAwaitablePage $page, string $contents): void
+{
+    $bytes = json_encode(base64_encode($contents), JSON_THROW_ON_ERROR);
+    expect($page->script(<<<JAVASCRIPT
+        (() => {
+            const input = document.querySelector('[data-section="catalog-transfer"] input[type="file"]');
+            if (!input) return false;
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([Uint8Array.from(atob({$bytes}), c => c.charCodeAt(0))], 'catalog-fixture.csv', {type:'text/csv'}));
+            input.files = transfer.files;
+            input.dispatchEvent(new Event('change', {bubbles:true}));
+            return true;
+        })()
+    JAVASCRIPT))->toBeTrue();
 }

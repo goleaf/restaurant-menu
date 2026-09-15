@@ -28,6 +28,50 @@ beforeEach(function () {
     $this->seed(SystemPermissionsSeeder::class);
 });
 
+test('translation editor presents a source reference and safe copy controls for secondary languages', function (): void {
+    [$owner, $organization, $brand, $branch] = createMenuTranslationContext();
+
+    Livewire::actingAs($owner)
+        ->test(MenuCatalog::class, menuTranslationComponentParameters($organization->id, $brand->id, $branch->id))
+        ->assertSeeHtml('data-original-reference')
+        ->assertSeeHtml('data-copy-original="lt"')
+        ->assertSeeHtml('data-copy-original="ru"')
+        ->assertDontSeeHtml('data-copy-original="en"')
+        ->assertSeeHtml('data-copy-notice="lt"');
+});
+
+test('menu base name conflicts are visible in the primary translation panel without losing localized input', function (bool $editing): void {
+    [$owner, $organization, $brand, $branch, $existingMenu] = createMenuTranslationContext();
+    $component = Livewire::actingAs($owner)->test(MenuCatalog::class,
+        menuTranslationComponentParameters($organization->id, $brand->id, $branch->id));
+    $nameField = $editing ? 'editingMenuName' : 'menuName';
+    $translationsField = $editing ? 'editingMenuTranslations' : 'menuTranslations';
+    $translations = ['en' => $existingMenu->name, 'lt' => 'Neišsaugotas meniu', 'ru' => 'Несохранённое меню'];
+    $editedMenu = null;
+
+    if ($editing) {
+        $editedMenu = Menu::factory()->for($branch)->create(['name' => 'Separate menu']);
+        $component->call('startEditingMenu', $editedMenu->id);
+    }
+
+    $component->set($nameField, $existingMenu->name)
+        ->set($translationsField, $translations)
+        ->call($editing ? 'updateMenu' : 'createMenu')
+        ->assertHasErrors([$nameField => 'unique'])
+        ->assertSet($translationsField, $translations);
+
+    $error = $component->instance()->getErrorBag()->first($nameField);
+    expect($error)->not->toBe('');
+    $component->assertSee($error);
+    expect(preg_match('/data-locale-panel="en" data-invalid="true"/', $component->html()))->toBe(1);
+    expect(Menu::query()->where('branch_id', $branch->id)->count())->toBe($editing ? 2 : 1);
+
+    if ($editedMenu !== null) {
+        expect($editedMenu->fresh()->name)->toBe('Separate menu')
+            ->and($editedMenu->translations()->count())->toBe(0);
+    }
+})->with(['create' => false, 'rename' => true]);
+
 test('manager creates category and dish translations for every supported locale', function () {
     [$owner, $organization, $brand, $branch, $menu] = createMenuTranslationContext();
     $parameters = menuTranslationComponentParameters($organization->id, $brand->id, $branch->id);
@@ -108,7 +152,9 @@ test('manager reads and updates required translations and invalidates the guest 
         ->call('startEditingItem', $item->id)
         ->assertSet('editingItemTranslations.lt.name', 'Lietuviškas patiekalas')
         ->set('editingItemTranslations.lt.name', 'Atnaujintas patiekalas')
+        ->set('editingItemTranslations.lt.description', "Pirma pastraipa.\n\nAntra pastraipa.")
         ->set('editingItemTranslations.ru.name', 'Обновлённое блюдо')
+        ->set('editingItemTranslations.ru.description', '')
         ->call('updateItem')
         ->assertHasNoErrors()
         ->assertSee('Atnaujinta kategorija')
@@ -117,8 +163,11 @@ test('manager reads and updates required translations and invalidates the guest 
     expect($category->translations()->where('language_code', 'lt')->value('name'))->toBe('Atnaujinta kategorija')
         ->and($item->translations()->where('language_code', 'lt')->value('name'))->toBe('Atnaujintas patiekalas')
         ->and($item->translations()->where('language_code', 'ru')->value('name'))->toBe('Обновлённое блюдо')
+        ->and($item->translations()->where('language_code', 'lt')->value('description'))->toBe("Pirma pastraipa.\n\nAntra pastraipa.")
+        ->and($item->translations()->where('language_code', 'ru')->value('description'))->toBeNull()
         ->and(Cache::store(GetGuestMenuForBranchAction::cacheStore())->has($cacheKey))->toBeFalse()
-        ->and(app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'ru')['categories'][0]['items'][0]['name'])->toBe('Обновлённое блюдо');
+        ->and(app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'ru')['categories'][0]['items'][0]['name'])->toBe('Обновлённое блюдо')
+        ->and(app(GetGuestMenuForBranchAction::class)->handle($branch->id, 'ru')['categories'][0]['items'][0]['description'])->toBeNull();
 });
 
 test('translation description requires a locale name and errors stay associated with the field', function () {

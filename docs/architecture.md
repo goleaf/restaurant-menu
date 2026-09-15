@@ -1,8 +1,18 @@
 <!-- BEGIN GITHUB_PUSH_ONLY -->
-> **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
 <!-- END GITHUB_PUSH_ONLY -->
 
 # Architecture
+
+## Focused content operations — 2026-09-15
+
+The menu Index owns a fixed, authorized URL section allowlist and mounts exactly one child. URL-backed catalogue filters remain in CatalogFilterForm. CatalogData prepares only paginated list presentation and loads gallery metadata for the open editor. Bulk and CSV mutations have focused Actions and use the existing menu operation receipt ledger, fresh actor/tenant checks and transaction boundaries. Synchronous import/bulk receipts cannot enter resumable deletion traversal. CSV uses the existing translation Actions and explicit integer-cent money conversion; no new HTTP/AJAX upload stack or runtime worker is introduced.
+
+## Transient interaction and upload receipt boundaries — 2026-09-15
+
+Alpine owns only the guest dialog's visibility, focus and current gallery frame. `GuestMenu` retains the existing validated configuration; a successful scoped `openItem` dispatches a self event, while same-item reopen preserves its comment/modifiers/request UUID. Add authorization and transaction boundaries are unchanged.
+
+`ManagesItemImages` translates a permanent storage RuntimeException into existing localized field feedback. It consults the existing actor/branch/request/kind/target-scoped completed receipt only on that failure path: absent completion preserves the batch; proven completion clears it as success. `AddMenuItemImagesAction` continues to own storage compensation and the transaction. No new model, migration, queue or dependency is introduced.
 
 ## Recovery boundaries — 2026-09-15
 

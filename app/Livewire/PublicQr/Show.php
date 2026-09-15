@@ -112,10 +112,16 @@ class Show extends Component
         }
 
         $this->branchId = $branch->id;
+        $rememberedLanguage = session()->get('guest_menu_locales.'.$branch->id);
         $this->language = $this->getGuestMenuForBranch->resolveLanguageForBranch(
             $branch->id,
-            $hasRequestedLanguage ? $this->language : null,
+            $hasRequestedLanguage ? $this->language : (is_string($rememberedLanguage) ? $rememberedLanguage : null),
         );
+
+        if ($hasRequestedLanguage) {
+            session()->put('guest_menu_locales.'.$branch->id, $this->language);
+        }
+
         $this->applyGuestLocale();
         $this->state = 'ready';
         $this->title = $branch->publicDisplayName();
@@ -131,6 +137,11 @@ class Show extends Component
 
         $this->applyGuestLocale();
         $this->message = __('guest.table.enter_name');
+
+        if ($this->branchId > 0) {
+            session()->put('guest_menu_locales.'.$this->branchId, $this->language);
+        }
+
         $this->dispatch('guest-locale-updated', language: $this->language);
     }
 
@@ -252,6 +263,6 @@ class Show extends Component
     {
         $this->language = SupportedLocale::normalize($this->language, App::currentLocale());
         App::setLocale($this->language);
-        session()->put('interface_locale', $this->language);
+        $this->languageOptions = SupportedLocale::labels();
     }
 }

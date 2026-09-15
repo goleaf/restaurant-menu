@@ -1,4 +1,9 @@
-<section data-component="guest-menu" class="overflow-hidden rounded-card border border-border-subtle bg-surface">
+<section
+    data-component="guest-menu"
+    class="overflow-hidden rounded-card border border-border-subtle bg-surface"
+    x-data="{ detailsOpen: false, closeDetails() { this.detailsOpen = false; this.$nextTick(() => (document.getElementById('guest-menu-item-details-' + this.$wire.selectedItemId) ?? document.getElementById('guest-menu-title-{{ $branchId }}'))?.focus()); } }"
+    x-on:guest-item-details-opened="detailsOpen = true"
+>
     <div class="border-b border-border-subtle bg-surface p-4">
     <div class="flex items-start justify-between gap-3">
         <div>
@@ -18,6 +23,9 @@
             <select
                 id="guest-menu-language-{{ $branchId }}"
                 wire:model.live="language"
+                wire:offline.attr="disabled"
+                wire:loading.attr="disabled"
+                wire:target="language,synchronizeGuestLocale"
                 class="min-h-touch rounded-control border border-border-strong bg-surface px-2 text-sm font-semibold text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
             >
                 @foreach ($languageOptions as $languageCode => $languageLabel)
@@ -189,7 +197,8 @@
                                             <img
                                                 src="{{ $item['image_variants']['thumbnail_url'] ?? $item['image_url'] }}"
                                                 @if (($item['image_variants']['srcset'] ?? null) !== null) srcset="{{ $item['image_variants']['srcset'] }}" sizes="(min-width: 360px) 88px, calc(100vw - 2.5rem)" @endif
-                                                alt="{{ $item['name'] }}"
+                                                alt="{{ $item['image_alt'] ?? $item['name'] }}"
+                                                style="object-position: {{ $item['image_object_position'] ?? '50% 50%' }}"
                                                 @if (($item['image_variants']['thumbnail_width'] ?? null) !== null) width="{{ $item['image_variants']['thumbnail_width'] }}" @else width="176" @endif
                                                 @if (($item['image_variants']['thumbnail_height'] ?? null) !== null) height="{{ $item['image_variants']['thumbnail_height'] }}" @else height="176" @endif
                                                 loading="lazy"
@@ -330,15 +339,20 @@
     @endif
 
     @if ($selectedItem !== null || $hasMissingConfiguredItem)
-        <div
-            class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/60 px-3 py-0 sm:items-center sm:py-6"
+        <dialog
+            data-guest-dish-dialog
+            class="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none items-end justify-center bg-transparent px-3 py-0 text-text-primary backdrop:bg-zinc-950/60 open:flex sm:items-center sm:py-6"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="guest-menu-item-title-{{ $selectedItemId }}"
-            x-data="{ image: 0, closeDetails() { this.$wire.closeItemSheet().then(() => (document.getElementById('guest-menu-item-details-{{ $selectedItemId }}') ?? document.getElementById('guest-menu-title-{{ $branchId }}'))?.focus()); } }"
-            x-trap.inert.noscroll="true"
-            x-init="$nextTick(() => $refs.close.focus())"
-            @keydown.escape.window="closeDetails()"
+            aria-labelledby="guest-menu-item-title-{{ $branchId }}"
+            wire:key="guest-item-details-dialog"
+            wire:ignore.self
+            x-data="{ image: 0 }"
+            x-effect="if (detailsOpen && !$el.open) { image = 0; $el.showModal(); } else if (!detailsOpen && $el.open) { $el.close(); }"
+            x-on:cancel.prevent="closeDetails()"
+            x-on:close="if (!$el.open && detailsOpen) closeDetails()"
+            @keydown.tab.prevent="if ($event.shiftKey) $focus.wrap().previous(); else $focus.wrap().next()"
+            @keydown.escape.window="if (detailsOpen) { $event.preventDefault(); closeDetails(); }"
         >
             <div class="max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-dialog bg-surface p-4 shadow-elevated sm:rounded-dialog">
                 <div class="flex items-start justify-between gap-3">
@@ -349,7 +363,8 @@
                                 <img
                                     src="{{ $selectedItem['image_variants']['thumbnail_url'] ?? $selectedItem['image_url'] }}"
                                     @if (($selectedItem['image_variants']['srcset'] ?? null) !== null) srcset="{{ $selectedItem['image_variants']['srcset'] }}" sizes="64px" @endif
-                                    alt="{{ $selectedItem['name'] }}"
+                                    alt="{{ $selectedItem['image_alt'] ?? $selectedItem['name'] }}"
+                                    style="object-position: {{ $selectedItem['image_object_position'] ?? '50% 50%' }}"
                                     @if (($selectedItem['image_variants']['thumbnail_width'] ?? null) !== null) width="{{ $selectedItem['image_variants']['thumbnail_width'] }}" @else width="64" @endif
                                     @if (($selectedItem['image_variants']['thumbnail_height'] ?? null) !== null) height="{{ $selectedItem['image_variants']['thumbnail_height'] }}" @else height="64" @endif
                                     decoding="async"
@@ -363,7 +378,7 @@
 
                         <div class="min-w-0">
                             <p class="text-xs font-medium uppercase text-accent">{{ __('menu.item_detail.title') }}</p>
-                            <h3 id="guest-menu-item-title-{{ $selectedItemId }}" class="mt-1 text-lg font-semibold leading-tight text-text-primary">{{ $selectedItem['name'] ?? __('menu.guest.unavailable') }}</h3>
+                            <h3 id="guest-menu-item-title-{{ $branchId }}" class="mt-1 text-lg font-semibold leading-tight text-text-primary">{{ $selectedItem['name'] ?? __('menu.guest.unavailable') }}</h3>
                             @if ($selectedItem !== null)
                             <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
                             @endif
@@ -374,12 +389,30 @@
                     <button
                         type="button"
                         x-ref="close"
+                        autofocus
                         @click="closeDetails()"
                         class="inline-flex size-11 shrink-0 items-center justify-center rounded-control border border-border-strong text-text-muted transition hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                         aria-label="{{ __('menu.guest.close') }}"
                     >
                         <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
+                </div>
+
+                <div class="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border-subtle pb-3">
+                    <label for="guest-dish-language-{{ $branchId }}" class="text-sm text-text-muted">{{ __('menu.guest.language') }}</label>
+                    <select
+                        id="guest-dish-language-{{ $branchId }}"
+                        wire:model.live="language"
+                        wire:offline.attr="disabled"
+                        wire:loading.attr="disabled"
+                        wire:target="language,synchronizeGuestLocale"
+                        class="min-h-touch max-w-full rounded-control border border-border-strong bg-surface px-3 text-sm font-semibold text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                    >
+                        @forelse ($languageOptions as $languageCode => $languageLabel)
+                            <option wire:key="guest-dish-language-{{ $languageCode }}" value="{{ $languageCode }}">{{ $languageLabel }}</option>
+                        @empty
+                        @endforelse
+                    </select>
                 </div>
 
                 @error('menu_item')
@@ -407,18 +440,23 @@
 
                 @if ($selectedItemGallery !== [])
                     <div class="relative mt-4 overflow-hidden rounded-card bg-surface-muted">
-                        @foreach ($selectedItemGallery as $imageIndex => $image)
-                            <img
-                                x-show="image === {{ $imageIndex }}"
-                                x-cloak
-                                src="{{ $image['url'] }}"
-                                @if ($image['srcset']) srcset="{{ $image['srcset'] }}" sizes="(min-width: 640px) 38rem, 100vw" @endif
-                                @if ($image['width']) width="{{ $image['width'] }}" @endif
-                                @if ($image['height']) height="{{ $image['height'] }}" @endif
-                                alt="{{ $selectedItem['name'] }} — {{ __('menu.guest.image_count', ['current' => $imageIndex + 1, 'total' => count($selectedItemGallery)]) }}"
-                                class="max-h-[24rem] w-full object-contain"
-                            >
-                        @endforeach
+                        @forelse ($selectedItemGallery as $imageIndex => $image)
+                            <figure x-show="image === {{ $imageIndex }}" x-cloak wire:key="guest-gallery-image-{{ $selectedItemId }}-{{ $imageIndex }}" aria-label="{{ __('menu.guest.image_count', ['current' => $imageIndex + 1, 'total' => count($selectedItemGallery)]) }}">
+                                <img
+                                    src="{{ $image['url'] }}"
+                                    @if ($image['srcset']) srcset="{{ $image['srcset'] }}" sizes="(min-width: 640px) 38rem, 100vw" @endif
+                                    @if ($image['width']) width="{{ $image['width'] }}" @endif
+                                    @if ($image['height']) height="{{ $image['height'] }}" @endif
+                                    alt="{{ $image['alt'] ?? $selectedItem['name'] }}"
+                                    style="object-position: {{ $image['object_position'] ?? '50% 50%' }}"
+                                    class="max-h-[24rem] w-full object-contain"
+                                >
+                                @if (($image['caption'] ?? '') !== '')
+                                    <figcaption class="whitespace-pre-line break-words px-4 py-3 text-sm leading-relaxed text-text-muted">{{ $image['caption'] }}</figcaption>
+                                @endif
+                            </figure>
+                        @empty
+                        @endforelse
                         @if (count($selectedItemGallery) > 1)
                             <button type="button" @click="image = (image - 1 + {{ count($selectedItemGallery) }}) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_previous') }}" class="absolute left-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-left" class="size-5" /></button>
                             <button type="button" @click="image = (image + 1) % {{ count($selectedItemGallery) }}" aria-label="{{ __('menu.guest.gallery_next') }}" class="absolute right-2 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/90 text-text-primary shadow-control focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"><flux:icon name="chevron-right" class="size-5" /></button>
@@ -575,6 +613,6 @@
                 </x-ui.mobile-bottom-actions>
                 @endif
             </div>
-        </div>
+        </dialog>
     @endif
 </section>

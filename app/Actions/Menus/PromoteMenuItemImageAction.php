@@ -34,7 +34,9 @@ final class PromoteMenuItemImageAction
                 }
 
                 $oldPrimaryPath = $currentItem->image;
+                $oldPrimaryPresentation = $currentItem->image_presentation;
                 $currentItem->image = $currentImage->path;
+                $currentItem->image_presentation = $currentImage->presentation;
 
                 if ($currentItem->save() !== true) {
                     throw new RuntimeException('The primary image reference could not be saved.');
@@ -42,6 +44,7 @@ final class PromoteMenuItemImageAction
 
                 if (filled($oldPrimaryPath)) {
                     $currentImage->path = $oldPrimaryPath;
+                    $currentImage->presentation = $oldPrimaryPresentation;
 
                     if ($currentImage->save() !== true) {
                         throw new RuntimeException('The gallery image reference could not be saved.');

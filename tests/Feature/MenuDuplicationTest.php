@@ -8,6 +8,7 @@ use App\Actions\Menus\DuplicateMenuItemAction;
 use App\Actions\Modifiers\AssignModifierGroupToMenuItemAction;
 use App\Actions\Modifiers\UnassignModifierGroupFromMenuItemAction;
 use App\Actions\Organizations\CreateOrganizationAction;
+use App\Enums\MenuOperationPhase;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\Menu;
@@ -152,3 +153,43 @@ test('a source edit during copying fails explicitly and cleans only the unpublis
     $retry = app(DuplicateMenuItemAction::class)->handle($this->actor, $this->branch, $this->item, Str::uuid()->toString());
     expect(finishDuplicateOperation($this->actor, $this->branch, $retry)->phase->value)->toBe('completed');
 })->with(['item', 'translation', 'variant', 'variant translation', 'attach', 'detach']);
+
+test('duplication preserves intentionally blank translated descriptions and image presentation', function (): void {
+    $path = app(StoreLocalImageAction::class)->handle(UploadedFile::fake()->image('source.jpg', 800, 400), 'media/source');
+    $presentation = ['focal_x' => 17, 'focal_y' => 83, 'translations' => ['ru' => ['alt' => 'Блюдо', 'caption' => '']]];
+    $this->item->update(['description' => 'English description', 'image' => $path, 'image_presentation' => $presentation]);
+    $this->item->translations()->where('language_code', 'ru')->firstOrFail()->update(['description' => null]);
+    $operation = app(DuplicateMenuItemAction::class)->handle($this->actor, $this->branch, $this->item, Str::uuid()->toString());
+    $operation = finishDuplicateOperation($this->actor, $this->branch, $operation);
+    $copy = MenuItem::query()->findOrFail($operation->result_id);
+    expect($copy->translations()->where('language_code', 'ru')->firstOrFail()->description)->toBeNull()
+        ->and($copy->image_presentation)->toBe($presentation);
+});
+
+test('pre upgrade duplication receipts accept null presentation but reject later metadata changes', function (bool $changed): void {
+    $path = app(StoreLocalImageAction::class)->handle(UploadedFile::fake()->image('legacy.jpg', 800, 400), 'media/source');
+    $image = MenuItemImage::factory()->for($this->item, 'item')->create(['path' => $path, 'presentation' => null]);
+    $operation = app(DuplicateMenuItemAction::class)->handle($this->actor, $this->branch, $this->item, Str::uuid()->toString());
+    $payload = $operation->payload;
+    foreach ($payload['source_gallery'] as &$entry) {
+        unset($entry['presentation']);
+    }
+    unset($entry);
+    foreach ($payload['media_plan'] as &$entry) {
+        unset($entry['presentation']);
+    }
+    unset($entry);
+    $operation->forceFill(['payload' => $payload])->saveOrFail();
+    expect($operation->fresh()->payload['source_gallery'][0])->not->toHaveKey('presentation');
+    if ($changed) {
+        $image->update(['presentation' => ['focal_x' => 10, 'focal_y' => 90]]);
+    }
+    $result = app(ContinueMenuOperationAction::class)->handle($this->actor, $this->branch, $operation->request_id);
+    if ($changed) {
+        expect($result->phase)->toBe(MenuOperationPhase::Failed);
+    } else {
+        $result = finishDuplicateOperation($this->actor, $this->branch, $result);
+        expect($result->phase)->toBe(MenuOperationPhase::Completed);
+    }
+    Storage::disk('public')->assertExists($path);
+})->with([false, true]);

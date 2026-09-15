@@ -1,5 +1,5 @@
 <div class="grid gap-4">
-    <form wire:submit="createModifierGroup" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <form wire:submit="createModifierGroup" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div class="flex items-center justify-between gap-3">
             <flux:heading size="lg">{{ __('ui.organizations.brands.branches.menu.index.new_modifier') }}</flux:heading>
             <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createModifierGroup">
@@ -31,7 +31,7 @@
         </div>
 
         <div class="grid gap-4 border-b border-zinc-200 p-4 dark:border-zinc-800 lg:grid-cols-2">
-            <form wire:submit="createModifierOption" class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
+            <form wire:submit="createModifierOption" novalidate class="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-950/60">
                 <div class="flex items-center justify-between gap-3">
                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('ui.organizations.brands.branches.menu.index.new_option') }}</p>
                     <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createModifierOption">
@@ -110,7 +110,7 @@
             @forelse ($modifierGroupRows as $modifierGroup)
                 <div wire:key="modifier-group-{{ $modifierGroup['id'] }}" class="px-4 py-4">
                     @if ($editingModifierGroupId === $modifierGroup['id'])
-                        <form wire:submit="updateModifierGroup" class="grid gap-3 md:grid-cols-[1fr_100px_100px_120px_auto] md:items-end">
+                        <form wire:submit="updateModifierGroup" novalidate class="grid gap-3 md:grid-cols-[1fr_100px_100px_120px_auto] md:items-end">
 
                             <x-menu.name-translations
                                 class="md:col-span-full"
@@ -172,7 +172,7 @@
                         @forelse ($modifierGroup['options'] as $modifierOption)
                             <div wire:key="modifier-option-{{ $modifierOption['id'] }}" class="rounded-md border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/60">
                                 @if ($editingModifierOptionId === $modifierOption['id'])
-                                    <form wire:submit="updateModifierOption" class="grid gap-3 md:grid-cols-[1fr_140px_120px_auto] md:items-end">
+                                    <form wire:submit="updateModifierOption" novalidate class="grid gap-3 md:grid-cols-[1fr_140px_120px_auto] md:items-end">
 
                                         <x-menu.name-translations
                                             class="md:col-span-full"

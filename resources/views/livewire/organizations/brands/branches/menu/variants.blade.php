@@ -23,7 +23,7 @@
     </div>
 
     @if ($variantItemId !== '')
-        <form wire:submit="createVariant" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <form wire:submit="createVariant" novalidate class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <flux:heading size="lg">{{ __('menu.variants.admin.new') }}</flux:heading>
                 <flux:button icon="plus" variant="primary" type="submit" wire:loading.attr="disabled" wire:target="createVariant">
@@ -65,7 +65,7 @@
                 @forelse ($variantRows as $variant)
                     <article wire:key="menu-item-variant-{{ $variant['id'] }}" class="p-4">
                         @if ($editingVariantId === $variant['id'])
-                            <form wire:submit="updateVariant" class="grid gap-3">
+                            <form wire:submit="updateVariant" novalidate class="grid gap-3">
                                 <div class="grid gap-3 md:grid-cols-2">
                                     <flux:select wire:model="editingVariantType" :label="__('menu.variants.admin.type')">
                                         @foreach ($variantTypeOptions as $value => $label)

@@ -30,6 +30,14 @@
         </div>
     </div>
 
+    <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ __('permissions.messages.organization_scope') }}</p>
+    @if ($hasLegacyOverrides)
+        <p role="status" class="rounded-lg border border-amber-300 p-3 text-sm">{{ __('permissions.messages.legacy_review') }}</p>
+    @endif
+    <div wire:offline class="rounded-lg border border-amber-300 p-3 text-sm" role="status">{{ __('ui.connectivity.offline') }}</div>
+    @error('state') <p role="alert" class="text-sm text-red-700 dark:text-red-300">{{ $message }}</p> @enderror
+    @error('permissionId') <p role="alert" class="text-sm text-red-700 dark:text-red-300">{{ $message }}</p> @enderror
+
     @if ($selfEditBlocked)
         <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
             {{ __('permissions.messages.self_edit_disabled') }}
@@ -86,6 +94,7 @@
 
                                         <span>{{ $row['role_default_label'] }}</span>
                                         <span>{{ $row['override_label'] }}</span>
+                                        <span>{{ $row['effective_reason'] }}</span>
                                     </div>
                                 </div>
 
@@ -108,7 +117,7 @@
                                                             type="button"
                                                             size="sm"
                                                             variant="{{ $stateValue === 'deny' ? 'danger' : 'outline' }}"
-                                                            :disabled="$selfEditBlocked || $superadminTarget"
+                                                            :disabled="$selfEditBlocked || $superadminTarget" wire:loading.attr="disabled" wire:offline.attr="disabled"
                                                         >
                                                             {{ $stateLabel }}
                                                         </flux:button>
@@ -118,15 +127,15 @@
                                         </div>
                                     @else
                                         <flux:radio.group variant="segmented" size="sm">
-                                            <flux:radio value="default" :checked="$row['override_state'] === 'default'" :disabled="$selfEditBlocked || $superadminTarget" wire:click="setPermissionState({{ $row['id'] }}, 'default')">
+                                            <flux:radio value="default" :checked="$row['override_state'] === 'default'" :disabled="$selfEditBlocked || $superadminTarget" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:click="setPermissionState({{ $row['id'] }}, 'default')">
                                                 {{ __('permissions.actions.default') }}
                                             </flux:radio>
 
-                                            <flux:radio value="allow" :checked="$row['override_state'] === 'allow'" :disabled="$selfEditBlocked || $superadminTarget" wire:click="setPermissionState({{ $row['id'] }}, 'allow')">
+                                            <flux:radio value="allow" :checked="$row['override_state'] === 'allow'" :disabled="$selfEditBlocked || $superadminTarget" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:click="setPermissionState({{ $row['id'] }}, 'allow')">
                                                 {{ __('permissions.actions.allow') }}
                                             </flux:radio>
 
-                                            <flux:radio value="deny" :checked="$row['override_state'] === 'deny'" :disabled="$selfEditBlocked || $superadminTarget" wire:click="setPermissionState({{ $row['id'] }}, 'deny')">
+                                            <flux:radio value="deny" :checked="$row['override_state'] === 'deny'" :disabled="$selfEditBlocked || $superadminTarget" wire:loading.attr="disabled" wire:offline.attr="disabled" wire:click="setPermissionState({{ $row['id'] }}, 'deny')">
                                                 {{ __('permissions.actions.deny') }}
                                             </flux:radio>
                                         </flux:radio.group>

@@ -12,6 +12,7 @@ use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -27,6 +28,11 @@ final class CancelInvitationAction
         Gate::forUser($actor)->authorize('manageStaff', $organization);
 
         return DB::transaction(function () use ($actor, $organization, $invitation): Invitation {
+            $actor = $actor->fresh();
+            if (! $actor instanceof User) {
+                throw new DomainException('Invitation issuer is no longer available.');
+            }
+            Gate::forUser($actor)->authorize('manageStaff', $organization);
             $scopedInvitation = Invitation::query()
                 ->select([
                     'id',
@@ -53,7 +59,7 @@ final class CancelInvitationAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($scopedInvitation->status !== InvitationStatus::Pending) {
+            if (! in_array($scopedInvitation->status, [InvitationStatus::Pending, InvitationStatus::Cancelled], true)) {
                 throw ValidationException::withMessages([
                     'invitation' => __('staff.errors.invitation_not_pending'),
                 ]);
@@ -74,13 +80,21 @@ final class CancelInvitationAction
                 Gate::forUser($actor)->authorize('manageStaff', $branch);
             }
 
+            if ($scopedInvitation->status === InvitationStatus::Cancelled) {
+                return $scopedInvitation;
+            }
+
             $scopedInvitation->forceFill([
                 'status' => InvitationStatus::Cancelled,
                 'invite_token_hash' => null,
                 'invite_code_hash' => null,
                 'accepted_by_user_id' => null,
                 'accepted_at' => null,
-            ])->saveOrFail();
+            ]);
+
+            if (! $scopedInvitation->saveOrFail()) {
+                throw new DomainException('Invitation could not be cancelled.');
+            }
 
             $this->recordAuditLog->handle(
                 action: AuditLogAction::InvitationCancelled,

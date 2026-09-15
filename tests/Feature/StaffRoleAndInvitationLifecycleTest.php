@@ -214,7 +214,8 @@ test('an active organization owner can change role when another active owner rem
         expect($updated->role_id)->toBe($director->id);
     });
 
-    expect($queryCount)->toBeLessThanOrEqual(10)
+    // Seven bounded eager reads also prove another member can actually manage the organization.
+    expect($queryCount)->toBeLessThanOrEqual(17)
         ->and($membership->fresh()->role_id)->toBe($director->id)
         ->and($organization->memberships()->where('user_id', $owner->id)->firstOrFail()->role_id)->toBe($ownerRole->id);
 
@@ -380,8 +381,12 @@ test('accepted expired and already cancelled invitations are immutable', functio
     $invitation = Invitation::factory()->forOrganization($organization)->{$state}()->create();
     $originalStatus = $invitation->status;
 
-    expect(fn () => app(CancelInvitationAction::class)->handle($owner, $organization, $invitation))
-        ->toThrow(ValidationException::class);
+    if ($originalStatus === InvitationStatus::Cancelled) {
+        expect(app(CancelInvitationAction::class)->handle($owner, $organization, $invitation)->id)->toBe($invitation->id);
+    } else {
+        expect(fn () => app(CancelInvitationAction::class)->handle($owner, $organization, $invitation))
+            ->toThrow(ValidationException::class);
+    }
 
     expect($invitation->fresh()->status)->toBe($originalStatus);
 })->with(['acceptedBy', 'expired', 'cancelled']);
@@ -421,18 +426,20 @@ test('staff pages update roles and cancel pending invitations', function () {
     Livewire::actingAs($owner)
         ->test(OrganizationStaffIndex::class, ['organization' => $organization])
         ->call('startEditingRole', $organizationMembership->id)
-        ->set('editingRoleId', $director->id)
-        ->set('staffRoleReason', 'Organization role changed after promotion.')
-        ->call('updateRole')
+        ->set('memberForm.roleId', $director->id)
+        ->set('memberForm.reason', 'Organization role changed after promotion.')
+        ->call('previewMemberChange')->call('saveMember')
+        ->call('confirmInvitation', $organizationInvitation->id, 'cancel')
         ->call('cancelInvitation', $organizationInvitation->id)
         ->assertHasNoErrors();
 
     Livewire::actingAs($owner)
         ->test(BranchStaffIndex::class, compact('organization', 'brand', 'branch'))
         ->call('startEditingRole', $branchMembership->id)
-        ->set('editingRoleId', $director->id)
-        ->set('staffRoleReason', 'Branch duties changed after promotion.')
-        ->call('updateRole')
+        ->set('memberForm.roleId', $director->id)
+        ->set('memberForm.reason', 'Branch duties changed after promotion.')
+        ->call('previewMemberChange')->call('saveMember')
+        ->call('confirmInvitation', $branchInvitation->id, 'cancel')
         ->call('cancelInvitation', $branchInvitation->id)
         ->assertHasNoErrors();
 

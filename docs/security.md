@@ -4,6 +4,13 @@
 
 # Application security
 
+## Team invitations and access — 2026-09-15
+
+Manual browser staff provisioning is removed at the callable Livewire boundary. Invitation creation creates no User or active membership. Existing provisioning for factories, demo data and initial organization ownership remains separate. Normalized email retains provider-independent dots and plus suffixes. Creation and rotation reject duplicate active invitations in the same scope under SQLite write serialization.
+
+The recipient sees a token-free pending route. The session stores a credential digest, and POST carries a nonsecret version fingerprint binding the displayed invitation as well as the current credential. Rotation, revocation, email changes and scope suspension invalidate stale forms. GET never accepts. Existing users authenticate and explicitly consent; mismatched accounts can switch without changing email. Registration does not confer email verification. Acceptance uses conditional persistence and transactional audit; exact retry cannot add memberships, change roles or repeat an audit event. Responses use no-store and no-referrer. Plaintext administrator links are transient display state only, never recovered from hashes or saved in browser storage.
+
+
 ## Catalogue exchange and photo metadata — 2026-09-15
 
 CSV is local UTF-8, at most 100 rows and 1 MiB per import/export batch. Empty id creates an unavailable dish; an existing id updates only within the selected menu/branch. Missing CSV rows never delete data; photos, stock and kitchen routing are preserved on update. Arbitrary image URLs and foreign IDs are rejected. Preview is read-only; apply repeats validation, verifies content fingerprints and uses a durable request receipt for replay. Spreadsheet-dangerous leading values are escaped on export. Bulk selection is limited to the displayed 24 dishes with per-row scope/version checks; archive soft-deletes while preserving files and historical orders. Image presentation uses image identity plus revision checks and never rewrites originals.

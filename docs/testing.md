@@ -4,6 +4,40 @@
 
 # Testing and quality gates
 
+## Team center verification — 2026-09-15 (final gates in progress)
+
+Current source preserves the existing restaurant/menu/guest workflows. Team feature tests cover invitation-only provisioning, digest/version-bound acceptance, tenant overrides, stale membership writes, audit rollback, suspended invitations and exact area selection. Independent process SQLite fixtures use distinct PIDs and readiness barriers for create/accept/reissue/cancel/suspend and overlapping role/area/last-manager writes.
+
+### Current final gates
+
+| Gate | Observed result |
+| --- | --- |
+| Four-process backend | 2,649 passed / 57,278 assertions, 136.94 s, exit 0 |
+| Larastan | 731 files, no errors, exit 0 |
+| Four-process coverage | 2,649 passed / 57,278 assertions, 411.64 s; 93.6% against the unchanged 90% minimum |
+| Complete browser inventory | In progress; focused passes do not substitute for this gate |
+| Pint / production build | Passed; Vite build 2.59 s |
+| Isolated schema/seeds/caches | 13 commands exit 0, including guarded rollback/reapply and two default seeds |
+
+### Comparable staff fixture
+
+Thirty branch employees, thirty invitations, sixty areas and three hundred assignments. Baseline staff component/query/view files come from local `b68f31b` through a temporary autoload/view overlay; shared authorization and schema are kept identical to the updated run. Main sources are never reverted. Both cold runs use separate empty compiled-view directories; warm values are medians of five repeated requests. Cache timing is local laboratory evidence, not production latency.
+
+| Metric | Baseline staff workspace | Updated staff workspace |
+| --- | ---: | ---: |
+| SQL queries | 30 | 34 |
+| Hydrated models | 425 | 51 |
+| HTML bytes | 1,279,773 | 91,395 |
+| Livewire snapshot bytes | 2,907 | 1,512 |
+| Cold response, ms | 248.43 | 50.53 |
+| Warm median response, ms | 187.65 | 23.30 |
+| Cold peak memory increase, bytes | 6,858,408 | 6,167,320 |
+| Warm median peak memory increase, bytes | 3,009,744 | 1,624,680 |
+
+Additional bounded authorization and permission-link reads account for the higher query count. The primary gains come from loading one active section, current-page summaries and a requested editor instead of all invitations, assignment maps and row forms. No production throughput or Core Web Vitals claim follows from this fixture.
+
+Browser testing uses actual WebKit contexts, five viewport widths (320/390/768/1024/1440), light/dark and EN/LT/RU, keyboard/Escape, 200% reflow, clipboard denial and offline events. This is browser emulation, not a physical-phone or screen-reader certification. Staff navigation keeps dirty forms through native history confirmation; supported browser behavior is verified in current installed engines.
+
 
 ## Branch control center verification — 2026-09-15
 

@@ -59,9 +59,15 @@ class RegisterInvitationRequest extends FormRequest
         }
 
         $invitationId = $this->session()->get('staff_invitation_id');
+        $credential = $this->session()->get('staff_invitation_credential');
         $invitation = is_int($invitationId) ? Invitation::findAcceptableById($invitationId) : null;
 
-        if (! $invitation instanceof Invitation) {
+        if (! $invitation instanceof Invitation || ! $invitation->matchesCredential($credential)) {
+            abort(410);
+        }
+
+        $version = $this->input('invitation_version');
+        if (! is_string($version) || ! hash_equals($invitation->credentialVersion(), $version)) {
             abort(410);
         }
 

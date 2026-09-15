@@ -323,7 +323,7 @@
                             @if ($branch['is_active'])
                                 <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                             @else
-                                <flux:badge color="zinc">{{ __('staff.statuses.suspended') }}</flux:badge>
+                                <flux:badge color="zinc">{{ __('ui.status.inactive') }}</flux:badge>
                             @endif
                         </div>
 

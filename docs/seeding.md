@@ -4,6 +4,11 @@
 
 # Factories and seeding
 
+## Team fixtures — 2026-09-15
+
+PermissionUserOverrideFactory::forOrganization creates an explicit scoped decision; the default remains a legacy compatibility fixture. Team lifecycle/isolation tests use factories for independent tenants, membership roles, pending/expired/rotated invitations and exact waiter areas. Concurrency tests use disposable file SQLite databases, distinct worker processes and readiness barriers. Browser identities use separate contexts and owned temporary session files. No real invitations or employee data are sent or modified.
+
+
 ## Photo presentation fixture state — 2026-09-15
 
 MenuItemFactory and MenuItemImageFactory expose opt-in withPresentation states with fictitious EN/LT/RU alt/caption and off-center focal coordinates. Existing demo graphs and their production guard remain. New CSV fixtures create unavailable records and three translated names; bulk/archive and stale metadata tests use isolated factories. Runtime tests redirect storage and SQLite to disposable locations, preserving the working catalogue and originals.

@@ -5,6 +5,20 @@
 # Restaurant Menu completion decisions
 
 
+## 2026-09-15 — Team history and verification boundaries
+
+Staff dirty-form protection observes the Navigation API entry index without cancelling its navigate event: cancellation corrupted WebKit's history cursor in the reproduced cross-page scenario. Capture popstate before Livewire restores cached state, return to the edited entry, and replay the explicit confirmed movement. Release listeners on teardown and return focus only to a visible enabled opener. Current WebKit Back/Forward, repeated cancellation and Escape are covered; older engines without entry indexes retain the local-section fallback and native document-unload warning.
+
+Use the existing four-process backend/coverage commands for the final complete gates. A sequential backend attempt exceeded its 360-second bound while still progressing; it is not passing evidence. Test-only file sessions and per-request identity reset compensate for Pest's reused application container; production authentication is unchanged.
+
+## 2026-09-15 — Team scope and explicit consent
+
+- Use the existing organization and branch staff screens with employees/invitations sections and branch-only assignments. Load one list and one requested editor; preserve URL context and dirty drafts.
+- Remove browser-callable manual account creation. Internal first-owner/factory/demo provisioning stays explicit; assigning an already active accepted organization member to a branch cannot change account identity, organization role or silently restore suspended membership.
+- Keep invitation link credentials hashed at rest and bind acceptance to the current digest and displayed invitation version, including a form opened before rotation or another invitation in a second tab. Copy is a real browser operation; a denied clipboard keeps a selectable fallback. Reissue is explicit and invalidates the previous link.
+- Scope new permission exceptions to organization with a non-null scope key, retaining existing legacy rows. Explicit scoped decisions take precedence; an ambiguous legacy allow is not applied across organizations, while legacy deny remains conservative until reviewed. Organization-only permissions are labelled as such; branch management does not expose a disguised global override editor.
+- Use membership revision checks for stale role/status edits and an assignment fingerprint for zone conflicts. Preserve draft values and require an explicit reviewed retry. Transactional audit participates in the same successful write boundary.
+
 ## 2026-09-15 — branch control implementation contracts
 
 - Preserve branch selection and reporting dates with native Livewire URL history. Encode each reporting selection in one `period` value (`today`, `yesterday`, `last7`, or `custom:YYYY-MM-DD:YYYY-MM-DD`), so Apply produces one history entry. Three independently updated URL properties produced intermediate history entries in the real browser.

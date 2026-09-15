@@ -17,6 +17,7 @@ use App\Services\Staff\PermissionQueryService;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -37,16 +38,22 @@ class Permissions extends Component
     #[Locked]
     public int $membershipRoleId;
 
+    #[Locked]
     public string $membershipRoleName = '';
 
+    #[Locked]
     public string $membershipStatus = '';
 
+    #[Locked]
     public string $membershipStatusLabel = '';
 
+    #[Locked]
     public bool $selfEditBlocked = false;
 
+    #[Locked]
     public bool $superadminTarget = false;
 
+    #[Locked]
     public bool $showTechnicalPermissionKeys = false;
 
     public ?string $lastCriticalWarning = null;
@@ -82,9 +89,17 @@ class Permissions extends Component
         $this->superadminTarget = $staffMember->isSuperadmin();
     }
 
-    public function setPermissionState(int $permissionId, string $state): void
+    public function setPermissionState(mixed $permissionId, mixed $state): void
     {
+        $this->lastCriticalWarning = null;
+        $this->resetErrorBag();
         $this->authorizeStaffManagement();
+        $validatedInput = Validator::make(
+            ['permissionId' => $permissionId, 'state' => $state],
+            ['permissionId' => ['required', 'numeric', 'integer', 'min:1'], 'state' => ['required', 'string', 'in:default,allow,deny']],
+        )->validate();
+        $permissionId = (int) $validatedInput['permissionId'];
+        $state = (string) $validatedInput['state'];
         $currentUser = $this->currentUser();
         $this->selfEditBlocked = $currentUser->id === $this->staffMember->id;
         $this->superadminTarget = $this->staffMember->isSuperadmin();
@@ -149,54 +164,64 @@ class Permissions extends Component
     }
 
     /**
-     * @return list<array{id: int, code: string, name: string, label: string, description: string, group_key: string, group_label: string, is_critical: bool, role_default: bool, role_default_label: string, override_state: string, override_label: string, effective_allowed: bool, effective_label: string}>
+     * @return list<array{id: int, code: string, name: string, label: string, description: string, group_key: string, group_label: string, is_critical: bool, role_default: bool, role_default_label: string, override_state: string, override_label: string, effective_allowed: bool, effective_reason: string, effective_label: string}>
      */
     #[Computed]
     public function permissionRows(): array
     {
         $roleDefaults = $this->permissionQueries->roleDefaults($this->membershipRoleId);
-        $overrides = $this->permissionQueries->userOverrides($this->staffMember);
+        $overrides = $this->permissionQueries->userOverrides($this->staffMember, $this->organization->id);
 
-        return $this->permissionQueries->permissions()
-            ->map(function (Permission $permission) use ($roleDefaults, $overrides): array {
-                $hasOverride = $overrides->has($permission->id);
-                $overrideState = match (true) {
-                    ! $hasOverride => PermissionOverrideState::Default,
-                    (bool) $overrides->get($permission->id) => PermissionOverrideState::Allow,
-                    default => PermissionOverrideState::Deny,
-                };
-                $roleDefault = (bool) $roleDefaults->get($permission->id, false);
-                $effectiveAllowed = $this->superadminTarget
-                    || ($this->membershipStatus === OrganizationUserStatus::Active->value && ($hasOverride ? (bool) $overrides->get($permission->id) : $roleDefault));
-                $systemPermission = SystemPermission::tryFrom($permission->code);
-                $fallbackLabel = str($permission->name ?: $permission->code)
-                    ->replace('_', ' ')
-                    ->headline()
-                    ->toString();
+        $permissions = $this->permissionQueries->permissions();
+        $decisions = $this->staffMember->organizationPermissionDecisions($this->organization, $permissions->pluck('code')->all());
 
-                return [
-                    'id' => $permission->id,
-                    'code' => $permission->code,
-                    'name' => $permission->name,
-                    'label' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiLabelKey()) : $fallbackLabel,
-                    'description' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiDescriptionKey()) : __('permissions.descriptions.custom'),
-                    'group_key' => $systemPermission instanceof SystemPermission ? $systemPermission->uiGroupKey() : 'other',
-                    'group_label' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiGroupLabelKey()) : __('permissions.groups.other'),
-                    'is_critical' => $systemPermission?->isCritical() ?? false,
-                    'role_default' => $roleDefault,
-                    'role_default_label' => $roleDefault ? __('permissions.states.role_allows') : __('permissions.states.role_denies'),
-                    'override_state' => $overrideState->value,
-                    'override_label' => __($overrideState->summaryLabelKey()),
-                    'effective_allowed' => $effectiveAllowed,
-                    'effective_label' => $effectiveAllowed ? __('permissions.states.allowed') : __('permissions.states.denied'),
-                ];
-            })
+        return $permissions->map(function (Permission $permission) use ($roleDefaults, $overrides, $decisions): array {
+            $hasOverride = $overrides->has($permission->id);
+            $overrideState = match (true) {
+                ! $hasOverride => PermissionOverrideState::Default,
+                (bool) $overrides->get($permission->id) => PermissionOverrideState::Allow,
+                default => PermissionOverrideState::Deny,
+            };
+            $roleDefault = (bool) $roleDefaults->get($permission->id, false);
+            $effectiveAllowed = $decisions[$permission->code]['allowed'];
+            $systemPermission = SystemPermission::tryFrom($permission->code);
+            $fallbackLabel = str($permission->name ?: $permission->code)
+                ->replace('_', ' ')
+                ->headline()
+                ->toString();
+
+            return [
+                'id' => $permission->id,
+                'code' => $permission->code,
+                'name' => $permission->name,
+                'label' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiLabelKey()) : $fallbackLabel,
+                'description' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiDescriptionKey()) : __('permissions.descriptions.custom'),
+                'group_key' => $systemPermission instanceof SystemPermission ? $systemPermission->uiGroupKey() : 'other',
+                'group_label' => $systemPermission instanceof SystemPermission ? __($systemPermission->uiGroupLabelKey()) : __('permissions.groups.other'),
+                'is_critical' => $systemPermission?->isCritical() ?? false,
+                'role_default' => $roleDefault,
+                'role_default_label' => $roleDefault ? __('permissions.states.role_allows') : __('permissions.states.role_denies'),
+                'override_state' => $overrideState->value,
+                'override_label' => __($overrideState->summaryLabelKey()),
+                'effective_allowed' => $effectiveAllowed,
+                'effective_reason' => __(match ($decisions[$permission->code]['source']) {
+                    'explicit_allow' => 'permissions.sources.explicit_allow',
+                    'explicit_deny' => 'permissions.sources.explicit_deny',
+                    'inactive_membership' => 'permissions.sources.inactive_membership',
+                    'legacy' => 'permissions.sources.legacy',
+                    'role' => 'permissions.sources.role',
+                    'scope_restricted' => 'permissions.sources.scope_restricted',
+                    'superadmin' => 'permissions.sources.superadmin',
+                }),
+                'effective_label' => $effectiveAllowed ? __('permissions.states.allowed') : __('permissions.states.denied'),
+            ];
+        })
             ->values()
             ->all();
     }
 
     /**
-     * @return list<array{key: string, label: string, permissions: list<array{id: int, code: string, name: string, label: string, description: string, group_key: string, group_label: string, is_critical: bool, role_default: bool, role_default_label: string, override_state: string, override_label: string, effective_allowed: bool, effective_label: string}>}>
+     * @return list<array{key: string, label: string, permissions: list<array{id: int, code: string, name: string, label: string, description: string, group_key: string, group_label: string, is_critical: bool, role_default: bool, role_default_label: string, override_state: string, override_label: string, effective_allowed: bool, effective_reason: string, effective_label: string}>}>
      */
     #[Computed]
     public function permissionGroups(): array
@@ -224,6 +249,7 @@ class Permissions extends Component
             'staffMemberName' => $this->staffMember->name,
             'staffMemberEmail' => $this->staffMember->email,
             'permissionGroups' => $this->permissionGroups(),
+            'hasLegacyOverrides' => $this->permissionQueries->hasLegacyOverrides($this->staffMember),
         ])
             ->title(__('staff.actions.update_permissions'));
     }
@@ -246,10 +272,15 @@ class Permissions extends Component
     {
         $gate = Gate::forUser($this->currentUser());
         $gate->authorize('managePermissions', $this->organization);
-        $this->authorizeTargetWhenMutable(
-            $this->currentUser(),
-            $this->permissionQueries->membership($this->organization, $this->staffMember),
-        );
+        $membership = $this->permissionQueries->membership($this->organization, $this->staffMember);
+        $this->authorizeTargetWhenMutable($this->currentUser(), $membership);
+        $this->membershipRoleId = $membership->role_id;
+        $this->membershipRoleName = $this->roleLabel($membership->role);
+        $this->membershipStatus = $membership->status->value;
+        $this->membershipStatusLabel = $this->organizationUserStatusLabel($membership->status);
+        $this->selfEditBlocked = $this->currentUser()->id === $this->staffMember->id;
+        $this->superadminTarget = $this->staffMember->isSuperadmin();
+        $this->showTechnicalPermissionKeys = $this->currentUser()->isSuperadmin();
     }
 
     private function authorizeTargetWhenMutable(User $actor, OrganizationUser $membership): void

@@ -143,7 +143,7 @@ test('critical retries converge across real processes without duplicate effects'
             CriticalOperationConcurrencyTasks::acceptInvitation($connection, $connectionName, $invitation->id, $recipient->id),
         ]);
 
-        expect($invitationResults)->toContain('accepted', 'already_accepted')
+        expect($invitationResults)->toBe(['accepted', 'accepted'])
             ->and($invitation->fresh()->status)->toBe(InvitationStatus::Accepted)
             ->and(OrganizationUser::query()
                 ->where('organization_id', $organization->id)

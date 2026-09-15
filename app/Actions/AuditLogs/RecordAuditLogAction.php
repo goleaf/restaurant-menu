@@ -7,6 +7,7 @@ use App\Enums\AuditLogAction;
 use App\Models\AuditLog;
 use App\Models\TableSessionGuest;
 use App\Models\User;
+use RuntimeException;
 
 class RecordAuditLogAction
 {
@@ -44,7 +45,10 @@ class RecordAuditLogAction
             'old_values' => $this->valueSanitizer->forStorage($oldValues),
             'new_values' => $this->valueSanitizer->forStorage($newValues),
             'created_at' => now(),
-        ])->save();
+        ]);
+        if (! $auditLog->save()) {
+            throw new RuntimeException('Required audit record could not be saved.');
+        }
 
         return $auditLog;
     }

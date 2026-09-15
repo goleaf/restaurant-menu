@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Invitations;
 
 use App\Actions\Invitations\AcceptInvitationAction;
+use App\Actions\Invitations\ResolveInvitationDestinationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Invitations\AcceptInvitationRequest;
 use App\Models\Invitation;
 use App\Models\User;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class AcceptInvitationController extends Controller
@@ -18,13 +19,18 @@ class AcceptInvitationController extends Controller
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request, AcceptInvitationAction $acceptInvitation): RedirectResponse
+    public function __invoke(AcceptInvitationRequest $request, AcceptInvitationAction $acceptInvitation, ResolveInvitationDestinationAction $destination): RedirectResponse
     {
         $recipient = $request->user();
         $invitationId = $request->session()->get('staff_invitation_id');
+        $credential = $request->session()->get('staff_invitation_credential');
         $invitation = is_int($invitationId) ? Invitation::findAcceptableById($invitationId) : null;
 
-        if (! $recipient instanceof User || ! $invitation instanceof Invitation) {
+        if (! $recipient instanceof User || ! $invitation instanceof Invitation || ! $invitation->matchesCredential($credential)) {
+            abort(410);
+        }
+
+        if (! hash_equals($invitation->credentialVersion(), $request->validated('invitation_version'))) {
             abort(410);
         }
 
@@ -38,8 +44,10 @@ class AcceptInvitationController extends Controller
             abort(410);
         }
 
-        $request->session()->forget(['staff_invitation_id', 'url.intended']);
+        $request->session()->forget(['staff_invitation_id', 'staff_invitation_state', 'staff_invitation_credential', 'url.intended']);
 
-        return redirect()->route('dashboard')->with('status', __('invitations.messages.accepted'));
+        return redirect()->to($destination->handle($invitation, $recipient))->with('status', __('invitations.messages.accepted'))->withHeaders([
+            'Cache-Control' => 'no-store, private', 'Referrer-Policy' => 'no-referrer',
+        ]);
     }
 }

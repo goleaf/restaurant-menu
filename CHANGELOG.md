@@ -5,6 +5,15 @@
 # Changelog
 
 
+## 2026-09-15 — Team control center
+
+- Replace manual browser account creation with a focused invitation-only employee workspace, scoped search/filters and requested editors.
+- Add previewed link creation, truthful clipboard fallback, effective invitation statuses and explicit credential rotation; bind acceptance to the displayed invitation version and recipient account.
+- Isolate permission overrides by organization, explain actual access, and preserve ambiguous legacy records without distributing grants across tenants.
+- Protect role and suspension/restoration changes with current authorization, revisions and transactional audit; save area changes atomically against an assignment fingerprint. Cover both with independent-process SQLite conflict tests.
+- Add deferred zone selection, change preview and active assignment coverage; keep branch suspension independent of other organizations and historical orders.
+- Reduce initial staff hydration and response size. Current verification, measurement boundaries and delivery evidence are recorded in `docs/testing.md` and `docs/PROGRESS.md`.
+
 ## 2026-09-15 — Branch control center
 
 - Add searchable branch/all-branch context, atomic reporting URL history, branch-local calendar periods and currency-separated order/payment results.

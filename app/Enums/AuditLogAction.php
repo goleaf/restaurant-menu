@@ -16,6 +16,7 @@ enum AuditLogAction: string
     case StaffPermissionChanged = 'staff_permission_changed';
     case StaffRoleChanged = 'staff_role_changed';
     case StaffDeactivated = 'staff_deactivated';
+    case StaffReactivated = 'staff_reactivated';
     case InvitationCreated = 'invitation_created';
     case InvitationReissued = 'invitation_reissued';
     case InvitationAccepted = 'invitation_accepted';
@@ -52,6 +53,7 @@ enum AuditLogAction: string
             self::StaffPermissionChanged => 'Staff permission changed',
             self::StaffRoleChanged => 'Staff role changed',
             self::StaffDeactivated => 'Staff deactivated',
+            self::StaffReactivated => __('audit.actions.staff_reactivated'),
             self::InvitationCreated => __('audit.actions.invitation_created'),
             self::InvitationReissued => __('audit.actions.invitation_reissued'),
             self::InvitationAccepted => __('audit.actions.invitation_accepted'),

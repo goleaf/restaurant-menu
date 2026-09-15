@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
  * @property int $branch_id
  * @property int $user_id
  * @property int $role_id
+ * @property int $access_version
  * @property OrganizationUserStatus $status
  */
 #[Table('branch_users', incrementing: true)]
@@ -32,6 +33,7 @@ class BranchUser extends Pivot
      */
     protected $attributes = [
         'status' => OrganizationUserStatus::Active->value,
+        'access_version' => 0,
     ];
 
     /**
@@ -41,6 +43,7 @@ class BranchUser extends Pivot
     {
         return [
             'status' => OrganizationUserStatus::class,
+            'access_version' => 'integer',
             'assigned_at' => 'datetime',
         ];
     }

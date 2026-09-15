@@ -5,6 +5,24 @@
 # Restaurant Menu completion implementation plan
 
 
+## 2026-09-15 — team control center (active)
+
+Baseline: clean local main `b68f31b`; branch control implementation `8a3945d` and delivery are present locally. Earlier verification remains historical. The stage preserves the delivered catalogue, guest and branch dashboard workflows.
+
+| Task | Status | User outcome | Owner | Dependencies | Acceptance |
+| --- | --- | --- | --- | --- | --- |
+| Local state, contracts and baseline | done | Continue from the delivered application safely | Root/workspace | None | Current source, actual Boost/browser calls, isolated before fixtures and policy idempotence |
+| Focused team workspace | done | Find employees and invitations in the correct scope | Workspace agent | Baseline | URL filters/pages, one focused editor, mobile and fresh permissions |
+| Invite-only lifecycle and acceptance | done | Invite by link and explicitly join the intended organization | Invitation agent | Contracts | No manual browser provisioning; expiry/rotation/replay/mismatch/concurrency and token-safe responses |
+| Scoped permission and membership changes | done | Explain and change access without affecting another tenant | Access agent/root schema | Contracts | Tenant overrides, legacy policy, version conflicts, suspension/restore, transactional audit |
+| Waiter assignments | done | Review and save one person's branch zones | Workspace agent | Membership contract | Current waiter semantics, scoped coverage, stale-selection conflict and atomic save |
+| Integration and measured optimization | done | Responsive lists with small initial state | Root/workspace | Implementations | Equal fixtures: queries, hydration, memory, HTML and Livewire state |
+| Independent review and browser scenarios | done | Verified complete recipient/admin workflow | Cross-review/root | Integration | Non-author diff review, isolated identities, five widths, themes, focus, errors/offline |
+| Final gates and documentation | in_progress | Existing product remains reliable | Root | Review | Full backend/browser, coverage>=90, static/format/translations/audits/build and isolated schema/seed checks |
+| Local commit and ordinary push | todo | Reviewed changes delivered on existing main | Root | Gates | Addressed staging and observed ordinary git push result, no remote verification |
+
+Ownership: invitation agent owns invitation Actions/model/controllers/requests/recipient views and focused tests; access agent owns membership/override Actions, authorization model/query/UI and focused tests; workspace agent owns both staff Index components/views, StaffQueryService and waiter assignment Action/forms/tests. Root owns shared Blade/JS, JSON, migrations, factories, routes, manifests, docs, full suites and browser integration. All workers use separate disposable test runtime; no working-database writes or real invitations.
+
 ## 2026-09-15 — branch control center (completed)
 
 Baseline: clean local main `a88de9e`. Earlier product delivery and its test results are historical. Preserve the existing menu, media, language, CSV and restaurant lifecycle contracts. Root owns integration and serialized final gates; all fixtures and runtime artifacts use disposable storage/databases.

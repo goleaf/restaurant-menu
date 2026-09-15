@@ -10,6 +10,7 @@ use App\Models\BranchUser;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\PermissionUserOverride;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Pivot;
@@ -24,6 +25,7 @@ class ResolveWaiterAccessibleBranchIdsAction
     public function handleMany(User $user, array $permissions): array
     {
         $codes = array_map(fn (SystemPermission $permission): string => $permission->value, $permissions);
+        $singleCode = count($codes) === 1 ? $codes[0] : null;
         if ($user->isSuperadmin()) {
             $branches = Branch::query()->select(['id'])->orderBy('id')->pluck('id');
 
@@ -31,14 +33,23 @@ class ResolveWaiterAccessibleBranchIdsAction
         }
 
         $available = Permission::query()->select(['id', 'code'])->whereIn('code', $codes)->get()->keyBy('code');
-        $overrides = $user->permissionOverrides()->whereIn('permissions.code', $codes)->get()->keyBy('code');
+        $overrides = PermissionUserOverride::query()->select(['id', 'permission_id', 'organization_id', 'scope_key', 'enabled'])
+            ->where('user_id', $user->id)->whereIn('permission_id', $available->modelKeys())->get();
+        $singleOrganization = $overrides->contains(fn (PermissionUserOverride $row): bool => $row->organization_id === null && $row->enabled)
+            && $user->organizationMemberships()->count() === 1;
         $memberships = OrganizationUser::query()
             ->select(['id', 'organization_id', 'role_id'])
             ->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value)
             ->whereIn('organization_id', $this->activeOrganizationIds())
-            ->with(['role' => fn ($query) => $query->select(['id'])->with([
-                'permissions' => fn ($query) => $query->whereIn('permissions.code', $codes),
-            ])])->get();
+            ->when($singleCode !== null,
+                fn ($query) => $query->withExists([
+                    'role as role_allows_permission' => fn ($role) => $role->whereHas('permissions', fn ($permission) => $permission
+                        ->where('permissions.code', $singleCode)->where('permission_role.enabled', true)),
+                ]),
+                fn ($query) => $query->with(['role' => fn ($role) => $role->select(['id'])->with([
+                    'permissions' => fn ($permission) => $permission->whereIn('permissions.code', $codes),
+                ])]),
+            )->get();
         $organizationIds = $memberships->pluck('organization_id')->unique();
         $branches = Branch::query()->whereIn('organization_id', $organizationIds)->orderBy('id')->pluck('organization_id', 'id');
         $assignments = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'status'])
@@ -46,15 +57,19 @@ class ResolveWaiterAccessibleBranchIdsAction
             ->whereIn('organization_id', $organizationIds)->get();
         $result = [];
         foreach ($codes as $code) {
-            $override = $overrides->get($code);
-            if (! $available->has($code) || ($override instanceof Permission && ! $this->permissionIsEnabled($override))) {
+            if (! $available->has($code)) {
                 $result[$code] = collect();
 
                 continue;
             }
-            $allowedOrganizations = $memberships->filter(fn (OrganizationUser $membership): bool => $override instanceof Permission
-                || $membership->role?->permissions->contains(fn (Permission $permission): bool => $permission->code === $code && $this->permissionIsEnabled($permission)))
-                ->pluck('organization_id')->unique();
+            $permissionId = $available[$code]->id;
+            $allowedOrganizations = $memberships->filter(function (OrganizationUser $membership) use ($overrides, $singleOrganization, $singleCode, $code, $permissionId): bool {
+                $effective = PermissionUserOverride::effectiveForOrganization($overrides, $membership->organization_id, $singleOrganization);
+
+                return $effective->has($permissionId) ? (bool) $effective[$permissionId]
+                    : ($singleCode !== null ? (bool) $membership->getAttribute('role_allows_permission')
+                        : (bool) $membership->role?->permissions->contains(fn (Permission $permission): bool => $permission->code === $code && $this->permissionIsEnabled($permission)));
+            })->pluck('organization_id')->unique();
             $allowedBranches = $branches->filter(fn (int $organizationId): bool => $allowedOrganizations->contains($organizationId));
             $result[$code] = $this->restrictToAssignments($allowedBranches, $assignments);
         }
@@ -97,63 +112,7 @@ class ResolveWaiterAccessibleBranchIdsAction
      */
     public function handle(User $user, SystemPermission $permissionCode = SystemPermission::ViewOrders): Collection
     {
-        if ($user->isSuperadmin()) {
-            return Branch::query()
-                ->select(['id'])
-                ->orderBy('id')
-                ->pluck('id');
-        }
-
-        $permission = Permission::query()
-            ->select(['id', 'code'])
-            ->where('code', $permissionCode->value)
-            ->first();
-
-        if (! $permission instanceof Permission) {
-            return collect();
-        }
-
-        $override = $user->permissionOverrides()
-            ->where('permissions.id', $permission->id)
-            ->first();
-
-        if ($override instanceof Permission && ! (bool) $override->pivot->enabled) {
-            return collect();
-        }
-
-        $memberships = OrganizationUser::query()
-            ->select(['id', 'organization_id', 'role_id'])
-            ->where('user_id', $user->id)
-            ->where('status', OrganizationUserStatus::Active->value)
-            ->whereIn('organization_id', $this->activeOrganizationIds())
-            ->when(! $override instanceof Permission, function ($query) use ($permission): void {
-                $query->whereHas('role.permissions', function ($permissionQuery) use ($permission): void {
-                    $permissionQuery
-                        ->where('permissions.id', $permission->id)
-                        ->where('permission_role.enabled', true);
-                });
-            })
-            ->orderBy('organization_id')
-            ->get();
-
-        if ($memberships->isEmpty()) {
-            return collect();
-        }
-
-        $organizationIds = $memberships->pluck('organization_id')->unique()->values();
-        $branches = Branch::query()
-            ->select(['id', 'organization_id'])
-            ->whereIn('organization_id', $organizationIds)
-            ->orderBy('id')
-            ->pluck('organization_id', 'id');
-
-        $assignments = BranchUser::query()
-            ->select(['id', 'organization_id', 'branch_id', 'user_id', 'status'])
-            ->where('user_id', $user->id)
-            ->whereIn('organization_id', $organizationIds)
-            ->orderBy('branch_id')->get();
-
-        return $this->restrictToAssignments($branches, $assignments);
+        return $this->handleMany($user, [$permissionCode])[$permissionCode->value];
     }
 
     /** @param Collection<int,int> $branches @param Collection<int,BranchUser> $assignments @return Collection<int,int> */

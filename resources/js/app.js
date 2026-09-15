@@ -5,3 +5,4 @@ import './menu-translations';
 import './menu-image-picker';
 
 import './menu-workspace';
+import './staff-workspace';

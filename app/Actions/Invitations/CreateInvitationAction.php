@@ -14,9 +14,11 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\CarbonInterface;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 final class CreateInvitationAction
@@ -59,6 +61,30 @@ final class CreateInvitationAction
         }
 
         return DB::transaction(function () use ($organization, $brand, $branch, $role, $invitedBy, $data, $email, $phone, $credentials): CreatedInvitation {
+            $invitedBy = $invitedBy->fresh();
+            $organization = $organization->fresh();
+            if (! $invitedBy instanceof User || ! $organization instanceof Organization) {
+                throw new DomainException('Invitation issuer is no longer available.');
+            }
+            Gate::forUser($invitedBy)->authorize('manageStaff', $organization);
+            Gate::forUser($invitedBy)->authorize('assign', [$role, $organization]);
+            if ($brand instanceof Brand) {
+                $brand = Brand::query()->where('organization_id', $organization->id)->whereKey($brand->id)->firstOrFail();
+            }
+            if ($branch instanceof Branch) {
+                $branch = Branch::query()->where('organization_id', $organization->id)->whereKey($branch->id)->firstOrFail();
+                Gate::forUser($invitedBy)->authorize('manageStaff', $branch);
+            }
+            $this->ensureScopeBelongsToOrganization($organization, $brand, $branch);
+
+            if (Invitation::query()->acceptable()
+                ->where('organization_id', $organization->id)
+                ->where('brand_id', $brand->id ?? $branch?->brand_id)
+                ->where('branch_id', $branch?->id)
+                ->where('email', $email)->exists()) {
+                throw ValidationException::withMessages(['invitation' => __('staff.errors.invitation_already_pending')]);
+            }
+
             $invitation = new Invitation;
             $invitation->forceFill([
                 'organization_id' => $organization->id,
@@ -72,7 +98,11 @@ final class CreateInvitationAction
                 'expires_at' => $data['expires_at'] ?? now()->addDays(7),
                 'status' => InvitationStatus::Pending,
                 'invited_by_user_id' => $invitedBy->id,
-            ])->saveOrFail();
+            ]);
+
+            if (! $invitation->saveOrFail()) {
+                throw new DomainException('Invitation could not be saved.');
+            }
 
             $this->recordAuditLog->handle(
                 action: AuditLogAction::InvitationCreated,

@@ -4,6 +4,11 @@
 
 # Data model
 
+## Scoped team access migration — 2026-09-15
+
+Two additive migrations introduce organization_id/scope_key on permission_user_overrides and access_version on organization_users/branch_users. Existing overrides retain legacy scope and values. The unique context key avoids SQLite nullable uniqueness ambiguity; organization_id has its own foreign-key index. Rollback refuses to collapse scoped decisions into the legacy global schema. Membership versions start at zero and advance with authorized role/status changes. No invitation plaintext credentials or parallel area-assignment table is introduced.
+
+
 ## Branch report data semantics — 2026-09-15
 
 Application timestamp writers use `now()` with the configured UTC application timezone. `BranchReportPeriod` converts branch-local calendar boundaries into UTC comparisons; it does not change timestamp storage, add date columns or migrate historical values. Report windows are half-open (`>=` local start converted to UTC, `<` the next local midnight converted to UTC), including 23/25-hour DST days. `today`, `yesterday`, `last7` and custom ranges of at most 31 inclusive calendar days resolve separately for every selected authorized branch.

@@ -11,8 +11,10 @@ use App\Models\Branch;
 use App\Models\Organization;
 use App\Models\OrganizationUser;
 use App\Models\Permission;
+use App\Models\PermissionUserOverride;
 use App\Models\User;
 use App\Support\LocalizedDateFormatter;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Number;
@@ -134,29 +136,23 @@ class BuildAuditLogIndexAction
             return collect();
         }
 
-        $override = $user->permissionOverrides()
-            ->where('permissions.id', $permission->id)
-            ->first();
-
-        if ($override instanceof Permission && ! (bool) $override->pivot->enabled) {
-            return collect();
-        }
-
-        return OrganizationUser::query()
+        $rows = PermissionUserOverride::query()->select(['id', 'permission_id', 'organization_id', 'scope_key', 'enabled'])
+            ->where('user_id', $user->id)->where('permission_id', $permission->id)->get();
+        $singleOrganization = $rows->contains(fn (PermissionUserOverride $row): bool => $row->organization_id === null && $row->enabled)
+            && $user->organizationMemberships()->count() === 1;
+        $memberships = OrganizationUser::query()
             ->select(['id', 'organization_id', 'role_id'])
-            ->where('user_id', $user->id)
-            ->where('status', OrganizationUserStatus::Active->value)
-            ->when(! $override instanceof Permission, function ($query) use ($permission): void {
-                $query->whereHas('role.permissions', function ($permissionQuery) use ($permission): void {
-                    $permissionQuery
-                        ->where('permissions.id', $permission->id)
-                        ->where('permission_role.enabled', true);
-                });
-            })
-            ->orderBy('organization_id')
-            ->pluck('organization_id')
-            ->unique()
-            ->values();
+            ->where('user_id', $user->id)->where('status', OrganizationUserStatus::Active->value)
+            ->whereHas('organization', fn ($query) => $query->whereDoesntHave('subscription')->orWhereHas('subscription', fn ($subscription) => $subscription->where('status', 'active')))
+            ->with(['role.permissions' => fn ($query) => $query->where('permissions.id', $permission->id)])
+            ->orderBy('organization_id')->get();
+
+        return $memberships->filter(function (OrganizationUser $membership) use ($rows, $singleOrganization, $permission): bool {
+            $overrides = PermissionUserOverride::effectiveForOrganization($rows, $membership->organization_id, $singleOrganization);
+
+            return $overrides->has($permission->id) ? (bool) $overrides[$permission->id]
+                : (bool) $membership->role?->permissions->contains(fn (Permission $candidate): bool => $candidate->getRelation('pivot') instanceof Pivot && (bool) $candidate->getRelation('pivot')->getAttribute('enabled'));
+        })->pluck('organization_id')->unique()->values();
     }
 
     /**

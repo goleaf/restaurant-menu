@@ -24,7 +24,7 @@
                                                         <flux:select.option value="">{{ __('ui.livewire.organizations.brands.branches.menu.index.default_kitchen') }}</flux:select.option>
                                                         @foreach ($activeKitchenDepartmentOptions as $option)
                                                             <flux:select.option wire:key="item-department-edit-{{ $item['id'] }}-{{ $option['value'] }}" value="{{ $option['value'] }}">
-                                                                {{ $option['label'] }}{{ $option['is_active'] ? '' : ' - '.__('staff.statuses.suspended') }}
+                                                                {{ $option['label'] }}{{ $option['is_active'] ? '' : ' - '.__('ui.status.inactive') }}
                                                             </flux:select.option>
                                                         @endforeach
                                                     </flux:select>

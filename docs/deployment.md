@@ -4,6 +4,11 @@
 
 # Deployment
 
+## Team access schema — 2026-09-15
+
+Apply the two additive 2026_09_15_132159 and 2026_09_15_132200 migrations through the normal one-time deployment procedure before serving the new staff workspace. Existing data is retained. Once scoped permission overrides exist, rollback deliberately refuses to merge them into ambiguous global grants; keep the forward schema and restore compatible application code or use a reviewed data migration. This stage adds no runtime worker, scheduler, mail provider or external service requirement. Development verification uses disposable SQLite/storage; the existing working database is not migrated by the test run.
+
+
 
 ## Branch control update — 2026-09-15
 

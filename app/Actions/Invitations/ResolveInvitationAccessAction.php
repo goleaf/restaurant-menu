@@ -8,11 +8,14 @@ use App\Enums\InvitationAccessState;
 use App\Enums\InvitationStatus;
 use App\Models\Invitation;
 use App\Models\User;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Gate;
 
 final class ResolveInvitationAccessAction
 {
+    public function __construct(private readonly EnsureInvitationScopeAction $ensureScope) {}
+
     public function byToken(string $token, ?User $recipient): ResolvedInvitationAccess
     {
         $token = trim($token);
@@ -27,9 +30,15 @@ final class ResolveInvitationAccessAction
         );
     }
 
-    public function byId(int $invitationId, ?User $recipient): ResolvedInvitationAccess
+    public function byId(int $invitationId, ?User $recipient, ?string $credentialDigest = null): ResolvedInvitationAccess
     {
-        return $this->resolveAccess($this->query()->whereKey($invitationId)->first(), $recipient);
+        $invitation = $this->query()->whereKey($invitationId)->first();
+
+        if (! $invitation instanceof Invitation || ! $invitation->matchesCredential($credentialDigest)) {
+            return new ResolvedInvitationAccess(InvitationAccessState::Unavailable);
+        }
+
+        return $this->resolveAccess($invitation, $recipient);
     }
 
     /** @return Builder<Invitation> */
@@ -67,7 +76,7 @@ final class ResolveInvitationAccessAction
                 && $invitation->accepted_at !== null => InvitationAccessState::Accepted,
             $invitation->status === InvitationStatus::Expired => InvitationAccessState::Expired,
             $invitation->status === InvitationStatus::Pending
-                && $invitation->expires_at->isPast() => InvitationAccessState::Expired,
+                && ! $invitation->expires_at->isFuture() => InvitationAccessState::Expired,
             $invitation->canBeAccepted() => InvitationAccessState::Pending,
             default => InvitationAccessState::Unavailable,
         };
@@ -75,7 +84,15 @@ final class ResolveInvitationAccessAction
         if ($state === InvitationAccessState::Pending
             && $recipient instanceof User
             && Gate::forUser($recipient)->denies('view', $invitation)) {
-            return new ResolvedInvitationAccess(InvitationAccessState::Unavailable, $invitation);
+            return new ResolvedInvitationAccess(InvitationAccessState::EmailMismatch, $invitation);
+        }
+
+        if ($state === InvitationAccessState::Pending) {
+            try {
+                $this->ensureScope->handle($invitation);
+            } catch (DomainException) {
+                return new ResolvedInvitationAccess(InvitationAccessState::Unavailable);
+            }
         }
 
         return new ResolvedInvitationAccess($state, $invitation);

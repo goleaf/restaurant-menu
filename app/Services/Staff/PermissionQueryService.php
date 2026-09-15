@@ -46,15 +46,23 @@ final class PermissionQueryService
     }
 
     /** @return Collection<int, bool> */
-    public function userOverrides(User $user): Collection
+    public function userOverrides(User $user, int $organizationId): Collection
     {
         return PermissionUserOverride::query()
             ->select(['permission_id', 'enabled'])
             ->where('user_id', $user->id)
+            ->where('organization_id', $organizationId)
+            ->where('scope_key', 'organization:'.$organizationId)
             ->get()
             ->mapWithKeys(fn (PermissionUserOverride $override): array => [
                 $override->permission_id => $override->enabled,
             ]);
+    }
+
+    public function hasLegacyOverrides(User $user): bool
+    {
+        return PermissionUserOverride::query()->where('user_id', $user->id)
+            ->whereNull('organization_id')->where('scope_key', 'legacy')->exists();
     }
 
     /** @return EloquentCollection<int, Permission> */

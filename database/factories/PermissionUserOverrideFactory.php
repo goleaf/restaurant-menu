@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Models\Organization;
 use App\Models\Permission;
 use App\Models\PermissionUserOverride;
 use App\Models\User;
@@ -53,6 +54,14 @@ class PermissionUserOverrideFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'permission_id' => $permission->id,
+        ]);
+    }
+
+    public function forOrganization(Organization $organization): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'organization_id' => $organization->id,
+            'scope_key' => 'organization:'.$organization->id,
         ]);
     }
 }

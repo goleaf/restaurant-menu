@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
+use App\Actions\AuditLogs\RecordAuditLogAction;
+use App\Enums\AuditLogAction;
 use App\Enums\OrganizationUserStatus;
 use App\Models\Branch;
 use App\Models\BranchUser;
@@ -12,43 +14,60 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use RuntimeException;
 
 class AddBranchStaffMemberAction
 {
-    public function __construct(
-        private readonly AddOrganizationStaffMemberAction $addOrganizationStaffMember,
-    ) {}
+    public function __construct(private readonly RecordAuditLogAction $recordAuditLog) {}
 
-    /**
-     * @param  array{name: string, email: string}  $data
-     */
+    /** @param array{name?: string, email: string} $data */
     public function handle(Organization $organization, Branch $branch, Role $role, User $assignedBy, array $data): User
     {
         if ($branch->organization_id !== $organization->id) {
             throw new InvalidArgumentException('Branch must belong to the selected organization.');
         }
 
-        Gate::forUser($assignedBy)->authorize('manageStaff', $branch);
-        Gate::forUser($assignedBy)->authorize('assign', [$role, $organization]);
-
         return DB::transaction(function () use ($organization, $branch, $role, $assignedBy, $data): User {
-            $user = $this->addOrganizationStaffMember->handle($organization, $role, $assignedBy, $data, replaceExistingMembershipRole: false);
+            $branch = Branch::query()->whereKey($branch->id)->where('organization_id', $organization->id)->firstOrFail();
+            $assignedBy = User::query()->with('roles')->whereKey($assignedBy->id)->firstOrFail();
+            Gate::forUser($assignedBy)->authorize('manageStaff', $branch);
+            Gate::forUser($assignedBy)->authorize('assign', [$role, $organization]);
+            $email = mb_strtolower(trim($data['email']));
+            $user = User::query()->where('email', $email)
+                ->whereHas('organizationMemberships', fn ($query) => $query->where('organization_id', $organization->id)
+                    ->where('status', OrganizationUserStatus::Active->value))->first();
+            if (! $user instanceof User || $user->isSuperadmin()) {
+                throw ValidationException::withMessages(['email' => __('staff.errors.invitation_required')]);
+            }
+            $existing = BranchUser::query()->where('organization_id', $organization->id)
+                ->where('branch_id', $branch->id)->where('user_id', $user->id)->first();
+            if ($existing instanceof BranchUser) {
+                if ($existing->status !== OrganizationUserStatus::Active) {
+                    throw ValidationException::withMessages(['email' => __('staff.errors.membership_unavailable')]);
+                }
 
-            $branchUser = BranchUser::query()
-                ->where('branch_id', $branch->id)
-                ->where('user_id', $user->id)
-                ->first() ?? new BranchUser;
-
-            $branchUser->forceFill([
-                'organization_id' => $organization->id,
-                'branch_id' => $branch->id,
-                'user_id' => $user->id,
-                'role_id' => $role->id,
-                'status' => OrganizationUserStatus::Active,
-                'assigned_at' => now(),
+                return $user;
+            }
+            $membership = new BranchUser;
+            $membership->forceFill([
+                'organization_id' => $organization->id, 'branch_id' => $branch->id,
+                'user_id' => $user->id, 'role_id' => $role->id,
+                'status' => OrganizationUserStatus::Active, 'assigned_at' => now(),
                 'assigned_by_user_id' => $assignedBy->id,
-            ])->save();
+            ]);
+            if (! $membership->save()) {
+                throw new RuntimeException('Branch membership could not be saved.');
+            }
+
+            $this->recordAuditLog->handle(
+                action: AuditLogAction::StaffRoleChanged,
+                entityType: 'branch_user', entityId: $membership->id, actorUser: $assignedBy,
+                organizationId: $organization->id, branchId: $branch->id,
+                oldValues: ['staff_user_id' => $user->id, 'role_id' => null],
+                newValues: ['staff_user_id' => $user->id, 'role_id' => $role->id, 'role' => $role->code->value, 'assignment_created' => true],
+            );
 
             return $user;
         });

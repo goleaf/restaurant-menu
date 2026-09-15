@@ -10,6 +10,17 @@ enum InvitationStatus: string
     case Cancelled = 'cancelled';
     case Rejected = 'rejected';
 
+    public function localizedLabel(): string
+    {
+        return __(match ($this) {
+            self::Pending => 'staff.invitation_statuses.pending',
+            self::Accepted => 'staff.invitation_statuses.accepted',
+            self::Expired => 'staff.invitation_statuses.expired',
+            self::Cancelled => 'staff.invitation_statuses.cancelled',
+            self::Rejected => 'staff.invitation_statuses.rejected',
+        });
+    }
+
     /**
      * @return list<string>
      */

@@ -4,13 +4,20 @@
 
 # Authorization model
 
+## Team access contract — 2026-09-15
+
+Permission decisions use the same organization-scoped resolver in User checks, permission explanations, waiter scope and audit scope. New overrides carry organization_id and a unique user/permission/scope_key; organization administration never writes global account permissions. Explicit scoped allow/deny takes precedence. Preserved legacy deny remains conservative; legacy allow applies only when the user has exactly one organization membership. Ambiguous legacy grants remain stored, unapplied and marked for review. An inactive membership and insufficient scope still deny access. Branch roles retain their existing domain-specific contract; the permissions page explains organization capability defaults and does not promise access to every order or area.
+
+Role/status Actions reload scoped membership, require current authorization and a reason, compare access_version, and commit audit with the change. Hierarchy, self-change and last eligible manager checks are enforced in the Action. Suspension cancels pending invitations only in its scope and does not close tables, delete history or disable independent memberships. Restoration is explicit and preserves the current role. Existing accepted active organization members may be assigned to a branch without changing identity, password or organization role; suspended membership is not silently reactivated.
+
+
 ## Bounded single-branch decisions — 2026-09-14
 
 User::canAccessBranch evaluates one branch with Eloquent existence subqueries, without materializing all branch assignments. Active organization membership and subscription remain prerequisites outside the explicit superadmin path. The presence of any assignment disables organization-wide fallback; only the matching active assignment grants assigned access. The list-returning helper is unchanged. Existing model-versus-ID and withTrashed behavior remains covered, and ordinary BranchPolicy view continues to deny archived resources. No authorization result is memoized.
 
 ## Roles
 
-The closed role set is: superadmin, owner, director, restaurant administrator, shift manager, waiter, head chef, cook, bartender, cashier, accountant and marketer. The product-level “chef” role is the canonical `head_chef` system role; `cook` remains a separate subordinate kitchen role. Roles supply default permission bundles; `PermissionUserOverride` can allow or deny a specific permission for a user. A deny override wins for that user. Organization membership must be active, and branch assignment must include the target branch where the role is branch-scoped.
+The closed role set is: superadmin, owner, director, restaurant administrator, shift manager, waiter, head chef, cook, bartender, cashier, accountant and marketer. The product-level “chef” role is the canonical `head_chef` system role; `cook` remains a separate subordinate kitchen role. Roles supply default permission bundles; `PermissionUserOverride` can allow or deny a specific permission for a user. Within the current organization, explicit scoped decisions take precedence; legacy decisions follow the compatibility policy above. Organization membership must be active, and branch assignment must include the target branch where the role is branch-scoped.
 
 Staff administration follows the seeded `sort_order` hierarchy. Superadmin may manage any non-superadmin staff role. A tenant actor must hold the relevant `manage_staff` or `manage_permissions` capability and may invite, add, reassign, deactivate, revoke or reissue only a strictly lower role. Self role changes, self permission escalation, superadmin invitations and equal-or-higher targets fail closed in both Livewire and the invoked Action/Policy boundary.
 

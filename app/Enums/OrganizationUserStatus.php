@@ -9,6 +9,16 @@ enum OrganizationUserStatus: string
     case Suspended = 'suspended';
     case Removed = 'removed';
 
+    public function localizedLabel(): string
+    {
+        return __(match ($this) {
+            self::Active => 'staff.statuses.active',
+            self::Invited => 'staff.statuses.invited',
+            self::Suspended => 'staff.statuses.suspended',
+            self::Removed => 'staff.statuses.removed',
+        });
+    }
+
     /**
      * @return list<string>
      */

@@ -23,6 +23,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -96,7 +97,7 @@ test('waiter area action rejects a membership with an inconsistent organization'
         $membership,
         $owner,
         [$area->id],
-    ))->toThrow(InvalidArgumentException::class);
+    ))->toThrow(ModelNotFoundException::class);
 
     expect(AreaNodeWaiter::query()->where('area_node_id', $area->id)->exists())->toBeFalse();
 });

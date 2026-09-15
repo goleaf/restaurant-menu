@@ -10,6 +10,7 @@ enum InvitationAccessState
     case Expired;
     case Accepted;
     case Unavailable;
+    case EmailMismatch;
 
     public function sessionValue(): string
     {
@@ -26,6 +27,7 @@ enum InvitationAccessState
             'pending' => self::Pending,
             'expired' => self::Expired,
             'accepted' => self::Accepted,
+            'email_mismatch' => self::EmailMismatch,
             default => self::Unavailable,
         };
     }

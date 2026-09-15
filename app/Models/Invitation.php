@@ -119,11 +119,47 @@ class Invitation extends Model
 
     public function effectiveStatus(): InvitationStatus
     {
-        if ($this->status === InvitationStatus::Pending && $this->expires_at->isPast()) {
+        if ($this->status === InvitationStatus::Pending && ! $this->expires_at->isFuture()) {
             return InvitationStatus::Expired;
         }
 
         return $this->status;
+    }
+
+    public function credentialVersion(): string
+    {
+        return hash('sha256', implode('|', [
+            (string) $this->id,
+            (string) $this->organization_id,
+            (string) $this->brand_id,
+            (string) $this->branch_id,
+            (string) $this->role_id,
+            (string) $this->email,
+            $this->expires_at->toIso8601String(),
+            (string) $this->invite_token_hash,
+            (string) $this->invite_code_hash,
+            (string) $this->getRawOriginal('updated_at'),
+            $this->status->value,
+        ]));
+    }
+
+    public function matchesCredential(mixed $digest): bool
+    {
+        return is_string($digest) && strlen($digest) === 64
+            && is_string($this->invite_token_hash)
+            && hash_equals($this->invite_token_hash, $digest);
+    }
+
+    /** @param Builder<Invitation> $query */
+    public function scopeWithEffectiveStatus(Builder $query, InvitationStatus $status): Builder
+    {
+        return match ($status) {
+            InvitationStatus::Pending => $query->acceptable(),
+            InvitationStatus::Expired => $query->where(fn (Builder $statuses) => $statuses
+                ->where('status', InvitationStatus::Expired->value)
+                ->orWhere(fn (Builder $pending) => $pending->where('status', InvitationStatus::Pending->value)->where('expires_at', '<=', now()))),
+            default => $query->where('status', $status->value),
+        };
     }
 
     /**

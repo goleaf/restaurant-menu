@@ -160,12 +160,26 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
     /**
      * @return BelongsToMany<Permission, $this, PermissionUserOverride, 'pivot'>
      */
-    public function permissionOverrides(): BelongsToMany
+    public function permissionOverrides(?int $organizationId = null): BelongsToMany
     {
-        return $this->belongsToMany(Permission::class, 'permission_user_overrides')
+        $relation = $this->belongsToMany(Permission::class, 'permission_user_overrides')
             ->using(PermissionUserOverride::class)
-            ->withPivot('enabled')
+            ->wherePivot('scope_key', $organizationId === null ? 'legacy' : 'organization:'.$organizationId)
+            ->withPivotValue('scope_key', $organizationId === null ? 'legacy' : 'organization:'.$organizationId)
+            ->withPivot(['enabled', 'organization_id', 'scope_key'])
             ->withTimestamps();
+
+        if ($organizationId !== null) {
+            $relation->withPivotValue('organization_id', $organizationId);
+        }
+
+        return $relation;
+    }
+
+    /** @return HasMany<PermissionUserOverride, $this> */
+    public function permissionOverrideRecords(): HasMany
+    {
+        return $this->hasMany(PermissionUserOverride::class);
     }
 
     public function hasPermission(SystemPermission|string $permission, Organization|int|null $organization = null): bool
@@ -373,22 +387,64 @@ class User extends Authenticatable implements HasLocalePreference, PasskeyUser
         if (! $this->canAccessOrganization($organization)) {
             return false;
         }
-
-        $override = $this->permissionOverrides()
-            ->where('permissions.code', $permissionCode)
-            ->first();
-
-        if ($override instanceof Permission) {
-            return (bool) $override->pivot->enabled;
+        $organizationId = $organization instanceof Organization ? $organization->id : $organization;
+        $rows = PermissionUserOverride::query()->select(['id', 'permission_id', 'organization_id', 'scope_key', 'enabled'])
+            ->where('user_id', $this->id)->whereHas('permission', fn ($query) => $query->where('code', $permissionCode))
+            ->where(fn (Builder $query) => $query->whereNull('organization_id')->orWhere('organization_id', $organizationId))->get();
+        if ($rows->isNotEmpty()) {
+            $singleOrganization = $rows->contains(fn (PermissionUserOverride $row): bool => $row->organization_id === null && $row->enabled)
+                && $this->organizationMemberships()->count() === 1;
+            $overrides = PermissionUserOverride::effectiveForOrganization($rows, $organizationId, $singleOrganization);
+            if ($overrides->isNotEmpty()) {
+                return (bool) $overrides->first();
+            }
         }
 
-        return $this->activeOrganizationMembershipQuery($organization)
-            ->whereHas('role.permissions', function ($query) use ($permissionCode): void {
-                $query
-                    ->where('permissions.code', $permissionCode)
-                    ->where('permission_role.enabled', true);
-            })
-            ->exists();
+        return $this->activeOrganizationMembershipQuery($organizationId)
+            ->whereHas('role.permissions', fn ($query) => $query->where('permissions.code', $permissionCode)->where('permission_role.enabled', true))->exists();
+    }
+
+    /**
+     * The same decisions power server authorization and the context access explanation.
+     *
+     * @param  list<string>  $codes
+     * @return array<string, array{allowed: bool, source: 'superadmin'|'inactive_membership'|'scope_restricted'|'role'|'explicit_allow'|'explicit_deny'|'legacy'}>
+     */
+    public function organizationPermissionDecisions(Organization|int $organization, array $codes): array
+    {
+        $organizationId = $organization instanceof Organization ? $organization->id : $organization;
+        if ($this->isSuperadmin()) {
+            return array_fill_keys($codes, ['allowed' => true, 'source' => 'superadmin']);
+        }
+        $membership = OrganizationUser::query()->select(['id', 'role_id', 'status'])
+            ->where('organization_id', $organizationId)->where('user_id', $this->id)->first();
+        if (! $membership instanceof OrganizationUser || $membership->status !== OrganizationUserStatus::Active) {
+            return array_fill_keys($codes, ['allowed' => false, 'source' => 'inactive_membership']);
+        }
+        if (! $this->canAccessOrganization($organizationId)) {
+            return array_fill_keys($codes, ['allowed' => false, 'source' => 'scope_restricted']);
+        }
+        $permissions = Permission::query()->select(['id', 'code'])
+            ->whereIn('code', $codes)->get();
+        $defaults = PermissionRole::query()->select(['permission_id', 'enabled'])
+            ->where('role_id', $membership->role_id)->whereIn('permission_id', $permissions->modelKeys())
+            ->pluck('enabled', 'permission_id');
+        $rows = PermissionUserOverride::query()->select(['id', 'permission_id', 'organization_id', 'scope_key', 'enabled'])
+            ->where('user_id', $this->id)->whereIn('permission_id', $permissions->modelKeys())
+            ->where(fn (Builder $query) => $query->whereNull('organization_id')->orWhere('organization_id', $organizationId))->get();
+        $singleOrganization = $this->organizationMemberships()->count() === 1;
+        $overrides = PermissionUserOverride::effectiveForOrganization($rows, $organizationId, $singleOrganization);
+        $scoped = $rows->where('organization_id', $organizationId)->keyBy('permission_id');
+        $result = array_fill_keys($codes, ['allowed' => false, 'source' => 'role']);
+        foreach ($permissions as $permission) {
+            $result[$permission->code] = [
+                'allowed' => $overrides->has($permission->id) ? (bool) $overrides[$permission->id] : (bool) $defaults->get($permission->id, false),
+                'source' => $scoped->has($permission->id) ? ($overrides->get($permission->id) ? 'explicit_allow' : 'explicit_deny')
+                    : ($overrides->has($permission->id) ? 'legacy' : 'role'),
+            ];
+        }
+
+        return $result;
     }
 
     private function activeOrganizationMembershipQuery(Organization|int $organization): HasMany

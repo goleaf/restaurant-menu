@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\ShowDemoLoginController;
 use App\Http\Controllers\Invitations\AcceptInvitationController;
 use App\Http\Controllers\Invitations\RegisterInvitationController;
 use App\Http\Controllers\Invitations\ShowInvitationController;
+use App\Http\Controllers\Invitations\SwitchInvitationAccountController;
 use App\Http\Controllers\Organizations\DownloadBranchQrPdfController;
 use App\Http\Controllers\Restaurant\DownloadBranchCsvExportController;
 use App\Http\Controllers\Restaurant\DownloadBranchPdfReportController;
@@ -87,6 +88,9 @@ Route::middleware(['throttle:staff-invitations'])
         Route::post('accept', AcceptInvitationController::class)
             ->middleware('auth')
             ->name('accept');
+        Route::post('switch-account', SwitchInvitationAccountController::class)
+            ->middleware('auth')
+            ->name('switch-account');
         Route::get('{token}', ShowInvitationController::class)
             ->where('token', '[A-Za-z0-9]{1,128}')
             ->name('show');

@@ -4,6 +4,20 @@
 
 # Restaurant Menu completion progress
 
+## Team center integration — 2026-09-15
+
+Final independent source/security/documentation review is clear after correcting the area-audit wording. Full four-process backend passes 2,649 tests / 57,278 assertions in 136.94 s; Larastan has no errors. Full four-process coverage passes the same 2,649 / 57,278 in 411.64 s at 93.6%, above the unchanged 90% minimum. Pint and production build pass; the complete browser inventory remains in progress.
+
+Invitation lifecycle: 42 focused tests / 373 assertions pass, including five independent-process SQLite race datasets. Access integration: 72 focused tests / 872 assertions plus 26 compatibility tests / 279 assertions pass; the added real area race brings its dedicated concurrency suite to 4 tests / 29 assertions. Independent reviewers reproduced and corrected stale branch role changes, stale recipient email and duplicate reissue scope. Workspace review additionally found draft refresh loss, coerced fractional IDs, platform administrator target handling and missing per-area coverage; all four were corrected and independently retested. The final single-permission resolver uses EXISTS without weakening the established query budgets; independent parity checks preserve scoped and legacy decisions.
+
+The new recipient browser case passes 43 assertions and the administrator/recipient case passes 111 assertions in separate identities. They verify validation retention, rotated forms, account mismatch/switching, invite-only membership, area saving and branch suspension/restoration. Browser test identity reset now uses an owned temporary session directory even for direct runs, preventing Pest's reused Laravel container from leaking cached authentication across contexts. Cross-page Back/Forward, repeated dirty-form cancellation and Escape focus restoration pass after correcting a reproduced WebKit history-cursor issue. These are focused results, not yet a complete current browser suite.
+
+Composer validation/platform requirements and dependency audit pass; npm audit reports zero vulnerabilities. Shared schema/clipboard/traceability tests pass 6 / 1083 after fixing SQLite index removal during guarded rollback. Isolated migration/rollback/reapply, two default seeds and all config/route/view/event cache build/clear commands exit 0. Working database and real invitation delivery remain untouched.
+
+## 2026-09-15 — Team control center: implementation
+
+Started from clean main `b68f31b`. The branch control delivery exists in current files and local commits. Existing manual staff creation can provision an account and active membership without invitation acceptance; individual permission overrides currently use a global user/permission key. These are reproduced code paths to replace in this bounded stage. Existing invitation digests/Actions and waiter assignments remain the implementation basis. Real agents own invitation, access and workspace domains; root integrates shared schema, presentation, translations and complete verification. No current-stage full gate is claimed yet.
+
 ## 2026-09-15 — Branch control center: delivered
 
 Entry was clean local main `a88de9e`. Implemented explicit branch/all context, atomic URL history, branch-local report periods, independent current queues, actionable readiness and existing explicit temporary closure. Report amounts and actual manual payments remain separate per currency. Existing waiter filters handle pending/ready/calls/bills and authorized off-page table links. Original menu/media/language/CSV workflows are retained.

@@ -13,6 +13,7 @@ use App\Models\OrganizationUser;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Validation\RestaurantValidationRules;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -22,6 +23,7 @@ final class UpdateOrganizationStaffRoleAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly EnsureOrganizationManagementRemainsAction $ensureManagerRemains,
     ) {}
 
     public function handle(
@@ -30,18 +32,20 @@ final class UpdateOrganizationStaffRoleAction
         OrganizationUser $membership,
         Role $role,
         string $reason,
+        ?int $expectedVersion = null,
     ): OrganizationUser {
-        Gate::forUser($actor)->authorize('manageStaff', $organization);
-
         $reason = $this->validatedReason($reason);
+        $expectedVersion ??= (int) $membership->getAttribute('access_version');
 
-        return DB::transaction(function () use ($actor, $organization, $membership, $role, $reason): OrganizationUser {
+        return DB::transaction(function () use ($actor, $organization, $membership, $role, $reason, $expectedVersion): OrganizationUser {
+            $actor = User::query()->with('roles')->whereKey($actor->id)->firstOrFail();
             $scopedMembership = OrganizationUser::query()
-                ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at'])
+                ->select(['id', 'organization_id', 'user_id', 'role_id', 'status', 'joined_at', 'invited_by_user_id', 'created_at', 'updated_at', 'access_version'])
                 ->where('organization_id', $organization->id)
                 ->whereKey($membership->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+            Gate::forUser($actor)->authorize('manageStaff', $organization);
             $assignableRole = $this->findAssignableRole($role);
             Gate::forUser($actor)->authorize('assign', [$assignableRole, $organization]);
 
@@ -56,14 +60,31 @@ final class UpdateOrganizationStaffRoleAction
                 ->whereKey($scopedMembership->role_id)
                 ->firstOrFail();
 
-            $this->ensureActiveOwnerRemains($organization, $scopedMembership, $currentRole, $assignableRole);
-
             if ((int) $scopedMembership->role_id === (int) $assignableRole->id) {
                 return $scopedMembership;
             }
 
+            Gate::forUser($actor)->authorize('assign', [$currentRole, $organization]);
+            if ($scopedMembership->user_id !== $membership->user_id
+                || User::query()->whereKey($scopedMembership->user_id)->whereHas('roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value))->exists()) {
+                throw new AuthorizationException;
+            }
+            if (OrganizationUser::query()->whereKey($scopedMembership->id)->where('access_version', $expectedVersion)
+                ->update(['access_version' => $expectedVersion + 1]) !== 1) {
+                throw ValidationException::withMessages(['editingRoleId' => __('staff.errors.stale_membership')]);
+            }
+
+            $this->ensureActiveOwnerRemains($organization, $scopedMembership, $currentRole, $assignableRole);
+
             $previousRoleId = (int) $scopedMembership->role_id;
-            $scopedMembership->forceFill(['role_id' => $assignableRole->id])->saveOrFail();
+            $scopedMembership->forceFill(['role_id' => $assignableRole->id, 'access_version' => $expectedVersion + 1]);
+            if (! $scopedMembership->save()) {
+                throw new \RuntimeException('Staff role change was rejected.');
+            }
+
+            if ($scopedMembership->status === OrganizationUserStatus::Active) {
+                $this->ensureManagerRemains->handle($organization);
+            }
 
             $this->recordAuditLog->handle(
                 action: AuditLogAction::StaffRoleChanged,
@@ -84,7 +105,7 @@ final class UpdateOrganizationStaffRoleAction
                 ],
             );
 
-            return $scopedMembership->refresh();
+            return $scopedMembership;
         });
     }
 

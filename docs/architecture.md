@@ -4,6 +4,13 @@
 
 # Architecture
 
+## Team workspace refinement — 2026-09-15
+
+Organization Staff Index owns the shared class-based workspace contract; the branch component supplies the additional scoped route context. StaffQueryService prepares only the selected paginated list and bounded membership summaries. Invitation, member and area forms load one requested editor. Common Blade renders prepared rows; Alpine owns clipboard feedback, draft navigation confirmation and focus only. The existing invitation and membership Actions remain the mutation boundaries.
+
+Waiter area selection preserves exact-area semantics: children are selected separately; empty selection means all areas in this branch for the existing My areas filter. One deferred draft is previewed, then saved atomically against an assignment fingerprint. Conflict retains the local draft; explicit refresh/review is required before applying again. Coverage describes active access assignments, not presence or shift scheduling.
+
+
 ## Branch control and reporting boundaries — 2026-09-15
 
 `BuildRestaurantDashboardAction` resolves current capabilities and active branch visibility before preparing either report or operational data. A selected branch narrows every access set; an invalid or unauthorized identifier fails validation. An all-branches report queries only branches with current `ViewReports` permission. Operational cards and readiness are rebuilt from current state independently of the selected historical report period; Blade receives prepared labels, amounts, links and availability flags. The prepared dashboard payload stays in server-prepared view data and is not serialized as a public Livewire property.

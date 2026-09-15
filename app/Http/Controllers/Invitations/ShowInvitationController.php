@@ -27,13 +27,14 @@ class ShowInvitationController extends Controller
         ?string $token = null,
     ): RedirectResponse|Response {
         if ($token !== null) {
-            $request->session()->forget(['staff_invitation_id', 'staff_invitation_state']);
+            $request->session()->forget(['staff_invitation_id', 'staff_invitation_state', 'staff_invitation_credential']);
             $access = $resolveInvitation->byToken($token, $this->recipient($request));
 
             $request->session()->put('staff_invitation_state', $access->state->sessionValue());
 
             if ($access->invitation instanceof Invitation) {
                 $request->session()->put('staff_invitation_id', $access->invitation->id);
+                $request->session()->put('staff_invitation_credential', hash('sha256', $token));
             }
 
             if ($access->state === InvitationAccessState::Pending && ! $this->recipient($request) instanceof User) {
@@ -61,6 +62,7 @@ class ShowInvitationController extends Controller
         $invitation->loadMissing([
             'organization:id,name',
             'branch:id,name',
+            'brand:id,name',
             'role:id,code,name',
         ]);
         $role = $invitation->role?->code;
@@ -69,10 +71,14 @@ class ShowInvitationController extends Controller
             'title' => __('invitations.title'),
             'organizationName' => (string) $invitation->organization?->name,
             'branchName' => $invitation->branch?->name,
+            'brandName' => $invitation->brand?->name,
             'roleName' => $role?->localizedLabel() ?? (string) $invitation->role?->name,
             'expiresAt' => LocalizedDateFormatter::dateTime($invitation->expires_at),
             'isAuthenticated' => $recipient instanceof User,
+            'hasExistingAccount' => $recipient === null && User::query()->where('email', $invitation->email)->exists(),
+            'accessExplanation' => $invitation->branch_id === null ? __('invitations.access.organization') : __('invitations.access.branch'),
             'invitationEmail' => $invitation->email,
+            'invitationVersion' => $invitation->credentialVersion(),
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
             'acceptUrl' => route('invitations.accept'),
             'registerUrl' => route('invitations.register'),
@@ -85,9 +91,10 @@ class ShowInvitationController extends Controller
         ResolveInvitationAccessAction $resolveInvitation,
     ): ResolvedInvitationAccess {
         $invitationId = $request->session()->get('staff_invitation_id');
+        $credential = $request->session()->get('staff_invitation_credential');
 
         if (is_int($invitationId)) {
-            return $resolveInvitation->byId($invitationId, $this->recipient($request));
+            return $resolveInvitation->byId($invitationId, $this->recipient($request), is_string($credential) ? $credential : null);
         }
 
         return new ResolvedInvitationAccess(
@@ -110,6 +117,7 @@ class ShowInvitationController extends Controller
             'actionLabel' => $recipient instanceof User
                 ? __('navigation.dashboard')
                 : __('ui.auth.login.log_in'),
+            'switchAccountUrl' => $state === InvitationAccessState::EmailMismatch ? route('invitations.switch-account') : null,
         ], $state === InvitationAccessState::Accepted ? 200 : 410)
             ->withHeaders($this->securityHeaders());
     }

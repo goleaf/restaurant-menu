@@ -13,6 +13,7 @@ use App\Models\Invitation;
 use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -24,11 +25,18 @@ final class ReissueInvitationAction
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
-    public function handle(User $actor, Organization $organization, Invitation $invitation): CreatedInvitation
+    public function handle(User $actor, Organization $organization, Invitation $invitation, ?string $expectedVersion = null): CreatedInvitation
     {
         Gate::forUser($actor)->authorize('manageStaff', $organization);
 
-        return DB::transaction(function () use ($actor, $organization, $invitation): CreatedInvitation {
+        $expectedVersion ??= $invitation->credentialVersion();
+
+        return DB::transaction(function () use ($actor, $organization, $invitation, $expectedVersion): CreatedInvitation {
+            $actor = $actor->fresh();
+            if (! $actor instanceof User) {
+                throw new DomainException('Invitation issuer is no longer available.');
+            }
+            Gate::forUser($actor)->authorize('manageStaff', $organization);
             $scopedInvitation = Invitation::query()
                 ->select([
                     'id',
@@ -53,10 +61,22 @@ final class ReissueInvitationAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if (! hash_equals($scopedInvitation->credentialVersion(), $expectedVersion)) {
+                throw ValidationException::withMessages(['invitation' => __('staff.errors.invitation_changed')]);
+            }
+
             if (! in_array($scopedInvitation->status, [InvitationStatus::Pending, InvitationStatus::Expired], true)) {
                 throw ValidationException::withMessages([
                     'invitation' => __('staff.errors.invitation_cannot_be_reissued'),
                 ]);
+            }
+
+            if (Invitation::query()->acceptable()->whereKeyNot($scopedInvitation->id)
+                ->where('organization_id', $scopedInvitation->organization_id)
+                ->where('brand_id', $scopedInvitation->brand_id)
+                ->where('branch_id', $scopedInvitation->branch_id)
+                ->where('email', $scopedInvitation->email)->exists()) {
+                throw ValidationException::withMessages(['invitation' => __('staff.errors.invitation_already_pending')]);
             }
 
             $role = Role::query()
@@ -91,7 +111,11 @@ final class ReissueInvitationAction
                 'status' => InvitationStatus::Pending,
                 'accepted_by_user_id' => null,
                 'accepted_at' => null,
-            ])->saveOrFail();
+            ]);
+
+            if (! $scopedInvitation->saveOrFail()) {
+                throw new DomainException('Invitation could not be reissued.');
+            }
 
             $this->recordAuditLog->handle(
                 action: AuditLogAction::InvitationReissued,

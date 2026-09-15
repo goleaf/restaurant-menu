@@ -59,7 +59,7 @@
                                     @if ($department['is_active'])
                                         <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                                     @else
-                                        <flux:badge color="zinc">{{ __('staff.statuses.suspended') }}</flux:badge>
+                                        <flux:badge color="zinc">{{ __('ui.status.inactive') }}</flux:badge>
                                     @endif
                                     <flux:badge>{{ trans_choice('ui.organizations.brands.branches.menu.index.dish_dishes', $department['menu_items_count'], ['count' => $department['menu_items_count']]) }}</flux:badge>
                                 </div>

@@ -72,8 +72,8 @@ test('an authenticated matching recipient can accept a pending branch invitation
         ->assertDontSee($createdInvitation->token);
 
     $this->actingAs($recipient)
-        ->post(route('invitations.accept'))
-        ->assertRedirect(route('dashboard'))
+        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
+        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $branch->id]))
         ->assertSessionHas('status', __('invitations.messages.accepted'));
 
     $createdInvitation->invitation->refresh();
@@ -99,7 +99,7 @@ test('an authenticated matching recipient can accept a pending branch invitation
     ]);
 
     $this->actingAs($recipient)
-        ->post(route('invitations.accept'))
+        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
         ->assertGone();
 
     expect(OrganizationUser::query()
@@ -166,6 +166,7 @@ test('a new recipient can register and atomically accept a branch invitation', f
     $this->get(route('invitations.pending'))->assertOk();
 
     $this->post(route('invitations.register'), [
+        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
         'name' => 'New Waiter',
         'email' => ' NEW.WAITER@EXAMPLE.TEST ',
         'password' => 'StrongPassword2026!',
@@ -174,7 +175,7 @@ test('a new recipient can register and atomically accept a branch invitation', f
         ->assertSessionHasNoErrors()
         ->assertSessionMissing('staff_invitation_id')
         ->assertSessionMissing('url.intended')
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $branch->id]));
 
     $recipient = User::query()->where('email', 'new.waiter@example.test')->firstOrFail();
 
@@ -234,6 +235,7 @@ test('invitation registration rejects a different email without creating partial
     $this->get(route('invitations.pending'))->assertOk();
 
     $this->post(route('invitations.register'), [
+        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
         'name' => 'Wrong Recipient',
         'email' => 'other@example.test',
         'password' => 'StrongPassword2026!',
@@ -268,10 +270,10 @@ test('an existing recipient returns to a token free invitation page after login 
         ->assertSee(__('invitations.actions.accept'))
         ->assertDontSee($createdInvitation->token);
 
-    $this->post(route('invitations.accept'))
+    $this->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
         ->assertSessionMissing('staff_invitation_id')
         ->assertSessionMissing('url.intended')
-        ->assertRedirect(route('dashboard'));
+        ->assertRedirect(route('restaurant.dashboard'));
 
     expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Accepted)
         ->and($createdInvitation->invitation->accepted_by_user_id)->toBe($recipient->id);
@@ -279,6 +281,7 @@ test('an existing recipient returns to a token free invitation page after login 
 
 test('invitation registration requires a valid invitation in the current session', function (): void {
     $this->post(route('invitations.register'), [
+        'invitation_version' => isset($createdInvitation) ? $createdInvitation->invitation->credentialVersion() : str_repeat('0', 64),
         'name' => 'Uninvited User',
         'email' => 'uninvited@example.test',
         'password' => 'StrongPassword2026!',
@@ -300,13 +303,13 @@ test('a signed in user with a different email cannot inspect or accept an invita
     $this->actingAs($otherUser)
         ->get(route('invitations.pending'))
         ->assertGone()
-        ->assertSee(__('invitations.states.unavailable_title'))
+        ->assertSee(__('invitations.states.email_mismatch_title'))
         ->assertDontSee('recipient@example.test')
         ->assertDontSee($createdInvitation->invitation->organization->name)
         ->assertDontSee($createdInvitation->token);
 
     $this->actingAs($otherUser)
-        ->post(route('invitations.accept'))
+        ->post(route('invitations.accept'), ['invitation_version' => $createdInvitation->invitation->credentialVersion()])
         ->assertGone();
 
     expect($createdInvitation->invitation->refresh()->status)->toBe(InvitationStatus::Pending);
@@ -367,7 +370,7 @@ test('expired revoked malformed and replayed invitation credentials are rejected
             ->get(route('invitations.show', ['token' => $token]));
 
         $this->actingAs($recipient)
-            ->post(route('invitations.accept'))
+            ->post(route('invitations.accept'), ['invitation_version' => str_repeat('0', 64)])
             ->assertGone();
     }
 

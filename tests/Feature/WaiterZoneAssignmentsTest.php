@@ -35,7 +35,8 @@ test('branch staff page can assign waiter to branch zones', function () {
         'email' => 'zone-waiter@example.test',
     ]);
 
-    BranchUser::factory()->create([
+    OrganizationUser::factory()->forOrganization($organization)->forUser($waiter)->forRole($waiterRole)->active()->create();
+    $membership = BranchUser::factory()->create([
         'organization_id' => $organization->id,
         'branch_id' => $branch->id,
         'user_id' => $waiter->id,
@@ -53,11 +54,14 @@ test('branch staff page can assign waiter to branch zones', function () {
             'brand' => $brand,
             'branch' => $branch,
         ])
-        ->assertSee('Waiter zones')
+        ->assertDontSee('Main Hall')
+        ->assertDontSee('Terrace')
+        ->call('openAssignments', $membership->id)
         ->assertSee('Main Hall')
         ->assertSee('Terrace')
-        ->set('areaAssignments.'.$waiter->id, [(string) $mainHall->id])
-        ->call('saveAreaAssignments', $waiter->id)
+        ->set('assignmentForm.areaIds', [(string) $mainHall->id])
+        ->call('previewAreaAssignments')
+        ->call('saveAreaAssignments')
         ->assertHasNoErrors()
         ->assertSee('Zone Waiter');
 
@@ -73,10 +77,12 @@ test('branch staff page can assign waiter to branch zones', function () {
             ->exists())->toBeFalse();
 });
 
-test('staff zone lookup groups ordered string ids by waiter within one branch', function (): void {
+test('staff zone lookup reads ordered ids only for the selected waiter within one branch', function (): void {
     $branch = Branch::factory()->create();
     $firstWaiter = User::factory()->create();
     $secondWaiter = User::factory()->create();
+    $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
+    $membership = BranchUser::factory()->forBranch($branch)->forUser($firstWaiter)->forRole($role)->active()->create();
     $firstArea = AreaNode::factory()->for($branch)->create();
     $secondArea = AreaNode::factory()->for($branch)->create();
 
@@ -87,11 +93,10 @@ test('staff zone lookup groups ordered string ids by waiter within one branch', 
     ]);
     AreaNodeWaiter::factory()->create(['user_id' => $firstWaiter->id]);
 
-    $queryCount = countDatabaseQueries(function () use ($branch, $firstWaiter, $secondWaiter, $firstArea, $secondArea): void {
-        expect(app(StaffQueryService::class)->areaAssignments($branch))->toBe([
-            $firstWaiter->id => [(string) $firstArea->id, (string) $secondArea->id],
-            $secondWaiter->id => [(string) $secondArea->id],
-        ]);
+    $queryCount = countDatabaseQueries(function () use ($branch, $membership, $firstArea, $secondArea): void {
+        $snapshot = app(StaffQueryService::class)->assignmentSnapshot($branch, $membership);
+        expect($snapshot['ids'])->toBe([$firstArea->id, $secondArea->id])
+            ->and($snapshot['fingerprint'])->toHaveLength(64);
     });
 
     expect($queryCount)->toBe(1);
@@ -101,7 +106,8 @@ test('staff zone lookup returns an empty array when a branch has no assignments'
     $branch = Branch::factory()->create();
     AreaNodeWaiter::factory()->create();
 
-    expect(app(StaffQueryService::class)->areaAssignments($branch))->toBe([]);
+    $membership = BranchUser::factory()->forBranch($branch)->active()->create();
+    expect(app(StaffQueryService::class)->assignmentSnapshot($branch, $membership)['ids'])->toBe([]);
 });
 
 test('waiter dashboard filters to assigned zones and can show all zones', function () {

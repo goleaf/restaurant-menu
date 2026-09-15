@@ -4,88 +4,74 @@ declare(strict_types=1);
 
 namespace App\Actions\Staff;
 
+use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemRole;
 use App\Models\AreaNode;
 use App\Models\AreaNodeWaiter;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\Organization;
-use App\Models\Role;
+use App\Models\OrganizationUser;
 use App\Models\User;
+use App\Services\Staff\StaffQueryService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 final class SyncWaiterAreaAssignmentsAction
 {
-    /**
-     * @param  list<int>  $areaNodeIds
-     * @return list<int>
-     */
-    public function handle(Branch $branch, BranchUser $membership, User $assignedBy, array $areaNodeIds): array
+    public function __construct(private readonly StaffQueryService $staffQueries) {}
+
+    /** @param array<array-key,mixed> $areaNodeIds @return list<int> */
+    public function handle(Branch $branch, BranchUser $membership, User $assignedBy, array $areaNodeIds, ?string $expectedFingerprint = null): array
     {
-        Gate::forUser($assignedBy)->authorize('manageStaff', $branch);
+        $validated = Validator::make(['areaIds' => $areaNodeIds], [
+            'areaIds' => ['array', 'max:500'], 'areaIds.*' => ['required', 'numeric', 'integer', 'min:1', 'distinct'],
+        ])->validate();
+        $ids = array_map(static fn (mixed $id): int => (int) $id, $validated['areaIds']);
+        sort($ids);
 
-        if ($membership->organization_id !== $branch->organization_id
-            || $membership->branch_id !== $branch->id
-            || ! Role::query()
-                ->whereKey($membership->role_id)
-                ->where('code', SystemRole::Waiter->value)
-                ->exists()) {
-            throw new InvalidArgumentException('Area assignments require a waiter membership in the selected branch.');
-        }
-
-        $organization = Organization::query()->whereKey($branch->organization_id)->firstOrFail();
-        $waiterRole = Role::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->whereKey($membership->role_id)
-            ->firstOrFail();
-        Gate::forUser($assignedBy)->authorize('assign', [$waiterRole, $organization]);
-
-        $waiter = User::query()->select(['id'])->findOrFail($membership->user_id);
-        $selectedIds = collect($areaNodeIds)
-            ->map(static fn (int $id): int => $id)
-            ->filter(static fn (int $id): bool => $id > 0)
-            ->unique()
-            ->values();
-
-        $validIds = AreaNode::query()
-            ->where('branch_id', $branch->id)
-            ->whereIn('id', $selectedIds)
-            ->pluck('id');
-
-        if ($selectedIds->diff($validIds)->isNotEmpty()) {
-            throw new InvalidArgumentException('One or more selected areas are unavailable.');
-        }
-
-        DB::transaction(function () use ($branch, $waiter, $assignedBy, $selectedIds): void {
-            AreaNodeWaiter::query()
-                ->where('organization_id', $branch->organization_id)
-                ->where('branch_id', $branch->id)
-                ->where('user_id', $waiter->id)
-                ->when(
-                    $selectedIds->isNotEmpty(),
-                    fn ($query) => $query->whereNotIn('area_node_id', $selectedIds),
-                )
-                ->delete();
-
-            foreach ($selectedIds as $areaNodeId) {
-                $assignment = AreaNodeWaiter::query()
-                    ->where('area_node_id', $areaNodeId)
-                    ->where('user_id', $waiter->id)
-                    ->first() ?? new AreaNodeWaiter;
-
-                $assignment->forceFill([
-                    'organization_id' => $branch->organization_id,
-                    'branch_id' => $branch->id,
-                    'area_node_id' => $areaNodeId,
-                    'user_id' => $waiter->id,
-                    'assigned_by_user_id' => $assignedBy->id,
-                    'assigned_at' => now(),
-                ])->saveOrFail();
+        return DB::transaction(function () use ($branch, $membership, $assignedBy, $ids, $expectedFingerprint): array {
+            $actor = $assignedBy->fresh() ?? $assignedBy;
+            $currentBranch = Branch::query()->whereKey($branch->id)->where('organization_id', $branch->organization_id)->where('brand_id', $branch->brand_id)->firstOrFail();
+            Gate::forUser($actor)->authorize('manageStaff', $currentBranch);
+            $current = BranchUser::query()->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'access_version'])
+                ->with('role:id,code,name,sort_order')->whereKey($membership->id)->where('organization_id', $currentBranch->organization_id)
+                ->where('branch_id', $currentBranch->id)->where('user_id', $membership->user_id)->lockForUpdate()->firstOrFail();
+            if ($current->status !== OrganizationUserStatus::Active || $current->role?->code !== SystemRole::Waiter
+                || ! OrganizationUser::query()->where('organization_id', $currentBranch->organization_id)->where('user_id', $current->user_id)->where('status', OrganizationUserStatus::Active->value)->exists()) {
+                throw new AuthorizationException;
             }
-        });
+            if (User::query()->whereKey($current->user_id)->firstOrFail()->isSuperadmin()) {
+                throw new AuthorizationException;
+            }
+            $organization = Organization::query()->whereKey($currentBranch->organization_id)->firstOrFail();
+            Gate::forUser($actor)->authorize('assign', [$current->role, $organization]);
+            $snapshot = $this->staffQueries->assignmentSnapshot($currentBranch, $current);
+            if ($expectedFingerprint !== null && ! hash_equals($snapshot['fingerprint'], $expectedFingerprint)) {
+                throw ValidationException::withMessages(['assignmentForm.areaIds' => __('staff.workspace.area_conflict')]);
+            }
+            $validIds = AreaNode::query()->where('branch_id', $currentBranch->id)->where('is_active', true)->whereIn('id', $ids)->pluck('id')->all();
+            if (array_diff($ids, $validIds) !== []) {
+                throw ValidationException::withMessages(['assignmentForm.areaIds' => __('staff.errors.zone_unavailable')]);
+            }
+            if ($ids === $snapshot['ids']) {
+                return $ids;
+            }
+            AreaNodeWaiter::query()->where('organization_id', $currentBranch->organization_id)->where('branch_id', $currentBranch->id)
+                ->where('user_id', $current->user_id)->whereNotIn('area_node_id', $ids)->delete();
+            foreach (array_diff($ids, $snapshot['ids']) as $areaId) {
+                $assignment = new AreaNodeWaiter;
+                $assignment->forceFill(['organization_id' => $currentBranch->organization_id, 'branch_id' => $currentBranch->id,
+                    'area_node_id' => $areaId, 'user_id' => $current->user_id, 'assigned_by_user_id' => $actor->id, 'assigned_at' => now()]);
+                if (! $assignment->save()) {
+                    throw new \RuntimeException('Area assignment was not saved.');
+                }
+            }
 
-        return $selectedIds->all();
+            return $ids;
+        });
     }
 }

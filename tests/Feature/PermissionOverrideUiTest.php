@@ -93,7 +93,7 @@ test('staff permission overrides can allow deny and return to default', function
         ->assertSee(__('permissions.states.allowed_by_override'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ChangePrices, $organization))->toBeTrue();
-    expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $changePrices->id)->firstOrFail()->pivot->enabled)->toBeTrue();
+    expect((bool) $staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $changePrices->id)->firstOrFail()->pivot->enabled)->toBeTrue();
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
 
@@ -103,7 +103,7 @@ test('staff permission overrides can allow deny and return to default', function
         ->assertSee(__('permissions.states.denied_by_override'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeFalse();
-    expect((bool) $staff->fresh()->permissionOverrides()->where('permissions.id', $confirmOrders->id)->firstOrFail()->pivot->enabled)->toBeFalse();
+    expect((bool) $staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $confirmOrders->id)->firstOrFail()->pivot->enabled)->toBeFalse();
 
     Livewire::actingAs($manager)
         ->test(StaffPermissions::class, ['organization' => $organization, 'staffMember' => $staff])
@@ -111,7 +111,7 @@ test('staff permission overrides can allow deny and return to default', function
         ->assertSee(__('permissions.states.role_default'));
 
     expect($staff->fresh()->hasPermission(SystemPermission::ConfirmOrders, $organization))->toBeTrue();
-    expect($staff->fresh()->permissionOverrides()->where('permissions.id', $confirmOrders->id)->exists())->toBeFalse();
+    expect($staff->fresh()->permissionOverrides($organization->id)->where('permissions.id', $confirmOrders->id)->exists())->toBeFalse();
 });
 
 test('critical permission changes show a warning', function () {
@@ -152,7 +152,7 @@ test('staff cannot edit their own permission overrides', function () {
         ->call('setPermissionState', $manageStaff->id, 'deny')
         ->assertSee(__('permissions.messages.self_edit_disabled'));
 
-    expect($manager->fresh()->permissionOverrides()->where('permissions.id', $manageStaff->id)->exists())->toBeFalse();
+    expect($manager->fresh()->permissionOverrides($organization->id)->where('permissions.id', $manageStaff->id)->exists())->toBeFalse();
     expect($manager->fresh()->hasPermission(SystemPermission::ManageStaff, $organization))->toBeTrue();
 });
 

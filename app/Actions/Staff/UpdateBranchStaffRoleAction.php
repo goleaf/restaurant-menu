@@ -14,6 +14,7 @@ use App\Models\Organization;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Validation\RestaurantValidationRules;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
@@ -25,24 +26,26 @@ final class UpdateBranchStaffRoleAction
         private readonly RecordAuditLogAction $recordAuditLog,
     ) {}
 
-    public function handle(User $actor, Branch $branch, BranchUser $branchUser, Role $role, string $reason): BranchUser
+    public function handle(User $actor, Branch $branch, BranchUser $branchUser, Role $role, string $reason, ?int $expectedVersion = null): BranchUser
     {
-        Gate::forUser($actor)->authorize('manageStaff', $branch);
-
         $reason = $this->validatedReason($reason);
+        $expectedVersion ??= (int) $branchUser->getAttribute('access_version');
 
-        return DB::transaction(function () use ($actor, $branch, $branchUser, $role, $reason): BranchUser {
+        return DB::transaction(function () use ($actor, $branch, $branchUser, $role, $reason, $expectedVersion): BranchUser {
+            $actor = User::query()->with('roles')->whereKey($actor->id)->firstOrFail();
+            $branch = Branch::query()->whereKey($branch->id)->where('organization_id', $branch->organization_id)->firstOrFail();
             $organization = Organization::query()
                 ->select(['id', 'owner_user_id', 'name', 'slug', 'default_locale', 'timezone', 'currency_code', 'status', 'created_at', 'updated_at', 'deleted_at'])
                 ->whereKey($branch->organization_id)
                 ->firstOrFail();
             $scopedBranchUser = BranchUser::query()
-                ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at'])
+                ->select(['id', 'organization_id', 'branch_id', 'user_id', 'role_id', 'status', 'assigned_at', 'assigned_by_user_id', 'created_at', 'updated_at', 'access_version'])
                 ->where('organization_id', $branch->organization_id)
                 ->where('branch_id', $branch->id)
                 ->whereKey($branchUser->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+            Gate::forUser($actor)->authorize('manageStaff', $branch);
             $assignableRole = $this->findAssignableRole($role);
             Gate::forUser($actor)->authorize('assign', [$assignableRole, $organization]);
 
@@ -60,9 +63,22 @@ final class UpdateBranchStaffRoleAction
                 ->select(['id', 'code', 'name', 'sort_order'])
                 ->whereKey($scopedBranchUser->role_id)
                 ->firstOrFail();
+            Gate::forUser($actor)->authorize('assign', [$currentRole, $organization]);
+            if ($scopedBranchUser->user_id !== $branchUser->user_id
+                || User::query()->whereKey($scopedBranchUser->user_id)->whereHas('roles', fn ($query) => $query->where('code', SystemRole::Superadmin->value))->exists()) {
+                throw new AuthorizationException;
+            }
+            if (BranchUser::query()->whereKey($scopedBranchUser->id)->where('access_version', $expectedVersion)
+                ->update(['access_version' => $expectedVersion + 1]) !== 1) {
+                throw ValidationException::withMessages(['editingRoleId' => __('staff.errors.stale_membership')]);
+            }
+
             $previousRoleId = (int) $scopedBranchUser->role_id;
 
-            $scopedBranchUser->forceFill(['role_id' => $assignableRole->id])->saveOrFail();
+            $scopedBranchUser->forceFill(['role_id' => $assignableRole->id, 'access_version' => $expectedVersion + 1]);
+            if (! $scopedBranchUser->save()) {
+                throw new \RuntimeException('Staff role change was rejected.');
+            }
 
             if ($assignableRole->code !== SystemRole::Waiter) {
                 AreaNodeWaiter::query()
@@ -92,7 +108,7 @@ final class UpdateBranchStaffRoleAction
                 ],
             );
 
-            return $scopedBranchUser->refresh();
+            return $scopedBranchUser;
         });
     }
 

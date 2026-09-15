@@ -8,14 +8,9 @@ use App\Actions\AuditLogs\RecordAuditLogAction;
 use App\Enums\AuditLogAction;
 use App\Enums\InvitationStatus;
 use App\Enums\OrganizationUserStatus;
-use App\Enums\SystemRole;
-use App\Models\Branch;
 use App\Models\BranchUser;
-use App\Models\Brand;
 use App\Models\Invitation;
-use App\Models\Organization;
 use App\Models\OrganizationUser;
-use App\Models\Role;
 use App\Models\User;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -25,11 +20,16 @@ final class AcceptInvitationAction
 {
     public function __construct(
         private readonly RecordAuditLogAction $recordAuditLog,
+        private readonly EnsureInvitationScopeAction $ensureScope,
     ) {}
 
     public function handle(Invitation $invitation, User $recipient): Invitation
     {
         return DB::transaction(function () use ($invitation, $recipient): Invitation {
+            $recipient = User::query()->whereKey($recipient->id)->first();
+            if (! $recipient instanceof User) {
+                throw new DomainException('Invitation recipient is no longer available.');
+            }
             $lockedInvitation = Invitation::query()
                 ->select([
                     'id',
@@ -53,18 +53,46 @@ final class AcceptInvitationAction
                 ->lockForUpdate()
                 ->first();
 
-            if (! $lockedInvitation instanceof Invitation || ! $lockedInvitation->canBeAccepted()) {
+            if (! $lockedInvitation instanceof Invitation
+                || ! $lockedInvitation->matchesCredential($invitation->invite_token_hash)) {
                 throw new DomainException('Invitation is no longer available.');
             }
 
-            $this->ensureInvitationScopeCanBeAccepted($lockedInvitation);
+            $this->ensureScope->handle($lockedInvitation);
 
             Gate::forUser($recipient)->authorize('accept', $lockedInvitation);
+
+            $membership = OrganizationUser::query()
+                ->where('organization_id', $lockedInvitation->organization_id)
+                ->where('user_id', $recipient->id)
+                ->lockForUpdate()->first();
+            $branchMembership = $lockedInvitation->branch_id === null ? null : BranchUser::query()
+                ->where('organization_id', $lockedInvitation->organization_id)
+                ->where('branch_id', $lockedInvitation->branch_id)
+                ->where('user_id', $recipient->id)
+                ->lockForUpdate()->first();
+
+            if (($membership instanceof OrganizationUser && $membership->status !== OrganizationUserStatus::Active)
+                || ($branchMembership instanceof BranchUser && $branchMembership->status !== OrganizationUserStatus::Active)) {
+                throw new DomainException('Invitation cannot restore suspended membership.');
+            }
+
+            if ($lockedInvitation->status === InvitationStatus::Accepted
+                && $lockedInvitation->accepted_by_user_id === $recipient->id
+                && $membership instanceof OrganizationUser
+                && ($lockedInvitation->branch_id === null || $branchMembership instanceof BranchUser)) {
+                return $lockedInvitation;
+            }
+
+            if (! $lockedInvitation->canBeAccepted()) {
+                throw new DomainException('Invitation is no longer available.');
+            }
 
             $acceptedAt = now();
             $acceptedCount = Invitation::query()
                 ->whereKey($lockedInvitation->id)
                 ->where('status', InvitationStatus::Pending->value)
+                ->where('invite_token_hash', $invitation->invite_token_hash)
                 ->where('expires_at', '>', $acceptedAt)
                 ->whereNull('accepted_by_user_id')
                 ->whereNull('accepted_at')
@@ -81,44 +109,40 @@ final class AcceptInvitationAction
 
             $lockedInvitation->refresh();
 
-            $recipient->roles()->syncWithoutDetachingOrFail([$lockedInvitation->role_id]);
-
-            $membership = OrganizationUser::query()
-                ->where('organization_id', $lockedInvitation->organization_id)
-                ->where('user_id', $recipient->id)
-                ->lockForUpdate()
-                ->first() ?? new OrganizationUser;
+            $membership ??= new OrganizationUser;
 
             $membership->forceFill([
                 'organization_id' => $lockedInvitation->organization_id,
                 'user_id' => $recipient->id,
-                'role_id' => $lockedInvitation->branch_id === null
-                    ? $lockedInvitation->role_id
-                    : ($membership->role_id ?? $lockedInvitation->role_id),
+                'role_id' => $membership->role_id ?? $lockedInvitation->role_id,
                 'status' => OrganizationUserStatus::Active,
                 'joined_at' => $membership->joined_at ?? now(),
                 'invited_by_user_id' => $membership->invited_by_user_id ?? $lockedInvitation->invited_by_user_id,
-            ])->save();
+            ]);
+
+            if (! $membership->save()) {
+                throw new DomainException('Invitation membership could not be saved.');
+            }
 
             if ($lockedInvitation->branch_id !== null) {
-                $branchMembership = BranchUser::query()
-                    ->where('branch_id', $lockedInvitation->branch_id)
-                    ->where('user_id', $recipient->id)
-                    ->lockForUpdate()
-                    ->first() ?? new BranchUser;
+                $branchMembership ??= new BranchUser;
 
                 $branchMembership->forceFill([
                     'organization_id' => $lockedInvitation->organization_id,
                     'branch_id' => $lockedInvitation->branch_id,
                     'user_id' => $recipient->id,
-                    'role_id' => $lockedInvitation->role_id,
+                    'role_id' => $branchMembership->role_id ?? $lockedInvitation->role_id,
                     'status' => OrganizationUserStatus::Active,
                     'assigned_at' => $branchMembership->assigned_at ?? now(),
                     'assigned_by_user_id' => $branchMembership->assigned_by_user_id ?? $lockedInvitation->invited_by_user_id,
-                ])->save();
+                ]);
+
+                if (! $branchMembership->save()) {
+                    throw new DomainException('Invitation branch membership could not be saved.');
+                }
             }
 
-            $this->recordAuditLog->handle(
+            $audit = $this->recordAuditLog->handle(
                 action: AuditLogAction::InvitationAccepted,
                 entityType: 'invitation',
                 entityId: $lockedInvitation->id,
@@ -135,46 +159,11 @@ final class AcceptInvitationAction
                 ],
             );
 
+            if (! $audit->exists) {
+                throw new DomainException('Invitation acceptance could not be recorded.');
+            }
+
             return $lockedInvitation;
         }, 3);
-    }
-
-    private function ensureInvitationScopeCanBeAccepted(Invitation $invitation): void
-    {
-        if (! is_string($invitation->email) || trim($invitation->email) === '') {
-            throw new DomainException('Invitation recipient is not bound.');
-        }
-
-        $role = Role::query()
-            ->select(['id', 'code', 'name', 'sort_order'])
-            ->whereKey($invitation->role_id)
-            ->first();
-
-        if (! $role instanceof Role || $role->code === SystemRole::Superadmin) {
-            throw new DomainException('Invitation role is not available.');
-        }
-
-        if (! Organization::query()->whereKey($invitation->organization_id)->exists()) {
-            throw new DomainException('Invitation organization is not available.');
-        }
-
-        if ($invitation->brand_id !== null && ! Brand::query()
-            ->where('organization_id', $invitation->organization_id)
-            ->whereKey($invitation->brand_id)
-            ->exists()) {
-            throw new DomainException('Invitation brand is not available.');
-        }
-
-        if ($invitation->branch_id === null) {
-            return;
-        }
-
-        if ($invitation->brand_id === null || ! Branch::query()
-            ->where('organization_id', $invitation->organization_id)
-            ->where('brand_id', $invitation->brand_id)
-            ->whereKey($invitation->branch_id)
-            ->exists()) {
-            throw new DomainException('Invitation branch is not available.');
-        }
     }
 }

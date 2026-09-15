@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Menus;
 
-use App\Actions\Media\DeleteLocalMediaFileAction;
+use App\Actions\Media\DeleteRolledBackLocalImageAction;
 use App\Actions\Media\StoreLocalImageAction;
 use App\Enums\MenuOperationKind;
 use App\Enums\MenuOperationPhase;
@@ -26,7 +26,7 @@ final class AddMenuItemImagesAction
 {
     public function __construct(
         private readonly StoreLocalImageAction $storeLocalImage,
-        private readonly DeleteLocalMediaFileAction $deleteLocalMediaFile,
+        private readonly DeleteRolledBackLocalImageAction $deleteRolledBackLocalImage,
         private readonly EnsureMenuOperationAccessAction $operationAccess,
     ) {}
 
@@ -97,7 +97,7 @@ final class AddMenuItemImagesAction
                     throw ValidationException::withMessages(['images.'.$index => $exception->errors()['file'] ?? $exception->validator->errors()->all()]);
                 }
                 $storedPaths[] = $storedPath;
-                DB::afterRollBack(fn () => $this->deleteLocalMediaFile->handle($storedPath));
+                DB::afterRollBack(fn () => $this->deleteRolledBackLocalImage->handle($storedPath));
             }
 
             $galleryPaths = $storedPaths;

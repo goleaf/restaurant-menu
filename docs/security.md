@@ -4,6 +4,12 @@
 
 # Application security
 
+## Stale guest and rollback recovery — 2026-09-15
+
+Guest URL locale persistence now follows the same active-status boundary as explicit locale events. Stale or revoked guest identities cannot mutate a guest preference merely by restoring a cookie with `?lang=`. Availability refresh never grants ordering permission: current scope, guest rights, item availability and the existing add-operation idempotency checks remain authoritative.
+
+Rollback file compensation cannot throw even when the diagnostic logger also fails. This prevents interrupted transaction-manager cleanup from executing stale old-file deletion during a later commit. Warning context is restricted to the owned generated path and exception class; original uploads, tokens and exception messages are not logged.
+
 ## Product authorization and recovery safeguards — 2026-09-14
 
 Reopening a temporarily closed branch requires current `manage_settings`, including from the waiter dashboard. Viewing or confirming orders does not grant this setting mutation. Catalogue, modifier and variant HTTP/Livewire reads recheck current menu-management access; a revoked capability does not survive in serialized UI flags. Image and operation Actions re-resolve the original tenant/branch and authorize every continuation or replay.

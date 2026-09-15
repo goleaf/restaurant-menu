@@ -4,6 +4,12 @@
 
 # Architecture
 
+## Recovery boundaries — 2026-09-15
+
+`GuestMenu` preserves its existing configuration state and idempotency key through availability conflicts. Its explicit refresh action reuses the current scoped menu/gallery reads; it does not create another basket, authorization cache or language mechanism. Blade exposes the prepared recovery state and returns focus through local Alpine behavior.
+
+`DeleteRolledBackLocalImageAction` is the narrow non-throwing compensation boundary used by `ReplaceLocalImageAction` and `AddMenuItemImagesAction`. Both deletion and warning logging are guarded so Laravel can finish clearing transaction callbacks. It never writes a cleanup receipt into the transaction being rolled back. Ordinary file deletion and after-commit cleanup continue to report failure, preserving the existing resumable operation ledger. A disk-refused rollback file can remain unreferenced; see [deployment](deployment.md) for the operational limit.
+
 ## Product operation boundaries — 2026-09-14
 
 Catalogue rendering and bounded search live in the existing `CatalogData` read service. A 24-item page hydrates at most 25 item models; focused editing loads the selected item independently of the page. Livewire form objects validate original transport values, shared Blade locale panels present EN/LT/RU, and Actions own translation, image and operation transactions. A content fingerprint rejects stale text/price edits without discarding the user's form. Required Eloquent writes reject event vetoes inside the same transaction.

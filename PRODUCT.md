@@ -4,6 +4,10 @@
 
 # Product
 
+## Recovery polish — 2026-09-15
+
+A guest who has already chosen a dish must not lose the typed comment or options when staff changes availability. Keep the detail panel open, explain the conflict and provide a real retry once the dish is available again. Ordering remains subject to current server permissions. Kitchen/bar screens prioritize the next action and compact elapsed status; failed attempts replace stale success feedback. Offline controls communicate that work cannot currently be submitted.
+
 ## Delivered interaction direction
 
 The catalogue is a searchable, paginated working list with one focused dish editor. Language tabs, photo previews and a selected-language preview keep authoring close to the guest result. Safe duplication creates a new unavailable dish for review; large deletion shows durable progress and retry. Unrelated drafts survive these operations.

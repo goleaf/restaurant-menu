@@ -16,6 +16,8 @@ use App\Models\Menu;
 use App\Models\MenuCategory;
 use App\Models\MenuItem;
 use App\Models\MenuItemImage;
+use App\Models\ModifierGroup;
+use App\Models\ModifierOption;
 use App\Models\Organization;
 use App\Models\QrCode;
 use App\Models\ServicePoint;
@@ -207,6 +209,60 @@ test('browse only guest opens bounded gallery and escape restores focus', functi
     productMenuAssertNoFailedResources($page);
 });
 
+test('guest recovers a configured dish after an availability conflict without retyping', function (): void {
+    $this->withVite();
+    $branch = Branch::factory()->create();
+    BranchSetting::factory()->for($branch)->create(['default_language' => 'en']);
+    $point = ServicePoint::factory()->for($branch)->create(['is_active' => true]);
+    $qr = QrCode::factory()->forServicePoint($point)->active()->create();
+    $session = TableSession::factory()->forServicePoint($point)->active()->create();
+    $guest = TableSessionGuest::factory()->for($session)->active()->create(['locale' => 'en']);
+    $menu = Menu::factory()->for($branch)->active()->create();
+    $category = MenuCategory::factory()->for($menu)->active()->create();
+    $item = MenuItem::factory()->for($menu)->for($category, 'category')->create(['name' => 'Recovery dish', 'is_available' => true]);
+    $group = ModifierGroup::factory()->for($branch)->create(['is_required' => false, 'min_select' => 0, 'max_select' => 1]);
+    $option = ModifierOption::factory()->for($group)->create(['is_available' => true]);
+    $item->modifierGroups()->attach($group->id);
+    $this->withCookie('guest_token_'.substr(hash('sha256', $qr->public_token), 0, 24), $guest->guest_token);
+    $page = visit(route('public.qr.show', ['token' => $qr->public_token], false));
+    $page->resize(390, 844);
+    productMenuClick($page, '#guest-menu-item-details-'.$item->id);
+    $page->assertPresent('[role="dialog"]');
+    productMenuClick($page, 'button[wire\\:click^="toggleModifierOption"]');
+    $page->fill('textarea[wire\\:model="itemComment"]', 'Please keep this comment');
+    productMenuAssertOfflineAction($page, 'saveConfiguredItem');
+    $item->update(['is_available' => false]);
+    productMenuClick($page, 'button[wire\\:click="saveConfiguredItem"]');
+    $page->assertSee(__('menu.guest.item_no_longer_available'))
+        ->assertNotPresent('button[wire\\:click="saveConfiguredItem"]');
+    productMenuAssertOfflineAction($page, 'refreshConfiguredItem');
+    expect($page->script('[...document.querySelectorAll("textarea")].find(field => field.getAttribute("wire:model") === "itemComment")?.value'))->toBe('Please keep this comment')
+        ->and(DraftOrderItem::query()->count())->toBe(0);
+    productMenuAssertNoOverflow($page, 320, 800);
+    $page->screenshot(false, 'product-guest-availability-conflict-320');
+
+    $item->update(['is_available' => true]);
+    productMenuClick($page, 'button[wire\\:click="refreshConfiguredItem"]');
+    $page->assertDontSee(__('menu.guest.item_no_longer_available'))
+        ->assertPresent('button[wire\\:click="saveConfiguredItem"]');
+    productMenuClick($page, 'button[wire\\:click="saveConfiguredItem"]');
+    $page->assertNotPresent('[role="dialog"]');
+    $line = DraftOrderItem::query()->sole();
+    expect($line->comment)->toBe('Please keep this comment')
+        ->and($line->selected_modifiers[0]['option_id'])->toBe($option->id)
+        ->and($line->table_session_guest_id)->toBe($guest->id);
+    productMenuClick($page, '#guest-menu-item-details-'.$item->id);
+    $page->assertPresent('[role="dialog"]');
+    $item->update(['hidden_until' => now()->addHour()]);
+    productMenuClick($page, 'button[wire\\:click="saveConfiguredItem"]');
+    $page->assertSee(__('menu.guest.item_no_longer_available'));
+    $page->keys('[role="dialog"]', 'Escape')->assertNotPresent('[role="dialog"]');
+    expect($page->script('document.activeElement?.id'))->toBe('guest-menu-title-'.$branch->id)
+        ->and(DraftOrderItem::query()->count())->toBe(1);
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+    productMenuAssertNoFailedResources($page);
+});
+
 test('populated restaurant work screens remain responsive and keyboard reachable', function (SystemRole $role, string $routeName, string $pageSelector): void {
     $this->withVite();
     config()->set('demo-login.enabled', true);
@@ -218,6 +274,24 @@ test('populated restaurant work screens remain responsive and keyboard reachable
     $page->assertPathIs(route('dashboard', absolute: false));
     $page->navigate(route($routeName, absolute: false))->assertPresent($pageSelector);
 
+    $offlineState = $page->script(<<<'JAVASCRIPT'
+        (() => {
+            const mutations = [...document.querySelectorAll('button')].filter(button => /^(setItemStatus|openTable|markWaiterCallHandled|disableTemporaryClosure)\(/.test(button.getAttribute('wire:click') ?? ''));
+            const enabled = mutations.filter(button => !button.disabled);
+            window.dispatchEvent(new Event('offline'));
+            return { count: enabled.length, disabled: enabled.every(button => button.disabled) };
+        })()
+    JAVASCRIPT);
+    $onlineState = $page->script(<<<'JAVASCRIPT'
+        (() => {
+            window.dispatchEvent(new Event('online'));
+            return [...document.querySelectorAll('button')].some(button => /^(setItemStatus|openTable|markWaiterCallHandled|disableTemporaryClosure)\(/.test(button.getAttribute('wire:click') ?? '') && !button.disabled);
+        })()
+    JAVASCRIPT);
+    expect($offlineState['count'])->toBeGreaterThan(0)
+        ->and($offlineState['disabled'])->toBeTrue()
+        ->and($onlineState)->toBeTrue();
+
     foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
         productMenuAssertNoOverflow($page, $width, $height);
         $page->screenshot(false, "product-{$role->value}-{$width}x{$height}-light");
@@ -227,6 +301,20 @@ test('populated restaurant work screens remain responsive and keyboard reachable
     $page->navigate(route($routeName, absolute: false));
     productMenuAssertNoOverflow($page, 390, 844);
     $page->screenshot(false, "product-{$role->value}-390x844-dark");
+
+    if ($role === SystemRole::Waiter) {
+        $tableUrl = $page->script('document.querySelector(\'a[href*="/restaurant/waiter/tables/"]\')?.getAttribute("href")');
+        expect($tableUrl)->toBeString();
+        $page->navigate($tableUrl);
+        foreach ([[320, 800], [390, 844], [768, 900], [1280, 900], [1440, 1000]] as [$width, $height]) {
+            productMenuAssertNoOverflow($page, $width, $height);
+            $page->screenshot(false, "product-waiter-detail-{$width}x{$height}-dark");
+        }
+        $page->script("window.localStorage.setItem('flux.appearance', 'light')");
+        $page->navigate($tableUrl);
+        productMenuAssertNoOverflow($page, 390, 844);
+        $page->screenshot(false, 'product-waiter-detail-390x844-light');
+    }
 
     $page->keys('body[class]', 'Tab');
     expect($page->script('document.activeElement !== document.body'))->toBeTrue();
@@ -242,6 +330,23 @@ function productMenuFillLocale(PendingAwaitablePage $page, string $prefix, strin
 {
     $panel = $prefix.'-panel-'.$locale;
     $page->fill($panel.' input[type="text"]', $name)->fill($panel.' textarea', $description);
+}
+
+function productMenuAssertOfflineAction(PendingAwaitablePage $page, string $action): void
+{
+    $encoded = json_encode($action, JSON_THROW_ON_ERROR);
+    $state = $page->script(<<<JAVASCRIPT
+        (() => {
+            const button = [...document.querySelectorAll('button')].find(button => button.getAttribute('wire:click') === {$encoded});
+            if (!button) return null;
+            const initiallyEnabled = !button.disabled;
+            window.dispatchEvent(new Event('offline'));
+            const disabledOffline = button.disabled;
+            window.dispatchEvent(new Event('online'));
+            return { initiallyEnabled, disabledOffline, enabledAgain: !button.disabled };
+        })()
+    JAVASCRIPT);
+    expect($state)->toBe(['initiallyEnabled' => true, 'disabledOffline' => true, 'enabledAgain' => true]);
 }
 
 function productMenuClick(PendingAwaitablePage $page, string $selector): void

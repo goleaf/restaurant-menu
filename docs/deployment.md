@@ -4,6 +4,12 @@
 
 # Deployment
 
+## Rollback media cleanup limit — 2026-09-15
+
+No new dependency or migration is required for this recovery update. If storage refuses deletion during a rolled-back upload, the original database exception is preserved and cleanup attempts continue for the other new variants. When logging is available, `Unable to clean up a rolled-back image.` records the generated path and exception class.
+
+A failed rollback deletion can leave an unreferenced generated file; this boundary is not a durable cleanup queue. After correcting disk permissions/capacity, verify that the logged path and its variants are not referenced by any image-owning record before manually removing only those confirmed orphaned files. Preserve all referenced old and replacement images. Normal committed catalogue image operations continue to use the existing resumable cleanup ledger. Required guest and restaurant workflows still need no queue worker or cron.
+
 ## Required platform
 
 Catalogue UI deletion persists progress and pending media paths in `menu_operations` and its category frontier. Each continuation processes at most 50 entities; failed cleanup remains retryable after reload. Keep the same database and local media disk available across requests. The direct legacy parent-deletion Actions still use private temporary cleanup spools and synchronous after-commit cleanup; they are not the resumable UI protocol and must not be used for unbounded HTTP work.

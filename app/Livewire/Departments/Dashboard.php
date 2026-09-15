@@ -196,6 +196,9 @@ abstract class Dashboard extends Component
 
     public function setItemStatus(int $itemId, string $status): void
     {
+        $this->feedbackMessage = null;
+        $this->resetErrorBag('ticket_item_status');
+
         $statusEnum = KitchenTicketItemStatus::tryFrom($status);
 
         if (! $statusEnum instanceof KitchenTicketItemStatus) {

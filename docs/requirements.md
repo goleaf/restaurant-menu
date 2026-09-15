@@ -4,6 +4,15 @@
 
 # Canonical requirements catalogue
 
+## Recovery behavior — 2026-09-15
+
+These refinements implement the existing guest, menu/media and staff requirements below; they do not introduce a parallel requirement catalogue.
+
+- An explicit guest URL language may update a restored guest record only while that guest is active. UI language resolution never reactivates or changes the identity of a removed, departed, rejected or pending guest.
+- When a configured dish becomes unavailable, hidden or removed, keep the open detail panel, comment, selected modifiers and request identity. Show the localized availability conflict, allow explicit refresh/retry, and prevent adding until the current server-authorized menu permits it. Closing must return keyboard focus to the detail trigger or, if it disappeared, the menu heading.
+- Filesystem cleanup during rollback must not replace the persistence exception, interrupt remaining cleanup callbacks or leak callbacks into the next transaction. Attempt every owned new file; preserve existing referenced images. Ordinary deletion and committed-operation cleanup retain their explicit failure/retry behavior.
+- A failed kitchen/bar transition clears earlier success feedback. Offline staff and guest mutation controls disable while the current data and local dismissal controls remain usable; reconnect restores the controls without implying that a mutation succeeded.
+
 ## Status and interpretation
 
 This is the only canonical active requirement catalogue. Stable identifiers must not be renumbered. Compact status evidence is recorded by the same identifier in `compliance-matrix.md`; the concrete route/UI/authorization/table/test path is recorded in `REQUIREMENTS_TRACEABILITY.md`.

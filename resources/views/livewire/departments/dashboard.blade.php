@@ -101,18 +101,18 @@
                         data-label-attention="{{ __('ui.departments.dashboard.delay_status.attention') }}"
                         data-label-delayed="{{ __('ui.departments.dashboard.delay_status.delayed') }}"
                         data-delay-template="{{ __('ui.departments.dashboard.delay_by', ['time' => ':time']) }}"
-                        class="mt-4 rounded-control border p-3 text-center data-[delay-state=attention]:border-warning-border data-[delay-state=attention]:bg-warning-surface data-[delay-state=attention]:text-warning data-[delay-state=delayed]:border-danger-border data-[delay-state=delayed]:bg-danger-surface data-[delay-state=delayed]:text-danger data-[delay-state=on-track]:border-success-border data-[delay-state=on-track]:bg-success-surface data-[delay-state=on-track]:text-success"
+                        class="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-control border px-3 py-2 data-[delay-state=attention]:border-warning-border data-[delay-state=attention]:bg-warning-surface data-[delay-state=attention]:text-warning data-[delay-state=delayed]:border-danger-border data-[delay-state=delayed]:bg-danger-surface data-[delay-state=delayed]:text-danger data-[delay-state=on-track]:border-border-subtle data-[delay-state=on-track]:bg-surface-muted data-[delay-state=on-track]:text-text-muted"
                     >
                         <p class="text-sm font-medium">{{ __('ui.departments.dashboard.elapsed_since_sent') }}</p>
                         <time
                             data-kitchen-delay-value
                             datetime="PT{{ $ticket['elapsed_seconds'] }}S"
-                            class="mt-1 block text-4xl font-semibold tabular-nums"
+                            class="text-lg font-semibold tabular-nums"
                         >{{ $ticket['elapsed_label'] }}</time>
-                        <p data-kitchen-delay-status aria-live="off" class="mt-2 text-sm font-semibold">
+                        <p data-kitchen-delay-status aria-live="off" class="text-sm font-semibold">
                             {{ $ticket['delay_status_label'] }}
                         </p>
-                        <p data-kitchen-delay-overrun class="mt-1 text-xs font-medium" @if ($ticket['delay_description'] === null) hidden @endif>
+                        <p data-kitchen-delay-overrun class="text-xs font-medium" @if ($ticket['delay_description'] === null) hidden @endif>
                             {{ $ticket['delay_description'] }}
                         </p>
                     </div>
@@ -194,39 +194,39 @@
 
                             <div class="grid content-start gap-3">
                                 @if ($item['can_accept'])
-                                    <button
+                                    <x-ui.primary-button
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'accepted')"
-                                        wire:loading.attr="disabled"
+                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-16 touch-manipulation rounded-control border border-blue-300 bg-blue-100 px-4 py-3 text-base font-semibold text-blue-950 transition-colors hover:border-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100 motion-reduce:transition-none"
+                                        class="min-h-operational-touch touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.accept') }}
-                                    </button>
+                                    </x-ui.primary-button>
                                 @endif
 
                                 @if ($item['can_start'])
-                                    <button
+                                    <x-ui.primary-button
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'in_progress')"
-                                        wire:loading.attr="disabled"
+                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-16 touch-manipulation rounded-control border border-amber-300 bg-amber-100 px-4 py-3 text-base font-semibold text-amber-950 transition-colors hover:border-amber-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 motion-reduce:transition-none"
+                                        class="min-h-operational-touch touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.start_preparing') }}
-                                    </button>
+                                    </x-ui.primary-button>
                                 @endif
 
                                 @if ($item['can_mark_ready'])
-                                    <button
+                                    <x-ui.primary-button
                                         type="button"
                                         wire:click="setItemStatus({{ $item['id'] }}, 'ready')"
-                                        wire:loading.attr="disabled"
+                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="setItemStatus"
-                                        class="min-h-16 touch-manipulation rounded-control border border-emerald-300 bg-emerald-100 px-4 py-3 text-base font-semibold text-emerald-950 transition-colors hover:border-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100 motion-reduce:transition-none"
+                                        class="min-h-operational-touch touch-manipulation"
                                     >
                                         {{ __('ui.departments.dashboard.mark_ready') }}
-                                    </button>
+                                    </x-ui.primary-button>
                                 @endif
 
                                 @if (! $item['can_accept'] && ! $item['can_start'] && ! $item['can_mark_ready'])
@@ -253,7 +253,7 @@
             <flux:button
                 type="button"
                 wire:click="previousTicketPage"
-                wire:loading.attr="disabled"
+                wire:offline.attr="disabled" wire:loading.attr="disabled"
                 wire:target="previousTicketPage,nextTicketPage"
                 :disabled="! $hasPreviousTicketPage"
                 class="min-h-operational-touch"
@@ -266,7 +266,7 @@
             <flux:button
                 type="button"
                 wire:click="nextTicketPage"
-                wire:loading.attr="disabled"
+                wire:offline.attr="disabled" wire:loading.attr="disabled"
                 wire:target="previousTicketPage,nextTicketPage"
                 :disabled="! $hasNextTicketPage"
                 class="min-h-operational-touch"

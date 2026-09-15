@@ -474,7 +474,9 @@ class GuestEntry extends Component
         $requestedLanguage = request()->query('lang');
 
         if (is_string($requestedLanguage) && SupportedLocale::isSupported($requestedLanguage)) {
-            $this->updateGuestLocale->handle($guest, $this->language);
+            if ($guest->status === TableSessionGuestStatus::Active) {
+                $this->updateGuestLocale->handle($guest, $this->language);
+            }
         } elseif (SupportedLocale::isSupported($guest->locale)) {
             $this->language = SupportedLocale::normalize($guest->locale);
             $this->applyGuestLocale();

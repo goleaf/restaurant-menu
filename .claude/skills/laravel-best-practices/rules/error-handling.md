@@ -74,3 +74,7 @@ class InvalidOrderException extends Exception
     }
 }
 ```
+
+## Rollback Compensation Must Finish
+
+The repository's image rollback boundary uses `DeleteRolledBackLocalImageAction`. Catch cleanup and diagnostic-logger failures inside that boundary so the original persistence exception survives and Laravel can discard all transaction callbacks. Attempt remaining owned files and test a subsequent independent commit; a leaked callback can delete an old image that rollback preserved. Keep ordinary deletion and after-commit failures visible so committed operations retain their existing retry contract. Do not write a cleanup receipt into the transaction being rolled back or claim that logging guarantees orphan cleanup.

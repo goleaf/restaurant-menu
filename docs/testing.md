@@ -4,7 +4,35 @@
 
 # Testing and quality gates
 
-## Current product verification — 2026-09-14
+## Current recovery verification — 2026-09-15
+
+Fresh verification of the recovery follow-up after local `0450bac12ed22ac44fb390a267c154043106b09a` is complete. All completed final suites have zero failures and skips. Distinct backend plus browser evidence is **2,377 passing tests**, a **100% pass rate**. Canonical application coverage is **93.8%**; the required minimum remains 90% and is separate from pass rate.
+
+| Local gate | Observed result |
+| --- | --- |
+| `composer test:backend` | 2,366 tests / 52,157 assertions, 323.89 s |
+| `composer test:browser -- --browser safari` | 11 tests / 643 assertions, 54.47 s; Playwright WebKit |
+| Four-process Unit/Feature suite | 2,366 tests / 52,157 assertions, 147.77 s |
+| `composer test:coverage` | 2,366 tests / 52,157 assertions, 1054.79 s; 93.8% application coverage |
+| Composer strict validation, platform requirements and audit | Exit 0 |
+| Pint and canonical Larastan | Exit 0 |
+| Translation scan and audit | Exit 0; unchanged EN/LT/RU key and placeholder parity |
+| `npm ci --ignore-scripts`, npm audit and production build | Exit 0; existing lockfile and npm registry |
+| Isolated SQLite migrations, seeds and caches | Migrate/reset/remigrate, two default seeds, config/route/event/view cache and migration status: exit 0 |
+
+The 1,077-file code/config/test/manifest digest `7b0c96df6cab61457582dc1c564881f1a741995ec092b90107c240b19b9594ec` is identical before and after every final gate. No executable source changed during these runs. Inventory confirms 52 models with factories, 89 migration definitions with up/down, 235 Actions, 4 Form Requests and 4 Livewire Forms. No dependency graph or schema was changed in this follow-up.
+
+Observed RED/GREEN evidence covers inactive URL locale writes, stale dish configuration, original exceptions during disk/logger failure, callbacks leaking into a later transaction, and stale staff success feedback. The integrated focused slices pass guest 60 / 826, media 70 / 431 and staff 84 / 637. Independent review of the finished implementation found and verified corrections for vanished-trigger focus and guest offline controls; the final review found no remaining blocker.
+
+The first final browser attempt stopped responding after three progress markers; the owned PHP process was sampled waiting in `stream_select` and was terminated after 240.937 seconds (exit 143). It is not a pass and its cause is not claimed proven. The unchanged guest scenario then passed 1 / 30, followed by the complete unchanged suite passing 11 / 643. This retry changed no assertions or source. The local process launcher also reports OS error 24 for new shell sessions; all required commands ran through the existing owned shell.
+
+The final browser suite repeats the complete restaurant journey, multilingual editor, image upload/reorder/promotion, browse-only gallery and locale/basket continuity. It adds a real stale-dish retry with retained comment/modifier, exactly one persisted line and stable-heading focus after the menu card disappears. Offline/online controls are checked for guest, waiter, kitchen and bar. Viewport checks cover 320/390/768/1280/1440 pixels; 42 screenshots were retained, with representative current guest, catalogue and staff states inspected in both themes. Existing keyboard and 200% text-enlargement checks pass. This is browser emulation, not a physical iPhone or screen-reader audit, and text enlargement is not full browser zoom.
+
+An isolated Chrome context on Herd additionally confirms actual offline-network disabling/reconnection, local fonts, 56-pixel kitchen action targets, no overflow at 320 pixels, and a fresh navigation with ten successful resources and no console warnings/errors. Existing fixed-fixture performance measurements below belong to the earlier product delivery; no new latency or query-count reduction is claimed for this recovery update.
+
+All 176 tracked/new project Markdown files have one GitHub restriction block; all eight project skills remain mirrored across three providers and 320 local link occurrences resolve. Final documentation/diff checks and ordinary push evidence are recorded in PROGRESS.md.
+
+## Previous product verification — 2026-09-14
 
 Final product checks cover the changes after local `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`. All suites below completed with zero failures/skips. Distinct backend plus browser evidence is 2,361 passing tests; repeated parallel and coverage execution is not counted as additional distinct tests. Test pass rate is 100%; statement coverage is 93.8%, a separate metric.
 

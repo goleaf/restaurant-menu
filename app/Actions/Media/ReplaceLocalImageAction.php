@@ -13,6 +13,7 @@ final class ReplaceLocalImageAction
     public function __construct(
         private readonly StoreLocalImageAction $storeLocalImage,
         private readonly DeleteLocalMediaFileAction $deleteLocalMediaFile,
+        private readonly DeleteRolledBackLocalImageAction $deleteRolledBackLocalImage,
     ) {}
 
     /**
@@ -23,7 +24,7 @@ final class ReplaceLocalImageAction
         return DB::transaction(function () use ($file, $directory, $oldPath, $persist): string {
             $newPath = $this->storeLocalImage->handle($file, $directory);
             $connection = DB::connection();
-            $connection->afterRollBack(fn () => $this->deleteLocalMediaFile->handle($newPath));
+            $connection->afterRollBack(fn () => $this->deleteRolledBackLocalImage->handle($newPath));
 
             $persist($newPath);
 

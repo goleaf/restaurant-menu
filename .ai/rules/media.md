@@ -1,16 +1,13 @@
 ---
 paths:
-  - 'app/Livewire/PublicQr/**'
+  - 'app/Actions/Media/**'
 ---
 
 <!-- BEGIN GITHUB_PUSH_ONLY -->
 > **GitHub restriction — current user instruction.** GitHub is allowed only as the remote destination of an ordinary `git push`; create commits locally with `git commit`. Do not use GitHub for any other read or write: no API, MCP, plugin, `gh`, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses or remote checks. Do not open GitHub links, change repository settings/integrations, or create, edit or delete `.github/workflows/*`. Do not run fetch/pull/ls-remote or make an extra GitHub request to verify a push. Use local history and local quality gates; report the actual push command result. Historical GitHub references below are archival evidence and grant no authorization. Keep this single marked block in every tracked or newly created project Markdown file, after YAML frontmatter when present. Do not modify external skills or generated dependencies.
 <!-- END GITHUB_PUSH_ONLY -->
 
-# Public Qr
+# Media
 
-## Reauthorize isolated guest polling
-Every guest polling action must resolve the current QR-scoped cookie or session credential and active guest again before querying. If access is revoked or the QR does not belong to the session service point or an active merged link, clear all serialized guest state immediately.
-
-## Preserve a configured dish across availability conflicts
-A failed save of an already configured dish must keep the comment, modifier selection and idempotency attempt, including when the item vanishes from the current menu payload. Render one recoverable dialog with an explicit recheck action, and revalidate ordering before adding. URL locale restoration may persist only for an active guest, matching event-based locale changes.
+## Never let rollback media cleanup interrupt transaction unwinding
+Rollback callbacks use DeleteRolledBackLocalImageAction: attempt all variants, contain both deletion and logging failures, and preserve the original persistence exception. A throwing rollback callback can leave committed nested callbacks attached to the next transaction and delete a still-referenced original. Ordinary deletion and after-commit cleanup remain throwing so durable menu-operation retries still detect failures.

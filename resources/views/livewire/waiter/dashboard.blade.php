@@ -157,7 +157,7 @@
                                         icon="check"
                                         type="button"
                                         wire:click="disableTemporaryClosure({{ $branch['id'] }})"
-                                        wire:loading.attr="disabled"
+                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                         wire:target="disableTemporaryClosure({{ $branch['id'] }})"
                                     >
                                         {{ __('ui.waiter.dashboard.otkryt_zakazy') }}
@@ -242,7 +242,7 @@
                                                         icon="check"
                                                         type="button"
                                                         wire:click="markWaiterCallHandled({{ $waiterCall['id'] }})"
-                                                        wire:loading.attr="disabled"
+                                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                                         wire:target="markWaiterCallHandled({{ $waiterCall['id'] }})"
                                                     >
                                                         {{ __('ui.waiter.dashboard.done') }}
@@ -308,7 +308,7 @@
                                                         variant="primary"
                                                         type="button"
                                                         wire:click="openTable({{ $servicePoint['id'] }})"
-                                                        wire:loading.attr="disabled"
+                                                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                                                         wire:target="openTable({{ $servicePoint['id'] }})"
                                                     >
                                                         <span wire:loading.remove wire:target="openTable({{ $servicePoint['id'] }})">{{ __('ui.organizations.brands.branches.service_points.index.open_table') }}</span>

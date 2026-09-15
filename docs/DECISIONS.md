@@ -4,6 +4,14 @@
 
 # Restaurant Menu completion decisions
 
+## 2026-09-15 — preserve the delivered product and fix recovery boundaries
+
+Use current local `0450bac` as the implementation baseline. Reuse its existing editor, image operation ledger, locale persistence, guest detail panel and operational screens. Scope this follow-up to reproduced recovery defects; no new schema, dependency graph, frontend framework or runtime service is justified. Test execution and shared-file changes have one owner. Historical delivery results remain distinguishable from fresh final gates, and GitHub remains restricted to the final ordinary push.
+
+Rollback compensation must return even when storage or warning logging fails. Otherwise Laravel can retain transaction callbacks and run old-file cleanup during an unrelated later commit. Keep this exception suppression only in `DeleteRolledBackLocalImageAction`; ordinary deletion and after-commit callbacks retain visible failure and ledger retry. Do not record new database work inside a rolled-back transaction. The residual unreferenced-file limit is explicit.
+
+Keep guest configuration state and the existing request UUID through transient availability conflicts. An explicit refresh revalidates the current menu; safe close returns to a stable heading when the original card has disappeared. Restrict URL locale persistence to active restored guests. These changes preserve the existing authorization, basket and locale mechanisms.
+
 ## Product decisions — 2026-09-14
 
 - Keep the existing Blade/Livewire/Flux stack and semantic warm palette; local Noto Sans supplies all supported writing systems without external font requests.

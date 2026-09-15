@@ -13,10 +13,10 @@
 
         @if ($reasonModel)
             <label class="grid gap-1 text-sm">
-                <span class="font-medium text-zinc-700 dark:text-zinc-200">
+                <span class="font-medium text-text-primary">
                     {{ __($reasonLabel) }}
                     @if ($reasonRequired)
-                        <span class="text-red-600">*</span>
+                        <span class="text-danger">*</span>
                     @endif
                 </span>
                 <textarea
@@ -27,19 +27,19 @@
                     maxlength="500"
                     @required($reasonRequired)
                     placeholder="{{ __($reasonPlaceholder) }}"
-                    class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                    class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"
                 ></textarea>
             </label>
 
             @error($reasonModel)
-                <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                <p class="text-sm font-medium text-danger">{{ $message }}</p>
             @enderror
         @endif
 
         @if ($confirmationModel && $confirmationText)
             <div class="grid gap-2 text-sm">
                 <label class="grid gap-1">
-                    <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __($confirmationLabel) }}</span>
+                    <span class="font-medium text-text-primary">{{ __($confirmationLabel) }}</span>
                     <input
                         id="dangerous-action-{{ $name }}-confirmation"
                         name="{{ $confirmationModel }}"
@@ -47,16 +47,16 @@
                         type="text"
                         autocomplete="off"
                         required
-                        class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-red-500 focus:outline-hidden focus:ring-2 focus:ring-red-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                        class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"
                     >
                 </label>
 
-                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                <p class="text-xs text-text-muted">
                     {{ __($confirmationHelp ?: 'ui.confirmations.typed_confirmation_help', ['text' => $confirmationText]) }}
                 </p>
 
                 @error($confirmationModel)
-                    <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                    <p class="text-sm font-medium text-danger">{{ $message }}</p>
                 @enderror
             </div>
         @endif
@@ -79,7 +79,7 @@
                         variant="danger"
                         type="button"
                         wire:click="{{ $confirmAction }}"
-                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                         wire:target="{{ $submitTarget }}"
                     >
                         <span wire:loading.remove wire:target="{{ $submitTarget }}">{{ __($confirmLabel) }}</span>
@@ -91,7 +91,7 @@
                         variant="danger"
                         type="button"
                         wire:click="{{ $confirmAction }}"
-                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled" wire:loading.attr="disabled"
                     >
                         {{ __($confirmLabel) }}
                     </flux:button>

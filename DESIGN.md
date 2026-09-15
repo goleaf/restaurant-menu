@@ -116,6 +116,12 @@ components:
 
 # Design System: Restaurant Menu
 
+## Operational recovery refinement — 2026-09-15
+
+Keep the warm semantic palette and local multilingual Noto Sans. Kitchen/bar elapsed time, status and overrun now share a compact wrapping strip; the primary action retains a 56-pixel touch target and consistent accent. Waiter detail and destructive confirmation surfaces use the same semantic tokens in light and dark themes.
+
+Recovery states are part of the visual hierarchy: keep a configured dish and its comment visible beside the availability error and explicit retry. The panel can close safely even after its menu card disappears, with focus returning to the menu heading. Disable server actions during offline/loading states while preserving readable content and dismissal.
+
 ## Product interface implementation — 2026-09-14
 
 Local Noto Sans variable normal faces cover Latin, Lithuanian and Cyrillic with system sans-serif fallback; no runtime font CDN is required. Use the established warm accent, semantic surface/text/border/state tokens, restrained shadows and consistent 44-pixel control targets. Guest cards stack the image above text below 360 pixels; larger small screens use a compact image column. Item details trap focus, close with Escape and restore focus to the invoking detail control.

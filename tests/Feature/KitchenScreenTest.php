@@ -118,6 +118,27 @@ test('view kitchen permission can open kitchen screen without chef role', functi
         ->assertSee('Kitchen screen');
 });
 
+test('a failed department transition clears feedback from the previous success', function (bool $foreignItem): void {
+    [$organization, , , $kitchenItem, $barItem] = createPrompt61KitchenScenario();
+    $headChef = User::factory()->create();
+    attachPrompt61Staff($headChef, $organization, SystemRole::HeadChef);
+
+    $component = Livewire::actingAs($headChef)
+        ->test(KitchenDashboard::class)
+        ->call('setItemStatus', $kitchenItem->id, KitchenTicketItemStatus::Accepted->value)
+        ->assertHasNoErrors()
+        ->assertSet('feedbackMessage', __('ui.livewire.departments.dashboard.status_updated'));
+
+    $component
+        ->call('setItemStatus', $foreignItem ? $barItem->id : $kitchenItem->id, $foreignItem ? KitchenTicketItemStatus::Ready->value : 'unknown')
+        ->assertHasErrors('ticket_item_status')
+        ->assertSet('feedbackMessage', null)
+        ->assertDontSee(__('ui.livewire.departments.dashboard.status_updated'));
+
+    expect($kitchenItem->fresh()->status)->toBe(KitchenTicketItemStatus::Accepted)
+        ->and($barItem->fresh()->status)->toBe(KitchenTicketItemStatus::New);
+})->with(['unknown status' => false, 'foreign department' => true]);
+
 test('staff without kitchen role or permission cannot open kitchen screen', function () {
     [$organization] = createPrompt61KitchenScenario();
     $staff = User::factory()->create(['name' => 'Prompt 61 No Kitchen']);

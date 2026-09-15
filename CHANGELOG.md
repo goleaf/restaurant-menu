@@ -4,6 +4,14 @@
 
 # Changelog
 
+## 2026-09-15 — guest and media recovery
+
+- Preserve configured guest input and request identity when a dish becomes unavailable or disappears; add explicit availability retry and safe keyboard focus restoration.
+- Restrict restored URL locale writes to active guests without changing existing guest/session/basket identities.
+- Isolate rollback media cleanup from disk and logger failures, attempt all new variants and prevent callbacks from leaking into a later transaction.
+- Clear stale staff success feedback, disable guest/staff mutations offline, and simplify kitchen/bar timers and waiter detail styling with existing semantic components.
+- Add adversarial PHP and actual browser regressions. See `docs/testing.md` for fresh integrated results and environmental limits; previous delivery evidence remains historical.
+
 ## 2026-09-14 — restaurant catalogue, guest experience and operational safety
 
 - Introduce a compact searchable catalogue with focused dish editing, shared accessible EN/LT/RU panels, selected-language preview and stale-edit protection that preserves unsaved input.

@@ -4,6 +4,12 @@
 
 # Accessibility
 
+## Recovery focus and offline actions — 2026-09-15
+
+A guest detail panel whose originating card disappears returns focus to the menu heading (`tabindex="-1"`) after Livewire closes it. Both Escape and the visible close control use the same path; normal cards still recover their trigger focus. The availability error remains visible within the panel and the retry is keyboard operable.
+
+Staff and guest mutation buttons expose the actual disabled state while offline and recover on reconnection. The existing text status remains visible; color and sound are never the only signal. Kitchen/bar action targets remain 56 pixels while compact timers reduce decorative vertical space. Real browser evidence, including viewport/theme coverage and the limits of emulation, belongs in [testing](testing.md).
+
 The target is WCAG 2.2 AA for critical user and staff workflows. Native semantic HTML is preferred over redundant ARIA.
 
 ## Required behavior

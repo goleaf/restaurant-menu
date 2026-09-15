@@ -242,6 +242,22 @@ class GuestMenu extends Component
         $this->selectedModifierOptions[$modifierGroupId] = $selected;
     }
 
+    public function refreshConfiguredItem(): void
+    {
+        $this->resetValidation('menu_item');
+        unset($this->guestMenu, $this->selectedItemGallery);
+
+        if ($this->selectedItemId === null || $this->itemAddAttemptId === '') {
+            return;
+        }
+
+        $item = $this->selectedItem();
+
+        if ($item === null || ! (bool) $item['is_available']) {
+            $this->addError('menu_item', __('menu.guest.item_no_longer_available'));
+        }
+    }
+
     public function saveConfiguredItem(AddGuestDraftOrderItemAction $addGuestDraftOrderItem): void
     {
         $this->resetValidation();
@@ -265,7 +281,11 @@ class GuestMenu extends Component
         $item = $this->selectedItem();
 
         if ($item === null || ! (bool) $item['is_available']) {
-            $this->closeItemSheet();
+            if ($this->itemAddAttemptId !== '') {
+                $this->addError('menu_item', __('menu.guest.item_no_longer_available'));
+            } else {
+                $this->closeItemSheet();
+            }
 
             return;
         }
@@ -349,6 +369,7 @@ class GuestMenu extends Component
         $this->applyLocale();
 
         $selectedItem = $this->selectedItem();
+        $hasPendingItemConfiguration = $this->selectedItemId !== null && $this->itemAddAttemptId !== '';
         $categoryOptions = collect($this->guestMenu()['menus'] ?? [])
             ->flatMap(fn (array $menu): array => $menu['categories'] ?? [])
             ->map(fn (array $category): array => ['id' => (int) $category['id'], 'name' => (string) $category['name']])
@@ -364,7 +385,11 @@ class GuestMenu extends Component
             'availableMenuCount' => count($availableMenus),
             'unavailableMenus' => $guestMenu['unavailable_menus'] ?? [],
             'selectedItem' => $selectedItem === null ? null : $this->displayItem($selectedItem),
-            'selectedItemGallery' => $this->selectedItemGallery,
+            'hasPendingItemConfiguration' => $hasPendingItemConfiguration,
+            'hasMissingConfiguredItem' => $hasPendingItemConfiguration && $selectedItem === null,
+            'canConfigureSelectedItem' => $selectedItem !== null && $this->canConfigureItem($selectedItem),
+            'canReviewItemComment' => $hasPendingItemConfiguration || ($selectedItem !== null && $this->canConfigureItem($selectedItem)),
+            'selectedItemGallery' => $selectedItem === null ? [] : $this->selectedItemGallery,
             'selectedItemTotal' => $selectedItem === null ? MoneyFormatter::formatCents(0, $this->currency) : $this->selectedItemTotal($selectedItem),
             'dietaryOptions' => MenuDietaryLabel::options($this->language),
             'allergenOptions' => MenuAllergen::options($this->language),

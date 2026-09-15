@@ -16,7 +16,7 @@ The existing supported-locale resolution and persistence remain authoritative. G
 
 The application supports English (`en`), Lithuanian (`lt`) and Russian (`ru`). All interface text lives in the flat `lang/en.json`, `lang/lt.json` and `lang/ru.json` catalogues and uses semantic dot keys. English is the safe default for a new context, but it is not an accepted substitute for a missing Lithuanian or Russian value: the automated audit requires exact key parity, non-empty values and a narrow allowlist for language-neutral codes, units and example proper names.
 
-An authenticated choice is stored in `users.locale`; the web session applies it immediately and restores it on later requests. Public/guest choices are stored in the web session and copied to both `table_session_guests.locale` and pending `table_session_join_requests.locale`, so approval, cookie restoration and later QR scans retain the guest's language. A valid explicit `?lang=` choice has request precedence; unsupported values are ignored rather than persisted.
+An authenticated choice is stored in `users.locale`; the web session applies it immediately and restores it on later requests. Public/guest choices are stored in the web session and copied to the active `table_session_guests.locale` and the existing pending `table_session_join_requests.locale` flow, so approval, cookie restoration and later QR scans retain the guest's language. Restoring a removed, departed, rejected or pending guest record with a URL language does not mutate that guest row; URL persistence requires an active restored guest, matching explicit locale events. A valid explicit `?lang=` choice has request precedence; unsupported values are ignored rather than persisted.
 
 ## Contributor workflow
 

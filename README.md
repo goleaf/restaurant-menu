@@ -4,6 +4,10 @@
 
 # Restaurant Menu
 
+## Recovery update — 2026-09-15
+
+Guest details retain configured input through availability conflicts, image rollback cleanup preserves original files and transaction state, and staff/guest controls communicate offline and retry states. The existing catalogue, multilingual gallery and restaurant workflow remain the product foundation. See [current local verification](docs/testing.md) and [the implementation ledger](docs/IMPLEMENTATION_PLAN.md) for observed results and delivery status.
+
 Tenant-safe restaurant operations on Laravel and Livewire: administration, permanent QR entry, guest table sessions, shared drafts, waiter review, kitchen/bar fulfilment, offline settlement, reporting, and SQLite backup/restore.
 
 The application is server-rendered with Blade and class-based Livewire. It requires no SPA framework, online payment provider, Redis, WebSockets, S3, Docker, cron, Supervisor, continuously running queue worker, runtime Artisan process, or separate frontend server.

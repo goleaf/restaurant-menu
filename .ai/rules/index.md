@@ -16,6 +16,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Actions/Invitations,Http/Controllers/Invitations,Livewire/**,Models/Invitation.php}/** | .ai/rules/invitations-livewire.md |
 | lang/*.json | .ai/rules/lang.md |
 | app/Livewire/** | .ai/rules/livewire.md |
+| app/Actions/Media/** | .ai/rules/media.md |
 | app/{Actions/Menus,Models,Services/Menus,Livewire/Organizations/Brands/Branches/Menu}/** | .ai/rules/menu.md |
 | app/Actions/Menus/** | .ai/rules/menus.md |
 | app/Livewire/Onboarding/**, app/Livewire/Forms/Onboarding/**, app/Support/RestaurantSetupOptions.php | .ai/rules/onboarding-support.md |

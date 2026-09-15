@@ -4,6 +4,14 @@
 
 # Performance
 
+## Recovery follow-up measurement scope — 2026-09-15
+
+The recovery fixes retain the delivered catalogue projections, selected-item gallery loading, image dimensions, polling intervals and cache keys. This follow-up makes no new query-count or response-time improvement claim; the fixed-fixture before/after measurements below describe the earlier product implementation and are not relabeled as new measurements.
+
+Compact kitchen/bar timers and shared action controls are presentation changes. Offline mutation disabling prevents futile user submissions but does not change Livewire's polling transport contract. Fresh correctness, visual and integrated gate results are recorded in [testing](testing.md).
+
+An isolated Chrome comparison holds the timer text and available width constant while reconstructing the previous tracked timer styles alongside the current styles. At a 1440-pixel viewport, the 1086-pixel-wide timer panel changes from 138 to 46 pixels high; at a 320-pixel viewport, the 254-pixel-wide panel changes from 138 to 70 pixels high. Actions retain their observed 56-pixel target. This measures layout density only, not request latency. The prior `text-4xl` utility is no longer emitted by the current build, so the comparison explicitly restores its 2.25rem font size and 2.5rem line height from the installed locked Tailwind theme. No historical full-page render or new server-performance benchmark is claimed.
+
 ## Measured product changes — 2026-09-14
 
 Measurements use fixed local fixtures, not production traffic. Counts and serialized sizes describe prepared read-service output; they are not HTTP latency, compressed wire bytes or a physical-device benchmark.

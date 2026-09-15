@@ -3,7 +3,7 @@
     <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium uppercase tracking-wide text-accent">{{ __('menu.guest.title') }}</p>
-            <h2 class="mt-1 text-lg font-semibold leading-tight text-text-primary">
+            <h2 id="guest-menu-title-{{ $branchId }}" tabindex="-1" class="mt-1 text-lg font-semibold leading-tight text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
                 {{ $availableMenuCount > 1 ? __('menu.guest.choose_menu') : ($guestMenu['menu']['name'] ?? __('menu.guest.choose_items')) }}
             </h2>
             @if ($availableMenuCount > 1)
@@ -329,20 +329,21 @@
         </div>
     @endif
 
-    @if ($selectedItem !== null)
+    @if ($selectedItem !== null || $hasMissingConfiguredItem)
         <div
             class="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/60 px-3 py-0 sm:items-center sm:py-6"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="guest-menu-item-title-{{ $selectedItem['id'] }}"
-            x-data="{ image: 0 }"
+            aria-labelledby="guest-menu-item-title-{{ $selectedItemId }}"
+            x-data="{ image: 0, closeDetails() { this.$wire.closeItemSheet().then(() => (document.getElementById('guest-menu-item-details-{{ $selectedItemId }}') ?? document.getElementById('guest-menu-title-{{ $branchId }}'))?.focus()); } }"
             x-trap.inert.noscroll="true"
             x-init="$nextTick(() => $refs.close.focus())"
-            @keydown.escape.window="$wire.closeItemSheet().then(() => document.getElementById('guest-menu-item-details-{{ $selectedItem['id'] }}')?.focus())"
+            @keydown.escape.window="closeDetails()"
         >
             <div class="max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-dialog bg-surface p-4 shadow-elevated sm:rounded-dialog">
                 <div class="flex items-start justify-between gap-3">
                     <div class="flex min-w-0 items-start gap-3">
+                        @if ($selectedItem !== null)
                         <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900">
                             @if (($selectedItem['image_variants']['thumbnail_url'] ?? $selectedItem['image_url']) !== null)
                                 <img
@@ -358,11 +359,14 @@
                                 <span class="px-2 text-center text-xs font-semibold text-zinc-600 dark:text-zinc-400">{{ __('menu.item_detail.gallery') }}</span>
                             @endif
                         </div>
+                        @endif
 
                         <div class="min-w-0">
                             <p class="text-xs font-medium uppercase text-accent">{{ __('menu.item_detail.title') }}</p>
-                            <h3 id="guest-menu-item-title-{{ $selectedItem['id'] }}" class="mt-1 text-lg font-semibold leading-tight text-text-primary">{{ $selectedItem['name'] }}</h3>
+                            <h3 id="guest-menu-item-title-{{ $selectedItemId }}" class="mt-1 text-lg font-semibold leading-tight text-text-primary">{{ $selectedItem['name'] ?? __('menu.guest.unavailable') }}</h3>
+                            @if ($selectedItem !== null)
                             <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $selectedItemTotal }}</p>
+                            @endif
 
                         </div>
                     </div>
@@ -370,13 +374,36 @@
                     <button
                         type="button"
                         x-ref="close"
-                        @click="$wire.closeItemSheet().then(() => document.getElementById('guest-menu-item-details-{{ $selectedItem['id'] }}')?.focus())"
+                        @click="closeDetails()"
                         class="inline-flex size-11 shrink-0 items-center justify-center rounded-control border border-border-strong text-text-muted transition hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
                         aria-label="{{ __('menu.guest.close') }}"
                     >
                         <flux:icon name="x-mark" variant="micro" class="size-4" />
                     </button>
                 </div>
+
+                @error('menu_item')
+                    <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+                @else
+                    @if ($hasMissingConfiguredItem)
+                        <x-ui.alert tone="warning" class="mt-4">{{ __('menu.guest.item_no_longer_available') }}</x-ui.alert>
+                    @endif
+                @enderror
+
+                @error('guest')
+                    <x-ui.alert tone="danger" class="mt-4">{{ $message }}</x-ui.alert>
+                @enderror
+
+                @if ($hasPendingItemConfiguration && ! $canConfigureSelectedItem)
+                    <x-ui.button
+                        type="button"
+                        wire:click="refreshConfiguredItem"
+                        wire:offline.attr="disabled"
+                        wire:loading.attr="disabled"
+                        wire:target="refreshConfiguredItem"
+                        class="mt-4"
+                    >{{ __('guest.table.try_again') }}</x-ui.button>
+                @endif
 
                 @if ($selectedItemGallery !== [])
                     <div class="relative mt-4 overflow-hidden rounded-card bg-surface-muted">
@@ -399,6 +426,7 @@
                     </div>
                 @endif
 
+                @if ($selectedItem !== null)
                 <x-ui.plain-text :text="$selectedItem['description']" class="mt-4 block text-sm leading-6 text-text-muted" />
 
                 <x-menu.item-labels
@@ -406,8 +434,10 @@
                     :allergens="$selectedItem['allergens']"
                     :dietary-labels="$selectedItem['dietary_labels']"
                 />
+                @endif
 
                 <div class="mt-4 space-y-4">
+                    @if ($selectedItem !== null)
                     @if ($selectedItem['variants'] !== [])
                         <fieldset class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
                             <legend class="px-1 text-sm font-semibold text-zinc-950 dark:text-white">
@@ -506,8 +536,9 @@
                             :heading="__('menu.guest.no_modifiers')"
                         />
                     @endforelse
+                    @endif
 
-                    @if ($guestCanAddItems && $branchCanAcceptOrders && $selectedItem['is_available'])
+                    @if ($canReviewItemComment)
                     <label class="grid gap-1 text-sm">
                         <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('menu.guest.comment') }}</span>
                         <textarea
@@ -526,11 +557,12 @@
                     @endif
                 </div>
 
-                @if ($guestCanAddItems && $branchCanAcceptOrders && $selectedItem['is_available'])
+                @if ($canConfigureSelectedItem)
                 <x-ui.mobile-bottom-actions class="mt-5" :summary="$selectedItemTotal">
                     <x-ui.button
                         type="button"
                         wire:click="saveConfiguredItem"
+                        wire:offline.attr="disabled"
                         wire:loading.attr="disabled"
                         wire:target="saveConfiguredItem"
                         variant="primary"

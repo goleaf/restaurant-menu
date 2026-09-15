@@ -4,6 +4,12 @@
 
 # Frontend architecture
 
+## Recovery and operational presentation — 2026-09-15
+
+Guest details stay open when their configured dish disappears from the current menu. The existing translated error and retry control preserve the comment, options and addition identity; unavailable dishes expose no Add action. Closing restores focus to the original trigger or the stable menu heading if that trigger no longer exists.
+
+Kitchen/bar timers use one compact wrapping row. Operational mutations reuse the primary button component with 56-pixel targets. Waiter detail and dangerous confirmations use semantic surface, text, border and state tokens in both themes. Mutation controls disable for offline and targeted loading states; browsing, reading and dismissing remain available. Server authorization is unchanged.
+
 ## Catalogue and guest product integration
 
 `menu-translations.js` owns ephemeral tab/preview/focus state and synchronizes English authoring to existing base inputs. Livewire owns validation and persistence. `menu-image-picker.js` presents local file previews, pending removal and upload progress; `ManagesItemImages` owns server upload state and receipt replay. Neither helper introduces another frontend framework.

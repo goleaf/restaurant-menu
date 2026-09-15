@@ -4,6 +4,16 @@
 
 # Restaurant Menu completion progress
 
+## 2026-09-15 — recovery implementation verified
+
+- Baseline was clean local main at `0450bac12ed22ac44fb390a267c154043106b09a`. Preserve the delivered product, stack, dependency graph and migration history; this follow-up fixes reproduced guest/media/staff recovery defects.
+- Guest URL locale writes now require active restored identity. Availability conflicts keep the configured comment, modifiers and attempt UUID, show a localized error and permit explicit retry; closing after the card disappears restores focus to the menu heading.
+- Non-throwing image rollback compensation attempts remaining new files and protects original exceptions and subsequent transaction state, including logger failure. Ordinary deletion/after-commit failure and the existing cleanup ledger are unchanged. A disk-refused unreferenced rollback file remains a documented operational limit.
+- Kitchen/bar transitions clear stale success, shared mutations disable offline, and semantic waiter detail/confirmation surfaces plus compact kitchen timers preserve accessible action targets. Equal-content timer style comparison measures 138 to 46 pixels at 1440 viewport width and 138 to 70 at 320; this is layout density, not server latency. Root inspected current screenshots; independent source and documentation review found no remaining blocker.
+- Fresh backend: 2,366 / 52,157; WebKit: 11 / 643; parallel: 2,366 / 52,157; coverage: 93.8%, all zero failures/skips. Composer/Pint/Larastan/translations/npm/build and all ten isolated migration/seed/cache commands exit 0. Detailed commands, timings and the interrupted browser attempt are recorded in testing.md.
+- Every final gate used the unchanged 1,077-file source digest `7b0c96df6cab61457582dc1c564881f1a741995ec092b90107c240b19b9594ec`. Policy/frontmatter and eight skill mirrors pass for 176 Markdown files; 320 local links resolve. All 52 models have factories and all 89 migrations retain up/down; no working database was migrated or seeded.
+- Final documentation/architecture checks pass 16 tests / 1,055 assertions. The final Markdown, skill, link and diff checks also exit 0. Implementation and integrated verification are complete; addressed staging and the local Conventional Commit precede the ordinary main push. Publication is not yet claimed at this checkpoint.
+
 ## Current product integration evidence — 2026-09-14
 
 Product implementation `ef7b67afc231877c7c1abba4a6f8427306c3bc2e` (`feat: improve restaurant catalogue and guest workflows [skip ci]`) is committed and pushed to `origin/main`. The ordinary `git push origin main` returned exit 0 and reported `3e8178b..ef7b67a  main -> main`. No additional GitHub request was made to verify the push, and no production deployment occurred. This documentation follow-up records that observed delivery.

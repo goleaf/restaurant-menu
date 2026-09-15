@@ -4,6 +4,22 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-15 — product recovery follow-up
+
+Baseline: clean local `main` at `0450bac12ed22ac44fb390a267c154043106b09a`. The completed product delivery below remains in place. This bounded follow-up addresses concrete recovery gaps found in the current implementation; it does not restart the redesign or change the stack, schema or dependencies.
+
+| Task | Status | Owner | Dependencies | Areas and acceptance evidence |
+| --- | --- | --- | --- | --- |
+| Local state and policy | done | Root | None | Clean main verified; idempotent policy synchronization changes no files; all 175 Markdown files and eight skill mirrors pass. |
+| Guest recovery | done | Guest worker/root | State | Observed failing regressions, then 60 focused tests / 826 assertions pass. Active URL locale, retained configuration/attempt, explicit availability retry and vanished-trigger focus fallback are implemented; real guest recovery browser scenario passes. |
+| Media rollback cleanup | done | Media worker | State | Observed cleanup exception and stale callback deleting an original image on the next commit. All 70 focused tests / 431 assertions pass, including real variant files, disk/logger failure and transaction independence. |
+| Staff feedback and offline controls | done | Root | State | Observed stale-success RED, then 84 affected tests / 637 assertions pass. Offline/reconnect browser controls and semantic waiter details pass; compact kitchen timers retain 56-pixel actions. |
+| Independent final review | done | Independent reviewer | Guest, media, staff | Reviewed actual implementation and tests; confirmed focus/offline findings were corrected. Final implementation and documentation review found no remaining blocker. |
+| Final local gates and documentation | done | Root | Review | Backend 2,366, WebKit 11, parallel 2,366, coverage 93.8% and quality/isolated gates pass on unchanged source; testing.md records fresh evidence and the interrupted browser attempt. Final documentation checks precede commit. |
+| Local commit and ordinary push | in_progress | Root | Gates | Review exact owned diff, create a Conventional Commit on main and report the ordinary push result without any other GitHub request. |
+
+Root owns shared translations, views/components, documentation, manifests and all test execution. Workers own only explicitly allocated guest/media source and regression files. No concurrent test runners, dependency installs, migrations or project-wide formatters are permitted.
+
 ## 2026-09-14 — product delivery (completed)
 
 Scope: the current user-authorized restaurant product improvement, starting from local `3e8178b401722f5a6e9bcb46a6b73ae4bce132da`. This section records the completed authorized delivery. Earlier audit sections below are historical records, including incomplete publication instructions; they do not authorize GitHub access. GitHub is used only for the final ordinary push, with no subsequent remote verification request. Local quality gates determine readiness.

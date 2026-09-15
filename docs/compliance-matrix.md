@@ -4,6 +4,10 @@
 
 # Compliance matrix
 
+## Recovery regression evidence — 2026-09-15
+
+The existing guest/menu/staff rows are additionally exercised by `GuestRecoveryRegressionTest`, `MediaRollbackCleanupFailureTest`, the transition-feedback cases in `KitchenScreenTest`, and `ProductMenuWorkflowTest`. They cover inactive URL locale writes, stale selected dishes and safe retry, real decoded image pairs with disk/logger failure, callback isolation across transactions, stale feedback, offline controls and keyboard focus after a detail trigger disappears. Fresh integrated results are recorded in [testing](testing.md); earlier dated results remain historical.
+
 The canonical source for every row is [`requirements.md`](requirements.md). This is the compact status view; the concrete backend/UI/authorization/table/test path is in [`REQUIREMENTS_TRACEABILITY.md`](REQUIREMENTS_TRACEABILITY.md). Controlled statuses are **implemented and verified**, **partially implemented**, **blocked by external dependency**, and **not applicable with reason**. A passing full suite is common evidence; each row also names the narrow implementation and regression area. `F/S` means factories plus fixed/demo seed coverage.
 
 Historical status on 2026-08-24: **51 requirements catalogued; 50 implemented and verified; 0 in progress; 0 blocked; 1 not applicable with reason**. The gated Pest cases belong only to feature-gated `sys-auth-002`; Fortify currently enables password reset, while public registration, passkeys and 2FA are disabled. Staff account creation is invitation-only. The demo-login automated, runtime and browser contracts are verified.

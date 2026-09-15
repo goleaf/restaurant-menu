@@ -1,28 +1,28 @@
-<aside class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+<aside class="rounded-lg border border-border-subtle bg-surface p-4">
     @if ($paymentFeedbackMessage)
-        <p class="rounded-md bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <p class="rounded-md bg-success-surface px-3 py-2 text-sm font-medium text-success">
             {{ $paymentFeedbackMessage }}
         </p>
     @endif
 
     @error('table_session')
-        <p class="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rounded-md bg-danger-surface px-3 py-2 text-sm font-medium text-danger">{{ $message }}</p>
     @enderror
 
     @if (data_get($payment, 'session.close_blocked_by_workflow'))
-        <p class="rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+        <p class="rounded-md bg-warning-surface px-3 py-2 text-sm font-medium text-warning">
             {{ __('orders.errors.table_has_unfinished_work') }}
         </p>
     @endif
 
     @if (data_get($payment, 'session.can_close'))
         <div id="close-table">
-            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('payments.close_session') }}</h2>
+            <h2 class="text-base font-semibold text-text-primary">{{ __('payments.close_session') }}</h2>
 
             <p @class([
                 'mt-3 rounded-md px-3 py-2 text-sm',
-                'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => data_get($payment, 'session.close_requires_warning'),
-                'bg-zinc-50 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400' => ! data_get($payment, 'session.close_requires_warning'),
+                'bg-warning-surface text-warning' => data_get($payment, 'session.close_requires_warning'),
+                'bg-surface-muted text-text-muted' => ! data_get($payment, 'session.close_requires_warning'),
             ])>
                 {{ __('payments.close_session_warning') }}
             </p>
@@ -48,50 +48,50 @@
     @endif
 
     @if (data_get($payment, 'can_view'))
-        <div @class(['border-zinc-200 dark:border-zinc-800' => data_get($payment, 'session.can_close'), 'mt-5 border-t pt-4' => data_get($payment, 'session.can_close')])>
-            <h2 class="text-base font-semibold text-zinc-950 dark:text-white">{{ __('payments.title') }}</h2>
+        <div @class(['border-border-subtle' => data_get($payment, 'session.can_close'), 'mt-5 border-t pt-4' => data_get($payment, 'session.can_close')])>
+            <h2 class="text-base font-semibold text-text-primary">{{ __('payments.title') }}</h2>
 
             @error('manual_payment')
-                <p class="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+                <p class="mt-3 rounded-md bg-danger-surface px-3 py-2 text-sm font-medium text-danger">{{ $message }}</p>
             @enderror
 
-            <p class="mt-4 text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.summary') }}</p>
+            <p class="mt-4 text-xs font-medium uppercase text-text-muted">{{ __('payments.summary') }}</p>
 
             <dl class="mt-2 grid gap-3 text-sm">
                 <div class="flex items-center justify-between gap-3">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.table_total') }}</dt>
-                    <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($payment, 'confirmed_total') }}</dd>
+                    <dt class="text-text-muted">{{ __('payments.table_total') }}</dt>
+                    <dd class="font-semibold text-text-primary">{{ data_get($payment, 'confirmed_total') }}</dd>
                 </div>
 
                 @if (data_get($payment, 'service_charge_enabled'))
                     <div class="flex items-center justify-between gap-3">
-                        <dt class="text-zinc-500 dark:text-zinc-400">
+                        <dt class="text-text-muted">
                             {{ __('payments.service_charge') }} · {{ data_get($payment, 'service_charge_percent') }}%
                         </dt>
-                        <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($payment, 'service_charge_total') }}</dd>
+                        <dd class="font-semibold text-text-primary">{{ data_get($payment, 'service_charge_total') }}</dd>
                     </div>
                 @endif
 
                 <div class="flex items-center justify-between gap-3">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.total_paid') }}</dt>
-                    <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($payment, 'paid_total') }}</dd>
+                    <dt class="text-text-muted">{{ __('payments.total_paid') }}</dt>
+                    <dd class="font-semibold text-text-primary">{{ data_get($payment, 'paid_total') }}</dd>
                 </div>
 
                 @if (data_get($payment, 'tips_enabled'))
                     <div class="flex items-center justify-between gap-3">
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.tips_recorded') }}</dt>
-                        <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($payment, 'tips_paid_total') }}</dd>
+                        <dt class="text-text-muted">{{ __('payments.tips_recorded') }}</dt>
+                        <dd class="font-semibold text-text-primary">{{ data_get($payment, 'tips_paid_total') }}</dd>
                     </div>
                 @endif
 
                 <div class="flex items-center justify-between gap-3">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('payments.remaining') }}</dt>
-                    <dd class="font-semibold text-zinc-950 dark:text-white">{{ data_get($payment, 'remaining_total') }}</dd>
+                    <dt class="text-text-muted">{{ __('payments.remaining') }}</dt>
+                    <dd class="font-semibold text-text-primary">{{ data_get($payment, 'remaining_total') }}</dd>
                 </div>
             </dl>
 
             @if (data_get($payment, 'unpaid_guests_count', 0) > 0)
-                <div class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                <div class="mt-3 rounded-md bg-warning-surface px-3 py-2 text-sm text-warning">
                     <p class="font-medium">{{ __('payments.unpaid') }}: {{ data_get($payment, 'unpaid_guests_count') }}</p>
                     <div class="mt-2 flex flex-wrap gap-2">
                         @foreach (data_get($payment, 'unpaid_guests', []) as $unpaidGuest)
@@ -103,21 +103,21 @@
                     </div>
                 </div>
             @elseif (data_get($payment, 'is_fully_paid'))
-                <p class="mt-3 rounded-md bg-lime-50 px-3 py-2 text-sm font-medium text-lime-800 dark:bg-lime-950/40 dark:text-lime-100">
+                <p class="mt-3 rounded-md bg-success-surface px-3 py-2 text-sm font-medium text-success">
                     {{ __('payments.fully_paid') }}
                 </p>
             @elseif ((int) data_get($payment, 'paid_total_cents', 0) > 0)
-                <p class="mt-3 rounded-md bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                <p class="mt-3 rounded-md bg-information-surface px-3 py-2 text-sm font-medium text-information">
                     {{ __('payments.partially_paid') }}
                 </p>
             @endif
 
             @if (data_get($payment, 'has_open_draft'))
-                <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                <p class="mt-3 rounded-md bg-warning-surface px-3 py-2 text-sm text-warning">
                     {{ __('payments.errors.open_draft') }}
                 </p>
             @elseif (! data_get($payment, 'has_payable_total'))
-                <p class="mt-3 rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                <p class="mt-3 rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted">
                     {{ __('payments.errors.no_confirmed_orders') }}
                 </p>
             @endif
@@ -133,15 +133,15 @@
                     </flux:select>
 
                     <label class="grid gap-1 text-sm">
-                        <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ __('payments.forms.note') }}</span>
-                        <textarea id="waiter-payment-note" name="paymentNote" wire:model="paymentNote" rows="2" maxlength="500" class="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-emerald-500 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
+                        <span class="font-medium text-text-primary">{{ __('payments.forms.note') }}</span>
+                        <textarea id="waiter-payment-note" name="paymentNote" wire:model="paymentNote" rows="2" maxlength="500" class="rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-text-primary shadow-sm focus:border-focus focus:outline-hidden focus:ring-2 focus:ring-focus/30"></textarea>
                     </label>
 
                     @if (data_get($payment, 'tips_enabled'))
                         <flux:input wire:model="tipsAmount" :label="__('payments.forms.amount')" type="number" min="0" step="0.01" />
 
                         @error('tipsAmount')
-                            <p class="text-sm font-medium text-red-600 dark:text-red-400">{{ $message }}</p>
+                            <p class="text-sm font-medium text-danger">{{ $message }}</p>
                         @enderror
                     @endif
 
@@ -165,14 +165,14 @@
             @endif
 
             <div class="mt-4 space-y-2">
-                <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.forms.guest') }}</p>
+                <p class="text-xs font-medium uppercase text-text-muted">{{ __('payments.forms.guest') }}</p>
 
                 @forelse (data_get($payment, 'guest_balances', []) as $guestBalance)
-                    <article wire:key="payment-guest-{{ $guestBalance['guest_id'] }}" class="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+                    <article wire:key="payment-guest-{{ $guestBalance['guest_id'] }}" class="rounded-md border border-border-subtle p-3">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <x-ui.plain-text :text="$guestBalance['guest_name']" class="block font-medium text-zinc-950 dark:text-white" :preserve-lines="false" />
-                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                <x-ui.plain-text :text="$guestBalance['guest_name']" class="block font-medium text-text-primary" :preserve-lines="false" />
+                                <p class="mt-1 text-xs text-text-muted">
                                     {{ __('payments.guest_total') }}: {{ $guestBalance['due'] }}
                                     · {{ __('payments.guest_paid') }}: {{ $guestBalance['paid'] }}
                                 </p>
@@ -184,7 +184,7 @@
                         </div>
 
                         @if ($guestBalance['covered_by_table_payment'])
-                            <p class="mt-2 text-xs text-lime-700 dark:text-lime-300">{{ __('payments.covered_by_table_payment') }}</p>
+                            <p class="mt-2 text-xs text-success">{{ __('payments.covered_by_table_payment') }}</p>
                         @endif
 
                         @if ($guestBalance['can_record_payment'])
@@ -205,31 +205,31 @@
                         @endif
                     </article>
                 @empty
-                    <p class="rounded-md bg-zinc-50 px-3 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{{ __('payments.no_guest_totals') }}</p>
+                    <p class="rounded-md bg-surface-muted px-3 py-2 text-sm text-text-muted">{{ __('payments.no_guest_totals') }}</p>
                 @endforelse
             </div>
 
             @if (data_get($payment, 'payments'))
                 <div class="mt-4 space-y-2">
-                    <p class="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">{{ __('payments.payment_history') }}</p>
+                    <p class="text-xs font-medium uppercase text-text-muted">{{ __('payments.payment_history') }}</p>
 
                     @foreach (data_get($payment, 'payments', []) as $recordedPayment)
-                        <div wire:key="manual-payment-{{ $recordedPayment['id'] }}" class="rounded-md bg-zinc-50 px-3 py-2 text-sm dark:bg-zinc-800">
+                        <div wire:key="manual-payment-{{ $recordedPayment['id'] }}" class="rounded-md bg-surface-muted px-3 py-2 text-sm">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="font-medium text-zinc-950 dark:text-white">{{ $recordedPayment['amount'] }} · {{ __($recordedPayment['method_label']) }}</p>
-                                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <p class="font-medium text-text-primary">{{ $recordedPayment['amount'] }} · {{ __($recordedPayment['method_label']) }}</p>
+                                    <p class="mt-1 text-xs text-text-muted">
                                         {{ __($recordedPayment['scope_label']) }}
                                         @if ($recordedPayment['guest_name'])
                                             · <x-ui.plain-text :text="$recordedPayment['guest_name']" class="inline" :preserve-lines="false" />
                                         @endif
                                     </p>
                                 </div>
-                                <p class="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">{{ $recordedPayment['paid_at'] }}</p>
+                                <p class="shrink-0 text-xs text-text-muted">{{ $recordedPayment['paid_at'] }}</p>
                             </div>
 
                             @if ($recordedPayment['recorded_by_name'] || $recordedPayment['note'])
-                                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                <p class="mt-1 text-xs text-text-muted">
                                     @if ($recordedPayment['recorded_by_name'])
                                         {{ __('payments.recorded_by') }}: {{ $recordedPayment['recorded_by_name'] }}
                                     @endif

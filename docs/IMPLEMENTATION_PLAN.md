@@ -21,17 +21,18 @@ This scoped pass preserves the concurrent team-control-center work and its stage
 Baseline build uses a disposable output directory: main CSS 310.24 kB (gzip 41.75 kB), font CSS 0.96 kB (gzip 0.40 kB), JavaScript 22.76 kB (gzip 6.24 kB), Vite duration 3.62 s. Exact byte comparison and final evidence are recorded in `docs/tailwind.md` and `docs/testing.md`. The current workflow permits ordinary pushes but does not require one for this local modernization; this pass performs no push.
 
 
-## 2026-09-15 — team control center (active)
+## 2026-09-15 — team control center (verified)
 
 ### Continuation checkpoint
 
-Entry inspection found the unfinished team implementation on `b68f31b`; an external local commit then advanced the shared main to `5505ef3`. Preserve that complete baseline. Earlier done rows and numerical results below are prior-run evidence and do not certify new edits. Three real workers own invitations, access, and staff/area UX; root owns shared UI, translations, migrations, documentation, browser integration and final verification.
+Entry inspection found the unfinished team implementation on `b68f31b`; external local commits advanced the shared main to `5505ef3` and then `565dcf6`. The latter includes both the team work and concurrent Flux/CSS changes. Preserve that complete integrated baseline. Three real workers implemented invitations, access, and staff/area UX; root owns shared integration and verification. Non-author reviews found no remaining code blocker; documentation was corrected to distinguish mandatory suspension/role reasons from optional restoration reasons.
 
-- Done: current-policy permission explanations, stale invitation consent/role validation, scoped recipient destinations, error response headers, named area previews and filtered invitation counters.
-- Done: fullscreen native mobile editor and adjacent desktop detail panel, verified clipboard success/denial, local dismissal during a real network outage and explicit reconnect draft reconciliation.
-- Done: independent cross-review corrected higher-role/self branch assignment and new-recipient LT/RU persistence; focused regressions pass. Equal-fixture measurements are in performance.md, including the query/cold-memory increases.
-- In progress: fresh complete backend/browser/coverage gates on the verified task snapshot; unrelated concurrent Flux/CSS work is preserved outside that snapshot.
-- Pending: reconcile externally changed staging, create the verified local commit and perform only ordinary `git push origin main`.
+- Done: focused employee/invitation/area sections, invitation-only browser mutations, transactional current-credential consent, tenant-safe access operations and correct role destinations.
+- Done: current-policy permission explanations, named area previews/conflicts and filtered invitation counters; fullscreen mobile editor and adjacent desktop detail, truthful clipboard success/denial and actual offline dismissal/reconnect behavior.
+- Done: EN/LT/RU recipient locale and validation, explicit account switching, current-source screenshots and independent integration review. Equal-fixture integrated measurements are in performance.md, including the query/cold-memory increases.
+- Done: integrated browser inventory 21 / 1,465 assertions; Larastan, translations, dependency checks, build and isolated schema/seed/cache roundtrip.
+- Done: final integrated backend 2,732 / 58,090 and coverage 93.7% on the same 2,732 tests, above the unchanged 90% gate. The disposable storage includes the committed public protection; report aggregation uses a process-local 4 GiB limit.
+- Ready for delivery: implementation is preserved in `565dcf6`; `589ced8` only updates documentation. Commit this verified ledger locally and perform only ordinary `git push origin main`. The final Git command result is the delivery evidence; new uncommitted frontend work remains separate.
 
 
 Baseline: clean local main `b68f31b`; branch control implementation `8a3945d` and delivery are present locally. Earlier verification remains historical. The stage preserves the delivered catalogue, guest and branch dashboard workflows.
@@ -45,8 +46,8 @@ Baseline: clean local main `b68f31b`; branch control implementation `8a3945d` an
 | Waiter assignments | done | Review and save one person's branch zones | Workspace agent | Membership contract | Current waiter semantics, scoped coverage, stale-selection conflict and atomic save |
 | Integration and measured optimization | done | Responsive lists with small initial state | Root/workspace | Implementations | Equal fixtures: queries, hydration, memory, HTML and Livewire state |
 | Independent review and browser scenarios | done | Verified complete recipient/admin workflow | Cross-review/root | Integration | Non-author diff review, isolated identities, five widths, themes, focus, errors/offline |
-| Final gates and documentation | in_progress | Existing product remains reliable | Root | Review | Full backend/browser, coverage>=90, static/format/translations/audits/build and isolated schema/seed checks |
-| Local commit and ordinary push | todo | Reviewed changes delivered on existing main | Root | Gates | Addressed staging and observed ordinary git push result, no remote verification |
+| Final gates and documentation | done | Existing product remains reliable | Root | Review | Full backend/browser, coverage>=90, static/format/translations/audits/build and isolated schema/seed checks |
+| Local commit and ordinary push | ready | Reviewed changes delivered on existing main | Root | Gates | Addressed staging and observed ordinary git push result, no remote verification |
 
 Ownership: invitation agent owns invitation Actions/model/controllers/requests/recipient views and focused tests; access agent owns membership/override Actions, authorization model/query/UI and focused tests; workspace agent owns both staff Index components/views, StaffQueryService and waiter assignment Action/forms/tests. Root owns shared Blade/JS, JSON, migrations, factories, routes, manifests, docs, full suites and browser integration. All workers use separate disposable test runtime; no working-database writes or real invitations.
 

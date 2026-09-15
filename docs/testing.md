@@ -4,6 +4,28 @@
 
 # Testing and quality gates
 
+## Integrated team verification — 2026-09-15
+
+Verification now targets local `565dcf6`, which includes the team implementation and the other session's committed Flux/CSS work. A disposable source mirror preserves that complete commit. Its 1,169-file executable/config/translation manifest is `e3b91bf65f8072a2dd0bcd00d46d53499deadc8fd317f73797f5dc72f83e483e`; Markdown ledger updates are checked separately. Herd PHP 8.5.8 and the existing dependency locks are unchanged. No working database, real invitations or production deployment is involved.
+
+| Gate | Observed integrated result |
+| --- | --- |
+| Complete WebKit inventory | 21 passed / 1,465 assertions, zero failures/timeouts; coordinator exit 0 |
+| Four-process backend | 2,732 passed / 58,090 assertions, 226.32 s; exit 0 |
+| Four-process application coverage | 2,732 passed / 58,090 assertions, 632.03 s; 93.7% against the unchanged 90% minimum, process-local `COMPOSER_MEMORY_LIMIT=4G`; exit 0 |
+| Pint / canonical Larastan | Exit 0; 729 analysed files, no errors |
+| Translation audit / scan | Exit 0; 7,851 values, 2,617 keys, 712 code files; no missing/unused keys, phrase calls or critical issues |
+| Composer strict validation / platform / locked audit; npm audit | Exit 0; compatible installed platform, no vulnerability advisories |
+| Production build | Exit 0, 531 ms; app CSS 298.37 kB (39.84 gzip), JS 22.76 kB (6.24 gzip), print-only CSS 6.71 kB (1.68 gzip) |
+| Isolated migrations / seeds / caches | 13 commands exit 0, including rollback/reapply and two idempotent default seeds |
+| Markdown policy / independent review | 179 first-party Markdown files; policy moved below the new Flux rule's YAML frontmatter, then two zero-change sync passes; no remaining integration blocker |
+
+The root inspected actual integrated screenshots at 320/390/768/1024/1440 pixels, mobile modal and desktop adjacent editing, named zone-change preview, EN/LT/RU and light/dark recipient validation. The complete browser suite exercises independent administrator/recipient sessions, real clipboard success/denial, explicit consent and credential rotation, area saving, suspension/restoration and revocation in an already opened session. The mobile editor also uses an actual offline browser context. Scope limitations for emulated viewports, CSS zoom and screen readers remain as described below.
+
+Fresh measurements on this integrated source keep the same 30 staff / 30 invitations / 60 areas / 300 assignments fixture and local `b68f31b` staff-only baseline overlay. SQL is 29 → 33, hydration 424 → 50, HTML 1,279,182 → 138,696 bytes and snapshot 2,907 → 1,512 bytes. Warm median component render is 339.91 → 100.02 ms; cold peak allocation increases from 6,637,696 to 9,124,744 bytes. These runs include contention from other local quality suites; they are not production HTTP timings. See [performance](performance.md) for cold/warm boundaries and all figures.
+
+Earlier candidate backend passed 2,717 / 58,017 and browser passed 21 / 1,302 before integration. Its coverage ran all tests but failed to serialize the report under the default 1.5 GiB memory limit; that result is not a coverage pass. The first integrated backend had one environment failure: a newly isolated storage tree lacked the committed public `.htaccess`. Copying that exact protection file gives 4 passing storage-safety tests / 13 assertions; no assertion or application code was weakened. The parallel coverage attempt sharing that incomplete fixture was stopped, and both full gates then passed from the corrected runtime. Later local `589ced8` changes documentation only; the executable manifest is identical. Further uncommitted frontend work by the other session is preserved outside this verified delivery. Other earlier failures and corrections remain recorded below.
+
 ## Flux/CSS modernization — 2026-09-15
 
 This pass preserves concurrent team work in the shared checkout. Runtime changes are frontend composition/styles; the only PHP implementation change is the operational button presentation component. No migrations, application database writes or dependency upgrades were performed.
@@ -36,7 +58,7 @@ The initial backend pass exposed a stale traceability path after removing the ge
 Owned raw evidence is outside the repository at `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-flux-20260915-8krwm2q0`; final WebKit case logs are at `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-browser-abe8468b604d7afb`. Initial Chromium Pest launch could not find its matching browser revision; the repository's installed WebKit runner and separate sandboxed stable Chrome MCP checks provide the observed browser coverage. New package releases remain blocked by their prohibited GitHub distribution URLs; installed versions and Free applicability are recorded in `frontend.md`.
 
 
-## Team control center continuation — 2026-09-15
+## Team candidate before integrated main — 2026-09-15 (historical)
 
 The verified delivery candidate starts from local `5505ef3`, preserving the previously implemented branch/team work. A disposable source mirror contains only this task's changes; concurrent Flux/CSS edits and their staging remain in the shared checkout. PHP is the installed Herd 8.5.8 binary. All fixtures, sessions, caches and storage are isolated; neither the working database nor real employee invitations are used.
 
@@ -61,7 +83,7 @@ Separate-process file-backed SQLite tests retain real concurrent create/accept/r
 
 Actual WebKit tests capture 320/390/768/1024/1440 widths, light/dark, EN/LT/RU, keyboard/Escape, focus restoration, 200% CSS layout zoom, truthful clipboard success/denial and native modal mobile editors. The editor test toggles the actual Playwright context offline and checks `navigator.onLine`; recipient offline feedback additionally uses dispatched events. No physical-phone, native browser zoom or screen-reader certification is claimed. Representative actual screenshots were visually inspected; this exposed and corrected the untranslated invitation validation and generic name label. Full-page recipient captures scroll to the top so an off-viewport fixed skip link is not captured over document content.
 
-Two full-browser attempts returned nonzero despite completed assertions because Node's Playwright `run-server` survived Symfony's repeated SIGTERM and PHP blocked in `proc_close`/`waitpid`. They are failed attempts, not passing gates. The first also exposed a photo-test synchronization race: the test now waits for enabled upload input, exact pending counts and saved gallery state, preserving all identity/order assertions. No photo runtime behavior changed. The coordinator now appends a quoted first-party Node preload only to its owned children; a marker plus `run-server` argv guard permits natural shutdown and bounds a surviving listener to one second after SIGTERM. Vendor files and dependencies are unchanged. Actual Pest exit zero and one complete passing JUnit case remain mandatory; failures, skips, incomplete reports and timeouts remain failures. A repeat mistakenly started from the moving shared checkout was stopped and is not candidate evidence.
+Two full-browser attempts returned nonzero despite completed assertions because Node's Playwright `run-server` survived Symfony's repeated SIGTERM and PHP blocked in `proc_close`/`waitpid`. They are failed attempts, not passing gates. The first also exposed a photo-test synchronization race: the test now waits for enabled upload input, exact pending counts and saved gallery state, preserving all identity/order assertions. No photo runtime behavior changed. The coordinator now appends a quoted first-party Node preload only to its owned children; a marker plus `run-server` argv guard permits natural shutdown and bounds a surviving listener to one second after SIGTERM. Vendor files and dependencies are unchanged. Actual Pest exit zero and one complete passing JUnit case remain mandatory; failures, skips, incomplete reports and timeouts remain failures. A repeat mistakenly started from the moving shared checkout was stopped and is not candidate evidence. A later complete repeat had zero shutdown timeouts but one LT test-fixture mismatch: default-English accounts were checked against a Lithuanian string from Pest's mutable application locale. Fixtures now declare the dataset locale and assert the rendered language explicitly; production locale selection was already correct.
 
 ### Comparable measurement and source boundary
 

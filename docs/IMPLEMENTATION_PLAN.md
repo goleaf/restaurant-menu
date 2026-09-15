@@ -16,7 +16,7 @@ Baseline: clean local `main` at `0450bac12ed22ac44fb390a267c154043106b09a`. The 
 | Staff feedback and offline controls | done | Root | State | Observed stale-success RED, then 84 affected tests / 637 assertions pass. Offline/reconnect browser controls and semantic waiter details pass; compact kitchen timers retain 56-pixel actions. |
 | Independent final review | done | Independent reviewer | Guest, media, staff | Reviewed actual implementation and tests; confirmed focus/offline findings were corrected. Final implementation and documentation review found no remaining blocker. |
 | Final local gates and documentation | done | Root | Review | Backend 2,366, WebKit 11, parallel 2,366, coverage 93.8% and quality/isolated gates pass on unchanged source; testing.md records fresh evidence and the interrupted browser attempt. Final documentation checks precede commit. |
-| Local commit and ordinary push | in_progress | Root | Gates | Review exact owned diff, create a Conventional Commit on main and report the ordinary push result without any other GitHub request. |
+| Local commit and ordinary push | done | Root | Gates | Exactly 44 owned files committed on main as `efaba627b8715546a9602d8bbe8afaf34c025dca`. Ordinary `git push origin main` returned exit 0: `0450bac..efaba62 main -> main`. No other GitHub request or production deployment occurred. |
 
 Root owns shared translations, views/components, documentation, manifests and all test execution. Workers own only explicitly allocated guest/media source and regression files. No concurrent test runners, dependency installs, migrations or project-wide formatters are permitted.
 

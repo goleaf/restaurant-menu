@@ -1,0 +1,1544 @@
+{
+  "schema_version": 2,
+  "package": "livewire/flux-pro",
+  "status": "local-fork",
+  "upstream_version": null,
+  "upstream_pristine_verified": false,
+  "compatibility": {
+    "status": "foundation-verified-ui-compatibility-pending",
+    "original_flux_requirement": "2.13.1|dev-main",
+    "local_flux_requirement": "2.17.0",
+    "installed_flux_version_at_import": "2.17.0",
+    "verified_scope": [
+      "Composer offline resolution and physical vendor mirror",
+      "Laravel provider discovery and distinct facade aliases",
+      "Minimal Pro and Free Blade rendering",
+      "Preserved Flux and editor asset delivery"
+    ],
+    "pending_scope": [
+      "Full component API and JavaScript compatibility",
+      "Existing Free workflow browser regression tests",
+      "Product integration and accessibility acceptance"
+    ]
+  },
+  "source_snapshot": {
+    "kind": "user-provided-snapshot",
+    "directory": "flux-pro",
+    "repository_commit": "eb3fa3d75c42774c4203fa8be6bde3bf944a631e",
+    "file_count": 139,
+    "total_bytes": 3291708,
+    "inventory_sha256": "b64a3c813819e85a414a010f68bb13d23ed7dcda76668fb5e52cf0388330ad9f",
+    "inventory_format": "UTF-8; lexicographic path-component order; path TAB bytes TAB sha256 LF",
+    "canonical_inventory_sha256": "da0fcdf6baf21b0f747cae8fa804cfe45bcc7e1ac9e6bb101c9448695b5790c5",
+    "canonical_inventory_format": "UTF-8; bytewise full-path order; path TAB bytes TAB sha256 LF",
+    "excluded_finder_metadata": [
+      ".DS_Store",
+      "stubs/.DS_Store",
+      "stubs/resources/.DS_Store",
+      "stubs/resources/views/.DS_Store"
+    ]
+  },
+  "files": [
+    {
+      "path": "LICENSE.md",
+      "bytes": 2253,
+      "sha256": "db157f8fe2a5f9dc30ce4104b1caffe619920c4a81038a585d1e1ff0df648870"
+    },
+    {
+      "path": "build-runtime.mjs",
+      "bytes": 7137,
+      "sha256": "3d92205a0fda1b50efbec2e23e35182e7fbed93c5af435bc25ad5fa35dfef628"
+    },
+    {
+      "path": "composer.json",
+      "bytes": 1589,
+      "sha256": "d45d1f0c230b45ba2a1c82aed547dad0d0404aef8c5ad69a3306aed4670ca989"
+    },
+    {
+      "path": "dist/editor.css",
+      "bytes": 3956,
+      "sha256": "a89988e3b53ed0e615378a7e35381921acd03c64ba10bcf0a64893e08f6e40fc"
+    },
+    {
+      "path": "dist/editor.js",
+      "bytes": 739849,
+      "sha256": "1fab1255e8aa6916fd8bda351c56af4b54b8e068a9bc8ef174bf9f94e27df9fa"
+    },
+    {
+      "path": "dist/editor.min.js",
+      "bytes": 332263,
+      "sha256": "9481441fa814cf2b25722217258b7f27ac43f9b23ba3fbe528ed8ea09e675575"
+    },
+    {
+      "path": "dist/editor.module.js",
+      "bytes": 698834,
+      "sha256": "16c6c21060354eaf3f60edafdae70d6860cab84690262bf2c32276ca234f41ea"
+    },
+    {
+      "path": "dist/flux.js",
+      "bytes": 551013,
+      "sha256": "4f53d2f3919685ccde48e527367bc20d3966c8e5a0f4b20eea646984977fc1ec"
+    },
+    {
+      "path": "dist/flux.min.js",
+      "bytes": 303925,
+      "sha256": "70bb52fe3ca0a6c2adb6c2be1e0fdd62d87adcea1a7390cf1f57522106fcc2f0"
+    },
+    {
+      "path": "dist/flux.module.js",
+      "bytes": 522190,
+      "sha256": "473431e552ef2dbc06513d2419e255c55096a13efadfacb1cdedf832b74a8991"
+    },
+    {
+      "path": "dist/manifest.json",
+      "bytes": 94,
+      "sha256": "d4e72ba212e85fff5adeb675321c0d214137908bb005fead0376e78d7e144e53"
+    },
+    {
+      "path": "src/FluxPro.php",
+      "bytes": 240,
+      "sha256": "a5b78a89573a9a5468124e70e73968ae60bd58626941cecb7f92749322046fe3"
+    },
+    {
+      "path": "src/FluxProManager.php",
+      "bytes": 59,
+      "sha256": "8ead5ece561ecd62d50f40735aed6c74b81b03fb67bd86b4cb4afee885fa888c"
+    },
+    {
+      "path": "src/FluxProServiceProvider.php",
+      "bytes": 690,
+      "sha256": "0eaf5e9945ec7f5a9d85f0044fec9bebd3b351f109b531bc1934367fefe0f016"
+    },
+    {
+      "path": "src/helpers.php",
+      "bytes": 26,
+      "sha256": "92bc0cad8130840365a7f1d279393b762d8847fbf1289b7f4160ee0805cbbc96"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/content.blade.php",
+      "bytes": 446,
+      "sha256": "58f7191c76cdb95b86d3a357de101cd7223cfce454c2d8d1cbbce485c9c72e81"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/heading.blade.php",
+      "bytes": 1293,
+      "sha256": "0b23c9f1d3c59c6b78c1a7454448ff97159f44c853409e509bde570163ddb484"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/icon.blade.php",
+      "bytes": 453,
+      "sha256": "f82817e1cc07d121ac3b0c4d4a5f35a70766ed2e97574388a6849cce11a168c0"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/index.blade.php",
+      "bytes": 179,
+      "sha256": "8bcc97eb34edf72a98a66d06b009169faef24f6f6508d93e07ace3410a84deb0"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/item.blade.php",
+      "bytes": 1260,
+      "sha256": "0f6c2555f5ba2e2b89977e757836dd8ad9a4add00cc20eaa125f430edc024af4"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/index.blade.php",
+      "bytes": 462,
+      "sha256": "cfd84443afe09a59490162f1df0eee36c7e47968ac347d66a754ddad0776ddbf"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/item.blade.php",
+      "bytes": 551,
+      "sha256": "f988276048b560e33f86b77b5cc37857994b41fe0b64f54033eafe4a3bcfdaa5"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/items.blade.php",
+      "bytes": 602,
+      "sha256": "6d9b5ccf6ca817acea154dfd6c224000a674db109c381623c730000e949187a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/calendar/index.blade.php",
+      "bytes": 20153,
+      "sha256": "2dfcc13e6fd0cbda91b278741f84ce42795f14ac77733855c3455d798ba1184e"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/area.blade.php",
+      "bytes": 272,
+      "sha256": "dce7620439f9fcab50e4bb93fcaecd4c0a762f2e91b87de27fc2d4e9587c022f"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/grid.blade.php",
+      "bytes": 638,
+      "sha256": "9898da3c5c66064135f49d009f243d94c2c2c88489dfeab7aece14165916b8c2"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/index.blade.php",
+      "bytes": 580,
+      "sha256": "17789342a47e220104f1e53e41610b0721f87f354409253a5a13a2b3faa5fa4b"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/line.blade.php",
+      "bytes": 745,
+      "sha256": "ba32c3e019efeeb00ec3cc99a24fa6a410157d02c2574b006ec4bd27a955ec97"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/mark.blade.php",
+      "bytes": 1030,
+      "sha256": "6e6e2d8ee156a8167da1e39ca09729028c70a4415a72365ee63f940474aadc18"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/tick.blade.php",
+      "bytes": 1342,
+      "sha256": "b4197859d4a21d318d0841393b64cc7b84d5ac2e5f617ae8226615cb00baed70"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/bar.blade.php",
+      "bytes": 446,
+      "sha256": "285c0d13aecc154babf1ee4f080176519d20f36357d45a4075dba04de72995a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/cursor.blade.php",
+      "bytes": 320,
+      "sha256": "2fddae1ca0f5c108385ce78b4f1eb0b54439c0198ae5b65de813755e912370b4"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/group.blade.php",
+      "bytes": 69,
+      "sha256": "6f3b983d39aff617b504fe38f9d1504b3a9fee0cb67495290170bfb2cb172aad"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/index.blade.php",
+      "bytes": 403,
+      "sha256": "b703e60267e999a9c6538a5bd85cc67c7f4ad93b78e49af9a6c5798ed2c71b95"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/legend/index.blade.php",
+      "bytes": 458,
+      "sha256": "9f9481938ea1468f4771197e6c01bb2a211c46494f8a549cabfe2bb58fd1f55a"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/legend/indicator.blade.php",
+      "bytes": 82,
+      "sha256": "da6edc94763917dc9024fc9ee33bbfc5a7fbf05b962b777c215b054bf3398552"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/line.blade.php",
+      "bytes": 421,
+      "sha256": "98c2279004b3a07f4c29c0b0a49fe4baef6a52969b55fdd434d34f03f412deaa"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/point.blade.php",
+      "bytes": 397,
+      "sha256": "b649cdeaeef439560ed197ab431cc2b8ebe726c8336f4f45c03a78840b74e45d"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/stack.blade.php",
+      "bytes": 69,
+      "sha256": "67b98c0e4a16e3a3b106c0a7c97aff870bb066e9f5dcf7b2531d3f2390b332fb"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/summary/index.blade.php",
+      "bytes": 117,
+      "sha256": "7e3e5e90ad56e49ca07e7f59ae6c9b513b84a0062847a9b9b1b80e0bc9824bdc"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/summary/value.blade.php",
+      "bytes": 381,
+      "sha256": "6f2db55b972376fd693e0895fd2c3576695e0f86a5c5e3db35f3ef92a078243c"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/svg.blade.php",
+      "bytes": 274,
+      "sha256": "f14466a01bc9e976aef3cef0b00a5a0620e7a3cfbc421a7351ccbd4f47cdd8ed"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/heading.blade.php",
+      "bytes": 522,
+      "sha256": "0a325fb6a8c5518d574b8c62ae4a6bb97d0ce03ed8bf89af56bb99be1052c123"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/index.blade.php",
+      "bytes": 489,
+      "sha256": "82f9e94e06fdcbf9d2f8936cc013c8909b5721135872cca3c05b83878c18633f"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/value.blade.php",
+      "bytes": 757,
+      "sha256": "bcc2cbd6ccfcf75cc0f5e4db4f450e227ee8b48b73aa704e310a4341ec512e40"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/value.blade.php",
+      "bytes": 307,
+      "sha256": "dccdead589f2983da4c6a56a992ee465e34beedb8be316d1eafc13d0b99f40cf"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/viewport.blade.php",
+      "bytes": 97,
+      "sha256": "219462edb1b86664415de4cfd23c9bb12b7de0bdee3112f273d27ed7faf3066e"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/zero-line.blade.php",
+      "bytes": 394,
+      "sha256": "bdc8ab860feb1b73f9a6095e66c0fbef290388f88be6536cc02e8bfe8431cd75"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/empty.blade.php",
+      "bytes": 265,
+      "sha256": "4bb520ac4b4ad9ddca138597c6cf176a0896166575fa65935bc1d9e887e595a5"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/index.blade.php",
+      "bytes": 363,
+      "sha256": "ee9ab1312cbf3a1182235586be4e4b16df0371fcb2e7031f652945aa141ce00e"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/input.blade.php",
+      "bytes": 2112,
+      "sha256": "1ca0afc3591bda30df5da5d863b7d348eeeb47d78927c286ad96a1408bd9da49"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/item.blade.php",
+      "bytes": 1298,
+      "sha256": "882b58bf6322369f50e3c3d38bc5995020ef5906d8a9ff0a3d4249dff2e62e41"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/items.blade.php",
+      "bytes": 340,
+      "sha256": "a69b74ec53d1e841c0c010df7852ec22671cdffd15679f06281fb8501f98e39a"
+    },
+    {
+      "path": "stubs/resources/views/flux/composer/index.blade.php",
+      "bytes": 3451,
+      "sha256": "e53bbc383450626f1b0246eed3aec56b595efb28f391d8a65875c8bcf4e01e5b"
+    },
+    {
+      "path": "stubs/resources/views/flux/context.blade.php",
+      "bytes": 557,
+      "sha256": "1936322cc7416dc1f01e3bf1805688d28c554cf27ceb040fa8a0e2772b64b139"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/button.blade.php",
+      "bytes": 2385,
+      "sha256": "09e9095b43a6d6dbb8e1b547ff17354db1c6dbd432b6fa3bd263b98d49256cf9"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/index.blade.php",
+      "bytes": 25935,
+      "sha256": "f7511e8d501068a5390d87acb09a86597805049de13a7c73b50486f6521f6dcf"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/input.blade.php",
+      "bytes": 1660,
+      "sha256": "efe7bb9c29433b38e5302f4708ccb4760de93e65176bb58114b7f21695de652c"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/selected.blade.php",
+      "bytes": 656,
+      "sha256": "9d293a597e06d78e65460c3de0ffb464f518d4d43d4772bbf4af806d87ab6af5"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/align.blade.php",
+      "bytes": 3060,
+      "sha256": "1c28832988cd38684749159b1b8719e3d56a5ac1191af2b5057c21a0e63e4377"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/blockquote.blade.php",
+      "bytes": 829,
+      "sha256": "d5e9d5e7a4e98c94399aee8a2a75559b18ef876ed3bcb4a719a6dc5f1ee310f8"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/bold.blade.php",
+      "bytes": 569,
+      "sha256": "d7af7c1cbcf2120c2079acb84b9f61be261defd8518656e5bf33a9a98327c061"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/bullet.blade.php",
+      "bytes": 887,
+      "sha256": "84be3eab3fa0813a66e62a3ed907377b77564b2387dd58697debd5ef4302c918"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/button.blade.php",
+      "bytes": 1418,
+      "sha256": "7f64385a29f6359c096791e6d364a9085c7d3ca29794de1d51fc4e1d60b616b9"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/code.blade.php",
+      "bytes": 770,
+      "sha256": "e6580014a0ddfc86a347cd02893ceb15082511a355de3572c4cb0527dc554f2e"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/content.blade.php",
+      "bytes": 101,
+      "sha256": "dbc4eb545995ab0d96de0018f84430ac6727159bff199a0328f779bc6b31d73d"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/heading.blade.php",
+      "bytes": 4678,
+      "sha256": "7b27ba7b6bde3d3a6b5a9716bffe158fd2a524e8c24ecfc30c72593375b98c56"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/highlight.blade.php",
+      "bytes": 546,
+      "sha256": "6719f9bcc0d79196b5d1fb55e21cbea995334320832f5e0e0534b92cd9ae71a3"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/index.blade.php",
+      "bytes": 1942,
+      "sha256": "4136e0882799ee699f1d1c3e9d7e0649a9a61433ce4930b86f3d792323f2b54e"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/italic.blade.php",
+      "bytes": 565,
+      "sha256": "7af34625d4d710769b808003d04e287c766e2ff30395ca4cfbf726c0385e0b2a"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/link.blade.php",
+      "bytes": 5244,
+      "sha256": "56e7dd87a4ce234762fde658758f129222a0dd222a34a89641ab2c85a8b866be"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/option.blade.php",
+      "bytes": 327,
+      "sha256": "f1d949a49f87b40ec45c31658407ae2df6bea89ff7b1de594a9aacdd6a590cae"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/ordered.blade.php",
+      "bytes": 1181,
+      "sha256": "747e07152ec287afdfc814494f5c50697c95a61bcecbc2abe63d3407193d35de"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/redo.blade.php",
+      "bytes": 519,
+      "sha256": "4712c9f7b42cd70a41bca72cafc105a92d4e4cfd976b7ad33a0b91584648f54d"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/scripts.blade.php",
+      "bytes": 45,
+      "sha256": "e5ee69cb06814a08cc3038ab487bedc244755d58d145b5331e2365d9f2a006b2"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/separator.blade.php",
+      "bytes": 127,
+      "sha256": "9b6378c4f68d90cfa60501ed4c62b9e5af80bceb4aba2d835ea70a0931888b1c"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/spacer.blade.php",
+      "bytes": 59,
+      "sha256": "7c611d91849c1f1794dccbeda9f72997f064e092f62b3de1ddcad8792a35c182"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/strike.blade.php",
+      "bytes": 1142,
+      "sha256": "f45c8cbaf4125c9bd56ec17a9d598f2c0d039fea525fc58a6226a6b44968a9d5"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/styles.blade.php",
+      "bytes": 44,
+      "sha256": "4533bd6e7d3ec508378fadbcd41ba01fbe4493d42858065b0b12cbb68c88d45f"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/subscript.blade.php",
+      "bytes": 612,
+      "sha256": "43e765949bcf1f320aa428d0f0b4da3fb3c1f5fad925ae3cf20c047b027d6362"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/superscript.blade.php",
+      "bytes": 633,
+      "sha256": "360b739efbb6e2209cdadfcd604b8ef6a618dad23195da274915c6dd657cd102"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/toolbar.blade.php",
+      "bytes": 1849,
+      "sha256": "3e18afdc0064875416a260759f732201029a1d61a845f5bf4575076766439671"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/underline.blade.php",
+      "bytes": 607,
+      "sha256": "6db849eeb8f52a709977e63e54673e2eec073079d42ee745b617f090f442e2a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/undo.blade.php",
+      "bytes": 510,
+      "sha256": "32d37d3dde515acd9e3b6fea7a2779182640317dd2ad5d95a47d376b01ed7642"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-item/index.blade.php",
+      "bytes": 2880,
+      "sha256": "234f1dae1275feb4387e978944703fb423bbb9875fa8133dd3bdfc8ee9b74fa4"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-item/remove.blade.php",
+      "bytes": 299,
+      "sha256": "75fd10f68e8d81c5769f20d070e21e1e5051bb595a40bda9e47138dd588da99a"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-upload/dropzone/index.blade.php",
+      "bytes": 3146,
+      "sha256": "141f942494d824be03fc64a9fa5d2fb0ba730743444d71bbfb35eae16f815f77"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-upload/index.blade.php",
+      "bytes": 1071,
+      "sha256": "8dbe871da09debee0d7c6078dab36cb3d79280359dfcdcb156aca05d43802b01"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/card.blade.php",
+      "bytes": 1583,
+      "sha256": "852fa3df0d52948e4a0e74cf127dd667b0484a15a3150056757e36484e2f10d8"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/cards.blade.php",
+      "bytes": 232,
+      "sha256": "0ec3edfd31b09ff1a54f5436a7bba6e541aae1a3e9ead8c541fe3621b678ce6e"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/footer.blade.php",
+      "bytes": 224,
+      "sha256": "99df6464323f4f52a38e4163ff5e25de9270c67727ae6bff750dc36977f991f0"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/header.blade.php",
+      "bytes": 1166,
+      "sha256": "654d9c6cfff1a5be5c455c95361b4a8a31b8e2ff9f391feb07dfae89e2adf2a9"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/index.blade.php",
+      "bytes": 303,
+      "sha256": "c610a1621e9d190e8862720a25e36c289d78729742697fbb98d5777d962468d1"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/index.blade.php",
+      "bytes": 105,
+      "sha256": "856c8c569c40eae4a5a59914f9e42af6b7f06922ee034746435253cccf314378"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/empty.blade.php",
+      "bytes": 168,
+      "sha256": "cca15cd7736f329539f8e724719acc6d4e288d0623b48e8975adc83067520f18"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/index.blade.php",
+      "bytes": 680,
+      "sha256": "d8ce9a59a8542fea0ffd1fc39843365437682655f2cca3d1d38e1ea67501b50f"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/indicator.blade.php",
+      "bytes": 124,
+      "sha256": "438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/input.blade.php",
+      "bytes": 850,
+      "sha256": "0f8e3e88a707eaf7e566b7faa7f743a9bc2a9506f4ff6d91cbc8000068309101"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option.blade.php",
+      "bytes": 1492,
+      "sha256": "0401747809a961c13174a54f2020860a995bdd87ec72d256e0bdab873736c0ef"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option/create.blade.php",
+      "bytes": 1118,
+      "sha256": "909ed74a5e251056384633864e86d71ed268eaf06e703b101912da78028073f9"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option/empty.blade.php",
+      "bytes": 427,
+      "sha256": "7c78d0daec6823864fb4f5bf5e90ed83fd1f385d04dbf06069c5b7e1f1a286ed"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/options.blade.php",
+      "bytes": 1963,
+      "sha256": "426df1922c05453a64738940164f4f2a98a83bbc300af6c0d229fcd6eed8a865"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/search.blade.php",
+      "bytes": 3349,
+      "sha256": "9382339958a1fc68129c66967fcd95d76e08915b6061329f9912b7b2b24ed215"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/selected.blade.php",
+      "bytes": 2316,
+      "sha256": "decf0874aa39df28473f5173cc306161d19bc3b8e158b7bb8105490a43bdc494"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/trigger.blade.php",
+      "bytes": 2990,
+      "sha256": "1997d34472fad579f7667ef0d98a8cb8d9683eb93b23a91c780d70b24d80d327"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/variants/combobox.blade.php",
+      "bytes": 2260,
+      "sha256": "cb81737fd464aed4eaee5dbc4ad991b1bbeae3755736b848d57387c676fd9dd2"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/variants/default.blade.php",
+      "bytes": 1484,
+      "sha256": "494624f02128d66c58f058599e4a070dc0d3349aa3232992eb1d1fc80c07b608"
+    },
+    {
+      "path": "stubs/resources/views/flux/popover/index.blade.php",
+      "bytes": 653,
+      "sha256": "abab6be8c9afe030832bd2a6ef721a2498ce15dbe1f24b5c1c08afd8e30eb071"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/button.blade.php",
+      "bytes": 2271,
+      "sha256": "2bba0426b43e432b692bb2b9558eca45ec8e62c9cfd7adb6fe31bc231463b419"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/empty.blade.php",
+      "bytes": 160,
+      "sha256": "d77246da4283c4ea8a5ee416be46aa7d8156fedaa60785239693fffa9b8ba41c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/index.blade.php",
+      "bytes": 474,
+      "sha256": "b42831ede623b2ddd89f91e9b06d64d99728d1c311ab0584a28b56fcf7b6569c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/check.blade.php",
+      "bytes": 124,
+      "sha256": "438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/checkbox.blade.php",
+      "bytes": 1179,
+      "sha256": "20c31bba1b8798d376070a41dc6b8376a3942f9a2b6451b7fb64dd2101fa001d"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/radio.blade.php",
+      "bytes": 1153,
+      "sha256": "05a5815aa6c24f630e242a6b7cb6607edd53429aa5df7d8052ad572663d5c7ba"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/input.blade.php",
+      "bytes": 1522,
+      "sha256": "cd416c3eb9d314619c0d93d03ae9e5f1e60089f0542a2ecb906897b115dc58da"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/create.blade.php",
+      "bytes": 1231,
+      "sha256": "65526106af29078ae8164fa5ede6a054c41cf0200038f40a634fce826c3386b0"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/empty.blade.php",
+      "bytes": 428,
+      "sha256": "d8b757a8c9b8d2c2937ed0dd84ab8686596afa2189dd7f78b96a2a29329a1944"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/variants/custom.blade.php",
+      "bytes": 1556,
+      "sha256": "c8064af02f39b0dc0b5b1296bace517956cbea6b4fabfe038b289b4a5dac6d95"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/options.blade.php",
+      "bytes": 1747,
+      "sha256": "2089fa8d718bdd9f122cca8a1bf9277f28d512067f31d266eb663e6c8e2fbb1f"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/search.blade.php",
+      "bytes": 3249,
+      "sha256": "124645a118764953cfbf763570cb3a6ffd95fdff48cf73266171ae986e8eca5f"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/selected.blade.php",
+      "bytes": 789,
+      "sha256": "2344e9a85d70df81f5bed2ba606421ea82f8bc96788675d36515e171625c098a"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/combobox.blade.php",
+      "bytes": 1671,
+      "sha256": "5bd5d1399aad302f686714f8e5a0ee26a4dc6372a9c508eb1816150e88bc7cd5"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/custom.blade.php",
+      "bytes": 785,
+      "sha256": "068061877fbd289032d02fad1ca3bbe826fca46fdfc702aa347e41034409932c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/listbox.blade.php",
+      "bytes": 1441,
+      "sha256": "00445b42426786528186d71fce793ab6662a90be2e6eb3c078859c7a06aac3f6"
+    },
+    {
+      "path": "stubs/resources/views/flux/slider/index.blade.php",
+      "bytes": 2805,
+      "sha256": "9ff52ab941779f4740969613c7420391282fc1076cab680dbe2678e979cfce85"
+    },
+    {
+      "path": "stubs/resources/views/flux/slider/tick.blade.php",
+      "bytes": 797,
+      "sha256": "bceb341307f31f5e67bb715363e8abe5eb890ca77a1263f51b474c0ba4f70bb2"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/group.blade.php",
+      "bytes": 121,
+      "sha256": "b268a88d1e1d744a055bddaa1dfffd5abafdca8ddcfbc622a843f89e606213fc"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/index.blade.php",
+      "bytes": 4088,
+      "sha256": "3fcbad8e73d21d5387f2bc6ea7bca675533b93904949a88146489081da1d955f"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/panel.blade.php",
+      "bytes": 423,
+      "sha256": "eb019f863c07b8ac48ecb140fa82762f9993944d9aadf8169deab33bbc1714fd"
+    },
+    {
+      "path": "stubs/resources/views/flux/tabs.blade.php",
+      "bytes": 2204,
+      "sha256": "3dc0bac7cc97c5827b63c24f222ae69334b10aef9f2a90ec1d804cf9ff84a8c3"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/button.blade.php",
+      "bytes": 2355,
+      "sha256": "000557e1666479a431f11e4b9fe329bce626d9bf326d78eeaa7bcefef3baf7b5"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/index.blade.php",
+      "bytes": 3979,
+      "sha256": "353746a83761fee457ad288648ef8e28b8504fec586cf1f9bc26ae7583e39644"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/input.blade.php",
+      "bytes": 4212,
+      "sha256": "defd2e1527a6dbcfb058401c9d6d535a9485e1df9634ff9fd5c851dc6b6314d5"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/selected.blade.php",
+      "bytes": 673,
+      "sha256": "645f043d135dfc345beea78f5c28b3f245e414f2112ba1c9dd7171f128101eac"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/block.blade.php",
+      "bytes": 143,
+      "sha256": "e683605869ce39b2a0d24139eeae4c66fa91c8732a679f52c52c01e5c1a9a81f"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/content.blade.php",
+      "bytes": 223,
+      "sha256": "d8cb32d4cb1180d189076ae995862df92152c2b68e6e1b5baf5de83fbd8f4c10"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/index.blade.php",
+      "bytes": 554,
+      "sha256": "11d4134b143f02c4c4d796e732fb05968ef89ae63a4503bbdc6b58b24c243c05"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/indicator.blade.php",
+      "bytes": 3327,
+      "sha256": "67c44826d6cbd4120dd45263c4d12045b10a7970c76cd6e108ad893baeedd4c3"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/item.blade.php",
+      "bytes": 1320,
+      "sha256": "92fe025a76fa5403bd7914df38a3bf56be7cbe9f82f9ce11f75e5aadadb10114"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/subgrid.blade.php",
+      "bytes": 145,
+      "sha256": "8d90fa219de82ffd3beecf2118df693f6d6778506e3a51555324c3aff99352a7"
+    }
+  ],
+  "source_files": [
+    {
+      "path": "LICENSE.md",
+      "bytes": 2253,
+      "sha256": "db157f8fe2a5f9dc30ce4104b1caffe619920c4a81038a585d1e1ff0df648870"
+    },
+    {
+      "path": "composer.json",
+      "bytes": 1559,
+      "sha256": "c07f944664216e94e0eb7ac1d11f69330c188b51792e01445ce0446934e09b45"
+    },
+    {
+      "path": "dist/editor.css",
+      "bytes": 3956,
+      "sha256": "a89988e3b53ed0e615378a7e35381921acd03c64ba10bcf0a64893e08f6e40fc"
+    },
+    {
+      "path": "dist/editor.js",
+      "bytes": 739849,
+      "sha256": "1fab1255e8aa6916fd8bda351c56af4b54b8e068a9bc8ef174bf9f94e27df9fa"
+    },
+    {
+      "path": "dist/editor.min.js",
+      "bytes": 332263,
+      "sha256": "9481441fa814cf2b25722217258b7f27ac43f9b23ba3fbe528ed8ea09e675575"
+    },
+    {
+      "path": "dist/editor.module.js",
+      "bytes": 698834,
+      "sha256": "16c6c21060354eaf3f60edafdae70d6860cab84690262bf2c32276ca234f41ea"
+    },
+    {
+      "path": "dist/flux.js",
+      "bytes": 544207,
+      "sha256": "17f622d575f62c94dfdbd7f20a7be2d7c1fe608b22315d48a825d2a03ffe7b1e"
+    },
+    {
+      "path": "dist/flux.min.js",
+      "bytes": 270454,
+      "sha256": "2508851ceedcc0ed073816dd6a08fa6de9357ba84c3129bc5548d744136c67aa"
+    },
+    {
+      "path": "dist/flux.module.js",
+      "bytes": 515888,
+      "sha256": "ecbcda8c721770df1a75d3d0b916dfd770d0dc42740d8f7724e6af6c6cfc4553"
+    },
+    {
+      "path": "dist/manifest.json",
+      "bytes": 85,
+      "sha256": "6da15c5506cfef16728eead298622780e4e565a338e3bdc73c1d3ea4cb95d34c"
+    },
+    {
+      "path": "src/FluxPro.php",
+      "bytes": 240,
+      "sha256": "a5b78a89573a9a5468124e70e73968ae60bd58626941cecb7f92749322046fe3"
+    },
+    {
+      "path": "src/FluxProManager.php",
+      "bytes": 59,
+      "sha256": "8ead5ece561ecd62d50f40735aed6c74b81b03fb67bd86b4cb4afee885fa888c"
+    },
+    {
+      "path": "src/FluxProServiceProvider.php",
+      "bytes": 708,
+      "sha256": "e61b7889e1c4bcb9416da23de17a1a4da7cf31056c0228fc24cf4c5ce10ff053"
+    },
+    {
+      "path": "src/helpers.php",
+      "bytes": 26,
+      "sha256": "92bc0cad8130840365a7f1d279393b762d8847fbf1289b7f4160ee0805cbbc96"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/content.blade.php",
+      "bytes": 446,
+      "sha256": "58f7191c76cdb95b86d3a357de101cd7223cfce454c2d8d1cbbce485c9c72e81"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/heading.blade.php",
+      "bytes": 1293,
+      "sha256": "0b23c9f1d3c59c6b78c1a7454448ff97159f44c853409e509bde570163ddb484"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/icon.blade.php",
+      "bytes": 453,
+      "sha256": "f82817e1cc07d121ac3b0c4d4a5f35a70766ed2e97574388a6849cce11a168c0"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/index.blade.php",
+      "bytes": 179,
+      "sha256": "8bcc97eb34edf72a98a66d06b009169faef24f6f6508d93e07ace3410a84deb0"
+    },
+    {
+      "path": "stubs/resources/views/flux/accordion/item.blade.php",
+      "bytes": 1260,
+      "sha256": "0f6c2555f5ba2e2b89977e757836dd8ad9a4add00cc20eaa125f430edc024af4"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/index.blade.php",
+      "bytes": 462,
+      "sha256": "cfd84443afe09a59490162f1df0eee36c7e47968ac347d66a754ddad0776ddbf"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/item.blade.php",
+      "bytes": 551,
+      "sha256": "f988276048b560e33f86b77b5cc37857994b41fe0b64f54033eafe4a3bcfdaa5"
+    },
+    {
+      "path": "stubs/resources/views/flux/autocomplete/items.blade.php",
+      "bytes": 602,
+      "sha256": "6d9b5ccf6ca817acea154dfd6c224000a674db109c381623c730000e949187a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/calendar/index.blade.php",
+      "bytes": 20153,
+      "sha256": "2dfcc13e6fd0cbda91b278741f84ce42795f14ac77733855c3455d798ba1184e"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/area.blade.php",
+      "bytes": 272,
+      "sha256": "dce7620439f9fcab50e4bb93fcaecd4c0a762f2e91b87de27fc2d4e9587c022f"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/grid.blade.php",
+      "bytes": 638,
+      "sha256": "9898da3c5c66064135f49d009f243d94c2c2c88489dfeab7aece14165916b8c2"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/index.blade.php",
+      "bytes": 580,
+      "sha256": "17789342a47e220104f1e53e41610b0721f87f354409253a5a13a2b3faa5fa4b"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/line.blade.php",
+      "bytes": 745,
+      "sha256": "ba32c3e019efeeb00ec3cc99a24fa6a410157d02c2574b006ec4bd27a955ec97"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/mark.blade.php",
+      "bytes": 1030,
+      "sha256": "6e6e2d8ee156a8167da1e39ca09729028c70a4415a72365ee63f940474aadc18"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/axis/tick.blade.php",
+      "bytes": 1342,
+      "sha256": "b4197859d4a21d318d0841393b64cc7b84d5ac2e5f617ae8226615cb00baed70"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/bar.blade.php",
+      "bytes": 446,
+      "sha256": "285c0d13aecc154babf1ee4f080176519d20f36357d45a4075dba04de72995a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/cursor.blade.php",
+      "bytes": 320,
+      "sha256": "2fddae1ca0f5c108385ce78b4f1eb0b54439c0198ae5b65de813755e912370b4"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/group.blade.php",
+      "bytes": 69,
+      "sha256": "6f3b983d39aff617b504fe38f9d1504b3a9fee0cb67495290170bfb2cb172aad"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/index.blade.php",
+      "bytes": 403,
+      "sha256": "b703e60267e999a9c6538a5bd85cc67c7f4ad93b78e49af9a6c5798ed2c71b95"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/legend/index.blade.php",
+      "bytes": 458,
+      "sha256": "9f9481938ea1468f4771197e6c01bb2a211c46494f8a549cabfe2bb58fd1f55a"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/legend/indicator.blade.php",
+      "bytes": 82,
+      "sha256": "da6edc94763917dc9024fc9ee33bbfc5a7fbf05b962b777c215b054bf3398552"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/line.blade.php",
+      "bytes": 421,
+      "sha256": "98c2279004b3a07f4c29c0b0a49fe4baef6a52969b55fdd434d34f03f412deaa"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/point.blade.php",
+      "bytes": 397,
+      "sha256": "b649cdeaeef439560ed197ab431cc2b8ebe726c8336f4f45c03a78840b74e45d"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/stack.blade.php",
+      "bytes": 69,
+      "sha256": "67b98c0e4a16e3a3b106c0a7c97aff870bb066e9f5dcf7b2531d3f2390b332fb"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/summary/index.blade.php",
+      "bytes": 117,
+      "sha256": "7e3e5e90ad56e49ca07e7f59ae6c9b513b84a0062847a9b9b1b80e0bc9824bdc"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/summary/value.blade.php",
+      "bytes": 381,
+      "sha256": "6f2db55b972376fd693e0895fd2c3576695e0f86a5c5e3db35f3ef92a078243c"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/svg.blade.php",
+      "bytes": 274,
+      "sha256": "f14466a01bc9e976aef3cef0b00a5a0620e7a3cfbc421a7351ccbd4f47cdd8ed"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/heading.blade.php",
+      "bytes": 522,
+      "sha256": "0a325fb6a8c5518d574b8c62ae4a6bb97d0ce03ed8bf89af56bb99be1052c123"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/index.blade.php",
+      "bytes": 489,
+      "sha256": "82f9e94e06fdcbf9d2f8936cc013c8909b5721135872cca3c05b83878c18633f"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/tooltip/value.blade.php",
+      "bytes": 757,
+      "sha256": "bcc2cbd6ccfcf75cc0f5e4db4f450e227ee8b48b73aa704e310a4341ec512e40"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/value.blade.php",
+      "bytes": 307,
+      "sha256": "dccdead589f2983da4c6a56a992ee465e34beedb8be316d1eafc13d0b99f40cf"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/viewport.blade.php",
+      "bytes": 97,
+      "sha256": "219462edb1b86664415de4cfd23c9bb12b7de0bdee3112f273d27ed7faf3066e"
+    },
+    {
+      "path": "stubs/resources/views/flux/chart/zero-line.blade.php",
+      "bytes": 394,
+      "sha256": "bdc8ab860feb1b73f9a6095e66c0fbef290388f88be6536cc02e8bfe8431cd75"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/empty.blade.php",
+      "bytes": 265,
+      "sha256": "4bb520ac4b4ad9ddca138597c6cf176a0896166575fa65935bc1d9e887e595a5"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/index.blade.php",
+      "bytes": 363,
+      "sha256": "ee9ab1312cbf3a1182235586be4e4b16df0371fcb2e7031f652945aa141ce00e"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/input.blade.php",
+      "bytes": 2112,
+      "sha256": "1ca0afc3591bda30df5da5d863b7d348eeeb47d78927c286ad96a1408bd9da49"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/item.blade.php",
+      "bytes": 1298,
+      "sha256": "882b58bf6322369f50e3c3d38bc5995020ef5906d8a9ff0a3d4249dff2e62e41"
+    },
+    {
+      "path": "stubs/resources/views/flux/command/items.blade.php",
+      "bytes": 340,
+      "sha256": "a69b74ec53d1e841c0c010df7852ec22671cdffd15679f06281fb8501f98e39a"
+    },
+    {
+      "path": "stubs/resources/views/flux/composer/index.blade.php",
+      "bytes": 3451,
+      "sha256": "e53bbc383450626f1b0246eed3aec56b595efb28f391d8a65875c8bcf4e01e5b"
+    },
+    {
+      "path": "stubs/resources/views/flux/context.blade.php",
+      "bytes": 557,
+      "sha256": "1936322cc7416dc1f01e3bf1805688d28c554cf27ceb040fa8a0e2772b64b139"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/button.blade.php",
+      "bytes": 2385,
+      "sha256": "09e9095b43a6d6dbb8e1b547ff17354db1c6dbd432b6fa3bd263b98d49256cf9"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/index.blade.php",
+      "bytes": 25935,
+      "sha256": "f7511e8d501068a5390d87acb09a86597805049de13a7c73b50486f6521f6dcf"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/input.blade.php",
+      "bytes": 1660,
+      "sha256": "efe7bb9c29433b38e5302f4708ccb4760de93e65176bb58114b7f21695de652c"
+    },
+    {
+      "path": "stubs/resources/views/flux/date-picker/selected.blade.php",
+      "bytes": 656,
+      "sha256": "9d293a597e06d78e65460c3de0ffb464f518d4d43d4772bbf4af806d87ab6af5"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/align.blade.php",
+      "bytes": 3060,
+      "sha256": "1c28832988cd38684749159b1b8719e3d56a5ac1191af2b5057c21a0e63e4377"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/blockquote.blade.php",
+      "bytes": 829,
+      "sha256": "d5e9d5e7a4e98c94399aee8a2a75559b18ef876ed3bcb4a719a6dc5f1ee310f8"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/bold.blade.php",
+      "bytes": 569,
+      "sha256": "d7af7c1cbcf2120c2079acb84b9f61be261defd8518656e5bf33a9a98327c061"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/bullet.blade.php",
+      "bytes": 887,
+      "sha256": "84be3eab3fa0813a66e62a3ed907377b77564b2387dd58697debd5ef4302c918"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/button.blade.php",
+      "bytes": 1418,
+      "sha256": "7f64385a29f6359c096791e6d364a9085c7d3ca29794de1d51fc4e1d60b616b9"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/code.blade.php",
+      "bytes": 770,
+      "sha256": "e6580014a0ddfc86a347cd02893ceb15082511a355de3572c4cb0527dc554f2e"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/content.blade.php",
+      "bytes": 101,
+      "sha256": "dbc4eb545995ab0d96de0018f84430ac6727159bff199a0328f779bc6b31d73d"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/heading.blade.php",
+      "bytes": 4678,
+      "sha256": "7b27ba7b6bde3d3a6b5a9716bffe158fd2a524e8c24ecfc30c72593375b98c56"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/highlight.blade.php",
+      "bytes": 546,
+      "sha256": "6719f9bcc0d79196b5d1fb55e21cbea995334320832f5e0e0534b92cd9ae71a3"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/index.blade.php",
+      "bytes": 1942,
+      "sha256": "4136e0882799ee699f1d1c3e9d7e0649a9a61433ce4930b86f3d792323f2b54e"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/italic.blade.php",
+      "bytes": 565,
+      "sha256": "7af34625d4d710769b808003d04e287c766e2ff30395ca4cfbf726c0385e0b2a"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/link.blade.php",
+      "bytes": 5244,
+      "sha256": "56e7dd87a4ce234762fde658758f129222a0dd222a34a89641ab2c85a8b866be"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/option.blade.php",
+      "bytes": 327,
+      "sha256": "f1d949a49f87b40ec45c31658407ae2df6bea89ff7b1de594a9aacdd6a590cae"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/ordered.blade.php",
+      "bytes": 1181,
+      "sha256": "747e07152ec287afdfc814494f5c50697c95a61bcecbc2abe63d3407193d35de"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/redo.blade.php",
+      "bytes": 519,
+      "sha256": "4712c9f7b42cd70a41bca72cafc105a92d4e4cfd976b7ad33a0b91584648f54d"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/scripts.blade.php",
+      "bytes": 45,
+      "sha256": "e5ee69cb06814a08cc3038ab487bedc244755d58d145b5331e2365d9f2a006b2"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/separator.blade.php",
+      "bytes": 127,
+      "sha256": "9b6378c4f68d90cfa60501ed4c62b9e5af80bceb4aba2d835ea70a0931888b1c"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/spacer.blade.php",
+      "bytes": 59,
+      "sha256": "7c611d91849c1f1794dccbeda9f72997f064e092f62b3de1ddcad8792a35c182"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/strike.blade.php",
+      "bytes": 1142,
+      "sha256": "f45c8cbaf4125c9bd56ec17a9d598f2c0d039fea525fc58a6226a6b44968a9d5"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/styles.blade.php",
+      "bytes": 44,
+      "sha256": "4533bd6e7d3ec508378fadbcd41ba01fbe4493d42858065b0b12cbb68c88d45f"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/subscript.blade.php",
+      "bytes": 612,
+      "sha256": "43e765949bcf1f320aa428d0f0b4da3fb3c1f5fad925ae3cf20c047b027d6362"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/superscript.blade.php",
+      "bytes": 633,
+      "sha256": "360b739efbb6e2209cdadfcd604b8ef6a618dad23195da274915c6dd657cd102"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/toolbar.blade.php",
+      "bytes": 1849,
+      "sha256": "3e18afdc0064875416a260759f732201029a1d61a845f5bf4575076766439671"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/underline.blade.php",
+      "bytes": 607,
+      "sha256": "6db849eeb8f52a709977e63e54673e2eec073079d42ee745b617f090f442e2a2"
+    },
+    {
+      "path": "stubs/resources/views/flux/editor/undo.blade.php",
+      "bytes": 510,
+      "sha256": "32d37d3dde515acd9e3b6fea7a2779182640317dd2ad5d95a47d376b01ed7642"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-item/index.blade.php",
+      "bytes": 2880,
+      "sha256": "234f1dae1275feb4387e978944703fb423bbb9875fa8133dd3bdfc8ee9b74fa4"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-item/remove.blade.php",
+      "bytes": 299,
+      "sha256": "75fd10f68e8d81c5769f20d070e21e1e5051bb595a40bda9e47138dd588da99a"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-upload/dropzone/index.blade.php",
+      "bytes": 3146,
+      "sha256": "141f942494d824be03fc64a9fa5d2fb0ba730743444d71bbfb35eae16f815f77"
+    },
+    {
+      "path": "stubs/resources/views/flux/file-upload/index.blade.php",
+      "bytes": 1071,
+      "sha256": "8dbe871da09debee0d7c6078dab36cb3d79280359dfcdcb156aca05d43802b01"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/card.blade.php",
+      "bytes": 1583,
+      "sha256": "852fa3df0d52948e4a0e74cf127dd667b0484a15a3150056757e36484e2f10d8"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/cards.blade.php",
+      "bytes": 232,
+      "sha256": "0ec3edfd31b09ff1a54f5436a7bba6e541aae1a3e9ead8c541fe3621b678ce6e"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/footer.blade.php",
+      "bytes": 224,
+      "sha256": "99df6464323f4f52a38e4163ff5e25de9270c67727ae6bff750dc36977f991f0"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/header.blade.php",
+      "bytes": 1166,
+      "sha256": "654d9c6cfff1a5be5c455c95361b4a8a31b8e2ff9f391feb07dfae89e2adf2a9"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/column/index.blade.php",
+      "bytes": 303,
+      "sha256": "c610a1621e9d190e8862720a25e36c289d78729742697fbb98d5777d962468d1"
+    },
+    {
+      "path": "stubs/resources/views/flux/kanban/index.blade.php",
+      "bytes": 105,
+      "sha256": "856c8c569c40eae4a5a59914f9e42af6b7f06922ee034746435253cccf314378"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/empty.blade.php",
+      "bytes": 168,
+      "sha256": "cca15cd7736f329539f8e724719acc6d4e288d0623b48e8975adc83067520f18"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/index.blade.php",
+      "bytes": 680,
+      "sha256": "d8ce9a59a8542fea0ffd1fc39843365437682655f2cca3d1d38e1ea67501b50f"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/indicator.blade.php",
+      "bytes": 124,
+      "sha256": "438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/input.blade.php",
+      "bytes": 850,
+      "sha256": "0f8e3e88a707eaf7e566b7faa7f743a9bc2a9506f4ff6d91cbc8000068309101"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option.blade.php",
+      "bytes": 1492,
+      "sha256": "0401747809a961c13174a54f2020860a995bdd87ec72d256e0bdab873736c0ef"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option/create.blade.php",
+      "bytes": 1118,
+      "sha256": "909ed74a5e251056384633864e86d71ed268eaf06e703b101912da78028073f9"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/option/empty.blade.php",
+      "bytes": 427,
+      "sha256": "7c78d0daec6823864fb4f5bf5e90ed83fd1f385d04dbf06069c5b7e1f1a286ed"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/options.blade.php",
+      "bytes": 1963,
+      "sha256": "426df1922c05453a64738940164f4f2a98a83bbc300af6c0d229fcd6eed8a865"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/search.blade.php",
+      "bytes": 3349,
+      "sha256": "9382339958a1fc68129c66967fcd95d76e08915b6061329f9912b7b2b24ed215"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/selected.blade.php",
+      "bytes": 2316,
+      "sha256": "decf0874aa39df28473f5173cc306161d19bc3b8e158b7bb8105490a43bdc494"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/trigger.blade.php",
+      "bytes": 2990,
+      "sha256": "1997d34472fad579f7667ef0d98a8cb8d9683eb93b23a91c780d70b24d80d327"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/variants/combobox.blade.php",
+      "bytes": 2260,
+      "sha256": "cb81737fd464aed4eaee5dbc4ad991b1bbeae3755736b848d57387c676fd9dd2"
+    },
+    {
+      "path": "stubs/resources/views/flux/pillbox/variants/default.blade.php",
+      "bytes": 1484,
+      "sha256": "494624f02128d66c58f058599e4a070dc0d3349aa3232992eb1d1fc80c07b608"
+    },
+    {
+      "path": "stubs/resources/views/flux/popover/index.blade.php",
+      "bytes": 653,
+      "sha256": "abab6be8c9afe030832bd2a6ef721a2498ce15dbe1f24b5c1c08afd8e30eb071"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/button.blade.php",
+      "bytes": 2271,
+      "sha256": "2bba0426b43e432b692bb2b9558eca45ec8e62c9cfd7adb6fe31bc231463b419"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/empty.blade.php",
+      "bytes": 160,
+      "sha256": "d77246da4283c4ea8a5ee416be46aa7d8156fedaa60785239693fffa9b8ba41c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/index.blade.php",
+      "bytes": 474,
+      "sha256": "b42831ede623b2ddd89f91e9b06d64d99728d1c311ab0584a28b56fcf7b6569c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/check.blade.php",
+      "bytes": 124,
+      "sha256": "438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/checkbox.blade.php",
+      "bytes": 1179,
+      "sha256": "20c31bba1b8798d376070a41dc6b8376a3942f9a2b6451b7fb64dd2101fa001d"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/indicator/variants/radio.blade.php",
+      "bytes": 1153,
+      "sha256": "05a5815aa6c24f630e242a6b7cb6607edd53429aa5df7d8052ad572663d5c7ba"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/input.blade.php",
+      "bytes": 1522,
+      "sha256": "cd416c3eb9d314619c0d93d03ae9e5f1e60089f0542a2ecb906897b115dc58da"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/create.blade.php",
+      "bytes": 1231,
+      "sha256": "65526106af29078ae8164fa5ede6a054c41cf0200038f40a634fce826c3386b0"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/empty.blade.php",
+      "bytes": 428,
+      "sha256": "d8b757a8c9b8d2c2937ed0dd84ab8686596afa2189dd7f78b96a2a29329a1944"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/option/variants/custom.blade.php",
+      "bytes": 1556,
+      "sha256": "c8064af02f39b0dc0b5b1296bace517956cbea6b4fabfe038b289b4a5dac6d95"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/options.blade.php",
+      "bytes": 1747,
+      "sha256": "2089fa8d718bdd9f122cca8a1bf9277f28d512067f31d266eb663e6c8e2fbb1f"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/search.blade.php",
+      "bytes": 3249,
+      "sha256": "124645a118764953cfbf763570cb3a6ffd95fdff48cf73266171ae986e8eca5f"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/selected.blade.php",
+      "bytes": 789,
+      "sha256": "2344e9a85d70df81f5bed2ba606421ea82f8bc96788675d36515e171625c098a"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/combobox.blade.php",
+      "bytes": 1671,
+      "sha256": "5bd5d1399aad302f686714f8e5a0ee26a4dc6372a9c508eb1816150e88bc7cd5"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/custom.blade.php",
+      "bytes": 785,
+      "sha256": "068061877fbd289032d02fad1ca3bbe826fca46fdfc702aa347e41034409932c"
+    },
+    {
+      "path": "stubs/resources/views/flux/select/variants/listbox.blade.php",
+      "bytes": 1441,
+      "sha256": "00445b42426786528186d71fce793ab6662a90be2e6eb3c078859c7a06aac3f6"
+    },
+    {
+      "path": "stubs/resources/views/flux/slider/index.blade.php",
+      "bytes": 2805,
+      "sha256": "9ff52ab941779f4740969613c7420391282fc1076cab680dbe2678e979cfce85"
+    },
+    {
+      "path": "stubs/resources/views/flux/slider/tick.blade.php",
+      "bytes": 797,
+      "sha256": "bceb341307f31f5e67bb715363e8abe5eb890ca77a1263f51b474c0ba4f70bb2"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/group.blade.php",
+      "bytes": 121,
+      "sha256": "b268a88d1e1d744a055bddaa1dfffd5abafdca8ddcfbc622a843f89e606213fc"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/index.blade.php",
+      "bytes": 4088,
+      "sha256": "3fcbad8e73d21d5387f2bc6ea7bca675533b93904949a88146489081da1d955f"
+    },
+    {
+      "path": "stubs/resources/views/flux/tab/panel.blade.php",
+      "bytes": 423,
+      "sha256": "eb019f863c07b8ac48ecb140fa82762f9993944d9aadf8169deab33bbc1714fd"
+    },
+    {
+      "path": "stubs/resources/views/flux/tabs.blade.php",
+      "bytes": 2204,
+      "sha256": "3dc0bac7cc97c5827b63c24f222ae69334b10aef9f2a90ec1d804cf9ff84a8c3"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/button.blade.php",
+      "bytes": 2355,
+      "sha256": "000557e1666479a431f11e4b9fe329bce626d9bf326d78eeaa7bcefef3baf7b5"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/index.blade.php",
+      "bytes": 3979,
+      "sha256": "353746a83761fee457ad288648ef8e28b8504fec586cf1f9bc26ae7583e39644"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/input.blade.php",
+      "bytes": 4212,
+      "sha256": "defd2e1527a6dbcfb058401c9d6d535a9485e1df9634ff9fd5c851dc6b6314d5"
+    },
+    {
+      "path": "stubs/resources/views/flux/time-picker/selected.blade.php",
+      "bytes": 673,
+      "sha256": "645f043d135dfc345beea78f5c28b3f245e414f2112ba1c9dd7171f128101eac"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/block.blade.php",
+      "bytes": 143,
+      "sha256": "e683605869ce39b2a0d24139eeae4c66fa91c8732a679f52c52c01e5c1a9a81f"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/content.blade.php",
+      "bytes": 223,
+      "sha256": "d8cb32d4cb1180d189076ae995862df92152c2b68e6e1b5baf5de83fbd8f4c10"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/index.blade.php",
+      "bytes": 554,
+      "sha256": "11d4134b143f02c4c4d796e732fb05968ef89ae63a4503bbdc6b58b24c243c05"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/indicator.blade.php",
+      "bytes": 3327,
+      "sha256": "67c44826d6cbd4120dd45263c4d12045b10a7970c76cd6e108ad893baeedd4c3"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/item.blade.php",
+      "bytes": 1320,
+      "sha256": "92fe025a76fa5403bd7914df38a3bf56be7cbe9f82f9ce11f75e5aadadb10114"
+    },
+    {
+      "path": "stubs/resources/views/flux/timeline/subgrid.blade.php",
+      "bytes": 145,
+      "sha256": "8d90fa219de82ffd3beecf2118df693f6d6778506e3a51555324c3aff99352a7"
+    }
+  ],
+  "local_release": {
+    "version": "0.1.0",
+    "version_scope": "project-local; not an upstream release",
+    "basis": "User-authorized adaptation of the existing local snapshot only; no external package or credentials.",
+    "changed_files": [
+      "composer.json",
+      "dist/flux.js",
+      "dist/flux.min.js",
+      "dist/flux.module.js",
+      "dist/manifest.json",
+      "src/FluxProServiceProvider.php"
+    ]
+  },
+  "local_patches": [
+    {
+      "path": "composer.json",
+      "original_sha256": "c07f944664216e94e0eb7ac1d11f69330c188b51792e01445ce0446934e09b45",
+      "local_sha256": "d45d1f0c230b45ba2a1c82aed547dad0d0404aef8c5ad69a3306aed4670ca989",
+      "reason": "Assign truthful project-local release 0.1.0 with unknown upstream version, target installed Free 2.17.0 exactly, and preserve the Free Flux facade by declaring the distinct FluxPro alias."
+    },
+    {
+      "path": "dist/flux.js",
+      "original_sha256": "17f622d575f62c94dfdbd7f20a7be2d7c1fe608b22315d48a825d2a03ffe7b1e",
+      "local_sha256": "4f53d2f3919685ccde48e527367bc20d3966c8e5a0f4b20eea646984977fc1ec",
+      "reason": "Generated IIFE from the reviewed local flux.module.js using build-runtime.mjs; one combined runtime, no additional Alpine or Free bundle."
+    },
+    {
+      "path": "dist/flux.min.js",
+      "original_sha256": "2508851ceedcc0ed073816dd6a08fa6de9357ba84c3129bc5548d744136c67aa",
+      "local_sha256": "70bb52fe3ca0a6c2adb6c2be1e0fdd62d87adcea1a7390cf1f57522106fcc2f0",
+      "reason": "Generated from the same local IIFE by locked rolldown 1.2.5 with class/function names preserved for Mixin lookup. This is a local artifact, not an upstream build."
+    },
+    {
+      "path": "dist/flux.module.js",
+      "original_sha256": "ecbcda8c721770df1a75d3d0b916dfd770d0dc42740d8f7724e6af6c6cfc4553",
+      "local_sha256": "473431e552ef2dbc06513d2419e255c55096a13efadfacb1cdedf832b74a8991",
+      "reason": "Readable project-local backports from the installed proprietary Free 2.17.0 runtime: OTP replacement/touch, modal escape policy, tooltip/sidebar listener cleanup, sidebar/menu focus, dropdown scroll/navmenu/reference visibility, disclosure find-in-page and toast lifecycle/link options. Existing Pro runtime and editor assets retained."
+    },
+    {
+      "path": "dist/manifest.json",
+      "original_sha256": "6da15c5506cfef16728eead298622780e4e565a338e3bdc73c1d3ea4cb95d34c",
+      "local_sha256": "d4e72ba212e85fff5adeb675321c0d214137908bb005fead0376e78d7e144e53",
+      "reason": "Local cache identifier derives from all three Flux JavaScript artifacts; original editor entries remain unchanged."
+    },
+    {
+      "path": "src/FluxProServiceProvider.php",
+      "original_sha256": "e61b7889e1c4bcb9416da23de17a1a4da7cf31056c0228fc24cf4c5ce10ff053",
+      "local_sha256": "0eaf5e9945ec7f5a9d85f0044fec9bebd3b351f109b531bc1934367fefe0f016",
+      "reason": "Remove the nonexistent Flux\\FluxPro import so the provider aliases the existing FluxPro\\FluxPro facade in its own namespace."
+    }
+  ],
+  "internal_snapshot": {
+    "file_count": 140,
+    "total_bytes": 3345445,
+    "inventory_sha256": "d346ca27020503f1a4d0afbf41675a34ad61ddc8066c002f48e7efe67385caad",
+    "inventory_format": "UTF-8; bytewise full-path order; path TAB bytes TAB sha256 LF"
+  },
+  "local_additions": [
+    {
+      "path": "build-runtime.mjs",
+      "bytes": 7137,
+      "sha256": "3d92205a0fda1b50efbec2e23e35182e7fbed93c5af435bc25ad5fa35dfef628",
+      "reason": "Reproducible local distribution build and --check mode, immutable original inventory, donor check, generated artifacts and per-file provenance."
+    }
+  ],
+  "runtime_build": {
+    "kind": "project-local; not an upstream build reconstruction",
+    "source": "dist/flux.module.js",
+    "command": "node packages/livewire/flux-pro/build-runtime.mjs",
+    "verify_command": "node packages/livewire/flux-pro/build-runtime.mjs --check",
+    "minifier": {
+      "package": "rolldown",
+      "version": "1.2.5",
+      "options": {
+        "module": false,
+        "compress": {
+          "target": "es2022",
+          "keepNames": {
+            "function": true,
+            "class": true
+          }
+        },
+        "mangle": {
+          "keepNames": true
+        },
+        "codegen": {
+          "legalComments": "inline"
+        }
+      }
+    },
+    "compatibility_donor": {
+      "package": "livewire/flux",
+      "version": "2.17.0",
+      "license": "proprietary",
+      "path": "vendor/livewire/flux/dist/flux-lite.min.js",
+      "sha256": "e10cba88aaa015aaf1674a8ac6c78f45c9e79a113fdbdd90a02e66a08e6cea8a"
+    },
+    "unchanged_editor_assets": [
+      "dist/editor.css",
+      "dist/editor.js",
+      "dist/editor.min.js",
+      "dist/editor.module.js"
+    ]
+  }
+}

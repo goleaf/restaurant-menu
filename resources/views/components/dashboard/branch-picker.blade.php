@@ -42,17 +42,8 @@
             wire:loading.attr="disabled"
             wire:target="selectedBranchId,saveOrdering"
             wire:offline.attr="disabled"
-            x-data="{
-                observer: null,
-                init() {
-                    const syncDisabled = () => this.$el.setAttribute('aria-disabled', this.$el.hasAttribute('disabled') ? 'true' : 'false');
-                    this.observer = new MutationObserver(syncDisabled);
-                    this.observer.observe(this.$el, { attributeFilter: ['disabled'] });
-                    syncDisabled();
-                },
-                destroy() { this.observer.disconnect(); }
-            }"
-            x-on:change="$refs.branchPicker.open = false; $refs.branchPickerSummary.focus()"
+            x-data="branchPickerDisabled"
+            x-on:change="closeBranchPicker()"
         >
             <flux:radio value="" :label="__('dashboard.control.all_branches')" class="min-h-touch min-w-0 flex-none! p-3!" />
             @forelse ($branches as $branch)

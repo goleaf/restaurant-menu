@@ -1,0 +1,109 @@
+{
+    "version": 1,
+    "assetBase": "/build/",
+    "entries": {
+        "resources/css/app.css": {
+            "raw": 344300,
+            "gzip": 45100
+        },
+        "resources/js/app.js": {
+            "raw": 348100,
+            "gzip": 109000
+        },
+        "resources/scss/app.scss": {
+            "raw": 28400,
+            "gzip": 5600
+        },
+        "resources/scss/qr-print.scss": {
+            "raw": 4000,
+            "gzip": 1200
+        }
+    },
+    "scenarios": {
+        "guest": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
+        },
+        "menu": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
+        },
+        "staff": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
+        },
+        "waiter": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
+        },
+        "departments": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js"
+            ],
+            "limits": {
+                "raw": 955700,
+                "gzip": 394600
+            }
+        },
+        "qr-print": {
+            "entries": [
+                "resources/css/app.css",
+                "resources/scss/app.scss",
+                "resources/js/app.js",
+                "resources/scss/qr-print.scss"
+            ],
+            "limits": {
+                "raw": 959700,
+                "gzip": 395700
+            }
+        }
+    },
+    "totals": {
+        "css": {
+            "raw": 376600,
+            "gzip": 51900
+        },
+        "js": {
+            "raw": 348100,
+            "gzip": 109000
+        },
+        "fonts": {
+            "raw": 235100,
+            "gzip": 235000
+        },
+        "all": {
+            "raw": 959700,
+            "gzip": 395700
+        }
+    }
+}

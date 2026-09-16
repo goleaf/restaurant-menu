@@ -12,11 +12,13 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/{Actions,Livewire}/** | .ai/rules/actions-livewire.md |
 | app/Actions/** | .ai/rules/actions.md |
 | app/** | .ai/rules/app.md |
+| tests/Browser/** | .ai/rules/browser.md |
 | resources/views/components/dashboard/branch-picker.blade.php | .ai/rules/dashboard.md |
 | database/factories/** | .ai/rules/factories.md |
+| packages/livewire/flux-pro/** | .ai/rules/flux-pro.md |
 | resources/views/flux/** | .ai/rules/flux.md |
 | app/{Actions/Invitations,Http/Controllers/Invitations,Livewire/**,Models/Invitation.php}/** | .ai/rules/invitations-livewire.md |
-| resources/js/menu-*.js | .ai/rules/js.md |
+| resources/js/menu-*.js, resources/js/*.js, resources/js/** | .ai/rules/js.md |
 | lang/*.json | .ai/rules/lang.md |
 | resources/views/livewire/public-qr/** | .ai/rules/livewire-public-qr.md |
 | app/Livewire/** | .ai/rules/livewire.md |
@@ -25,4 +27,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Actions/Menus/** | .ai/rules/menus.md |
 | app/Livewire/Onboarding/**, app/Livewire/Forms/Onboarding/**, app/Support/RestaurantSetupOptions.php | .ai/rules/onboarding-support.md |
 | app/Livewire/PublicQr/** | .ai/rules/public-qr.md |
+| resources/{scss,css,build}/** | .ai/rules/scsscssbuild.md |
 | resources/views/components/ui/** | .ai/rules/ui.md |

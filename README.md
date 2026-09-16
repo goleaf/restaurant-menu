@@ -4,6 +4,12 @@
 
 # Restaurant Menu
 
+## Flux Pro integration status — 2026-09-15
+
+The accepted integration is in progress. The local `livewire/flux-pro` adaptation `0.1.0` is installed through the internal Composer path package with a physical vendor mirror, alongside Free 2.17.0. The original 139-file inventory, proprietary license and explicit patch provenance are retained. Offline installation, 18-family server rendering and five asset endpoints pass; JavaScript compatibility, localization and product workflows remain under implementation.
+
+Read the [execution ledger](docs/IMPLEMENTATION_PLAN.md) and [complete integration plan](docs/superpowers/plans/2026-09-15-flux-pro-integration.md). Source import is verified separately from installation. Keep the original `flux-pro/` until the clean-release and deletion gates pass. The current installation commands below continue to install the existing locked application.
+
 ## Recovery update — 2026-09-15
 
 Guest details retain configured input through availability conflicts, image rollback cleanup preserves original files and transaction state, and staff/guest controls communicate offline and retry states. The existing catalogue, multilingual gallery and restaurant workflow remain the product foundation. See [current local verification](docs/testing.md) and [the implementation ledger](docs/IMPLEMENTATION_PLAN.md) for observed results and delivery status.

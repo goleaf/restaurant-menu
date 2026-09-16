@@ -1,5 +1,5 @@
 <main data-page="branch-bulk-qr-print" class="qr-print-page flex min-h-svh flex-col items-center gap-4 px-4 py-6 qr-print-page-bulk">
-    <div class="qr-print-toolbar flex w-full max-w-4xl flex-col justify-between gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm md:flex-row md:items-center">
+    <div class="qr-print-toolbar rm-print-toolbar">
         <div class="flex flex-col gap-1">
             <p class="text-sm font-medium text-zinc-500">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950">{{ __('qr.print.bulk_title') }}</h1>
@@ -10,7 +10,7 @@
                 {{ __('qr.navigation.branches') }}
             </flux:button>
 
-            <flux:button icon="printer" variant="primary" type="button" x-on:click="window.print()" :disabled="count($printItems) === 0">
+            <flux:button icon="printer" variant="primary" type="button" x-bind="printDocument" :disabled="count($printItems) === 0">
                 {{ __('qr.actions.print') }}
             </flux:button>
 
@@ -72,7 +72,7 @@
     </section>
 
     @if ($printTableNumber)
-        <div class="qr-print-warning w-full max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+        <div class="qr-print-warning rm-print-warning">
             {{ __('qr.print.table_number_warning') }}
         </div>
     @endif
@@ -111,14 +111,14 @@
                 </div>
             </article>
         @empty
-            <div class="qr-print-list-empty w-full max-w-4xl rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-6 text-center text-sm text-zinc-500">
+            <div class="qr-print-list-empty rm-print-empty">
                 {{ __('qr.empty.no_service_points_in_zone') }}
             </div>
         @endforelse
     </section>
 
     @if (count($printItems) === 0)
-        <section class="qr-print-empty-preview w-full max-w-4xl rounded-lg border border-dashed border-zinc-300 bg-white px-4 py-6 text-center text-sm text-zinc-500">
+        <section class="qr-print-empty-preview rm-print-empty">
             {{ __('qr.print.empty_preview') }}
         </section>
     @else

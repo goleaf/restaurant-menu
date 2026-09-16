@@ -37,7 +37,7 @@
 
     <div class="p-4">
     @if ($showControls)
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 px-3 py-2 dark:bg-zinc-950/60">
+        <div class="rm-draft-readiness">
             <span class="text-sm font-medium text-zinc-700 dark:text-zinc-200">
                 {{ __('guest.table.ready_count') }}: {{ $readyGuestCount }}/{{ $activeGuestCount }}
             </span>
@@ -49,7 +49,7 @@
 
     @if ($showStatuses)
         @if ($draftStatusValue === 'rejected')
-            <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-800 dark:bg-red-950/40 dark:text-red-100">
+            <p class="rm-draft-notice rm-draft-notice--rejected">
                 {{ __('guest.table.draft_rejected_message') }}
                 @if ($rejectionReason)
                     <span class="block pt-1 font-normal">
@@ -60,11 +60,11 @@
             </p>
         @elseif ($serviceStatusValue !== '')
             <p @class([
-                'mt-4 rounded-lg px-3 py-2 text-sm font-medium',
-                'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100' => $serviceStatusTone === 'emerald',
-                'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-100' => $serviceStatusTone === 'amber',
-                'bg-sky-50 text-sky-800 dark:bg-sky-950/40 dark:text-sky-100' => $serviceStatusTone === 'sky',
-                'bg-zinc-50 text-zinc-700 dark:bg-zinc-950/40 dark:text-zinc-100' => $serviceStatusTone === 'zinc',
+                'rm-draft-notice',
+                'rm-draft-notice--success' => $serviceStatusTone === 'emerald',
+                'rm-draft-notice--warning' => $serviceStatusTone === 'amber',
+                'rm-draft-notice--information' => $serviceStatusTone === 'sky',
+                'rm-draft-notice--neutral' => $serviceStatusTone === 'zinc',
             ])>
                 {{ __('guest.table.order_status') }}: {{ $serviceStatusLabel }}
 
@@ -73,40 +73,40 @@
                 @endif
             </p>
         @elseif ($draftStatusValue === 'converted_to_order')
-            <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+            <p class="rm-draft-notice rm-draft-notice--success">
                 {{ __('guest.statuses.draft.converted_description') }}
             </p>
         @elseif (! $canEditDraft)
-            <p class="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <p class="rm-draft-notice rm-draft-notice--warning">
                 {{ __('guest.cart.draft_sent_locked') }}
             </p>
         @endif
     @endif
 
     @if ($feedbackMessage)
-        <p class="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100">
+        <p class="rm-draft-notice rm-draft-notice--success">
             {{ $feedbackMessage }}
         </p>
     @endif
 
     @error('draft_item')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rm-draft-notice rm-draft-notice--error">{{ $message }}</p>
     @enderror
 
     @error('draft_order')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rm-draft-notice rm-draft-notice--error">{{ $message }}</p>
     @enderror
 
     @error('ready_status')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rm-draft-notice rm-draft-notice--error">{{ $message }}</p>
     @enderror
 
     @error('send_draft')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rm-draft-notice rm-draft-notice--error">{{ $message }}</p>
     @enderror
 
     @error('bill_request')
-        <p class="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-medium text-red-700 dark:bg-red-950/40 dark:text-red-100">{{ $message }}</p>
+        <p class="rm-draft-notice rm-draft-notice--error">{{ $message }}</p>
     @enderror
 
     @if (! $branchCanAcceptOrders)
@@ -135,7 +135,7 @@
                 >
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex min-w-0 items-start gap-3">
-                            <div class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white text-base font-semibold text-emerald-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-emerald-100 dark:ring-zinc-800">
+                            <div class="rm-draft-member-badge">
                                 {{ str($guestSection['guest_name'])->substr(0, 1)->upper() }}
                             </div>
 
@@ -351,7 +351,7 @@
         <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
                 <p class="text-xs font-medium uppercase text-emerald-700 dark:text-emerald-300">{{ __('guest.cart.my_items') }}</p>
-                <h3 id="guest-draft-item-title" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)" class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
+                <h3 id="guest-draft-item-title" x-bind="dialogLabel" class="mt-1 text-lg font-semibold leading-tight text-zinc-950 dark:text-white">{{ $editingItemName }}</h3>
                 <p class="mt-1 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{{ $editingItemTotalLabel }}</p>
             </div>
 

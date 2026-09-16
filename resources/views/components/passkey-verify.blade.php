@@ -6,43 +6,8 @@
     'separator' => __('ui.components.passkey_verify.or_continue_with_email'),
 ])
 
-@assets
-@vite('resources/js/passkeys.js')
-@endassets
-
 <div
-    x-data="{
-        supported: false,
-        loading: false,
-        error: null,
-        updateSupport() {
-            this.supported = Boolean(window.Passkeys?.isSupported());
-        },
-        init() {
-            this.updateSupport();
-
-            window.addEventListener('passkeys:ready', () => this.updateSupport(), { once: true });
-        },
-        async verify() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const response = await window.Passkeys.verify({
-                    routes: {
-                        options: '{{ route($optionsRoute) }}',
-                        submit: '{{ route($submitRoute) }}',
-                    },
-                });
-                Livewire.navigate(response.redirect || '/dashboard');
-            } catch (e) {
-                if (e.constructor?.name !== 'UserCancelledError') {
-                    this.error = e.message;
-                }
-            } finally {
-                this.loading = false;
-            }
-        },
-    }"
+    x-data="passkeyVerification" data-failure="{{ __('auth.passkey_failed') }}" data-options-url="{{ route($optionsRoute) }}" data-submit-url="{{ route($submitRoute) }}" data-fallback-url="{{ route('dashboard') }}"
 >
     <template x-if="supported">
         <div>
@@ -57,7 +22,7 @@
                     <span x-show="!loading">{{ $label }}</span>
                     <span x-show="loading" x-cloak>{{ $loadingLabel }}</span>
                 </flux:button>
-                <p x-show="error" x-text="error" x-cloak
+                <p role="alert" x-show="error" x-text="error" x-cloak
                    class="text-sm text-center text-red-600 dark:text-red-400"></p>
             </div>
 

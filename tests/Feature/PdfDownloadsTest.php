@@ -7,6 +7,7 @@ use App\Enums\DataExportType;
 use App\Enums\ManualPaymentMethod;
 use App\Enums\ManualPaymentScope;
 use App\Enums\QrCodeStatus;
+use App\Enums\QrLabelPreset;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\ManualPayment;
@@ -19,6 +20,7 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\View;
 
 beforeEach(function (): void {
     $this->seed(SystemPermissionsSeeder::class);
@@ -34,6 +36,10 @@ test('authorized staff can download selected branch QR codes as a PDF', function
     ])->assertRedirect(route('login'));
 
     Date::setTestNow(CarbonImmutable::parse('2026-08-23 13:14:15'));
+    $preparedView = [];
+    View::composer('pdf.qr-labels', function (Illuminate\View\View $view) use (&$preparedView): void {
+        $preparedView = $view->getData();
+    });
 
     try {
         $response = $this->actingAs($owner)
@@ -53,8 +59,26 @@ test('authorized staff can download selected branch QR codes as a PDF', function
     expect($response->getContent())
         ->toStartWith('%PDF-')
         ->and(strlen((string) $response->getContent()))->toBeGreaterThan(5_000)
-        ->and($qrCode->fresh()->public_token)->toBe($qrCode->public_token);
+        ->and($qrCode->fresh()->public_token)->toBe($qrCode->public_token)
+        ->and($preparedView['preset'])->toBe(QrLabelPreset::Restaurant->value)
+        ->and($preparedView)->not->toHaveKey('theme');
 });
+
+test('PDF QR presets use self contained compiled styles without browser assets', function (QrLabelPreset $preset): void {
+    $html = view('pdf.qr-labels', [
+        'branchName' => 'Vilniaus virtuvė — Кухня',
+        'rows' => [],
+        'printTableNumber' => false,
+        'preset' => $preset->value,
+    ])->render();
+
+    expect($html)
+        ->toContain('data-qr-preset="'.$preset->value.'"')
+        ->toMatch('/\[data-qr-preset=["\']?'.preg_quote($preset->value, '/').'["\']?\]/')
+        ->toContain('55mm')
+        ->toContain('DejaVu Sans')
+        ->not->toContain('var(', '@vite', 'data-flux', '<script', 'rel="stylesheet"');
+})->with(QrLabelPreset::cases());
 
 test('QR PDF selection rejects service points from another branch', function (): void {
     [$organization, $brand, $branch, , , $owner] = createPdfDownloadContext();

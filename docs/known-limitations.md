@@ -4,6 +4,12 @@
 
 # Known limitations
 
+## Flux Pro local adaptation — checked 2026-09-16
+
+The user selected a local adaptation using existing code. Local Flux Pro 0.1.0 is now installed with Free 2.17.0 and no new official access/archive prerequisite. The upstream version remains unknown; source provenance records local changes explicitly. The supplied JavaScript predates several Free behaviors and requires compatibility patches. Vendor strings and focusable control names also need EN/LT/RU and accessibility work before product acceptance.
+
+JavaScript/workflow/browser acceptance, the production build with Pro and original-folder deletion remain outstanding under `ui-flux-pro-001`. The 139-file copy and pure integrity tests do not validate any Pro widget. See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+
 This document records the limits of local evidence; current implementation and verification status is maintained in [`compliance-matrix.md`](compliance-matrix.md) and [`testing.md`](testing.md). Passing tests do not establish complete code coverage, production performance or physical-device certification.
 
 Menu/category media cleanup bounds selected model batches and streams paths to a temporary file, but category visited/frontier IDs still grow with the hierarchy and temporary disk usage grows with the path count. The measured retained-memory checkpoint is not a whole-process peak or production latency benchmark. An earlier persistence observer callback can prevent later old-file cleanup, leaving an orphan while the committed replacement remains intact. Synchronous cleanup after commit is not a durable retry queue: interruption or file-removal failure can leave orphaned media while database deletion remains committed.

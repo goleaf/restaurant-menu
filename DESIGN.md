@@ -116,9 +116,35 @@ components:
 
 # Design System: Restaurant Menu
 
+## Current SCSS / Alpine boundary — 2026-09-16
+
+The accepted migration supersedes earlier native-CSS-only and page-script decisions for first-party code. `resources/css/app.css` is only the Tailwind/installed Flux bridge. `resources/scss/app.scss` owns product tokens, light/dark variables, fonts, base accessibility and semantic compositions; `qr-print.scss` is a print-only entry. `pdf-qr.scss`, `pdf-report.scss` and `emergency.scss` compile into fixed committed `resources/views/generated/styles/*.blade.php` artifacts, so emergency/PDF rendering never needs a Vite manifest or runtime Node. `resources/build/styles.js` generates token aliases and concrete breakpoints automatically in both Vite build and dev/HMR; `npm run styles:check` detects drift. Do not edit generated CSS.
+
+Cascade order remains Tailwind `theme, base, components, utilities`. Sass emits into existing layers and preserves narrowly scoped unlayered accessibility fixes; there is no new reset. Runtime `--rm-*` values have one canonical Sass map; generated `@theme inline static` aliases resolve the current Flux `.dark` appearance without another theme store. QR physical geometry stays 76×104 mm, 48 mm code plus quiet zone and 8 mm A4 margins. Emergency actions now meet the product's 44 px minimum.
+
+`resources/js/app.js` imports the installed Livewire ESM runtime and its Alpine instance, registers named component factories/bindings, then calls `Livewire.start()` once. Compatibility palette/radius values used by semantic compositions are retained in the same map; static aliases prevent Tailwind pruning variables used only by the separate SCSS output. Every layout supplies `@livewireScriptConfig` before retained `@fluxScripts`. No independent Alpine package or `Alpine.start()` exists. Registration is cheap and synchronous; the WebAuthn SDK loads only when a ceremony starts. Local panel/focus/clipboard/preview/timer/audio state belongs to Alpine; forms, filters, uploads and mutations belong to class-based Livewire and existing Actions. The obsolete twelve root page/behavior modules are removed.
+
+Transport allowlist: Fortify authentication; the single first-party `fetch` boundary in `resources/js/integrations/passkeys.js` for WebAuthn options/credential HTTP protocol; invitation credential/identity transitions; demo identity entry; authorized CSV/PDF/media/SQLite downloads; exclusive-barrier SQLite restore POST. Restore must obtain its lock before authentication/session reads and therefore cannot be moved behind the ordinary Livewire update transport. Static landing/error/PDF/email and navigation/redirect responses remain SSR. `LivewireInteractionBoundaryTest` pins all 30 class-based page routes, 17 HTTP exceptions and 15 CSRF-protected native POST forms; existing negative/replay/tenant tests exercise those boundaries. There were no first-party fetch/XHR/Axios requests at migration baseline, so none are claimed removed. The sole added passkey adapter replaces `@laravel/passkeys` with its installed lower-level `@simplewebauthn/browser` SDK pinned to 13.3.0: cryptographic browser operations stay in the SDK, while owned GET/POST requests enforce same-origin URLs, credentials, CSRF and redirect rejection. Every await checks the current owner; destroy/cancel aborts its request and ceremony. A cancelled POST has an unknown server outcome and never produces a local success claim. `alpine-passkeys-adapter.test.mjs` tests the real SDK after a cancelled delayed GET and controlled cancel/error/success transport boundaries. Application CRUD continues through Livewire.
+
+Quality entrypoint: `npm run verify:migration` executes manifest validation, architecture rules, Stylelint, ESLint, Pint, Larastan, production build, complete PHP discovery/execution, JS coverage, PHP coverage, isolated browser coordinator, translations and budgets with real exit codes. This command defines verification; its presence does not imply it has passed. Exact current results and open gates belong in `PROGRESS.md` and `IMPLEMENTATION_PLAN.md`; older dated counts below remain historical.
+
+
+## 2026-09-16 — Resource readiness and notification history
+
+Staff identity and invitation recipient summaries keep a readable flex basis. Long action groups wrap below them according to available container width, including a list narrowed by an open editor; no hover-only action is introduced.
+
+Retain the warm palette, Noto Sans, semantic tokens and existing Flux controls. Asset delivery changes must preserve the rendered design. A critical editor that cannot initialize shows a persistent localized callout with an explicit reload link; its controls remain unavailable until safeguards are installed. This state never discards a draft through automatic navigation.
+
+Notification history uses twenty-message pages with clear Older, Newer and Latest controls, separate from read actions. Keep the current historical page when a new message arrives; return focus to the history heading after paging. Offline disables history actions as a group while retaining each action's own boundary-disabled state after reconnect. Opening/closing still does not acknowledge messages or perform restaurant operations.
+
+## Flux Pro adoption boundary — 2026-09-15
+
+Flux Pro will supply additional interaction primitives after the compatibility gate. Keep Service Clay, local Noto Sans, semantic states, spacing, touch targets and light/dark/system appearance consistent with the current product. Choose one appropriate control variant per workflow; library coverage does not justify dense controls or duplicate actions. Rich controls must preserve keyboard paths, translated labels, validation focus, narrow-screen layout and explicit failure states. The local adaptation is installed, with browser/workflow acceptance still in progress; see `docs/IMPLEMENTATION_PLAN.md` before using a Pro-only component or claiming a design migration is complete.
+
 ## Unified workspace interactions — 2026-09-15
 
 Keep the warm palette, semantic surfaces and local Noto Sans. One header contains sidebar collapse, permitted section search, notifications and account preferences on desktop and mobile. Compact navigation retains labelled icons and tooltips; appearance preferences do not cache permission data. The notification bell opens readable content in a full-height Flux panel, with a separate explicit read action and persistent offline recovery. Branch selection remains a lightweight disclosure with searchable Flux input and readable radio cards; the selected branch remains visible outside search matches. Short critical confirmations focus Cancel and close only their own dialog. The local superadmin component reference uses fictional data for visual and keyboard checks.
+
 
 ## Interaction continuity refinement — 2026-09-15
 

@@ -1,0 +1,31 @@
+@layer base {
+    html:has(dialog[data-guest-dish-dialog][open]) {
+        overflow: hidden;
+    }
+
+    html {
+        background: var(--rm-canvas);
+        color: var(--rm-text-primary);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+
+    h1,
+    h2,
+    h3 {
+        text-wrap: balance;
+    }
+
+    p {
+        text-wrap: pretty;
+    }
+
+    ::selection {
+        background: var(--rm-brand-200);
+        color: var(--rm-brand-950);
+    }
+}

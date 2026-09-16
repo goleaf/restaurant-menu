@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\Gate;
 
 final class UserNotificationQueryService
@@ -30,15 +31,25 @@ final class UserNotificationQueryService
             ->whereIn('data->branch_id', $this->resolveBranches->handle($user, SystemPermission::ViewOrders));
     }
 
-    /** @return array{count: int, notifications: DatabaseNotificationCollection<int, DatabaseNotification>, destinations: array<string, true>} */
-    public function snapshot(User $user, bool $includeDetails): array
+    /** @return array{count: int, notifications: DatabaseNotificationCollection<int, DatabaseNotification>, destinations: array<string, true>, cursor: ?Cursor, older_cursor: ?Cursor, newer_cursor: ?Cursor} */
+    public function snapshot(User $user, bool $includeDetails, ?Cursor $cursor = null): array
     {
         $query = $this->accessibleQuery($user);
 
         $count = (clone $query)->whereNull('read_at')->count();
-        $notifications = $includeDetails
-            ? $query->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(self::PANEL_LIMIT)->get()
-            : new DatabaseNotificationCollection;
+        $page = null;
+
+        if ($includeDetails) {
+            $query->reorder()->orderByDesc('created_at')->orderByDesc('id');
+            // An empty cursor prevents URL parameters from controlling the private panel.
+            $page = (clone $query)->cursorPaginate(self::PANEL_LIMIT, cursor: $cursor ?? '');
+
+            if ($page->isEmpty() && $cursor !== null) {
+                $page = $query->cursorPaginate(self::PANEL_LIMIT, cursor: '');
+            }
+        }
+
+        $notifications = new DatabaseNotificationCollection($page?->items() ?? []);
         $contexts = $notifications->map(fn (DatabaseNotification $notification): ?array => $this->sessionContext($notification))->filter();
         $sessions = $contexts->isEmpty() ? collect() : TableSession::query()->select(['id', 'branch_id', 'service_point_id'])
             ->whereIn('id', $contexts->pluck('id'))->whereIn('branch_id', $contexts->pluck('branch_id'))->get()->keyBy('id');
@@ -52,7 +63,14 @@ final class UserNotificationQueryService
             }
         }
 
-        return ['count' => $count, 'notifications' => $notifications, 'destinations' => $destinations];
+        return [
+            'count' => $count,
+            'notifications' => $notifications,
+            'destinations' => $destinations,
+            'cursor' => $page?->onFirstPage() ? null : $page?->cursor(),
+            'older_cursor' => $page?->nextCursor(),
+            'newer_cursor' => $page?->previousCursor(),
+        ];
     }
 
     public function destination(User $user, string $notificationId): ?string

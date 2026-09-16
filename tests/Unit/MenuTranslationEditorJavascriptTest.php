@@ -7,17 +7,11 @@ use Symfony\Component\Process\Process;
 test('translation copy fills only empty fields and keeps a review notice until copied text changes', function (): void {
     $script = <<<'JS'
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
-
-let factory;
-runInNewContext(readFileSync('resources/js/menu-translations.js', 'utf8'), {
-    window: { Alpine: { data(name, callback) { factory = callback; } } },
-});
+const { menuTranslations } = await import('./resources/js/alpine/components/menu-translations.js');
 function editor(values, nameOnly = false) {
     const writes = [];
     const events = [];
-    const instance = factory({ model: 'translations', nameOnly });
+    const instance = menuTranslations({ model: 'translations', nameOnly });
     instance.$dispatch = (name) => events.push(name);
     instance.$wire = {
         $get(path) { return values[path]; },

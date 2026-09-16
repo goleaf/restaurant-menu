@@ -4,6 +4,189 @@
 
 # Restaurant Menu completion implementation plan
 
+## 2026-09-16 — SCSS / Alpine / Livewire migration (implemented and verified; delivery authorized)
+
+User-authorized implementation supersedes earlier native-CSS-only decisions for first-party styles. Preserve framework CSS and the installed local Flux adaptation; do not rewrite vendor code. Architecture: independent Vite CSS/SCSS entries, generated Tailwind aliases from one Sass map, named Alpine factories registered before a single Livewire ESM start, Livewire state and domain Actions. Existing Node test runner remains the single JS runner.
+
+Baseline: local `main` at `7376b2084f183ffe8d0d94e8f5ed4bd8650e610b`, with pre-existing staged/unstaged/untracked Flux Pro, frontend-delivery and incomplete SCSS/Alpine work. Full status, staged/unstaged binary patches, per-file hashes and production asset copy were captured outside the repository before edits. These earlier edits are preserved and are not evidence of migration completion. No active application test/build writer was observed; available disk was 8.7 GiB. At capture time the draft SCSS app could not compile because two partials were missing; generated theme/PDF/error includes and factory registration were not wired. These are baseline defects, not the current implementation state.
+
+| Stage | Owner | Status | Acceptance |
+| --- | --- | --- | --- |
+| Baseline, inventory and contract tests | Root + Livewire agent | done | Complete source/route inventory and fresh executable baseline |
+| SCSS modules, tokens, standalone print/PDF/error | SCSS agent; Root integration | done | Independent compile, generated artifacts, appearance equivalence |
+| Alpine behavior, lifecycle and JS regressions | Alpine agent; Root Blade/bootstrap | done | Every factory connected, old handlers removed, coverage and navigation |
+| Screen and HTTP transport boundaries | Livewire agent | done | Class-based pages, explicit tested auth/download/restore exceptions |
+| Flux/UX and semantic composition | Flux/UX agent | done | Whole product areas, five widths, themes, keyboard/offline |
+| Architecture/lint/build/translation verification command | Root | done | Real exit codes, exact discovery, isolated runtime |
+| Full backend/browser/coverage/performance + independent diff review | Root/reviewer | done | No failures/errors/skips/timeouts, documented measured coverage |
+| Scoped local commit and ordinary push | Root | in_progress | User explicitly approved the complete reviewed 357-path candidate, including pre-existing preparation. Verified source hashes match; execute local commit and ordinary origin/main push |
+
+### File migration register
+
+Every production CSS/SCSS/browser-JS source and the build generator is listed below. `done` means the new source is connected, obsolete paths are removed or explicitly retained, and the final stable aggregate passes. Delivery ownership is tracked separately above. The generated outputs are `resources/css/generated-theme.css` and `resources/views/generated/styles/{emergency,pdf-qr,pdf-report}.blade.php`; the latter are fixed includes, never browser entrypoints.
+
+| Current source / destination | Responsibility | Consumers | Dependencies / checks | Status |
+| --- | --- | --- | --- | --- |
+| `resources/build/styles.js` | deterministic build/dev token and standalone CSS generation | vite.config.js; styles:check | node:fs; node:path; sass-embedded; settings/tokens; settings/breakpoints; style-generation tests: error/HMR/drift; 100% line/branch/function | done |
+| `resources/css/app.css` | framework imports/source scan/dark variant only | partials/head; vite.config.js | tailwindcss; resources/css/generated-theme.css; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/css/generated-theme.css` | generated Tailwind aliases and concrete breakpoints | resources/css/app.css | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/js/alpine/bindings/presentation.js` | Alpine named bindings | resources/js/alpine/register.js | `tests/alpine-presentation.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/branch-picker.js` | Alpine local lifecycle: branch-picker | resources/js/alpine/register.js; components/dashboard/branch-picker.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/connectivity.js` | Alpine local lifecycle: connectivity | resources/js/alpine/register.js; components/client-offline-indicator.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/guest-invite.js` | Alpine local lifecycle: guest-invite | resources/js/alpine/register.js; livewire/public-qr/guest-actions.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/guest-menu.js` | Alpine local lifecycle: guest-menu | resources/js/alpine/register.js; livewire/public-qr/guest-menu.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/http-form.js` | Alpine local lifecycle: http-form | resources/js/alpine/register.js; invitations/show.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/kitchen-timers.js` | Alpine local lifecycle: kitchen-timers | resources/js/alpine/register.js; livewire/departments/dashboard.blade.php | `tests/frontend-lifecycle.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/menu-image-picker.js` | Alpine local lifecycle: menu-image-picker | resources/js/alpine/register.js; components/menu/item-images.blade.php | `tests/alpine-editors.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/menu-translations.js` | Alpine local lifecycle: menu-translations | resources/js/alpine/register.js; components/menu/translation-fields.blade.php | `tests/alpine-editors.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/menu-workspace.js` | Alpine local lifecycle: menu-workspace | resources/js/alpine/register.js; livewire/organizations/brands/branches/menu/index.blade.php | `tests/alpine-workspaces.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/navigation-search.js` | Alpine local lifecycle: navigation-search | resources/js/alpine/register.js; layouts/app/sidebar.blade.php | `tests/alpine-editors.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/notification-panel.js` | Alpine local lifecycle: notification-panel | resources/js/alpine/register.js; livewire/notifications/unread-count.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/passkeys.js` | Alpine local lifecycle: passkeys | resources/js/alpine/register.js; components/passkey-registration.blade.php; components/passkey-verify.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/presentation.js` | Alpine local lifecycle: presentation | resources/js/alpine/register.js; livewire/organizations/brands/branches/menu/catalog-transfer.blade.php; livewire/settings/two-factor/recovery-codes.blade.php; livewire/restaurant/dashboard.blade.php; livewire/onboarding/restaurant-setup.blade.php | `tests/alpine-presentation.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/security-clipboard.js` | Alpine local lifecycle: security-clipboard | resources/js/alpine/register.js; livewire/settings/security.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/staff-workspace.js` | Alpine local lifecycle: staff-workspace | resources/js/alpine/register.js; components/staff/editor.blade.php; components/staff/invitation-link.blade.php; livewire/organizations/staff/index.blade.php | `tests/alpine-workspaces.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/two-factor.js` | Alpine local lifecycle: two-factor | resources/js/alpine/register.js; livewire/auth/two-factor-challenge.blade.php | `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/components/waiter-sounds.js` | Alpine local lifecycle: waiter-sounds | resources/js/alpine/register.js; livewire/waiter/dashboard.blade.php | `tests/frontend-lifecycle.test.mjs`; browser coverage map below | done |
+| `resources/js/alpine/register.js` | idempotent factory/binding registration | resources/js/app.js | resources/js/alpine/components/branch-picker.js; resources/js/alpine/components/connectivity.js; resources/js/alpine/components/guest-menu.js; resources/js/alpine/components/guest-invite.js; resources/js/alpine/components/http-form.js; resources/js/alpine/components/kitchen-timers.js; resources/js/alpine/components/menu-image-picker.js; resources/js/alpine/components/menu-translations.js; resources/js/alpine/components/menu-workspace.js; resources/js/alpine/components/navigation-search.js; resources/js/alpine/components/notification-panel.js; resources/js/alpine/components/passkeys.js; resources/js/alpine/components/presentation.js; resources/js/alpine/components/security-clipboard.js; resources/js/alpine/components/staff-workspace.js; resources/js/alpine/components/two-factor.js; resources/js/alpine/components/waiter-sounds.js; resources/js/alpine/bindings/presentation.js; resources/js/integrations/passkeys.js; `tests/alpine-registration.test.mjs`; browser coverage map below | done |
+| `resources/js/app.js` | one runtime bootstrap and fail-closed root release | partials/head; vite.config.js | resources/js/alpine/register.js; `tests/style-pipeline.test.mjs`; `tests/migration-architecture.test.mjs`; `tests/style-generation.test.mjs`; `tests/application-bootstrap.test.mjs`; browser coverage map below | done |
+| `resources/js/integrations/passkeys.js` | lazy WebAuthn protocol adapter | resources/js/alpine/register.js | @simplewebauthn/browser; `tests/alpine-passkeys-adapter.test.mjs`; `tests/inline-alpine.test.mjs`; browser coverage map below | done |
+| `resources/scss/app.scss` | common product entry | partials/head; vite.config.js | resources/scss/themes/_runtime.scss; resources/scss/base/_fonts.scss; resources/scss/base/_document.scss; resources/scss/base/_accessibility.scss; resources/scss/components/_utilities.scss; resources/scss/components/_workspace.scss; resources/scss/components/_page-header.scss; resources/scss/components/_operational.scss; resources/scss/components/_auth.scss; resources/scss/components/_media.scss; resources/scss/components/_areas.scss; resources/scss/components/_compositions.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/base/_accessibility.scss` | SCSS base: accessibility | resources/scss/app.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/base/_document.scss` | SCSS base: document | resources/scss/app.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/base/_emergency.scss` | SCSS base: emergency | resources/scss/emergency.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/base/_fonts.scss` | SCSS base: fonts | resources/scss/app.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_areas.scss` | SCSS components: areas | resources/scss/app.scss | resources/scss/settings/_tokens.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_auth.scss` | SCSS components: auth | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_compositions.scss` | SCSS components: compositions | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_media.scss` | SCSS components: media | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_operational.scss` | SCSS components: operational | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_page-header.scss` | SCSS components: page-header | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_utilities.scss` | SCSS components: utilities | resources/scss/app.scss | resources/scss/settings/_tokens.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/components/_workspace.scss` | SCSS components: workspace | resources/scss/app.scss | resources/scss/settings/_tokens.scss; resources/scss/settings/_breakpoints.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/emergency.scss` | manifest-independent error CSS source | resources/build/styles.js → fixed generated Blade CSS | resources/scss/base/_emergency.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/pdf-qr.scss` | concrete PDF QR rules | resources/build/styles.js → fixed generated Blade CSS | resources/scss/print/_pdf-qr.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/pdf-report.scss` | concrete report PDF rules | resources/build/styles.js → fixed generated Blade CSS | resources/scss/print/_pdf-report.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/print/_pdf-qr.scss` | SCSS print: pdf-qr | resources/scss/pdf-qr.scss | sass:map; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/print/_pdf-report.scss` | SCSS print: pdf-report | resources/scss/pdf-report.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/print/_qr.scss` | SCSS print: qr | resources/scss/qr-print.scss | `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/qr-print.scss` | print-only browser entry | layouts/print; vite.config.js | resources/scss/print/_qr.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/settings/_breakpoints.scss` | compile-time thresholds/mixins; no emitted CSS | resources/scss/components/_auth.scss; resources/scss/components/_compositions.scss; resources/scss/components/_media.scss; resources/scss/components/_operational.scss; resources/scss/components/_page-header.scss; resources/scss/components/_workspace.scss | sass:map; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/settings/_tokens.scss` | canonical maps, spacing/type definitions; no emitted CSS | resources/scss/components/_areas.scss; resources/scss/components/_auth.scss; resources/scss/components/_compositions.scss; resources/scss/components/_media.scss; resources/scss/components/_operational.scss; resources/scss/components/_page-header.scss; resources/scss/components/_utilities.scss; resources/scss/components/_workspace.scss; resources/scss/themes/_runtime.scss | sass:string; sass:map; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+| `resources/scss/themes/_runtime.scss` | SCSS themes: runtime | resources/scss/app.scss | resources/scss/settings/_tokens.scss; `tests/style-pipeline.test.mjs`, `tests/style-generation.test.mjs`, `FrontendStyleArchitectureTest`; Stylelint + browser computed styles | done |
+
+### Removed source paths and inline behavior
+
+| Former source | Connected replacement | Status |
+| --- | --- | --- |
+| `resources/css/fonts.css` | `scss/base/_fonts.scss` | done |
+| `resources/css/qr-print.css` | `scss/qr-print.scss` | done |
+| `resources/js/menu.js` | `app.js → alpine/register.js` | done |
+| `resources/js/staff.js` | `app.js → alpine/register.js` | done |
+| `resources/js/waiter.js` | `app.js → alpine/register.js` | done |
+| `resources/js/departments.js` | `app.js → alpine/register.js` | done |
+| `resources/js/menu-workspace.js` | `alpine/components/menu-workspace.js` | done |
+| `resources/js/staff-workspace.js` | `alpine/components/staff-workspace.js` | done |
+| `resources/js/workspace-navigation.js` | `alpine/components/navigation-search.js` | done |
+| `resources/js/menu-translations.js` | `alpine/components/menu-translations.js` | done |
+| `resources/js/menu-image-picker.js` | `alpine/components/menu-image-picker.js` | done |
+| `resources/js/kitchen-delay-timers.js` | `alpine/components/kitchen-timers.js` | done |
+| `resources/js/waiter-sounds.js` | `alpine/components/waiter-sounds.js` | done |
+| `resources/js/passkeys.js` | `alpine/components/passkeys.js + integrations/passkeys.js` | done |
+
+All inline `<script>` and object-valued `x-data` implementations are removed from first-party Blade. Named factories own notifications, dashboard picker/focus, MFA/recovery, passkey controls, guest menu/detail/share, clipboard, offline state, onboarding and upload progress. Four bindings own dialog naming, focus and print. Three inline `<style>` hosts contain only fixed generated includes. The only inline style exception is validated bounded photo focal-point data (`object-position`) in item-images and guest-menu; layout/theme declarations are in SCSS. Architecture tests pin this exact allowlist.
+
+No application fetch/XHR/Axios/jQuery layer existed at capture, so zero such CRUD requests are claimed removed. The one deliberate first-party fetch adapter is the same-origin cancellable WebAuthn protocol documented in frontend.md; all ordinary mutations use Livewire.
+
+### Interactive screen register
+
+| Route | Class-based server owner (before and after) | Migration contract / verification | Status |
+| --- | --- | --- | --- |
+| `guest.home` | `App\Livewire\Guest\Home` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `public.qr.show` | `App\Livewire\PublicQr\Show` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `local.components` | `App\Livewire\Local\ComponentReference` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `onboarding.restaurant` | `App\Livewire\Onboarding\RestaurantSetup` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.index` | `App\Livewire\Organizations\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.staff.index` | `App\Livewire\Organizations\Staff\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.staff.permissions` | `App\Livewire\Organizations\Staff\Permissions` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.index` | `App\Livewire\Organizations\Brands\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.index` | `App\Livewire\Organizations\Brands\Branches\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.areas.index` | `App\Livewire\Organizations\Brands\Branches\Areas` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.menu.index` | `App\Livewire\Organizations\Brands\Branches\Menu\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.qr.print` | `App\Livewire\Organizations\Brands\Branches\Qr\BulkPrint` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.service-points.index` | `App\Livewire\Organizations\Brands\Branches\ServicePoints\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.service-points.qr.show` | `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\Show` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.service-points.qr.print` | `App\Livewire\Organizations\Brands\Branches\ServicePoints\Qr\PrintTemplate` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.staff.index` | `App\Livewire\Organizations\Brands\Branches\Staff\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `organizations.brands.branches.settings.index` | `App\Livewire\Organizations\Brands\Branches\Settings` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.dashboard` | `App\Livewire\Restaurant\Dashboard` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.qr-lookup.index` | `App\Livewire\QrCodes\ShortCodeLookup` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.audit-log.index` | `App\Livewire\AuditLogs\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.departments.tickets.print` | `App\Livewire\Departments\TicketPrint` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.exports.index` | `App\Livewire\Exports\Index` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.kitchen.dashboard` | `App\Livewire\Kitchen\Dashboard` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.bar.dashboard` | `App\Livewire\Bar\Dashboard` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.waiter.dashboard` | `App\Livewire\Waiter\Dashboard` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `restaurant.waiter.tables.show` | `App\Livewire\Waiter\TableDetail` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `superadmin.dashboard` | `App\Livewire\Superadmin\Dashboard` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `profile.edit` | `App\Livewire\Settings\Profile` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `appearance.edit` | `App\Livewire\Settings\Appearance` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+| `security.edit` | `App\Livewire\Settings\Security` | One ESM runtime, common SCSS/Flux; named Alpine local behavior where needed; route boundary + full Feature suite and corresponding browser journey | done |
+
+Supporting composition: menu category/item/variant/modifier/availability/CSV/departments editors; area hierarchy; branch staff and invitations/permissions; public GuestEntry/GuestActions/GuestMenu/DraftOrder; waiter summary/guests/drafts/bills/order history; kitchen/bar ticket actions; dashboard task/report filters; shared notifications; profile/security/delete/MFA. Existing Form objects and focused Actions remain authoritative. Static landing/error/email/PDF/navigation-only pages remain SSR.
+
+HTTP exceptions are an exact executable inventory in LivewireInteractionBoundaryTest: Fortify identity/session/MFA; invitation GET-to-session digest and explicit POST acceptance/register/account-switch; demo login; authorized QR PDF, CSV/report PDF and SQLite/media downloads; restore GET form + exclusive-barrier POST. GET never accepts invitations or restores data. Auth/Invitation/PdfDownloads/Export/Security/Backup/SqliteRestoreRequestLock tests retain positive/negative/replay/scope evidence.
+
+Browser coverage map: RegistrationToPaidTableClosure (onboarding→QR→guest→waiter→kitchen/bar→settlement), OrganizationsCrudJourney (hierarchy/areas/tables), ProductMenuWorkflow (media/languages/validation/recovery/guest), TeamAdministrationWorkflow and TeamRecipientWorkflow (invitation/account/access), BranchControlWorkflow (dashboard periods/scopes), NotificationsPanel (read≠task), KitchenDelayTimer and WaiterNotificationSounds (operational lifecycle), WorkspaceComponents and FrontendAssetDelivery (layouts/themes/keyboard/zoom/ten visits/failures), FluxProControls (installed local edition), AuthenticationMigration (real Fortify recovery/session flow and WebAuthn cancellation/error/owned deletion). The final aggregate passes all 37 cases /2,684 assertions, all 2,852 backend tests and all 167 Node tests; exact coverage and environmental limits are in `testing.md`.
+
+
+### Final verification and delivery boundary
+
+All 16 coordinator stages pass on the frozen 1,347-file source inventory; exact logs, counts and coverage are recorded in `testing.md` and `PROGRESS.md`. Independent source review has no open P1/P2 findings. The first-party migration delta and all pre-existing prerequisites are inventoried separately outside the repository. Applying only the migration delta to HEAD is not a valid release: it omits imported Alpine/SCSS sources and the installed local Pro package. The original staged changes were preserved byte-for-byte through approval. The user subsequently authorized that exact composite 357-path scope, including the independent staff validation/badge fixes and historical documentation. Commit/push is now an authorized execution gate. The original `flux-pro/` tree is inherited unchanged and absent from the commit diff.
+
+## 2026-09-16 — Local-code Flux Pro adaptation (in progress)
+
+The latest user instruction replaces the official-distribution prerequisite: use only the supplied local code and existing installed dependencies. No new archive, account or credential is requested. The earlier HTTP 401 checkpoint below records the abandoned retrieval approach and does not block this local adaptation.
+
+1. **Done — foundation:** preserve the original 139-file snapshot; prepare explicit per-file compatibility patches and a truthful local release `0.1.0` with `upstream_version: null`.
+2. **Done — offline installation:** install through an ordinary local Composer path repository and physical vendor mirror, keeping all existing dependency versions fixed. Resolve offline in a small disposable project first; preserve concurrent test/build processes before switching the shared runtime.
+3. **Server gates done; browser in progress:** prove Composer identity, service-provider/facade correctness, Free+Pro render compatibility and all five asset endpoints. Add the installed Pro Tailwind source and test real controls in the existing isolated/local reference workflow.
+4. Continue the existing P2–P18 workflow matrix using available code. No license checks or edition detection are removed; dependency-pin changes belong to the documented local adaptation and require tests.
+
+Root owns plan/documentation and frontend integration; the package worker owns package metadata/PHP, provenance, root Composer files and installation/integrity tests. A read-only compatibility audit runs independently. Unrelated staged and unstaged frontend optimization remains owned by its current session.
+
+## 2026-09-16 — frontend resource delivery optimization (implemented; delivery blocked)
+
+Continue from `7376b20` and preserve the separate Pro preparation. This stage was implemented and verified on Flux Free 2.17.0 / Livewire 4.4.1. It owns measured delivery improvements, not a redesign or dependency upgrade. After those gates, a separate process installed a local Pro package and changed the shared manifests, CSS sources and tests. The measurements and gates below apply to the frozen Free slice, not that later combined tree.
+
+| Slice | Owner | Acceptance |
+| --- | --- | --- |
+| Fresh production/network baseline and static screen entrypoints | Root | Menu/staff/operations assets load only where needed; Alpine registration precedes initialization; failed critical assets leave an explicit safe recovery state |
+| CSS cascade and Free component contract | CSS reviewer; Root implements | Remove proven utility-class coupling, preserve contrast/touch/print/theme; native CSS only and unchanged explicit source coverage |
+| Bounded notification history | Notification worker | Older/newer navigation with current authorization, stable reading position, bounded payload and closed count-only polling |
+| Manifest-driven asset budgets | Budget worker; Root configures measured limits | No new dependencies; deduplicated per-scenario bytes/compression, missing/cyclic asset checks, meaningful Node tests |
+| Browser, lifecycle, visual/performance comparison and independent review | Root and reviewer | Direct loads, ten navigations, history, failed asset, dirty input, locales/themes/zoom/accessibility and actual screenshots |
+| Stable local gates and scoped delivery | Root | Frozen-slice backend 2,810 / 59,323 and browser 33 / 2,042 pass; format/static/audits/build/translations/caches pass; coverage export failed under local disk pressure. Later concurrent source/dependency changes also require reconciliation and fresh verification before commit/push |
+
+Historical constraint for that earlier delivery slice (superseded by the accepted SCSS migration above): no Sass or extra minifier. Keep QR CSS separate, local Noto subsets complete, shared Flux styles generated once, and existing form/domain safety intact. No workflow, production data or unrelated package-source changes are included.
+
+
+## Historical pre-adaptation checkpoint — 2026-09-16 (`ui-flux-pro-001`)
+
+Superseded by the user-selected local adaptation above; the access prerequisite below is retained only as history.
+
+Execution of the [detailed P0–P18 plan](superpowers/plans/2026-09-15-flux-pro-integration.md) is authorized. This checkpoint is separate from the concurrent Free workspace delivery below; its changes and results are preserved without claiming ownership.
+
+| Stage | Observed state | Remaining work |
+| --- | --- | --- |
+| P0 compatibility/source preflight | completed inspection; activation blocked | Accept a compatible stable Pro distribution through configured official access or an authorized local artifact. Current Pro requires Free `2.13.1` or `dev-main`; installed/root Free 2.17/`^2.17` cannot satisfy it. Official metadata returns HTTP 401; local related archives contain no compatible Free/Pro pair. |
+| P1 formatting boundary | distribution exclusion and integrity checks implemented | Keep first-party formatting active; remove original-path exclusion only after P17. Runtime/CSS portion is pending. |
+| P14 early source preparation | 139 files / 3,291,708 bytes copied exactly into `packages/livewire/flux-pro/`; adjacent provenance and standard SHA-256 manifest added | Unknown upstream version remains explicit. This is an uninstalled user snapshot; P14 acceptance still requires a compatible release, Composer mirror and clean installation. |
+| Requirement/documentation reconciliation | new canonical ID mapped into compliance and traceability; current topic documents updated | Continue recording actual stage results as features are implemented. Historical Free acceptance remains dated history. |
+| P1 runtime, P2–P13 and P15–P18 | not executed | Resume in dependency order after P0. No installed Pro, Pro workflow proof, original-folder deletion, commit, push or deployment is claimed. |
+
+Source integrity is covered by `tests/Unit/FluxProDistributionIntegrityTest.php` without Laravel or database access. `RequirementsTraceabilityTest` covers all 54 canonical IDs after adding the accepted requirement. Exact focused results, review scope and skipped gates are in `testing.md`. Root manifests/locks, application data and original `flux-pro/` are unchanged by this preparation. Do not fabricate a release version, widen upstream constraints, hand-register Pro or downgrade the working Free package to conceal the missing compatible input.
+
 ## 2026-09-15 — unified Flux workspace (implemented and verified 2026-09-16)
 
 Continue from the verified cleanup and preserve the independently added `eb3fa3d` package-source commit. The installed runtime remains Flux Free 2.17.0 / Livewire 4.4.1; a checked-in package directory is not an installed dependency or license decision.

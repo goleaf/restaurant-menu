@@ -6,6 +6,8 @@
 
 The application has no production external HTTP client, online payment provider, webhook receiver, remote object store, email delivery contract, AI service, search service, WebSocket service or analytics SDK. Manual payments record offline cash/card-terminal/other settlement only. This is an intentional current product boundary, not a placeholder.
 
-Local integrations are Laravel Fortify/passkeys/2FA, SQLite, database-backed cache/session/queue, local files, QR rendering, Livewire, Flux UI Free and Vite/Tailwind. Flux Pro is not installed or licensed and its template sources must not be referenced.
+Local runtime integrations are Laravel Fortify/passkeys/2FA, SQLite, database-backed cache/session/queue, local files, QR rendering, Livewire, Flux UI Free with the installed local Pro adaptation, and Vite/Tailwind. The internal `livewire/flux-pro` package is versioned `0.1.0`; its upstream version remains unknown and its proprietary license is retained.
+
+The Composer path repository creates a physical `vendor/livewire/flux-pro/` mirror through normal package discovery. Installation was resolved offline using the existing lock/cache, with all 178 previous package records unchanged. The user selected this local-code route; official repository access is not a prerequisite. Source and installation proof do not establish browser/workflow acceptance. See the [execution ledger](IMPLEMENTATION_PLAN.md) and [complete integration plan](superpowers/plans/2026-09-15-flux-pro-integration.md).
 
 A future external integration requires a dedicated client/gateway, configuration through `config()`, bounded connection/total timeouts, explicit status/schema mapping, safe retries and idempotency, sensitive-log redaction, fake-based tests and a no-stray-network test. A server-side user-controlled URL fetch additionally requires scheme/host/IP/redirect/size protections against SSRF.

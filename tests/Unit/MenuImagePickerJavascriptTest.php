@@ -7,16 +7,10 @@ use Symfony\Component\Process\Process;
 test('closing a photo editor releases preview URLs and its workspace dirty registration', function (): void {
     $script = <<<'JS'
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
-let factory;
+const { menuImagePicker } = await import('./resources/js/alpine/components/menu-image-picker.js');
 const released = [];
-runInNewContext(readFileSync('resources/js/menu-image-picker.js', 'utf8'), {
-    window: { Alpine: { data(name, callback) { if (name === 'menuImagePicker') factory = callback; } } },
-    URL: { revokeObjectURL(value) { released.push(value); } },
-    CustomEvent: class { constructor(type, options) { this.type = type; this.detail = options.detail; } },
-});
-const picker = factory({ itemId: 31 });
+globalThis.URL.revokeObjectURL = (value) => released.push(value);
+const picker = menuImagePicker({ itemId: 31 });
 const registrations = new Set();
 let connected = true;
 const receive = (name, detail) => {

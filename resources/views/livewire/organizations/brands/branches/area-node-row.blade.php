@@ -40,7 +40,7 @@
             </div>
         </form>
     @else
-        <div class="min-w-0" style="padding-left: {{ min($node['depth'], 8) * 1.25 }}rem">
+        <div class="rm-area-node-label min-w-0" data-depth="{{ max(0, min($node['depth'], 8)) }}">
             <div class="flex flex-wrap items-center gap-2">
                 <x-ui.area-icon :type="$node['type']" :icon="$node['icon']" :label="__($node['type_label'])" :active="$node['is_active']" />
 

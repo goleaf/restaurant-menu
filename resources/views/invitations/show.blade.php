@@ -43,7 +43,7 @@
         @endif
 
         @if ($isAuthenticated)
-            <form method="POST" action="{{ $acceptUrl }}" x-data="{ submitting: false, offline: !navigator.onLine }" @online.window="offline = false" @offline.window="offline = true" @submit="if (offline || submitting) { $event.preventDefault(); } else { submitting = true; }">
+            <form method="POST" action="{{ $acceptUrl }}" x-data="httpForm" @online.window="offline = false" @offline.window="offline = true" @pageshow.window="restore()" @submit="submit($event)">
                 @csrf
                 <input type="hidden" name="invitation_version" value="{{ $invitationVersion }}">
 
@@ -65,7 +65,7 @@
                     <flux:text class="mt-1">{{ __('invitations.account.create_description') }}</flux:text>
                 </div>
 
-                <form method="POST" action="{{ $registerUrl }}" novalidate class="flex flex-col gap-6" x-data="{ submitting: false, offline: !navigator.onLine }" @online.window="offline = false" @offline.window="offline = true" @submit="if (offline || submitting) { $event.preventDefault(); } else { submitting = true; }">
+                <form method="POST" action="{{ $registerUrl }}" novalidate class="flex flex-col gap-6" x-data="httpForm" @online.window="offline = false" @offline.window="offline = true" @pageshow.window="restore()" @submit="submit($event)">
                     @csrf
                     <input type="hidden" name="invitation_version" value="{{ $invitationVersion }}">
 

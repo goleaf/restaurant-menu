@@ -44,7 +44,7 @@
             <div>
                 <dt class="text-text-muted">{{ __('ui.waiter.table_detail.service_point_status') }}</dt>
                 <dd class="mt-1">
-                    <flux:badge :color="data_get($overview, 'service_point.status_color', 'zinc')">
+                    <flux:badge :color="data_get($overview, 'service_point.status_color', 'zinc')" :class="data_get($overview, 'service_point.status_color') === 'orange' ? 'not-dark:text-orange-900' : ''">
                         {{ __(data_get($overview, 'service_point.status_label')) }}
                     </flux:badge>
                 </dd>
@@ -76,7 +76,7 @@
                 <p class="text-sm text-text-muted">{{ __('ui.waiter.table_detail.sviazannye_stoly') }}</p>
                 <div class="mt-2 flex flex-wrap gap-2">
                     @foreach (data_get($overview, 'linked_service_points', []) as $linkedServicePoint)
-                        <flux:badge wire:key="linked-service-point-{{ $linkedServicePoint['id'] }}" :color="$linkedServicePoint['status_color']">
+                        <flux:badge wire:key="linked-service-point-{{ $linkedServicePoint['id'] }}" :color="$linkedServicePoint['status_color']" :class="$linkedServicePoint['status_color'] === 'orange' ? 'not-dark:text-orange-900' : ''">
                             {{ $linkedServicePoint['name'] }}
                             @if ($linkedServicePoint['display_number'])
                                 · № {{ $linkedServicePoint['display_number'] }}

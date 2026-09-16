@@ -1,0 +1,136 @@
+@use '../settings/tokens';
+@use '../settings/breakpoints';
+
+@layer components {
+    .rm-priority-row {
+        display: flex;
+        min-height: var(--rm-spacing-operational-touch);
+        min-width: 0;
+        flex-direction: column;
+        gap: tokens.space(3);
+        border: 1px solid;
+        border-radius: var(--rm-radius-control);
+        padding: tokens.space(3);
+        transition-property: background-color, border-color, color;
+        transition-duration: var(--rm-transition-duration-state);
+        transition-timing-function: var(--rm-ease-product);
+
+        @include breakpoints.up('sm') {
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            transition: none;
+        }
+    }
+
+    .rm-priority-row__content {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+        gap: tokens.space(3);
+    }
+
+    .rm-priority-row__meta {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: tokens.space(1) tokens.space(2);
+        margin-top: tokens.space(1);
+        color: var(--rm-text-muted);
+        @include tokens.type('xs', tokens.space(5));
+        font-weight: 500;
+    }
+
+    .rm-priority-row__actions {
+        display: flex;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        gap: tokens.space(2);
+
+        @include breakpoints.up('sm') {
+            justify-content: flex-end;
+        }
+    }
+
+    .rm-metric-strip {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border: 1px solid var(--rm-border-subtle);
+        border-radius: var(--rm-radius-card);
+        background-color: var(--rm-border-subtle);
+        box-shadow: var(--rm-shadow-card);
+
+        @include breakpoints.up('lg') {
+            grid-auto-flow: column;
+            grid-auto-columns: minmax(0, 1fr);
+            grid-template-columns: none;
+        }
+    }
+
+    .rm-metric-strip__item {
+        min-width: 0;
+        padding: tokens.space(3) tokens.space(4);
+    }
+
+    .rm-metric-strip__label {
+        color: var(--rm-text-muted);
+        @include tokens.type('xs', tokens.space(5));
+        font-weight: 500;
+    }
+
+    .rm-metric-strip__value {
+        margin-top: tokens.space(1);
+        color: currentColor;
+        @include tokens.type('2xl');
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .rm-metric-strip__description {
+        margin-top: tokens.space(1);
+        color: var(--rm-text-muted);
+        @include tokens.type('xs', tokens.space(5));
+    }
+
+    .rm-mobile-actions {
+        position: sticky;
+        z-index: var(--rm-z-index-docked);
+        bottom: 0;
+        margin-inline: tokens.space(-4);
+        border-top: 1px solid var(--rm-border-subtle);
+        background-color: var(--rm-surface-raised);
+        padding: tokens.space(3) tokens.space(4) calc(env(safe-area-inset-bottom) + tokens.space(3.5));
+        box-shadow: var(--rm-shadow-docked);
+
+        @include breakpoints.up('sm') {
+            position: static;
+            margin-inline: 0;
+            border: 1px solid var(--rm-border-subtle);
+            border-radius: var(--rm-radius-card);
+            padding-bottom: tokens.space(3);
+            box-shadow: none;
+        }
+    }
+
+    .rm-mobile-actions__summary {
+        margin-bottom: tokens.space(2);
+        border-radius: var(--rm-radius-control);
+        background-color: var(--rm-surface-muted);
+        padding: tokens.space(2) tokens.space(3);
+        color: var(--rm-text-primary);
+        @include tokens.type('sm');
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .rm-mobile-actions__content {
+        display: grid;
+        gap: tokens.space(2);
+    }
+}

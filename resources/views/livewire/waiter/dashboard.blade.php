@@ -1,6 +1,11 @@
+@pushOnce('page-module-status', 'waiter-status')
+    <x-page-module-status module="waiter" :heading="__('frontend.sounds_loading')" :description="__('frontend.sounds_loading_help')" />
+@endPushOnce
+
 <section
     data-page="waiter-dashboard"
     data-waiter-sounds
+    x-data="waiterSounds"
     wire:poll.visible.{{ $pollingInterval }}s="refreshDashboard"
     class="flex h-full w-full min-w-0 flex-1 flex-col gap-5"
 >
@@ -18,12 +23,13 @@
                     icon="speaker-wave"
                     aria-pressed="false"
                     aria-describedby="waiter-sound-status"
+                    disabled
                 >
                     <span data-waiter-sound-label="enable">{{ __('ui.waiter.dashboard.enable_sounds') }}</span>
                     <span data-waiter-sound-label="disable" hidden>{{ __('ui.waiter.dashboard.disable_sounds') }}</span>
                 </flux:button>
 
-                <flux:button data-waiter-sound-test type="button" size="sm" variant="ghost" icon="musical-note">
+                <flux:button data-waiter-sound-test type="button" size="sm" variant="ghost" icon="musical-note" disabled>
                     {{ __('ui.waiter.dashboard.test_sound') }}
                 </flux:button>
 

@@ -3,31 +3,7 @@
         <div
             class="relative w-full h-auto"
             x-cloak
-            x-data="{
-                showRecoveryInput: @js($errors->has('recovery_code')),
-                code: '',
-                recovery_code: '',
-                focusOtp() {
-                    this.$nextTick(() => this.$refs.otp?.querySelector('input')?.focus());
-                },
-                init() {
-                    if (! this.showRecoveryInput) {
-                        this.focusOtp();
-                    }
-                },
-                toggleInput() {
-                    this.showRecoveryInput = !this.showRecoveryInput;
-
-                    this.code = '';
-                    this.recovery_code = '';
-
-                    $nextTick(() => {
-                        this.showRecoveryInput
-                            ? this.$refs.recovery_code?.focus()
-                            : this.focusOtp();
-                    });
-                },
-            }"
+            x-data="twoFactorChallenge" data-recovery="{{ $errors->has('recovery_code') ? 'true' : 'false' }}"
         >
             <div x-show="!showRecoveryInput">
                 <x-auth-header
@@ -90,10 +66,10 @@
 
                 <div class="mt-5 space-x-0.5 text-sm leading-5 text-center">
                     <span class="opacity-50">{{ __('ui.auth.two_factor_challenge.or_you_can') }}</span>
-                    <div class="inline font-medium underline cursor-pointer opacity-80">
-                        <span x-show="!showRecoveryInput" @click="toggleInput()">{{ __('ui.auth.two_factor_challenge.login_using_a_recovery_code') }}</span>
-                        <span x-show="showRecoveryInput" @click="toggleInput()">{{ __('ui.auth.two_factor_challenge.login_using_an_authentication_code') }}</span>
-                    </div>
+                    <button type="button" class="inline font-medium underline cursor-pointer opacity-80" x-on:click="toggleInput()">
+                        <span x-show="!showRecoveryInput">{{ __('ui.auth.two_factor_challenge.login_using_a_recovery_code') }}</span>
+                        <span x-show="showRecoveryInput">{{ __('ui.auth.two_factor_challenge.login_using_an_authentication_code') }}</span>
+                    </button>
                 </div>
             </form>
         </div>

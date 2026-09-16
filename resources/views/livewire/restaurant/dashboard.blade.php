@@ -1,17 +1,8 @@
 <div
     data-layout="restaurant-dashboard"
     class="content-safe flex h-full w-full min-w-0 flex-1 flex-col gap-5"
-    x-data="{ openBranchPicker() { this.$refs.branchPicker.open = true; this.$nextTick(() => this.$refs.branchSearch.focus()); } }"
-    x-on:dashboard-validation-failed="
-        $nextTick(() => requestAnimationFrame(() => {
-            const field = $el.querySelector('[aria-invalid=&quot;true&quot;]') ?? $el.querySelector('[data-dashboard-error]');
-            if (!field) return;
-            for (let parent = field.parentElement; parent && parent !== $el; parent = parent.parentElement) {
-                if (parent.tagName === 'DETAILS') parent.open = true;
-            }
-            field.focus();
-        }));
-    "
+    x-data="restaurantDashboard"
+    x-on:dashboard-validation-failed="focusValidationError()"
 >
     <x-ui.page-header title="dashboard.control.title" description="dashboard.control.description" context="layout.restaurant_workspace" />
 

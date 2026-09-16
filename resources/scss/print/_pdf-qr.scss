@@ -1,0 +1,86 @@
+@use 'sass:map';
+
+// PDF presets retain their renderer-specific palette, independent of browser stickers.
+$presets: (
+    minimal: (accent: #18181b, background: #ffffff, border: #18181b, text: #18181b),
+    classic: (accent: #1f2937, background: #f8fafc, border: #64748b, text: #111827),
+    restaurant: (accent: #9f2d15, background: #fff7ed, border: #fb923c, text: #431407),
+    bar: (accent: #164e63, background: #ecfeff, border: #06b6d4, text: #083344),
+    hotel: (accent: #3f3f46, background: #fafafa, border: #a1a1aa, text: #27272a),
+    premium: (accent: #713f12, background: #fffbeb, border: #d97706, text: #422006),
+);
+
+@page {
+    margin: 10mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'DejaVu Sans', sans-serif;
+    font-size: 11pt;
+}
+
+.sheet {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 6mm;
+    table-layout: fixed;
+}
+
+.label {
+    width: 50%;
+    padding: 7mm;
+    border-width: 1.5pt;
+    border-style: solid;
+    text-align: center;
+    page-break-inside: avoid;
+    vertical-align: top;
+}
+
+.brand {
+    margin: 0 0 3mm;
+    font-size: 15pt;
+    font-weight: 700;
+}
+
+.instruction {
+    margin: 0 0 4mm;
+    font-size: 10pt;
+}
+
+.qr {
+    width: 55mm;
+    height: 55mm;
+}
+
+.code {
+    margin-top: 3mm;
+    font-size: 14pt;
+    font-weight: 700;
+    letter-spacing: 1pt;
+}
+
+.table-number {
+    margin-top: 2mm;
+    font-size: 11pt;
+    font-weight: 700;
+}
+
+@each $preset, $theme in $presets {
+    [data-qr-preset='#{$preset}'] {
+        color: map.get($theme, text);
+
+        .label {
+            border-color: map.get($theme, border);
+            background: map.get($theme, background);
+        }
+
+        .brand {
+            color: map.get($theme, accent);
+        }
+    }
+}

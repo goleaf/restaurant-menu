@@ -32,6 +32,8 @@ final class IsolatedBrowserIdentity
         app('session')->forgetDrivers();
         app()->forgetInstance('session.store');
         app('redirect')->setSession(app('session')->driver());
+        // Router middleware discovery can retain a controller with the previous request's guard.
+        $request->route()?->flushController();
 
         return $next($request);
     }

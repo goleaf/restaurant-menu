@@ -183,10 +183,10 @@
                                         alt="{{ $landing['venue_name'] }}"
                                         width="80"
                                         height="80"
-                                        class="size-20 rounded-lg border border-zinc-200 bg-white object-contain p-2 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
+                                        class="rm-guest-brand-avatar rm-guest-brand-avatar--image"
                                     >
                                 @else
-                                    <div class="flex size-20 items-center justify-center rounded-lg border border-zinc-200 bg-white text-2xl font-semibold text-zinc-900 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+                                    <div class="rm-guest-brand-avatar rm-guest-brand-avatar--initial">
                                         {{ $landing['brand_initial'] }}
                                     </div>
                                 @endif
@@ -211,11 +211,11 @@
                                     @if ($landing['has_contact_details'])
                                         <dd class="mt-2 flex flex-wrap gap-2">
                                             @if ($landing['phone'])
-                                                <a href="tel:{{ $landing['phone'] }}" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $landing['phone'] }}</a>
+                                                <a href="tel:{{ $landing['phone'] }}" class="rm-guest-contact-link">{{ $landing['phone'] }}</a>
                                             @endif
 
                                             @if ($landing['email'])
-                                                <a href="mailto:{{ $landing['email'] }}" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $landing['email'] }}</a>
+                                                <a href="mailto:{{ $landing['email'] }}" class="rm-guest-contact-link">{{ $landing['email'] }}</a>
                                             @endif
 
                                             @foreach ([
@@ -225,7 +225,7 @@
                                                 'tiktok_url' => 'TikTok',
                                             ] as $linkKey => $linkLabel)
                                                 @if ($landing[$linkKey])
-                                                    <a href="{{ $landing[$linkKey] }}" rel="noopener noreferrer" target="_blank" class="rounded-md bg-white px-2 py-1 text-sm font-semibold text-zinc-800 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:ring-zinc-800">{{ $linkLabel }}</a>
+                                                    <a href="{{ $landing[$linkKey] }}" rel="noopener noreferrer" target="_blank" class="rm-guest-contact-link">{{ $linkLabel }}</a>
                                                 @endif
                                             @endforeach
                                         </dd>

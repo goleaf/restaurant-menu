@@ -62,9 +62,11 @@
         </flux:table>
     </x-ui.card>
 
+    <x-local.pro-reference :locale="$referenceLocale" :chart="$referenceChart" />
+
     <flux:modal name="component-reference-edit" :closable="false" class="content-safe w-full min-w-0! max-w-lg">
         <div class="space-y-5">
-            <flux:heading level="2" size="lg" id="component-reference-edit-title" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)">{{ __('ui.reference.edit') }}</flux:heading>
+            <flux:heading level="2" size="lg" id="component-reference-edit-title" x-bind="dialogLabel">{{ __('ui.reference.edit') }}</flux:heading>
             <form wire:submit="saveExample" class="space-y-5" novalidate>
                 <flux:input wire:model="name" :label="__('ui.reference.example_name')" error:id="reference-name-error" error:class="text-danger!" aria-describedby="reference-name-error" required maxlength="80" autocomplete="off" />
                 <div class="flex flex-wrap justify-end gap-3">

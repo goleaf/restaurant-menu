@@ -1,25 +1,5 @@
 <div
-    x-data="{
-        panelReady: false,
-        panelFailed: false,
-        panelEpoch: 0,
-        async loadPanel() {
-            this.panelReady = false;
-            this.panelFailed = false;
-            const epoch = ++this.panelEpoch;
-            if (!navigator.onLine) {
-                this.panelFailed = true;
-                return;
-            }
-            try {
-                await this.$wire.openPanel();
-                if (epoch === this.panelEpoch) this.panelReady = true;
-                else this.$wire.$set('panelOpen', false, false);
-            } catch {
-                if (epoch === this.panelEpoch) this.panelFailed = true;
-            }
-        }
-    }" data-component="notifications-unread-count" wire:poll.visible.5s="refreshUnreadCount">
+    x-data="notificationPanel" data-component="notifications-unread-count" wire:poll.visible.5s="refreshUnreadCount">
     <flux:modal.trigger name="staff-notifications">
         <flux:button
             x-on:click="$el.focus(); loadPanel()"
@@ -41,7 +21,7 @@
         flyout
         :closable="false"
         class="w-full min-w-0 max-w-lg px-4 py-6 sm:px-6"
-        x-on:close="panelEpoch++; panelReady = false; $wire.$set('panelOpen', false, false)"
+        x-on:close="closePanel()"
     >
         <div class="space-y-5">
             <div class="flex items-start justify-between gap-3">
@@ -51,7 +31,7 @@
                         size="lg"
                         id="staff-notifications-title"
                         class="break-words"
-                        x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)"
+                        x-bind="dialogLabel"
                     >{{ __('ui.notifications.unread_count.notifications') }}</flux:heading>
                     <flux:text class="mt-2">{{ __('notifications.panel.scope') }}</flux:text>
                 </div>
@@ -78,19 +58,36 @@
                 </div>
                 <div x-show="panelFailed" x-cloak role="status" class="space-y-3" data-notification-failure>
                     <flux:callout variant="warning" icon="arrow-path" class="callout-contrast" :text="__('notifications.panel.load_failed')" />
-                    <flux:button x-on:click="loadPanel()" variant="outline" class="min-h-touch" wire:offline.attr="disabled">{{ __('notifications.panel.retry') }}</flux:button>
+                    <flux:button x-on:click="loadPanel(historyDirection)" variant="outline" class="min-h-touch" wire:offline.attr="disabled">{{ __('notifications.panel.retry') }}</flux:button>
                 </div>
             </div>
 
             <div x-show="panelReady" x-cloak class="space-y-4">
                 @if ($panelOpen)
-                    <div class="flex flex-wrap items-center justify-between gap-3">
+                    <fieldset class="flex min-w-0 flex-wrap items-center justify-between gap-3" wire:offline.attr="disabled">
                         <flux:text role="status" aria-live="polite" aria-atomic="true">{{ __('notifications.panel.unread', ['count' => $unreadCount]) }}</flux:text>
-                        <flux:button wire:click="markAllRead" variant="filled" icon="check" class="h-auto min-h-touch min-w-0 max-w-full py-2 text-start" :disabled="$unreadCount === 0" wire:offline.attr="disabled">
+                        <flux:button wire:click="markAllRead" variant="filled" icon="check" class="h-auto min-h-touch min-w-0 max-w-full py-2 text-start" :disabled="$unreadCount === 0">
                             <span class="whitespace-normal wrap-anywhere">{{ __('ui.notifications.unread_count.mark_all_as_read') }}</span>
                         </flux:button>
-                    </div>
-                    <flux:text size="sm">{{ __('notifications.panel.recent_limit', ['count' => 20]) }}</flux:text>
+                    </fieldset>
+                    <flux:text size="sm">{{ __('notifications.panel.recent_limit', ['count' => $historyLimit]) }}</flux:text>
+
+                    <nav aria-label="{{ __('notifications.panel.history_navigation') }}" class="space-y-2" data-notification-history>
+                        <flux:text size="sm" role="status" aria-live="polite" aria-atomic="true" tabindex="-1" data-history-heading>
+                            {{ ($history['current'] ?? null) === null ? __('notifications.panel.latest_page') : __('notifications.panel.history_page') }}
+                        </flux:text>
+                        <fieldset class="flex flex-wrap gap-2" wire:offline.attr="disabled">
+                            <flux:button x-on:click="$el.focus(); loadPanel('newer')" data-history-action="newer" variant="outline" icon="chevron-left" class="min-h-touch" :disabled="($history['newer'] ?? null) === null">
+                                {{ __('notifications.panel.newer') }}
+                            </flux:button>
+                            <flux:button x-on:click="$el.focus(); loadPanel('older')" data-history-action="older" variant="outline" icon:trailing="chevron-right" class="min-h-touch" :disabled="($history['older'] ?? null) === null">
+                                {{ __('notifications.panel.older') }}
+                            </flux:button>
+                            <flux:button x-on:click="$el.focus(); loadPanel('latest')" data-history-action="latest" variant="ghost" icon="arrow-path" class="min-h-touch" :disabled="($history['current'] ?? null) === null">
+                                {{ __('notifications.panel.latest') }}
+                            </flux:button>
+                        </fieldset>
+                    </nav>
 
                     <div class="space-y-3" data-notification-list>
                         @forelse ($notifications as $notification)

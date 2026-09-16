@@ -1,4 +1,8 @@
-<section data-staff-workspace data-page="{{ $isBranch ? 'branch-staff' : 'organization-staff' }}" x-data="staffWorkspace" class="flex w-full min-w-0 flex-col gap-5">
+@pushOnce('page-module-status', 'staff-status')
+    <x-page-module-status module="staff" />
+@endPushOnce
+
+<section data-page-module="staff" wire:ignore.self x-ignore inert data-staff-workspace data-page="{{ $isBranch ? 'branch-staff' : 'organization-staff' }}" x-data="staffWorkspace" class="flex w-full min-w-0 flex-col gap-5">
     <header class="flex flex-wrap items-start justify-between gap-4">
         <div class="min-w-0">
             <p class="text-sm text-text-muted">{{ $contextLabel }}</p>
@@ -296,7 +300,7 @@
             <div class="divide-y divide-border-subtle border-y border-border-subtle">
                 @forelse ($invitationRows as $invitation)
                     <article wire:key="invitation-{{ $invitation['id'] }}" class="flex min-w-0 flex-wrap items-start justify-between gap-3 py-4">
-                        <div class="min-w-0 flex-1">
+                        <div class="min-w-0 flex-1 basis-64">
                             <h3 class="break-words font-semibold">{{ $invitation['email'] }}</h3>
                             <p class="mt-1 text-sm">{{ $invitation['role_label'] }} · {{ $invitation['localized_status'] }}</p>
                             <p class="mt-1 text-sm text-text-muted">{{ __('staff.invitation_meta.created', ['name' => $invitation['created_by'], 'date' => $invitation['created_at']]) }}</p>
@@ -323,7 +327,7 @@
             <div class="divide-y divide-border-subtle border-y border-border-subtle">
                 @forelse ($memberRows as $member)
                     <article wire:key="member-{{ $member['id'] }}" class="flex min-w-0 flex-wrap items-start justify-between gap-3 py-4">
-                        <div class="min-w-0 flex-1">
+                        <div class="min-w-0 flex-1 basis-64">
                             <h3 class="break-words font-semibold">{{ $member['user_name'] }}</h3>
                             <p class="break-words text-sm text-text-muted">{{ $member['user_email'] }}</p>
                             <p class="mt-1 text-sm">{{ $member['role_label'] }} · {{ $member['localized_status'] }}</p>

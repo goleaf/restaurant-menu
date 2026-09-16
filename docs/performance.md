@@ -4,6 +4,89 @@
 
 # Performance
 
+## SCSS / Alpine migration — matched build inventory, 2026-09-16
+
+Baseline production assets were copied before edits from the mixed local main at `7376b20`; current assets use the migrated runtime. Every file is compressed separately using Node gzip level 9 and Brotli quality 11. These are reproducible local byte inventories, not server compression settings or an assertion that every declared font is requested by every browser.
+
+| Inventory | Baseline raw / gzip / Brotli bytes | Migrated raw / gzip / Brotli bytes |
+| --- | --- | --- |
+| Vite CSS, including print | 356,123 / 48,502 / 36,240 | 370,396 / 50,805 / 38,772 |
+| All Vite JS, including lazy chunks | 25,787 / 8,911 / 7,785 | 333,383 / 104,324 / 90,917 |
+| Local font files (all three unchanged subsets) | 223,860 / 223,768 / 223,843 | 223,860 / 223,768 / 223,843 |
+| External production Livewire runtime | 250,972 / 82,804 / 72,319 | 0 — bundled into common entry above |
+| External production local Flux runtime | 303,925 / 67,567 / 54,812 | 303,925 / 67,567 / 54,812 |
+| JS inventory including both framework runtimes | 580,684 / 159,282 / 134,916 | 637,308 / 171,891 / 145,729 |
+
+The local-only Pro reference additionally loads unchanged `editor.min.js` (332,263 raw /104,275 gzip /88,990 Brotli bytes) and `editor.css` (3,956 /956 /773). Those two vendor assets are outside Vite and load only where `<flux:editor>` is mounted; the sole current consumer is the reference route, which is denied in production. They are excluded explicitly from the product-page inventory above.
+
+Sass ownership and the broader semantic compositions increase total CSS by 2,303 gzip bytes. Consolidated lifecycle, newly extracted behavior and the bundled ESM runtime increase the complete JS inventory by 12,609 gzip bytes; this is a maintainability/lifecycle trade-off, not a speed improvement. The lightweight named factories register before startup; the 8,957-byte raw /2,904-byte gzip WebAuthn chunk loads only when used, proven by browser resource entries. The published common entry is 324,426 raw /101,420 gzip bytes. No duplicate Alpine or separate automatic Livewire request remains.
+
+The total CSS budget remains **376,600 raw /51,900 gzip bytes**. Its individual framework and SCSS allowances were reallocated after semantic extraction, without increasing their combined ceilings or the total gate. Current complete manifest: eight files, 927,639 raw /378,897 gzip /353,532 Brotli bytes. Manifest scenarios conservatively include all declared font assets; actual Chrome login fetched only the Latin subset. Herd debug served the unminified Flux route (551,013 raw bytes), so that live debug waterfall must not be mislabeled as production delivery. No before/after scripting/layout timing claim is made.
+
+Matched HTTP samples use reconstructed baseline and frozen final copies with identical Composer dependencies, hash-matched local Flux templates, deterministic Faker/date, 30 menu items and 12 staff, SQLite `:memory:` and owned initially empty storage. After the final verification coordinator exited, the baseline and final processes ran sequentially in the same quiet window. Each side executes one cold and three warm real HTTP Kernel GETs per page. Warm medians:
+
+| Page | SQL before → after | Hydrated models | HTML bytes | Snapshot bytes | Response ms | Peak used-memory growth bytes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Menu | 191 → 191 | 67 → 67 | 1,216,306 → 1,211,661 | 5,011 → 5,011 | 380.18 → 379.63 | 6,465,136 → 6,442,744 |
+| Staff | 89 → 89 | 66 → 66 | 217,546 → 216,239 | 2,169 → 2,169 | 76.40 → 75.97 | 1,691,320 → 1,690,728 |
+| Dashboard | 155 → 155 | 64 → 64 | 203,279 → 200,983 | 1,618 → 1,618 | 79.02 → 78.72 | 1,538,072 → 1,540,424 |
+
+All 24 paired requests return HTTP 200. SQL, hydration and snapshots match exactly; no domain query improvement is claimed. Cold page times are 593.20 → 551.97 ms for menu, 103.43 → 100.60 ms for staff and 118.39 → 114.04 ms for dashboard; cold means the first page render in each process, not cold OS caches. Cold menu allocated peak growth is 24 → 24 MiB in this pair; the earlier retained sample measured 24 → 26 MiB. Warm timing is effectively unchanged, and a single local pair with three warm samples per page does not establish production speed or causality.
+
+Evidence: system temporary artifact `restaurant-profile-bamd17pn/paired-quiet-20260916T051323Z/summary.json`; final 772-file source hash `d32f2cc2cd14c3275f16e6fa3ed2e7fa1b45ee0f897d8c5852c5ceafea998e34`, nine-file build hash `f99217f9d30dbd4c4658d11e45a31ceb7d45d5e8f322a36a51dda5e02e6c8ea3`. Prior samples, including the final-only refresh under backend-test load, remain retained and are not mixed into this matched table. The production build alone is not network or visual proof; isolated browser suites validate the actual runtime and controls.
+
+
+## Frontend resource delivery — 2026-09-16
+
+Fresh baseline: local `7376b20`, production Vite output, the same fictitious Herd owner/branch/menu/staff/kitchen data and isolated Chrome profile. Both measured builds use Flux Free 2.17.0 / Livewire 4.4.1. The after column is this stage's frozen build, before another process changed the shared manifests and added Pro CSS sources; it is not a measurement of that later tree. Raw sizes and **Node gzip level 9 / Brotli quality 11** are measured consistently on both builds. Earlier Python/Vite gzip columns below use different compressors and are not mixed into this comparison. Local compression is not a claim about production server settings.
+
+| Asset metric | Before raw / gzip / Brotli bytes | After raw / gzip / Brotli bytes |
+| --- | ---: | ---: |
+| Common application JS | 23,969 / 6,574 / 5,908 | 1,935 / 872 / 735 |
+| All first-party JS | 23,969 / 6,574 / 5,908 | 25,787 / 8,911 / 7,785 |
+| Main CSS | 294,059 / 38,901 / 29,777 | 295,034 / 39,304 / 30,080 |
+| Separate font CSS | 964 / 405 / 343 | merged into main CSS |
+| QR CSS | 6,912 / 1,705 / 1,458 | unchanged |
+| All CSS | 301,935 / 41,011 / 31,578 | 301,946 / 41,009 / 31,538 |
+| Font binaries, all three subsets | 223,860 / 223,768 / 223,843 | unchanged |
+
+Initial first-party JS is now 13,441 bytes on menu, 8,699 on staff, 5,267 on waiter and 4,185 on kitchen/bar; dashboard/auth/guest load only the 1,935-byte common entry. Raw total JS increases for readiness/recovery and lifecycle handling; independent response compression adds further overhead to the compressed total. A user visiting all areas downloads the whole 25,787-byte set. Flux's 131,877-byte and Livewire's 583,339-byte runtime assets are unchanged and are **not** included in the first-party reduction. No library purge or additional minifier is used.
+
+`npm run build` also runs `build:check`. The manifest-based checker follows static imports, deduplicates shared assets, resolves font URLs, rejects missing/cyclic/unsafe references, and measures all output and explicit scenarios. `tests/frontend-budget.json` sets raw/gzip limits at approximately 5% above the measured candidate, rounded upward to 100 bytes; the limits were not raised for the final 47-byte staff wrapping utility. Scenario font totals include all declared subsets as an upper bound; browsers request subsets according to actual text. Budgets exclude separately served Flux/Livewire, HTML and content images, which require browser measurement.
+
+Three cold-resource Chrome loads per unchanged RU route at 1440×1000, cache disabled, no network/CPU throttling:
+
+| Route | Asset requests before → after | HTML bytes before → after | Livewire snapshot bytes before → after | Mounted components |
+| --- | --- | --- | --- | --- |
+| Owner dashboard | 8 → 7 | 113,489 → 114,043 | 741 → 768 | 2 → 2 |
+| Menu | 9 → 9 | 671,747 → 675,840 | 4,984 → 5,011 | 4 → 4 |
+| Staff | 8 → 8 | 225,018 → 229,241 | 2,142 → 2,169 | 3 → 3 |
+| Kitchen | 8 → 8 | 183,545 → 187,677 | 11,030 → 11,057 | 3 → 3 |
+
+Requests exclude the HTML document and Livewire polling, include favicon, and menu includes the same 68-byte seeded image. The removed font-CSS request offsets the additional screen-script request. Served common JS transfer is 6,912 → 1,174 bytes including response overhead; main CSS transfer is 40,329 → 40,726, while the old 698-byte font-CSS response disappears. HTML grows for explicit module recovery and notification cursor state; this is not HTML/payload optimization. Closed notification polling still has one mounted counter; details are fetched only for an open panel. History shows 20 records plus one query sentinel, with no additional pagination total-count query or unbounded history accumulation; the existing unread-count query remains.
+
+Final three-run CPU ranges in milliseconds (before → after):
+
+| Route | Scripting | Style recalculation | Layout |
+| --- | --- | --- | --- |
+| Dashboard | 11.41–12.01 → 11.59–11.82 | 7.09–8.59 → 5.94–8.70 | 3.69–4.20 → 3.63–4.91 |
+| Menu | 45.84–54.49 → 41.77–63.75 | 19.02–31.38 → 19.49–33.24 | 8.14–8.84 → 7.49–11.35 |
+| Staff | 17.41–19.04 → 16.59–19.80 | 13.81–15.05 → 13.28–14.65 | 6.02–7.02 → 6.04–6.49 |
+| Kitchen | 13.49–15.52 → 12.94–16.57 | 12.12–18.49 → 11.70–16.30 | 7.52–9.45 → 7.35–9.33 |
+
+No clear CPU improvement is established. An earlier candidate three-run set also produced substantially worse scripting ranges (dashboard 18.65–36.95, menu 58.96–86.75, staff 16.91–34.68, kitchen 14.28–30.07) and a 45.54 ms layout outlier. The final set was collected after the two-line staff wrapping fix; it does not erase those environment-sensitive observations. All samples are retained, without selecting only the best run. The verified improvement is reduced unnecessary initial resources and correct lifecycle/recovery, not a Core Web Vitals claim.
+
+Build sample: baseline Vite 364 ms / command wall 1.407 s; candidate Vite 383 ms / command including the new compression-budget check 1.966 s; final rebuild after the staff wrapping correction 335 ms (wall time not recaptured). These are single local samples, not a benchmark. Browser evidence and completion gates are in [testing.md](testing.md).
+
+
+## Flux Pro measurement boundary — 2026-09-16
+
+The local Pro package is installed. Explicit scanning of its 125 templates plus the restricted component reference increases main CSS from the preceding Free candidate 295,034 / 39,304 bytes to 349,211 / 46,797 bytes (raw / Node gzip level 9). This is an added 54,177 raw and 7,493 compressed bytes. First-party JS remains 25,787 / 8,911 bytes; QR CSS and the three font binaries are unchanged.
+
+The first Pro production build compiled successfully, then failed the inherited Free asset budgets. The CSS, deduplicated scenario and all-assets ceilings are now recalculated at the same approximately five-percent headroom, rounded upward to 100 bytes. JS, font and QR-entry limits are unchanged. Candidate totals are 605,770 / 281,181 bytes; common guest scenario is 575,006 / 271,437. This explicitly accepts the measured Pro CSS cost, not a performance improvement. The build checker still excludes separately served Flux/Livewire and lazy editor resources; their served sizes and lifecycle must be measured before final acceptance.
+
+No application query path changed at this foundation checkpoint. Browser/runtime and product workflow performance acceptance remain pending. Existing measurements below retain their dated Free scope.
+
 ## Unified Flux workspace measurements — 2026-09-15
 
 This stage compares its own production baseline at `eb3fa3d`, preserving the previous CSS cleanup and unrelated package-source work. Python gzip level 9 / mtime 0 is used on both sides. These are local measurements, not production performance guarantees.
@@ -25,6 +108,7 @@ This stage compares its own production baseline at `eb3fa3d`, preserving the pre
 | Closed poll response bytes | 4,561 | 599 |
 
 The dashboard HTML grows because the shared navigation search and notification modal hosts are mounted once. Stable closed polling now sends state without panel HTML, an 86.9% response reduction in the observed samples. Both before and after retained approximately five-second bundled requests; the reduction is component work/payload, not a claimed halving of HTTP frequency. Two final closed samples returned 200 in 56.42 and 62.43 ms under local conditions; no matched baseline latency was captured. The branch picker limits rendered matches to 25 plus the selected branch, but keeps the existing all-branch reporting graph, so no database query reduction is claimed. Noto font binaries, weight range and Latin/Latin-ext/Cyrillic support are unchanged. The complete npm build took 1.441 → 1.571 seconds in the recorded samples; build timing is environment-sensitive.
+
 
 
 ## Final team workspace comparison — 2026-09-15

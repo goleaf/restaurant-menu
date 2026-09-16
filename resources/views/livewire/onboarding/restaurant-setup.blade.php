@@ -1,8 +1,9 @@
 <section
+    x-data="onboardingFocus"
     data-page="restaurant-onboarding"
     class="mx-auto flex w-full min-w-0 max-w-content flex-1 flex-col gap-6 wrap-anywhere text-text-primary"
-    x-on:onboarding-step-changed.window="$nextTick(() => $el.querySelector('[data-onboarding-step-heading]')?.focus())"
-    x-on:onboarding-validation-failed.window="$nextTick(() => ($el.querySelector('[aria-invalid=true]') ?? document.getElementById('onboarding-validation-summary'))?.focus())"
+    x-on:onboarding-step-changed.window="focusStep()"
+    x-on:onboarding-validation-failed.window="focusValidationError()"
 >
     <header class="min-w-0 border-b border-border-subtle pb-6">
         <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">
@@ -32,7 +33,7 @@
 
             @if ($this->setup['highest_step'] > 1)
                 <details data-onboarding-mobile-summary class="group mt-4 min-w-0 border-t border-border-subtle pt-2">
-                    <summary class="flex min-h-touch cursor-pointer list-none items-center justify-between gap-3 rounded-control px-2 text-sm font-semibold text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas">
+                    <summary class="rm-onboarding-disclosure">
                         <span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.cto_uze_sozdano') }}</span>
                         <flux:icon.chevron-down class="size-4 shrink-0 text-text-muted transition-transform duration-state group-open:rotate-180 motion-reduce:transition-none" />
                     </summary>
@@ -344,13 +345,13 @@
                         <h2 id="next-actions-heading" class="text-sm font-semibold text-text-primary">{{ __('ui.onboarding.restaurant_setup.next_actions') }}</h2>
                         <ul class="mt-2 divide-y divide-border-subtle border-y border-border-subtle">
                             @if ($this->summary['print_url'])
-                                <li><a href="{{ $this->summary['print_url'] }}" class="flex min-h-touch min-w-0 items-center justify-between gap-4 py-3 text-sm font-medium text-text-primary outline-none hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 dark:hover:text-brand-300" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.napecatat_qr') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
+                                <li><a href="{{ $this->summary['print_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.napecatat_qr') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
                             @endif
                             @if ($this->summary['branch_url'])
-                                <li><a href="{{ $this->summary['branch_url'] }}" class="flex min-h-touch min-w-0 items-center justify-between gap-4 py-3 text-sm font-medium text-text-primary outline-none hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 dark:hover:text-brand-300" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.otkryt_nastroiki_filiala') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
+                                <li><a href="{{ $this->summary['branch_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.otkryt_nastroiki_filiala') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
                             @endif
                             @if ($this->summary['menu_url'])
-                                <li><a href="{{ $this->summary['menu_url'] }}" class="flex min-h-touch min-w-0 items-center justify-between gap-4 py-3 text-sm font-medium text-text-primary outline-none hover:text-brand-700 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 dark:hover:text-brand-300" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.dopolnit_meniu') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
+                                <li><a href="{{ $this->summary['menu_url'] }}" class="rm-onboarding-next-link" wire:navigate><span class="min-w-0 wrap-anywhere">{{ __('ui.onboarding.restaurant_setup.dopolnit_meniu') }}</span><flux:icon.chevron-right class="size-4 shrink-0 text-text-muted" /></a></li>
                             @endif
                         </ul>
                     </section>

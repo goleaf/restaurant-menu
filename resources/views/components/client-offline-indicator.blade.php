@@ -1,5 +1,5 @@
 <div
-    x-data="{ online: navigator.onLine }"
+    x-data="connectivity"
     x-on:online.window="online = true"
     x-on:offline.window="online = false"
     x-show="! online"

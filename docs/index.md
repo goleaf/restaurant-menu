@@ -4,6 +4,10 @@
 
 # Documentation index
 
+## Active Flux Pro integration
+
+The user-authorized requirement is `ui-flux-pro-001` in [`requirements.md`](requirements.md). Follow [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for actual stage status and the [detailed P0–P18 plan](superpowers/plans/2026-09-15-flux-pro-integration.md) for the family, workflow and file inventory. The user-selected local adaptation `0.1.0` is installed with Free 2.17.0; offline installation, server rendering and asset endpoints pass. JavaScript, localization and workflow migration continue. [`testing.md`](testing.md) distinguishes this foundation proof from historical Free results and pending Pro browser acceptance.
+
 ## Authority and reading order
 
 `AGENTS.md` defines repository operating rules. This index routes readers to canonical documents. Active behaviour is defined by `requirements.md`; implementation evidence is tracked in `compliance-matrix.md`. Historical prompt records in `CHANGELOG.md` are evidence, not requirements.

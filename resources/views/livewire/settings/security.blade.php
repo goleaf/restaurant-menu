@@ -120,7 +120,7 @@
                             <div
                                 class="flex flex-col items-center space-y-3 justify-center"
                                 x-data
-                                x-init="$nextTick(() => $el.querySelector('input')?.focus())"
+                                x-bind="focusInput"
                             >
                                 <flux:otp
                                     name="code"
@@ -163,8 +163,7 @@
                                 @else
                                 <div x-data class="flex items-center justify-center h-full p-4">
                                     <div
-                                        class="bg-white p-3 rounded"
-                                        :style="($flux.appearance === 'dark' || ($flux.appearance === 'system' && $flux.dark)) ? 'filter: invert(1) brightness(1.5)' : ''"
+                                        class="rm-security-qr bg-white p-3 rounded"
                                     >
                                             {!! $qrCodeSvg !!}
                                         </div>
@@ -194,18 +193,7 @@
 
                             <div
                                 class="flex items-center space-x-2"
-                                x-data="{
-                                    copied: false,
-                                    async copy() {
-                                        try {
-                                            await navigator.clipboard.writeText('{{ $manualSetupKey }}');
-                                            this.copied = true;
-                                            setTimeout(() => this.copied = false, 1500);
-                                        } catch (e) {
-                                            console.warn('Could not copy to clipboard');
-                                        }
-                                    }
-                                }"
+                                x-data="securityClipboard"
                             >
                                 <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
                                     @empty($manualSetupKey)
@@ -217,6 +205,7 @@
                                             type="text"
                                             readonly
                                             value="{{ $manualSetupKey }}"
+                                            x-ref="setupKey"
                                             class="w-full bg-transparent p-3 text-stone-900 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus dark:text-stone-100"
                                         />
 
@@ -235,6 +224,7 @@
                                         </button>
                                     @endempty
                                 </div>
+                                <p x-show="failed" x-cloak role="status" class="text-sm text-warning">{{ __('browser.clipboard_failed') }}</p>
                             </div>
                         </div>
                     @endif

@@ -155,7 +155,10 @@ test('active guest can create an invite share link for current table session', f
         ->call('createGuestInviteLink')
         ->assertSeeText('Invite link is ready.')
         ->assertSeeText('Copy link')
-        ->assertSee('navigator.share', false);
+        ->assertSee('x-data="guestInvite"', false)
+        ->assertSee('x-show="supportsNativeShare"', false)
+        ->assertSee('x-on:click="shareInvite"', false)
+        ->assertSee('x-on:click="copyInvite"', false);
 
     $inviteUrl = $component->get('guestInviteUrl');
     $tableSession->refresh();

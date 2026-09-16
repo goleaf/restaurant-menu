@@ -1,7 +1,7 @@
 <div
     class="py-6 space-y-6 border shadow-sm rounded-xl border-zinc-200 dark:border-white/10"
     wire:cloak
-    x-data="{ showRecoveryCodes: false }"
+    x-data="recoveryCodes"
 >
     <div class="px-6 space-y-2">
         <div class="flex items-center gap-2">

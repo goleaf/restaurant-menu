@@ -13,12 +13,15 @@ use Livewire\Component;
 
 class ComponentReference extends Component
 {
+    private Application $application;
+
     public mixed $name = '';
 
     public mixed $note = '';
 
     public function boot(Application $application): void
     {
+        $this->application = $application;
         abort_unless($application->environment(['local', 'testing']), 404);
         $user = Auth::user();
         abort_unless($user instanceof User && $user->isSuperadmin(), 403);
@@ -41,6 +44,13 @@ class ComponentReference extends Component
 
     public function render(): View
     {
-        return view('livewire.local.component-reference')->title(__('ui.reference.title'));
+        return view('livewire.local.component-reference', [
+            'referenceLocale' => $this->application->getLocale(),
+            'referenceChart' => [
+                ['date' => '2026-09-14', 'value' => 2],
+                ['date' => '2026-09-15', 'value' => 4],
+                ['date' => '2026-09-16', 'value' => 3],
+            ],
+        ])->title(__('ui.reference.title'));
     }
 }

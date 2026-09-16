@@ -1,11 +1,11 @@
 @props(['items'])
 
 @if ($items !== [])
-    <dl {{ $attributes->class('grid grid-cols-2 gap-px overflow-hidden rounded-card border border-border-subtle bg-border-subtle shadow-card lg:grid-flow-col lg:auto-cols-fr lg:grid-cols-none') }}>
+    <dl {{ $attributes->class('rm-metric-strip') }}>
         @foreach ($items as $item)
             <div
                 @class([
-                    'min-w-0 px-4 py-3',
+                    'rm-metric-strip__item',
                     'bg-danger-surface text-danger' => ($item['tone'] ?? 'neutral') === 'danger',
                     'bg-warning-surface text-warning' => ($item['tone'] ?? 'neutral') === 'warning',
                     'bg-information-surface text-information' => ($item['tone'] ?? 'neutral') === 'information',
@@ -13,11 +13,11 @@
                     'bg-surface text-text-primary' => ($item['tone'] ?? 'neutral') === 'neutral',
                 ])
             >
-                <dt class="text-xs font-medium leading-5 text-text-muted">{{ __($item['label']) }}</dt>
-                <dd class="mt-1 text-2xl font-semibold tabular-nums text-current">{{ $item['value'] }}</dd>
+                <dt class="rm-metric-strip__label">{{ __($item['label']) }}</dt>
+                <dd class="rm-metric-strip__value">{{ $item['value'] }}</dd>
 
                 @if (($item['description'] ?? null) !== null)
-                    <p class="mt-1 text-xs leading-5 text-text-muted">{{ __($item['description']) }}</p>
+                    <p class="rm-metric-strip__description">{{ __($item['description']) }}</p>
                 @endif
             </div>
         @endforeach

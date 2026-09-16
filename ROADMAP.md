@@ -8,6 +8,8 @@ Historical external roadmap snapshot from 2026-09-14; its links and statuses are
 
 ## Current state
 
+The accepted Flux Pro extension (`ui-flux-pro-001`) is active after the modernization baseline below. Its local package is installed and its complete original source inventory is preserved. Current P0–P18 status is maintained in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). JavaScript and workflow acceptance precede the clean-release gates and removal of the original root source.
+
 The production modernization programme is implemented. Runtime, security, data integrity, Livewire/Blade boundaries, localization, factories, seeders, tests, static analysis, build, observability, and SQLite backup/restore have repository-level verification. Completed milestones are summarized in [`CHANGELOG.md`](CHANGELOG.md); baseline and resolution evidence remain in [`docs/current-state-audit.md`](docs/current-state-audit.md).
 
 ## Open work

@@ -1,4 +1,4 @@
-<div class="grid min-w-0 gap-5" data-section="catalog-transfer" x-data x-on:catalog-transfer-feedback.window="$nextTick(() => $refs.feedback?.focus())">
+<div class="grid min-w-0 gap-5" data-section="catalog-transfer" x-data="catalogTransfer" x-on:catalog-transfer-feedback.window="focusFeedback()">
     <header class="grid gap-1">
         <flux:heading size="lg">{{ __('menu.csv.title') }}</flux:heading>
         <p class="max-w-3xl text-sm text-text-muted">{{ __('menu.csv.intro') }}</p>
@@ -52,12 +52,13 @@
     </div>
 
     <form wire:submit="previewImport" novalidate class="grid gap-4 rounded-card border border-border-subtle bg-surface p-4 sm:p-5"
-        x-data="{ uploading: false, progress: 0 }"
-        x-on:change="$dispatch('menu-workspace-dirty', { key: 'catalog-transfer', dirty: ($event.target.files?.length ?? 0) > 0 })"
-        x-on:livewire-upload-start="uploading = true; progress = 0"
-        x-on:livewire-upload-finish="uploading = false"
-        x-on:livewire-upload-error="uploading = false"
-        x-on:livewire-upload-progress="progress = $event.detail.progress">
+        x-data="catalogUpload"
+        x-on:change="selectionChanged($event)"
+        x-on:livewire-upload-start="startUpload()"
+        x-on:livewire-upload-finish="finishUpload()"
+        x-on:livewire-upload-error="failUpload()"
+        x-on:livewire-upload-cancel="cancelUpload()"
+        x-on:livewire-upload-progress="updateProgress($event)">
         <flux:heading>{{ __('menu.csv.import_title') }}</flux:heading>
         <flux:input type="file" wire:model="form.file" accept=".csv,text/csv,text/plain" :label="__('menu.csv.file')" :description="__('menu.csv.file_help')" />
         <progress x-cloak x-show="uploading" :value="progress" max="100" class="h-2 w-full accent-accent" aria-label="{{ __('uploads.editor.uploading') }}"></progress>

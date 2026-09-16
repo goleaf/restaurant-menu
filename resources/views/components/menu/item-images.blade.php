@@ -2,18 +2,18 @@
 
 <section
     data-menu-item-images
-    aria-labelledby="item-{{ $item['id'] }}-photos-heading" class="grid gap-4 rounded-card border border-border-subtle p-4"
+    aria-labelledby="item-{{ $item['id'] }}-photos-heading" class="rm-media-panel"
     x-data="menuImagePicker({ itemId: {{ $item['id'] }} })"
-    x-on:livewire-upload-start="uploading = true; failed = false; progress = 0"
-    x-on:livewire-upload-progress="progress = $event.detail.progress"
+    x-on:livewire-upload-start="startUpload()"
+    x-on:livewire-upload-progress="updateProgress($event)"
     x-on:livewire-upload-finish="finishUpload()"
     x-on:livewire-upload-error="failUpload()"
     x-on:livewire-upload-cancel="cancelUpload()"
-    x-on:offline.window="offline = true; dragging = false"
-    x-on:online.window="offline = false"
-    x-on:input.capture="if ($event.target.closest('[data-image-presentation-editor]')) { metadataDirty = true; notifyDirty() }"
-    x-on:image-presentation-closed.window="if ($event.detail.itemId === {{ $item['id'] }}) { metadataDirty = false; notifyDirty(); if (settingsTrigger?.isConnected) settingsTrigger.focus() }"
-    x-on:item-images-saved.window="if ($event.detail.itemId === {{ $item['id'] }}) clear()"
+    x-on:offline.window="goOffline()"
+    x-on:online.window="goOnline()"
+    x-on:input.capture="markMetadataDirty($event)"
+    x-on:image-presentation-closed.window="closePresentation($event)"
+    x-on:item-images-saved.window="imagesSaved($event)"
 >
     <div class="flex flex-wrap items-start justify-between gap-2">
         <div>
@@ -27,7 +27,7 @@
 
     @if ($item['remaining_image_slots'] > 0 && $presentationContext === [])
         <div
-            class="grid gap-3 rounded-control border border-dashed border-border-strong bg-surface-muted p-4"
+            class="rm-media-dropzone"
             @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="drop($event)"
             :class="dragging ? 'outline-2 outline-focus' : ''"
         >
@@ -39,10 +39,10 @@
                 <progress max="100" :value="progress" class="h-2 w-full accent-[var(--color-accent)]" aria-label="{{ __('uploads.editor.uploading') }}"></progress>
             </div>
             <p x-show="failed" role="alert" class="text-sm text-danger">{{ __('uploads.editor.retry_help') }}</p>
-            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" x-show="previews.length > 0">
+            <div class="rm-media-previews" x-show="previews.length > 0">
                 <template x-for="(preview, index) in previews" :key="preview.key">
-                    <figure class="min-w-0 overflow-hidden rounded-control border border-border-subtle bg-surface">
-                        <img :src="preview.url" :alt="preview.name" width="240" height="180" class="aspect-4/3 w-full object-cover">
+                    <figure class="rm-media-figure">
+                        <img :src="preview.url" :alt="preview.name" width="240" height="180" class="rm-media-image">
                         <figcaption class="grid gap-1 p-2">
                             <span class="truncate text-xs text-text-primary" x-text="preview.name"></span>
                             <flux:button type="button" x-bind:disabled="busy" @click="remove(preview.key)" variant="ghost" class="h-auto! min-h-touch whitespace-normal! py-2 text-danger!">{{ __('uploads.editor.remove_pending') }}</flux:button>
@@ -131,10 +131,10 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="rm-media-gallery">
         @forelse ($item['images'] as $image)
-            <figure wire:key="menu-item-{{ $item['id'] }}-image-{{ $image['key'] }}" class="min-w-0 overflow-hidden rounded-control border border-border-subtle bg-surface-muted">
-                <img src="{{ $image['thumbnail_url'] ?? $image['url'] }}" srcset="{{ $image['srcset'] ?? '' }}" sizes="(min-width: 1024px) 180px, (min-width: 640px) 28vw, 42vw" alt="{{ $image['alt'] }}" width="{{ $image['width'] ?? 320 }}" height="{{ $image['height'] ?? 240 }}" loading="lazy" decoding="async" style="object-position: {{ $image['object_position'] ?? '50% 50%' }}" class="aspect-4/3 w-full object-cover">
+            <figure wire:key="menu-item-{{ $item['id'] }}-image-{{ $image['key'] }}" class="rm-media-figure rm-media-figure--muted">
+                <img src="{{ $image['thumbnail_url'] ?? $image['url'] }}" srcset="{{ $image['srcset'] ?? '' }}" sizes="(min-width: 1024px) 180px, (min-width: 640px) 28vw, 42vw" alt="{{ $image['alt'] }}" width="{{ $image['width'] ?? 320 }}" height="{{ $image['height'] ?? 240 }}" loading="lazy" decoding="async" style="object-position: {{ $image['object_position'] ?? '50% 50%' }}" class="rm-media-image">
                 <figcaption class="grid gap-2 p-3">
                     <flux:button type="button" icon="adjustments-horizontal" wire:click="{{ $image['presentation_action'] }}" wire:loading.attr="disabled" :disabled="$presentationContext !== []" data-image-settings-trigger @click="settingsTrigger = $event.currentTarget">{{ __('uploads.presentation.edit') }}</flux:button>
                     @if ($image['is_primary'])

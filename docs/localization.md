@@ -4,6 +4,12 @@
 
 # Localization
 
+## Flux Pro localization acceptance — 2026-09-15
+
+The local package is installed, but its vendor strings are not yet accepted in EN/LT/RU. P2 must inventory visible and accessible strings in the accepted release, including nested dismiss/search/empty/upload/calendar/editor controls. Reuse semantic EN/LT/RU JSON keys with placeholder parity; do not change the global translator to accommodate English vendor keys. Prefer supported props and slots, then minimal pinned overrides for demonstrated gaps.
+
+Pro calendars and time controls must receive the application locale explicitly; browser locale and browser "today" cannot redefine branch-local operational dates. Money and report formatting remain prepared server data. Run translation scan/audit plus three-locale keyboard and responsive browser cases after activation. Raw upstream source preservation does not imply translated product behavior.
+
 ## Content editing and guest preference — 2026-09-15
 
 EN is the canonical authoring base and maps to base name/description on saves. LT/RU panels can show EN alongside the translation; copying fills only empty fields, marks the form unsaved and shows a review notice until changed. Existing translation rows preserve intentionally blank optional descriptions; only absent rows fall back to base content. Dish duplication preserves this distinction. Photo captions are independently optional per locale; empty alt uses the localized dish name. Guest language is remembered per branch and never overwrites the administrative interface locale. Changing language retains the guest/table/cart identity and open configuration.

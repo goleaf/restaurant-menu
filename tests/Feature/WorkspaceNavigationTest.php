@@ -61,7 +61,7 @@ test('authenticated shell shares navigation search and one notification and acco
 });
 
 test('workspace search uses disposable Alpine state without a global navigation subscription', function () {
-    $script = File::get(resource_path('js/workspace-navigation.js'));
+    $script = File::get(resource_path('js/alpine/components/navigation-search.js'));
 
     expect($script)
         ->toContain('event.isComposing', 'event.repeat', 'isContentEditable', 'dialog[open]')

@@ -4,6 +4,10 @@
 
 # Product
 
+## Accepted Flux Pro direction — 2026-09-15
+
+The Pro migration extends the existing restaurant workflows: searchable scoped choices, accessible language/section controls, branch-local dates, reliable image editing, permitted quick navigation, truthful history, report charts and kitchen boards. Rich description editing requires a separate safe content contract. These are accepted targets under `ui-flux-pro-001`; copying the package does not deliver them. Preserve the product's current recovery, permission and shared-draft behavior throughout the migration. The [implementation ledger](docs/IMPLEMENTATION_PLAN.md) distinguishes prepared source from working features.
+
 ## Recovery polish — 2026-09-15
 
 A guest who has already chosen a dish must not lose the typed comment or options when staff changes availability. Keep the detail panel open, explain the conflict and provide a real retry once the dish is available again. Ordering remains subject to current server permissions. Kitchen/bar screens prioritize the next action and compact elapsed status; failed attempts replace stale success feedback. Offline controls communicate that work cannot currently be submitted.

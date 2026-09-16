@@ -59,7 +59,7 @@ test('kitchen staff can open a browser print friendly ticket page', function () 
         ->assertSeeText('Size: Large')
         ->assertSeeText('Crispy crust')
         ->assertSeeText('Zara')
-        ->assertSee('x-on:click="window.print()"', false);
+        ->assertSee('x-bind="printDocument"', false);
 });
 
 test('department dashboard links visible tickets to the print page', function () {

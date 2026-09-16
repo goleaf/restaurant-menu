@@ -4,6 +4,45 @@
 
 # Restaurant Menu completion decisions
 
+## 2026-09-16 — One browser runtime and canonical SCSS sources
+
+- Keep Tailwind/Flux in a separate CSS pipeline. Dart Sass compiles first-party product, print and fallback styles using modules; one map emits runtime variables and deterministic Tailwind aliases/breakpoints. Generated PDF/error includes are fixed deployment artifacts, independent of Vite at request time.
+- Preserve the existing four cascade layers. A narrow unlayered dark Flux accent alias corrects the vendor `.dark` variable precedence; computed Chrome light/dark colors match the canonical `--rm-*` values. Preserve existing accessibility compatibility rules.
+- Use Livewire ESM's bundled Alpine. Register 26 factories and four bindings synchronously, then start Livewire once. The simpler lifecycle trades per-screen lazy chunks for one common application bootstrap; measure external runtime movement separately from application bytes.
+- Keep domain state, authorization, uploads and transactions in class-based Livewire/Actions. No product CRUD HTTP endpoint needed conversion: the route inventory already consists of class-based product pages. Migration consolidates local behavior and removes the old twelve page/global modules instead of inventing a second state owner.
+- Retain Fortify, explicit invitation acceptance/account changes, authorized downloads and pre-session-lock restore HTTP contracts. The only first-party `fetch` is an abortable same-origin WebAuthn protocol adapter using pinned SimpleWebAuthn; cancellation after POST never asserts that the server rolled back.
+- Capture each Alpine resource owner's root/configuration in `init()`. `$el` inside a method invoked from a child directive resolves to that child, including asynchronous continuations. Schedule focus after the `x-show` reveal frame, cancel owned frames during teardown and reject stale callbacks. Unit tests use child directive contexts; real MFA, passkey and workspace browsers verify integration.
+- Reuse the Node test runner and V8 coverage, including unimported browser/build files. SCSS proof is compilation, lint, token/artifact integrity and real computed/browser behavior; it has no executable line-coverage claim.
+- Preserve all pre-existing staged/unstaged Flux Pro and resource-delivery work. Its local package remains a prerequisite with separate provenance; combined-tree verification alone does not establish a safe migration-only commit.
+
+## 2026-09-16 — User-selected local Pro adaptation
+
+- The user explicitly chose the supplied code without official repository access or a replacement archive. This supersedes the earlier decision to wait for an upstream compatible release.
+- Treat compatibility changes as a maintained local adaptation: local release `0.1.0`, original upstream version still unknown, exact original inventory retained and every changed distribution file accounted for. Version numbering describes this project's adaptation, not an upstream release.
+- Preserve the proprietary license and licensing/edition behavior. Use the real `livewire/flux-pro` Composer package, normal discovery and a physical mirror; prove compatibility against the installed Free release before migrating workflows.
+- Keep all pre-existing dependencies fixed and resolve locally without network access. Source preservation, runtime acceptance, workflow migration and deletion gates remain separate.
+
+## Historical — screen assets and bounded notification history, 2026-09-16 (style/runtime choice superseded)
+
+Keep action rows responsive to their actual container: a readable summary flex basis lets translated action groups wrap, including beside an open staff editor. Viewport-only rules and global overflow hiding do not solve this case.
+
+- Keep native CSS and Tailwind 4 as the only style pipeline. No SCSS exists or offers a separate product need; no Sass dependency, parser, extra minifier or parallel theme is introduced. Keep explicit source scanning and the separate QR print entry.
+- Use four static Vite screen entries for menu, staff, waiter and departments. The shared bootstrap remains on every layout so its small navigation readiness barrier is present before entering an editor from another layout. Register Alpine providers before the owning root initializes; preserve the existing component-scoped dirty-form subscriptions and teardown.
+- Critical menu/staff roots stay inert and ignored by Alpine until their entry registers. The first-party status remains outside that root and offers a native explicit reload. Never automatically reload a cart or dirty editor. Installed Livewire 4.4.1 waits for head modules during ordinary navigation but not cached history; a module arriving after the initialization window does not unlock a skipped, unprotected editor. The next explicit reload or completed visit initializes it safely.
+- Give script and recovery-status pushes different global Blade pushOnce identifiers. Operational modules also need explicit failure feedback: unavailable sound controls stay disabled, while timers explain that only server refreshes update their displayed values. Keep the rest of each dashboard available.
+- Import local font faces through the main CSS entry, eliminating the separate font stylesheet request without removing Latin, Latin-ext or Cyrillic. Keep font binaries and unicode ranges unchanged; do not preload every subset.
+- Validate staff filters without render-time Livewire Form::validate: in 4.4.1 its successful validation clears the entire component error bag. Reset only the four filter fields and use Laravel Validator with explicit filters.* keys and localized names, preserving editor errors across refresh/filter changes.
+- Keep notification history in the existing scoped service and component: twenty rendered messages per cursor page, encrypted locked transport cursors, no URL-controlled cursor, explicit Older/Newer/Latest actions and current access checks on every request. New messages update the count without resetting an older page. Reopening starts with latest; closing leaves no history state on the next server refresh.
+- Build budgets follow the manifest and deduplicate each scenario's shared assets. Initial ceilings allow five percent above the measured build, rounded upward to 100 bytes. Record local compression separately from browser transfer; scenario font closure includes available subsets, not a claim that browsers request them all.
+
+## 2026-09-16 — Preserve Pro source before compatible activation
+
+- Execute user-authorized `ui-flux-pro-001` incrementally. The 139-file source snapshot can be preserved and tested independently while dependency resolution is blocked; this does not complete P0 or P14.
+- Store the complete package at `packages/livewire/flux-pro/`, with provenance/checksums alongside it. Preserve the user's exact bytes, proprietary license and unknown upstream-version status. Three PHP files differ stylistically from the related local archive, so do not label the snapshot verified pristine upstream.
+- Retain the installed Free runtime until a compatible stable pair is available. Do not broaden the upstream pin, invent a stable version, adopt `dev-main`, spoof Composer identity or mix runtime assets. HTTP 401 is an access boundary, not proof about license ownership.
+- Keep the original directory until P16/P17 clean-install, full workflow and rollback gates pass. Integrity proof remains independent of that directory so eventual deletion does not weaken source checks.
+- Update active Markdown contracts and execution evidence. Keep earlier measured Free results and unrelated domain/operations documents as their actual historical or current contracts; do not relabel them as Pro verification.
+
 ## 2026-09-15 — Unified workspace and explicit notification reads
 
 - Retain installed Flux Free 2.17.0 / Livewire 4.4.1. Current compatible 2.20.0 / 4.4.5 distributions require prohibited GitHub requests; cached archives only contain installed revisions. The separately committed `flux-pro/` source directory does not change the installed dependency or license contract.
@@ -11,6 +50,7 @@
 - Bell opening never acknowledges notifications. Use the existing query service/read Action, separately bounded count/detail paths, explicit read scope, current entity authorization and no payload URL navigation. Stable closed polls omit rendered HTML; a first closing refresh removes old detail markup. Offline failures require an explicit retry and never simulate successful reads.
 - Close successful editors by component-scoped modal name. Do not use global modal closure: another feature may contain an unsaved form. Keep safe Cancel autofocus and explicit native dialog names, help and error associations for installed Flux behavior.
 - The local superadmin reference is a fictional, non-persistent verification surface. It is denied in production and reauthorizes every hydrated request; it is not a new administration capability.
+
 
 
 ## 2026-09-15 — Final team consent and editor boundaries

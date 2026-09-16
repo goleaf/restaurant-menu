@@ -238,7 +238,7 @@
                                         @endif
                                     </div>
                                 @empty
-                                    <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                                    <p class="rm-menu-empty">
                                         {{ __('menu.empty.no_schedule') }}
                                     </p>
                                 @endforelse

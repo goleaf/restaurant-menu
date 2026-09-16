@@ -5,7 +5,7 @@
 <flux:modal name="{{ $name }}" class="w-full min-w-0 max-w-lg" :dismissible="false" :closable="false" focusable>
     <div class="space-y-5">
         <div class="space-y-2">
-            <flux:heading id="dangerous-action-{{ $name }}-title" size="lg" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)">{{ __($title) }}</flux:heading>
+            <flux:heading id="dangerous-action-{{ $name }}-title" size="lg" x-bind="dialogLabel">{{ __($title) }}</flux:heading>
             <flux:text>{{ __($consequence) }}</flux:text>
         </div>
 

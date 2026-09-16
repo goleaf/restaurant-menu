@@ -104,7 +104,10 @@ test('guest detail is an accessible modal with keyboard close and gallery contro
         ->toContain('role="dialog"')
         ->toContain('aria-modal="true"')
         ->toContain('@keydown.escape.window')
-        ->toContain('?.focus())')
+        ->toContain('x-data="guestMenu"')
+        ->toContain('x-data="guestDishDialog"')
+        ->toContain('x-on:cancel.prevent="closeDetails()"')
+        ->toContain('data-menu-heading="guest-menu-title-{{ $branchId }}"')
         ->toContain("__('menu.guest.gallery_previous')")
         ->toContain("__('menu.guest.gallery_next')");
 });

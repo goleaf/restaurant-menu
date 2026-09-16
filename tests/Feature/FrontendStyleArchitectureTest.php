@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\ViewErrorBag;
 use Symfony\Component\Finder\Finder;
 
-test('first party styles remain native CSS with explicit Tailwind runtime sources', function (): void {
+test('first party styles use SCSS independently of explicit Tailwind runtime sources', function (): void {
     $preprocessors = Finder::create()->files()->in(base_path())
-        ->exclude(['.git', 'vendor', 'node_modules', 'storage', 'public/build'])
+        ->exclude(['.git', 'vendor', 'node_modules', 'storage', 'public/build', 'resources/scss'])
         ->name('/\.(scss|sass|less|styl)$/i');
 
     expect(iterator_to_array($preprocessors))->toBeEmpty();
@@ -21,9 +21,12 @@ test('first party styles remain native CSS with explicit Tailwind runtime source
         ->toContain("@source '../js';")
         ->toContain("@source '../../app';")
         ->toContain("@source '../../vendor/livewire/flux/stubs/**/*.blade.php';")
+        ->toContain("@source '../../vendor/livewire/flux-pro/stubs/**/*.blade.php';")
         ->toContain("@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';")
         ->toContain('@custom-variant dark (&:where(.dark, .dark *));')
-        ->toContain('@theme {');
+        ->toContain("@import './generated-theme.css';");
+    expect(File::get(resource_path('css/generated-theme.css')))->toContain('@theme inline static {', '--color-canvas: var(--rm-canvas)');
+    expect(File::get(resource_path('scss/app.scss')))->toContain("@use 'themes/runtime';");
 
     foreach (['tailwind.config.js', 'postcss.config.js', 'postcss.config.cjs'] as $legacyConfig) {
         expect(File::exists(base_path($legacyConfig)))->toBeFalse();
@@ -57,10 +60,10 @@ test('retained accessibility overrides require review when their upstream templa
 
 test('print integration loads only on print layouts and preserves physical QR dimensions', function (): void {
     expect(File::get(resource_path('views/layouts/print.blade.php')))
-        ->toContain("@vite('resources/css/qr-print.css')");
+        ->toContain("@vite('resources/scss/qr-print.scss')");
     expect(File::get(resource_path('views/partials/head.blade.php')))->not->toContain('qr-print.css');
     expect(File::get(resource_path('css/app.css')))->not->toContain('.qr-sticker');
-    expect(File::get(resource_path('css/qr-print.css')))
+    expect(File::get(resource_path('scss/print/_qr.scss')))
         ->toContain('--qr-sticker-width: 76mm;')
         ->toContain('--qr-sticker-height: 104mm;')
         ->toContain('print-color-adjust: exact;')
@@ -131,7 +134,8 @@ test('frontend dependencies do not introduce a second CSS preprocessor', functio
     $package = json_decode(File::get(base_path('package.json')), true, flags: JSON_THROW_ON_ERROR);
     $dependencies = array_keys(array_merge($package['dependencies'] ?? [], $package['devDependencies'] ?? []));
 
-    expect(array_intersect($dependencies, ['sass', 'sass-embedded', 'node-sass', 'less', 'stylus', 'autoprefixer', 'postcss-import']))->toBeEmpty();
+    expect($dependencies)->toContain('sass-embedded');
+    expect(array_intersect($dependencies, ['sass', 'node-sass', 'less', 'stylus', 'autoprefixer', 'postcss-import']))->toBeEmpty();
 });
 
 test('pending photo controls keep their ephemeral disabled state in Alpine', function (): void {

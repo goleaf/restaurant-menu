@@ -1,0 +1,9 @@
+@use '../settings/tokens';
+
+@layer components {
+    @for $depth from 0 through 8 {
+        .rm-area-node-label[data-depth='#{$depth}'] {
+            padding-left: tokens.space($depth * 5);
+        }
+    }
+}

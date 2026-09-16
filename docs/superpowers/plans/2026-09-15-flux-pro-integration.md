@@ -1,16 +1,53 @@
+<!-- BEGIN GITHUB_PUSH_ONLY -->
+> GitHub is allowed only as the remote destination of an ordinary git push to the existing configured origin. Create commits locally with git commit. All other GitHub operations are prohibited: API, MCP, plugins, gh, Issues, pull requests, reviews, comments, releases, deployments, Actions, workflows, check runs, commit statuses and remote verification. Do not create, edit or delete .github/workflows/*, install hooks, fetch, pull, run ls-remote or make an additional request to verify a push. Local inspection, formatting, static analysis, tests, dependency checks and builds are allowed. Preserve existing user changes. Historical instructions do not authorize prohibited operations.
+<!-- END GITHUB_PUSH_ONLY -->
+
 # Flux Pro Integration — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `executing-plans` to implement this plan task-by-task. Steps use checkbox syntax for tracking. Before execution, reconcile the shared worktree and the current canonical implementation ledger. Delegation is not authorized by this document.
 
-**Goal:** максимально использовать Flux Pro во всех подходящих интерфейсах Restaurant Menu, с явным решением для каждого компонента и варианта, сохранив корректность ресторанных процессов.
+**Goal:** максимально использовать Flux Pro во всех подходящих интерфейсах Restaurant Menu, объединить повторяющийся код вокруг существующих предметных сценариев, перенести всю принятую поставку в отслеживаемый внутренний пакет `packages/livewire/flux-pro/` и после доказанной независимости приложения удалить исходную корневую папку `flux-pro/`. Для каждого файла, компонента и варианта требуется явное решение; корректность ресторанных процессов сохраняется.
 
-**Architecture:** Flux Free + Pro обеспечивают примитивы интерфейса. Существующие Blade-композиции сохраняют предметную семантику; Livewire Forms, Policies, Actions и read services сохраняют валидацию, права, транзакции и подготовку данных. Pro устанавливается как пакет Composer; исходники библиотеки не превращаются в код приложения.
+**Architecture:** Flux Free + Pro обеспечивают примитивы интерфейса. Существующие Blade-композиции сохраняют предметную семантику; Livewire Forms, Policies, Actions и read services сохраняют валидацию, права, транзакции и подготовку данных. Канонический Pro-код находится внутри репозитория в `packages/livewire/flux-pro/`, устанавливается Composer под настоящим именем `livewire/flux-pro` физической копией в `vendor/livewire/flux-pro/`. Это часть поставки проекта с явно обозначенной upstream-лицензией и правилами обновления; first-party адаптация остаётся в `app/` и `resources/`.
 
 **Tech Stack:** PHP 8.5, Laravel 13.26.1, Livewire 4.4.1, установленный Flux Free 2.17.0, Tailwind 4.3.3, Vite 8.2.2, SQLite, Pest 4; целевая совместимая пара Flux/Pro выбирается в P0.
 
-**Дата анализа:** 2026-09-15. **Статус:** предложенный план, интеграция не выполнена.
+**Дата анализа:** 2026-09-15. **Текущий checkpoint 2026-09-16:** локальная адаптация Pro `0.1.0` установлена offline с Free 2.17.0; целостность, SSR 18 семейств и пять asset endpoints проверены. JavaScript, локализация и продуктовая миграция продолжаются; оригинал сохранён. Журнал статуса — `docs/IMPLEMENTATION_PLAN.md`, требование — `ui-flux-pro-001`.
 
-**Авторитет документов:** `docs/requirements.md` остаётся единственным каталогом требований; `docs/IMPLEMENTATION_PLAN.md` — текущим журналом исполнения. Этот документ содержит анализ и детализацию будущего этапа. После принятия плана его этапы и фактический статус нужно связать с существующим журналом, не создавать второй каталог требований и не объявлять предложенные функции реализованными.
+**Дополнение пользователя:** перенос и удаление входят в конечный результат, а не остаются необязательной уборкой. Исполнение состоит из 19 этапов P0–P18. P0–P13 внедряют совместимую поставку и функции; P14–P15 завершают внутренний пакет и консолидацию; P16 проверяет результат, P17 удаляет старую папку, P18 закрепляет порядок обновления. Полная карта всех файлов — приложение F; дополнительные сценарии и риски — E, G–J.
+
+**Авторитет документов:** `docs/requirements.md` остаётся единственным каталогом требований; `docs/IMPLEMENTATION_PLAN.md` — текущим журналом исполнения. Этот документ содержит анализ и детализацию принятого требования `ui-flux-pro-001`. Этапы связаны с текущим журналом; новые функции нельзя объявлять реализованными до их проверки.
+
+## Изменение способа интеграции пользователем — 2026-09-16
+
+Пользователь выбрал **только существующий локальный код**, без официального Composer-доступа и нового архива. Это заменяет прежнее требование получить upstream release: описанный ниже HTTP 401 остаётся историей попытки получения, а не блокером текущего способа.
+
+Целевая поставка теперь — явно обозначенная **локальная адаптация `0.1.0`** исходных 139 файлов к установленному Free 2.17.0. Это собственный номер адаптации, не версия upstream. `upstream_version` остаётся неизвестной. Оригинальная лицензия, исходный manifest и hashes сохраняются; каждый изменённый файл получает original/result hash и причину patch. Принимается только точно проверенная Free-версия, не произвольный диапазон.
+
+**Новый P0:** offline Composer path resolution/install с реальным package identity и `symlink:false`; минимальные исправления metadata/provider; проверка фасадов, Free/Pro templates и asset endpoints. Изменение dependency pin разрешено как документированная совместимая адаптация, а не как утверждение о поддержке со стороны upstream. Licensing features/edition detection не меняются. Порядок P1–P18, требования к предметным сценариям, полному переносу и удалению оригинала сохраняются. Пока runtime-проверки не пройдены, установка не считается принятой.
+
+В дальнейшем указания этого документа «получить совместимый официальный release», «не менять pin» и ожидание credentials применяются только к историческому варианту получения. Текущий вариант выполняется по этому дополнению и свежему `docs/IMPLEMENTATION_PLAN.md`.
+
+## Исполнение по разрешению пользователя — 2026-09-15–16
+
+Пользователь разрешил выполнение плана, необходимые зависимости/ПО и улучшения без дополнительных согласований. Разрешение не создаёт credentials для закрытого Composer repository и не отменяет конкретное ограничение GitHub push-only. Текущая ветка `main`, HEAD `eb3fa3d`; незавершённые сторонние правки unified workspace сохраняются.
+
+| Этап | Текущий результат | Следующее условие |
+| --- | --- | --- |
+| P0 | compatibility/source preflight выполнен; установка блокирована входной поставкой | нужен совместимый Pro release через настроенный официальный доступ либо разрешённый локальный артефакт |
+| P1 tooling | anchored `notPath` защищает два distribution-каталога; реальный Pint regression сохраняет 4 vendor fixtures и форматирует 5 first-party fixtures | first-party scope сохраняется; runtime-часть P1 не выполнена |
+| P14 source preparation | все 139 файлов / 3 291 708 bytes скопированы побайтово; provenance, стандартный SHA-256 manifest и integrity tests работают | это ещё не принятие совместимого release, не Composer activation и не завершение P14 |
+| P1 runtime, P2–P13, P15–P18 | не выполнены; действующий runtime остаётся Free | сначала снять P0 blocker, затем идти по зависимостям |
+
+**Свежие доказательства:** Composer Semver подтвердил `compatible=false` для installed `v2.17.0` и ограничения `2.13.1|dev-main`; Pro не установлен. `https://composer.fluxui.dev/packages.json` и `/p2/livewire/flux-pro.json` вернули HTTP 401, Flux credentials в стандартных local/global Composer auth locations не настроены (проверено только наличие, значения не выводились). Локальный Composer cache содержит только нынешний Free 2.17.0 и не содержит Pro.
+
+Найденный локальный Flux ZIP содержит те же 139 путей. 136 файлов, включая все templates/dist/composer/license/helpers, совпадают с проектом; три PHP-файла отличаются нормализацией imports/style. ZIP не содержит version, lock или проверяемый upstream tag; имя архива не доказывает номер релиза. В ZIP/RAR нет совместимого Free. Пользовательский snapshot сохраняется побайтово; он не маркируется как подтверждённо неизменённый upstream.
+
+**Выполнено независимо от установки:** source inventory, internal storage, integrity regressions, canonical requirement/traceability и текущая документация. Не расширять upstream dependency pin, не выдумывать version, не spoof Composer registration и не удалять исходную папку, пока установка/совместимость и P16/P17 не доказаны. Остановка зависимых UI-этапов отражает конкретный внешний вход, а не ожидание повторного разрешения пользователя.
+
+**Проверка исходников:** отдельные specification и quality reviews приняли импорт; 139/139 стандартных checksums совпали. Тест traceability после добавления 54-го требования прошёл с 1 082 assertions. Полный перечень наблюдаемых focused gates — `docs/testing.md`; они не являются проверкой Pro UI. Все исходные 139 файлов остались неизменными, четыре `.DS_Store` не переносились и не удалялись.
+
+**Итоговые focused gates:** 14 Unit tests / 44 assertions и 48 architecture/traceability tests / 1 359 assertions прошли; scoped Pint и strict Composer validation прошли. Долговечная граница сохранения пакета записана через Boost в `.ai/rules/flux-pro.md`. Режим Pint stdin/editor не использует те же regex-фильтры: distribution-файлы через него не форматировать; обычные repo lint/dirty scans покрыты регрессией.
 
 ---
 
@@ -20,7 +57,7 @@
 
 | Объект | Наблюдение | Основание |
 | --- | --- | --- |
-| Ветка | `main`, при начале анализа HEAD `70fcc3e`; много ранее staged/unstaged изменений | локальные `git status`, `git log`, diff |
+| Ветка | `main`; первоначальный анализ начался на `70fcc3e`, повторный — на `9db2848`; во время повторного анализа появился `eb3fa3d` | локальные `git status`, `git log`, diff; это совместная изменяющаяся рабочая копия |
 | Библиотека | `livewire/flux` установлен как `v2.17.0`; `livewire/flux-pro` не установлен | Boost application-info и `Composer\InstalledVersions` |
 | Ограничение приложения | `livewire/flux: ^2.17` | корневой `composer.json` |
 | Ограничение локального Pro | `livewire/flux: 2.13.1\|dev-main` | `flux-pro/composer.json` |
@@ -38,7 +75,7 @@
 | Платформа | фактически Blade + Livewire, Filament не является установленным стеком | Composer и архитектурные документы |
 | Рабочее окружение | Boost разрешает login как `https://ruflo.test/login`; имя каталога не совпадает с доменом | URL проверен через Boost; браузерный прогон в этом анализе не выполнялся |
 
-Рабочая копия менялась другой работой во время анализа. Существующие изменения не принадлежат этому плану. Количества выше — наблюдаемый снимок, не утверждение о неизменном HEAD или полностью проверенном релизе.
+Рабочая копия менялась другой работой во время анализа. Существующие изменения не принадлежат этому плану. Числа 1 250 тегов / 90 файлов и приложение B фиксируют первоначальную инвентаризацию. Во время расширенного анализа новые navigation/dashboard/reference правки уже меняли эти числа; перед исполнением переснять их на одном согласованном source digest. Коммит `eb3fa3d` добавил план и 139 содержательных файлов `flux-pro/` в Git, но наличие файлов и название коммита не доказывают установку Pro: `vendor/livewire/flux-pro` при повторной проверке отсутствует. Активную работу из `docs/IMPLEMENTATION_PLAN.md` следует принять как вход следующего этапа, не переделывать параллельно.
 
 ### 1.2. Почему нельзя просто подключить папку
 
@@ -65,17 +102,17 @@
 
 ## 2. SOLUTION — целевая интеграция
 
-### 2.1. Рекомендуемый путь установки
+### 2.1. Рекомендуемый путь получения и окончательного размещения
 
 | Вариант | Решение | Условия |
 | --- | --- | --- |
-| Официальная совместимая стабильная пара Free/Pro через Composer | **Предпочтительно** | источник dist допустим по правилам, лицензия настроена в окружении, обновление затрагивает только необходимую часть lock |
-| Локальный Composer path package из полной совместимой поставки | **Допустимо** | сначала подтвердить версию/комплектность; mirror в vendor для релиза; воспроизводимо доставлять исходный артефакт на shared hosting |
+| Получить официальную совместимую стабильную пару Free/Pro | **Обязательный вход** | источник dist допустим по правилам, версия подтверждена, обновление затрагивает только необходимую часть lock; способ получения не определяет постоянное расположение кода |
+| Внутренний Composer path package `packages/livewire/flux-pro` | **Конечная архитектура по запросу пользователя** | полная принятая поставка отслеживается вместе с проектом; настоящий package identity; `symlink: false`; production использует установленную физическую копию |
 | Понижение Free до 2.13.1 ради текущей папки | **Не рекомендовано** | потребует осознанного изменения корневого ограничения и полного аудита регрессий существующего Free UI; не решает полноту свежего каталога |
 
-План строится на первом пути либо на втором с обновлённым совместимым архивом. Текущую папку сохранить как исходный материал. Не редактировать её composer-зависимости и не копировать Pro Blade/JS в first-party каталоги ради обхода установки.
+Получение совместимого release и хранение его внутри проекта — последовательные задачи. До P17 исходную папку сохранить как проверяемый источник. В P14 перенести все содержательные файлы принятой поставки, не раскладывать 125 vendor templates по `resources/views/flux` и не заменять Composer ручным autoload. Если P0 выбрал более свежий release, каждому из исходных 139 файлов назначить результат сравнения: unchanged, updated, renamed либо explicitly superseded. Нельзя смешивать старый `dist` с новыми Blade или переносить заведомо несовместимую старую копию в рабочий пакет ради совпадения числа файлов. Исходный snapshot сохраняется в существующей истории Git; новые файлы выбранного release также входят в манифест.
 
-Официальная инструкция использует Composer и активацию Pro; `auth.json` содержит секреты и не должен попадать в Git. В репозитории `/auth.json` уже исключён. Для локального варианта Composer поддерживает path repository и mirror вместо symlink. [Flux installation](https://fluxui.dev/docs/installation), [Composer path repositories](https://getcomposer.org/doc/05-repositories.md#path).
+Официальная инструкция использует Composer и активацию Pro; `auth.json` содержит секреты и не должен попадать в Git. В репозитории `/auth.json` уже исключён. Composer поддерживает path repository и mirror вместо symlink. Внутреннее размещение сохраняет лицензию и штатное определение Pro; ключи в поставку не переносятся. [Flux installation](https://fluxui.dev/docs/installation), [Composer path repositories](https://getcomposer.org/doc/05-repositories.md#path).
 
 ### 2.2. Что означает «все функции»
 
@@ -168,13 +205,16 @@ Pro работает вместе с Free. Уже внедрённые Button/In
 
 **Файлы:** `composer.json`, `composer.lock`, при локальном способе `.gitignore`; документация `docs/CURRENT_VERSION.md`, `docs/deployment.md` — только после фактического изменения.
 
-- [ ] Повторно снять branch/status/index/diff и определить владельца незавершённой Flux Free миграции. Сохранить её итоговый baseline и observed gates.
-- [ ] Проверить свободное место и активные процессы перед source mirror/coverage. Во время анализа свободно около 3.5 GiB; это не даёт запаса для нескольких одновременно работающих полных копий и отчётов.
+**Checkpoint:** source/compatibility preflight выполнен, P0 в целом **blocked**. На старте исполнения свободно около 1.5 GiB, поэтому полные временные vendor/node_modules копии не создавались. Подтверждён только пользовательский snapshot, а не upstream release. Дальнейшие пункты принятия совместимой поставки остаются открытыми.
+
+- [ ] Повторно снять branch/status/index/diff и принять завершённые результаты Flux Free, navigation, notifications и local reference из текущего журнала. Согласовать владение незавершёнными файлами; сохранить baseline и observed gates, не приписывать чужие результаты этому этапу.
+- [ ] Проверить свободное место и активные процессы перед source mirror/coverage. При повторном анализе доступно около 4.5 GiB; запускать временные полные копии последовательно и отдельно измерять их размер.
 - [ ] Установить точную версию и provenance локальной поставки по официальным метаданным/артефакту. Фиксировать SHA-256 всего артефакта, не только composer.json.
 - [ ] Получить разрешённым способом совместимую stable пару Free/Pro, желательно без понижения текущей Free. Проверить зависимости, dist hosts и redirects до сетевой установки. Не обращаться к GitHub даже косвенно через Composer.
-- [ ] Для private repository использовать штатные Composer credentials, не читать/печатать ключи и не добавлять их в код/документы. Для path repository использовать подтверждённую версию и `symlink: false`; исходная папка должна входить в закрытый reproducible release artifact.
+- [ ] Для private repository использовать штатные Composer credentials, не читать/печатать ключи и не добавлять их в код/документы. Зафиксировать конечное размещение `packages/livewire/flux-pro`, подтверждённую версию и `symlink: false`. Если стартовая интеграция использует временный источник, P14 обязан переключить её на внутренний пакет до release.
 - [ ] На отдельной disposable копии выполнить dependency resolution и install; проверить минимальность lock diff, обнаружение provider, `Flux::pro()`, boot и asset endpoints.
-- [ ] Проверить deployment install без доступа к пользовательской рабочей папке; при path-варианте одной отправки tracked app files недостаточно.
+- [ ] Разделить proof локальной установки Pro и cold install всего проекта. В проверенном lock все 178 dist URL ведут на `api.github.com`; при запрете GitHub полный fresh install возможен только с достаточным проверенным локальным cache/архивами либо согласованным vendor artifact. При отсутствии входного артефакта записать конкретный blocker; не разрешать сетевой fallback.
+- [ ] Проверить discovery и facade aliases выбранной пары. В нынешнем `FluxProServiceProvider` импортирован `Flux\FluxPro`, тогда как локальная facade объявлена в `FluxPro\FluxPro`, а metadata содержит alias `Flux`. Это повод для совместимого boot/render теста, не разрешение на неподтверждённую массовую правку upstream.
 
 **Приёмка:** согласованные stable constraints, воспроизводимый lock, существующий runtime `vendor/livewire/flux-pro`, доступные JS/editor assets, ни одного обхода license/version checks. Если допустимый архив недоступен — статус P0 blocked; весь последующий план остаётся конкретным, но не выполненным.
 
@@ -182,13 +222,15 @@ Pro работает вместе с Free. Уже внедрённые Button/In
 
 **Файлы:** `resources/css/app.css`, layouts с `@fluxScripts`, `tests/Feature/FrontendStyleArchitectureTest.php`; новый `tests/Feature/FluxProInstallationTest.php`.
 
+**Ранний tooling prerequisite:** до root Pint/lint исключить узко исходный upstream `flux-pro/`, уже tracked в `eb3fa3d`; при создании внутреннего package добавить точное исключение нового upstream-пути. После P17 удалить obsolete исключение старого пути. Не ждать P14, иначе ранние root gates могут переписать исходный vendor. First-party адаптации из app/resources по-прежнему форматируются.
+
 - [ ] Добавить failing test на установленный Pro, поддержку Blade-компонента и Pro asset response.
 - [ ] Добавить Pro `@source` рядом с Free, сохранив `source(none)` и локальные шрифты.
 - [ ] Использовать ровно один `@fluxScripts` в активном layout; не импортировать `dist/flux.js` в `resources/js/app.js` и не добавлять отдельный Alpine.
 - [ ] Убедиться, что routes `/flux/flux.min.js`, `/flux/editor.min.js`, `/flux/editor.css` проходят shared-hosting rewrite, возвращают правильный MIME и не требуют staff authentication.
 - [ ] Editor assets грузятся только на страницах editor и корректно появляются после `wire:navigate`; повторный переход не создаёт дубликатов listeners/runtime.
 - [ ] Пересмотреть существующие два override по новым upstream-файлам, сохранить минимальные diff и реальные regression tests; не обновлять hash без анализа.
-- [ ] Проверить first-party scanners: при path-пакете корневой `flux-pro/` — third-party dependency, а не разрешение ослабить Blade/PHP правила во всём `resources/views`.
+- [ ] Проверить first-party scanners: внутренний `packages/livewire/flux-pro/` — upstream dependency; исключение его vendor idioms не ослабляет Blade/PHP правила `app/` и `resources/views/`. До P14 исходная корневая папка имеет тот же upstream статус.
 
 **Приёмка:** production build и render smoke всех 18 семейств; CSS содержит реальные применённые стили; existing Button/Modal/Sidebar/Toast/Progress/OTP работают на новом JS. В отчёте указать веса main CSS, Free/Pro runtime и editor отдельно.
 
@@ -199,7 +241,7 @@ Pro работает вместе с Free. Уже внедрённые Button/In
 - [ ] Составить allowlist пользовательских внутренних строк выбранной версии: clear/search/remove, date/time navigation, presets, empty/loading, toolbar, chips и range labels.
 - [ ] Сначала передавать переведённые props/slots и явно заданные accessible names через официальный API.
 - [ ] Для фраз vendor без такого API сделать узкую документированную адаптацию. Не добавлять phrase-keys в основной semantic JSON и не менять глобальный Translator ради Pro. Если нужен published override, заменить только недоступные подписи/слоты, перечислить его в allowlist и связать с upstream hash и поведенческой регрессией.
-- [ ] Не копировать 125 шаблонов. Для Editor использовать собственную toolbar-композицию над публичными editor primitives, когда этого достаточно; итоговый набор overrides определяется реальными пробелами выбранной версии.
+- [ ] Не публиковать 125 шаблонов как first-party overrides. Полная копия поставки в внутреннем package предусмотрена P14; это другая задача. Для Editor использовать собственную toolbar-композицию над публичными editor primitives, когда этого достаточно; итоговый набор overrides определяется реальными пробелами выбранной версии.
 - [ ] Проверять rendered accessibility tree, включая внутренние clear/remove кнопки, disabled state, selected values, announcements, helper/error associations.
 - [ ] Протестировать light/dark/system, forced colors, reduced motion, 200% zoom, long strings; translations audit/scan должны видеть все новые semantic keys.
 
@@ -361,15 +403,81 @@ Pro работает вместе с Free. Уже внедрённые Button/In
 - [ ] Добавить подходящие продуктовые cases и отрицательную validation; не подменять отсутствующий Pro самодельным одноимённым компонентом.
 - [ ] Выполнить отдельный browser acceptance и обновить inventory denominator: 125 локальных файлов не означают полноту более новой поставки.
 
-#### P14. Финальные gates и доставка
+#### P14. Полный перенос поставки внутрь проекта
+
+**Зависимости:** совместимый P0, работающие P1–P13; внутреннее размещение можно подготовить раньше, но исходную папку пока не удалять. **Файлы:** новый `packages/livewire/flux-pro/**`, новые `packages/livewire/flux-pro.provenance.json` и `packages/livewire/flux-pro.sha256`, root `composer.json`/`composer.lock`, `pint.json`, существующие installation/style tests; точная карта — приложения E/F.
+
+**Ранняя подготовка, выполненная 2026-09-15–16 (не итоговая приёмка P14):**
+
+- [x] Сохранить все 139 содержательных файлов текущего пользовательского snapshot во внутреннем каталоге без изменения bytes, путей и лицензии.
+- [x] Добавить provenance с `upstream_version: null`, `upstream_pristine_verified: false`, `imported-uninstalled` и unresolved compatibility; записать оба формата общего digest.
+- [x] Добавить полный sorted checksum manifest и независимый от исходной папки integrity Unit test; подтвердить точное совпадение исходника и копии, включая file modes.
+
+Ниже — оставшиеся требования к **принятой совместимой** поставке. Нынешняя копия не подтверждает ни её version, ни runtime:
+
+- [ ] Переснять рекурсивный inventory исходной и принятой совместимой поставки, включая скрытые файлы и symlinks. Сопоставить все 139 файлов приложения F; 4 `.DS_Store` классифицировать отдельно. Новый неизвестный файл требует разбора до удаления источника.
+- [ ] Скопировать содержательные файлы с сохранением относительных путей, лицензии, PHP namespace, helpers, discovery metadata, восьми dist assets и 125 templates исходного snapshot. Для более нового release сохранить его полный согласованный набор; разницу со старым явно перечислить в provenance.
+- [ ] Сохранить raw upstream и installed/result checksum как разные факты. Если адаптация всё-таки изменяет пакет, документировать каждый минимальный patch и его regression test; не объявлять изменённый файл byte-identical upstream.
+- [ ] Добавить явный path repository только для этого пакета, с canonical source и mirror. Root действительно требует `livewire/flux-pro`; `replace`, `provide`, class aliases или ручное заполнение InstalledVersions не имитируют установку.
+- [ ] Версия поставки должна быть подтверждена независимо. При отсутствии `version` использовать Composer `options.versions` с реальной установленной provenance-версией; не наследовать `dev-main` общего репозитория и не выдумывать stable release. Корневой stable-only режим сохраняется.
+- [ ] Обновить только необходимую часть lock разрешённым способом. Проверить относительный `dist.url`, discovery ровно один раз, совместимость Free/Pro и неизменность unrelated dependencies. Не переносить `require-dev`, workbench или `serve` scripts Pro в root.
+- [ ] Добавить узкое Pint-исключение для неизменяемого upstream-каталога. Сохранить Larastan/coverage scope приложения и все ограничения first-party Blade/translations. Integrity/compatibility проверки покрывают upstream отдельно.
+- [ ] Проверить source→vendor mirror до Vite: при `symlink:false` обычное редактирование package-файла не обновляет существующую installed copy. При необходимости выполнять целевой `composer reinstall livewire/flux-pro` в изолированном окружении и проверять hashes; один `composer install` на неизменившемся lock не является доказательством синхронизации.
+- [ ] Production Tailwind сканирует installed Pro `vendor/.../stubs`; не сканировать одновременно две расходящиеся копии для маскировки stale mirror. Core CSS по-прежнему приходит из Free.
+- [ ] Установка и сборка в новой release-директории, где root `flux-pro` никогда не существовал, проходят из разрешённых локальных входов. Исходная рабочая папка всё ещё сохраняется до P17.
+
+**Приёмка:** внутренний tracked package — единственный канонический источник Pro; Composer metadata и vendor physical copy соответствуют ему; весь принятый release учтён; root `flux-pro/` больше не нужен runtime, build или install. Не считать Composer reference достаточным content hash: `reference: config` не хеширует все Blade/JS.
+
+#### P15. Консолидация сценариев и удаление заменённого кода
+
+**Файлы:** существующие `resources/js/{menu-translations,menu-image-picker,menu-workspace,staff-workspace,kitchen-delay-timers,waiter-sounds,app}.js`, menu/dashboard/staff композиции, notifications view/component, navigation Action и текущие тесты. Новые first-party модули создавать только при подтверждённом общем поведении; точная матрица — G/H.
+
+- [ ] Повторно сверить текущую Free navigation/notification/reference работу. Sidebar, Command и mobile navigation используют один подготовленный navigation payload, а не три реестра с разными правами.
+- [ ] Один notification host и один bounded poller; Timeline использует текущую lazy modal/flyout панель. Popover допустим только при доказанной эквивалентности её recovery/accessibility. Open не означает mark-read, unread count не выводится из ограниченного списка. При повторном чтении текущая параллельная работа уже использует `PANEL_LIMIT = 20` последних read+unread уведомлений, отдельный count и destination reauthorization.
+- [ ] Передать Flux собственно tabs/roving-focus/disclosure/dropzone поведение и удалить заменённые обработчики в том же change. Сохранить copy-empty/completeness/error reveal, image batches/receipts, lazy mounting и offline/dirty recovery.
+- [ ] Реализовать gallery-specific Adapter событий Pro upload; один владелец file/drop событий, независимые uploading и saving/removing/offline. Проверить append, cancel, повторный файл и очистку object URLs.
+- [ ] Проверить реальные focusable nodes Listbox/Editor и уникальные tab/panel keys всех повторяемых locale editors. Два независимых механизма active-tab не остаются.
+- [ ] Объединять clipboard transport только с truthful success/failure, selectable fallback и таймер cleanup. Reveal/retention гостевого invite и 2FA остаются в своих предметных сценариях.
+- [ ] Сохранить разные menu/staff history стратегии до доказанного общего контракта. Таймеры кухни, waiter audio и passkeys не удалять как якобы дубли Flux.
+- [ ] Удалять first-party CSS/JS только после поиска всех потребителей и regression proof; не удалять неиспользованные сегодня upstream dist/module/template файлы. Проверить отсутствие импорта уже удалённого модуля.
+- [ ] Не возвращать generic UiButton/UiSelect/UiTabs wrappers. Предметные composition modules обязаны скрывать реальную повторяемую сложность, а не переименовывать тег Flux.
+
+**Приёмка:** один владелец каждого локального состояния и события, один источник каждого navigation/report/options payload, сохранённые product Actions; нет параллельных старых и новых handlers. Финальный browser проходит совместные сценарии из приложения I.
+
+#### P16. Финальные gates и подготовка доставки
 
 - [ ] Завершить scoped tests каждого этапа; затем полные backend, browser и coverage на одном source manifest.
 - [ ] Выполнить dependency audits, production build, cache compilation, translations и scoped diff review. Выполнять только допустимые сетевые запросы.
 - [ ] Повторить весь путь invite/onboarding → menu → guest draft → waiter confirmation → kitchen/bar → serving → offline payment → closure в disposable SQLite.
 - [ ] Проверить compiled CSS/runtime/editor bytes и guest payload; новые charts/boards не превышают согласованных query/row budgets.
-- [ ] Проверить shared-hosting release artifact с `composer install --no-dev`, production assets и asset routes без ссылок на локальные path sources.
+- [ ] Проверить shared-hosting release artifact с `composer install --no-dev` из допустимых локальных источников, production assets и asset routes без ссылок на старую папку или абсолютный путь компьютера. Внутренний относительный path source в lock является ожидаемым.
 - [ ] Подготовить rollback на предыдущий code+lock+assets artifact. Для rich schema использовать expand-first: старый код продолжает читать plain projection, новые столбцы не удалять при срочном откате.
-- [ ] После зелёных gates и обычного review локально коммитить только свои согласованные файлы. GitHub остаётся только возможной целью обычного push; не создавать PR/Actions и не проверять remote дополнительным запросом.
+- [ ] Перед заключительным удалением провести review и зафиксировать проверяемый release snapshot. Локальные коммиты включают только свои согласованные файлы. GitHub остаётся только возможной целью обычного push; не создавать PR/Actions и не проверять remote дополнительным запросом.
+
+#### P17. Удаление исходной корневой папки и доказательство независимости
+
+**Точный объект:** `/Users/andrejprus/Herd/restaurant-menu/flux-pro`. **Предусловия:** P14–P16 приняты, rollback artifact проверен; пользователь включил удаление в конечную задачу. Этот документ не выполняет удаление.
+
+- [ ] Непосредственно перед удалением проверить real path, отсутствие неожиданных symlinks, inventory и чужих новых изменений. Остановить только этот шаг, если обнаружены неучтённые файлы; остальная интеграция остаётся доступной для проверки.
+- [ ] Каждый исходный содержательный файл имеет target либо документированный replacement выбранного совместимого release. Старый отслеживаемый snapshot доступен локально; новых source-only правок нет. Четыре `.DS_Store` явно исключены как метаданные Finder.
+- [ ] Найти зависимости именно от старого пути: repository URL `flux-pro`, `base_path('flux-pro/...')`, относительные импорты, `@source`, deploy/copy scripts, source maps, cached view/provider paths и symlinks. Слово `flux-pro` в законном package name/новом пути и исторической документации не является ошибкой.
+- [ ] Убедиться, что clean-release drill использовал отдельные caches/storage/SQLite и уже прошёл с отсутствующим корневым каталогом. Проверить production/debug assets и navigation в этой копии.
+- [ ] Удалить только указанный исходный каталог после перечисленных доказательств, без следования symlinks и без очистки родительского проекта. Не использовать общий `git clean`, reset или широкое удаление.
+- [ ] Зафиксировать в diff удаление старых tracked файлов и наличие полной принятой поставки в `packages/`. Проверить отсутствие каталога и отсутствие runtime/build ссылок на него.
+- [ ] Повторить package integrity, focused installation/assets tests, production build и isolated view/config/route caches; короткий browser smoke существующего Free UI, Pro selector, gallery и lazy editor. Если изменились executable bytes, расширить повторные gates по изменениям, а не ссылаться на прежний pass.
+
+**Приёмка:** корневого `flux-pro/` нет, приложение устанавливается и работает на коде внутреннего пакета; release и rollback не требуют восстановления старой папки. Если любой gate не пройден, удаление не считается выполненным.
+
+#### P18. Обновление внутреннего пакета и окончательная фиксация
+
+- [ ] В существующих `docs/frontend.md`, `docs/deployment.md`, `docs/DECISIONS.md`, `docs/testing.md`, `docs/CURRENT_VERSION.md` и canonical ledger описать фактический источник, версию, manifest digest, допустимые patches, команды mirror/update и проверенный rollback. Канонические требования/compliance обновлять только по реально внедрённым контрактам.
+- [ ] Разделить upstream upgrade и продуктовые изменения: принять новый полный release во временной папке, проверить provenance/Free constraint, сравнить templates/runtime/labels, повторно применить минимальные patches, обновить content manifest, mirror и lock, затем gates. Не редактировать установленный vendor как источник.
+- [ ] При security fixes проверять в том числе embedded JavaScript dependencies редактора; `npm audit` root-пакетов не подтверждает безопасность всего готового `dist` Pro.
+- [ ] Отмечать точный coverage denominator выбранной версии: distribution files, rendered family/variant fixtures и настоящие продуктовые сценарии — три отдельных результата.
+- [ ] Закрепить новые durable `.ai/rules` через штатный `record-rule` при исполнении, когда решение подтверждено кодом. В этом планировании rules не объявляются выполненной миграцией.
+- [ ] Итоговый отчёт содержит transfer/deletion evidence, проверенные команды и exit codes, ограничения и непройденные gates. Ни один блокер не скрывается под формулировкой «максимально интегрировано».
+
+**Приёмка:** следующий разработчик может воспроизвести установку/обновление/откат без исходной папки и без личных файлов автора.
 
 ### 2.7. Порядок зависимостей
 
@@ -385,7 +493,11 @@ P0 compatible package
       -> P11 rich descriptions
   -> P12 remaining surfaces/rules
   -> P13 expanded selected-release catalogue
-  -> P14 complete acceptance/release
+  -> P14 internal package and complete transfer
+  -> P15 cross-surface consolidation
+  -> P16 complete acceptance/release drill
+  -> P17 remove original root directory and verify
+  -> P18 update procedure and final evidence
 ```
 
 P9/P10/P11 требуют наиболее сильной проверки data/security semantics. Начинать с них до завершения P1/P2 нецелесообразно. Каждый этап сохраняет рабочий продукт, а не оставляет смешанные несовместимые половины нового контрола.
@@ -494,14 +606,16 @@ Scope + Policy
 
 ## 7. TESTS — проверка плана и будущей реализации
 
-### 7.1. Что выполнено сейчас
+### 7.1. Доказательства первоначального анализа (до исполнения)
 
 - Прочитаны canonical requirements, архитектурный и frontend контекст, локальные правила и relevant source/tests.
 - Через Boost подтверждены установленные версии и Herd URL; документационный поиск Boost по Pro installation вернул отсутствие результатов, поэтому использованы официальные страницы Flux и локальные файлы.
 - Выполнены полный inventory Pro Blade, счётчик использования Flux/остаточного HTML, локальная проверка Composer Semver и измерение веса runtime-файлов.
 - Проверены состав `composer.json`, asset selection и publisher/override boundary.
-- Программная проверка самого документа подтвердила точное покрытие 125/125 Pro-шаблонов и 90/90 текущих файлов с Flux, последовательность 15 этапов, восемь обязательных разделов, парность code fences и отсутствие неожиданных несуществующих путей. Будущие новые файлы и ещё не установленный vendor Pro отмечены отдельно; trailing whitespace не обнаружен.
+- Первоначальная программная проверка подтвердила 125/125 Pro-шаблонов и 90/90 файлов исходного UI snapshot. Повторная проверка расширенной редакции подтвердила 139/139 paths/bytes/SHA-256, общий digest, 19 последовательных этапов P0–P18, восемь обязательных разделов, приложения A–J, парные code fences и отсутствие trailing whitespace. Scoped `git diff --check` завершился с exit 0. Новые будущие файлы, ещё не установленный vendor Pro и исторический удаляемый desktop-user-menu отделены от существующих ссылок.
 - **Не выполнялись:** установка/активация Pro, изменение dependencies/schema/данных, application tests, build, runtime browser QA, deployment/commit/push. Старые результаты в `docs/testing.md` не выдаются за проверку этого плана.
+
+**После разрешения на исполнение:** исходники скопированы в internal package, добавлен integrity Unit test и обновлена traceability-проверка 54 требований; результаты находятся в `docs/testing.md`. Это отдельный checkpoint source preparation, а не изменение исторического proof анализа выше. Установка, Pro browser/build и удаление остаются невыполненными.
 
 ### 7.2. Матрица регрессий
 
@@ -571,6 +685,7 @@ git diff --check
 - [ ] Actions/Policies/Forms, guest identity, permanent QR, immutable snapshots и manual settlement сохранены.
 - [ ] Нет зависимости от WebSockets, S3, Redis, paid runtime или постоянного worker.
 - [ ] Лицензионная поставка и release artifact воспроизводимы; рабочие secrets не закоммичены.
+- [ ] Полный принятый Pro package находится в `packages/livewire/flux-pro`, source/vendor hashes согласованы; root `flux-pro/` удалён только после P16/P17 proof, новые файлы и replacements учтены.
 - [ ] Full gates привязаны к одному source snapshot, docs/compliance соответствуют факту, rollback проверен.
 
 ## 8. CAVEATS — ограничения, решения и источники
@@ -602,7 +717,7 @@ git diff --check
 
 ### 8.3. Первый практический результат после принятия плана
 
-Первый milestone: **совместимая Pro-поставка + runtime/CSS + EN/LT/RU + branch/dish selectors + locale tabs + file upload**. Он даёт большой охват существующего UI и проверяет самые важные интеграционные границы до charts, kanban и rich text. Полная программа заканчивается P14, а не этим milestone.
+Первый milestone: **совместимая Pro-поставка + runtime/CSS + EN/LT/RU + branch/dish selectors + locale tabs + file upload**. Он даёт большой охват существующего UI и проверяет самые важные интеграционные границы до charts, kanban и rich text. Полная программа заканчивается P18: внутренним пакетом, удалённой исходной папкой и воспроизводимым обновлением.
 
 ## Приложение A. Полный реестр 125 локальных шаблонов Pro
 
@@ -738,9 +853,11 @@ git diff --check
 
 **SHA-256 исходного composer.json:** `c07f944664216e94e0eb7ac1d11f69330c188b51792e01445ce0446934e09b45`. Идентификатор прочитанного файла не подтверждает подлинность поставки.
 
-## Приложение B. Все текущие first-party места использования Flux
+## Приложение B. Все first-party места использования Flux исходного UI snapshot
 
-Снимок переснят при сохранении плана. Число означает открывающие теги в исходнике, без разворачивания циклов. Файлы без Flux охвачены картой поверхностей и нативных исключений.
+Реестр 90 файлов / 1 250 тегов сохранён как baseline первоначального анализа. Во время расширенного анализа параллельная работа добавила account-menu, workspace navigation и local reference, а `desktop-user-menu.blade.php` удаляется. При исполнении использовать итог этой работы и переснять inventory; историческая строка ниже не означает задачу восстановить удалённый файл.
+
+Снимок переснят при первоначальном сохранении плана; расширенная редакция сохраняет его историческим baseline. Число означает открывающие теги в исходнике, без разворачивания циклов. Файлы без Flux охвачены картой поверхностей и нативных исключений.
 
 | Файл | Тегов Flux | Семейства в файле |
 | --- | ---: | --- |
@@ -867,6 +984,516 @@ git diff --check
 | P1 навигация/гости | P7–P8 | быстрые переходы, понятные комментарии и история | потеря focus, разрешённый URL вне scope, утечка истории |
 | P2 операционные экраны | P9–P10 | читаемые отчёты и производство по статусам | ложные суммы/series, рост запросов, неверный transition |
 | P2 форматированный контент | P11 | полноценный authoring описаний | XSS, рассогласование HTML/plain/CSV, миграция и rollback |
-| Завершение | P12–P14 | полнота поверхностей, актуальный каталог, воспроизводимый релиз | непроверенный совместный source, недоставленный local package |
+| Завершение | P12–P18 | полнота поверхностей, внутренний пакет, консолидация, удаление источника и воспроизводимый релиз | непроверенный совместный source, потерянные файлы, stale mirror, непроверенный rollback |
 
 Оценивать календарный срок стоит после P0 и первого вертикального сценария P3: неизвестны доступная совместимая поставка и число необходимых translation overrides. Фиксированное обещание срока до этих проверок было бы ненадёжным. Этапы с расширением данных оцениваются отдельно от замены визуальных компонентов.
+
+## Приложение E. Устройство внутреннего пакета и полная поставка
+
+### E.1. Точная граница исходников
+
+Повторный обход нашёл **143 физических файла / 3 316 300 bytes**, без symlinks. Содержательная поставка — **139 файлов / 3 291 708 bytes**: 125 Blade, 8 dist, 4 PHP, composer metadata и лицензия. Четыре файла Finder занимают ещё 24 592 bytes и не являются исходным кодом.
+
+~~~text
+restaurant-menu/
+  packages/livewire/
+    flux-pro/                       canonical tracked distribution
+      composer.json                 original package name + runtime requirements
+      LICENSE.md                    original proprietary notice
+      src/                          facade, manager, provider, helpers
+      stubs/resources/views/flux/   entire accepted template tree
+      dist/                         entire accepted assets (8 in original snapshot)
+    flux-pro.provenance.json        accepted release + original/current digests
+    flux-pro.sha256                 full accepted file inventory
+  vendor/livewire/
+    flux/                           compatible Free; generated dependency
+    flux-pro/                       Composer physical mirror; generated dependency
+  resources/views/components/       product compositions
+  resources/views/flux/              minimal audited overrides only
+  resources/js/                     domain interaction adapters
+  resources/css/app.css              Free CSS + installed Free/Pro sources
+~~~
+
+**Поток исполнения:** tracked package → Composer mirror/discovery → vendor sibling assets и Blade namespace → Flux-композиции приложения → Livewire Form/Action. Ни root `flux-pro/`, ни копия dist в `public/` не являются дополнительным runtime-источником.
+
+**Значение «все файлы»:** сохранить полный поставляемый набор, включая не используемые сейчас module/debug builds и пустой helpers, с их исходной ролью. Для byte-identical исходной поставки действует карта F. Для обновлённой совместимой поставки нужны old→new disposition и новый manifest; старые несовместимые файлы не исполняются рядом с новыми. Исторические файлы можно восстановить из локального tracked snapshot `eb3fa3d`, без обращения к GitHub.
+
+### E.2. Восемь dist assets и PHP metadata
+
+| Файл | Роль | Обязательная проверка |
+| --- | --- | --- |
+| `dist/flux.js` | основной debug runtime, включая Free и Pro primitives | debug endpoint, старые Free controls + новые Pro |
+| `dist/flux.min.js` | основной production runtime | min endpoint, один script, manifest cache key |
+| `dist/flux.module.js` | поставляемая альтернативная module-сборка | сохранность; не подключать одновременно с main |
+| `dist/editor.js` | debug editor | lazy mount, navigation, повторное открытие |
+| `dist/editor.min.js` | production editor | загрузка только при editor, отсутствие дубликатов |
+| `dist/editor.module.js` | альтернативная module-сборка editor | сохранность; не считать набором исходных ES modules |
+| `dist/editor.css` | оформление editor | 200 CSS MIME, toolbar/content в темах |
+| `dist/manifest.json` | version tokens трёх семейств assets | ключи `/flux.js`, `/editor.js`, `/editor.css` соответствуют принятой поставке |
+| `src/FluxPro.php` | facade декларация | boot/autoload/alias contract выбранной пары |
+| `src/FluxProManager.php` | контейнерный manager | singleton и реальный accessor |
+| `src/FluxProServiceProvider.php` | registration/discovery/template path | одна регистрация; корректный namespace resolver |
+| `src/helpers.php` | autoload files, сейчас только namespace | файл остаётся доступен после install |
+| `composer.json` | identity, dependencies, autoload/discovery | version provenance и реальные constraints |
+| `LICENSE.md` | upstream notice/условия поставки | сохранить неизменным; root MIT не заменяет его |
+
+В нынешнем архиве **нет** package.json, исходного дерева JavaScript, npm lock, source maps, workbench и воспроизводимого upstream build pipeline. Debug и module JS — готовые bundled artifacts. Прямой просмотр показал отсутствие внешних import/fetch/XHR в двух основных читаемых bundles; это статическое наблюдение, а не полный сетевой аудит браузера.
+
+Внутри main bundle встречаются Floating UI и popover polyfill; editor содержит Tiptap/ProseMirror/linkifyjs и другие встроенные библиотеки. Их точные версии из этого набора не установлены. Поэтому перенос даёт автономное хранение и использование поставки, **не доказывает возможность пересобрать её исходный JavaScript с нуля**. Не реконструировать версии зависимостей по догадке и не добавлять второй Tiptap в приложение. При необходимости менять runtime сначала получить полный официальный source/build комплект либо выбрать новый готовый release. Root npm audit этих embedded зависимостей не охватывает.
+
+Pro templates зависят от Free `Flux::classes`, `attributesAfter`, `componentExists`, `flux:with-field`, `delegate-component`, icons, button, input, dropdown, tooltip и compiler macros. В 116 шаблонах найден `@blaze`, в 80 — `@php`. Установленный Free регистрирует fallback Blaze directives; наличие директивы не требует автоматически добавлять отдельный Blaze пакет. Эти зависимости объясняют, почему нельзя переместить только Pro Blade под новое имя и удалить Free.
+
+### E.3. Composer: предлагаемый фрагмент конфигурации
+
+Следующий JSON — **часть будущего root composer.json**, не выполненная правка и не полная команда установки:
+
+~~~json
+{
+  "repositories": [
+    {
+      "type": "path",
+      "url": "packages/livewire/flux-pro",
+      "canonical": true,
+      "only": ["livewire/flux-pro"],
+      "options": {
+        "symlink": false,
+        "reference": "config"
+      }
+    }
+  ]
+}
+~~~
+
+Перед resolution добавить root require и, если версия не содержится в поставке, `options.versions["livewire/flux-pro"]` с **подтверждённой** stable версией. В примере намеренно не выдуман её номер. Существующие repositories объединяются осознанно; явный canonical path предотвращает случайный выбор другого источника этого имени. `reference: config` фиксирует конфигурацию, но не содержимое всех assets: полноту обеспечивает отдельный SHA-256 manifest. [Composer path repositories](https://getcomposer.org/doc/05-repositories.md#path), [Repository priorities](https://getcomposer.org/doc/articles/repository-priorities.md).
+
+При mirror-установке код редактируется в `packages/`, затем установленная копия целенаправленно обновляется и сравнивается перед сборкой. `composer reinstall livewire/flux-pro` — допустимый инструмент восстановления копии при уже согласованном lock; перед выполнением подтвердить локальный path target и изолировать install scripts. Команда не решает исходный version conflict. [Composer reinstall](https://getcomposer.org/doc/03-cli.md#reinstall).
+
+**Provenance без секретов:** package name; подтверждённая версия либо честный unknown до P0; требование к Free; hash composer/лицензии и общего manifest; источник разрешённого локального артефакта без signed/private URL; дата принятия; базовый локальный commit; список approved patches; old→new файл dispositions; final installed digest. Не включать содержимое auth.json, environment, bearer tokens или пути к личным данным.
+
+### E.4. Что не нужно объединять
+
+- Не заменять `livewire/flux` на выдуманный combined package и не менять `Flux::pro()`: реальная Free/Pro Composer identity сохраняет compiler, CSS и asset routing.
+- Не создавать global wrapper-классы для каждой Pro кнопки/вкладки; использовать публичные Flux primitives непосредственно внутри существующих предметных композиций.
+- Не дублировать vendor под public assets вручную: текущий AssetManager уже обслуживает нужные endpoints. Webroot остаётся `public`; PHP, metadata и весь `packages/` не публикуются.
+- Не включать upstream phrase translations в semantic-only каталоги автоматически. Продуктовые строки и узкие адаптации должны оставаться отслеживаемыми scanner.
+- Не переносить dev-only Volt/Testbench или package serve scripts в root. Их наличие в исходном composer не меняет class-based Blade/Livewire baseline приложения.
+- Не обещать полностью offline установку всех 178 зависимостей из одного Pro path. Требуется отдельный dependency artifact/cache drill.
+
+### E.5. Где меняются правила и инструменты
+
+| Существующий файл | Будущее изменение | Сохраняемая граница |
+| --- | --- | --- |
+| `pint.json` | P1: исключить исходный upstream `flux-pro`; P14: добавить ровно `packages/livewire/flux-pro`; P17: убрать старое исключение | форматировать first-party adapters, не скрывать их внутри exclude |
+| `phpstan.neon` | оставить app/bootstrap/database/routes scope; проверить автозагрузку Pro | application errors не подавляются общей baseline |
+| `phpunit.xml` | coverage приложения остаётся application-only | порог не ниже 90%; vendor не увеличивает denominator |
+| `tests/Feature/FrontendStyleArchitectureTest.php` | Pro source, current hashes, package boundary, narrow overrides | запрет generic wrappers и first-party PHP-in-Blade сохраняется |
+| `tests/Feature/ProjectCleanupConsistencyTest.php` | сверить scope после появления packages | vendor idioms не разрешаются всему resources/views |
+| `app/Console/Commands/ScanTranslationsCommand.php` | не включать весь upstream в поиск semantic keys; проверить новые first-party вызовы | exact EN/LT/RU parity и отсутствие unused keys |
+| `.gitignore` | canonical package/manifest отслеживаются; vendor/build/auth остаются generated/private | не добавлять исключение, скрывающее исходники пакета |
+| `docs/deployment.md` | packages до install; install до CSS build; согласованный artifact/rollback | shared SQLite/media не заменяются release-архивом |
+| `AGENTS.md`, `.ai/rules/flux.md`, `.ai/rules/ui.md` | после внедрения уточнить Free+Pro и upstream path | не объявлять весь upstream first-party и не ослаблять архитектуру |
+
+При анализе в `docs/deployment.md` была ссылка на отсутствующий `DEPLOY_SHARED_HOSTING.md`. В source-preparation checkpoint она исправлена на существующий `operations.md`; deployment остаётся каноническим документом.
+
+## Приложение F. Манифест переноса всех содержательных файлов
+
+Карта ниже относится к исходному snapshot. Для **каждой** строки: источник = `flux-pro/<relative path>`, цель = `packages/livewire/flux-pro/<relative path>`. Первичная копия сохраняет bytes/hash; если P0 принимает другой release, provenance отдельно объясняет изменение/переименование/замену этой строки. Текущие hashes не являются утверждением о совместимости.
+
+139 файлов, 3 291 708 bytes. Общий digest: `b64a3c813819e85a414a010f68bb13d23ed7dcda76668fb5e52cf0388330ad9f`.
+
+Алгоритм исходного общего digest: отсортировать relative paths лексикографически **по компонентам пути** (как Python `sorted(Path)`), для каждой строки соединить `path + TAB + decimal_bytes + TAB + sha256 + LF`, затем SHA-256 UTF-8 результата. Для тех же 139 файлов стандартная побайтовая сортировка полного относительного пути даёт `da0fcdf6baf21b0f747cae8fa804cfe45bcc7e1ac9e6bb101c9448695b5790c5`; именно этот порядок используется в новом `.sha256` и canonical inventory. Оба формата записаны в provenance. Это content inventory, не Git tree hash и не Composer lock reference.
+
+**Исключённые метаданные Finder:** `flux-pro/.DS_Store`, `flux-pro/stubs/.DS_Store`, `flux-pro/stubs/resources/.DS_Store`, `flux-pro/stubs/resources/views/.DS_Store`; каждый 6 148 bytes. Их не переносить как код. Проверить этот список заново в P17.
+
+| Relative path: source → target | Bytes | SHA-256 source |
+| --- | ---: | --- |
+| `LICENSE.md` | 2253 | `db157f8fe2a5f9dc30ce4104b1caffe619920c4a81038a585d1e1ff0df648870` |
+| `composer.json` | 1559 | `c07f944664216e94e0eb7ac1d11f69330c188b51792e01445ce0446934e09b45` |
+| `dist/editor.css` | 3956 | `a89988e3b53ed0e615378a7e35381921acd03c64ba10bcf0a64893e08f6e40fc` |
+| `dist/editor.js` | 739849 | `1fab1255e8aa6916fd8bda351c56af4b54b8e068a9bc8ef174bf9f94e27df9fa` |
+| `dist/editor.min.js` | 332263 | `9481441fa814cf2b25722217258b7f27ac43f9b23ba3fbe528ed8ea09e675575` |
+| `dist/editor.module.js` | 698834 | `16c6c21060354eaf3f60edafdae70d6860cab84690262bf2c32276ca234f41ea` |
+| `dist/flux.js` | 544207 | `17f622d575f62c94dfdbd7f20a7be2d7c1fe608b22315d48a825d2a03ffe7b1e` |
+| `dist/flux.min.js` | 270454 | `2508851ceedcc0ed073816dd6a08fa6de9357ba84c3129bc5548d744136c67aa` |
+| `dist/flux.module.js` | 515888 | `ecbcda8c721770df1a75d3d0b916dfd770d0dc42740d8f7724e6af6c6cfc4553` |
+| `dist/manifest.json` | 85 | `6da15c5506cfef16728eead298622780e4e565a338e3bdc73c1d3ea4cb95d34c` |
+| `src/FluxPro.php` | 240 | `a5b78a89573a9a5468124e70e73968ae60bd58626941cecb7f92749322046fe3` |
+| `src/FluxProManager.php` | 59 | `8ead5ece561ecd62d50f40735aed6c74b81b03fb67bd86b4cb4afee885fa888c` |
+| `src/FluxProServiceProvider.php` | 708 | `e61b7889e1c4bcb9416da23de17a1a4da7cf31056c0228fc24cf4c5ce10ff053` |
+| `src/helpers.php` | 26 | `92bc0cad8130840365a7f1d279393b762d8847fbf1289b7f4160ee0805cbbc96` |
+| `stubs/resources/views/flux/accordion/content.blade.php` | 446 | `58f7191c76cdb95b86d3a357de101cd7223cfce454c2d8d1cbbce485c9c72e81` |
+| `stubs/resources/views/flux/accordion/heading.blade.php` | 1293 | `0b23c9f1d3c59c6b78c1a7454448ff97159f44c853409e509bde570163ddb484` |
+| `stubs/resources/views/flux/accordion/icon.blade.php` | 453 | `f82817e1cc07d121ac3b0c4d4a5f35a70766ed2e97574388a6849cce11a168c0` |
+| `stubs/resources/views/flux/accordion/index.blade.php` | 179 | `8bcc97eb34edf72a98a66d06b009169faef24f6f6508d93e07ace3410a84deb0` |
+| `stubs/resources/views/flux/accordion/item.blade.php` | 1260 | `0f6c2555f5ba2e2b89977e757836dd8ad9a4add00cc20eaa125f430edc024af4` |
+| `stubs/resources/views/flux/autocomplete/index.blade.php` | 462 | `cfd84443afe09a59490162f1df0eee36c7e47968ac347d66a754ddad0776ddbf` |
+| `stubs/resources/views/flux/autocomplete/item.blade.php` | 551 | `f988276048b560e33f86b77b5cc37857994b41fe0b64f54033eafe4a3bcfdaa5` |
+| `stubs/resources/views/flux/autocomplete/items.blade.php` | 602 | `6d9b5ccf6ca817acea154dfd6c224000a674db109c381623c730000e949187a2` |
+| `stubs/resources/views/flux/calendar/index.blade.php` | 20153 | `2dfcc13e6fd0cbda91b278741f84ce42795f14ac77733855c3455d798ba1184e` |
+| `stubs/resources/views/flux/chart/area.blade.php` | 272 | `dce7620439f9fcab50e4bb93fcaecd4c0a762f2e91b87de27fc2d4e9587c022f` |
+| `stubs/resources/views/flux/chart/axis/grid.blade.php` | 638 | `9898da3c5c66064135f49d009f243d94c2c2c88489dfeab7aece14165916b8c2` |
+| `stubs/resources/views/flux/chart/axis/index.blade.php` | 580 | `17789342a47e220104f1e53e41610b0721f87f354409253a5a13a2b3faa5fa4b` |
+| `stubs/resources/views/flux/chart/axis/line.blade.php` | 745 | `ba32c3e019efeeb00ec3cc99a24fa6a410157d02c2574b006ec4bd27a955ec97` |
+| `stubs/resources/views/flux/chart/axis/mark.blade.php` | 1030 | `6e6e2d8ee156a8167da1e39ca09729028c70a4415a72365ee63f940474aadc18` |
+| `stubs/resources/views/flux/chart/axis/tick.blade.php` | 1342 | `b4197859d4a21d318d0841393b64cc7b84d5ac2e5f617ae8226615cb00baed70` |
+| `stubs/resources/views/flux/chart/bar.blade.php` | 446 | `285c0d13aecc154babf1ee4f080176519d20f36357d45a4075dba04de72995a2` |
+| `stubs/resources/views/flux/chart/cursor.blade.php` | 320 | `2fddae1ca0f5c108385ce78b4f1eb0b54439c0198ae5b65de813755e912370b4` |
+| `stubs/resources/views/flux/chart/group.blade.php` | 69 | `6f3b983d39aff617b504fe38f9d1504b3a9fee0cb67495290170bfb2cb172aad` |
+| `stubs/resources/views/flux/chart/index.blade.php` | 403 | `b703e60267e999a9c6538a5bd85cc67c7f4ad93b78e49af9a6c5798ed2c71b95` |
+| `stubs/resources/views/flux/chart/legend/index.blade.php` | 458 | `9f9481938ea1468f4771197e6c01bb2a211c46494f8a549cabfe2bb58fd1f55a` |
+| `stubs/resources/views/flux/chart/legend/indicator.blade.php` | 82 | `da6edc94763917dc9024fc9ee33bbfc5a7fbf05b962b777c215b054bf3398552` |
+| `stubs/resources/views/flux/chart/line.blade.php` | 421 | `98c2279004b3a07f4c29c0b0a49fe4baef6a52969b55fdd434d34f03f412deaa` |
+| `stubs/resources/views/flux/chart/point.blade.php` | 397 | `b649cdeaeef439560ed197ab431cc2b8ebe726c8336f4f45c03a78840b74e45d` |
+| `stubs/resources/views/flux/chart/stack.blade.php` | 69 | `67b98c0e4a16e3a3b106c0a7c97aff870bb066e9f5dcf7b2531d3f2390b332fb` |
+| `stubs/resources/views/flux/chart/summary/index.blade.php` | 117 | `7e3e5e90ad56e49ca07e7f59ae6c9b513b84a0062847a9b9b1b80e0bc9824bdc` |
+| `stubs/resources/views/flux/chart/summary/value.blade.php` | 381 | `6f2db55b972376fd693e0895fd2c3576695e0f86a5c5e3db35f3ef92a078243c` |
+| `stubs/resources/views/flux/chart/svg.blade.php` | 274 | `f14466a01bc9e976aef3cef0b00a5a0620e7a3cfbc421a7351ccbd4f47cdd8ed` |
+| `stubs/resources/views/flux/chart/tooltip/heading.blade.php` | 522 | `0a325fb6a8c5518d574b8c62ae4a6bb97d0ce03ed8bf89af56bb99be1052c123` |
+| `stubs/resources/views/flux/chart/tooltip/index.blade.php` | 489 | `82f9e94e06fdcbf9d2f8936cc013c8909b5721135872cca3c05b83878c18633f` |
+| `stubs/resources/views/flux/chart/tooltip/value.blade.php` | 757 | `bcc2cbd6ccfcf75cc0f5e4db4f450e227ee8b48b73aa704e310a4341ec512e40` |
+| `stubs/resources/views/flux/chart/value.blade.php` | 307 | `dccdead589f2983da4c6a56a992ee465e34beedb8be316d1eafc13d0b99f40cf` |
+| `stubs/resources/views/flux/chart/viewport.blade.php` | 97 | `219462edb1b86664415de4cfd23c9bb12b7de0bdee3112f273d27ed7faf3066e` |
+| `stubs/resources/views/flux/chart/zero-line.blade.php` | 394 | `bdc8ab860feb1b73f9a6095e66c0fbef290388f88be6536cc02e8bfe8431cd75` |
+| `stubs/resources/views/flux/command/empty.blade.php` | 265 | `4bb520ac4b4ad9ddca138597c6cf176a0896166575fa65935bc1d9e887e595a5` |
+| `stubs/resources/views/flux/command/index.blade.php` | 363 | `ee9ab1312cbf3a1182235586be4e4b16df0371fcb2e7031f652945aa141ce00e` |
+| `stubs/resources/views/flux/command/input.blade.php` | 2112 | `1ca0afc3591bda30df5da5d863b7d348eeeb47d78927c286ad96a1408bd9da49` |
+| `stubs/resources/views/flux/command/item.blade.php` | 1298 | `882b58bf6322369f50e3c3d38bc5995020ef5906d8a9ff0a3d4249dff2e62e41` |
+| `stubs/resources/views/flux/command/items.blade.php` | 340 | `a69b74ec53d1e841c0c010df7852ec22671cdffd15679f06281fb8501f98e39a` |
+| `stubs/resources/views/flux/composer/index.blade.php` | 3451 | `e53bbc383450626f1b0246eed3aec56b595efb28f391d8a65875c8bcf4e01e5b` |
+| `stubs/resources/views/flux/context.blade.php` | 557 | `1936322cc7416dc1f01e3bf1805688d28c554cf27ceb040fa8a0e2772b64b139` |
+| `stubs/resources/views/flux/date-picker/button.blade.php` | 2385 | `09e9095b43a6d6dbb8e1b547ff17354db1c6dbd432b6fa3bd263b98d49256cf9` |
+| `stubs/resources/views/flux/date-picker/index.blade.php` | 25935 | `f7511e8d501068a5390d87acb09a86597805049de13a7c73b50486f6521f6dcf` |
+| `stubs/resources/views/flux/date-picker/input.blade.php` | 1660 | `efe7bb9c29433b38e5302f4708ccb4760de93e65176bb58114b7f21695de652c` |
+| `stubs/resources/views/flux/date-picker/selected.blade.php` | 656 | `9d293a597e06d78e65460c3de0ffb464f518d4d43d4772bbf4af806d87ab6af5` |
+| `stubs/resources/views/flux/editor/align.blade.php` | 3060 | `1c28832988cd38684749159b1b8719e3d56a5ac1191af2b5057c21a0e63e4377` |
+| `stubs/resources/views/flux/editor/blockquote.blade.php` | 829 | `d5e9d5e7a4e98c94399aee8a2a75559b18ef876ed3bcb4a719a6dc5f1ee310f8` |
+| `stubs/resources/views/flux/editor/bold.blade.php` | 569 | `d7af7c1cbcf2120c2079acb84b9f61be261defd8518656e5bf33a9a98327c061` |
+| `stubs/resources/views/flux/editor/bullet.blade.php` | 887 | `84be3eab3fa0813a66e62a3ed907377b77564b2387dd58697debd5ef4302c918` |
+| `stubs/resources/views/flux/editor/button.blade.php` | 1418 | `7f64385a29f6359c096791e6d364a9085c7d3ca29794de1d51fc4e1d60b616b9` |
+| `stubs/resources/views/flux/editor/code.blade.php` | 770 | `e6580014a0ddfc86a347cd02893ceb15082511a355de3572c4cb0527dc554f2e` |
+| `stubs/resources/views/flux/editor/content.blade.php` | 101 | `dbc4eb545995ab0d96de0018f84430ac6727159bff199a0328f779bc6b31d73d` |
+| `stubs/resources/views/flux/editor/heading.blade.php` | 4678 | `7b27ba7b6bde3d3a6b5a9716bffe158fd2a524e8c24ecfc30c72593375b98c56` |
+| `stubs/resources/views/flux/editor/highlight.blade.php` | 546 | `6719f9bcc0d79196b5d1fb55e21cbea995334320832f5e0e0534b92cd9ae71a3` |
+| `stubs/resources/views/flux/editor/index.blade.php` | 1942 | `4136e0882799ee699f1d1c3e9d7e0649a9a61433ce4930b86f3d792323f2b54e` |
+| `stubs/resources/views/flux/editor/italic.blade.php` | 565 | `7af34625d4d710769b808003d04e287c766e2ff30395ca4cfbf726c0385e0b2a` |
+| `stubs/resources/views/flux/editor/link.blade.php` | 5244 | `56e7dd87a4ce234762fde658758f129222a0dd222a34a89641ab2c85a8b866be` |
+| `stubs/resources/views/flux/editor/option.blade.php` | 327 | `f1d949a49f87b40ec45c31658407ae2df6bea89ff7b1de594a9aacdd6a590cae` |
+| `stubs/resources/views/flux/editor/ordered.blade.php` | 1181 | `747e07152ec287afdfc814494f5c50697c95a61bcecbc2abe63d3407193d35de` |
+| `stubs/resources/views/flux/editor/redo.blade.php` | 519 | `4712c9f7b42cd70a41bca72cafc105a92d4e4cfd976b7ad33a0b91584648f54d` |
+| `stubs/resources/views/flux/editor/scripts.blade.php` | 45 | `e5ee69cb06814a08cc3038ab487bedc244755d58d145b5331e2365d9f2a006b2` |
+| `stubs/resources/views/flux/editor/separator.blade.php` | 127 | `9b6378c4f68d90cfa60501ed4c62b9e5af80bceb4aba2d835ea70a0931888b1c` |
+| `stubs/resources/views/flux/editor/spacer.blade.php` | 59 | `7c611d91849c1f1794dccbeda9f72997f064e092f62b3de1ddcad8792a35c182` |
+| `stubs/resources/views/flux/editor/strike.blade.php` | 1142 | `f45c8cbaf4125c9bd56ec17a9d598f2c0d039fea525fc58a6226a6b44968a9d5` |
+| `stubs/resources/views/flux/editor/styles.blade.php` | 44 | `4533bd6e7d3ec508378fadbcd41ba01fbe4493d42858065b0b12cbb68c88d45f` |
+| `stubs/resources/views/flux/editor/subscript.blade.php` | 612 | `43e765949bcf1f320aa428d0f0b4da3fb3c1f5fad925ae3cf20c047b027d6362` |
+| `stubs/resources/views/flux/editor/superscript.blade.php` | 633 | `360b739efbb6e2209cdadfcd604b8ef6a618dad23195da274915c6dd657cd102` |
+| `stubs/resources/views/flux/editor/toolbar.blade.php` | 1849 | `3e18afdc0064875416a260759f732201029a1d61a845f5bf4575076766439671` |
+| `stubs/resources/views/flux/editor/underline.blade.php` | 607 | `6db849eeb8f52a709977e63e54673e2eec073079d42ee745b617f090f442e2a2` |
+| `stubs/resources/views/flux/editor/undo.blade.php` | 510 | `32d37d3dde515acd9e3b6fea7a2779182640317dd2ad5d95a47d376b01ed7642` |
+| `stubs/resources/views/flux/file-item/index.blade.php` | 2880 | `234f1dae1275feb4387e978944703fb423bbb9875fa8133dd3bdfc8ee9b74fa4` |
+| `stubs/resources/views/flux/file-item/remove.blade.php` | 299 | `75fd10f68e8d81c5769f20d070e21e1e5051bb595a40bda9e47138dd588da99a` |
+| `stubs/resources/views/flux/file-upload/dropzone/index.blade.php` | 3146 | `141f942494d824be03fc64a9fa5d2fb0ba730743444d71bbfb35eae16f815f77` |
+| `stubs/resources/views/flux/file-upload/index.blade.php` | 1071 | `8dbe871da09debee0d7c6078dab36cb3d79280359dfcdcb156aca05d43802b01` |
+| `stubs/resources/views/flux/kanban/card.blade.php` | 1583 | `852fa3df0d52948e4a0e74cf127dd667b0484a15a3150056757e36484e2f10d8` |
+| `stubs/resources/views/flux/kanban/column/cards.blade.php` | 232 | `0ec3edfd31b09ff1a54f5436a7bba6e541aae1a3e9ead8c541fe3621b678ce6e` |
+| `stubs/resources/views/flux/kanban/column/footer.blade.php` | 224 | `99df6464323f4f52a38e4163ff5e25de9270c67727ae6bff750dc36977f991f0` |
+| `stubs/resources/views/flux/kanban/column/header.blade.php` | 1166 | `654d9c6cfff1a5be5c455c95361b4a8a31b8e2ff9f391feb07dfae89e2adf2a9` |
+| `stubs/resources/views/flux/kanban/column/index.blade.php` | 303 | `c610a1621e9d190e8862720a25e36c289d78729742697fbb98d5777d962468d1` |
+| `stubs/resources/views/flux/kanban/index.blade.php` | 105 | `856c8c569c40eae4a5a59914f9e42af6b7f06922ee034746435253cccf314378` |
+| `stubs/resources/views/flux/pillbox/empty.blade.php` | 168 | `cca15cd7736f329539f8e724719acc6d4e288d0623b48e8975adc83067520f18` |
+| `stubs/resources/views/flux/pillbox/index.blade.php` | 680 | `d8ce9a59a8542fea0ffd1fc39843365437682655f2cca3d1d38e1ea67501b50f` |
+| `stubs/resources/views/flux/pillbox/indicator.blade.php` | 124 | `438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9` |
+| `stubs/resources/views/flux/pillbox/input.blade.php` | 850 | `0f8e3e88a707eaf7e566b7faa7f743a9bc2a9506f4ff6d91cbc8000068309101` |
+| `stubs/resources/views/flux/pillbox/option/create.blade.php` | 1118 | `909ed74a5e251056384633864e86d71ed268eaf06e703b101912da78028073f9` |
+| `stubs/resources/views/flux/pillbox/option/empty.blade.php` | 427 | `7c78d0daec6823864fb4f5bf5e90ed83fd1f385d04dbf06069c5b7e1f1a286ed` |
+| `stubs/resources/views/flux/pillbox/option.blade.php` | 1492 | `0401747809a961c13174a54f2020860a995bdd87ec72d256e0bdab873736c0ef` |
+| `stubs/resources/views/flux/pillbox/options.blade.php` | 1963 | `426df1922c05453a64738940164f4f2a98a83bbc300af6c0d229fcd6eed8a865` |
+| `stubs/resources/views/flux/pillbox/search.blade.php` | 3349 | `9382339958a1fc68129c66967fcd95d76e08915b6061329f9912b7b2b24ed215` |
+| `stubs/resources/views/flux/pillbox/selected.blade.php` | 2316 | `decf0874aa39df28473f5173cc306161d19bc3b8e158b7bb8105490a43bdc494` |
+| `stubs/resources/views/flux/pillbox/trigger.blade.php` | 2990 | `1997d34472fad579f7667ef0d98a8cb8d9683eb93b23a91c780d70b24d80d327` |
+| `stubs/resources/views/flux/pillbox/variants/combobox.blade.php` | 2260 | `cb81737fd464aed4eaee5dbc4ad991b1bbeae3755736b848d57387c676fd9dd2` |
+| `stubs/resources/views/flux/pillbox/variants/default.blade.php` | 1484 | `494624f02128d66c58f058599e4a070dc0d3349aa3232992eb1d1fc80c07b608` |
+| `stubs/resources/views/flux/popover/index.blade.php` | 653 | `abab6be8c9afe030832bd2a6ef721a2498ce15dbe1f24b5c1c08afd8e30eb071` |
+| `stubs/resources/views/flux/select/button.blade.php` | 2271 | `2bba0426b43e432b692bb2b9558eca45ec8e62c9cfd7adb6fe31bc231463b419` |
+| `stubs/resources/views/flux/select/empty.blade.php` | 160 | `d77246da4283c4ea8a5ee416be46aa7d8156fedaa60785239693fffa9b8ba41c` |
+| `stubs/resources/views/flux/select/indicator/index.blade.php` | 474 | `b42831ede623b2ddd89f91e9b06d64d99728d1c311ab0584a28b56fcf7b6569c` |
+| `stubs/resources/views/flux/select/indicator/variants/check.blade.php` | 124 | `438b8c281d5dd431702c26cc0b8d621e3bb3fa397155a247a781f42c08b7e2d9` |
+| `stubs/resources/views/flux/select/indicator/variants/checkbox.blade.php` | 1179 | `20c31bba1b8798d376070a41dc6b8376a3942f9a2b6451b7fb64dd2101fa001d` |
+| `stubs/resources/views/flux/select/indicator/variants/radio.blade.php` | 1153 | `05a5815aa6c24f630e242a6b7cb6607edd53429aa5df7d8052ad572663d5c7ba` |
+| `stubs/resources/views/flux/select/input.blade.php` | 1522 | `cd416c3eb9d314619c0d93d03ae9e5f1e60089f0542a2ecb906897b115dc58da` |
+| `stubs/resources/views/flux/select/option/create.blade.php` | 1231 | `65526106af29078ae8164fa5ede6a054c41cf0200038f40a634fce826c3386b0` |
+| `stubs/resources/views/flux/select/option/empty.blade.php` | 428 | `d8b757a8c9b8d2c2937ed0dd84ab8686596afa2189dd7f78b96a2a29329a1944` |
+| `stubs/resources/views/flux/select/option/variants/custom.blade.php` | 1556 | `c8064af02f39b0dc0b5b1296bace517956cbea6b4fabfe038b289b4a5dac6d95` |
+| `stubs/resources/views/flux/select/options.blade.php` | 1747 | `2089fa8d718bdd9f122cca8a1bf9277f28d512067f31d266eb663e6c8e2fbb1f` |
+| `stubs/resources/views/flux/select/search.blade.php` | 3249 | `124645a118764953cfbf763570cb3a6ffd95fdff48cf73266171ae986e8eca5f` |
+| `stubs/resources/views/flux/select/selected.blade.php` | 789 | `2344e9a85d70df81f5bed2ba606421ea82f8bc96788675d36515e171625c098a` |
+| `stubs/resources/views/flux/select/variants/combobox.blade.php` | 1671 | `5bd5d1399aad302f686714f8e5a0ee26a4dc6372a9c508eb1816150e88bc7cd5` |
+| `stubs/resources/views/flux/select/variants/custom.blade.php` | 785 | `068061877fbd289032d02fad1ca3bbe826fca46fdfc702aa347e41034409932c` |
+| `stubs/resources/views/flux/select/variants/listbox.blade.php` | 1441 | `00445b42426786528186d71fce793ab6662a90be2e6eb3c078859c7a06aac3f6` |
+| `stubs/resources/views/flux/slider/index.blade.php` | 2805 | `9ff52ab941779f4740969613c7420391282fc1076cab680dbe2678e979cfce85` |
+| `stubs/resources/views/flux/slider/tick.blade.php` | 797 | `bceb341307f31f5e67bb715363e8abe5eb890ca77a1263f51b474c0ba4f70bb2` |
+| `stubs/resources/views/flux/tab/group.blade.php` | 121 | `b268a88d1e1d744a055bddaa1dfffd5abafdca8ddcfbc622a843f89e606213fc` |
+| `stubs/resources/views/flux/tab/index.blade.php` | 4088 | `3fcbad8e73d21d5387f2bc6ea7bca675533b93904949a88146489081da1d955f` |
+| `stubs/resources/views/flux/tab/panel.blade.php` | 423 | `eb019f863c07b8ac48ecb140fa82762f9993944d9aadf8169deab33bbc1714fd` |
+| `stubs/resources/views/flux/tabs.blade.php` | 2204 | `3dc0bac7cc97c5827b63c24f222ae69334b10aef9f2a90ec1d804cf9ff84a8c3` |
+| `stubs/resources/views/flux/time-picker/button.blade.php` | 2355 | `000557e1666479a431f11e4b9fe329bce626d9bf326d78eeaa7bcefef3baf7b5` |
+| `stubs/resources/views/flux/time-picker/index.blade.php` | 3979 | `353746a83761fee457ad288648ef8e28b8504fec586cf1f9bc26ae7583e39644` |
+| `stubs/resources/views/flux/time-picker/input.blade.php` | 4212 | `defd2e1527a6dbcfb058401c9d6d535a9485e1df9634ff9fd5c851dc6b6314d5` |
+| `stubs/resources/views/flux/time-picker/selected.blade.php` | 673 | `645f043d135dfc345beea78f5c28b3f245e414f2112ba1c9dd7171f128101eac` |
+| `stubs/resources/views/flux/timeline/block.blade.php` | 143 | `e683605869ce39b2a0d24139eeae4c66fa91c8732a679f52c52c01e5c1a9a81f` |
+| `stubs/resources/views/flux/timeline/content.blade.php` | 223 | `d8cb32d4cb1180d189076ae995862df92152c2b68e6e1b5baf5de83fbd8f4c10` |
+| `stubs/resources/views/flux/timeline/index.blade.php` | 554 | `11d4134b143f02c4c4d796e732fb05968ef89ae63a4503bbdc6b58b24c243c05` |
+| `stubs/resources/views/flux/timeline/indicator.blade.php` | 3327 | `67c44826d6cbd4120dd45263c4d12045b10a7970c76cd6e108ad893baeedd4c3` |
+| `stubs/resources/views/flux/timeline/item.blade.php` | 1320 | `92fe025a76fa5403bd7914df38a3bf56be7cbe9f82f9ce11f75e5aadadb10114` |
+| `stubs/resources/views/flux/timeline/subgrid.blade.php` | 145 | `8d90fa219de82ffd3beecf2118df693f6d6778506e3a51555324c3aff99352a7` |
+
+## Приложение G. Углубление существующих модулей и удаление дублирования
+
+Это карта ответственности, а не предложение нового универсального UI framework. **Module** здесь — существующий предметный узел; **Interface** — его входы, события и инварианты; **Implementation** — Flux и внутренний код. **Seam** — место замены виджета, **Adapter** нужен только при несовпадении реальных событий/значений. **Depth** оценивается тем, сколько повторяемого поведения скрывает Interface; **Leverage** — пользой нескольким сценариям, **Locality** — сосредоточением исправлений и тестов в одном месте.
+
+### G.1. Пофайловое решение для JavaScript
+
+| Файл / Module | Передать Pro или удалить после эквивалентной проверки | Сохранить / адаптировать | Проверяемый Interface |
+| --- | --- | --- | --- |
+| `resources/js/menu-translations.js` | ручные arrow-key tabs, roving tabindex, конкурирующее x-show | EN base projection, copy-only-empty, completeness, повторное раскрытие ошибки, scoped subscriptions | locale + form identity + draft + validation reveal |
+| `resources/js/menu-image-picker.js` | второй drop/drag handler, ручные locale tabs, визуальный upload progress | batch queue, preview identity, object URLs, pending rollback, metadata dirty/save | batch selected → preview/upload → explicit persistence |
+| `resources/js/menu-workspace.js` | визуальное tab/highlight поведение | revision-aware dirty guard, lazy child selection, pending navigation, history | один активный серверный раздел и сохранённый draft |
+| `resources/js/staff-workspace.js` | контролы и disclosure внутри редактора | modal/nonmodal transition, offline close/reconcile, discard consent, safe opener restoration | editor session + scope + unsaved state |
+| `resources/js/kitchen-delay-timers.js` | только presentation около timer | серверная clock baseline, elapsed/attention/delay, freeze terminal | timer state без дополнительных poll requests |
+| `resources/js/waiter-sounds.js` | settings presentation через Popover/Flux controls | AudioContext, gesture unlock, semantic signals, explicit user preference | звук только по существующему разрешённому событию |
+| `resources/js/passkeys.js` | нет эквивалента Pro | WebAuthn/Fortify transport целиком | существующий auth contract |
+| `resources/js/app.js` | imports действительно удалённых presentation modules | единственная registration point и корректный lifecycle | один runtime и один набор global listeners |
+| текущий незавершённый `resources/js/workspace-navigation.js` | существующий search presentation заменить Command после завершения текущей работы | normalized filtering, shortcut guards, cleanup, текущая navigation context | один navigation payload, без перехвата editor/IME |
+| clipboard-код в staff, guest-actions и settings/security | три расходящиеся реализации feedback/fallback | контекст reveal, lifetime секретов и native share | truthful copy result без storage/log/global payload |
+
+**Deletion test:** не создавать заново generic UiSelect, когда прямой Flux проще. Удаление предметного multilingual-authoring или gallery Module вернёт copy/validation/receipts логику в несколько форм; такие модули нужно сохранить и углубить, а не растворять по страницам.
+
+Не объединять history-код menu/staff механически. `menu-workspace.js` отменяет часть Navigation API traverse, а staff использует восстановление entry index после popstate: в `docs/DECISIONS.md` зафиксирована причина для WebKit. Общий Seam появится только после общей behavioural specification и одинаково проходящих browser cases, а не из-за похожих названий функций.
+
+### G.2. Gallery upload — Adapter обязателен
+
+**Доказательства:** `flux-pro/dist/flux.js:7683–7705,7722–7745,7793–7806,7823–7827`; `resources/js/menu-image-picker.js:40–62`; Pro receiver в `file-upload/index.blade.php` помечен `wire:ignore`.
+
+Pro останавливает original input change и испускает новый event от `ui-file-upload`; очищает внутренний список при click/dragenter; finish/error/cancel снимает своё disabled-состояние. Текущий код читает `event.target.files`, сам записывает input.files при drop и ведёт накопленные previews. Простая замена внешнего тега не сохраняет этот Interface.
+
+План Adapter:
+
+1. Нативный выбор и drop принадлежат Flux; application Adapter получает **новую партию**, не добавляет повторно всю накопленную очередь.
+2. Server temporary upload, browser preview и persisted gallery получают разные stable identities. Индекс массива не служит mutation credential.
+3. Cancel chooser/drop без файлов не удаляет предыдущую удачную партию. Повторный выбор того же файла обрабатывается явно.
+4. Error одной партии не очищает уже завершённые pending uploads. Неудачная persistence mutation не подменяется upload success.
+5. `uploading` Flux и `saving/removing/offline` продукта соединяются в итоговое disabled-состояние. Завершение upload не разрешает запрещённый save/remove.
+6. Object URLs освобождаются при удалении preview, успешном commit и destroy; после морфа сохраняется правильная связь preview→file.
+7. Максимум 8 проверяется сервером для совокупности existing+pending; client count — подсказка, не гарантия.
+8. Private restore multipart остаётся отдельным безопасным upload contract; общий визуальный FileItem не даёт разрешения использовать публичную временную загрузку.
+
+### G.3. Multilingual authoring и фокус
+
+`components/menu/translation-fields.blade.php` остаётся общим Module для всех существующих menu translation forms; Tabs и, где предусмотрено P11, Editor находятся внутри. Это реальная повторная польза без нового UiTabs.
+
+- У Pro `tab/index.blade.php` и `tab/panel.blade.php` автоматически появляется `wire:key=name`. Повторяемым `en/lt/ru` нужны explicit keys с entity/form/locale и отдельным tab/panel suffix; сохранить существующий idPrefix.
+- Один владелец active-tab, selected и tabindex. Application только запрашивает нужную locale при ошибке/copy; Pro владеет переключением и keyboard interaction.
+- Staff initial-focus сейчас ищет input/select, translation error-focus — invalid/input/textarea. Новый Listbox фокусируется на button, Editor — на contenteditable. Предусмотреть `data-editor-initial-focus` и `data-validation-focus` на настоящем focusable node, без query по случайному первому input внутри search popover.
+- Native validity hidden input не должна удерживать submit на невидимой вкладке. Сохранить действующий `novalidate` и server errors/reveal.
+- Повторная **идентичная** ошибка обязана снова раскрыть вкладку после ручного ухода пользователя. Значение, ID, caret и input method не теряются при обычном morph.
+- Для rich description отдельно определить limit исходного HTML payload и limit plain content; HTML markup не должен незаметно съедать весь прежний лимит текста.
+- Metadata alt/caption остаются plain text и сохраняются отдельно от image upload; Editor туда не подключается.
+
+### G.4. Единые данные для навигации, контекстных действий и уведомлений
+
+**Navigation Module:** принять текущий `BuildApplicationNavigationAction` и его подготовленный `navigationItems` (key/label/icon/href/current/group) как источник sidebar/mobile/Command. Вычисление прав выполняется сервером; не выводить скрытые destinations в JSON для последующего клиентского filtering. При смене organization/branch/logout очищать результаты поиска предыдущего контекста.
+
+**Action list Module:** обычное dropdown и Context используют один уже разрешённый presentation payload действий. Browser передаёт стабильный action identifier в явный существующий метод; не делать универсальный вызов произвольного PHP method по имени из клиента. Server повторяет policy и проверки состояния, даже если пункт был разрешён при render.
+
+**Notification Module:** принять текущую параллельную работу `app/Livewire/Notifications/UnreadCount.php`, его view и query service. При заключительном повторном чтении sidebar уже содержит один responsive host, панель — lazy modal/flyout с epoch guard; `PANEL_LIMIT = 20` задаёт последние read+unread уведомления, count считается отдельно, details читаются только при panelOpen. Timeline можно встроить внутрь этой панели; переход к Popover требует отдельной эквивалентности, а не повторного переписывания готового recovery. Сохранить type+branch scope, locked audience fingerprint, private per-request list и повторную policy-проверку destination. Открытие не означает прочтение; read/all-read остаются отдельными Actions. Смена account/permissions очищает прежний payload. Это snapshot незавершённой работы, а не присвоенная плану проверенная реализация.
+
+**Clipboard transport Module:** объединение полезно для staff invitation, guest invite и security copy только при общем маленьком Interface success/failure/fallback. Значение не уходит в storage, telemetry или глобальный toast payload. Guest native share остаётся самостоятельным. Текущий guest fallback должен учитывать return `execCommand` и rejection `writeText`; UI не показывает ложное «скопировано».
+
+### G.5. Предметные композиции, которые нужно сохранить
+
+| Существующий узел | Внутренняя Pro-композиция | Что даёт Depth |
+| --- | --- | --- |
+| `components/menu/translation-fields` | Tabs, Editor, Popover help | один copy/completeness/error contract для всех сущностей |
+| `components/menu/item-label-fields` | Pillbox, searchable options | общие enum labels; authoring «содержит» отличается от guest «исключить» |
+| `components/menu/item-images` | FileUpload/FileItem, Slider, Tabs | batch/revision/preview/metadata в одном сценарии |
+| `App\View\Components\Ui\ImageUploadInput` | Pro upload shell | MIME/help продолжают поступать из StoreLocalImageAction |
+| `components/dashboard/report` | DatePicker/Calendar + Chart + доступная таблица | один committed period и один scoped report payload |
+| `components/dashboard/operation-card` | сохранить карточку; help/Context только при нескольких существующих действиях | единая priority/next-action семантика, без дополнительного меню для единственного перехода |
+| `components/ui/metric-strip` | существующий semantic dl, Pro только при наличии данных | суммы не превращаются в выдуманную временную серию |
+| staff editor composition | Pro Select/Pillbox/Accordion внутри существующего host | одинаковый responsive/offline/consent lifecycle |
+| guest dish/detail composition | Composer/Timeline/Tabs по сценарию | сохранение note/modifiers/idempotency и local close |
+
+## Приложение H. Дополнительные места интеграции и взаимодействие функций
+
+Эти уточнения расширяют таблицу 2.5. У каждого пункта есть предметная причина. Несуществующие calendar reservations, AI chat, онлайн-платежи, файлы в комментариях и свободная сортировка заказов не вводятся лишь ради демонстрации виджета.
+
+| Поверхность | Дополнительная интеграция | Данные и ограничения | Этап |
+| --- | --- | --- | --- |
+| Shared shell | Command, сгруппированные результаты, keyboard hint, empty state | тот же navigationItems и текущий tenant, без отдельного route registry | P7/P15 |
+| Notification center | Timeline внутри текущей flyout panel; Popover только с доказанной эквивалентностью | один host/poller, текущий limit20, read+unread, lazy details, audience/destination guards | P12/P15 |
+| Branch picker | searchable Listbox с scoped groups, selected text, empty/loading | selected/all-branches draft guard, недоступный выбранный филиал не подменяется первым | P3 |
+| Organization/brand/branch selectors | bounded async search/Autocomplete только для текстового поиска | native ID selectors остаются closed allowlist; stale response не пересекает scope | P3 |
+| Onboarding summary | Accordion readiness, Popover explanations, Timeline реальных шагов | текущий шаг из persisted graph, expanded invalid section; не менять retry semantics | P4/P8 |
+| Branch opening hours | TimePicker, Accordion по дням, Popover timezone help | server HH:mm, overnight/closed/overlap правила существующего Form | P5 |
+| Temporary closure / hidden-until | DatePicker + TimePicker с отдельным draft/apply | branch-local timezone, explicit open/closed state и существующая Action | P5 |
+| Report period | DatePicker range, inline Calendar на wide viewport, domain presets | один atomic period URL, максимум 31 день, inclusive last7, browser day не authority | P5 |
+| Report details | Chart cursor/tooltip/summary/legend и связанная таблица | один payload и currency scope; null/empty/stale/error различаются | P9 |
+| Menu workspace | Tabs навигации, Accordion advanced fields | один смонтированный child, URL/back/dirty semantics сохраняются | P4 |
+| Menu translation forms | Tabs, localized Editor toolbar, help Popover | EN/LT/RU, base projection, repeated hidden error | P4/P11 |
+| Dish label authoring / guest filters | Pillbox/selected chips/clear/empty | общие подписи enum, разная логика contains/excludes | P3 |
+| Dish media | FileItem previews, dropzone, metadata Tabs, focal Slider/ticks | limit8, generated storage names, remove receipt, отдельный save metadata | P6 |
+| CSV import | FileUpload inline/FileItem, Accordion preview/errors | локальный server validation, existing preview/commit; upload не запускает import автоматически | P6 |
+| Catalog bulk quality | Pillbox filters, Popover explanations, Context разрешённых действий | bounded selected IDs, server policy каждого mutation, no hidden bulk apply | P3/P7 |
+| Category/item/service-point rows | Context + тот же visible dropdown | keyboard/touch equivalent, destructive confirmation, no bypass dirty editor | P7 |
+| Team employee editor | searchable role/branch Select, Pillbox выбранных зон/фильтра, Accordion advanced access | иерархическое дерево не заменять flat picker с потерей контекста; invitation-only identity, stale revision и assignment fingerprint | P3/P4 |
+| Team invitation | Timeline реальных lifecycle events, Popover consent help | no credential in data payload; recipient/version/replay остаются на сервере | P8 |
+| Guest dish note / waiter draft edit | Composer multiline с явной save action | plain text, maxlength, no accidental parent submit, modifiers и attempt UUID сохраняются | P8 |
+| Guest order / waiter detail | Timeline по настоящим статусам и server timestamps | cancelled/rejected/existing order snapshots, не сочинять этапы для отсутствующих событий | P8 |
+| Kitchen/bar | Kanban column/header/cards/footer + counts, Context existing action | item transitions, 24-ticket bounded page, ordered queue, served_at-derived completed | P10 |
+| Service-point operational details | Accordion/Popover read-only объяснения, Context enabled actions | permanent QR identity; occupied/cancelled history не получает новые переходы | P4/P7 |
+| Waiter preference panel | Popover sound preference + Flux controls | existing AudioContext/user gesture; не добавлять звук кухне без requirement | P12/P15 |
+| Account/auth/security | Accordion второстепенных инструкций, Tabs только локального presentation, consistent feedback | Fortify feature flags/passkeys/recovery intact; simple native form submit сохраняется | P12 |
+| Superadmin/history/recovery | Select filters, Timeline подготовленного audit payload, Accordion details | scoped redaction, bounded pagination, private restore upload/reauth unchanged | P12 |
+| Local component reference | все доступные family/variant fixtures, light/dark/locale examples | переиспользовать текущую local reference работу; local-only route и fictitious data | P1/P13/P15 |
+| QR print/PDF | общие prepared data и controls страницы настройки | сам PDF остаётся semantic/native static markup, геометрия и readable code не меняются | P12 |
+
+### H.1. Неприметные особенности Pro runtime, которые требуют отдельной проверки
+
+| Находка в локальной поставке | Следствие для реализации | Проверка |
+| --- | --- | --- |
+| `DateValue.today()` использует browser `new Date()`, flux.js:5953 | built-in today/presets не являются branch-local «сегодня» | browser и branch в разных датах около полуночи/DST; domain presets серверные |
+| TimePicker default locale берётся из navigator, flux.js:6727 | html lang сам по себе не доказывает правильный time display | явно передать SupportedLocale/24-hour policy; смена языка не меняет HH:mm |
+| Calendar locale/start-day зависят от Intl и attributes, flux.js:8680+ | начало недели и labels нужно контролировать явно | EN/LT/RU, поддержанные браузеры, даты без преобразования в UTC instant |
+| Chart date formatting принудительно добавляет UTC, flux.js:12010,13006,13042 | daily bucket labels не должны случайно смещаться или переименовываться | передавать согласованные day keys/labels, browser timezone не меняет отчёт |
+| Chart root использует wire:ignore.children | изменение branch/range/locale должно обновлять и data, и labels | проверить API обновления; при необходимости semantic revision key, без remount на каждый poll |
+| JS numbers ограничены безопасными целыми | minor-unit sums нельзя безусловно преобразовать в float для графика | guard safe range/явная display scale; canonical totals/table остаются exact |
+| Tabs генерируют wire:key из name | en/lt/ru повторяются в нескольких редакторах | explicit entity/form/locale/tab-or-panel keys |
+| Composer submit default — cmd-enter, flux.js:9622,9750–9762 | Ctrl/Cmd+Enter может submit enclosing form | проверить exact parent action; note save не подтверждает заказ |
+| В проверенном Composer key handler нет isComposing guard; inner textarea stopPropagation | IME и delegated dirty handler требуют адаптации | composing Enter не отправляет; outer event корректно помечает draft |
+| FileUpload меняет target change и disabled lifecycle | прежний native picker handler несовместим без Adapter | batch/disabled cases G.2 |
+| Main runtime регистрирует custom elements напрямую | два scripts или main+module вызовут повторные registrations/listeners | один script, navigate 5 циклов, console и request counts |
+| Editor CSS/JS загружаются через @assets | экран без editor не должен предзагружать тяжёлый editor bundle | первый lazy mount, повторный mount и возврат browser history |
+| AssetManager кеширует на год и использует manifest tokens | patch dist без обновления token оставит клиентам старый JS | согласованный artifact; patched asset token меняется, upstream manifest не правится без причины |
+| Локальные provider/facade aliases неочевидно согласованы | успешный Composer resolution ещё не доказывает весь boot | alias/container/render тест, не менять upstream по догадке |
+
+**Overlays:** Pro Popover/Listbox внутри native staff dialog проверяются в обоих режимах 63rem/64rem и поверх sticky/mobile actions. Escape сначала закрывает ближайший widget, затем editor согласно существующему контракту; outside-click не теряет dirty draft. Command, Context и Editor link dialog не должны одновременно владеть shortcut/focus. Новая top-layer панель не лечится произвольным увеличением z-index.
+
+**Form transport:** при Native→Listbox/Pillbox учитывать string/array/null/empty semantics, disabled/read-only, hidden submit inputs и duplicate name. Для Livewire и обычного POST отдельно проверить, что сервер получает ровно одно ожидаемое значение и сохраняет исходные invalid values для ошибки. Никакой hidden control не становится доверенным ID.
+
+**Rich content:** fixtures должны покрывать все 25 editor templates в подходящей parent composition, включая code/highlight/align/sub/sup/undo/redo/link. Сохранить только явно разрешённые форматы; link URL schemes валидируются server-side, paste очищается повторно на сервере, sanitizer идемпотентен, raw HTML доступен единственному проверенному renderer. Список безопасных форматирующих возможностей и запрещённых executable features фиксируется в P11, без заявления «любой HTML поддержан».
+
+## Приложение I. Расширенная программа доказательств
+
+### I.1. Три независимых измерения полноты
+
+1. **Distribution:** каждый файл принятого release обязательно присутствует; отдельно old→new mapping объясняет судьбу всех 139 файлов старого snapshot. Пояснение replacement не разрешает пропустить файл новой принятой поставки. Лицензия/metadata/assets/templates проверяются целиком.
+2. **Component contract:** каждая family и применимый variant проверены внутри корректной композиции, включая state, accessibility и Livewire transport. Внутренний toolbar/axis/option template не обязан рендериться как самостоятельная страница.
+3. **Product use:** каждое применимое семейство работает в настоящем сценарии из матриц 2.3/2.5/H. Протестированный range slider без предметного применения помечается QA-only и не увеличивает показатель продуктового внедрения.
+
+До P0 denominator — 18 family / 125 templates / 139 содержательных файлов исходной поставки. После выбора более нового release переснять все три denominator. Статический счётчик Flux tags сам по себе не доказывает качество или завершение.
+
+### I.2. Дополнительные тестовые обязанности
+
+Названия ниже — **планируемые новые файлы**, их ещё нет. Допустимо объединить близкие обязанности, если диагностика остаётся ясной.
+
+| Планируемый тест / проверка | Положительное доказательство | Негативный case |
+| --- | --- | --- |
+| `tests/Feature/FluxProPackageContractTest.php` | настоящий package, stable compatible version, provider/helpers/paths, physical mirror | missing source/helper, wrong identity, symlink/absolute root path, duplicate provider |
+| `tests/Feature/FluxProDistributionIntegrityTest.php` | manifest path/size/hash, license, dist keys, approved patches | отсутствующий/лишний/изменённый файл; manifest нельзя обновлять автоматически при падении |
+| `tests/Feature/FluxProRuntimeAssetsTest.php` | 5 endpoints, debug/production, MIME, content/version tokens, supported caching | HTML/error вместо JS, stale copied runtime, original root unavailable |
+| `tests/Browser/FluxProControlsTest.php` | family/variant fixtures EN/LT/RU, focus, theme, keyboard, morph | repeated validation, hidden error, duplicated listeners, uncontrolled submit |
+| Clean installation drill | новый release directory, tracked package, допустимые dependency inputs, isolated env | root folder никогда не присутствовал; dependency cache miss даёт точный blocker |
+| Release/rollback drill | app+Free+Pro+lock+assets одного snapshot, source/vendor equality | смешанные старые/new dist, stale CSS, доступ к personal path |
+| Production exposure smoke | served JS/CSS только предусмотренными routes | package composer/PHP/license source не открыт как web directory |
+
+Source equality тест сравнивает реальные байты/путь, а runtime tests — настоящие ответы и поведение. Не писать фиктивный тест, который только проверяет наличие строки `flux-pro` в composer.json.
+
+### I.3. Совместные browser cases, добавленные при глубоком анализе
+
+- [ ] Два translation editors и image metadata editor на одном экране: независимые tabs, уникальные IDs/keys, повторная одинаковая ошибка открывает правильную locale.
+- [ ] Pro Listbox внутри staff editor на 63→64rem и обратно: popup, focus, Escape, nonmodal desktop, offline close и focus restoration.
+- [ ] Command/Context при dirty menu/staff editor: action не обходит guard; cancel navigation сохраняет draft и корректный history cursor.
+- [ ] Keyboard command не перехватывает contenteditable, IME, repeat, editor Cmd+K и уже открытый dialog.
+- [ ] Browser и branch имеют разные local dates: today/yesterday/last7, hidden-until, overnight hours и DST остаются предметно корректными.
+- [ ] Upload A успешен, B неудачен/отменён, C выбран повторно; A сохранён, previews stable, object URLs освобождены.
+- [ ] Upload finish приходит во время offline/save/remove; UI не разрешает запрещённую мутацию.
+- [ ] Один notification host на mobile/desktop, закрытая/открытая панель, visible/hidden document; no double poll, no automatic mark-read, late open response после close не открывает панель; смена account/rights очищает payload, destination повторно авторизуется.
+- [ ] Composer внутри guest/waiter forms: Enter, Ctrl/Cmd+Enter, composing Enter, repeated click, server validation; родительский order transition не запускается случайно.
+- [ ] Clipboard denied/unavailable: нет ложного success, есть selectable fallback; секрет не попадает в storage/console/toast payload.
+- [ ] Calendar/Chart меняют branch/range/locale без старых tooltip labels; суммы в таблице/CSV и chart labels согласованы по валюте.
+- [ ] Kanban: forward transition, stale card, другой tenant/department, двойной request и poll во время drag; keyboard/button equivalent работает.
+- [ ] Editor: сначала plain page, затем lazy editor через navigate, rich save/reopen, unsafe paste/link, undo/redo, back-forward, пять циклов без duplicate runtime.
+- [ ] Старые Free Button/Modal/Sidebar/Toast/OTP/Progress работают на новом общем Pro runtime; это отдельная регрессия, а не побочный эффект проверки Pro.
+- [ ] Root folder отсутствует: hard refresh, JS/CSS HTTP responses, production theme, Pro selector, gallery upload и editor boot проходят.
+
+Проверки, затрагивающие запись, выполняются с factories в owned disposable SQLite и изолированном storage. Тестовый компонентный reference закрыт в production и не читает настоящие tenant data. Herd остаётся обслуживающим runtime для локальной UI-инспекции; отдельный dev server не запускается.
+
+### I.4. Последовательность проверки артефакта перед удалением
+
+~~~text
+fresh scoped inventory + free disk + no competing writers
+  -> accepted package provenance + full hashes
+  -> package mirror into clean release from allowed local inputs
+  -> dependency/platform/discovery contract
+  -> source-vendor hash equality
+  -> Vite production build after mirror
+  -> isolated config/route/view caches
+  -> targeted + complete application/browser/coverage gates
+  -> new directory without root flux-pro: install/build/runtime drill
+  -> release rollback drill
+  -> final source inventory and old-path search
+  -> remove only original root directory
+  -> repeat affected integrity/assets/build/cache/browser checks
+  -> record exact result
+~~~
+
+Не запускать `composer setup` как невинную проверку: он включает миграции. Composer post-update hooks также могут менять generated guidance; сначала работать в disposable копии, затем оценивать diff. `COMPOSER_DISABLE_NETWORK=1` может быть дополнительным режимом проверки при достаточном cache, но не заменяет проверку всех запускаемых plugins/scripts на отсутствие запрещённых запросов. Невыполненный cold-install из-за недостающих разрешённых архивов — blocker, а не pass.
+
+### I.5. Rollback и кеши
+
+- Release bundle включает совместимый Free, Pro, installed metadata, app, lock и compiled Vite assets. В source artifact обязательно входит внутренний package; одного git archive без vendor/build недостаточно для запуска.
+- Cache directories принадлежат release/drill; не очищать канонический application cache другого процесса ради проверки плана.
+- Raw bundle manifest tokens и HTTP Last-Modified/304 должны соответствовать фактическому accepted asset. При approved JS patch обновлять cache identity вместе с байтами, документируя divergence.
+- После переключения release проверить warm browser и hard reload: старый открытый Livewire snapshot может содержать предыдущий markup. Обработать штатное обновление страницы, не оставлять смешанные версии runtime.
+- Срочный UI rollback сохраняет SQLite/media и additive rich columns; plain projection остаётся совместимой со старым кодом. Down migration не является первым действием rollback.
+- Проверенный rollback использует предыдущий согласованный внутренний package artifact. Возврат root `flux-pro/` в runtime path не входит в постоянный процесс.
+
+## Приложение J. Итоговые критерии и порядок обновления кода
+
+### J.1. Изменяемые и создаваемые файлы по назначению
+
+| Назначение | Существующее / планируемое размещение | Когда |
+| --- | --- | --- |
+| Полная принятая поставка и карта исходного snapshot | новый `packages/livewire/flux-pro/**`, карта F + accepted release additions/replacements | P14 после совместимого P0 |
+| Provenance/content inventory | новые `packages/livewire/flux-pro.provenance.json`, `packages/livewire/flux-pro.sha256` | P14, затем каждое обновление |
+| Composer integration | root `composer.json`, `composer.lock` | P0/P14 |
+| CSS source и theme contracts | `resources/css/app.css`, существующие layout/theme parts | P1/P2 |
+| Product compositions / presentation | перечисленные в 2.5/G/H Blade и UI classes | P3–P13/P15 |
+| Event/value adaptation | существующие JS Modules, gallery-specific Adapter; общий clipboard только при доказанной пользе | P6/P8/P15 |
+| Business additions | existing Forms/Actions/read services; additive rich migration, sanitizer/renderer, истинные chart data | P9/P11, не прятать в vendor |
+| Runtime/integrity regression | будущие tests из I.2 + существующие tests из 7.2 | с первым изменением, RED/GREEN |
+| Formatting/scanners | `pint.json`, architecture tests, при необходимости точечный scanner scope | P1/P14/P17 |
+| Release/update contract | существующие frontend/deployment/testing/decisions/current-version/compliance документы | по мере факта; финал P18 |
+| Старый source root | удалить только `flux-pro/**` после проверки | P17 |
+
+**Граница анализа и исполнения:** первоначальный анализ менял только этот план; временный визуальный обзор не является новой canonical spec. Последующий разрешённый checkpoint добавил внутреннюю копию, provenance/checksums, integrity test, узкую защиту Pint и текущую документацию/traceability. Dependencies, runtime, application data, migrations и удаление исходной папки в этом checkpoint не менялись. Параллельные правки других задач сохраняются.
+
+### J.2. Когда можно сказать «всё перенесено и интегрировано»
+
+- [ ] Полный принятый release присутствует в tracked internal package; original139 и additions/replacements учтены без потерянных файлов.
+- [ ] Exact version/constraints/provenance подтверждены; установленная пара совместима; штатная Composer identity и license intact.
+- [ ] Все применимые family/variant задачи P1–P13 приняты; QA-only варианты и реальные blockers обозначены честно.
+- [ ] Убран заменённый first-party widget-код, но сохранены нужные domain state/Actions/transport/recovery.
+- [ ] Canonical package, mirrored vendor, build и release manifest согласованы по hashes.
+- [ ] Отсутствие старой папки доказано fresh install/runtime/build drill, затем фактическим удалением и повторной проверкой.
+- [ ] История Git и release artifacts позволяют восстановить предыдущую поставку локально без доступа к исходному каталогу.
+- [ ] Нет новых скрытых online runtime services, лицензирующих заглушек, вторых frameworks или дополнительных постоянных workers.
+- [ ] Все результаты тестов связаны с проверенным source snapshot; docs и compliance отражают внедрение, а не намерения.
+
+### J.3. Обновление после завершения миграции
+
+Обычный цикл: **полный официальный compatible release → временная проверка происхождения → сравнение old/new inventory → review минимальных first-party adaptations/patches → обновление canonical package и metadata → mirror → build → regression gates → согласованный artifact**.
+
+Обновления принадлежат конкретной версии, поэтому после upgrade нужно снова проверить changed props, aliases, embedded libraries, labels, CSS sources, current overrides и runtime lifecycle. Если upstream закрыл accessibility/localization gap, удалить corresponding override после положительной регрессии. Если компонент из P13 отсутствует в принятом release, оставить честный статус availability и не выдавать локальную имитацию за Flux Pro.
+
+Лимит объёма работ заранее не срезается: программа охватывает исходную поставку полностью, текущие интерфейсы, необходимую backend-поддержку, перенос, удаление и сопровождение. Порядок остаётся по зависимостям; version/source blocker решается до массовой UI-миграции.

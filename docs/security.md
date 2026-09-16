@@ -4,6 +4,21 @@
 
 # Application security
 
+## Browser migration security boundary — 2026-09-16
+
+Alpine owns transient browser state only; class-based Livewire validates and authorizes mutations through existing Actions. The architecture suite pins the class-based page inventory and explicit native HTTP contracts. Inline executable modules/large state objects and independent application AJAX are removed; user content is not inserted with `x-html` or `innerHTML`.
+
+The sole first-party `fetch` exception is `resources/js/integrations/passkeys.js`: exact same-origin options/credential routes, credentials and CSRF headers, redirect rejection, AbortController ownership and stale-response checks after every asynchronous boundary. The pinned SimpleWebAuthn SDK retains cryptographic browser operations. Cancel during options GET cannot start a later ceremony. Cancel during POST never claims a rollback or success; a subsequent authoritative server refresh resolves the outcome. No auth/invitation secret is persisted in a browser store.
+
+Generated inline PDF/emergency CSS is built only from fixed repository Sass entrypoints; the generator rejects HTML/PHP/Blade delimiters. Remaining inline styles are bounded photo focal-point data in the exact architecture allowlist. User input cannot select a filesystem stylesheet path. Existing CSRF, invite replay/expiry, MFA, session, restore locks and tenant tests remain mandatory.
+
+
+## Flux Pro source and activation boundary — 2026-09-15
+
+The preserved internal package retains its proprietary license and is explicitly marked as a user-provided snapshot with unknown upstream version; hashes prove consistency with that snapshot, not authenticity. No Composer credential is copied into provenance, tests or documentation. Serve only the normal Laravel `public/` document root; neither original nor internal package source becomes a public asset directory.
+
+Compatibility must be resolved through an accepted release before activation. Component-hidden fields, client selection IDs, context actions and Kanban moves remain untrusted and authorize server-side. Editor support is still pending: current descriptions remain escaped plain text until a separately tested sanitizer, allowlist and rendering/storage contract exists. P16/P17 require clean release and rollback proof before original-source deletion; an integrity test alone is insufficient.
+
 ## Final team security corrections — 2026-09-15
 
 The recipient form rejects an email that differs from the invitation before querying global account uniqueness. Existing and unknown foreign addresses produce the same localized mismatch response. Password requirements retain the shared Fortify-compatible rules and receive complete EN/LT/RU validation messages.

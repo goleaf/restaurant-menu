@@ -9,19 +9,19 @@
     'status' => null,
 ])
 
-<header {{ $attributes->class('flex min-w-0 flex-col gap-4 border-b border-border-subtle pb-4 sm:pb-5 xl:flex-row xl:items-end xl:justify-between') }}>
+<header {{ $attributes->class('rm-page-header') }}>
     <div class="min-w-0">
         @if ($breadcrumbs !== [])
             <nav aria-label="{{ __($breadcrumbLabel) }}">
-                <ol class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-text-muted">
+                <ol class="rm-page-header__breadcrumbs">
                     @foreach ($breadcrumbs as $breadcrumb)
-                        <li class="flex min-w-0 items-center gap-2">
+                        <li class="rm-page-header__breadcrumb">
                             @if (! $loop->first)
                                 <span aria-hidden="true" class="text-border-strong">/</span>
                             @endif
 
                             @if (($breadcrumb['href'] ?? null) !== null && ! ($breadcrumb['current'] ?? false))
-                                <a href="{{ $breadcrumb['href'] }}" class="min-w-0 rounded-control text-pretty hover:text-text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2" wire:navigate>
+                                <a href="{{ $breadcrumb['href'] }}" class="rm-page-header__link" wire:navigate>
                                     {{ __($breadcrumb['label']) }}
                                 </a>
                             @else
@@ -37,14 +37,14 @@
             <p class="text-sm font-medium text-text-muted">{{ __($context ?? $eyebrow) }}</p>
         @endif
 
-        <div class="mt-1.5 flex min-w-0 flex-wrap items-center gap-2.5">
+        <div class="rm-page-header__heading">
             @if ($icon)
-                <span class="flex size-9 shrink-0 items-center justify-center rounded-control border border-border-subtle bg-surface text-accent">
+                <span class="rm-page-header__icon">
                     <flux:icon :name="$icon" variant="mini" class="size-5" />
                 </span>
             @endif
 
-            <h1 class="content-safe min-w-0 flex-1 text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-text-primary">{{ __($title) }}</h1>
+            <h1 class="rm-page-header__title">{{ __($title) }}</h1>
 
             @if ($status)
                 <x-ui.status-badge :tone="$status['tone'] ?? 'muted'" :icon="$status['icon'] ?? null">
@@ -54,7 +54,7 @@
         </div>
 
         @if ($description)
-            <p class="mt-2 max-w-3xl text-pretty text-sm leading-6 text-text-muted">{{ __($description) }}</p>
+            <p class="rm-page-header__description">{{ __($description) }}</p>
         @endif
 
         @if ($context && $breadcrumbs !== [])
@@ -63,7 +63,7 @@
     </div>
 
     @isset($actions)
-        <div class="grid w-full gap-2 xs:grid-cols-2 xl:flex xl:w-auto xl:shrink-0 xl:flex-wrap xl:justify-end [&>*]:w-full xl:[&>*]:w-auto">
+        <div class="rm-page-header__actions">
             {{ $actions }}
         </div>
     @endisset

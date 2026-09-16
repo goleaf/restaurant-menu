@@ -1,0 +1,23 @@
+@use '../settings/tokens';
+
+@layer theme {
+    :root, :host {
+        @each $name, $value in tokens.$light {
+            #{tokens.variable($name)}: #{$value};
+        }
+    }
+
+    .dark {
+        @each $name, $value in tokens.$dark {
+            #{tokens.variable($name)}: #{$value};
+        }
+    }
+}
+
+// Flux sets these aliases directly on .dark outside layers. Keep that narrow
+// integration bound to the same canonical runtime values as Tailwind utilities.
+.dark {
+    --color-accent: var(--rm-accent);
+    --color-accent-content: var(--rm-accent-content);
+    --color-accent-foreground: var(--rm-accent-foreground);
+}

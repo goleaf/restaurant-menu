@@ -4,19 +4,10 @@
         <meta charset="utf-8">
         <title>{{ __('qr.print.pdf_title', ['branch' => $branchName]) }}</title>
         <style>
-            @page { margin: 10mm; }
-            * { box-sizing: border-box; }
-            body { margin: 0; color: {{ $theme['text'] }}; font-family: "DejaVu Sans", sans-serif; font-size: 11pt; }
-            .sheet { width: 100%; border-collapse: separate; border-spacing: 6mm; table-layout: fixed; }
-            .label { width: 50%; padding: 7mm; border: 1.5pt solid {{ $theme['border'] }}; background: {{ $theme['background'] }}; text-align: center; page-break-inside: avoid; vertical-align: top; }
-            .brand { margin: 0 0 3mm; color: {{ $theme['accent'] }}; font-size: 15pt; font-weight: 700; }
-            .instruction { margin: 0 0 4mm; font-size: 10pt; }
-            .qr { width: 55mm; height: 55mm; }
-            .code { margin-top: 3mm; font-size: 14pt; font-weight: 700; letter-spacing: 1pt; }
-            .table-number { margin-top: 2mm; font-size: 11pt; font-weight: 700; }
+            @include('generated.styles.pdf-qr')
         </style>
     </head>
-    <body>
+    <body data-qr-preset="{{ $preset }}">
         <table class="sheet">
             @foreach ($rows as $row)
                 <tr>

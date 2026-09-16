@@ -17,3 +17,6 @@ Kitchen-department create/edit values must reach shared validation in their orig
 
 ## Validate raw selections before persistence
 Menu editor inputs retain their original transport types until validation, including translations, flags, integer limits and money. Use numeric with integer to reject booleans while accepting browser numeric strings. Dependent reads and uniqueness scopes use a safe string projection of selections; never overwrite invalid public input with that projection or coerce it before validation. Test malformed update payloads as well as valid create/edit persistence.
+
+## Render-time filter validation must preserve editor errors
+In installed Livewire 4.4.1 a successful Form::validate() resets the parent component error bag, not just that form. Do not call it while preparing render-time filters beside another editor. Validate the bounded filter payload with Laravel Validator, retain filters.* error keys/localized field names and reset only those explicit filter fields. Protect invalid editor input across refresh and filter correction.

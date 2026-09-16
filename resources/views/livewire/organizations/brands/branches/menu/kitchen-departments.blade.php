@@ -55,7 +55,7 @@
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <h2 class="truncate text-base font-semibold text-zinc-950 dark:text-white">{{ $department['name'] }}</h2>
-                                    <flux:badge :color="$department['type_color']">{{ $department['localized_type'] }}</flux:badge>
+                                    <flux:badge :color="$department['type_color']" :class="$department['type_color'] === 'orange' ? 'not-dark:text-orange-900' : ''">{{ $department['localized_type'] }}</flux:badge>
                                     @if ($department['is_active'])
                                         <flux:badge color="green">{{ __('qr.status.active') }}</flux:badge>
                                     @else

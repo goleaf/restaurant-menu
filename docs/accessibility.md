@@ -4,9 +4,23 @@
 
 # Accessibility
 
+## Frontend delivery accessibility — 2026-09-16
+
+Failed critical screen scripts leave the editor inert with a translated, native reload link; no automatic reload discards input. Successful initialization removes the barrier before Alpine walks the editor. Operational script failure explains the unavailable sound/timer enhancement while server controls and local dismissal remain usable. History pagination announces the displayed scope and focuses its heading after visibility has painted; offline fieldsets preserve disabled boundary buttons after reconnection.
+
+Chrome Herd checks cover 320/390/768/1024/1440 layouts, EN/LT/RU, actual Flux light/dark/system state, CSS zoom 200%, emulated forced colors/reduced motion and keyboard skip-link focus (visible 2px outline). Emulated coarse-pointer controls measure 44px and operational actions at least 56px. Staff summaries now wrap long actions instead of collapsing names to individual letters, including inside a narrower editor layout. Screenshots were inspected and this defect was corrected with a failing/passing browser regression. QR print remains white in dark appearance with unchanged 76×104mm geometry and break avoidance. These checks do not certify a physical keyboard/phone, virtual keyboard, screen reader or printer.
+
+
+## Flux Pro acceptance boundary — 2026-09-15
+
+The installed local adaptation has server-render evidence, with browser/assistive-technology acceptance pending. Test actual native dialog names and focus restoration; combobox/listbox/pillbox names, keyboard selection and empty/error states; tabs with repeated locale groups and hidden validation; calendar/time keyboard paths; and upload progress/removal. Composer shortcuts must preserve multiline input and IME composition. Context menus need ordinary visible actions; Kanban needs keyboard/touch operation and a mobile alternative; charts need equivalent accessible data.
+
+Verify EN/LT/RU, 320px layouts, 200% zoom, reduced motion, forced colors and existing target-size/contrast requirements. Old Free browser results cannot be reused as proof for replaced Pro behavior. Each accepted family needs a workflow-level result in the [execution ledger](IMPLEMENTATION_PLAN.md).
+
 ## Unified workspace checks — 2026-09-15
 
 The shared sidebar has translated names/tooltips in compact mode; section search restores focus and ignores shortcuts during text entry or another modal. The bell opens a labelled, scrollable Flux panel with explicit read status/actions, locally available Close, loading and persistent offline/error states. Branch radio cards retain visible descriptions and 44px targets inside a bounded scroll area; their group announces disabled state during offline/loading. Explicit description/error IDs protect the actual installed Flux association behavior. Dangerous confirmation inputs retain names, validation and safe Cancel autofocus. The local component reference exercises independent draft preservation and translated states for browser verification.
+
 
 ## Second Flux cleanup pass — 2026-09-15
 

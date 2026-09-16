@@ -4,6 +4,27 @@
 
 # Changelog
 
+## 2026-09-16 — SCSS and Alpine architecture migration (verification in progress)
+
+- Separate the minimal Tailwind/Flux CSS bridge from canonical product Sass modules and generated PDF/error styles; preserve light/dark, fonts, print sizes and operational targets.
+- Replace twelve root page/global browser modules and inline state implementations with named Alpine factories/bindings and one Livewire ESM bootstrap; keep server state and uploads in existing class-based components/Actions.
+- Add abortable same-origin passkey protocol handling around the existing SimpleWebAuthn SDK; preserve auth/download/restore HTTP boundaries.
+- Add JS/Sass lint, full source coverage, architecture checks, deterministic generation/HMR checks, route/form inventory and a local migration verification command. Final measured results and delivery status are recorded in PROGRESS.md.
+
+
+## 2026-09-16 - Local Flux Pro adaptation foundation
+
+Following the user's instruction to use existing code, installed the internal `livewire/flux-pro` adaptation 0.1.0 offline with Free 2.17.0. Preserved original provenance/license, recorded metadata/provider compatibility patches and retained every previous locked dependency. Added installed Pro template scanning and 18-family server-render coverage. JavaScript and workflow migration remain in progress; the root source directory is retained until final release/rollback proof.
+
+## 2026-09-16 — Load frontend features by screen
+
+- Load menu/photo/translation editing, staff editing, waiter audio and department timers through their owning static Vite entries. Keep a minimal common bootstrap, safe pre-Alpine registration, explicit translated asset-failure recovery and cleanup across navigation/history.
+- Add bounded older/newer/latest notification history while preserving one closed count-only poller, current access checks and explicit read actions.
+- Preserve staff editor errors during filter validation and readable employee/invitation summaries beside long translated actions.
+- Bundle local font declarations with main CSS; preserve every Noto subset and the separate QR print entry. Replace the remaining orange-badge utility-selector patch with caller classes and deduplicate coarse-pointer rules. Native Tailwind CSS-first remains unchanged; no Sass or dependency upgrade.
+- Add manifest-driven raw/gzip budgets, asset/lifecycle tests and real browser fault/history/reflow regressions. Detailed before/after tradeoffs and observed verification are in `docs/performance.md` and `docs/testing.md`.
+
+
 ## Unified Flux workspace — 2026-09-16
 
 - Unify desktop/mobile navigation and account preferences; add desktop collapse and local permitted-section search.
@@ -11,6 +32,14 @@
 - Compose branch selection with Flux controls; retain selected context, keyboard/offline behavior and unsaved-draft protection.
 - Close only the successful named modal, strengthen field associations/contrast and add a protected local component reference.
 - Correct translated waiter attention counts and preserve white QR paper across dark-mode print pages.
+
+
+## 2026-09-16 — Flux Pro source preparation
+
+- Begin the accepted P0–P18 integration and add `ui-flux-pro-001` to the canonical requirement, compliance and traceability matrices.
+- Preserve all 139 meaningful user-supplied files in an internal package with license, provenance and SHA-256 inventory; add independent integrity tests and protect upstream source from root formatting.
+- Record the incompatible Free/Pro constraints and official repository access blocker. Preserve the working Free runtime and original source directory until the installation and deletion gates pass.
+- Update active architecture, interface, security, localization, testing and deployment documentation. This entry records source preparation, not completed Pro installation or UI migration.
 
 ## 2026-09-15 — second Flux cleanup pass
 

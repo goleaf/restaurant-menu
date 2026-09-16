@@ -4,6 +4,35 @@
 
 # Frontend architecture
 
+## Current SCSS / Alpine boundary — 2026-09-16
+
+The accepted migration supersedes earlier native-CSS-only and page-script decisions for first-party code. `resources/css/app.css` is only the Tailwind/installed Flux bridge. `resources/scss/app.scss` owns product tokens, light/dark variables, fonts, base accessibility and semantic compositions; `qr-print.scss` is a print-only entry. `pdf-qr.scss`, `pdf-report.scss` and `emergency.scss` compile into fixed committed `resources/views/generated/styles/*.blade.php` artifacts, so emergency/PDF rendering never needs a Vite manifest or runtime Node. `resources/build/styles.js` generates token aliases and concrete breakpoints automatically in both Vite build and dev/HMR; `npm run styles:check` detects drift. Do not edit generated CSS.
+
+Cascade order remains Tailwind `theme, base, components, utilities`. Sass emits into existing layers and preserves narrowly scoped unlayered accessibility fixes; there is no new reset. Runtime `--rm-*` values have one canonical Sass map; generated `@theme inline static` aliases resolve the current Flux `.dark` appearance without another theme store. QR physical geometry stays 76×104 mm, 48 mm code plus quiet zone and 8 mm A4 margins. Emergency actions now meet the product's 44 px minimum.
+
+`resources/js/app.js` imports the installed Livewire ESM runtime and its Alpine instance, registers named component factories/bindings, then calls `Livewire.start()` once. Compatibility palette/radius values used by semantic compositions are retained in the same map; static aliases prevent Tailwind pruning variables used only by the separate SCSS output. Every layout supplies `@livewireScriptConfig` before retained `@fluxScripts`. No independent Alpine package or `Alpine.start()` exists. Registration is cheap and synchronous; the WebAuthn SDK loads only when a ceremony starts. Local panel/focus/clipboard/preview/timer/audio state belongs to Alpine; forms, filters, uploads and mutations belong to class-based Livewire and existing Actions. The obsolete twelve root page/behavior modules are removed.
+
+Transport allowlist: Fortify authentication; the single first-party `fetch` boundary in `resources/js/integrations/passkeys.js` for WebAuthn options/credential HTTP protocol; invitation credential/identity transitions; demo identity entry; authorized CSV/PDF/media/SQLite downloads; exclusive-barrier SQLite restore POST. Restore must obtain its lock before authentication/session reads and therefore cannot be moved behind the ordinary Livewire update transport. Static landing/error/PDF/email and navigation/redirect responses remain SSR. `LivewireInteractionBoundaryTest` pins all 30 class-based page routes, 17 HTTP exceptions and 15 CSRF-protected native POST forms; existing negative/replay/tenant tests exercise those boundaries. There were no first-party fetch/XHR/Axios requests at migration baseline, so none are claimed removed. The sole added passkey adapter replaces `@laravel/passkeys` with its installed lower-level `@simplewebauthn/browser` SDK pinned to 13.3.0: cryptographic browser operations stay in the SDK, while owned GET/POST requests enforce same-origin URLs, credentials, CSRF and redirect rejection. Every await checks the current owner; destroy/cancel aborts its request and ceremony. A cancelled POST has an unknown server outcome and never produces a local success claim. `alpine-passkeys-adapter.test.mjs` tests the real SDK after a cancelled delayed GET and controlled cancel/error/success transport boundaries. Application CRUD continues through Livewire.
+
+Quality entrypoint: `npm run verify:migration` executes manifest validation, architecture rules, Stylelint, ESLint, Pint, Larastan, production build, complete PHP discovery/execution, JS coverage, PHP coverage, isolated browser coordinator, translations and budgets with real exit codes. This command defines verification; its presence does not imply it has passed. Exact current results and open gates belong in `PROGRESS.md` and `IMPLEMENTATION_PLAN.md`; older dated counts below remain historical.
+
+
+## Historical — superseded screen resource ownership, 2026-09-16
+
+`resources/js/app.js` owns common navigation and the critical-editor readiness barrier. Menu, staff, waiter and kitchen/bar views push their corresponding static Vite entry into the application head; their existing modules retain their own UI behavior. No runtime license detection, second Alpine copy, parallel AJAX layer or guest editor import is added.
+
+Menu/staff roots retain their real Livewire identity with `wire:ignore.self` for browser-owned readiness attributes. A failed or too-late critical entry keeps the root inert; the localized Flux callout outside it offers a native reload link. No automatic reload or draft reset occurs. Asset registration is coordinated with the installed Livewire head-script and cached-history lifecycle, and ordinary form morphs must not restore inert state. Blade pushOnce identifiers are global across stacks: use distinct `module-scripts` and `module-status` identifiers so the recovery callout is actually rendered. Operational entries show their own loading/retry explanation without disabling the dashboard; only sound controls start disabled until their handler is ready.
+
+Staff filter rendering validates only its filter payload and clears only filter errors. Invalid invitation input and its field message survive subsequent renders and filter changes; a corrected explicit preview clears its own error.
+
+Font faces are bundled into the existing main CSS request. QR print remains its separate entry. See [Tailwind](tailwind.md) for cascade ownership and [performance](performance.md) for current measurements and manifest budgets.
+
+## Flux Pro migration status and composition — 2026-09-15
+
+The complete Pro source is maintained internally as installed local release `0.1.0`, using Free 2.17.0 and Livewire 4.4.1. Server rendering passes for 18 supplied families; the combined runtime is being adapted to the installed Free behavior before workflow acceptance. Existing navigation, notification, branch-picker and dialog work is retained and adopted by P3–P12 of the [integration plan](superpowers/plans/2026-09-15-flux-pro-integration.md).
+
+After activation, prefer official primitives and retain domain compositions for context, recovery and repeated semantics. Do not publish all 125 upstream templates into first-party views. Localize supported props/slots first; use a narrowly reviewed override only for a demonstrated API gap. Every control replacement needs value-shape, validation, focus, morph, offline/retry and permission equivalence. Browser proof begins after compatible runtime installation; source integrity is not UI acceptance.
+
 ## Unified Flux workspace — 2026-09-15
 
 The application shell uses one Flux header, one account menu and one notification component at every breakpoint. Flux owns mobile disclosure and persisted desktop collapse; permitted links are rebuilt on the server for the current identity. A local Flux modal searches the same prepared navigation items, including accent-insensitive matching, keyboard entry and focus restoration. Its component-owned shortcut ignores text entry and existing dialogs; no permission data is persisted.
@@ -13,6 +42,7 @@ The notification bell only opens the panel. The existing query service supplies 
 Branch selection retains native details for local dismissal and focus, with Flux Input and radio cards. Its option projection contains at most 25 search matches plus the currently selected authorized branch. This limits rendered options, not the dashboard service's existing complete permitted branch graph; no new unbounded search query was added. Help/error associations and the installed radio disabled-state bridge are explicit and browser-tested.
 
 `/local/components` is available only in local/testing to an authenticated superadmin, with authorization repeated on hydration. Its fictional examples exercise controls, states, lists, modal validation and independent drafts without changing restaurant records. The component is unavailable in production even with cached routes. Existing menu/media, QR print and guest native-dialog contracts are preserved.
+
 
 ## Flux Free modernization — 2026-09-15
 

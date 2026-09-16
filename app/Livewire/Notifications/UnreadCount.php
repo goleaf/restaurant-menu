@@ -7,7 +7,9 @@ use App\Models\User;
 use App\Services\Notifications\UserNotificationQueryService;
 use App\Support\LocalizedDateFormatter;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Locked;
@@ -28,6 +30,10 @@ class UnreadCount extends Component
 
     #[Locked]
     public bool $detailsRendered = false;
+
+    /** @var array{current?: ?string, older?: ?string, newer?: ?string} */
+    #[Locked]
+    public array $history = [];
 
     private bool $hydrated = false;
 
@@ -64,7 +70,21 @@ class UnreadCount extends Component
             return;
         }
 
-        $snapshot = $this->notificationQueries->snapshot($user, $this->panelOpen);
+        if (! $this->panelOpen) {
+            $this->history = [];
+        }
+
+        $cursor = $this->history['current'] ?? null;
+        $snapshot = $this->notificationQueries->snapshot(
+            $user,
+            $this->panelOpen,
+            $cursor === null ? null : Cursor::fromEncoded(Crypt::decryptString($cursor)),
+        );
+        $this->history = $this->panelOpen ? [
+            'current' => $this->encodeCursor($snapshot['cursor']),
+            'older' => $this->encodeCursor($snapshot['older_cursor']),
+            'newer' => $this->encodeCursor($snapshot['newer_cursor']),
+        ] : [];
         $this->unreadCount = $snapshot['count'];
         $this->notifications = $snapshot['notifications']
             ->map(fn (DatabaseNotification $notification): array => $this->presentNotification($notification, isset($snapshot['destinations'][$notification->id])))
@@ -82,6 +102,23 @@ class UnreadCount extends Component
         }
 
         $this->panelOpen = true;
+        $this->history = [];
+        $this->destinationUnavailable = false;
+        $this->refreshUnreadCount();
+    }
+
+    public function browseHistory(mixed $direction): void
+    {
+        abort_unless(is_string($direction) && in_array($direction, ['older', 'newer', 'latest'], true), 422);
+
+        if ($this->currentUser() === null || ! $this->panelOpen) {
+            return;
+        }
+
+        if ($direction === 'latest' || ($this->history[$direction] ?? null) !== null) {
+            $this->history = ['current' => $direction === 'latest' ? null : $this->history[$direction]];
+        }
+
         $this->destinationUnavailable = false;
         $this->refreshUnreadCount();
     }
@@ -131,7 +168,10 @@ class UnreadCount extends Component
 
         $this->detailsRendered = $this->panelOpen;
 
-        return view('livewire.notifications.unread-count', ['notifications' => $this->notifications]);
+        return view('livewire.notifications.unread-count', [
+            'notifications' => $this->notifications,
+            'historyLimit' => UserNotificationQueryService::PANEL_LIMIT,
+        ]);
     }
 
     private function currentUser(): ?User
@@ -143,11 +183,17 @@ class UnreadCount extends Component
             $this->unreadCount = 0;
             $this->panelOpen = false;
             $this->notifications = [];
+            $this->history = [];
 
             return null;
         }
 
         return $user;
+    }
+
+    private function encodeCursor(?Cursor $cursor): ?string
+    {
+        return $cursor === null ? null : Crypt::encryptString($cursor->encode());
     }
 
     private function audienceFor(User $user): string

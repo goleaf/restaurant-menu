@@ -14,6 +14,7 @@
 
         <x-client-offline-indicator />
 
+        @livewireScriptConfig
         @fluxScripts
     </body>
 </html>

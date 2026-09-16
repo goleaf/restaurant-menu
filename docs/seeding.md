@@ -4,6 +4,10 @@
 
 # Factories and seeding
 
+## Flux Pro fixture boundary — 2026-09-16
+
+The source import adds no models, migrations or seed data. Its integrity Unit test needs no database. Pro workflow acceptance must reuse existing factories in isolated SQLite fixtures, including multiple tenants, revoked access, empty/current/invalid selections, repeated language editors and bounded large option/ticket sets. Keep any local component reference fictitious and non-persistent; no package showcase should write to the working restaurant database. New rich-content storage, if implemented in P11, needs its own additive migration/factory/security proof before demo data uses it.
+
 ## Team fixtures — 2026-09-15
 
 PermissionUserOverrideFactory::forOrganization creates an explicit scoped decision; the default remains a legacy compatibility fixture. Team lifecycle/isolation tests use factories for independent tenants, membership roles, pending/expired/rotated invitations and exact waiter areas. Concurrency tests use disposable file SQLite databases, distinct worker processes and readiness barriers. Browser identities use separate contexts and owned temporary session files. No real invitations or employee data are sent or modified.

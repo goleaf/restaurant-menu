@@ -3,13 +3,13 @@
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-canvas text-text-primary antialiased">
+    <body class="rm-auth-page">
         <a href="#main-content" class="skip-link">
             {{ __('ui.accessibility.skip_to_content') }}
         </a>
 
-        <main id="main-content" tabindex="-1" class="bg-surface-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
-            <div class="flex w-full max-w-md flex-col gap-6">
+        <main id="main-content" tabindex="-1" class="rm-auth-main rm-auth-main--card">
+            <div class="rm-auth-stack rm-auth-stack--card">
                 <a href="{{ route('home') }}" class="flex min-h-11 flex-col items-center gap-2 font-medium" wire:navigate>
                     <span class="flex h-9 w-9 items-center justify-center rounded-md">
                         <x-app-logo-icon class="size-9 fill-current text-text-primary" />
@@ -34,6 +34,7 @@
 
         <x-client-offline-indicator />
 
+        @livewireScriptConfig
         @fluxScripts
     </body>
 </html>

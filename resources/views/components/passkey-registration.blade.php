@@ -1,47 +1,5 @@
-@assets
-@vite('resources/js/passkeys.js')
-@endassets
-
 <div
-    x-data="{
-        supported: false,
-        showForm: false,
-        name: '',
-        loading: false,
-        error: null,
-        updateSupport() {
-            this.supported = Boolean(window.Passkeys?.isSupported());
-        },
-        init() {
-            this.updateSupport();
-
-            window.addEventListener('passkeys:ready', () => this.updateSupport(), { once: true });
-        },
-        async register() {
-            if (!this.name.trim()) return;
-
-            this.loading = true;
-            this.error = null;
-
-            try {
-                await window.Passkeys.register({ name: this.name });
-                this.name = '';
-                this.showForm = false;
-                await $wire.loadPasskeys();
-            } catch (e) {
-                if (e.constructor?.name !== 'UserCancelledError') {
-                    this.error = e.message;
-                }
-            } finally {
-                this.loading = false;
-            }
-        },
-        cancel() {
-            this.showForm = false;
-            this.name = '';
-            this.error = null;
-        },
-    }"
+    x-data="passkeyRegistration" data-failure="{{ __('auth.passkey_failed') }}"
 >
     <template x-if="!supported">
         <flux:text>{{ __('ui.components.passkey_registration.passkeys_are_not_supported_in_this_brows') }}</flux:text>
@@ -67,11 +25,11 @@
                 placeholder="{{ __('ui.components.passkey_registration.e_g_macbook_pro_iphone') }}"
                 x-on:keydown.enter.prevent="register()"
                 x-ref="passkeyNameInput"
-                x-init="$nextTick(() => $refs.passkeyNameInput?.focus())"
+                x-bind="focusInput"
             />
             <flux:text class="!mt-1">{{ __('ui.components.passkey_registration.give_this_passkey_a_name_to_help_you_ide') }}</flux:text>
 
-            <p x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
+            <p role="alert" x-show="error" x-text="error" x-cloak class="text-sm text-red-600 dark:text-red-400"></p>
 
             <div class="flex gap-2">
                 <flux:button

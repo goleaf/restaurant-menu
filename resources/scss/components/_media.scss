@@ -1,0 +1,63 @@
+@use '../settings/tokens';
+@use '../settings/breakpoints';
+
+@layer components {
+    .rm-media-panel {
+        display: grid;
+        gap: tokens.space(4);
+        border: 1px solid var(--rm-border-subtle);
+        border-radius: var(--rm-radius-card);
+        padding: tokens.space(4);
+    }
+
+    .rm-media-dropzone {
+        display: grid;
+        gap: tokens.space(3);
+        border: 1px dashed var(--rm-border-strong);
+        border-radius: var(--rm-radius-control);
+        background-color: var(--rm-surface-muted);
+        padding: tokens.space(4);
+    }
+
+    .rm-media-previews {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: tokens.space(3);
+
+        @include breakpoints.up('sm') {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    .rm-media-gallery {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: tokens.space(3);
+
+        @include breakpoints.up('sm') {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        @include breakpoints.up('lg') {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+    }
+
+    .rm-media-figure {
+        min-width: 0;
+        overflow: hidden;
+        border: 1px solid var(--rm-border-subtle);
+        border-radius: var(--rm-radius-control);
+        background-color: var(--rm-surface);
+
+        &--muted {
+            background-color: var(--rm-surface-muted);
+        }
+    }
+
+    .rm-media-image {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+    }
+}

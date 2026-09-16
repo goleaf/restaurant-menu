@@ -44,6 +44,7 @@ use App\Notifications\WaiterCalledNotification;
 use App\Services\Notifications\UserNotificationQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -203,7 +204,8 @@ test('notification bell opens a bounded panel without reading notifications', fu
         ->assertSet('unreadCount', 23)
         ->assertSet('panelOpen', false)
         ->assertDontSee('Ana')
-        ->assertSee('$wire.openPanel()', false)
+        ->assertSee('x-data="notificationPanel"', false)
+        ->assertSee('x-on:click="$el.focus(); loadPanel()"', false)
         ->call('openPanel')
         ->assertSet('panelOpen', true)
         ->assertSee('Ana');
@@ -213,6 +215,104 @@ test('notification bell opens a bounded panel without reading notifications', fu
         ->and($component->snapshot['data'])->not->toHaveKey('notifications');
 
     $component->set('panelOpen', false)->call('refreshUnreadCount')->assertDontSee('Ana');
+});
+
+test('notification history pages in both directions without growing the rendered list or marking read', function (): void {
+    $this->freezeTime();
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    foreach (range(1, 45) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+    $ids = $waiter->notifications()->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(45)->pluck('id')->all();
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 0, 20))
+        ->call('browseHistory', 'older')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 20, 20));
+
+    expect($component->get('history.current'))->toBeString()
+        ->and($component->get('history.current'))->not->toContain($ids[19])
+        ->and($component->snapshot['data'])->not->toHaveKey('notifications')
+        ->and(substr_count($component->html(), 'data-notification-item='))->toBe(20);
+
+    $component->call('browseHistory', 'older')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 40))
+        ->assertSet('history.older', null)
+        ->call('browseHistory', 'older')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 40))
+        ->call('browseHistory', 'newer')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 20, 20))
+        ->call('browseHistory', 'newer')
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 0, 20))
+        ->assertSet('history.newer', null)
+        ->assertSet('unreadCount', 45);
+    expect($waiter->unreadNotifications()->count())->toBe(45);
+});
+
+test('new notification arrivals update the count without shifting an older history page', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    foreach (range(1, 25) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+    $ids = $waiter->notifications()->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(25)->pluck('id')->all();
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')->call('browseHistory', 'older');
+    $this->travel(1)->seconds();
+    $waiter->notify(new WaiterCalledNotification($call));
+    $latest = $waiter->notifications()->reorder()->orderByDesc('created_at')->firstOrFail();
+
+    $component->call('refreshUnreadCount')->assertSet('unreadCount', 26)
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 20))
+        ->call('markNotificationRead', $ids[20])->assertSet('unreadCount', 25)
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 20))
+        ->call('browseHistory', 'latest')->assertSet('history.current', null)
+        ->assertViewHas('notifications', fn (array $items): bool => count($items) === 20 && $items[0]['id'] === $latest->id)
+        ->call('browseHistory', 'older')
+        ->update(calls: [['method' => 'refreshUnreadCount', 'params' => [], 'path' => '']], updates: ['panelOpen' => false])
+        ->assertSet('history', [])->assertDontSee('Ana')
+        ->call('openPanel')->assertSet('history.current', null)
+        ->assertViewHas('notifications', fn (array $items): bool => $items[0]['id'] === $latest->id);
+});
+
+test('notification history recovers from removed pages and discards revoked audiences', function (): void {
+    [$organization, , $point, $session, $guest] = createPrompt81NotificationContext();
+    $waiter = User::factory()->create();
+    attachPrompt81Staff($waiter, $organization, SystemRole::Waiter, [SystemPermission::ViewOrders]);
+    $call = WaiterCall::factory()->forServicePoint($point)->forTableSession($session)->create(['requested_by_guest_id' => $guest->id]);
+    foreach (range(1, 25) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+    $ids = $waiter->notifications()->reorder()->orderByDesc('created_at')->orderByDesc('id')->limit(25)->pluck('id')->all();
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)->call('openPanel')->call('browseHistory', 'older');
+    $waiter->notifications()->whereIn('id', array_slice($ids, 20))->delete();
+    $component->call('refreshUnreadCount')->assertSet('history.current', null)
+        ->assertViewHas('notifications', fn (array $items): bool => array_column($items, 'id') === array_slice($ids, 0, 20));
+
+    foreach (range(1, 5) as $index) {
+        $waiter->notify(new WaiterCalledNotification($call));
+    }
+    $component->call('browseHistory', 'latest')->call('browseHistory', 'older');
+    $organization->users()->updateExistingPivot($waiter->id, ['status' => OrganizationUserStatus::Suspended->value]);
+    $component->call('refreshUnreadCount')->assertSet('unreadCount', 0)
+        ->assertSet('history.current', null)->assertSet('history.older', null)->assertSet('history.newer', null)->assertDontSee('Ana');
+    expect($waiter->unreadNotifications()->count())->toBe(25);
+
+    Auth::login(User::factory()->create());
+    $component->call('browseHistory', 'latest')->assertSet('panelOpen', false)->assertSet('history', [])->assertDontSee('Ana');
+});
+
+test('notification history rejects forged navigation state and remains unloaded when closed', function (): void {
+    $waiter = User::factory()->create();
+    foreach ([null, true, 42, [], ['older'], '1', 'previous'] as $direction) {
+        Livewire::actingAs($waiter)->test(UnreadCount::class)->call('browseHistory', $direction)->assertStatus(422);
+    }
+    $component = Livewire::actingAs($waiter)->test(UnreadCount::class)
+        ->call('browseHistory', 'older')->assertSet('panelOpen', false)->assertSet('history', []);
+    expect(fn () => $component->set('history', ['current' => 'forged']))->toThrow(CannotUpdateLockedPropertyException::class);
 });
 
 test('notification reads recheck ownership permission and branch access without changing restaurant work', function (): void {
@@ -310,7 +410,15 @@ test('closed notification polling hydrates no messages and open detail queries s
         $snapshot = $queries->snapshot($waiter, true);
         expect($snapshot['notifications'])->toHaveCount(20)->and($snapshot['destinations'])->toHaveCount(20);
     });
-    expect($openQueries)->toBe($closedQueries + 2);
+    $firstPage = $queries->snapshot($waiter, true);
+    $cursor = $firstPage['older_cursor'];
+    request()->query->set('cursor', $cursor?->encode());
+    expect($queries->snapshot($waiter, true)['notifications']->modelKeys())->toBe($firstPage['notifications']->modelKeys());
+    $olderQueries = countDatabaseQueries(function () use ($queries, $waiter, $cursor): void {
+        $snapshot = $queries->snapshot($waiter, true, $cursor);
+        expect($snapshot['notifications'])->toHaveCount(5)->and($snapshot['destinations'])->toHaveCount(5);
+    });
+    expect($openQueries)->toBe($closedQueries + 2)->and($olderQueries)->toBe($openQueries);
 });
 
 test('notification destinations disappear when their table context is missing or mismatched', function (): void {

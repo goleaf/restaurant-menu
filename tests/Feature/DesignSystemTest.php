@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\ViewErrorBag;
+use Symfony\Component\Process\Process;
 
 test('auth header renders the page title as a semantic heading', function () {
     $html = Blade::render(<<<'BLADE'
@@ -97,11 +98,13 @@ test('simple design system components render shared ui primitives', function () 
         ->toContain('<button')
         ->not->toContain('<x-ui.danger-button')
         ->toContain('Total €0.00')
-        ->toContain('sticky bottom-0')
+        ->toContain('rm-mobile-actions')
         ->toContain('Needs attention')
         ->toContain('title="Terrace"')
         ->toContain('title="Bar seat"')
-        ->toContain('data-flux-icon');
+        ->toContain('data-flux-icon')
+        ->and(compiledDesignSystemStylesheet())
+        ->toMatch('/\.rm-mobile-actions\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*0;/s');
 });
 
 test('service point icon safely falls back when persisted icon is unsupported', function () {
@@ -179,37 +182,37 @@ test('design contract and sidecar describe the calm service pass system', functi
 });
 
 test('runtime stylesheet exposes semantic workspace roles and avoids decorative card treatments', function () {
-    $css = File::get(resource_path('css/app.css'));
+    $css = compiledDesignSystemStylesheet();
 
     expect($css)
-        ->toContain('--color-surface-raised:')
-        ->toContain('--color-surface-selected:')
-        ->toContain('--color-border-strong:')
-        ->toContain('--color-success-border:')
-        ->toContain('--color-warning-border:')
-        ->toContain('--color-danger-border:')
-        ->toContain('--color-information-border:')
-        ->toContain('--spacing-operational-touch: 3.5rem;')
-        ->toContain('--transition-duration-state: 180ms;')
-        ->toContain("--font-sans: 'Noto Sans Variable'")
-        ->toContain('--color-control-hover:')
-        ->toContain('--z-index-docked: 30;')
-        ->toContain('--shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);')
+        ->toContain('--rm-surface-raised:')
+        ->toContain('--rm-surface-selected:')
+        ->toContain('--rm-border-strong:')
+        ->toContain('--rm-success-border:')
+        ->toContain('--rm-warning-border:')
+        ->toContain('--rm-danger-border:')
+        ->toContain('--rm-information-border:')
+        ->toContain('--rm-spacing-operational-touch: 3.5rem;')
+        ->toContain('--rm-transition-duration-state: 180ms;')
+        ->toContain("--rm-font-sans: 'Noto Sans Variable'")
+        ->toContain('--rm-control-hover:')
+        ->toContain('--rm-z-index-docked: 30;')
+        ->toContain('--rm-shadow-card: 0 1px 2px oklch(0.21 0.018 45 / 0.08);')
         ->not->toContain('border-left-width: 10px;')
         ->not->toContain('0 8px 24px');
 });
 
 test('shared shell and controls use semantic surfaces and resilient narrow layouts', function () {
-    $css = File::get(resource_path('css/app.css'));
+    $css = compiledDesignSystemStylesheet();
     $appLayout = File::get(resource_path('views/layouts/app.blade.php'));
     $sidebar = File::get(resource_path('views/layouts/app/sidebar.blade.php'));
     $guestLayout = File::get(resource_path('views/layouts/guest.blade.php'));
     $pageHeader = File::get(resource_path('views/components/ui/page-header.blade.php'));
 
     expect($css)
-        ->toContain("[aria-current='page']")
-        ->toContain("[data-priority-row][data-selected='true']")
-        ->toContain('@utility content-safe')
+        ->toContain('[aria-current=page]')
+        ->toContain('[data-priority-row][data-selected=true]')
+        ->toMatch('/\.content-safe\s*\{[^}]*min-inline-size:\s*0;[^}]*overflow-wrap:\s*anywhere;/s')
         ->and($appLayout)
         ->toContain('max-w-content')
         ->toContain('bg-canvas')
@@ -221,9 +224,13 @@ test('shared shell and controls use semantic surfaces and resilient narrow layou
         ->toContain('bg-canvas text-text-primary')
         ->not->toContain('bg-zinc-')
         ->and($pageHeader)
-        ->toContain('content-safe')
-        ->toContain('xs:grid-cols-2')
-        ->toContain('[&>*]:w-full');
+        ->toContain('rm-page-header__title')
+        ->toContain('rm-page-header__actions')
+        ->and($css)
+        ->toMatch('/\.rm-page-header__title\s*\{[^}]*overflow-wrap:\s*anywhere;/s')
+        ->toMatch('/\.rm-page-header__actions\s*\{[^}]*display:\s*grid;[^}]*width:\s*100%;/s')
+        ->toMatch('/\.rm-page-header__actions\s*>\s*\*\s*\{[^}]*width:\s*100%;/s')
+        ->toMatch('/\.rm-page-header__actions\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/s');
 });
 
 test('semantic utility names resolve to declared design tokens', function () {
@@ -240,7 +247,7 @@ test('semantic utility names resolve to declared design tokens', function () {
 });
 
 test('coarse pointer and livewire request states preserve practical controls', function () {
-    $css = File::get(resource_path('css/app.css'));
+    $css = compiledDesignSystemStylesheet();
 
     expect($css)
         ->toContain('@media (pointer: coarse)')
@@ -335,11 +342,13 @@ test('context workspace components render prepared presentation data accessibly'
         ->toContain('data-workspace-split')
         ->toContain('data-priority-row')
         ->toContain('data-selected="true"')
-        ->toContain('min-h-operational-touch')
+        ->toContain('rm-priority-row')
         ->toContain('data-state="loading"')
         ->toContain('aria-busy="true"')
         ->toContain('role="status"')
-        ->toContain('Loading tables');
+        ->toContain('Loading tables')
+        ->and(compiledDesignSystemStylesheet())
+        ->toMatch('/\.rm-priority-row\s*\{[^}]*min-height:\s*var\(--rm-spacing-operational-touch\);/s');
 });
 
 test('shared ui primitives consume semantic color roles instead of palette utilities', function () {
@@ -354,3 +363,22 @@ test('shared ui primitives consume semantic color roles instead of palette utili
         ->not->toMatch('/(?:bg|border|text|ring|placeholder:text)-(?:zinc|red|amber|emerald|sky|orange|violet|lime)-/')
         ->not->toContain('shadow-sm');
 });
+
+function compiledDesignSystemStylesheet(): string
+{
+    static $css;
+
+    if (is_string($css)) {
+        return $css;
+    }
+
+    $process = new Process([
+        'node',
+        '--input-type=module',
+        '-e',
+        'import { compile } from "sass-embedded"; process.stdout.write(compile("resources/scss/app.scss").css);',
+    ], base_path());
+    $process->mustRun();
+
+    return $css = $process->getOutput();
+}

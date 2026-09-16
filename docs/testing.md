@@ -4,6 +4,74 @@
 
 # Testing and quality gates
 
+## SCSS / Alpine migration verification — 2026-09-16
+
+Run `npm run verify:migration` from the repository root after sources are stable. It creates owned temporary storage/cache paths, uses SQLite `:memory:`, compares full backend discovery with JUnit execution, rejects skips/incomplete/risky/warnings, and preserves every subprocess exit code. Timeouts first signal the process group so the browser runner can clean its separate child session, then escalate within a bounded grace period; regression tests exercise real detached children. Logs and summary JSON are printed under the system temporary directory, not production storage.
+
+The coordinator runs Composer validation, architecture, Stylelint/ESLint/Pint/Larastan, production build/generated drift check, backend tests, Node coverage including every `resources/js/**/*.js` and `resources/build/**/*.js` source, canonical PHP coverage (unchanged >=90%), the complete isolated browser coordinator, translation integrity and asset budgets. JS line coverage must be 100%; actual branch/function coverage is reported separately. PHP path/branch evidence requires Xdebug and is not inferred from the global line percentage.
+
+Final stable coordinator: **16/16 stages exit 0**, no timeout. Backend discovery/execution: **2,852 tests /60,507 assertions**, zero failures/errors/skips, 509.13 s. Canonical coverage repeats the same tests at **93.7% PHP lines**, 1,259.34 s. Node: **167 passed**, zero failed/skipped/todo/cancelled; **100% lines /95.12% branches /98.30% functions**. Browser: **37 cases /2,684 assertions**, zero failures/timeouts. Translation audit: **8,043 entries /2,681 keys per locale**, zero critical/missing/unused keys. Production build and all asset budgets pass. Logs/JUnit/summary: system temporary directory `restaurant-migration-verification-TBM1Zr`; browser evidence: `restaurant-browser-fb18ce2b5f4e73e6`. Frozen source inventory: 1,347 files, inventory-file SHA-256 `983d3d39f044d2cb3a4a6171b07f5d74d5ced60b4e4927b836d59650e57248a1`.
+
+After the final aggregate and user approval, the full staged first-party whitespace check found one pre-existing extra blank line at the end of `resources/scss/base/_document.scss`. Only that final newline was removed. Stylelint, all 25 architecture/style tests, the production build and generated-artifact drift check pass again; all nine production build files remain byte-for-byte identical. This formatting-only source delta is recorded separately from the original frozen inventory; no runtime behavior changed. Delivery documentation is checked again with the isolated requirement/cleanup tests.
+
+Current aggregate status is recorded in `PROGRESS.md`. The final coordinator follows all corrections, including auth focus/child directive ownership, onboarding field priority and real factory-backed kitchen timers. The changed application PHP component's isolated Xdebug path report passes 8 tests/83 assertions, 18/18 lines, 6/6 branches, 4/4 methods and 4/5 paths; this is not global branch/path coverage.
+
+Browser inventory is 37 executable cases across 14 files, including datasets. The principal journeys cover onboarding → QR → guest configuration/draft → waiter → kitchen/bar → serving → bill/payment → table closure; invitations/account switching/access revocation; EN/LT/RU media editing, gallery and CSV; branch-local dashboard periods; and notification viewing separate from restaurant task completion. Ten Livewire visits and Back/Forward inspect runtime, listener/interceptor, timer and polling lifecycle. Real offline transport is exercised in the staff editor; other local offline cases dispatch browser events. Five-width/two-theme matrices cover the reference, kitchen and notifications, with guest and translated workspaces checked in their documented matrices. Touch/operational height checks concern selected 44/56px controls, not every control in the product.
+
+AuthenticationMigration uses real Fortify password/recovery/session/logout and password confirmation requests. It verifies native button Space activation and recovery-field focus, invalid-code recovery, consumption of the valid recovery code, real passkey options GETs, lazy SDK cancellation/error handling, and Livewire ownership-scoped key deletion. Only `navigator.credentials` is replaced at the external API boundary. Hardware registration/login and the currently unmounted reusable passkey verification view are not browser acceptance claims. MFA setup/TOTP/disable and password-reset/email-verification contracts remain PHP-covered; this browser case does not claim those complete browser journeys.
+
+CSS evidence compiles all five Sass delivery entries, compares tokens/light-dark aliases, retains palette variables through actual Tailwind compilation, pins QR mm geometry and PDF concrete values, rejects unsafe/stale generated artifacts, and verifies modern Sass boundaries. Actual screenshots of photo editing, 320px staff editing, dark kitchen, desktop dashboard, 200% Russian notifications and guest conflict recovery were opened and inspected. Separate isolated Chrome MCP login checks cover EN/LT/RU, five widths and both themes, plus actual emulated forced colors/reduced motion and visible keyboard focus.
+
+Additional current-renderer PDF QA uses prepared fictitious presentation data, SQLite `:memory:` and owned storage (zero SQL). The actual `SecurePdfRenderer` produces seven QR labels in two A4 portrait pages and a twelve-row report in one A4 landscape page. All three pages were rasterized by native PDFKit at 144 dpi and opened for inspection; EN/LT/RU glyphs, wrapping and page boundaries are intact. Vision decodes all seven QR symbols to the expected fictitious URLs without network access. This covers one preset/report sample; authorization/download headers remain backend-tested. Artifacts: system temporary directory `restaurant-pdf-visual-if6fz_z2`.
+
+No physical phone, physical printing, screen reader, hardware biometric success, physical virtual keyboard, automated pixel-difference baseline, heap profile or matched browser CPU/layout improvement is claimed. Saved screenshots and CSS zoom are evidence of those specific checks, not certification of untested devices. All backend/browser state uses owned temporary storage and isolated SQLite; working data and credentials remain untouched.
+
+
+## Local Flux Pro foundation verification - 2026-09-16
+
+The user-selected local-code path supersedes the earlier source-only/access checkpoint. Pro `0.1.0` is a local adaptation with unknown upstream version, not an upstream release claim.
+
+| Gate | Observed result |
+| --- | --- |
+| Offline disposable resolution and root Composer install | physical path mirror, normal discovery, previous 178 dependency records unchanged |
+| `FluxProDistributionIntegrityTest` + `FluxProInstallationTest` | 22 tests / 567 assertions pass; original inventory, patch hashes, license, package identity, mixed Free/Pro render and five assets |
+| `FluxProComponentCatalogTest` | 18 tests / 36 assertions pass for all supplied families; server rendering only |
+| Pro Tailwind source regression | 1 test / 13 assertions passes; installed Pro templates are explicitly scanned |
+| Composer strict validation/platform requirements; scoped Pint; `composer analyse` | pass at foundation checkpoint |
+| Independent foundation spec then quality review | both pass; physical mirror and unchanged prior dependency records independently checked |
+
+JavaScript/browser compatibility, localization, product workflow migrations, a final production build/full suite/coverage and clean-release/rollback/original-folder deletion are still pending. Earlier Free and source-only results are historical, not evidence for the combined Pro runtime.
+
+## Frontend resource delivery verification — 2026-09-16
+
+Fresh stage baseline is `7376b20`; separate uncommitted Pro source preparation is preserved. Tests ran against a fingerprinted shared-checkout slice with Flux Free 2.17.0 / Livewire 4.4.1, including the preparation's then-existing independent tests; this delivery does not claim or commit those files. Backend/coverage use isolated storage/cache paths and SQLite memory databases. Browser cases use disposable runtimes and profiles; working application data is untouched. After these runs, another process installed the local Pro package and changed shared manifests, CSS sources and tests. The results below do not verify that later combined tree.
+
+| Gate | Observed result |
+| --- | --- |
+| `composer validate`; `composer audit`; `npm audit` | valid manifest; zero Composer advisories and npm vulnerabilities |
+| Installed versions and direct Composer/npm outdated inspection | At this stage's verification: Free 2.17.0 / Livewire 4.4.1; compatible 2.20.0 / 4.4.5 archives require prohibited GitHub requests; this stage does not change locks |
+| `vendor/bin/pint --dirty --format agent`; `composer lint:check`; `composer analyse` | pass; no Larastan errors |
+| `npm run build`, including `build:check` | production output and all manifest budgets pass |
+| `npm run test:assets` | 32 passed, zero failed/skipped; asset graph/compression/budgets and timer/audio lifecycle |
+| Focused frontend/style/design/localization/danger-confirmation Pest tests | 82 / 1,190 assertions passed |
+| Notification Feature tests | 23 / 189 passed; first/older pages cost the same two detail queries above closed polling |
+| Staff workspace/management Feature tests | 32 / 166 passed; filters retain invitation errors and input |
+| `composer test:backend -- --parallel --processes=4` | 2,810 / 59,323 passed; 379.78 seconds on this stage's frozen executable sources |
+| `composer test:browser -- --timeout=180` | 33 cases / 2,042 assertions; zero failures/timeouts; isolated WebKit |
+| `composer test:coverage -- --parallel --processes=4` | all 2,810 / 59,323 tests pass in 731.66 seconds; report export fails with `Cannot write to vendor/pestphp/pest/.temp/coverage.php`; coverage gate is NOT passed |
+| `translations:audit`; `translations:scan` | 8,001 entries / 2,667 keys per locale; zero critical, missing, unused or phrase-key issues |
+| Isolated config/route/event/view cache build and clear | all six commands exit 0 |
+
+Browser cases cover guest/auth absence of screen assets, ten consecutive Livewire navigations, cached Back/Forward, direct loads, validation/dirty drafts, failed/delayed chunks, native recovery, operational controls, notification history/scoping/offline/late responses, uploads, onboarding, organization/service-point/menu workflows, branch context and kitchen/bar. A new visual regression reproduced a 13.97px staff name column, then passed 53 assertions for member/invitation rows at 390px, 200% CSS zoom and beside an editor. Final browser artifacts: `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-browser-8391407345d5498b`.
+
+Separate disposable Chrome MCP checks use Boost-resolved Herd `https://ruflo.test`. Dashboard/menu/staff/kitchen were checked at 320/390/768/1024/1440, light/dark and EN/LT/RU without horizontal overflow. Actual Flux light/dark/system hooks, emulated reduced motion/forced colors, visible keyboard focus, 44px coarse-pointer controls and 56px operation controls pass. A short viewport and 200% CSS zoom were exercised; physical virtual-keyboard/screen-reader/device behavior is not certified. Before/after screenshots were visually inspected, including the corrected staff row and separate QR print styles with white paper in dark mode. Page-error capture was empty; the error records returned by Boost predate this run.
+
+Independent review found and rechecked operational fallback, global pushOnce ID collision and render-time staff validation fixes, then approved the readable-summary correction. No open P1/P2 finding remains. All 183 first-party Markdown policy blocks, explicit source/Free override/no-SCSS guards and diff checks pass. The two translated accessibility overrides and 7 PHP / 14 Blade semantic UI components remain unchanged. Resource measurements, including increased total JS/HTML and inconclusive CPU timing, are in [performance.md](performance.md).
+
+Earlier candidate backend (2,808 / 59,281), initial full browser (32 / 1,989), and eight isolated module cases (317 assertions) preceded final corrections and do not replace the final rows above. The failed coverage exporter suppresses the underlying filesystem warning. The target directory is writable and file-size limits are unlimited, but available disk space fell to approximately 211 MiB. Removing 152,846,336 allocated bytes of completed-run compiled Blade caches and closing the owned browser initially did not restore sufficient headroom; a later read showed 2.2 GiB available. Disk pressure is observed context, not a proven filesystem error code. Screenshots/logs/JUnit/source fixtures, dependencies and unrelated work were preserved. A retry must use a reconciled stable source/dependency slice, adequate local space and the unchanged 90% threshold. No stage commit or push was made.
+
+The frozen fingerprint covers 987 executable/config/resource/test/manifest files. A final comparison found five later shared changes: `composer.json`, `composer.lock`, `resources/css/app.css`, `tests/Feature/FrontendStyleArchitectureTest.php` and `tests/Unit/FluxProDistributionIntegrityTest.php`; two new Pro Feature tests also appeared. Every executable blob in this stage's separate 54-path prepared index still matches its verified fingerprint. Independent review rechecked that no Pro dependency/source changes or workflows entered that prepared diff. This separation preserves the evidence; it does not make the subsequently changed shared checkout verified.
+
 ## Unified Flux workspace verification — 2026-09-16
 
 Fresh canonical WebKit verification passes **23 scenarios / 1,627 assertions**, with zero failures/timeouts. It covers onboarding through paid table closure, organization/branch/menu/media/service-point workflows, waiter/kitchen/bar, recipient/staff flows, notification viewing/reading/reconnect, navigation and local component states. Artifacts: `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-browser-ce3aa860e4ce6aa3`. Focused final architecture/design/navigation/waiter tests pass **84 / 692**; reference and architecture repair checks pass **23 / 81**. Independent source review has no remaining P1/P2 findings.
@@ -15,6 +83,32 @@ The actual print PDF has two A4 pages with four and three complete 76×104 mm la
 Composer validation/audit, npm audit, scoped formatting plus canonical lint, Larastan, production build, translation audit/scan and all six isolated config/route/view cache commands pass. The final translation audit reports 7,962 aligned entries across three locales, zero missing/unused keys and zero critical issues. The final four-process backend passes 2,794 tests / 59,017 assertions in 171.29 seconds, exit 0. `composer test:coverage -- --parallel --processes=4` passes the same 2,794 / 59,017 at **93.7%** in 521.27 seconds, exit 0, with the unchanged 90% gate. Both runs use owned temporary runtime/cache paths and in-memory SQLite. The final policy scan checks 183 first-party Markdown files with no missing, duplicated or misplaced push-only blocks. These totals describe the shared checkout, including the concurrent Pro integrity/traceability tests and documentation; those independent changes are preserved outside this scoped workspace commit. They are not an isolated-commit reproduction claim or evidence of an installed Pro runtime.
 
 Earlier failed attempts are not passing evidence: the backend caught a new service-locator call, fixed with Application injection; browser tests caught overly broad legacy search/nav selectors, now scoped to the intended controls. The final reference/notification runs also protect actual Safari-style pointer focus, reconnect visibility and long-text wrapping. Historical Boost logs from views changing during implementation remain preserved; fresh browser results are reported separately. Physical phone keyboards, hardware assistive technology and a real-device browser zoom session were not available; viewport, browser zoom/text scaling and browser accessibility behavior were exercised locally.
+
+
+## Flux Pro source preparation — 2026-09-16
+
+This checkpoint changes third-party source storage, Pint scope, the canonical requirement/documentation mapping and its tests. It does not activate Pro or change application behavior. The original directory is retained; the tests read the internal copy only. Tests requiring Laravel explicitly use SQLite `:memory:` and array cache/session; the distribution Unit test uses no application/database bootstrap.
+
+| Gate | Observed result |
+| --- | --- |
+| Distribution TDD | Initial run failed on the missing copy, metadata and formatting boundary; import then passed 14 tests / 35 assertions. |
+| Complete source comparison | 139 meaningful files / 3,291,708 bytes; paths, file modes and bytes equal the original; four original Finder files excluded deliberately. |
+| Standard checksum verification | `shasum -a 256 -c ../flux-pro.sha256` from the internal package: 139/139 OK. |
+| Canonical requirement mapping | Adding `ui-flux-pro-001` produced the expected 54-versus-53 count failure; updating the pinned count passed 1 test / 1,082 assertions. All matrix IDs, descriptions, statuses and referenced test paths agree. |
+| Independent reviews | Specification review passed and repeated source checks/tests; separate quality review found no significant defect. Its Pint basename-scope observation was addressed with anchored `notPath` patterns and a real-formatting regression. |
+| Final distribution/Pint regression | `PAO_DISABLE=1 php vendor/bin/pest tests/Unit/FluxProDistributionIntegrityTest.php --compact`: 14 passed / 44 assertions, exit 0. Actual Pint preserves four distribution fixtures and formats five similarly named first-party fixtures in a disposable directory. |
+| Final focused architecture/traceability | `PAO_DISABLE=1 DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL='' php vendor/bin/pest tests/Feature/RequirementsTraceabilityTest.php tests/Feature/ProjectCleanupConsistencyTest.php tests/Feature/FrontendStyleArchitectureTest.php --compact`: 48 passed / 1,359 assertions, exit 0. |
+| Scoped PHP formatting | `vendor/bin/pint --dirty tests/Feature/RequirementsTraceabilityTest.php --format agent` and the separate new Unit file: passed. Unrelated shared-worktree PHP was not reformatted. |
+| Composer manifest | `composer validate --strict --no-check-publish`: valid, exit 0; root manifests/locks and original package have no diff from HEAD. |
+| Plan/source reconciliation | All 139 appendix file paths, sizes and SHA-256 values match both copies; stages P0–P18 and paired code fences are intact; scoped `git diff --check` exits 0. |
+
+Pint's normal directory/dirty scans use anchored `notPath` filters for the two root-relative distribution directories. Its separate `--stdin-filename` mode uses different filtering semantics; do not use editor/stdin formatting on vendored source. The integrity gate detects any such byte changes. This rule is recorded in `.ai/rules/flux-pro.md`.
+
+Markdown inventory covered 182 existing paths and 183 after the new shared rule, excluding dependency trees and the two package distributions. This checkpoint updates 33 relevant Markdown files (including the shared-rule index); historical evidence, unrelated domain contracts and provider-managed skill copies retain their applicable content. Current documents consistently describe an uninstalled prepared snapshot. Broader documentation conversion to actual Pro usage accompanies each verified workflow, not a global word replacement.
+
+The canonical inventory digest uses bytewise full relative-path order and UTF-8 `path TAB bytes TAB sha256 LF`: `da0fcdf6baf21b0f747cae8fa804cfe45bcc7e1ac9e6bb101c9448695b5790c5`. The original plan's `b64a3c813819e85a414a010f68bb13d23ed7dcda76668fb5e52cf0388330ad9f` uses lexicographic path-component order over the same unchanged files; provenance records both formats explicitly.
+
+No Pro installation, asset/render smoke, browser workflow, full application suite, coverage, production build, migration/seeding, deployment or original-folder deletion is claimed by this source-only checkpoint. Those gates require the compatible P0 input and subsequent implementation. Existing dated results below refer to their own changes. Current stage ownership and the concrete HTTP 401/constraint blocker are in `IMPLEMENTATION_PLAN.md`.
 
 ## Second Flux cleanup pass — 2026-09-15
 

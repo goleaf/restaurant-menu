@@ -8,16 +8,15 @@
     <head>
         @include('partials.head')
     </head>
-    <body data-layout="auth" class="min-h-screen bg-canvas text-text-primary antialiased">
+    <body data-layout="auth" class="rm-auth-page">
         <a href="#main-content" class="skip-link">
             {{ __('ui.accessibility.skip_to_content') }}
         </a>
 
-        <main id="main-content" tabindex="-1" class="bg-canvas flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+        <main id="main-content" tabindex="-1" class="rm-auth-main">
             <div @class([
-                'flex w-full flex-col gap-2',
-                'max-w-sm' => ! $wide,
-                'max-w-4xl' => $wide,
+                'rm-auth-stack',
+                'rm-auth-stack--wide' => $wide,
             ])>
                 <a href="{{ route('home') }}" class="flex min-h-11 flex-col items-center gap-2 font-medium" wire:navigate>
                     <span class="flex h-9 w-9 mb-1 items-center justify-center rounded-md">
@@ -39,6 +38,7 @@
 
         <x-client-offline-indicator />
 
+        @livewireScriptConfig
         @fluxScripts
     </body>
 </html>

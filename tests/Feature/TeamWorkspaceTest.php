@@ -69,6 +69,21 @@ test('staff filter changes reset only the staff paginator and reject malformed U
     $component->set('filters.sort', 'unsafe')->assertHasErrors('filters.sort');
 });
 
+test('staff rendering preserves editor errors while clearing only corrected filter errors', function (bool $branchScope): void {
+    $component = Livewire::actingAs($this->owner)->test($branchScope ? BranchStaffIndex::class : OrganizationStaffIndex::class,
+        $branchScope ? ['organization' => $this->organization, 'brand' => $this->brand, 'branch' => $this->branch] : ['organization' => $this->organization]);
+
+    $component->call('openInvitation')->set('invitationForm.email', 'invalid-email')
+        ->call('previewInvitation')->assertHasErrors('invitationForm.email')
+        ->assertSet('invitationForm.email', 'invalid-email')->assertSet('editor', 'invite');
+    $component->call('$refresh')->assertHasErrors('invitationForm.email');
+    $component->set('filters.sort', 'unsafe')->assertHasErrors(['filters.sort', 'invitationForm.email']);
+    $component->set('filters.sort', 'newest')->assertHasNoErrors('filters.sort')->assertHasErrors('invitationForm.email');
+    $component->set('invitationForm.email', 'valid-preview@example.test')->call('previewInvitation')->assertHasNoErrors();
+
+    expect(Invitation::query()->count())->toBe(0);
+})->with([false, true]);
+
 test('changing invitation details after preview requires a new review and creates nothing', function () {
     $role = Role::query()->where('code', SystemRole::Waiter->value)->firstOrFail();
     Livewire::actingAs($this->owner)->test(OrganizationStaffIndex::class, ['organization' => $this->organization])

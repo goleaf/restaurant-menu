@@ -27,12 +27,16 @@ For interface work, read root `PRODUCT.md` and `DESIGN.md` before `docs/frontend
 
 ## Technology baseline
 
+### Accepted Flux Pro migration
+
+User-authorized `ui-flux-pro-001` targets all applicable Pro families and complete source internalization; follow `docs/IMPLEMENTATION_PLAN.md` and `docs/superpowers/plans/2026-09-15-flux-pro-integration.md`. On 2026-09-16 the user explicitly selected the existing local code instead of official repository access or another archive. Maintain it as a documented local adaptation in `packages/livewire/flux-pro/`, with an internally assigned release version, unknown upstream version, original-source inventory and per-file patch provenance. A dependency constraint may change only as part of that explicit local adaptation with compatibility tests; never present the local release as an upstream release. Use normal Composer path installation and discovery; do not alter licensing features, spoof edition detection or manually register installed packages. Preserve the proprietary license and first-party formatting boundaries. Remove the original root `flux-pro/` only after P16/P17 evidence. Installation, component/workflow migration and original-folder deletion remain distinct acceptance gates.
+
 - PHP `>=8.5.0 <8.6.0`.
 - Laravel 13.x and Fortify 1.x.
 - Livewire 4.x using class-based PHP components and separate Blade views.
 - Flux UI Free 2.x where an official Flux component is already the best fit.
 - Blade SSR; no React, Vue, Inertia, separate SPA, jQuery, or Volt.
-- Tailwind CSS 4.x through `@tailwindcss/vite`, CSS-first configuration, and Vite 8.x.
+- Tailwind CSS 4.x through a separate CSS-first framework bridge, Dart Sass (`sass-embedded`) for first-party product styles, and Vite 8.x.
 - SQLite is the only application database. Database cache, sessions, and queues are the deployable defaults.
 - Pest 4 and PHPUnit 12; Laravel Pint; Larastan when configured by the repository.
 - Local filesystem disks only. No Redis, WebSockets, S3, Docker, online payment provider, or paid runtime service is required.
@@ -82,7 +86,7 @@ Use the existing npm lock file. Do not introduce another JavaScript package mana
 
 ## Tailwind and design-system rules
 
-- Keep CSS-first Tailwind configuration in `resources/css/app.css` using `@import`, `@theme`, `@source`, variants, and small intentional utilities.
+- Keep only Tailwind/Flux imports, explicit sources, dark variant and generated token mappings in `resources/css/app.css`. Own editable product styling in `resources/scss`; compile Sass independently. Vite generates aliases/breakpoints and fixed PDF/emergency CSS artifacts from canonical Sass sources; never invoke Sass in a PHP request.
 - Use design tokens for repeated colors, spacing, typography, focus, radius, shadow, motion, and z-index values.
 - Do not construct dynamic Tailwind class fragments. Every utility must be statically discoverable or explicitly sourced.
 - Mobile-first layouts must avoid horizontal overflow and remain usable with translated text, keyboard, touch, 200% zoom, reduced motion, and forced colors.

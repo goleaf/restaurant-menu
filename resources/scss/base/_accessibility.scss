@@ -1,0 +1,51 @@
+:where(input, textarea, select):focus-visible {
+    outline: 2px solid var(--rm-focus);
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    [data-flux-control] {
+        min-block-size: var(--rm-spacing-touch);
+    }
+
+    [data-flux-button]:not(.min-h-operational-touch),
+    [data-flux-sidebar-item] {
+        min-block-size: var(--rm-spacing-touch);
+        min-inline-size: var(--rm-spacing-touch);
+    }
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (forced-colors: active) {
+    :focus-visible {
+        outline: 2px solid CanvasText;
+        outline-offset: 2px;
+    }
+
+    [aria-current='page'],
+    [data-priority-row][data-selected='true'] {
+        border-color: Highlight;
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    :disabled,
+    [aria-disabled='true'] {
+        color: GrayText;
+        opacity: 1;
+    }
+}

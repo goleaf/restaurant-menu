@@ -75,3 +75,17 @@ test('reference demonstrates a visible associated error and translated loading s
         ->toContain('reference-note-help');
     expect($html)->not->toContain('ui.state.loading.title');
 });
+
+test('the restricted reference exposes installed Pro controls with the application locale', function (string $locale) {
+    $this->actingAs(componentReferenceAdministrator());
+    app()->setLocale($locale);
+
+    $html = Livewire::test(ComponentReference::class)->html();
+
+    foreach (['accordion', 'autocomplete', 'calendar', 'chart', 'command', 'composer', 'context', 'date-picker', 'editor', 'file-upload', 'kanban', 'pillbox', 'popover', 'select', 'slider', 'tabs', 'time-picker', 'timeline'] as $family) {
+        expect(str_contains($html, 'data-pro-reference="'.$family.'"'))->toBeTrue($family);
+    }
+
+    expect($html)->toContain('locale="'.$locale.'"', 'time-format="24-hour"')
+        ->not->toContain('ui.reference.pro.');
+})->with(['en', 'lt', 'ru']);

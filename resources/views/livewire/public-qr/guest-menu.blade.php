@@ -1,7 +1,7 @@
 <section
     data-component="guest-menu"
     class="overflow-hidden rounded-card border border-border-subtle bg-surface"
-    x-data="{ detailsOpen: false, closeDetails() { this.detailsOpen = false; this.$nextTick(() => (document.getElementById('guest-menu-item-details-' + this.$wire.selectedItemId) ?? document.getElementById('guest-menu-title-{{ $branchId }}'))?.focus()); } }"
+    x-data="guestMenu" data-menu-heading="guest-menu-title-{{ $branchId }}"
     x-on:guest-item-details-opened="detailsOpen = true"
 >
     <div class="border-b border-border-subtle bg-surface p-4">
@@ -354,8 +354,8 @@
             aria-labelledby="guest-menu-item-title-{{ $branchId }}"
             wire:key="guest-item-details-dialog"
             wire:ignore.self
-            x-data="{ image: 0 }"
-            x-effect="if (detailsOpen && !$el.open) { image = 0; $el.showModal(); } else if (!detailsOpen && $el.open) { $el.close(); }"
+            x-data="guestDishDialog"
+            x-effect="sync(detailsOpen)"
             x-on:cancel.prevent="closeDetails()"
             x-on:close="if (!$el.open && detailsOpen) closeDetails()"
             @keydown.tab.prevent="if ($event.shiftKey) $focus.wrap().previous(); else $focus.wrap().next()"

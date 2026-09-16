@@ -16,7 +16,30 @@ use App\Models\QrCode;
 use App\Models\ServicePoint;
 use App\Models\TableSession;
 use App\Models\TableSessionGuest;
+use App\Models\User;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Vite;
 use Livewire\Livewire;
+
+test('emergency pages retain standalone compiled styling when Vite is unavailable', function (string $locale, bool $authenticated): void {
+    app()->setLocale($locale);
+
+    if ($authenticated) {
+        $this->actingAs(User::factory()->create());
+    }
+
+    Vite::shouldReceive('__invoke')->never();
+
+    $html = Blade::render('<x-error-page :status="500" />');
+
+    expect($html)
+        ->toContain('<style>', 'rm-emergency', 'rm-emergency-action')
+        ->toContain(e(__('errors.admin.system.title')), e(__('errors.actions.home')))
+        ->toMatch('/min-height:\s*44px/')
+        ->not->toContain('style="', '<script', 'rel="stylesheet"', 'data-flux');
+
+    expect(str_contains($html, 'href="'.route('dashboard').'"'))->toBe($authenticated);
+})->with(['en', 'lt', 'ru'])->with([false, true]);
 
 test('guest error page is shown when qr token is not found', function () {
     $this->get(route('public.qr.show', ['token' => 'missingpublictoken'], false))

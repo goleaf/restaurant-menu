@@ -1,6 +1,6 @@
 @if ($paginator->hasPages())
     <nav
-        class="flex flex-col gap-3 border-t border-border-subtle pt-3 sm:flex-row sm:items-center sm:justify-between"
+        class="rm-pagination"
         role="navigation"
         aria-label="{{ __('pagination.navigation') }}"
     >
@@ -14,13 +14,13 @@
 
         <div class="flex flex-wrap items-center gap-1">
             @if ($paginator->onFirstPage())
-                <span class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm text-text-muted opacity-60" aria-disabled="true">
+                <span class="rm-pagination__disabled" aria-disabled="true">
                     {{ __('pagination.previous') }}
                 </span>
             @else
                 <button
                     type="button"
-                    class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                    class="rm-pagination__control"
                     wire:click="previousPage('{{ $paginator->getPageName() }}')"
                     wire:loading.attr="disabled"
                 >
@@ -37,7 +37,7 @@
                     @foreach ($element as $page => $url)
                         @if ($page === $paginator->currentPage())
                             <span
-                                class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-control bg-brand-700 px-2 text-sm font-semibold text-white"
+                                class="rm-pagination__current"
                                 aria-current="page"
                                 aria-label="{{ __('pagination.current_page', ['page' => $page]) }}"
                             >
@@ -46,7 +46,7 @@
                         @else
                             <button
                                 type="button"
-                                class="inline-flex min-h-touch min-w-touch items-center justify-center rounded-control border border-border-subtle px-2 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                                class="rm-pagination__control rm-pagination__page"
                                 wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')"
                                 aria-label="{{ __('pagination.page', ['page' => $page]) }}"
                             >
@@ -60,14 +60,14 @@
             @if ($paginator->hasMorePages())
                 <button
                     type="button"
-                    class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm font-semibold text-text-primary hover:bg-surface-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                    class="rm-pagination__control"
                     wire:click="nextPage('{{ $paginator->getPageName() }}')"
                     wire:loading.attr="disabled"
                 >
                     {{ __('pagination.next') }}
                 </button>
             @else
-                <span class="inline-flex min-h-touch items-center rounded-control border border-border-subtle px-3 text-sm text-text-muted opacity-60" aria-disabled="true">
+                <span class="rm-pagination__disabled" aria-disabled="true">
                     {{ __('pagination.next') }}
                 </span>
             @endif

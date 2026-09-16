@@ -51,7 +51,7 @@
     @endif
 
     <div class="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div class="flex flex-col gap-3 border-b border-zinc-200 px-4 py-3 sm:flex-row sm:items-end sm:justify-between dark:border-zinc-800">
+        <div class="rm-structure-toolbar">
             <flux:heading size="lg">
                 {{ __('ui.organizations.brands.branches.index.filialy_brenda') }}
                 <span class="sr-only">{{ __('ui.organizations.brands.branches.index.branches_in_this_brand') }}</span>
@@ -73,7 +73,7 @@
 
         <div class="divide-y divide-zinc-200 dark:divide-zinc-800">
             @error('structureDeletion')
-                <div role="alert" class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">{{ $message }}</div>
+                <div role="alert" class="rm-structure-error">{{ $message }}</div>
             @enderror
 
             @forelse ($branchSetupGuides as ['branch' => $branch, 'counts' => $counts, 'steps' => $steps])
@@ -134,7 +134,7 @@
                     @else
                         <div class="min-w-0">
                             <div class="flex gap-3">
-                                <div class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                                <div class="rm-structure-avatar">
                                     @if ($branch['logo_url'])
                                         <img src="{{ $branch['logo_url'] }}" alt="{{ $branch['name'] }}" width="48" height="48" loading="lazy" decoding="async" class="size-full object-contain">
                                     @else
@@ -226,7 +226,7 @@
                                             wire:key="branch-{{ $branch['id'] }}-setup-step-{{ $step['number'] }}"
                                             href="{{ $step['href'] }}"
                                             wire:navigate
-                                            class="group flex min-h-28 flex-col justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-left transition hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700 dark:hover:bg-zinc-900"
+                                            class="group rm-branch-shortcut rm-branch-shortcut--available"
                                         >
                                             <div class="flex items-start justify-between gap-3">
                                                 <flux:badge :icon="$step['icon']" :color="$step['is_done'] ? 'green' : 'zinc'">
@@ -255,7 +255,7 @@
                                     @else
                                         <div
                                             wire:key="branch-{{ $branch['id'] }}-setup-step-{{ $step['number'] }}"
-                                            class="flex min-h-28 flex-col justify-between gap-3 rounded-lg border border-dashed border-zinc-200 bg-zinc-50 p-4 text-left opacity-80 dark:border-zinc-800 dark:bg-zinc-950"
+                                            class="rm-branch-shortcut rm-branch-shortcut--disabled"
                                         >
                                             <div class="flex items-start justify-between gap-3">
                                                 <flux:badge :icon="$step['icon']" :color="$step['is_done'] ? 'green' : 'zinc'">
@@ -344,7 +344,7 @@
                         @endif
 
                         @if ($deletingBranchId === $branch['id'])
-                            <div class="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200 md:col-span-2">
+                            <div class="rm-structure-editor-error md:col-span-2">
                                 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                     <span>{{ __('structure.confirmations.archive.title') }}</span>
 

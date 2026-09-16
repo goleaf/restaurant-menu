@@ -90,6 +90,29 @@ test('waiter can persist notification sound preference in the browser', function
         'stored' => null,
     ]);
 
+    $page->script(<<<'JAVASCRIPT'
+        (() => {
+            window.__waiterAudio = { contexts: 0, notes: 0, closed: 0 };
+            window.AudioContext = new Proxy(window.AudioContext, {
+                construct(target, args) {
+                    const context = new target(...args);
+                    window.__waiterAudio.contexts++;
+                    const createOscillator = context.createOscillator.bind(context);
+                    const close = context.close.bind(context);
+                    context.createOscillator = () => {
+                        window.__waiterAudio.notes++;
+                        return createOscillator();
+                    };
+                    context.close = () => {
+                        window.__waiterAudio.closed++;
+                        return close();
+                    };
+                    return context;
+                },
+            });
+        })()
+    JAVASCRIPT);
+
     $page->click('[data-waiter-sound-toggle]');
 
     $enabledState = $page->script(<<<'JAVASCRIPT'
@@ -126,6 +149,24 @@ test('waiter can persist notification sound preference in the browser', function
     $page
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
+
+    $audioBeforeGuest = $page->script('({...window.__waiterAudio})');
+    expect($audioBeforeGuest['contexts'])->toBe(1)
+        ->and($audioBeforeGuest['notes'])->toBeGreaterThan(0);
+    $guestUrl = json_encode(route('guest.home', absolute: false), JSON_THROW_ON_ERROR);
+    $page->script("new Promise(resolve => { document.addEventListener('livewire:navigated', () => resolve(true), { once: true }); Livewire.navigate({$guestUrl}); })");
+    $page->assertPathIs('/guest');
+    $page->script("['waiter-new-draft', 'waiter-called', 'waiter-bill-requested', 'waiter-item-ready'].forEach(name => window.dispatchEvent(new CustomEvent(name)))");
+    $guestAudio = $page->script('({...window.__waiterAudio})');
+    expect($guestAudio['contexts'])->toBe($audioBeforeGuest['contexts'])
+        ->and($guestAudio['notes'])->toBe($audioBeforeGuest['notes'])
+        ->and($guestAudio['closed'])->toBe(1);
+
+    $page->script("new Promise(resolve => { document.addEventListener('livewire:navigated', () => resolve(true), { once: true }); history.back(); })");
+    $page->assertAttribute('[data-waiter-sounds]', 'data-waiter-sounds-ready', 'true')
+        ->assertAttribute('[data-waiter-sound-toggle]', 'aria-pressed', 'true')
+        ->click('[data-waiter-sound-test]');
+    expect($page->script('window.__waiterAudio.contexts'))->toBe(2);
 
     $page
         ->navigate(route('restaurant.waiter.dashboard', absolute: false))

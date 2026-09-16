@@ -43,7 +43,7 @@
                                 </div>
                             </div>
                         @empty
-                            <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                            <p class="rm-menu-empty">
                                 {{ __('menu.empty.no_stop_list_items') }}
                             </p>
                         @endforelse
@@ -93,7 +93,7 @@
                                 </div>
                             </div>
                         @empty
-                            <p class="rounded-md border border-dashed border-zinc-300 bg-white px-3 py-4 text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+                            <p class="rm-menu-empty">
                                 {{ __('menu.empty.no_available_items') }}
                             </p>
                         @endforelse

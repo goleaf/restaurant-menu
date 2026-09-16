@@ -1,4 +1,9 @@
+@pushOnce('page-module-status', 'departments-status')
+    <x-page-module-status module="departments" :heading="__('frontend.timers_loading')" :description="__('frontend.timers_loading_help')" />
+@endPushOnce
+
 <section
+    x-data="kitchenTimers"
     data-page="{{ $dataPage }}"
     wire:poll.visible.3s="refreshDepartment"
     wire:loading.attr="aria-busy"

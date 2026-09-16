@@ -4,6 +4,25 @@
 
 # Final code review
 
+## Local adaptation foundation review - 2026-09-16
+
+Independent specification review and subsequent quality review pass for the local 0.1.0 package, Composer path/lock changes, provider/aliases, preserved license and original inventory, physical mirror and installation/integrity tests. The reviewers independently confirmed all 178 previous dependency records are unchanged and only the two declared foundation files differ from the original. Scope is installation and provenance; JavaScript, localization and workflow acceptance require their own reviews.
+
+## Frontend resource delivery review — 2026-09-16
+
+Independent review covered the actual screen-entry/readiness diff, installed Alpine/Livewire ordering, current-authority notification cursors, CSS cascade, font delivery, budget tooling and targeted browser evidence. It found missing operational fallback; browser fault injection also exposed globally colliding Blade pushOnce IDs. Both are fixed and protected by runtime regressions. The staff validation regression showed render-time filter validation clearing another form's errors; filters now clear only their own keys, with positive/negative organization and branch tests.
+
+Root screenshot review found staff names shrinking to 14px beside long translated actions despite no horizontal overflow. A separate browser regression reproduced this before the two flex-basis corrections and passes at 390px, CSS zoom 200% and alongside an open editor. Independent final source review has no open P1/P2. A later review of the actual 54-path alternate index caught a concurrently added Pro CSS source; it was excluded only from that index, preserving the other process's working file and shared index. The reviewer rechecked the corrected diff, policy blocks and requirement IDs. Every prepared executable blob matches the verified fingerprint. Full executable results, failed coverage export and subsequent concurrent-source boundary belong to [testing.md](testing.md); none of this stage claims review or ownership of the separate Pro integration. Commit/push remain pending.
+
+
+## Flux Pro source preparation review — 2026-09-16
+
+Two bounded independent reviews covered the internal distribution, provenance, checksum manifest, integrity test and Pint boundary. Specification review repeated all 139 checksums and the 14-test integrity run; it confirmed exact snapshot preservation, original retention and truthful uninstalled/unknown-version status. Quality review found no significant defect and identified Symfony Finder's basename behavior for the original Pint exclusion. Anchored `notPath` filters now protect only the two root-relative distribution paths; a real-Pint regression verifies that similarly named nested first-party paths are still formatted. Editor/stdin mode has different filtering semantics and must not format distribution files.
+
+A separate documentation review confirmed all 54 IDs, descriptions/order/statuses and checked local links agree across the canonical matrices and active integration documents. Final local source and architecture verification passed 62 tests / 1,403 assertions in two focused runs; `testing.md` records their commands and scope.
+
+Review scope does not include concurrent workspace changes or Pro runtime/UI acceptance. Root dependency manifests remain unchanged, and compatibility/access still blocks activation. Future acceptance requires the normal workflow, security, localization, browser and clean-release gates in the integration plan.
+
 ## Flux/CSS review — 2026-09-15
 
 A separate read-only reviewer compared the CSS/source changes, Flux compositions, override diffs and print entry with the installed Free templates. The review found department actions needed wrapping and their previous text size; all three status actions now use `h-auto!`, `min-w-0`, `whitespace-normal!`, `text-base!` and operational minimum height. Follow-up review found no blocking defect in the print geometry, localized modal autofocus or the precise foreign-image rejection regression. Two documentation wording issues were corrected. Build-size arithmetic was independently recomputed. Browser and executable gate evidence remains in `testing.md`; review alone is not a test result.

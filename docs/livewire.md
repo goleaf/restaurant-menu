@@ -4,11 +4,24 @@
 
 # Livewire 4
 
+## 2026-09-16 — Head entries and history lifecycle
+
+The installed Livewire 4.4.1 ordinary navigation waits for added head scripts before initializing Alpine; cached Back/Forward does not wait for pending head scripts. Critical screen entries register their Alpine providers before calling the shared readiness marker. The shared `livewire:navigating` onSwap callback releases an already registered module after body replacement and before initialization. Late registration after that window keeps the editor inert with explicit recovery rather than exposing controls without dirty-form protection. Do not move this to an uncoordinated import inside x-init or add wire:ignore around whole editors. Each script/status pushOnce needs a different identifier even though the stack names differ.
+
+Notification panel cursor state is locked and encrypted, independently authorized and excluded from closed count-only refreshes. Browser local close increments the request epoch so a delayed history response cannot reopen the dialog; current server access still controls every returned message and destination.
+
+## Flux Pro lifecycle acceptance — 2026-09-15
+
+The local Pro package uses normal Composer discovery with installed Livewire 4.4.1. Retain class components and existing Forms/Actions; Pro owns interaction primitives, not persistent or authorized state. Preserve deferred bindings, stable field identities, component-scoped modal closure and local ephemeral state cleanup on navigation/morph. The older supplied JavaScript requires compatibility review against Free 2.17.0 before workflow acceptance.
+
+Required migration regressions include scoped tab names and hidden-error activation, file-input event identity and upload receipt replay, disabled controls after upload completion, stale async responses, IME-safe Composer shortcuts, and dirty report dates applied as one existing `period` value. Kanban movement must invoke an authorized current-state transition rather than persist a DOM order. Exact release APIs must be checked before each slice; see P3–P11 in the [integration plan](superpowers/plans/2026-09-15-flux-pro-integration.md).
+
 ## Workspace lifecycle contracts — 2026-09-15
 
 One `notifications.unread-count` instance owns bounded visible polling in the shared header. Opening requests details without marking read. Public action arguments are hostile; the query service re-scopes the user and branches, and the read Action reuses that scope. Notification messages are prepared privately for rendering, with a locked audience fingerprint preventing identity reuse. A closed stable refresh updates the reactive count without HTML; the first refresh after closing clears previously rendered details. A failed offline opening shows an explicit Retry when connectivity returns. Keep Alpine visibility and `wire:offline` on separate elements so reconnect does not overwrite local state visibility.
 
 Use `$this->modal('exact-name')->close()` after an editor succeeds. Global `Flux::modals()->close()` is prohibited by the frontend architecture regression because it can close an independent draft. Local cancellation still uses Flux close controls; dismissal does not roll back a dispatched domain operation.
+
 
 ## Flux interaction lifecycle — second cleanup pass
 

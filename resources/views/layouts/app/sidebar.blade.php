@@ -2,6 +2,7 @@
 <html lang="{{ __('meta.document_language') }}">
     <head>
         @include('partials.head')
+        @stack('page-scripts')
     </head>
     <body
         class="min-h-screen overflow-x-clip bg-canvas text-text-primary antialiased"
@@ -87,7 +88,7 @@
         <flux:modal name="workspace-navigation" :closable="false" class="w-full min-w-0! max-w-lg space-y-4">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <flux:heading id="workspace-navigation-heading" level="2" size="lg" x-init="$el.closest('dialog').setAttribute('aria-labelledby', $el.id)">{{ __('navigation.search') }}</flux:heading>
+                    <flux:heading id="workspace-navigation-heading" level="2" size="lg" x-bind="dialogLabel">{{ __('navigation.search') }}</flux:heading>
                     <flux:text class="mt-1">{{ __('navigation.search_description') }}</flux:text>
                 </div>
                 <flux:modal.close>
@@ -133,6 +134,7 @@
             </flux:toast.group>
         @endpersist
 
+        @livewireScriptConfig
         @fluxScripts
     </body>
 </html>

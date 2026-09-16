@@ -4,11 +4,54 @@
 
 # Restaurant Menu completion progress
 
+## SCSS / Alpine / Livewire migration — implemented and verified, 2026-09-16
+
+Independent Sass entries, canonical/generated tokens, PDF/emergency artifacts, 26 named Alpine factories/four bindings, one Livewire ESM bootstrap and removal of twelve obsolete root modules are connected. All 30 existing class-based product page routes retain their server Actions and explicit HTTP exceptions. No schema, working data or APP_KEY changed.
+
+The final `npm run verify:migration` completes all 16 recorded stages with exit 0 and no timeout. Exact backend discovery equals execution: **2,852 tests /60,507 assertions**, zero failures/errors/skips (509.13 s). Canonical coverage repeats the same inventory at **93.7% PHP line coverage** (1,259.34 s; unchanged 90% gate). Node **167/167** passes with **100% lines /95.12% branches /98.30% functions**, including every first-party browser and build JS source. The full isolated WebKit inventory passes **37 cases /2,684 assertions**, zero failures/timeouts. Translation audit reports 8,043 aligned entries and zero critical/missing/unused keys. Architecture, Stylelint, ESLint, Pint, Larastan, production build, generated drift and asset budgets pass.
+
+Final aggregate: system temporary artifact `restaurant-migration-verification-TBM1Zr`; browser artifacts: `restaurant-browser-fb18ce2b5f4e73e6`. The 1,347-file executable/config/resource/test/manifest inventory is recorded in `verified-source.json` (file SHA-256 `983d3d39f044d2cb3a4a6171b07f5d74d5ced60b4e4927b836d59650e57248a1`). Markdown evidence updates are separate from that frozen source.
+
+Additional checks pass: isolated Composer clean installation without network; npm clean lock installation from the allowed npm registry after the offline cache lacked espree; eleven isolated discovery/migration/rollback/reapply/double-seed/cache commands; zero Composer/npm audit advisories; actual Chrome Sass HMR without document reload; isolated Chrome locale/theme/width/focus checks; and three rasterized QR/report PDF pages with all seven QR values decoded. Detailed coverage, browser and device limits are in `testing.md`; measured asset growth and matched HTTP samples are in `performance.md`.
+
+Independent review found and verified fixes for dark Flux aliases, deferred clipboard focus, passkey cancellation during options GET, Alpine child-directive root ownership, x-show focus timing and onboarding invalid-field priority. The kitchen browser test now uses actual factory-backed tickets and component lifecycle rather than the removed document-wide scanner. The test-only browser identity middleware discards Pest's cached route controller after resetting the request guard. The complete final run includes all these corrections; no open P1/P2 source finding remains.
+
+Earlier attempts remain historical: the first aggregate stopped with exit 143 before browser acceptance after auth defects were found; a later full browser candidate passed 35/37 and exposed onboarding focus and an obsolete timer fixture. Both defects were fixed and focused regressions passed before the successful final aggregate above. Hardware WebAuthn, physical phones/printing/screen readers and global PHP branch coverage are not claimed.
+
+Delivery ownership is **explicitly approved**: the user accepted the reviewed composite candidate of 357 changed paths, including the pre-existing local Flux Pro/frontend/notification preparation, staff validation fix, badge contrast and historical documentation. The approved candidate's 1,347 executable inputs still match the final verification inventory. The original index was preserved through approval; staging and local commit now use this exact agreed scope. Commit/push execution is in progress and will be recorded after observing the Git results. Original `flux-pro/`, working data and GitHub workflow files remain unchanged.
+
+## 2026-09-16 - Local Pro foundation installed; workflow integration continues
+
+The user selected existing local code instead of official access or another archive. The internal adaptation is installed as `livewire/flux-pro` 0.1.0 alongside Free 2.17.0 through an offline Composer path install with a physical mirror. Previous 178 dependency records remain unchanged. The original 139-file inventory and license are preserved; metadata/provider changes have explicit source/current hashes. No working data or original source was removed.
+
+Foundation tests pass: installation/integrity 22 / 567, family rendering 18 / 36, explicit Tailwind source 1 / 13. Composer validation/platform checks, scoped formatting and static analysis pass. Independent specification and quality reviews pass. The older combined runtime needs local Free behavior backports; P2 localization/accessibility and actual P3-P12 workflows remain in progress. Full Pro gates, clean release, rollback and original-folder deletion are not yet claimed.
+
+## 2026-09-16 — Frontend delivery optimization implemented; coverage/delivery blocked
+
+The stage starts from local main `7376b20`, preserving the separate uncommitted Pro preparation. Its implementation, measurements and gates used Flux Free 2.17.0 and Livewire 4.4.1. No dependency lock, deployment or production data changes are included in this stage's prepared diff.
+
+Implemented static screen Vite entries, a shared pre-Alpine readiness barrier, native recovery links, operational-module failure feedback, scoped timer/audio lifecycle, consolidated font CSS delivery, reduced vendor-selector coupling, bounded notification history and a manifest-driven build budget. The production build retains all three Noto subsets and the separate QR stylesheet.
+
+Observed RED cases drove fixes for missing module fallback, global Blade pushOnce identifier collisions, too-late cached-history modules, sound/timer work after navigation, notification focus after x-show paint, offline boundary-disabled controls, erased staff validation errors and staff names compressed to 14px beside long actions. Independent review has no open P1/P2 findings. Final backend passes 2,810 / 59,323 and full WebKit passes 33 / 2,042; the coverage execution passes the same 2,810 tests but cannot write its final serialized report. Available local disk falls to about 211 MiB, so the coverage percentage and 90% gate are not verified. No commit or push is performed before that mandatory gate passes. Pint/Larastan, 32 Node tests, production build/budgets, translations and isolated caches pass. Fresh before/after metrics in performance.md distinguish reduced initial resources from increased total JS/HTML and inconclusive CPU timing.
+
+A separate process populated the shared Git index and subsequently changed `composer.json`, `composer.lock`, `app.css` sources and two tests after the executable verification. A fresh installed-package inspection now reports the separately supplied local `livewire/flux-pro` 0.1.0 alongside Flux 2.17.0 / Livewire 4.4.1. Those later changes are outside this stage's ownership and evidence; they were preserved. The prepared 54-path stage is held in `/tmp/frontend-own.index`, and every owned executable blob still matches the frozen verification fingerprint. Root did not alter the shared index. Independent review of the prepared diff has no open P1/P2 findings. Delivery requires reconciling the concurrently changed tree and rerunning the mandatory gates, including coverage, with adequate disk headroom. No commit or push was performed.
+
+Evidence is retained at `/var/folders/x3/2d974lw51cd8v769p271xdtr0000gn/T/restaurant-asset-delivery-8maupe9v`; earlier results below are historical.
+
 ## Unified Flux workspace — 2026-09-16
 
 Implemented the shared collapsible sidebar/header/account menu, permitted local navigation search, one explicit-read notification panel, bounded Flux branch options, named modal closure and local superadmin component reference. Fixed error associations/contrast, Safari pointer-focus restoration, reconnect visibility, translated waiter counts and the QR print page background. Existing menu/media/team/domain work and the independent Pro preparation remain preserved.
 
 Implementation and local verification are complete. Full WebKit passes 23 / 1,627; independent review has no remaining P1/P2 findings. Final full backend passes 2,794 / 59,017; canonical coverage passes at 93.7% with the unchanged 90% minimum. Commit/push delivery is recorded separately in local Git history and the final session response. Runtime remains installed Flux Free 2.17.0 / Livewire 4.4.1 because the compatible update archives require prohibited GitHub requests. See testing.md and performance.md for measured evidence and environmental limits.
+
+
+## Flux Pro source preparation — 2026-09-16
+
+Started the accepted integration plan and completed the available source-preservation work: all 139 meaningful files / 3,291,708 bytes are copied into the internal package, with the original license, truthful unknown-version provenance and a sorted SHA-256 manifest. Four Finder metadata files remain only in the preserved original. Integrity checks pin the complete file set, reject unsafe manifest paths/symlinks and do not read the old root directory. Narrow formatting exclusions protect the distribution.
+
+The new `ui-flux-pro-001` requirement is reflected in all three canonical matrices; 33 relevant Markdown files now distinguish source preparation from runtime adoption across architecture, frontend, localization, accessibility, security, dependency and deployment contracts. Independent specification, quality and documentation reviews passed. Final focused verification passed 62 tests / 1,403 assertions, source checksums, scoped Pint and strict Composer validation; commands and evidence limits are in `testing.md`.
+
+P0 is blocked: the supplied package's Free constraint conflicts with installed 2.17.0, official Pro metadata returns HTTP 401, and no compatible local pair is available. Pro is not installed and no Pro UI acceptance or final deletion has occurred. Existing shared-worktree changes are preserved. The original root directory remains until clean-release/rollback proof; `IMPLEMENTATION_PLAN.md` owns the next steps.
 
 ## Second Flux cleanup pass — 2026-09-15
 

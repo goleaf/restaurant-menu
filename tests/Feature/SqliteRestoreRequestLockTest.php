@@ -59,6 +59,7 @@ test('restore HTTP middleware holds exclusivity until the inner session response
     $probe = fopen($path, 'c+');
     try {
         $middleware->handle(Request::create('/superadmin/backups/sqlite/restore', 'POST'), function () use ($lock, $probe) {
+            expect(flock($probe, LOCK_SH | LOCK_NB))->toBeFalse();
             $lock->acquireExclusive();
             $lock->releaseOutsideRequest();
             expect(flock($probe, LOCK_SH | LOCK_NB))->toBeFalse();

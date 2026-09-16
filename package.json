@@ -7,18 +7,35 @@
         "npm": ">=10"
     },
     "scripts": {
-        "build": "vite build",
-        "dev": "vite"
+        "build": "vite build && npm run build:check",
+        "dev": "vite",
+        "build:check": "node tests/frontend-assets.mjs --manifest public/build/manifest.json --budget tests/frontend-budget.json",
+        "test:assets": "node --test tests/frontend-assets.test.mjs tests/frontend-lifecycle.test.mjs",
+        "lint:js": "eslint resources/js resources/build tests/verify-migration.mjs tests/Support/verification-process.mjs *.config.js",
+        "lint:styles": "stylelint \"resources/scss/**/*.scss\" \"resources/css/*.css\"",
+        "test:js": "node --experimental-test-module-mocks --test tests/*.test.mjs",
+        "test:js:coverage": "node --experimental-test-module-mocks --experimental-test-coverage --test-coverage-include='resources/js/**/*.js' --test-coverage-include='resources/build/**/*.js' --test-coverage-lines=100 --test tests/*.test.mjs",
+        "test:architecture": "node --experimental-test-module-mocks --test tests/migration-architecture.test.mjs tests/style-pipeline.test.mjs tests/style-generation.test.mjs",
+        "styles:check": "node --input-type=module -e \"import { generateStyles } from './resources/build/styles.js'; generateStyles(process.cwd(), { check: true });\"",
+        "verify:migration": "node tests/verify-migration.mjs"
     },
     "dependencies": {
-        "@laravel/passkeys": "^0.4.0"
+        "@simplewebauthn/browser": "13.3.0"
     },
     "devDependencies": {
+        "@eslint/js": "10.0.1",
         "@fontsource-variable/noto-sans": "5.3.0",
         "@tailwindcss/vite": "^4.3.3",
         "concurrently": "^10.0.5",
+        "eslint": "10.10.0",
+        "eslint-plugin-promise": "7.3.0",
+        "globals": "17.12.0",
         "laravel-vite-plugin": "^3.2.0",
         "playwright": "1.62.1",
+        "postcss-scss": "4.0.9",
+        "sass-embedded": "1.104.1",
+        "stylelint": "17.15.0",
+        "stylelint-scss": "7.3.0",
         "tailwindcss": "^4.3.3",
         "vite": "^8.2.2"
     }

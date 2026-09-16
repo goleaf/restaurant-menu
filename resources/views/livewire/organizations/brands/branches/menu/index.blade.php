@@ -1,4 +1,8 @@
-<section data-page="branch-menu" class="mx-auto flex w-full min-w-0 max-w-content flex-1 flex-col gap-6" x-data="menuWorkspace">
+@pushOnce('page-module-status', 'menu-status')
+    <x-page-module-status module="menu" />
+@endPushOnce
+
+<section data-page-module="menu" wire:ignore.self x-ignore inert data-page="branch-menu" class="mx-auto flex w-full min-w-0 max-w-content flex-1 flex-col gap-6" x-data="menuWorkspace">
     <x-ui.page-header :title="__('navigation.menu')" :breadcrumbs="$breadcrumbs" :description="__('menu.workspace.description')">
         <x-slot:actions>
             <flux:button icon="arrow-left" :href="$branchesUrl" wire:navigate>

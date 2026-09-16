@@ -4,6 +4,23 @@
 
 # Deployment
 
+## SCSS / Livewire ESM deployment contract — 2026-09-16
+
+Install PHP and npm dependencies from their lock files and run `npm run build` before deployment. Composer changes to Livewire require rebuilding the bundled ESM runtime. Ship the Vite manifest/assets plus the fixed generated PDF/error Blade CSS files with matching source. `npm run styles:check` verifies generated source parity. Runtime PHP must never invoke Node/Sass; emergency pages and PDF styles do not depend on a working Vite manifest.
+
+The main layout loads framework CSS, compiled application Sass and the common JS entry in that order. Print styles are loaded only by the print layout. Keep `@livewireScriptConfig` before `@fluxScripts`; do not enable a second automatic Livewire/Alpine script. Fonts remain local Latin, Latin-ext and Cyrillic subsets. Shared hosting still needs no Redis, WebSocket service, Supervisor or persistent Node process.
+
+Clean installation was tested in an owned temporary copy: Composer archive extraction with network disabled, npm lock installation through npm registry (offline cache initially lacked espree), package discovery, reversible migrations, repeated seeds and all four Laravel cache builds. This is local release-readiness evidence, not a remote deployment.
+
+
+## Flux Pro source preparation and future activation — 2026-09-15
+
+Release artifacts must include `packages/livewire/flux-pro/` and its adjacent provenance/checksum manifests before Composer install. The local 0.1.0 path package uses `symlink: false`, ordinary discovery and a physical vendor copy; no official Flux repository access is needed for this path install. The original root `flux-pro/` remains available until the final clean-install and rollback gates. Foundation installation is verified offline, while production asset/browser/workflow acceptance is still in progress.
+
+After acceptance, releases must contain the complete internal distribution and adjacent provenance/checksum files before Composer runs. Install with the documented physical mirror (`symlink: false`), prove internal/vendor hashes match, then run Vite and Laravel cache gates. Test an isolated release with the old root directory absent before deleting the original. Preserve a verified previous release for rollback; never combine templates, PHP and compiled assets from different accepted releases.
+
+Private package credentials belong only in protected local/build Composer configuration and must not enter Git, release archives or logs. GitHub push-only restrictions also apply to indirect Composer downloads: a fresh install needing an uncached GitHub-hosted archive remains blocked until an allowed artifact source is available. A local cache hit is not proof that an empty-cache install can retrieve those dependencies. This source preparation has not demonstrated a new production release; see `testing.md`.
+
 ## Team access schema — 2026-09-15
 
 Apply the two additive 2026_09_15_132159 and 2026_09_15_132200 migrations through the normal one-time deployment procedure before serving the new staff workspace. Existing data is retained. Once scoped permission overrides exist, rollback deliberately refuses to merge them into ambiguous global grants; keep the forward schema and restore compatible application code or use a reviewed data migration. This stage adds no runtime worker, scheduler, mail provider or external service requirement. Development verification uses disposable SQLite/storage; the existing working database is not migrated by the test run.
@@ -68,4 +85,4 @@ Copy only key names/default-safe examples from `.env.example`; secrets stay in t
 
 Rollback code/assets to the previous compatible release. Schema rollback is used only when the migration explicitly proves it is safe and no new data would be destroyed; otherwise roll forward. Forward data migrations document compatibility and verification in the migration/ADR.
 
-Shared-hosting alternatives and panel-specific mechanics may be retained in `DEPLOY_SHARED_HOSTING.md`, but this file is the canonical deployment contract.
+This file is the canonical deployment contract; operational recovery procedures are in [`operations.md`](operations.md).

@@ -81,46 +81,24 @@
         @else
             <div
                 class="mt-4 space-y-2"
-                x-data="{
-                    copied: false,
-                    supportsNativeShare: typeof navigator !== 'undefined' && typeof navigator.share === 'function',
-                    async shareInvite() {
-                        try {
-                            await navigator.share({
-                                title: @js($guestInviteTitle),
-                                text: @js($guestInviteText),
-                                url: @js($guestInviteUrl),
-                            });
-                        } catch (error) {}
-                    },
-                    async copyInvite() {
-                        const link = @js($guestInviteUrl);
-
-                        if (navigator.clipboard && window.isSecureContext) {
-                            await navigator.clipboard.writeText(link);
-                        } else {
-                            this.$refs.inviteLink.focus();
-                            this.$refs.inviteLink.select();
-                            document.execCommand('copy');
-                        }
-
-                        this.copied = true;
-                    },
-                }"
+                x-data="guestInvite" data-invite-title="{{ $guestInviteTitle }}" data-invite-text="{{ $guestInviteText }}"
             >
-                <input x-ref="inviteLink" type="text" readonly value="{{ $guestInviteUrl }}" class="sr-only" tabindex="-1" aria-hidden="true">
+                <input x-ref="inviteLink" type="text" readonly value="{{ $guestInviteUrl }}" class="w-full min-h-touch rounded-control border-border-subtle bg-surface text-sm" x-show="copyFailed" x-cloak :aria-hidden="!copyFailed" :tabindex="copyFailed ? 0 : -1" aria-label="{{ __('guest.table.copy_link') }}">
 
-                <flux:button x-show="supportsNativeShare" type="button" x-on:click="shareInvite" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
+                <flux:button x-show="supportsNativeShare" type="button" x-on:click="shareInvite" x-bind:disabled="busy" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.share_link') }}
                 </flux:button>
 
-                <flux:button x-show="! supportsNativeShare" type="button" x-on:click="copyInvite" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
+                <flux:button x-show="! supportsNativeShare" type="button" x-on:click="copyInvite" x-bind:disabled="busy" variant="primary" color="zinc" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.copy_link') }}
                 </flux:button>
 
-                <flux:button x-show="supportsNativeShare" type="button" x-on:click="copyInvite" variant="outline" size="sm" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
+                <flux:button x-show="supportsNativeShare" type="button" x-on:click="copyInvite" x-bind:disabled="busy" variant="outline" size="sm" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 w-full">
                     {{ __('guest.table.copy_link') }}
                 </flux:button>
+
+                <p x-show="copyFailed" x-cloak role="status" class="text-sm text-warning">{{ __('browser.clipboard_failed') }}</p>
+                <p x-show="shareFailed" x-cloak role="status" class="text-sm text-warning">{{ __('browser.share_failed') }}</p>
 
                 <flux:callout x-cloak x-show="copied" variant="success" icon="check-circle" role="status" class="callout-contrast content-safe">
                     <flux:callout.text>

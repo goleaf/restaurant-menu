@@ -4,6 +4,14 @@
 
 # Application security
 
+## Workspace request identity and context — 2026-09-16
+
+Every first-party authenticated Livewire snapshot carries a signed actor memo. The hook registers before Livewire boots its hook registry; a subsequent HTTP update under a different account fails with 409, even when both accounts have equivalent permissions. Authenticated legacy snapshots without the actor memo also require a fresh page before an operation. Public QR guest components retain their existing independent guest contract. Locked identifiers still require resource authorization and are never treated as hidden data.
+
+Restaurant context comes from an authorized object, route or explicit query, in that order; conflicting explicit sources fail. Session preference is only an entry hint. Each page retains its own locked restaurant identifier, and only validated local filters participate in Livewire URL hydration. The header switcher navigates to a real authorized URL; it never rewrites another component's tenant. A revoked target and an infrastructure read failure cannot clear the identifier and silently fall back to a different accessible restaurant. GET/HEAD/prefetch never save the preference; the arrived header explicitly remembers its verified destination.
+
+WorkspaceBoundaryTest uses original signed HTTP snapshots to test account changes, revoked access, conflicting parents, narrow roles and transient failures. UnifiedWorkspaceBrowserTest uses two actual pages in one browser context to verify that changing the shared preference in one tab cannot retarget an ordering save in the other. No authentication pipeline, QR credential, invitation or database schema is changed.
+
 ## Browser migration security boundary — 2026-09-16
 
 Alpine owns transient browser state only; class-based Livewire validates and authorizes mutations through existing Actions. The architecture suite pins the class-based page inventory and explicit native HTTP contracts. Inline executable modules/large state objects and independent application AJAX are removed; user content is not inserted with `x-html` or `innerHTML`.

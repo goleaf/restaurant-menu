@@ -14,6 +14,7 @@ use Livewire\Mechanisms\HandleRouting\LivewirePageController;
 
 test('every product page route uses its explicit class based Livewire screen', function (): void {
     $expected = [
+        'dashboard' => Screens\Workspace\Entry::class,
         'guest.home' => Screens\Guest\Home::class,
         'public.qr.show' => Screens\PublicQr\Show::class,
         'local.components' => Screens\Local\ComponentReference::class,
@@ -76,7 +77,6 @@ test('every product page route uses its explicit class based Livewire screen', f
 test('ordinary first party HTTP routes are limited to explicit protocol and document boundaries', function (): void {
     $expected = [
         'home' => ViewController::class,
-        'dashboard' => ViewController::class,
         'settings.index' => RedirectController::class,
         'appearance.edit' => RedirectController::class,
         'demo-login.index' => Controllers\Auth\ShowDemoLoginController::class,

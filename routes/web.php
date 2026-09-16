@@ -45,6 +45,7 @@ use App\Livewire\Restaurant\Dashboard as RestaurantDashboard;
 use App\Livewire\Superadmin\Dashboard as SuperadminDashboard;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
 use App\Livewire\Waiter\TableDetail as WaiterTableDetail;
+use App\Livewire\Workspace\Entry;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -85,7 +86,7 @@ Route::middleware(['local-login', 'guest', 'throttle:demo-login'])
     });
 
 Route::middleware(['auth'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('dashboard', Entry::class)->name('dashboard');
 });
 
 Route::middleware(['auth', 'superadmin'])

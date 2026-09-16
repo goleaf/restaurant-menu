@@ -95,8 +95,9 @@ test('head chef kitchen screen excludes bar tickets and rejects a forged bar ite
         ->assertHasNoErrors()
         ->assertSee(__('statuses.kitchen_ticket_item.accepted'))
         ->set('selectedDepartmentId', (string) $bar->id)
-        ->assertSet('selectedDepartmentId', (string) $kitchen->id)
-        ->assertDontSee('Prompt 61 Coffee')
+        ->assertForbidden()->assertDontSee('Prompt 61 Coffee');
+
+    Livewire::actingAs($headChef)->test(KitchenDashboard::class)
         ->call('setItemStatus', $barItem->id, KitchenTicketItemStatus::Ready->value)
         ->assertHasErrors('ticket_item_status');
 

@@ -24,9 +24,12 @@ test('department invitation destination selects the authorized requested workpla
     Livewire::actingAs($owner)->withQueryParams(['department' => (string) $second->id])
         ->test($component)->assertSet('selectedDepartmentId', (string) $second->id);
 
-    foreach ([(string) $foreign->id, [$second->id], $second->id.'.5', $second->id.'invalid'] as $invalid) {
+    Livewire::actingAs($owner)->withQueryParams(['department' => (string) $foreign->id])
+        ->test($component)->assertForbidden()->assertDontSee($foreign->name);
+
+    foreach ([[$second->id], $second->id.'.5', $second->id.'invalid'] as $invalid) {
         Livewire::actingAs($owner)->withQueryParams(['department' => $invalid])
-            ->test($component)->assertSet('selectedDepartmentId', (string) $first->id)->assertDontSee($foreign->name);
+            ->test($component)->assertStatus(422)->assertDontSee($foreign->name);
     }
 })->with([
     'kitchen' => [KitchenDashboard::class, KitchenDepartmentType::Kitchen],

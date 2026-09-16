@@ -5,6 +5,5 @@
             {{ $slot }}
         </div>
     </main>
+    <x-client-offline-indicator />
 </x-layouts::app.sidebar>
-
-<livewire:offline-indicator />

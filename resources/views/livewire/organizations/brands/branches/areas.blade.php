@@ -1,12 +1,6 @@
 <section data-page="branch-areas" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="route('organizations.brands.branches.index', [$organization, $brand])" wire:navigate>
-            {{ __('ui.organizations.brands.branches.areas.filialy') }}
-            <span class="sr-only">{{ __('navigation.branches') }}</span>
-        </flux:button>
-
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">
                 {{ __('ui.organizations.brands.branches.areas.zony_restorana') }}
                 <span class="sr-only">{{ __('ui.organizations.brands.branches.areas.areas') }}</span>

@@ -9,6 +9,7 @@ use Database\Seeders\SystemPermissionsSeeder;
 
 test('workspace navigation and local component states retain keyboard focus and independent drafts', function (): void {
     $this->withVite();
+    $this->app->instance('env', 'local');
     $this->seed(SystemPermissionsSeeder::class);
     $user = User::factory()->create(['email' => 'components@example.test', 'password' => 'password']);
     $user->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail());
@@ -42,9 +43,9 @@ test('workspace navigation and local component states retain keyboard focus and 
     $page->assertAttribute('[data-flux-sidebar]', 'data-flux-sidebar-collapsed-desktop', '');
     $page->click('[data-navigation-search-trigger]');
     $page->assertVisible('dialog[data-modal="workspace-navigation"]');
-    $page->fill('[data-workspace-search-input]', 'settings');
+    $page->fill('[data-workspace-search-input]', 'component');
     $page->keys('[data-workspace-search-input]', 'ArrowDown');
-    expect($page->script("document.activeElement.getAttribute('data-navigation-search-key')"))->toBe('profile');
+    expect($page->script("document.activeElement.getAttribute('data-navigation-search-key')"))->toBe('components');
     $page->keys('[data-workspace-search-input]', 'Escape');
     expect($page->script("document.activeElement.hasAttribute('data-navigation-search-trigger')"))->toBeTrue();
 
@@ -55,15 +56,15 @@ test('workspace navigation and local component states retain keyboard focus and 
         ->keys('[data-navigation-search-key="dashboard"]', 'ArrowDown')
         ->assertScript('document.activeElement.dataset.navigationSearchKey', 'organizations')
         ->keys('[data-navigation-search-key="organizations"]', 'End')
-        ->assertScript('document.activeElement.dataset.navigationSearchKey', 'profile')
-        ->keys('[data-navigation-search-key="profile"]', 'Home')
+        ->assertScript('document.activeElement.dataset.navigationSearchKey', 'components')
+        ->keys('[data-navigation-search-key="components"]', 'Home')
         ->assertScript('document.activeElement.dataset.navigationSearchKey', 'dashboard')
         ->keys('[data-navigation-search-key="dashboard"]', 'ArrowUp')
-        ->assertScript('document.activeElement.dataset.navigationSearchKey', 'profile');
+        ->assertScript('document.activeElement.dataset.navigationSearchKey', 'components');
     $page->assertScript('document.activeElement.tagName', 'A')
-        ->assertAttribute('[data-navigation-search-key="profile"]', 'href', route('profile.edit'))
-        ->keys('[data-navigation-search-key="profile"]', 'Enter')
-        ->assertPathIs(route('profile.edit', absolute: false))
+        ->assertAttribute('[data-navigation-search-key="components"]', 'href', route('local.components'))
+        ->keys('[data-navigation-search-key="components"]', 'Enter')
+        ->assertPathIs(route('local.components', absolute: false))
         ->navigate(route('local.components', absolute: false));
     $page->keys('[data-navigation-search-trigger]', 'Meta+k')
         ->assertVisible('dialog[data-modal="workspace-navigation"]')

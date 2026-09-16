@@ -14,8 +14,8 @@ test('dashboard focuses prepared invalid fields and releases queued animation fr
     const { restaurantDashboard } = await factories();
     const dashboard = app.component(restaurantDashboard), picker = new Element(), search = new Element(), summary = new Element(), field = new Element(), details = new Element();
     dashboard.$refs = { branchPicker: picker, branchSearch: search, branchPickerSummary: summary };
-    dashboard.openBranchPicker(); assert.equal(picker.open, true); assert.equal(search.focused, 1);
-    dashboard.closeBranchPicker(); assert.equal(picker.open, false); assert.equal(summary.focused, 1);
+    const dialogs = []; dashboard.$flux = { modal(name) { return { show() { dialogs.push(['show', name]); }, close() { dialogs.push(['close', name]); } }; } };
+    dashboard.openBranchPicker(); assert.deepEqual(dialogs.at(-1), ['show', 'workspace-restaurant']);
     details.tagName = 'DETAILS'; details.parentElement = dashboard.$el; field.parentElement = details;
     dashboard.$el.children.set('[aria-invalid="true"]', [field]);
     dashboard.focusValidationError(); dashboard.focusValidationError(); assert.equal(frames.size, 1);

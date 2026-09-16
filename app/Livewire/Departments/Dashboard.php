@@ -12,6 +12,7 @@ use App\Enums\KitchenTicketItemStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Models\User;
+use App\Services\Navigation\WorkspaceContextResolver;
 use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -22,6 +23,9 @@ use Livewire\Component;
 
 abstract class Dashboard extends Component
 {
+    #[Locked]
+    public ?int $branchId = null;
+
     private const int TICKETS_PER_PAGE = 24;
 
     private BuildDepartmentDashboardAction $buildDepartmentDashboard;
@@ -99,8 +103,15 @@ abstract class Dashboard extends Component
         $this->updateDepartmentTicketItemStatus = $updateDepartmentTicketItemStatus;
     }
 
-    public function mount(): void
+    public function mount(WorkspaceContextResolver $resolver): void
     {
+        $context = $resolver->resolve($this->currentUser(), request(), pageDestination: $this instanceof \App\Livewire\Kitchen\Dashboard ? 'kitchen' : 'bar');
+        $this->branchId = $context->branchId;
+        if ($this->branchId === null) {
+            $this->redirectRoute('dashboard');
+
+            return;
+        }
         $this->ticketFilterOptions = DepartmentTicketFilter::options();
         $this->pageTitle = $this->screenTitle();
         $this->pageSubtitle = $this->screenSubtitle();
@@ -197,6 +208,7 @@ abstract class Dashboard extends Component
             filter: $filter,
             page: $this->ticketPage,
             perPage: self::TICKETS_PER_PAGE,
+            branchId: $this->branchId,
         );
     }
 
@@ -221,6 +233,7 @@ abstract class Dashboard extends Component
                 departmentTypes: $this->departmentTypes(),
                 roleCodes: $this->roleCodes(),
                 permissionCodes: $this->permissionCodes(),
+                branchId: $this->branchId,
             );
             $this->feedbackMessage = __('ui.livewire.departments.dashboard.status_updated');
             $this->resetErrorBag('ticket_item_status');

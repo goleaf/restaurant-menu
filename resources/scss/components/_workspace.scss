@@ -63,3 +63,32 @@
         }
     }
 }
+
+.workspace-restaurant {
+    min-inline-size: 0;
+    flex: 1 1 10rem;
+
+    &__identity {
+        display: grid;
+        min-inline-size: 0;
+
+        > * {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    &__dialog {
+        inline-size: min(32rem, calc(100vw - 2rem));
+        min-inline-size: 0;
+        max-block-size: calc(100dvh - 2rem);
+        overflow-y: auto;
+    }
+
+}
+
+.menu-workspace-sections {
+    align-self: start;
+    grid-auto-rows: min-content;
+}

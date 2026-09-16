@@ -401,3 +401,39 @@ test('image bindings keep progress, metadata dirtiness and successful receipts s
     app.choose(['photo']); picker.finishUpload(); picker.imagesSaved({ detail: { itemId: 43 } }); assert.equal(picker.previews.length, 1);
     picker.imagesSaved({ detail: { itemId: 42 } }); assert.equal(picker.previews.length, 0); picker.destroy();
 });
+
+test('navigation waits for in-flight operations without queuing or replaying transitions', t => {
+    const app = browser(t), instance = app.component(workspaceNavigation);
+    instance.init();
+    const operation = app.message({ el: new Element() }, [{ name: 'saveOrdering' }]);
+    operation.send();
+    assert.equal(instance.pending, 1);
+    const navigation = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(navigation);
+    assert.equal(navigation.prevented, true); assert.equal(instance.blocked, true);
+    operation.finish();
+    assert.equal(instance.pending, 0); assert.equal(instance.blocked, false); assert.equal(app.state.navigation, undefined);
+    const retry = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(retry); assert.equal(retry.prevented, false);
+    app.message({ el: new Element() }, [{ name: 'refreshDashboard' }]).send(); assert.equal(instance.pending, 0);
+    const selector = new Element(); selector.ancestors.set('[data-workspace-restaurant], [data-component="notifications-unread-count"]', selector);
+    app.message({ el: selector }, [{ name: 'choose' }]).send(); assert.equal(instance.pending, 0);
+    app.message({ el: new Element() }, [{ name: 'saveOrdering' }]).finish(); assert.equal(instance.pending, 0);
+    instance.destroy(); assert.equal(app.state.interceptors.size, 0); assert.equal(app.document.listenerCount(), 0);
+});
+
+
+test('completed operations can navigate during response effects while another pending operation still blocks', t => {
+    const app = browser(t), instance = app.component(workspaceNavigation);
+    instance.init();
+    const first = app.message({ el: new Element() }, [{ name: 'save' }]);
+    const second = app.message({ el: new Element() }, [{ name: 'confirm' }]);
+    first.send(); second.send(); first.effect();
+    assert.equal(instance.pending, 1);
+    const blocked = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(blocked);
+    assert.equal(blocked.prevented, true);
+    first.finish(); assert.equal(instance.pending, 1);
+    second.effect(); assert.equal(instance.pending, 0);
+    const redirect = event({ type: 'livewire:navigate' }); app.document.dispatchEvent(redirect);
+    assert.equal(redirect.prevented, false);
+    second.finish(); assert.equal(instance.pending, 0);
+    instance.destroy();
+});

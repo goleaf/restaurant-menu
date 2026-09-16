@@ -70,16 +70,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid gap-3 sm:grid-cols-2">
-        <flux:input wire:model.live.debounce.300ms="branchSearch" :label="__('ui.waiter.dashboard.search_branches')" maxlength="100" />
-        <flux:select wire:model.live="selectedBranchId" :label="__('ui.waiter.dashboard.branch_scope')">
-            @forelse ($branchOptions as $option)
-                <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
-            @empty
-                <option value="">{{ __('ui.waiter.dashboard.branch_scope') }}</option>
-            @endforelse
-        </flux:select>
-    </div>
     <div class="flex flex-wrap items-end justify-between gap-3">
         <flux:select wire:model.live="attention" :label="__('operations.attention.label')">
             @forelse ($attentionOptions as $option)

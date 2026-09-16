@@ -4,6 +4,15 @@
 
 # Canonical requirements catalogue
 
+## Restaurant workspace contract — prompt 3, 2026-09-16
+
+`ui-workspace-003` refines the existing Livewire, tenant, navigation, localization and responsive requirements. Restaurant work uses one confirmed page context and one shared class-based Livewire switcher. Task order is Overview, Service (permitted waiter/kitchen/bar modes), Menu, Rooms and QR, Team, Reports and Restaurant settings; audit remains an existing authorized destination. Restaurant management and platform administration are separate from restaurant work; account/security/appearance/language remain in the user menu.
+
+A verified object/route/query determines the restaurant before a saved preference. Contradictory explicit IDs fail; forbidden IDs never fall back to a different mutation target. Aggregate overview is explicit (`workspace=all`) and cannot select a write target. Ordinary entry without explicit context may use the actor-bound last permitted destination, select the sole suitable restaurant, or ask for a restaurant. Narrow team/settings/availability and department-only capabilities count independently of dashboard access.
+
+Each open component retains its own authorized resource scope across tabs. Signed Livewire snapshot actor identity must match the current account before hydration. Choices and searches remain untrusted, bounded and server-authorized; current names remain visible outside the search page. A switch preserves the permitted task and removes restaurant-specific child IDs. Preference writes happen through a separately authorized Livewire action after arrival, never GET/render/prefetch. Navigation reuses dirty/history guards, blocks leaving while a mutation is in flight, and never queues an automatic replay. Existing URLs, guest QR context and business Actions remain compatible.
+
+
 ## Platform foundation and fourteen-stage series — 2026-09-16
 
 This refines `sec-dependency-001`, `ops-deployment-001`, `test-feature-001`, `test-architecture-001`, `livewire-001`, `tailwind-001` and the existing interface requirements; it does not add another requirement catalogue. Prompt 1 updates the platform and tests an isolated PHP 8.6 prerelease while preserving supported stable PHP 8.5 operation. Root Composer constraints may admit a runtime only after its real dependency/platform and application acceptance gates pass. Stable dependency selection, one Composer/npm lock graph, no platform emulation/bypass and independent runtime identification are mandatory. PHP 8.6 runtime probes or syntax checks alone do not establish application support.

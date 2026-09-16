@@ -4,6 +4,15 @@
 
 # Architecture
 
+## Restaurant workspace context — prompt 3, 2026-09-16
+
+`WorkspaceContext` is a readonly result, not a tenant singleton. `WorkspaceAccessQuery` reads the existing batch permission and department access contracts. `WorkspaceContextResolver` resolves explicit resource, route and query ownership, rejects conflicting IDs, then considers actor-bound preference and a sole suitable branch. `ApplicationNavigationPresenter` owns authorized stable destinations, active states and search aliases. It does not load reports, menu data or order queues.
+
+`Workspace\Entry` replaces the static dashboard intermediary at the existing named route. `Workspace\RestaurantSwitcher` owns pending search/selection in `RestaurantSelectionForm`; the immutable confirmed branch remains unchanged until a real Livewire Navigate destination arrives. `RememberWorkspaceAction` reauthorizes a post-arrival preference write. Aggregate state is explicit and its dashboard flag is locked; it never becomes a selected branch just because access shrinks to one branch.
+
+Route-bound menu/team/areas/settings/QR pages keep their existing authorization. Restaurant, waiter, department, export and audit pages carry immutable page-local branch identity. Department filters cannot cross that identity. Protected mutation Actions still authorize their concrete records. `WorkspaceActorGuard` puts the authenticated actor in signed snapshot memo and rejects account mismatch before first-party component hydration; it stores no credentials and excludes guest QR components.
+
+
 ## Current platform and series boundary — 2026-09-16
 
 Supported production remains stable PHP 8.5; the isolated PHP 8.6.0beta3 build is experimental and currently rejected by the real locked dependency requirements. See CURRENT_VERSION.md for dated source-backed choices. No global runtime, Herd site, application key, schema, mail integration or production storage is changed by platform verification.

@@ -1,4 +1,4 @@
-export function menuWorkspace() {
+export function menuWorkspace(configuration = {}) {
     let ownerRoot;
     return {
         destroyed: false,
@@ -25,7 +25,7 @@ export function menuWorkspace() {
             const markDirty = (event) => {
                 if (event.target.closest('[data-menu-item-images], [data-section="catalog-transfer"]')) return;
                 const form = event.target.closest('form[wire\\:submit]');
-                if (!form || !ownerRoot.querySelector('[data-menu-workspace-content]')?.contains(form)) return;
+                if (!form || !ownerRoot.querySelector(configuration.contentSelector ?? '[data-menu-workspace-content]')?.contains(form)) return;
                 this.dirtyForms.set(form, ++this.revision);
             };
             ownerRoot.addEventListener('input', markDirty, options);
@@ -62,6 +62,7 @@ export function menuWorkspace() {
                         if (this.destroyed || !ownerRoot.isConnected) return;
                         const snapshot = typeof payload.snapshot === 'string' ? JSON.parse(payload.snapshot) : payload.snapshot;
                         if (Object.keys(snapshot?.memo?.errors ?? {}).length === 0) {
+                            if (actions.some((action) => configuration.cleanActions?.includes(action))) this.dirtyForms.clear();
                             submitted.forEach(([form, revision]) => {
                                 if (this.dirtyForms.get(form) === revision) this.dirtyForms.delete(form);
                             });
@@ -116,18 +117,18 @@ export function menuWorkspace() {
             if (this.destroyed) return;
             if (!this.hasUnsavedChanges()) return proceed();
             this.pendingNavigation = proceed;
-            this.$flux.modal('menu-workspace-unsaved').show();
+            this.$flux.modal(configuration.modal ?? 'menu-workspace-unsaved').show();
         },
         cancelNavigation() {
             this.pendingNavigation = null;
-            this.$flux.modal('menu-workspace-unsaved').close();
+            this.$flux.modal(configuration.modal ?? 'menu-workspace-unsaved').close();
         },
         discardAndNavigate() {
             const proceed = this.pendingNavigation;
             this.pendingNavigation = null;
             this.dirtyForms.clear();
             this.dirtySections.clear();
-            this.$flux.modal('menu-workspace-unsaved').close();
+            this.$flux.modal(configuration.modal ?? 'menu-workspace-unsaved').close();
             return proceed?.();
         },
         stampHistory() {

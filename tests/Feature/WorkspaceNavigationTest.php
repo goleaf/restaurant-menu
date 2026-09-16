@@ -12,15 +12,16 @@ use Illuminate\Support\Facades\File;
 test('workspace navigation prepares only currently permitted destinations for both presentations', function () {
     $user = User::factory()->create();
     $request = Request::create(route('restaurant.dashboard'));
-    $request->setRouteResolver(fn () => app('router')->getRoutes()->getByName('restaurant.dashboard'));
+    $matched = app('router')->getRoutes()->match($request);
+    $request->setRouteResolver(fn () => $matched);
     $navigation = app(ApplicationNavigationPresenter::class)->handle($user, $request);
     $items = collect($navigation['navigationItems']);
 
     expect($items->pluck('key')->all())
-        ->toContain('dashboard', 'organizations', 'restaurant_dashboard', 'profile', 'guest_area')
+        ->toContain('dashboard', 'organizations')
         ->not->toContain('superadmin', 'waiter', 'kitchen', 'bar', 'exports', 'audit_log', 'qr_lookup');
-    expect($items->firstWhere('key', 'restaurant_dashboard'))
-        ->toMatchArray(['current' => true, 'label' => __('navigation.restaurant'), 'href' => route('restaurant.dashboard')]);
+    expect($items->firstWhere('key', 'dashboard'))
+        ->toMatchArray(['label' => __('workspace.choose'), 'href' => route('dashboard')]);
     expect($items->pluck('href')->unique())->toHaveCount($items->count());
 });
 
@@ -74,7 +75,8 @@ test('local reference has a current navigation marker only in the local administ
     $user->roles()->attach(Role::query()->where('code', SystemRole::Superadmin->value)->firstOrFail());
     $this->app->instance('env', 'local');
     $request = Request::create('/local/components');
-    $request->setRouteResolver(fn () => app('router')->getRoutes()->getByName('local.components'));
+    $matched = app('router')->getRoutes()->match($request);
+    $request->setRouteResolver(fn () => $matched);
 
     expect(collect(app(ApplicationNavigationPresenter::class)->handle($user, $request)['navigationItems'])->firstWhere('key', 'components'))
         ->toMatchArray(['current' => true]);

@@ -109,7 +109,13 @@ test('every database-seeded demo role signs in and reaches its prepared workspac
 
         $this->assertAuthenticatedAs($user);
         $this->get(route('dashboard'))->assertOk();
-        $this->get(route(demoWorkspaceRoute($account['role'])))->assertOk();
+        $workspace = $this->get(route(demoWorkspaceRoute($account['role'])));
+        if (in_array($account['role'], [SystemRole::HeadChef, SystemRole::Cook, SystemRole::Bartender, SystemRole::Waiter], true)) {
+            $workspace->assertRedirect(route('dashboard'));
+            $this->get(route('dashboard'))->assertSee('data-workspace-entry', false);
+        } else {
+            $workspace->assertOk();
+        }
 
         Auth::guard('web')->logout();
         $this->assertGuest();

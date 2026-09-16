@@ -11,6 +11,7 @@ use App\Actions\Waiter\MarkWaiterCallHandledAction;
 use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
 use App\Enums\SystemPermission;
 use App\Models\User;
+use App\Services\Navigation\WorkspaceContextResolver;
 use App\Services\Waiter\WaiterTableQueryService;
 use App\Support\LocalizedDateFormatter;
 use Illuminate\Support\Facades\Auth;
@@ -69,13 +70,8 @@ class Dashboard extends Component
     #[Url(as: 'table', history: true)]
     public mixed $selectedTableSessionId = null;
 
-    #[Url(as: 'branch', history: true)]
+    #[Locked]
     public mixed $selectedBranchId = null;
-
-    public string $branchSearch = '';
-
-    /** @var list<array{value: string, label: string}> */
-    public array $branchOptions = [];
 
     #[Url(as: 'page', history: true, except: 1)]
     public mixed $tablePage = 1;
@@ -103,15 +99,22 @@ class Dashboard extends Component
         $this->resolveAccessibleBranchIds = $resolveAccessibleBranchIds;
     }
 
-    public function mount(): void
+    public function mount(WorkspaceContextResolver $resolver): void
     {
+        $context = $resolver->resolve($this->currentUser(), request(), pageDestination: 'waiter');
+        $this->selectedBranchId = $context->branchId;
+        if ($this->selectedBranchId === null) {
+            $this->redirectRoute('dashboard');
+
+            return;
+        }
         $this->refreshDashboard();
     }
 
     public function refreshDashboard(): void
     {
         $this->validateSelections();
-        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope(), $this->selectedBranchId, $this->tablePage, $this->branchSearch, $this->attentionOnly, $this->attention, $this->selectedTableSessionId);
+        $payload = $this->buildWaiterDashboard->handle($this->currentUser(), $this->normalizedZoneScope(), $this->selectedBranchId, $this->tablePage, '', $this->attentionOnly, $this->attention, $this->selectedTableSessionId);
 
         if (! $payload['has_access']) {
             abort(403);
@@ -119,7 +122,6 @@ class Dashboard extends Component
 
         $this->selectedBranchId = $payload['selected_branch_id'];
         $this->responseAuthorized = true;
-        $this->branchOptions = $payload['branch_options'];
         $this->tablePage = $payload['page'];
         $this->hasMorePages = $payload['has_more_pages'];
         $this->pollingInterval = $payload['polling_interval'];
@@ -155,20 +157,6 @@ class Dashboard extends Component
         $this->selectedTableSessionId = null;
         $this->tablePage = 1;
         $this->knownWorkIds = null;
-        $this->refreshDashboard();
-    }
-
-    public function updatedSelectedBranchId(): void
-    {
-        $this->selectedTableSessionId = null;
-        $this->zoneScope = 'mine';
-        $this->tablePage = 1;
-        $this->knownWorkIds = null;
-        $this->refreshDashboard();
-    }
-
-    public function updatedBranchSearch(): void
-    {
         $this->refreshDashboard();
     }
 
@@ -236,6 +224,7 @@ class Dashboard extends Component
         if ($servicePoint === null) {
             abort(404);
         }
+        abort_unless($servicePoint->branch_id === $this->selectedBranchId, 403);
         $openTableBranchIds = $resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewOrders)
             ->merge($resolveAccessibleBranchIds->handle($user, SystemPermission::ConfirmOrders))
@@ -260,6 +249,7 @@ class Dashboard extends Component
     {
         $waiterCall = $this->waiterQueries->waiterCall($this->positiveIdentifier($waiterCallId));
 
+        abort_unless($waiterCall->servicePoint->branch_id === $this->selectedBranchId, 403);
         try {
             $markHandled->handle($waiterCall, $this->currentUser());
             $this->waiterCallMessage = __('ui.livewire.waiter.dashboard.vyzov_oficianta_otmecen_kak_obrabotannyi');
@@ -277,6 +267,7 @@ class Dashboard extends Component
     ): void {
         $user = $this->currentUser();
         $branchId = $this->positiveIdentifier($branchId);
+        abort_unless($branchId === $this->selectedBranchId, 403);
         $branchIds = $resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ManageSettings);
 
@@ -299,7 +290,6 @@ class Dashboard extends Component
             $permissions = $this->resolveAccessibleBranchIds->handleMany($this->currentUser(), [SystemPermission::ViewOrders, SystemPermission::ManageSettings]);
             abort_unless($permissions[SystemPermission::ViewOrders->value]->contains($this->selectedBranchId), 403);
             $this->waiterQueries->authorizeBranchView($this->currentUser(), $this->selectedBranchId);
-            $this->branchOptions = array_values(array_filter($this->branchOptions, fn (array $option): bool => $permissions[SystemPermission::ViewOrders->value]->contains((int) $option['value'])));
             $this->branches = array_map(fn (array $branch): array => [
                 ...$branch,
                 'can_manage_settings' => $permissions[SystemPermission::ManageSettings->value]->contains((int) $branch['id']),

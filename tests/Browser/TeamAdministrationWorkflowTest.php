@@ -26,7 +26,9 @@ test('team administrators invite assign zones and change scoped access across in
     $area = AreaNode::factory()->forBranch($branch)->active()->create(['name' => 'Šeimos terasa — Семейная терраса']);
     $staffUrl = route('organizations.brands.branches.staff.index', [$organization, $branch->brand, $branch], false);
     $admin = visit(route('login', absolute: false));
-    $admin->fill('email', $owner->email)->fill('password', 'password')->click('@login-button')->assertPathIs('/dashboard');
+    $admin->fill('email', $owner->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
     $encodedStaffUrl = json_encode($staffUrl, JSON_THROW_ON_ERROR);
     $admin->script("Livewire.navigate({$encodedStaffUrl})");
     $admin->wait(0.4)->assertSee($organization->name)->assertSee($branch->name);
@@ -41,7 +43,8 @@ test('team administrators invite assign zones and change scoped access across in
     $admin->wait(0.2)->assertSee(__('staff.workspace.unsaved_title'));
     $admin->assertPathIs($staffUrl)->assertValue('input[name="invitationForm.email"]', 'history.draft@example.test');
     teamAdminClick($admin, 'button[\\@click="discardAndNavigate"]');
-    $admin->wait(0.4)->assertPathIs('/dashboard');
+    $admin->wait(0.4)->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
     $admin->script('history.forward()');
     $admin->wait(0.4)->assertPathIs($staffUrl);
     teamAdminClick($admin, 'button[wire\\:click="openInvitation"]');

@@ -15,9 +15,11 @@ class BuildDataExportsIndexAction
     /**
      * @return array{has_access: bool, branches: list<array<string, mixed>>, export_types: list<array{value: string, label: string}>}
      */
-    public function handle(User $user): array
+    public function handle(User $user, ?int $branchId = null): array
     {
         $branchIds = $this->resolveExportAccessibleBranchIds->handle($user);
+
+        abort_if($branchId !== null && ! $branchIds->contains($branchId), 403);
 
         if ($branchIds->isEmpty()) {
             return [
@@ -33,7 +35,7 @@ class BuildDataExportsIndexAction
                 'organization:id,name',
                 'brand:id,name',
             ])
-            ->whereIn('id', $branchIds)
+            ->whereIn('id', $branchId === null ? $branchIds : [$branchId])
             ->orderBy('name')
             ->orderBy('id')
             ->get()

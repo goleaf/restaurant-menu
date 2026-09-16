@@ -4,6 +4,12 @@
 
 # Current version baseline
 
+## Workspace prompt 3 baseline — 2026-09-16
+
+Prompt 3 starts at `9b6a71a1516737129a59c2a159d335e6b5d2a2d0`; installed dependencies and both lock files are unchanged. Stable implementation checks use explicit PHP 8.5.10, Node 24.21.0, npm 12.0.2 and the matching isolated Playwright/WebKit binaries. The current run's evidence is recorded in PROGRESS.md; the older platform counts below do not certify the workspace changes.
+
+PHP 8.6.0beta3 remains an available isolated native runtime, but the actual Composer requirements still reject application execution. This stage neither widens the root range nor ignores requirements. Current changed-file syntax validation passes 52 PHP classes/routes/tests (Blade excluded) on the actual Beta3 binary; Composer check-platform-reqs --lock still exits 1. Syntax is not application/browser/coverage acceptance. Prompt 2 controller/auth migration also remains separate unfinished work.
+
 ## Current continuation at ce187c8 — checked 2026-09-16
 
 This continuation starts from a clean `main` after the earlier dependency updates were committed. The installed versions in the tables below are reverified against both lock files (179 Composer /255 npm package locations); the current continuation makes no further dependency or lock changes. Packagist/npm metadata still supports the listed latest/selected differences and GitHub-only missing-archive limitations. PHP support remains `>=8.5.0 <8.6.0`, stable minimum stability and no platform emulation.

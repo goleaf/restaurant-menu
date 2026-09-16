@@ -26,22 +26,16 @@
 
     @if ($canAccessRestaurantDashboard && $dashboard !== null)
         <section aria-labelledby="dashboard-context-title" class="min-w-0 rounded-card border border-border-subtle bg-surface p-4 sm:p-5">
-            <div class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,24rem)] lg:items-start">
+            <div class="min-w-0">
                 <div class="min-w-0">
                     <h2 id="dashboard-context-title" class="text-sm font-medium text-text-muted">{{ __('dashboard.control.context') }}</h2>
                     @if ($dashboard['selected_branch'] !== null)
-                        <ol class="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-text-muted" aria-label="{{ __('dashboard.control.hierarchy') }}">
-                            <li class="min-w-0">{{ $dashboard['selected_branch']['organization_name'] }}</li>
-                            <li class="flex min-w-0 items-center gap-2"><span aria-hidden="true">/</span>{{ $dashboard['selected_branch']['brand_name'] }}</li>
-                            <li class="flex min-w-0 items-center gap-2 font-semibold text-text-primary"><span aria-hidden="true">/</span>{{ $dashboard['selected_branch']['name'] }}</li>
-                        </ol>
                         <p class="mt-2 text-sm text-text-muted">{{ __('dashboard.control.timezone') }}: {{ $dashboard['selected_branch']['timezone'] }}</p>
                     @else
                         <p class="mt-2 text-lg font-semibold text-text-primary">{{ __('dashboard.control.all_branches') }}</p>
                         <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('dashboard.control.all_branches_description') }}</p>
                     @endif
                 </div>
-                <x-dashboard.branch-picker :branches="$dashboard['branches']" :selected-branch="$dashboard['selected_branch']" :search="$branchSearch" :search-empty="$dashboard['branch_search_empty']" />
             </div>
 
             @if ($dashboard['ordering'] !== null)
@@ -62,16 +56,16 @@
                         <details wire:ignore.self class="mt-3" data-ordering-controls>
                             <summary class="flex min-h-touch w-fit cursor-pointer items-center rounded-control text-sm font-semibold text-accent underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2">{{ __('dashboard.control.ordering.manage') }}</summary>
                             <form wire:submit="saveOrdering" novalidate data-dashboard-ordering-form class="mt-2 grid min-w-0 gap-4 rounded-control bg-surface-muted p-4">
-                                <flux:checkbox wire:model="closure.temporarilyClosed" name="closure.temporarilyClosed" :label="__('dashboard.control.ordering.pause')" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" />
+                                <flux:checkbox wire:model="closure.temporarilyClosed" name="closure.temporarilyClosed" :label="__('dashboard.control.ordering.pause')" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
                                 <flux:error name="closure.temporarilyClosed" />
                                 <p class="text-sm leading-6 text-text-muted">{{ __('dashboard.control.ordering.pause_description') }}</p>
                                 <div class="grid min-w-0 gap-4 md:grid-cols-2 [&>[data-flux-field]]:min-w-0 [&_[data-flux-control]]:min-w-0 [&_[data-flux-control]]:max-w-full">
-                                    <flux:input wire:model="closure.temporaryClosedReason" name="closure.temporaryClosedReason" :label="__('dashboard.control.ordering.reason')" maxlength="255" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" />
-                                    <flux:input wire:model="closure.temporaryClosedUntil" name="closure.temporaryClosedUntil" type="datetime-local" :label="__('dashboard.control.ordering.until')" :description="__('dashboard.control.ordering.until_description')" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" />
+                                    <flux:input wire:model="closure.temporaryClosedReason" name="closure.temporaryClosedReason" :label="__('dashboard.control.ordering.reason')" maxlength="255" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
+                                    <flux:input wire:model="closure.temporaryClosedUntil" name="closure.temporaryClosedUntil" type="datetime-local" :label="__('dashboard.control.ordering.until')" :description="__('dashboard.control.ordering.until_description')" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" />
                                 </div>
                                 <div class="flex min-w-0 flex-wrap items-center gap-3">
-                                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.save') }}</flux:button>
-                                    <flux:button wire:click="discardOrdering" wire:loading.attr="disabled" wire:target="saveOrdering,selectedBranchId,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.discard') }}</flux:button>
+                                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.save') }}</flux:button>
+                                    <flux:button wire:click="discardOrdering" wire:loading.attr="disabled" wire:target="saveOrdering,discardOrdering" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2">{{ __('dashboard.control.ordering.discard') }}</flux:button>
                                     <span wire:loading.delay wire:target="saveOrdering" role="status" class="text-sm text-text-muted">{{ __('dashboard.control.ordering.saving') }}</span>
                                 </div>
                             </form>
@@ -108,7 +102,7 @@
                     <h2 id="dashboard-now-title" class="text-lg font-semibold text-text-primary">{{ __('dashboard.control.now.title') }}</h2>
                     <p class="mt-1 text-sm leading-6 text-text-muted">{{ __('dashboard.control.now.description') }}</p>
                 </div>
-                <flux:button icon="arrow-path" wire:click="refreshOperations" wire:loading.attr="disabled" wire:target="refreshOperations,selectedBranchId" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0">{{ __('dashboard.control.refresh') }}</flux:button>
+                <flux:button icon="arrow-path" wire:click="refreshOperations" wire:loading.attr="disabled" wire:target="refreshOperations" wire:offline.attr="disabled" class="h-auto! min-h-touch whitespace-normal! rounded-control! font-semibold! py-2 self-start sm:shrink-0">{{ __('dashboard.control.refresh') }}</flux:button>
             </div>
             @if ($dashboard['operations_stale'])
                 <x-ui.state-panel kind="stale" title="dashboard.control.stale.title" description="dashboard.control.stale.description" class="mb-3" />
@@ -122,7 +116,7 @@
             </div>
             <div class="mt-3 flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs leading-5 text-text-muted">
                 <p>{{ __('dashboard.control.updated_at') }} {{ $dashboard['operations_updated_at'] }}</p>
-                <span wire:loading.delay wire:target="refreshOperations,selectedBranchId" role="status">{{ __('dashboard.control.loading') }}</span>
+                <span wire:loading.delay wire:target="refreshOperations" role="status">{{ __('dashboard.control.loading') }}</span>
             </div>
         </section>
 
@@ -142,4 +136,11 @@
     @elseif (! $errorMessage)
         <x-ui.state-panel kind="unauthorized" title="dashboard.control.no_access_title" description="dashboard.control.no_access_description" />
     @endif
+    <flux:modal name="dashboard-unsaved" :closable="false" class="max-w-md space-y-4">
+        <flux:heading id="dashboard-unsaved-heading" level="2" size="lg" x-bind="dialogLabel">{{ __('dashboard.control.unsaved_ordering') }}</flux:heading>
+        <div class="flex flex-wrap gap-2">
+            <flux:button x-on:click="cancelNavigation()">{{ __('workspace.cancel') }}</flux:button>
+            <flux:button variant="danger" x-on:click="discardAndNavigate()">{{ __('workspace.discard') }}</flux:button>
+        </div>
+    </flux:modal>
 </div>

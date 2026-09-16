@@ -550,16 +550,20 @@ test('guest recovers a configured dish after an availability conflict without re
     productMenuAssertNoFailedResources($page);
 });
 
-test('populated restaurant work screens remain responsive and keyboard reachable', function (SystemRole $role, string $routeName, string $pageSelector): void {
+test('populated restaurant work screens remain responsive and keyboard reachable', function (SystemRole $role, string $routeName, string $pageSelector, string $branchName): void {
     $this->withVite();
     config()->set('demo-login.enabled', true);
     config()->set('demo-login.allowed_hosts', ['restaurant-menu.test', '127.0.0.1', 'localhost']);
     $this->seed(DemoRestaurantSeeder::class);
     $identity = DemoAccountCatalog::forRole($role);
+    $organization = Organization::query()->where('name', DemoRestaurantSeeder::ORGANIZATION_NAME)->sole();
+    $branch = Branch::query()->select(['id', 'name'])->where('organization_id', $organization->id)->where('name', $branchName)->sole();
+    $workspaceUrl = route($routeName, ['branch' => $branch->id], false);
     $page = visit(route('demo-login.index', absolute: false));
     productMenuClick($page, sprintf('form[action$="/demo-login/%s"] button[type="submit"]', $identity['role']->value));
-    $page->assertPathIs(route('dashboard', absolute: false));
-    $page->navigate(route($routeName, absolute: false))->assertPresent($pageSelector);
+    $page->assertPathIs(route('dashboard', absolute: false))->assertPresent('[data-workspace-entry]');
+    $page->navigate($workspaceUrl)->assertPathIs(route($routeName, absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)->assertPresent($pageSelector);
 
     $offlineState = $page->script(<<<'JAVASCRIPT'
         (() => {
@@ -585,7 +589,8 @@ test('populated restaurant work screens remain responsive and keyboard reachable
     }
 
     $page->script("window.localStorage.setItem('flux.appearance', 'dark')");
-    $page->navigate(route($routeName, absolute: false));
+    $page->navigate($workspaceUrl)->assertPathIs(route($routeName, absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)->assertPresent($pageSelector);
     productMenuAssertNoOverflow($page, 390, 844);
     $page->screenshot(false, "product-{$role->value}-390x844-dark");
 
@@ -608,9 +613,9 @@ test('populated restaurant work screens remain responsive and keyboard reachable
     $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
     productMenuAssertNoFailedResources($page);
 })->with([
-    'waiter' => [SystemRole::Waiter, 'restaurant.waiter.dashboard', '[data-page="waiter-dashboard"]'],
-    'kitchen' => [SystemRole::HeadChef, 'restaurant.kitchen.dashboard', '[data-page="kitchen-dashboard"]'],
-    'bar' => [SystemRole::Bartender, 'restaurant.bar.dashboard', '[data-page="bar-dashboard"]'],
+    'waiter' => [SystemRole::Waiter, 'restaurant.waiter.dashboard', '[data-page="waiter-dashboard"]', 'Bella Pizza Old Town'],
+    'kitchen' => [SystemRole::HeadChef, 'restaurant.kitchen.dashboard', '[data-page="kitchen-dashboard"]', 'Bella Pizza Old Town'],
+    'bar' => [SystemRole::Bartender, 'restaurant.bar.dashboard', '[data-page="bar-dashboard"]', 'Bella Pizza Terrace'],
 ]);
 
 function productMenuFillLocale(PendingAwaitablePage $page, string $prefix, string $locale, string $name, string $description): void

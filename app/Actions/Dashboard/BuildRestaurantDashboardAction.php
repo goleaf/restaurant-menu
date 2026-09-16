@@ -61,9 +61,9 @@ class BuildRestaurantDashboardAction
     /**
      * @return array{has_access: bool, dashboard: array<string, mixed>|null}
      */
-    public function handle(User $user, mixed $branchId = '', string $preset = 'today', ?string $from = null, ?string $to = null): array
+    public function handle(User $user, mixed $branchId = '', string $preset = 'today', ?string $from = null, ?string $to = null, bool $aggregate = false): array
     {
-        $context = $this->context($user, $branchId);
+        $context = $this->context($user, $branchId, $aggregate);
         if ($context['access']['dashboard']->isEmpty()) {
             return ['has_access' => false, 'dashboard' => null];
         }
@@ -73,7 +73,7 @@ class BuildRestaurantDashboardAction
     }
 
     /** @return array{access: array<string, Collection<int, int>>, branches: Collection<int, Branch>, selected: Branch|null} */
-    public function context(User $user, mixed $selection = ''): array
+    public function context(User $user, mixed $selection = '', bool $aggregate = false): array
     {
         $id = self::validatedBranchId($selection);
         $access = $this->resolveAccess($user->fresh() ?? $user);
@@ -82,7 +82,7 @@ class BuildRestaurantDashboardAction
         if ($id !== null && ! $access['dashboard']->contains($id)) {
             throw ValidationException::withMessages(['selectedBranchId' => __('dashboard.control.invalid_branch')]);
         }
-        $selected = $id === null ? ($branches->count() === 1 ? $branches->first() : null) : $branches->firstWhere('id', $id);
+        $selected = $id === null ? (! $aggregate && $branches->count() === 1 ? $branches->first() : null) : $branches->firstWhere('id', $id);
         if ($selected instanceof Branch) {
             $access = array_map(fn (Collection $ids): Collection => $ids->intersect([$selected->id])->values(), $access);
         }
@@ -518,7 +518,7 @@ class BuildRestaurantDashboardAction
                 description: 'Find a printed QR sticker',
                 icon: 'magnifying-glass',
                 routeName: 'restaurant.qr-lookup.index',
-                isAvailable: $access['qr']->isNotEmpty(),
+                isAvailable: $access['qr']->isNotEmpty(), branchId: $selected?->id,
             ),
             $this->screenQuickAction(
                 label: 'Waiter screen',
@@ -532,7 +532,7 @@ class BuildRestaurantDashboardAction
                 description: 'Open kitchen tickets',
                 icon: 'fire',
                 routeName: 'restaurant.kitchen.dashboard',
-                isAvailable: $access['kitchen']->isNotEmpty(),
+                isAvailable: $access['kitchen']->isNotEmpty(), branchId: $selected?->id,
             ),
             $this->screenQuickAction(
                 label: 'reports.title',

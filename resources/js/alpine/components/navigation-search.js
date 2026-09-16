@@ -7,8 +7,37 @@ export function workspaceNavigation() {
     return {
         query: '',
         root: null,
+        pending: 0,
+        blocked: false,
+        abortController: null,
+        unsubscribe: null,
         init() {
             this.root = this.$el;
+            this.abortController = new AbortController();
+            document.addEventListener('livewire:navigate', (event) => {
+                if (this.pending === 0) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                this.blocked = true;
+            }, { capture: true, signal: this.abortController.signal });
+            this.unsubscribe = window.Livewire.interceptMessage(({ message, onSend, onSuccess, onFinish }) => {
+                if (message.component.el.closest('[data-workspace-restaurant], [data-component="notifications-unread-count"]')) return;
+                const actions = Array.from(message.actions).map((action) => action.name);
+                if (actions.every((name) => name.startsWith('refresh') || name === '$refresh')) return;
+                let sent = false;
+                onSend(() => { sent = true; this.pending++; });
+                const release = () => {
+                    if (sent) { this.pending--; sent = false; }
+                    if (this.pending === 0) this.blocked = false;
+                };
+                onSuccess(({ onEffect }) => onEffect(release));
+                onFinish(release);
+            });
+        },
+        destroy() {
+            this.abortController?.abort();
+            this.unsubscribe?.();
+            this.unsubscribe = null;
         },
         get resultItems() {
             return [...this.root.querySelectorAll('[data-search-label]')];

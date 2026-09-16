@@ -33,7 +33,9 @@ test('notification bell views messages without reading and keeps local close and
 
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
-        ->resize(390, 844)->navigate(route('dashboard', absolute: false));
+        ->resize(390, 844)->navigate(route('dashboard', absolute: false))
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
     $page->assertScript('document.querySelectorAll("[data-component=notifications-unread-count]").length', 1);
     $page->assertMissing('[data-notification-item]')->click('[data-notification-trigger]')
         ->assertVisible('dialog[data-modal="staff-notifications"]')->assertSee('Ana Notification');
@@ -106,10 +108,14 @@ test('notification bell views messages without reading and keeps local close and
     JAVASCRIPT);
     $page->assertScript('[...document.querySelectorAll("dialog[data-modal=staff-notifications] button")].find(button => button.getAttribute("wire:click") === "markAllRead").disabled');
     $page->keys('dialog[data-modal="staff-notifications"]', 'Escape');
-    $page->navigate(route('organizations.index', absolute: false))->navigate(route('dashboard', absolute: false));
+    $page->navigate(route('organizations.index', absolute: false))->navigate(route('dashboard', absolute: false))
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id);
     $page->assertScript('document.querySelectorAll("[data-component=notifications-unread-count]").length', 1);
     foreach (['lt', 'ru'] as $locale) {
-        $page->navigate(route('dashboard', ['lang' => $locale], false))->resize(390, 844);
+        $page->navigate(route('dashboard', ['lang' => $locale], false))->resize(390, 844)
+            ->assertPathIs(route('restaurant.dashboard', absolute: false))
+            ->assertQueryStringHas('branch', (string) $branch->id);
         $page->click('[data-notification-trigger]')->assertSee('Ana Notification');
         $page->assertAttribute('dialog[data-modal="staff-notifications"] button[autofocus]', 'aria-label', __('notifications.panel.close', [], $locale));
         $page->script("document.documentElement.style.fontSize = '200%'");
@@ -138,7 +144,9 @@ test('notification history keeps bounded pages and discards a late response afte
 
     $page = visit(route('login', absolute: false));
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
-        ->resize(390, 844)->navigate(route('dashboard', absolute: false))->click('[data-notification-trigger]')
+        ->resize(390, 844)->navigate(route('dashboard', absolute: false))
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)->click('[data-notification-trigger]')
         ->assertSee('History Guest')->assertScript('document.querySelectorAll("[data-notification-item]").length', 20)
         ->click('[data-history-action="older"]')
         ->assertScript('document.querySelectorAll("[data-notification-item]").length', 5)

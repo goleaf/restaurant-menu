@@ -9,6 +9,7 @@ use App\Enums\OrganizationUserStatus;
 use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Livewire\Restaurant\Dashboard;
+use App\Livewire\Workspace\RestaurantSwitcher;
 use App\Models\Branch;
 use App\Models\BranchUser;
 use App\Models\KitchenDepartment;
@@ -31,7 +32,7 @@ beforeEach(function () {
 test('branch control automatically selects the only branch and keeps context out of the snapshot', function () {
     Livewire::actingAs($this->owner)->test(Dashboard::class)
         ->assertSet('selectedBranchId', (string) $this->branch->id)
-        ->assertSee('Vilnius control');
+        ->assertViewHas('dashboard', fn (array $dashboard): bool => $dashboard['selected_branch']['id'] === $this->branch->id);
 });
 
 test('multiple branches default to an explicit overview without a first branch action', function () {
@@ -50,47 +51,36 @@ test('branch search keeps the selected authorized branch available beside matchi
     $matching = Branch::factory()->for($this->branch->organization)->for($this->branch->brand)->create(['name' => 'Kaunas matching']);
     $foreign = Branch::factory()->create(['name' => 'Kaunas foreign']);
 
-    Livewire::actingAs($this->owner)->withQueryParams(['branch' => (string) $this->branch->id])->test(Dashboard::class)
-        ->set('branchSearch', 'Kaunas')
-        ->assertSet('selectedBranchId', (string) $this->branch->id)
-        ->assertViewHas('dashboard', fn (array $dashboard): bool => array_column($dashboard['branches'], 'id') === [$this->branch->id, $matching->id]
-            && ! $dashboard['branch_search_empty'])
-        ->assertDontSee($foreign->name)
-        ->set('branchSearch', 'No matching restaurant')
-        ->assertViewHas('dashboard', fn (array $dashboard): bool => array_column($dashboard['branches'], 'id') === [$this->branch->id]
-            && $dashboard['branch_search_empty'])
-        ->assertSee(__('dashboard.control.branch_search_empty'));
+    Livewire::actingAs($this->owner)->test(RestaurantSwitcher::class, ['branchId' => $this->branch->id, 'destination' => 'overview', 'mode' => 'restaurant'])
+        ->set('form.search', 'Kaunas')->assertSee($this->branch->name)
+        ->assertViewHas('options', fn (array $options): bool => array_column($options, 'id') === [$matching->id])
+        ->assertDontSee($foreign->name)->set('form.search', 'No matching restaurant')
+        ->assertViewHas('options', [])->assertSee(__('workspace.search_empty'))->assertSee($this->branch->name);
 });
 
 test('branch options are bounded without dropping the selected branch or all-branch context', function () {
     Branch::factory()->count(26)->for($this->branch->organization)->for($this->branch->brand)
         ->sequence(fn ($sequence): array => ['name' => sprintf('A branch %02d', $sequence->index)])->create();
 
-    Livewire::actingAs($this->owner)->test(Dashboard::class)
-        ->assertSet('selectedBranchId', '')
-        ->assertViewHas('dashboard', fn (array $dashboard): bool => count($dashboard['branches']) === 25
-            && $dashboard['branch_count'] === 27 && $dashboard['selected_branch'] === null)
-        ->set('selectedBranchId', (string) $this->branch->id)
-        ->assertViewHas('dashboard', fn (array $dashboard): bool => count($dashboard['branches']) === 26
-            && $dashboard['branches'][0]['id'] === $this->branch->id);
+    Livewire::actingAs($this->owner)->test(RestaurantSwitcher::class, ['mode' => 'aggregate'])
+        ->assertSet('branchId', null)->assertSee(__('workspace.mode.aggregate'))
+        ->assertViewHas('options', fn (array $options): bool => count($options) === 20);
+    Livewire::actingAs($this->owner)->test(RestaurantSwitcher::class, ['branchId' => $this->branch->id, 'mode' => 'restaurant'])
+        ->assertSee($this->branch->name)
+        ->assertViewHas('options', fn (array $options): bool => count($options) === 20);
 });
 
 test('branch picker preserves explicit search and selection error associations', function () {
-    $component = Livewire::actingAs($this->owner)->test(Dashboard::class)
-        ->set('branchSearch', str_repeat('x', 121))->assertHasErrors('branchSearch');
+    $component = Livewire::actingAs($this->owner)->test(RestaurantSwitcher::class, ['branchId' => $this->branch->id])
+        ->set('form.search', str_repeat('x', 101))->assertHasErrors('form.search');
     $document = HTMLDocument::createFromString($component->html(), LIBXML_NOERROR);
-    $search = $document->querySelector('input[name="branchSearch"]');
+    $search = $document->querySelector('input[aria-describedby="workspace-search-error"]');
     expect($search->getAttribute('aria-invalid'))->toBe('true')
-        ->and($search->getAttribute('aria-describedby'))->toBe('dashboard-branch-search-help dashboard-branch-search-error')
-        ->and($document->querySelectorAll('#dashboard-branch-search-error')->length)->toBe(1);
-
-    $component->set('branchSearch', '')->set('selectedBranchId', Branch::factory()->create()->id)
-        ->assertHasErrors('selectedBranchId');
+        ->and($document->querySelectorAll('#workspace-search-error')->length)->toBe(1);
+    $component->set('form.search', '')->set('form.branchId', 'invalid')->call('choose')->assertHasErrors('form.branchId');
     $document = HTMLDocument::createFromString($component->html(), LIBXML_NOERROR);
-    $selection = $document->querySelector('ui-radio-group[name="selectedBranchId"]');
-    expect($selection->getAttribute('aria-invalid'))->toBe('true')
-        ->and($selection->getAttribute('aria-describedby'))->toBe('dashboard-branch-error')
-        ->and($document->querySelectorAll('#dashboard-branch-error')->length)->toBe(1);
+    expect($document->querySelector('ui-select')->getAttribute('aria-invalid'))->toBe('true')
+        ->and($document->querySelectorAll('#workspace-restaurant-error')->length)->toBe(1);
 });
 
 test('branch control rejects malformed and foreign branch selections before using them', function (mixed $selection) {
@@ -99,7 +89,7 @@ test('branch control rejects malformed and foreign branch selections before usin
 })->with([true, false, '1garbage', '1.0', '1e0', '-1', [['1']], '999999999999999999999999999']);
 
 test('branch control removes revoked context on an ordinary refresh', function () {
-    $component = Livewire::actingAs($this->owner)->test(Dashboard::class)->assertSee('Vilnius control');
+    $component = Livewire::actingAs($this->owner)->test(Dashboard::class)->assertViewHas('dashboard', fn (array $dashboard): bool => $dashboard['selected_branch']['id'] === $this->branch->id);
     $this->membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
     $component->call('$refresh')->assertDontSee('Vilnius control')->assertSet('canAccessRestaurantDashboard', false);
 });
@@ -107,8 +97,8 @@ test('branch control removes revoked context on an ordinary refresh', function (
 test('branch control URL dates are bounded and foreign identifiers cannot select a branch', function () {
     $foreign = Branch::factory()->create();
     Livewire::actingAs($this->owner)->withQueryParams(['branch' => (string) $foreign->id])->test(Dashboard::class)
-        ->assertDontSee($foreign->name)->assertHasErrors('selectedBranchId');
-    Livewire::actingAs($this->owner)->test(Dashboard::class)
+        ->assertForbidden()->assertDontSee($foreign->name);
+    Livewire::actingAs($this->owner)->withQueryParams([])->test(Dashboard::class)
         ->set('periodDraft', 'custom')->set('dateFromDraft', '2026-01-01')->set('dateToDraft', '2026-03-01')
         ->call('applyPeriod')->assertHasErrors();
 });
@@ -148,7 +138,7 @@ test('revoking another organization clears its branch option on plain refresh', 
     $b = Branch::factory()->create(['name' => 'Revoked B secret']);
     OrganizationUser::factory()->forOrganization($a->organization)->for($user)->forSystemRole(SystemRole::Owner)->active()->create();
     $membership = OrganizationUser::factory()->forOrganization($b->organization)->for($user)->forSystemRole(SystemRole::Owner)->active()->create();
-    $component = Livewire::actingAs($user)->withQueryParams(['branch' => (string) $a->id])->test(App\Livewire\Waiter\Dashboard::class);
+    $component = Livewire::actingAs($user)->test(RestaurantSwitcher::class, ['branchId' => $a->id, 'destination' => 'waiter']);
     $component->assertSee('Revoked B secret');
     $membership->forceFill(['status' => OrganizationUserStatus::Suspended])->save();
     $component->call('$refresh')->assertDontSee('Revoked B secret');

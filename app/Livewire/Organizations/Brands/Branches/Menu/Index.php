@@ -78,13 +78,7 @@ class Index extends BranchMenuComponent
         $this->authorizeBranchAbility($this->section === 'availability' ? 'changeMenuAvailability' : 'manageMenu');
 
         return view('livewire.organizations.brands.branches.menu.index', [
-            'branchesUrl' => route('organizations.brands.branches.index', [$this->organizationId, $this->brandId]),
             'sections' => $this->sections(),
-            'breadcrumbs' => [
-                ['label' => $this->organization->name, 'href' => route('organizations.brands.index', [$this->organizationId])],
-                ['label' => $this->brand->name, 'href' => route('organizations.brands.branches.index', [$this->organizationId, $this->brandId])],
-                ['label' => $this->branch->name, 'current' => true],
-            ],
         ])->title(__('navigation.menu'));
     }
 

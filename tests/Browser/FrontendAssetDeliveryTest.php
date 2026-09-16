@@ -41,13 +41,13 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
     $page = visit(route('login', absolute: false));
     $page->assertPresent('[data-layout="auth"]');
     frontendAssertSharedBootstrap($page);
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     frontendObserveLifecycle($page);
 
     $visits = [
         [$fixture['menuUrl'].'?section=availability', '[data-page="branch-menu"]', 'menu'],
         [$fixture['staffUrl'], '[data-staff-workspace]', 'staff'],
-        [route('dashboard', absolute: false), '[data-workspace-navigation]', null],
+        [$fixture['dashboardUrl'], '[data-workspace-navigation]', null],
         [$fixture['menuUrl'], '[data-page="branch-menu"]', 'menu'],
         [$fixture['staffUrl'], '[data-staff-workspace]', 'staff'],
         [route('organizations.index', absolute: false), '[data-page="organizations"]', null],
@@ -90,7 +90,7 @@ test('one bootstrap retains its runtime and disposes page listeners through ten 
 test('direct menu and staff loads retain validation drafts and navigation guards after morphs', function (): void {
     $fixture = frontendAssetFixture();
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     $page->navigate($fixture['menuUrl'].'?section=availability');
     frontendAssertModuleReady($page, 'menu');
     frontendAssertSharedBootstrap($page);
@@ -133,7 +133,7 @@ test('direct menu and staff loads retain validation drafts and navigation guards
     frontendAssertModuleReady($page, 'staff');
     $page->assertScript('typeof Alpine.$data(document.querySelector("[data-staff-editor]")).present', 'function')
         ->fill('input[name="invitationForm.email"]', 'unsaved.asset@example.test');
-    $dashboard = json_encode(route('dashboard', absolute: false), JSON_THROW_ON_ERROR);
+    $dashboard = json_encode($fixture['dashboardUrl'], JSON_THROW_ON_ERROR);
     $page->script("Livewire.navigate({$dashboard});");
     $page->assertVisible('dialog[data-modal="staff-workspace-unsaved"]')
         ->click('dialog[data-modal="staff-workspace-unsaved"] button[\\@click="cancelNavigation"]')
@@ -142,7 +142,7 @@ test('direct menu and staff loads retain validation drafts and navigation guards
     expect(Invitation::query()->where('email', 'unsaved.asset@example.test')->exists())->toBeFalse();
     $page->script("Livewire.navigate({$dashboard});");
     $page->click('dialog[data-modal="staff-workspace-unsaved"] button[\\@click="discardAndNavigate"]')
-        ->assertPathIs(route('dashboard', absolute: false))
+        ->assertPathIs(route('restaurant.dashboard', absolute: false))->assertQueryStringHas('branch', (string) $fixture['branch']->id)
         ->assertNoJavaScriptErrors()->assertNoConsoleLogs();
 });
 
@@ -162,7 +162,7 @@ test('staff names and invitation recipients remain readable beside translated ac
         'invited_by_user_id' => $fixture['owner']->id,
     ]);
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
 
     foreach ([
         ['employees', 'member-'.$member->id, $colleague->name],
@@ -214,7 +214,7 @@ test('staff names and invitation recipients remain readable beside translated ac
 test('failed shared bootstrap keeps a translated inert editor until explicit native reload', function (string $module, string $locale): void {
     $fixture = frontendAssetFixture();
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     frontendFailNextBootstrap($fixture[$module.'Url']);
     $page->navigate($fixture[$module.'Url'].'?lang='.$locale);
     $page->assertScript('window.frontendAssetFault.failed', 1);
@@ -246,13 +246,13 @@ test('failed shared bootstrap keeps a translated inert editor until explicit nat
 test('cached back and forward initializes eager providers before unlocking their dirty editors', function (string $module): void {
     $fixture = frontendAssetFixture();
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     frontendObserveLifecycle($page);
     frontendAssetNavigate($page, $fixture[$module.'Url']);
     frontendAssertModuleReady($page, $module);
     frontendCaptureWorkspace($page);
     $page->script('history.back();');
-    $page->assertPathIs(route('dashboard', absolute: false))->assertMissing('[data-page-module]');
+    $page->assertPathIs(route('restaurant.dashboard', absolute: false))->assertQueryStringHas('branch', (string) $fixture['branch']->id)->assertMissing('[data-page-module]');
     frontendAssertDisposedWorkspace($page);
     $page->script('history.forward();');
     $page->assertPathIs($fixture[$module.'Url']);
@@ -272,7 +272,7 @@ test('cached back and forward initializes eager providers before unlocking their
         $draft = 'history-draft@example.test';
     }
 
-    $page->script('Livewire.navigate('.json_encode(route('dashboard', absolute: false), JSON_THROW_ON_ERROR).');');
+    $page->script('Livewire.navigate('.json_encode($fixture['dashboardUrl'], JSON_THROW_ON_ERROR).');');
     $dialog = 'dialog[data-modal="'.$module.'-workspace-unsaved"]';
     $page->assertVisible($dialog);
     $cancel = $module === 'menu' ? 'button[x-on\\:click="cancelNavigation"]' : 'button[\\@click="cancelNavigation"]';
@@ -287,8 +287,8 @@ test('failed shared bootstrap preserves operational state and native reload rest
     $fixture = frontendAssetFixture();
     $operator = frontendAssetOperator($fixture, $module);
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $operator);
     $route = $module === 'waiter' ? 'restaurant.waiter.dashboard' : 'restaurant.kitchen.dashboard';
+    frontendAssetLogin($page, $operator, $fixture['branch'], $route);
     $url = route($route, absolute: false);
     frontendFailNextBootstrap($url);
     $page->navigate($url.'?lang='.$locale);
@@ -342,7 +342,7 @@ test('migrated styles retain five viewport theme contrast and real 44 and 56 pix
     $ticket = KitchenTicket::factory()->forOrder($order)->create(['kitchen_department_id' => $department->id]);
     KitchenTicketItem::factory()->forDispatchedOrderItem($ticket, $orderItem)->pending()->create();
     $page = visit(route('login', absolute: false));
-    frontendAssetLogin($page, $fixture['owner']);
+    frontendAssetLogin($page, $fixture['owner'], $fixture['branch']);
     $themes = [];
 
     foreach ([
@@ -411,7 +411,7 @@ test('migrated styles retain five viewport theme contrast and real 44 and 56 pix
 });
 
 /**
- * @return array{owner: User, organization: Organization, branch: Branch, item: MenuItem, qr: QrCode, menuUrl: string, staffUrl: string}
+ * @return array{owner: User, organization: Organization, branch: Branch, item: MenuItem, qr: QrCode, menuUrl: string, staffUrl: string, dashboardUrl: string}
  */
 function frontendAssetFixture(): array
 {
@@ -430,15 +430,18 @@ function frontendAssetFixture(): array
         'branch' => $branch,
         'item' => $item,
         'qr' => $qr,
+        'dashboardUrl' => route('restaurant.dashboard', ['branch' => $branch->id], false),
         'menuUrl' => route('organizations.brands.branches.menu.index', [$organization, $branch->brand, $branch], false),
         'staffUrl' => route('organizations.brands.branches.staff.index', [$organization, $branch->brand, $branch], false),
     ];
 }
 
-function frontendAssetLogin(PendingAwaitablePage $page, User $user): void
+function frontendAssetLogin(PendingAwaitablePage $page, User $user, Branch $branch, string $destination = 'restaurant.dashboard'): void
 {
     $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
-        ->assertPathIs(route('dashboard', absolute: false));
+        ->assertPathIs(route($destination, absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)
+        ->assertSee($branch->name);
 }
 
 function frontendAssetNavigate(PendingAwaitablePage $page, string $url): void
@@ -599,12 +602,13 @@ function frontendObserveLifecycle(PendingAwaitablePage $page): void
 
 function frontendCaptureWorkspace(PendingAwaitablePage $page): void
 {
-    $page->script('window.frontendLifecycle.previous = document.querySelector("[data-page-module]") ? Alpine.$data(document.querySelector("[data-page-module]")) : null;');
+    $page->script('(() => { const previousEditor = document.querySelector("[data-page-module], [data-layout=restaurant-dashboard]"); window.frontendLifecycle.previous = previousEditor ? Alpine.$data(previousEditor) : null; window.frontendLifecycle.previousShell = Alpine.$data(document.querySelector("[data-workspace-navigation]")); })();');
 }
 
 function frontendAssertDisposedWorkspace(PendingAwaitablePage $page): void
 {
-    $page->assertScript('window.frontendLifecycle.previous === null || (window.frontendLifecycle.previous.destroyed && window.frontendLifecycle.previous.abortController.signal.aborted && window.frontendLifecycle.previous.unsubscribe === null)');
+    $page->assertScript('window.frontendLifecycle.previous === null || (window.frontendLifecycle.previous.destroyed && window.frontendLifecycle.previous.abortController.signal.aborted && window.frontendLifecycle.previous.unsubscribe === null)')
+        ->assertScript('window.frontendLifecycle.previousShell.abortController.signal.aborted && window.frontendLifecycle.previousShell.unsubscribe === null');
 }
 
 function frontendAssertLifecycle(PendingAwaitablePage $page, string $url): void
@@ -612,7 +616,7 @@ function frontendAssertLifecycle(PendingAwaitablePage $page, string $url): void
     frontendAssertDisposedWorkspace($page);
     $page->assertScript('window.frontendLifecycle.alpine === Alpine && window.frontendLifecycle.livewire === Livewire')
         ->assertScript('window.frontendLifecycle.alpineInitializations', 0)
-        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module]").length');
+        ->assertScript('window.frontendLifecycle.signals.filter(entry => entry.type === "livewire:navigate" && !entry.signal.aborted).length === document.querySelectorAll("[data-page-module], [data-layout=restaurant-dashboard], [data-workspace-navigation]").length');
     $key = json_encode($url, JSON_THROW_ON_ERROR);
     $page->assertScript("(() => {
         const probe = window.frontendLifecycle;

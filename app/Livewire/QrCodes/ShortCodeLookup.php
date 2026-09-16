@@ -11,6 +11,7 @@ use App\Enums\QrCodeStatus;
 use App\Enums\SystemPermission;
 use App\Models\QrCode;
 use App\Models\User;
+use App\Services\Navigation\WorkspaceContextResolver;
 use App\Services\QrCodes\QrCodeQueryService;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -19,10 +20,14 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 class ShortCodeLookup extends Component
 {
+    #[Locked]
+    public ?int $branchId = null;
+
     private ResolveWaiterAccessibleBranchIdsAction $resolveAccessibleBranchIds;
 
     private QrCodeQueryService $qrCodeQueries;
@@ -45,8 +50,9 @@ class ShortCodeLookup extends Component
         $this->qrCodeQueries = $qrCodeQueries;
     }
 
-    public function mount(): void
+    public function mount(WorkspaceContextResolver $resolver): void
     {
+        $this->branchId = $resolver->resolve($this->currentUser(), request(), pageDestination: 'halls')->branchId;
         if ($this->accessibleBranchIds()->isEmpty()) {
             abort(403);
         }
@@ -249,7 +255,7 @@ class ShortCodeLookup extends Component
         return $this->resolveAccessibleBranchIds
             ->handle($this->currentUser(), SystemPermission::GenerateQr)
             ->map(fn (mixed $branchId): int => (int) $branchId)
-            ->filter(fn (int $branchId): bool => $branchId > 0)
+            ->filter(fn (int $branchId): bool => $branchId > 0 && ($this->branchId === null || $branchId === $this->branchId))
             ->unique()
             ->values();
     }

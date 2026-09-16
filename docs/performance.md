@@ -4,6 +4,52 @@
 
 # Performance
 
+
+## Unified workspace — prompt 3, 2026-09-16
+
+The baseline is clean local `9b6a71a`. Matched HTTP measurements use identical owned SQLite fixtures (30 menu items, eight tables, 12 staff memberships and an owner), PHP 8.5.10, production assets, debug off, OPcache CLI off and no coverage. Five fresh processes per page/variant each measure first and warm HTTP Kernel handling plus termination. Bootstrap and fixture setup are excluded; OS caches and host CPU are uncontrolled. All 60 primary requests and 20 reverse-order menu controls return HTTP 200.
+
+| Warm page | SQL before → after | HTML bytes before → after | Livewire snapshot bytes before → after | Peak used-memory growth bytes before → after |
+| --- | --- | --- | --- | --- |
+| Menu | 191 → 183 | 1,233,328 → 1,244,104 | 5,561 → 5,853 | 6,321,240 → 6,281,368 |
+| Tables | 117 → 109 | 575,717 → 591,726 | 2,454 → 2,728 | 2,917,520 → 2,970,256 |
+| Team | 83 → 75 | 128,057 → 143,127 | 2,354 → 2,627 | 1,572,216 → 1,573,488 |
+
+All five repetitions reproduce these structural values. Initial menu warm median is 353.56 ms [350.48–355.02] before and 507.07 [455.84–527.71] after. Reversing measurement order gives 434.10 [401.51–682.85] before and 358.37 [356.76–361.77] after. This changes the sign of the timing difference: neither acceleration nor a stable latency regression is established. Tables warm medians are 176.55 [167.51–180.86] → 177.64 [176.78–225.24]; team 56.58 [52.35–65.67] → 55.07 [54.92–57.00]. All observations, including slower samples and cold measurements, are retained.
+
+Three paired real signed Catalog filter POSTs per version return HTTP 200, preserve the complete fixture and show only the searched row. Request JSON is 5,152 → 5,173 bytes; response JSON 297,647 → 297,668; output snapshot 4,267 → 4,286; HTML effects remain 283,149 bytes and SQL remains 47. The additional actor memo accounts for the snapshot growth. These are uncompressed body sizes, not network-transfer measurements, and no POST latency claim is made.
+
+A separate presenter-only comparison uses five interleaved AB/BA process pairs per scenario, with first and three warm calls each: 40 processes /160 calls, all exit zero. Existing permission batches are reused within each call; no rights cache survives it.
+
+| Presenter scenario | SQL before → after | Retrieved models before → after | Warm median ms before → after | Warm peak growth KiB before → after |
+| --- | --- | --- | --- | --- |
+| Owner, restaurant | 52 → 22 | 20 → 39 | 8.323 → 4.380 | 73.1 → 137.4 |
+| Owner, aggregate | 52 → 19 | 20 → 36 | 8.703 → 3.815 | 73.1 → 137.4 |
+| Waiter, restaurant | 51 → 21 | 23 → 37 | 8.865 → 4.361 | 72.4 → 137.4 |
+| No access | 49 → 16 | 7 → 15 | 8.246 → 2.394 | 59.7 → 55.6 |
+
+The broader workspace prepares more permissions/models and uses approximately 64–65 KiB more warm memory for owner/waiter. Fewer queries are established, not equivalent output or whole-product speed. The concurrent browser workload makes the descriptive timing ranges unsuitable for a general performance promise.
+
+The HTTP href comparison observes `/dashboard` → restaurant overview → menu/tables/team before, versus automatic `/dashboard` redirect → one task link now. Required link activations decrease from two to one; HTTP GET count after entry remains two. This is a source-backed HTTP route comparison, not a historical browser click measurement. The current real browser separately verifies direct menu → halls → team and team-preserving restaurant switching, ten transitions and history.
+
+Exact GET snapshot: `8a8389e91b78f091e1dbfe25defe1b7c9cdafb4a25bee67c44a98a3cd7de4623`. Later production changes only remove an unused JavaScript close method and move offline-disabled attributes to the Pro combobox host/More button; exact final GET HTML bytes are not relabelled as remeasured. PHP/context/query sources match. Both HTTP variants use the same current production manifest, so this experiment does not compare baseline asset delivery. Frontend build inventory is a separate measurement.
+
+The separate network-denied baseline build verifies 990 source files against `9b6a71a` and uses the identical installed Node 24.21.0/npm 12.0.2 dependency graph. Current assets come from frozen `qdeJCR/source`; application sources remain unchanged after that build. Each asset is compressed separately at gzip level 9/Brotli quality 11.
+
+| Production asset group | Raw before → after | Gzip before → after | Brotli before → after |
+| --- | --- | --- | --- |
+| Framework CSS | 338,500 → 337,540 | 44,110 → 43,985 | 32,997 → 32,917 |
+| Own SCSS output | 30,559 → 30,969 | 6,100 → 6,240 | 5,285 → 5,426 |
+| Common JS, including Livewire/Alpine | 325,154 → 326,015 | 101,639 → 101,891 | 88,595 → 88,833 |
+| All eight Vite assets | 935,001 → 935,312 | 380,405 → 380,672 | 354,811 → 355,110 |
+| Ordinary six-asset entry closure | 918,073 → 918,384 | 375,617 → 375,884 | 350,720 → 351,019 |
+| Separately served Flux runtime | 303,925 → 303,925 | 67,567 → 67,567 | 54,812 → 54,812 |
+
+Ordinary delivery inventory grows by 267 gzip bytes (0.071%) and 299 Brotli bytes (0.085%). Font files, print CSS and lazy WebAuthn are unchanged. Both unchanged asset budgets pass. This static closure includes all three declared font subsets; it is not observed browser transfer or cache behavior. Commands, manifests and individual hashes are in `/private/tmp/restaurant-p3-assets-3fsittul/`.
+
+Owned evidence: `/private/tmp/restaurant-workspace-perf-c4blpp7h/` (`summary.json`, `update-summary.json`, all raw runs and source/build/fixture hashes) and `/private/tmp/restaurant-navigation-p3-meekr_uz/` (all presenter observations and per-file hashes). No production database or storage was read or changed. Current acceptance belongs in PROGRESS.md; measurements alone are not a passing test suite.
+
+
 ## Platform prompt 1 — matched dependency measurements, 2026-09-16
 
 These measurements compare the exact `73f783d` lock graph with the selected installed graph on identical current application source, production assets and deterministic disposable fixtures (30 menu items, 12 staff). PHP is 8.5.10 on both sides, CLI OPcache and coverage are disabled. Each sample starts a new PHP process and measures the Laravel HTTP kernel, including query logging but excluding network/web-server latency and login. “Warm” means reusable application/view-cache artifacts, not a resident warmed PHP process. This is not a PHP 8.5-versus-8.6 comparison.

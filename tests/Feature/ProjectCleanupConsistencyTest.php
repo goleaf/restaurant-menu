@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use PhpParser\Node;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Name;
+use PhpParser\NodeFinder;
+use PhpParser\ParserFactory;
 
 test('livewire pages use class components with separate presentation views', function () {
     $singleFileComponentPattern = '/<\?php\s+.*?new(?:\s+#\[[^]]+\])?\s+class\s+extends\s+Component/s';
@@ -69,7 +74,8 @@ test('blade templates do not resolve application services or invoke livewire met
 });
 
 test('application operations use explicit dependency injection', function () {
-    $serviceLocatorPattern = '/\b(?:app|resolve)\s*\(/';
+    $parser = (new ParserFactory)->createForNewestSupportedVersion();
+    $finder = new NodeFinder;
 
     $matchingPaths = collect([
         app_path('Actions'),
@@ -78,8 +84,9 @@ test('application operations use explicit dependency injection', function () {
     ])
         ->flatMap(fn (string $path) => File::allFiles($path))
         ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php')
-        ->mapWithKeys(function (SplFileInfo $file) use ($serviceLocatorPattern): array {
-            if (preg_match($serviceLocatorPattern, File::get($file->getPathname())) !== 1) {
+        ->mapWithKeys(function (SplFileInfo $file) use ($parser, $finder): array {
+            $calls = $finder->find($parser->parse(File::get($file->getPathname())) ?? [], static fn (Node $node): bool => $node instanceof FuncCall && $node->name instanceof Name && in_array($node->name->toString(), ['app', 'resolve'], true));
+            if ($calls === []) {
                 return [];
             }
 

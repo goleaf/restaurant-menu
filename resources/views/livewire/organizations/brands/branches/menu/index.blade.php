@@ -3,16 +3,10 @@
 @endPushOnce
 
 <section data-page-module="menu" wire:ignore.self x-ignore inert data-page="branch-menu" class="mx-auto flex w-full min-w-0 max-w-content flex-1 flex-col gap-6" x-data="menuWorkspace">
-    <x-ui.page-header :title="__('navigation.menu')" :breadcrumbs="$breadcrumbs" :description="__('menu.workspace.description')">
-        <x-slot:actions>
-            <flux:button icon="arrow-left" :href="$branchesUrl" wire:navigate>
-                {{ __('navigation.branches') }}
-            </flux:button>
-        </x-slot:actions>
-    </x-ui.page-header>
+    <x-ui.page-header :title="__('navigation.menu')" :description="__('menu.workspace.description')" />
 
     <div class="grid min-w-0 content-start gap-5 lg:grid-cols-[11.5rem_minmax(0,1fr)] lg:gap-6">
-        <nav class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] content-start gap-1.5 rounded-card bg-surface-muted p-1.5 lg:sticky lg:top-6 lg:grid-cols-1 lg:self-start" aria-label="{{ __('menu.workspace.sections') }}">
+        <nav class="menu-workspace-sections grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] content-start gap-1.5 rounded-card bg-surface-muted p-1.5 lg:sticky lg:top-6 lg:grid-cols-1 lg:self-start" aria-label="{{ __('menu.workspace.sections') }}">
             @forelse ($sections as $key => $entry)
                 <a
                     href="{{ $entry['href'] }}"

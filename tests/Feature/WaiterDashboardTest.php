@@ -12,6 +12,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\Dashboard as WaiterDashboard;
+use App\Livewire\Workspace\RestaurantSwitcher;
 use App\Models\AreaNode;
 use App\Models\Branch;
 use App\Models\BranchSetting;
@@ -720,7 +721,7 @@ test('waiter dashboard bounds the selected branch and service point page while h
     expect($payload['branches'])->toHaveCount(1)
         ->and($payload['branches'][0]['service_points'])->toHaveCount(50)
         ->and($payload['service_point_count'])->toBe(60);
-    Livewire::actingAs($waiter)->test(WaiterDashboard::class)->assertSee('wire:poll.visible.12s="refreshDashboard"', false);
+    Livewire::actingAs($waiter)->withQueryParams(['branch' => $branch->id])->test(WaiterDashboard::class)->assertSee('wire:poll.visible.12s="refreshDashboard"', false);
 });
 
 test('off-page work changes branch counters and notifications and is reachable through attention filtering', function (): void {
@@ -745,11 +746,13 @@ test('dashboard branch selection search paging and polling remain scoped and fre
     $second = Branch::factory()->for($organization)->for($brand)->create(['name' => 'B second']);
     BranchSetting::factory()->for($second)->create(['polling_interval_seconds' => 17]);
     ServicePoint::factory()->count(51)->for($second)->sequence(fn ($sequence) => ['name' => sprintf('Second %03d', $sequence->index)])->create();
-    $component = Livewire::actingAs($waiter)->test(WaiterDashboard::class);
-    $component->set('selectedBranchId', $second->id)->assertSee('wire:poll.visible.17s="refreshDashboard"', false)
+    Livewire::actingAs($waiter)->test(WaiterDashboard::class)->assertRedirect(route('dashboard'));
+    $component = Livewire::actingAs($waiter)->withQueryParams(['branch' => $second->id])->test(WaiterDashboard::class);
+    $component->assertSee('wire:poll.visible.17s="refreshDashboard"', false)
         ->assertSet('servicePointCount', 51)->assertSee('Second 000')->assertDontSee('Second 050');
     $component->call('changeTablePage', 2)->assertSee('Second 050')->assertDontSee('Second 000');
-    $component->set('branchSearch', 'A first')->assertSet('selectedBranchId', $second->id);
+    Livewire::actingAs($waiter)->test(RestaurantSwitcher::class, ['branchId' => $second->id, 'destination' => 'waiter'])
+        ->set('form.search', 'A first')->assertSet('branchId', $second->id)->assertSee('B second');
     $foreign = Branch::factory()->create();
-    $component->set('selectedBranchId', $foreign->id)->assertForbidden();
+    Livewire::actingAs($waiter)->withQueryParams(['branch' => $foreign->id])->test(WaiterDashboard::class)->assertForbidden();
 });

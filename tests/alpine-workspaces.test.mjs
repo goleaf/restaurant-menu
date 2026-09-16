@@ -252,3 +252,20 @@ test('a pending staff reopen cannot click the old editor after the owning worksp
     staff.$el.dispatchEvent(event({ type: 'click', target: trigger })); staff.destroy(); resolve(); await new Promise(setImmediate);
     assert.equal(trigger.clicks, 0);
 });
+
+test('ordering uses the same dirty history guard and clears only explicitly discarded drafts', async t => {
+    const { restaurantDashboard } = await import('../resources/js/alpine/components/presentation.js');
+    const app = workspace(t, restaurantDashboard), dashboard = app.instance;
+    const content = new Element(), form = new Element(), input = new Element();
+    form.setAttribute('wire:submit', 'saveOrdering'); form.ancestors.set('[wire\\:id]', dashboard.$el);
+    input.ancestors.set('form[wire\\:submit]', form); content.children.set('forms', [form]);
+    dashboard.$el.children.set('[data-dashboard-ordering]', [content]);
+    dashboard.$el.dispatchEvent({ type: 'input', target: input }); assert.equal(dashboard.hasUnsavedChanges(), true);
+    const navigation = event({ type: 'livewire:navigate', detail: { url: new URL('https://menu.test/other') } });
+    app.document.dispatchEvent(navigation); assert.equal(navigation.prevented, true);
+    assert.deepEqual(app.dialogs.at(-1), ['show', 'dashboard-unsaved']);
+    dashboard.cancelNavigation(); assert.equal(dashboard.hasUnsavedChanges(), true);
+    app.message({ el: dashboard.$el, id: 'workspace' }, [{ name: 'discardOrdering' }], { snapshot: { memo: { errors: {} } } }).finish();
+    assert.equal(dashboard.hasUnsavedChanges(), false);
+    dashboard.destroy(); assert.equal(app.state.interceptors.size, 0);
+});

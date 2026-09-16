@@ -290,7 +290,7 @@ test('guest qr page uses branch default language and can switch language', funct
 
 test('dashboard entry views keep visible chrome translatable', function () {
     $dashboardSources = [
-        resource_path('views/dashboard.blade.php'),
+        resource_path('views/livewire/workspace/entry.blade.php'),
         resource_path('views/livewire/restaurant/dashboard.blade.php'),
     ];
 

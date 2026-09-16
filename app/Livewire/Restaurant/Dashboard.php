@@ -8,6 +8,7 @@ use App\Actions\Dashboard\BuildRestaurantDashboardAction;
 use App\Actions\Dashboard\SaveDashboardOrderingAction;
 use App\Livewire\Forms\BranchOrderingForm;
 use App\Models\User;
+use App\Services\Navigation\WorkspaceContextResolver;
 use App\Support\Reports\BranchReportPeriod;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,10 @@ use Throwable;
 
 class Dashboard extends Component
 {
-    #[Url(as: 'branch', history: true, except: '')]
+    #[Locked]
+    public bool $aggregate = false;
+
+    #[Locked]
     public mixed $selectedBranchId = '';
 
     #[Url(as: 'period', history: true, except: 'today')]
@@ -42,8 +46,6 @@ class Dashboard extends Component
 
     public mixed $dateToDraft = '';
 
-    public mixed $branchSearch = '';
-
     public BranchOrderingForm $closure;
 
     public bool $canAccessRestaurantDashboard = false;
@@ -59,8 +61,13 @@ class Dashboard extends Component
     #[Locked]
     public array $originalClosure = [];
 
-    public function mount(): void
+    public function mount(WorkspaceContextResolver $resolver): void
     {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+        $context = $resolver->resolve($user, request(), pageDestination: 'overview');
+        $this->aggregate = $context->mode === 'aggregate';
+        $this->selectedBranchId = $context->branchId === null ? '' : (string) $context->branchId;
         $this->syncPeriodDraft();
     }
 
@@ -80,20 +87,6 @@ class Dashboard extends Component
         $this->dateToDraft = $this->dateTo;
     }
 
-    public function updatedSelectedBranchId(): void
-    {
-        $this->successMessage = '';
-        if ($this->orderingIsDirty()) {
-            $this->selectedBranchId = $this->renderedBranchId === null ? '' : (string) $this->renderedBranchId;
-            $this->errorMessage = __('dashboard.control.unsaved_ordering');
-            $this->dispatch('dashboard-validation-failed');
-
-            return;
-        }
-        $this->errorMessage = '';
-        $this->resetValidation();
-    }
-
     public function applyPeriod(BuildRestaurantDashboardAction $build): void
     {
         $this->successMessage = '';
@@ -105,7 +98,7 @@ class Dashboard extends Component
         ]);
         $user = Auth::user();
         abort_unless($user instanceof User, 403);
-        $context = $build->context($user, $this->selectedBranchId);
+        $context = $build->context($user, $this->selectedBranchId, $this->aggregate);
         try {
             BranchReportPeriod::fromSelection($context['branches'], $this->periodDraft, $this->dateFromDraft ?: null, $this->dateToDraft ?: null);
         } catch (ValidationException $exception) {
@@ -165,8 +158,7 @@ class Dashboard extends Component
             $this->originalClosure = [];
             $this->successMessage = __('dashboard.control.ordering_saved');
         } catch (AuthorizationException $exception) {
-            $this->clearContext();
-            $this->errorMessage = __('dashboard.control.access_changed');
+            throw $exception;
         } catch (Throwable $exception) {
             report($exception);
             $this->errorMessage = __('dashboard.control.save_failed');
@@ -179,13 +171,12 @@ class Dashboard extends Component
         $user = Auth::user();
         if ($user instanceof User) {
             try {
-                Validator::make($this->only(['period', 'dateFrom', 'dateTo', 'branchSearch']), [
+                Validator::make($this->only(['period', 'dateFrom', 'dateTo']), [
                     'period' => ['required', 'string', 'in:today,yesterday,last7,custom'],
                     'dateFrom' => ['nullable', 'string', 'max:10'],
                     'dateTo' => ['nullable', 'string', 'max:10'],
-                    'branchSearch' => ['nullable', 'string', 'max:120'],
                 ])->validate();
-                $payload = $build->handle($user, $this->selectedBranchId, $this->period, $this->dateFrom ?: null, $this->dateTo ?: null);
+                $payload = $build->handle($user, $this->selectedBranchId, $this->period, $this->dateFrom ?: null, $this->dateTo ?: null, $this->aggregate);
                 $dashboard = $payload['dashboard'];
                 $this->canAccessRestaurantDashboard = $payload['has_access'];
             } catch (ValidationException $exception) {
@@ -194,9 +185,9 @@ class Dashboard extends Component
                 }
                 $this->errorMessage = __('dashboard.control.invalid_context');
                 if (array_key_exists('selectedBranchId', $exception->errors())) {
-                    $this->selectedBranchId = '';
+                    abort(403);
                 }
-                $fallback = $build->handle($user, $this->selectedBranchId);
+                $fallback = $build->handle($user, $this->selectedBranchId, aggregate: $this->aggregate);
                 $dashboard = $fallback['dashboard'];
                 $this->canAccessRestaurantDashboard = $fallback['has_access'];
                 if ($dashboard !== null) {
@@ -229,15 +220,7 @@ class Dashboard extends Component
                 ]);
             }
             $this->renderedBranchId = $selected['id'] ?? null;
-            $search = is_string($this->branchSearch) ? mb_strtolower(trim($this->branchSearch)) : '';
-            if ($search !== '') {
-                $dashboard['branches'] = array_values(array_filter($dashboard['branches'], fn (array $branch): bool => str_contains(mb_strtolower($branch['label']), $search)));
-            }
-            $dashboard['branch_search_empty'] = $search !== '' && $dashboard['branches'] === [];
-            $dashboard['branches'] = array_slice($dashboard['branches'], 0, 25);
-            if ($selected !== null && ! in_array($selected['id'], array_column($dashboard['branches'], 'id'), true)) {
-                array_unshift($dashboard['branches'], $selected);
-            }
+
         }
 
         return view('livewire.restaurant.dashboard', ['dashboard' => $dashboard]);
@@ -251,7 +234,6 @@ class Dashboard extends Component
     private function clearContext(): void
     {
         $this->canAccessRestaurantDashboard = false;
-        $this->selectedBranchId = '';
         $this->renderedBranchId = null;
         $this->originalClosure = [];
         $this->closure->reset();

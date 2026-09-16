@@ -4,6 +4,20 @@
 
 # Restaurant Menu completion decisions
 
+## One restaurant context per open page — 2026-09-16
+
+- Keep explicit resource/route/query context authoritative and immutable for an open component. Session preference is a future-entry convenience, never a global tenant scope. Conflicting IDs fail closed; changes of account invalidate signed component snapshots before hydration.
+- Keep bounded restaurant access/search separate from dashboard calculations. Reuse existing permission/department resolvers; selecting a restaurant does not grant every operation there. Authorized destinations are a fixed presenter registry, not arbitrary browser routes/classes.
+- Replace only the general dashboard intermediary and duplicate branch selectors in this stage. Existing auth/invitation/download/restore controllers remain prompt 2 work and are not claimed migrated. No dependencies, schema, deployment or PHP constraints change.
+- Commit preference only through the shared component's authorized post-arrival action. A cancelled dirty transition therefore cannot change the confirmed page context or stored preference. GET/HEAD/prefetch do not commit this choice.
+- Represent aggregate mode explicitly with `workspace=all`; reject simultaneous concrete branch identity. Keep it non-mutating even when exactly one restaurant remains. An unavailable remembered section gets the same fallback notice as an unavailable switched section.
+- Reuse menu/staff history protection and the single Livewire/Alpine runtime. A global shell request barrier waits for a fresh user navigation after an in-flight operation rather than automatically replaying a dangerous action.
+- Bind read-only branch identity at page entry, without a mutable URL-property hook that would assign a Locked field during cached history. Local period/status filters retain their supported URL contracts.
+- Register actor-memo hydration protection during provider registration, before Livewire boots its hooks. Authenticated legacy snapshots without the signed actor memo require a fresh page; actor mismatch never reuses old UI state under another account.
+- Reuse a current permission batch inside one navigation request; do not add a persistent rights cache. Record reduced SQL alongside higher permission-model hydration/memory and measured HTML/payload growth, without a blanket performance claim.
+
+
+
 ## Prompt 1 verified compatibility boundaries — 2026-09-16
 
 - Keep the monetary parser's PHP8.5 boundary-whitespace contract explicit. PHP8.6 Beta3 expands default trim(); the26-case native red/green probe and stable Feature datasets justify one explicit character set, not scattered PHP version checks.

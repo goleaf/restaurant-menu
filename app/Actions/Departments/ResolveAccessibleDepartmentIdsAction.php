@@ -24,9 +24,10 @@ class ResolveAccessibleDepartmentIdsAction
      * @param  list<KitchenDepartmentType>  $departmentTypes
      * @param  list<SystemRole>  $roleCodes
      * @param  list<SystemPermission>  $permissionCodes
+     * @param  array<string, Collection<int, int>>|null  $permissionBranchIds  Internal decisions freshly resolved for this user in the current read operation.
      * @return Collection<int, int>
      */
-    public function handle(User $user, array $departmentTypes, array $roleCodes, array $permissionCodes): Collection
+    public function handle(User $user, array $departmentTypes, array $roleCodes, array $permissionCodes, ?array $permissionBranchIds = null): Collection
     {
         if ($user->isSuperadmin()) {
             return $this->departmentIdQuery($departmentTypes)->pluck('id');
@@ -36,7 +37,7 @@ class ResolveAccessibleDepartmentIdsAction
 
         foreach ($permissionCodes as $permissionCode) {
             $branchIds = $branchIds
-                ->merge($this->resolveAccessibleBranchIds->handle($user, $permissionCode))
+                ->merge($permissionBranchIds[$permissionCode->value] ?? $this->resolveAccessibleBranchIds->handle($user, $permissionCode))
                 ->unique()
                 ->values();
         }

@@ -156,7 +156,7 @@ final class WaiterTableQueryService
     public function waiterCall(int $waiterCallId): WaiterCall
     {
         return WaiterCall::query()
-            ->select(['id'])
+            ->select(['id', 'service_point_id'])->with('servicePoint:id,branch_id')
             ->whereKey($waiterCallId)
             ->firstOrFail();
     }

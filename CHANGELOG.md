@@ -4,6 +4,14 @@
 
 # Changelog
 
+## 2026-09-16 — Unified restaurant workspace, prompt 3
+
+- Replace the intermediate dashboard view with a class-based Livewire entry and one shared authorized restaurant selector using the available local Flux Pro combobox.
+- Build task navigation from the current restaurant: overview, service modes, menu, halls/QR, team, reports and restaurant settings; retain separate structure/platform/account areas and existing named URLs.
+- Scope waiter, department, report, audit and QR-lookup consumers consistently; preserve direct object links and explicit aggregate views.
+- Reuse menu/staff/dashboard dirty guards, keep operation targets immutable across tabs and reject updates from a previous account. Fix request-lifecycle and revoked-target regressions found by independent HTTP/browser checks.
+- Batch navigation permission reads without persistent authorization caching, reuse the existing client-only offline indicator, and retain unchanged SQL, snapshot, CSS and coverage budgets. Full acceptance is recorded separately in PROGRESS.md.
+
 ## 2026-09-16 — Verified stable platform continuation; PHP 8.6 application blocked
 
 - Preserve PHP 8.5 monetary whitespace validation on real PHP 8.6.0beta3 by making the accepted trim characters explicit; native and application regressions retain form-feed and Unicode-space rejection.

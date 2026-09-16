@@ -1,14 +1,13 @@
+import { menuWorkspace } from './menu-workspace.js';
+
 export function restaurantDashboard() {
+    const guard = menuWorkspace({ contentSelector: '[data-dashboard-ordering]', modal: 'dashboard-unsaved', cleanActions: ['discardOrdering'] });
     return {
+        ...guard,
         focusFrame: null,
         destroyed: false,
         openBranchPicker() {
-            if (this.$refs.branchPicker) this.$refs.branchPicker.open = true;
-            this.$nextTick(() => { if (!this.destroyed) this.$refs.branchSearch?.focus(); });
-        },
-        closeBranchPicker() {
-            if (this.$refs.branchPicker) this.$refs.branchPicker.open = false;
-            this.$refs.branchPickerSummary?.focus();
+            this.$flux.modal('workspace-restaurant').show();
         },
         focusValidationError() {
             if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
@@ -27,6 +26,7 @@ export function restaurantDashboard() {
             });
         },
         destroy() {
+            guard.destroy.call(this);
             this.destroyed = true;
             if (this.focusFrame !== null) cancelAnimationFrame(this.focusFrame);
             this.focusFrame = null;

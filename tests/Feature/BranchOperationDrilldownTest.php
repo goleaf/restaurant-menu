@@ -10,6 +10,7 @@ use App\Enums\SystemPermission;
 use App\Enums\SystemRole;
 use App\Enums\TableSessionStatus;
 use App\Livewire\Waiter\Dashboard;
+use App\Livewire\Workspace\RestaurantSwitcher;
 use App\Models\Branch;
 use App\Models\Brand;
 use App\Models\DraftOrder;
@@ -24,6 +25,7 @@ use App\Models\User;
 use App\Models\WaiterCall;
 use App\Services\Waiter\WaiterTableQueryService;
 use Database\Seeders\SystemPermissionsSeeder;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 beforeEach(function (): void {
@@ -63,8 +65,11 @@ test('deep table selection loads an off-page table within the selected branch', 
 test('branch change clears dependent state and table identity', function (): void {
     $other = Branch::factory()->for($this->organization)->for($this->brand)->create();
     $session = TableSession::factory()->forServicePoint(ServicePoint::factory()->for($this->branch)->create())->active()->create();
-    Livewire::actingAs($this->waiter)->withQueryParams(['branch' => $this->branch->id, 'table' => $session->id, 'zone' => 'all', 'attention' => 'calls'])->test(Dashboard::class)
-        ->set('selectedBranchId', (string) $other->id)->assertSet('selectedTableSessionId', null)->assertSet('tablePage', 1)->assertSet('zoneScope', 'mine');
+    Livewire::actingAs($this->waiter)->test(RestaurantSwitcher::class, ['branchId' => $this->branch->id, 'destination' => 'waiter'])
+        ->set('form.branchId', (string) $other->id)->call('choose')
+        ->assertRedirect(route('restaurant.waiter.dashboard', ['branch' => $other->id]));
+    Livewire::actingAs($this->waiter)->withQueryParams(['branch' => $other->id])->test(Dashboard::class)
+        ->assertSet('selectedTableSessionId', null)->assertSet('tablePage', 1)->assertSet('zoneScope', 'mine');
 });
 
 test('malformed raw branch and table identifiers fail closed', function (string $parameter, mixed $value): void {
@@ -84,7 +89,8 @@ test('revoking access after mount blocks even plain refresh and local selection 
 })->with(['$refresh', 'selectTable', 'refreshDashboard']);
 
 test('boolean Livewire branch transport cannot be coerced to an accessible id', function (): void {
-    Livewire::actingAs($this->waiter)->test(Dashboard::class)->set('selectedBranchId', true)->assertStatus(422);
+    $component = Livewire::actingAs($this->waiter)->test(Dashboard::class);
+    expect(fn () => $component->set('selectedBranchId', true))->toThrow(CannotUpdateLockedPropertyException::class);
 });
 
 test('all branch current counts exclude archived and suspended organizations', function (): void {

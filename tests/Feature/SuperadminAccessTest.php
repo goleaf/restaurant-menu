@@ -60,8 +60,7 @@ test('superadmin can access platform dashboard and see platform records', functi
 
     $this->actingAs($superadmin)
         ->get(route('dashboard'))
-        ->assertOk()
-        ->assertSee('Platform');
+        ->assertRedirect(route('restaurant.dashboard', ['branch' => $branch->id]));
 
     $this->actingAs($superadmin)
         ->get(route('superadmin.dashboard'))

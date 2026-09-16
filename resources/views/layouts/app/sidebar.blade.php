@@ -21,11 +21,15 @@
                 <p class="px-3 py-2 text-sm font-medium text-text-muted in-data-flux-sidebar-collapsed-desktop:hidden">{{ __('navigation.workspaces') }}</p>
                 @foreach ($navigationItems as $item)
                     @if ($item['group'] === 'workspace')
+                        @if ($serviceNavigation !== [] && $item['key'] === $serviceNavigation[0]['key'])
+                            <p class="px-3 py-2 text-sm font-medium text-text-muted in-data-flux-sidebar-collapsed-desktop:hidden">{{ __('workspace.service') }}</p>
+                        @endif
                         <flux:sidebar.item
                             class="workspace-nav-item min-h-touch"
                             :icon="$item['icon']"
                             :href="$item['href']"
                             :current="$item['current']"
+                            :aria-current="$item['current'] ? 'page' : null"
                             :aria-label="$item['label']"
                             :tooltip="$item['label']"
                             :data-navigation-key="$item['key']"
@@ -37,14 +41,15 @@
 
             <flux:spacer />
 
-            <flux:sidebar.nav :aria-label="__('navigation.settings')">
+            <flux:sidebar.nav :aria-label="__('workspace.administration')">
                 @foreach ($navigationItems as $item)
-                    @if ($item['group'] === 'account')
+                    @if ($item['group'] === 'administration')
                         <flux:sidebar.item
                             class="workspace-nav-item min-h-touch"
                             :icon="$item['icon']"
                             :href="$item['href']"
                             :current="$item['current']"
+                            :aria-current="$item['current'] ? 'page' : null"
                             :aria-label="$item['label']"
                             :tooltip="$item['label']"
                             :data-navigation-key="$item['key']"
@@ -62,6 +67,9 @@
                 :aria-label="__('navigation.toggle_sidebar')"
                 :tooltip="__('navigation.toggle_sidebar')"
             />
+            @if ($workspace !== null)
+                <livewire:workspace.restaurant-switcher :branch-id="$workspace->branchId" :destination="$workspace->destination" :mode="$workspace->mode" :key="'workspace-'.$workspace->actorId.'-'.$workspace->mode.'-'.$workspace->branchId.'-'.$workspace->destination" />
+            @endif
             <flux:button
                 variant="ghost"
                 icon="magnifying-glass"
@@ -83,6 +91,17 @@
             @endif
         </flux:header>
 
+        <p x-show="blocked" x-cloak role="status" class="px-4 py-2">{{ __('workspace.operation_pending') }}</p>
+        @if ($workspaceFallback)
+            <flux:callout role="status">{{ __('workspace.section_unavailable') }}</flux:callout>
+        @endif
+        @if ($hallNavigation !== [])
+            <nav class="flex flex-wrap gap-2 px-4 py-2" aria-label="{{ __('workspace.halls') }}">
+                @foreach ($hallNavigation as $item)
+                    <flux:button :href="$item['href']" :aria-current="$item['current'] ? 'page' : null" :variant="$item['current'] ? 'primary' : 'ghost'" wire:navigate>{{ $item['label'] }}</flux:button>
+                @endforeach
+            </nav>
+        @endif
         {{ $slot }}
 
         <flux:modal name="workspace-navigation" :closable="false" class="w-full min-w-0! max-w-lg space-y-4">
@@ -110,7 +129,7 @@
             <nav aria-label="{{ __('navigation.workspaces') }}" class="max-h-[60dvh] overflow-y-auto" x-on:keydown="handleResultsKeydown($event)">
                 <ul class="space-y-1">
                     @foreach ($navigationItems as $item)
-                        <li x-show="matches($el.dataset.searchLabel)" data-search-label="{{ $item['label'] }}">
+                        <li x-show="matches($el.dataset.searchLabel)" data-search-label="{{ $item['search'] }}">
                             <flux:button
                                 :href="$item['href']"
                                 :icon="$item['icon']"

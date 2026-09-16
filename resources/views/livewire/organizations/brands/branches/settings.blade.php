@@ -1,11 +1,6 @@
 <section data-page="branch-settings" class="flex h-full w-full flex-1 flex-col gap-6">
     <header class="flex flex-col gap-3">
-        <flux:button icon="arrow-left" :href="$branchesUrl" wire:navigate>
-            {{ __('navigation.branches') }}
-        </flux:button>
-
         <div class="flex flex-col gap-1">
-            <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ $contextLabel }}</p>
             <h1 class="text-2xl font-semibold text-zinc-950 dark:text-white">{{ __('ui.organizations.brands.branches.settings.branch_settings') }}</h1>
         </div>
     </header>

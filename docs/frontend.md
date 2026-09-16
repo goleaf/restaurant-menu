@@ -4,6 +4,26 @@
 
 # Frontend architecture
 
+## Shared restaurant workspace — prompt 3, 2026-09-16
+
+The existing Flux sidebar/header/search/notification owner is retained. A single header RestaurantSwitcher uses the installed local Pro combobox with bounded server search (20 matches, at most 200 authorized rows scanned per request, explicit continuation). Matching folds case and diacritics for search only; stored names remain untouched. The current restaurant name is independent of the option page. Native anchors and Livewire Navigate preserve direct links and new-tab behavior. The installed Command control remains unsuitable for native link semantics; the existing accessible section-search mechanism consumes the same presenter registry.
+
+| Existing entry | Context and resulting task |
+| --- | --- |
+| `dashboard` | Class-based Entry; opens last permitted task / sole restaurant or the real selector; no second dashboard card |
+| Nested menu, team, areas, service points, QR, settings | Verified organization/brand/branch route; direct task links stay within that branch |
+| Restaurant dashboard / waiter | Validated explicit `branch`; shared header selection replaces each local branch picker |
+| Kitchen / bar | Branch-bound accessible departments; a department ID cannot silently switch restaurant |
+| Waiter table detail / QR object | Verified object's branch determines the header, independent of session preference |
+| Exports / audit | Explicit branch filters the actual query; supported broad views clearly use aggregate mode |
+| QR short-code lookup without branch | Explicitly labelled aggregate lookup; a scoped link filters the actual search |
+| Organizations / onboarding / platform / account | Distinct structure/platform/account scope; no false restaurant label |
+
+Menu and staff retain their existing local editors and dirty/history guards. Dashboard ordering reuses the menu guard with a dedicated named Flux modal. The shell's request barrier ignores search/preferences and bounded polling, blocks navigation during other in-flight messages, and does not schedule retries. Every owned listener is cleaned up when the old shell is destroyed. Search and switcher do not poll; the existing notification component remains single.
+
+Custom shell rules remain in `resources/scss/components/_workspace.scss`; existing shared spacing/layout utilities are reused. Tailwind/Flux still has a separate CSS bridge. Read-only restaurant identifiers are bound at page entry, not registered as mutable Livewire URL filters; this avoids history trying to assign a Locked property. The existing client-only offline indicator replaces a stateless server component. Dialog dimensions account for `dvh`; the restaurant identity and controls remain usable with long translated text. Full evidence and remaining device/runtime limits belong to PROGRESS.md, not this contract.
+
+
 ## Profile appearance preferences — 2026-09-16
 
 The profile page owns the labelled appearance section below its information form and above account deletion. Its existing Flux segmented radio group uses `$flux.appearance`; browser persistence and the account menu's quick theme controls share the same state. It does not participate in profile submission or add server state. Settings navigation contains Profile and Security. The named, authenticated `appearance.edit` route remains a compatibility redirect to `profile.edit`; the separate Appearance Livewire class/view are removed.

@@ -302,7 +302,7 @@ test('notification history recovers from removed pages and discards revoked audi
     expect($waiter->unreadNotifications()->count())->toBe(25);
 
     Auth::login(User::factory()->create());
-    $component->call('browseHistory', 'latest')->assertSet('panelOpen', false)->assertSet('history', [])->assertDontSee('Ana');
+    $component->call('browseHistory', 'latest')->assertStatus(409)->assertDontSee('Ana');
 });
 
 test('notification history rejects forged navigation state and remains unloaded when closed', function (): void {

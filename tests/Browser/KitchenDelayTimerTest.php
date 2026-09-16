@@ -62,7 +62,11 @@ test('kitchen delay timers advance locally and expose accessible status changes'
     ]);
 
     $page = visit(route('login', absolute: false));
-    $page->fill('email', $chef->email)->fill('password', 'password')->click('@login-button')->assertPathIs('/dashboard');
+    $page->fill('email', $chef->email)->fill('password', 'password')->click('@login-button')
+        ->assertPathIs(route('restaurant.kitchen.dashboard', absolute: false))
+        ->assertQueryStringHas('branch', (string) $branch->id)
+        ->navigate(route('profile.edit', absolute: false))
+        ->assertPathIs(route('profile.edit', absolute: false));
     $page->script(<<<'JAVASCRIPT'
         (() => {
             window.__kitchenIntervals = new Set();
@@ -79,9 +83,10 @@ test('kitchen delay timers advance locally and expose accessible status changes'
             };
         })()
     JAVASCRIPT);
-    $kitchenUrl = json_encode(route('restaurant.kitchen.dashboard', absolute: false), JSON_THROW_ON_ERROR);
+    $kitchenUrl = json_encode(route('restaurant.kitchen.dashboard', ['branch' => $branch->id], false), JSON_THROW_ON_ERROR);
     $page->script("new Promise(resolve => { document.addEventListener('livewire:navigated', () => resolve(true), { once: true }); Livewire.navigate({$kitchenUrl}); })");
-    $page->assertPresent('[data-page="kitchen-dashboard"]')->assertSee('Timer Test Kitchen');
+    $page->assertPresent('[data-page="kitchen-dashboard"]')
+        ->assertQueryStringHas('branch', (string) $branch->id)->assertSee('Timer Test Kitchen');
 
     $timerIds = json_encode($timerItems, JSON_THROW_ON_ERROR);
     $page->script("window.__kitchenTimerItems = {$timerIds};");

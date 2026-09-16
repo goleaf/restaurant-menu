@@ -4,15 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Navigation;
 
-use App\Actions\AuditLogs\BuildAuditLogIndexAction;
-use App\Actions\Bar\ResolveBarAccessibleDepartmentIdsAction;
-use App\Actions\Exports\BuildDataExportsIndexAction;
-use App\Actions\Kitchen\ResolveKitchenAccessibleDepartmentIdsAction;
-use App\Actions\Waiter\BuildWaiterDashboardAction;
-use App\Actions\Waiter\ResolveWaiterAccessibleBranchIdsAction;
-use App\Enums\SystemPermission;
 use App\Models\User;
 use App\Services\Onboarding\RestaurantSetupQueryService;
+use App\Support\Navigation\WorkspaceContext;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Request;
@@ -20,115 +14,161 @@ use Illuminate\Http\Request;
 final class ApplicationNavigationPresenter
 {
     public function __construct(
-        private readonly BuildWaiterDashboardAction $buildWaiterDashboard,
-        private readonly ResolveKitchenAccessibleDepartmentIdsAction $resolveKitchenDepartments,
-        private readonly ResolveBarAccessibleDepartmentIdsAction $resolveBarDepartments,
-        private readonly BuildAuditLogIndexAction $buildAuditLogIndex,
-        private readonly BuildDataExportsIndexAction $buildDataExportsIndex,
-        private readonly ResolveWaiterAccessibleBranchIdsAction $resolveWaiterBranches,
+        private readonly WorkspaceAccessQuery $access,
+        private readonly WorkspaceContextResolver $resolver,
         private readonly RestaurantSetupQueryService $restaurantSetupQueries,
         private readonly Application $application,
     ) {}
 
-    /**
-     * @return array{
-     *     canAccessPlatformDashboard: bool,
-     *     canAccessWaiterDashboard: bool,
-     *     canAccessKitchenDashboard: bool,
-     *     canAccessBarDashboard: bool,
-     *     canAccessAuditLog: bool,
-     *     canAccessDataExports: bool,
-     *     canAccessQrLookup: bool,
-     *     canAccessOnboarding: bool,
-     *     authenticatedUser: array{name: string, email: string, initials: string}|null,
-     *     currentNavigation: array<string, bool>,
-     *     navigationItems: list<array{key: string, label: string, icon: string, href: string, current: bool, group: string}>
-     * }
-     */
+    /** @return array<string, mixed> */
     public function handle(?Authenticatable $authenticatedUser, Request $request): array
     {
         $user = $authenticatedUser instanceof User ? $authenticatedUser : null;
+        $access = $user ? $this->access->destinations($user) : [];
+        $workspace = $user ? $this->resolver->resolve($user, $request, $access) : null;
+        $items = $workspace ? $this->restaurantItems($workspace, $access) : [];
+        $platform = $user?->isSuperadmin() ?? false;
+        $onboarding = $user && $this->restaurantSetupQueries->userHasAccess($user);
+        if ($user) {
+            if ($items === []) {
+                $items[] = $this->item('dashboard', 'workspace.choose', 'building-storefront', route('dashboard'), $request->routeIs('dashboard'));
+            }
+            $items[] = $this->item('organizations', 'workspace.manage_restaurants', 'building-office', route('organizations.index'), $workspace->mode === 'structure', 'administration');
+            if ($onboarding) {
+                $items[] = $this->item('onboarding', 'navigation.onboarding', 'sparkles', route('onboarding.restaurant'), $request->routeIs('onboarding.*'), 'administration');
+            }
+            if ($platform) {
+                $items[] = $this->item('superadmin', 'workspace.platform', 'rectangle-group', route('superadmin.dashboard'), $request->routeIs('superadmin.*'), 'administration');
+                if ($this->application->environment('local')) {
+                    $items[] = $this->item('components', 'ui.reference.title', 'swatch', route('local.components'), $request->routeIs('local.components'), 'administration');
+                }
+            }
+        }
 
-        $context = [
-            'canAccessPlatformDashboard' => $user?->isSuperadmin() ?? false,
-            'canAccessWaiterDashboard' => $user instanceof User && $this->buildWaiterDashboard->userHasAccess($user),
-            'canAccessKitchenDashboard' => $user instanceof User && $this->resolveKitchenDepartments->userHasAccess($user),
-            'canAccessBarDashboard' => $user instanceof User && $this->resolveBarDepartments->userHasAccess($user),
-            'canAccessAuditLog' => $user instanceof User && $this->buildAuditLogIndex->userHasAccess($user),
-            'canAccessDataExports' => $user instanceof User && $this->buildDataExportsIndex->userHasAccess($user),
-            'canAccessQrLookup' => $user instanceof User && $this->resolveWaiterBranches
-                ->handle($user, SystemPermission::GenerateQr)
-                ->isNotEmpty(),
-            'canAccessOnboarding' => $user instanceof User && $this->restaurantSetupQueries->userHasAccess($user),
-            'authenticatedUser' => $user instanceof User ? [
-                'name' => $user->name,
-                'email' => $user->email,
-                'initials' => $user->initials(),
-            ] : null,
-            'currentNavigation' => [
-                'dashboard' => $request->routeIs('dashboard'),
-                'organizations' => $request->routeIs('organizations.*'),
-                'onboarding' => $request->routeIs('onboarding.*'),
-                'restaurant_dashboard' => $request->routeIs('restaurant.dashboard'),
-                'qr_lookup' => $request->routeIs('restaurant.qr-lookup.*'),
-                'waiter' => $request->routeIs('restaurant.waiter.*'),
-                'kitchen' => $request->routeIs('restaurant.kitchen.*'),
-                'bar' => $request->routeIs('restaurant.bar.*'),
-                'audit_log' => $request->routeIs('restaurant.audit-log.*'),
-                'exports' => $request->routeIs('restaurant.exports.*'),
-                'superadmin' => $request->routeIs('superadmin.*'),
-                'profile' => $request->routeIs('profile.edit'),
-                'components' => $request->routeIs('local.components'),
-            ],
+        return [
+            'workspace' => $workspace,
+            'workspaceFallback' => $request->query('workspace_notice') === 'section_unavailable',
+            'navigationItems' => $items,
+            'serviceNavigation' => array_values(array_filter($items, fn (array $item): bool => in_array($item['key'], ['waiter', 'kitchen', 'bar'], true))),
+            'hallNavigation' => $workspace ? $this->hallItems($workspace, $access, $request) : [],
+            'canAccessPlatformDashboard' => $platform,
+            'canAccessOnboarding' => $onboarding,
+            'authenticatedUser' => $user ? ['name' => $user->name, 'email' => $user->email, 'initials' => $user->initials()] : null,
         ];
-
-        $context['navigationItems'] = $user instanceof User
-            ? $this->navigationItems($context)
-            : [];
-
-        return $context;
     }
 
     /**
-     * @param  array{canAccessPlatformDashboard: bool, canAccessWaiterDashboard: bool, canAccessKitchenDashboard: bool, canAccessBarDashboard: bool, canAccessAuditLog: bool, canAccessDataExports: bool, canAccessQrLookup: bool, canAccessOnboarding: bool, currentNavigation: array<string, bool>}  $context
-     * @return list<array{key: string, label: string, icon: string, href: string, current: bool, group: string}>
+     * @param  array<string, list<int>>  $access
+     * @return list<array{key: string, label: string, icon: string, href: string, current: bool, group: string, search: string}>
      */
-    private function navigationItems(array $context): array
+    public function restaurantItems(WorkspaceContext $context, array $access): array
     {
-        $destinations = [
-            ['dashboard', 'navigation.dashboard', 'home', 'dashboard', true, 'workspace'],
-            ['organizations', 'navigation.organizations', 'building-office', 'organizations.index', true, 'workspace'],
-            ['onboarding', 'navigation.onboarding', 'sparkles', 'onboarding.restaurant', $context['canAccessOnboarding'], 'workspace'],
-            ['restaurant_dashboard', 'navigation.restaurant', 'squares-2x2', 'restaurant.dashboard', true, 'workspace'],
-            ['qr_lookup', 'navigation.qr_codes', 'qr-code', 'restaurant.qr-lookup.index', $context['canAccessQrLookup'], 'workspace'],
-            ['waiter', 'navigation.waiter', 'clipboard-document-list', 'restaurant.waiter.dashboard', $context['canAccessWaiterDashboard'], 'workspace'],
-            ['kitchen', 'navigation.kitchen', 'fire', 'restaurant.kitchen.dashboard', $context['canAccessKitchenDashboard'], 'workspace'],
-            ['bar', 'navigation.bar', 'beaker', 'restaurant.bar.dashboard', $context['canAccessBarDashboard'], 'workspace'],
-            ['audit_log', 'navigation.audit_log', 'shield-check', 'restaurant.audit-log.index', $context['canAccessAuditLog'], 'workspace'],
-            ['exports', 'navigation.exports', 'arrow-down-tray', 'restaurant.exports.index', $context['canAccessDataExports'], 'workspace'],
-            ['superadmin', 'navigation.superadmin', 'rectangle-group', 'superadmin.dashboard', $context['canAccessPlatformDashboard'], 'workspace'],
-            ['components', 'ui.reference.title', 'swatch', 'local.components', $context['canAccessPlatformDashboard'] && $this->application->environment('local'), 'workspace'],
-            ['guest_area', 'navigation.guest_area', 'home', 'guest.home', true, 'account'],
-            ['profile', 'navigation.settings', 'cog-6-tooth', 'profile.edit', true, 'account'],
-        ];
-
-        $items = [];
-
-        foreach ($destinations as [$key, $label, $icon, $route, $allowed, $group]) {
-            if (! $allowed) {
-                continue;
+        if ($context->branchId === null) {
+            if ($context->mode !== 'aggregate') {
+                return [];
+            }
+            $items = [];
+            foreach (['overview' => 'restaurant.dashboard', 'reports' => 'restaurant.exports.index', 'audit' => 'restaurant.audit-log.index'] as $key => $route) {
+                if (($access[$key] ?? []) !== [] || ($key === 'reports' && ($access['report_view'] ?? []) !== [])) {
+                    $href = $key === 'reports' ? $this->aggregateDestination('reports', $access) : route($route, ['workspace' => 'all']);
+                    $items[] = $this->item($key, 'workspace.'.$key, 'squares-2x2', $href, $context->destination === $key);
+                }
             }
 
-            $items[] = [
-                'key' => $key,
-                'label' => __($label),
-                'icon' => $icon,
-                'href' => route($route),
-                'current' => $context['currentNavigation'][$key] ?? false,
-                'group' => $group,
-            ];
+            return $items;
+        }
+        $id = $context->branchId;
+        $allows = static fn (string $key): bool => in_array($id, $access[$key] ?? [], true);
+        $nested = ['organization' => $context->organizationId, 'brand' => $context->brandId, 'branch' => $id];
+        $menu = $allows('menu') ? [] : ['section' => 'availability'];
+        $hallsRoute = $allows('halls') ? 'areas.index' : ($allows('tables') ? 'service-points.index' : 'qr.print');
+        $definitions = [
+            ['overview', 'squares-2x2', 'restaurant.dashboard', ['branch' => $id], $allows('overview')],
+            ['waiter', 'clipboard-document-list', 'restaurant.waiter.dashboard', ['branch' => $id], $allows('waiter')],
+            ['kitchen', 'fire', 'restaurant.kitchen.dashboard', ['branch' => $id], $allows('kitchen')],
+            ['bar', 'beaker', 'restaurant.bar.dashboard', ['branch' => $id], $allows('bar')],
+            ['menu', 'book-open', 'organizations.brands.branches.menu.index', [...$nested, ...$menu], $allows('menu') || $allows('availability')],
+            ['halls', 'qr-code', 'organizations.brands.branches.'.$hallsRoute, $nested, $allows('halls') || $allows('tables') || $allows('qr')],
+            ['team', 'users', 'organizations.brands.branches.staff.index', $nested, $allows('team')],
+            ['reports', 'arrow-down-tray', $allows('reports') ? 'restaurant.exports.index' : 'restaurant.dashboard', $allows('reports') ? ['branch' => $id] : ['branch' => $id, 'workspace_section' => 'reports'], $allows('reports') || $allows('report_view')],
+            ['settings', 'cog-6-tooth', 'organizations.brands.branches.settings.index', $nested, $allows('settings')],
+            ['audit', 'shield-check', 'restaurant.audit-log.index', ['branch' => $id], $allows('audit')],
+        ];
+        $items = [];
+        foreach ($definitions as [$key, $icon, $route, $parameters, $allowed]) {
+            if ($allowed) {
+                $items[] = $this->item($key, 'workspace.'.$key, $icon, route($route, $parameters), $context->destination === $key);
+            }
         }
 
         return $items;
+    }
+
+    /** @param array<string, list<int>> $access @return list<array<string, mixed>> */
+    private function hallItems(WorkspaceContext $context, array $access, Request $request): array
+    {
+        if ($context->branchId === null || $context->destination !== 'halls') {
+            return [];
+        }
+        $items = [];
+        $parameters = ['organization' => $context->organizationId, 'brand' => $context->brandId, 'branch' => $context->branchId];
+        foreach (['halls' => ['areas.index', 'navigation.areas'], 'tables' => ['service-points.index', 'navigation.service_points'], 'qr' => ['qr.print', 'workspace.qr_print']] as $key => [$suffix, $label]) {
+            if (in_array($context->branchId, $access[$key] ?? [], true)) {
+                $route = 'organizations.brands.branches.'.$suffix;
+                $items[] = $this->item($key, $label, 'qr-code', route($route, $parameters), $request->routeIs($route));
+            }
+        }
+
+        return $items;
+    }
+
+    /** @param array<string, list<int>> $access */
+    public function aggregateDestination(string $destination, array $access): ?string
+    {
+        if ($destination === 'reports' && ($access['reports'] ?? []) === [] && ($access['report_view'] ?? []) !== []) {
+            return route('restaurant.dashboard', ['workspace' => 'all', 'workspace_section' => 'reports']);
+        }
+        $route = match ($destination) {
+            'overview' => 'restaurant.dashboard',
+            'reports' => 'restaurant.exports.index',
+            'audit' => 'restaurant.audit-log.index',
+            default => null,
+        };
+
+        return $route !== null && ($access[$destination] ?? []) !== [] ? route($route, ['workspace' => 'all']) : null;
+    }
+
+    /** @param array<string, list<int>> $access @return array{href: string, destination: string, fallback: bool}|null */
+    public function destination(WorkspaceContext $context, array $access, ?string $preferred = null): ?array
+    {
+        $items = $this->restaurantItems($context, $access);
+        $keys = array_column($items, 'key');
+        $key = $preferred !== null && in_array($preferred, $keys, true) ? $preferred : null;
+        if ($key === null) {
+            $order = in_array($context->branchId, $access['management'] ?? [], true)
+                ? ['overview', 'menu', 'team', 'settings', 'reports', 'waiter', 'kitchen', 'bar', 'halls', 'audit']
+                : ['waiter', 'kitchen', 'bar', 'menu', 'team', 'settings', 'overview', 'halls', 'reports', 'audit'];
+            foreach ($order as $candidate) {
+                if (in_array($candidate, $keys, true)) {
+                    $key = $candidate;
+                    break;
+                }
+            }
+        }
+        foreach ($items as $item) {
+            if ($item['key'] === $key) {
+                return ['href' => $item['href'], 'destination' => $key, 'fallback' => $preferred !== null && $preferred !== $key];
+            }
+        }
+
+        return null;
+    }
+
+    /** @return array{key: string, label: string, icon: string, href: string, current: bool, group: string, search: string} */
+    private function item(string $key, string $label, string $icon, string $href, bool $current, string $group = 'workspace'): array
+    {
+        $searchKey = 'workspace.search_terms.'.$key;
+
+        return ['key' => $key, 'label' => __($label), 'icon' => $icon, 'href' => $href, 'current' => $current, 'group' => $group, 'search' => __($label).' '.__($searchKey)];
     }
 }

@@ -29,11 +29,12 @@ class BuildAuditLogIndexAction
     /**
      * @return array{has_access: bool, logs: CursorPaginator<int, array<string, mixed>>, branch_count: int}
      */
-    public function handle(User $user, int $perPage = 50): array
+    public function handle(User $user, int $perPage = 50, ?int $branchId = null): array
     {
         $organizationIds = $this->accessibleOrganizationIds($user);
         $branchIds = $this->resolveAccessibleBranchIds
             ->handle($user, SystemPermission::ViewAuditLog);
+        abort_if($branchId !== null && ! $branchIds->contains($branchId), 403);
         $perPage = (int) Number::clamp($perPage, 10, 100);
 
         if (! $user->isSuperadmin() && $organizationIds->isEmpty()) {
@@ -78,6 +79,7 @@ class BuildAuditLogIndexAction
                     });
                 });
             })
+            ->when($branchId !== null, fn ($query) => $query->where('branch_id', $branchId))
             ->latest('created_at')
             ->latest('id')
             ->cursorPaginate(
@@ -103,9 +105,9 @@ class BuildAuditLogIndexAction
         return [
             'has_access' => true,
             'logs' => $logs,
-            'branch_count' => $user->isSuperadmin()
+            'branch_count' => $branchId !== null ? 1 : ($user->isSuperadmin()
                 ? Branch::query()->count()
-                : $branchIds->count(),
+                : $branchIds->count()),
         ];
     }
 

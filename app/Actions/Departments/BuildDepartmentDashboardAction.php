@@ -64,8 +64,14 @@ class BuildDepartmentDashboardAction
         DepartmentTicketFilter $filter = DepartmentTicketFilter::Active,
         int $page = 1,
         int $perPage = 24,
+        ?int $branchId = null,
     ): array {
         $departmentIds = $this->resolveAccessibleDepartmentIds->handle($user, $departmentTypes, $roleCodes, $permissionCodes);
+
+        if ($branchId !== null) {
+            $departmentIds = KitchenDepartment::query()->whereIn('id', $departmentIds)->where('branch_id', $branchId)->pluck('id');
+            abort_if($selectedDepartmentId !== null && ! $departmentIds->contains($selectedDepartmentId), 403);
+        }
 
         if ($departmentIds->isEmpty()) {
             return $this->emptyPayload(false);

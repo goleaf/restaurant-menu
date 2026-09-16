@@ -57,6 +57,7 @@ use App\Observers\OrderObserver;
 use App\Observers\OrganizationObserver;
 use App\Observers\TableSessionObserver;
 use App\Support\Localization\ValidationTranslationLoader;
+use App\Support\Navigation\WorkspaceActorGuard;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Translation\Loader;
@@ -77,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        Livewire::componentHook(WorkspaceActorGuard::class);
         $this->configureSharedHostingInfrastructure();
         $this->app->extend('translation.loader', fn (Loader $loader): ValidationTranslationLoader => new ValidationTranslationLoader($loader));
     }

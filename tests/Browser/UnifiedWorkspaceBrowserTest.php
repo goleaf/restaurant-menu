@@ -1,0 +1,154 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Enums\SystemRole;
+use App\Models\Branch;
+use App\Models\OrganizationUser;
+use App\Models\User;
+use Database\Seeders\SystemPermissionsSeeder;
+use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Support\ComputeUrl;
+use Tests\Support\IsolatedBrowserIdentity;
+
+test('the restaurant address heading navigation and edited resource stay together across workspace transitions', function (): void {
+    $this->withVite();
+    IsolatedBrowserIdentity::configure();
+    $this->seed(SystemPermissionsSeeder::class);
+    $first = Branch::factory()->create(['name' => 'Žąsis — Семейный ресторан А']);
+    $second = Branch::factory()->for($first->organization)->for($first->brand)->create(['name' => 'Žąsis — Ресторан Б']);
+    $user = User::factory()->create(['password' => 'password']);
+    OrganizationUser::factory()->forOrganization($first->organization)->forUser($user)->forSystemRole(SystemRole::Owner)->active()->create();
+    $page = visit(route('login', absolute: false));
+    $page->fill('email', $user->email)->fill('password', 'password')->click('@login-button')
+        ->navigate(route('organizations.brands.branches.menu.index', [$first->organization_id, $first->brand_id, $first->id], false))->resize(1440, 1000);
+    $page->assertSee($first->name)->assertAttribute('[data-navigation-key="menu"]', 'aria-current', 'page');
+    $page->click('[data-navigation-key="halls"]')
+        ->assertPathIs(route('organizations.brands.branches.areas.index', [$first->organization_id, $first->brand_id, $first->id], false));
+    $page->click('[data-navigation-key="team"]');
+    $page->assertNoJavaScriptErrors();
+    $page->click('.workspace-restaurant__trigger');
+    $page->assertVisible('dialog[data-modal="workspace-restaurant"]')
+        ->click('dialog[data-modal="workspace-restaurant"] input')->fill('dialog[data-modal="workspace-restaurant"] input', 'Ресторан Б')
+        ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown');
+    $page->assertVisible('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$second->id.'"]');
+    $page->click('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$second->id.'"]')
+        ->click('dialog[data-modal="workspace-restaurant"] button[type="submit"]')
+        ->assertPathIs(route('organizations.brands.branches.staff.index', [$second->organization_id, $second->brand_id, $second->id], false));
+    $page->assertSee($second->name)->assertAttribute('[data-navigation-key="team"]', 'aria-current', 'page');
+    $page->click('[data-navigation-key="overview"]');
+    $page->click('[data-ordering-controls] summary')->fill('input[name="closure.temporaryClosedReason"]', 'Keep this draft');
+    $page->click('[data-navigation-key="menu"]')->assertVisible('dialog[data-modal="dashboard-unsaved"]');
+    $page->click('dialog[data-modal="dashboard-unsaved"] button[x-on\\:click="cancelNavigation()"]')
+        ->assertValue('input[name="closure.temporaryClosedReason"]', 'Keep this draft')
+        ->assertQueryStringHas('branch', (string) $second->id);
+    $page->click('[data-navigation-key="menu"]')->click('dialog[data-modal="dashboard-unsaved"] button[x-on\\:click="discardAndNavigate()"]')
+        ->assertPathIs(route('organizations.brands.branches.menu.index', [$second->organization_id, $second->brand_id, $second->id], false));
+    foreach ([320, 390, 768, 1024, 1440] as $width) {
+        $page->resize($width, 900);
+        $page->script('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+        expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
+        if ($width === 320) {
+            expect($page->script('document.querySelector(".menu-workspace-sections").getBoundingClientRect().height'))->toBeLessThan(300);
+        }
+        $page->screenshot(false, 'unified-workspace-'.$width);
+    }
+    $page->resize(1440, 1000);
+    for ($transition = 0; $transition < 10; $transition++) {
+        $page->click('[data-navigation-key="'.($transition % 2 === 0 ? 'team' : 'menu').'"]');
+        $page->assertAttribute('[data-navigation-key="'.($transition % 2 === 0 ? 'team' : 'menu').'"]', 'aria-current', 'page');
+        $page->assertScript('document.querySelectorAll("[data-workspace-restaurant]").length', 1)
+            ->assertScript('document.querySelectorAll("[data-component=notifications-unread-count]").length', 1);
+    }
+    $page->script('history.back()');
+    $page->assertAttribute('[data-navigation-key="team"]', 'aria-current', 'page');
+    $page->script('history.forward()');
+    $page->assertAttribute('[data-navigation-key="menu"]', 'aria-current', 'page');
+    $page->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+});
+
+test('a shared restaurant preference cannot retarget an ordering draft open in another tab', function (): void {
+    $this->withVite();
+    IsolatedBrowserIdentity::configure();
+    $this->seed(SystemPermissionsSeeder::class);
+    $original = Branch::factory()->create([
+        'name' => 'Original restaurant B',
+        'is_temporarily_closed' => false,
+        'temporary_closed_reason' => null,
+        'temporary_closed_until' => null,
+    ]);
+    $different = Branch::factory()->for($original->organization)->for($original->brand)->create([
+        'name' => 'Different restaurant A',
+        'is_temporarily_closed' => false,
+        'temporary_closed_reason' => null,
+        'temporary_closed_until' => null,
+    ]);
+    $user = User::factory()->create(['password' => 'password']);
+    OrganizationUser::factory()->forOrganization($original->organization)->forUser($user)->forSystemRole(SystemRole::Owner)->active()->create();
+
+    $tabA = visit(route('login', absolute: false));
+    $tabA->fill('email', $user->email)->fill('password', 'password')->click('@login-button');
+    $context = $tabA->page()->context();
+    $context->addInitScript(<<<'JS'
+        window.workspaceRemembered = 0;
+        document.addEventListener('livewire:init', () => {
+            window.Livewire.interceptMessage(({ message, onSuccess }) => {
+                if (!Array.from(message.actions).some(action => action.name === 'remember')) return;
+                onSuccess(({ onRender }) => onRender(() => { window.workspaceRemembered++; }));
+            });
+        });
+        JS);
+    $originalPath = route('restaurant.dashboard', ['branch' => $original->id], false);
+    $tabA->navigate($originalPath)->assertQueryStringHas('branch', (string) $original->id)
+        ->assertScript('window.workspaceRemembered', 1);
+
+    $tabBPage = $context->newPage();
+    $tabBUrl = ComputeUrl::from($originalPath);
+    $tabB = new AwaitableWebpage($tabBPage->goto($tabBUrl), $tabBUrl);
+
+    try {
+        expect($tabBPage->context())->toBe($context)
+            ->and($tabBPage)->not->toBe($tabA->page());
+        $tabB->assertQueryStringHas('branch', (string) $original->id)
+            ->assertSee($original->name)
+            ->assertScript('window.workspaceRemembered', 1)
+            ->click('[data-ordering-controls] summary')
+            ->click('ui-checkbox[name="closure.temporarilyClosed"]')
+            ->assertAttribute('ui-checkbox[name="closure.temporarilyClosed"]', 'aria-checked', 'true')
+            ->fill('input[name="closure.temporaryClosedReason"]', 'Only restaurant B should pause');
+
+        $tabA->click('.workspace-restaurant__trigger')
+            ->assertVisible('dialog[data-modal="workspace-restaurant"]')
+            ->click('dialog[data-modal="workspace-restaurant"] input')
+            ->fill('dialog[data-modal="workspace-restaurant"] input', $different->name)
+            ->keys('dialog[data-modal="workspace-restaurant"] input', 'ArrowDown')
+            ->assertVisible('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$different->id.'"]')
+            ->click('dialog[data-modal="workspace-restaurant"] ui-option[value="'.$different->id.'"]')
+            ->click('dialog[data-modal="workspace-restaurant"] button[type="submit"]')
+            ->assertQueryStringHas('branch', (string) $different->id)
+            ->assertSee($different->name)
+            ->assertScript('window.workspaceRemembered >= 2');
+        $tabA->navigate(route('dashboard', absolute: false))
+            ->assertPathIs(route('restaurant.dashboard', absolute: false))
+            ->assertQueryStringHas('branch', (string) $different->id);
+
+        $tabB->assertQueryStringHas('branch', (string) $original->id)
+            ->assertSee($original->name)
+            ->assertValue('input[name="closure.temporaryClosedReason"]', 'Only restaurant B should pause')
+            ->click('[data-dashboard-ordering-form] button[type="submit"]')
+            ->assertSee(__('dashboard.control.ordering_saved'))
+            ->assertQueryStringHas('branch', (string) $original->id)
+            ->assertAttribute('ui-checkbox[name="closure.temporarilyClosed"]', 'aria-checked', 'true');
+
+        expect($original->refresh()->is_temporarily_closed)->toBeTrue()
+            ->and($original->temporary_closed_reason)->toBe('Only restaurant B should pause')
+            ->and($original->temporary_closed_until)->toBeNull()
+            ->and($different->refresh()->is_temporarily_closed)->toBeFalse()
+            ->and($different->temporary_closed_reason)->toBeNull()
+            ->and($different->temporary_closed_until)->toBeNull();
+        $tabA->assertQueryStringHas('branch', (string) $different->id)->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+        $tabB->assertNoJavaScriptErrors()->assertNoConsoleLogs();
+    } finally {
+        $tabBPage->close();
+    }
+});

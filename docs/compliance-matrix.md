@@ -4,6 +4,13 @@
 
 # Compliance matrix
 
+## Unified workspace acceptance — prompt 3, 2026-09-16
+
+`ui-workspace-003`, `livewire-001`, `blade-001`, `i18n-001`, `ui-accessibility-001` and `ui-responsive-001`: shared page context, one Livewire/Flux Pro selector, stable task registry and scoped existing screens are implemented and accepted on the supported PHP8.5.10 test runtime. Full22-step local aggregate passes:3,608 backend tests/69,577 assertions; PHP94.0%; JavaScript199/100% lines; isolated WebKit44/3,339. Independent signed-HTTP and two-tab regressions cover forbidden/conflicting/changed-actor contexts and preservation of mutation targets. All new workspace classes are included in coverage; no100% product guarantee is implied.
+
+Named URLs, domain Actions/Policies, SCSS tokens and EN/LT/RU remain. Current navigation tasks are exercised in real browsers; historical step comparison is based on returned HTTP links, not a claimed pre-change browser run. Device/engine and measurement limits are in testing.md/performance.md. PHP8.6 application acceptance remains blocked by existing Composer requirements (52 changed PHP files pass actual Beta3 syntax only). Prompt2's remaining controllers/auth forms are unchanged unfinished work. Evidence and delivery state are recorded in PROGRESS.md.
+
+
 ## Platform foundation checkpoint — 2026-09-16 (partial; not release acceptance)
 
 Current continuation starts from clean `ce187c8`. Clean dependency installation/build/migration proof is renewed; the PHP86 monetary parser regression and verification-infrastructure defects are fixed with focused tests. The stable aggregate passes 22 steps, 3,550 backend tests / 69,018 assertions, 94.0% PHP coverage and 196 JS tests / 100% lines; a subsequent test-only browser media fix passes the full 42-case / 3,063-assertion browser stage. Exact snapshots and limits are in PROGRESS.md. PHP86 application acceptance remains blocked; this is not a completed migration.

@@ -50,6 +50,7 @@ class UpdateDepartmentTicketItemStatusAction
         array $departmentTypes,
         array $roleCodes,
         array $permissionCodes,
+        ?int $branchId = null,
     ): KitchenTicketItem {
         $previousStatus = null;
 
@@ -60,6 +61,7 @@ class UpdateDepartmentTicketItemStatusAction
             $departmentTypes,
             $roleCodes,
             $permissionCodes,
+            $branchId,
             &$previousStatus,
         ): KitchenTicketItem {
             $item = KitchenTicketItem::query()
@@ -84,6 +86,7 @@ class UpdateDepartmentTicketItemStatusAction
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            abort_if($branchId !== null && $item->kitchenTicket->branch_id !== $branchId, 403);
             $departmentId = $item->kitchenTicket->kitchen_department_id;
             $accessibleDepartmentIds = $this->resolveAccessibleDepartmentIds->handle(
                 user: $user,

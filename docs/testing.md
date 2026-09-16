@@ -4,6 +4,19 @@
 
 # Testing and quality gates
 
+## Workspace verification — prompt 3, 2026-09-16
+
+`RestaurantWorkspaceContextTest`, `WorkspaceBoundaryTest` and `WorkspaceQueryBudgetTest` cover precedence, narrow capabilities, bounded search, stale authorization, signed actor identity, tab-local writes and permission-query reuse. Existing dashboard/waiter/department/export/audit regressions remain required. `UnifiedWorkspaceBrowserTest`, `BranchControlWorkflowTest`, `FrontendAssetDeliveryTest` and `WorkspaceComponentsTest` exercise real switching, dirty-state cancellation/discard, concurrent tabs, keyboard/history, pending/offline behavior, shared search and listener/poller cleanup.
+
+Frozen source `f71c7b30f4636895cf5b02be692839385d8ba821d5fe4925c6545691d2eced8e` passes the complete22-step canonical aggregate on PHP8.5.10, Node24.21.0 and npm12.0.2. Backend:3,608 discovered/executed,69,577 assertions, no failures/errors/skips. Xdebug repeats the same inventory:94.0% PHP lines against the unchanged90% minimum. All new workspace classes occur in the Clover report; coverage is not100% for every class and PHP branch coverage is not measured. JavaScript:199 passed,100% lines/95.37% branches/98.36% functions. WebKit:44 cases/3,339 assertions, no failures/timeouts. Its actual HTTP responder matches the selected PHP8.5.10 binary; this is not a Herd/PHP-FPM result. Formatter, analysis, architecture, lint, translations, build, generated drift and budgets pass. Exact paths, times and source attribution are in PROGRESS.md.
+
+The first aggregate's15 browser failures reproduce outdated `/dashboard` or unscoped role-screen expectations. The replacements use fixture-specific destinations and branch assertions; no-restaurant/multi-restaurant entry assertions remain. The lifecycle test additionally verifies disposal of both the old page guard and shell. No skip, timeout suppression, source exclusion or budget reduction was introduced. Both a full standalone browser repeat and the final aggregate pass after independent test-diff review.
+
+Five viewport widths, EN/LT/RU, light/dark, keyboard, history and200% text-scale cases use the existing browser suite. Dedicated forced-colors/reduced-motion browser emulation was not repeated for the workspace; retaining CSS support is not a runtime certification. Real320/1440 screenshots were reviewed. These checks do not certify physical mobile keyboards, native browser zoom across engines or assistive hardware. Historical first-stage device/TLS limitations remain explicit.
+
+The application/backend/browser/coverage PHP8.6 matrix remains blocked by real Composer requirements. Actual8.6.0beta3 syntax passes52 changed PHP classes/routes/tests; Blade is excluded from that claim because `php -l` does not compile it. No platform emulation or ignored requirement is allowed. Before/after HTTP, signed Livewire payload and frontend-byte experiments are described separately in performance.md; source snapshots, timing noise and later minor HTML attribute changes must remain visible.
+
+
 ## Platform verification contract — 2026-09-16
 
 The stable part of prompt 1 in the restarted 14-stage series has passed the current verification matrix. PHP 8.6 application acceptance remains blocked; older historical aggregates do not certify this graph. The supported production range remains PHP 8.5; actual production server configuration was not inspected. PHP 8.6.0beta3 has been built and probed independently but stable dependency constraints currently prevent an application install/run without bypasses.

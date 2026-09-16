@@ -19,7 +19,7 @@ test('authenticated users can visit the dashboard', function () {
     $response = $this->get(route('dashboard'));
     $response
         ->assertOk()
-        ->assertSee('data-primary-workspace="restaurant"', false);
+        ->assertSee('data-workspace-entry', false);
 });
 
 test('new owner sees restaurant onboarding in the application navigation', function () {

@@ -5,7 +5,7 @@
 <section data-page-module="staff" wire:ignore.self x-ignore inert data-staff-workspace data-page="{{ $isBranch ? 'branch-staff' : 'organization-staff' }}" x-data="staffWorkspace" class="flex w-full min-w-0 flex-col gap-5">
     <header class="flex flex-wrap items-start justify-between gap-4">
         <div class="min-w-0">
-            <p class="text-sm text-text-muted">{{ $contextLabel }}</p>
+            @unless ($isBranch)<p class="text-sm text-text-muted">{{ $contextLabel }}</p>@endunless
             <h1 data-staff-heading tabindex="-1" class="mt-1 text-2xl font-semibold text-text-primary">{{ $isBranch ? __('staff.branch_access') : __('staff.organization_access') }}</h1>
             <p class="mt-2 text-sm text-text-muted">{{ $isBranch ? __('staff.workspace.branch_scope') : __('staff.workspace.organization_scope') }}</p>
         </div>
